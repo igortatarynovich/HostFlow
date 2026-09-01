@@ -23,11 +23,11 @@ import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friend
 function connectionLabel(status: string, t: (k: string, o?: object) => string): string {
   switch (status) {
     case 'connected':
-      return t('app.marketing.sources.connection.connected', { defaultValue: 'Connected' })
+      return t('app.marketing.sources.connection.connected')
     case 'attention':
-      return t('app.marketing.sources.connection.attention', { defaultValue: 'Attention' })
+      return t('app.marketing.sources.connection.attention')
     case 'disconnected':
-      return t('app.marketing.sources.connection.disconnected', { defaultValue: 'Disconnected' })
+      return t('app.marketing.sources.connection.disconnected')
     default:
       return status
   }
@@ -36,11 +36,11 @@ function connectionLabel(status: string, t: (k: string, o?: object) => string): 
 function healthLabel(status: string, t: (k: string, o?: object) => string): string {
   switch (status) {
     case 'ready':
-      return t('app.marketing.sources.health.ready', { defaultValue: 'Ready' })
+      return t('app.marketing.sources.health.ready')
     case 'needs_review':
-      return t('app.marketing.sources.health.needs_review', { defaultValue: 'Needs review' })
+      return t('app.marketing.sources.health.needs_review')
     case 'broken':
-      return t('app.marketing.sources.health.broken', { defaultValue: 'Broken' })
+      return t('app.marketing.sources.health.broken')
     default:
       return status
   }
@@ -102,7 +102,7 @@ export default function MarketingSourcesPage() {
     <PageShell data-testid="marketing-sources-page">
       <PageShellHeader>
         <PageHeader
-          title={t('app.marketing.sources.title', { defaultValue: 'Sources' })}
+          title={t('app.marketing.sources.title')}
           subtitle={t('app.marketing.sources.subtitle')}
           actions={
             <Link
@@ -110,9 +110,7 @@ export default function MarketingSourcesPage() {
               className="btn-secondary btn-sm"
               data-testid="marketing-sources-open-integrations"
             >
-              {t('app.marketing.sources.actions.integrations', {
-                defaultValue: 'Integrations',
-              })}
+              {t('app.marketing.sources.actions.integrations')}
             </Link>
           }
         />
@@ -136,9 +134,7 @@ export default function MarketingSourcesPage() {
             className="btn-secondary btn-sm"
             data-testid="marketing-sources-drift-summary-link"
           >
-            {t('app.marketing.sources.actions.open_drift', {
-              defaultValue: 'Diagnostics · drift',
-            })}
+            {t('app.marketing.sources.actions.open_drift')}
           </Link>
         </div>
       ) : null}
@@ -182,55 +178,43 @@ export default function MarketingSourcesPage() {
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.source', { defaultValue: 'Source' })}
+                  {t('app.marketing.sources.columns.source')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.provider', { defaultValue: 'Provider' })}
+                  {t('app.marketing.sources.columns.provider')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.page', { defaultValue: 'Page' })}
+                  {t('app.marketing.sources.columns.page')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.provider_form', {
-                    defaultValue: 'Provider form',
-                  })}
+                  {t('app.marketing.sources.columns.provider_form')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.destination', {
-                    defaultValue: 'Destination',
-                  })}
+                  {t('app.marketing.sources.columns.destination')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.connection', { defaultValue: 'Connection' })}
+                  {t('app.marketing.sources.columns.connection')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.mapping_health', {
-                    defaultValue: 'Mapping Health',
-                  })}
+                  {t('app.marketing.sources.columns.mapping_health')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.last_lead', { defaultValue: 'Last lead' })}
+                  {t('app.marketing.sources.columns.last_lead')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.waiting', {
-                    defaultValue: 'Waiting',
-                  })}
+                  {t('app.marketing.sources.columns.waiting')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.routing_issue', {
-                    defaultValue: 'Routing issue',
-                  })}
+                  {t('app.marketing.sources.columns.routing_issue')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.last_error', { defaultValue: 'Last error' })}
+                  {t('app.marketing.sources.columns.last_error')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.campaigns_flights', {
-                    defaultValue: 'Campaigns / Flights',
-                  })}
+                  {t('app.marketing.sources.columns.campaigns_flights')}
                 </th>
                 <th className="px-4 py-3 font-medium">
-                  {t('app.marketing.sources.columns.actions', { defaultValue: 'Actions' })}
+                  {t('app.marketing.sources.columns.actions')}
                 </th>
               </tr>
             </thead>
@@ -248,13 +232,13 @@ export default function MarketingSourcesPage() {
                     className="px-4 py-3 text-slate-700"
                     data-testid={`marketing-source-page-${row.source_id}`}
                   >
-                    {row.page_name || row.page_id || t('app.marketing.sources.none', { defaultValue: '—' })}
+                    {row.page_name || row.page_id || t('app.marketing.sources.none')}
                   </td>
                   <td
                     className="px-4 py-3 text-slate-700"
                     data-testid={`marketing-source-provider-form-${row.source_id}`}
                   >
-                    {row.provider_form || t('app.marketing.sources.none', { defaultValue: '—' })}
+                    {row.provider_form || t('app.marketing.sources.none')}
                   </td>
                   <td
                     className="px-4 py-3 text-slate-700"
@@ -262,7 +246,7 @@ export default function MarketingSourcesPage() {
                   >
                     {row.destination_label ||
                       row.destination ||
-                      t('app.marketing.sources.none', { defaultValue: '—' })}
+                      t('app.marketing.sources.none')}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -283,7 +267,7 @@ export default function MarketingSourcesPage() {
                   <td className="px-4 py-3 text-slate-600">
                     {row.last_submission_at
                       ? formatDateTime(row.last_submission_at, locale)
-                      : t('app.marketing.sources.none', { defaultValue: '—' })}
+                      : t('app.marketing.sources.none')}
                   </td>
                   <td className="px-4 py-3 text-slate-700">
                     {(row.waiting_submissions ?? 0) > 0 ? (
@@ -294,7 +278,7 @@ export default function MarketingSourcesPage() {
                         {row.waiting_submissions}
                       </span>
                     ) : (
-                      t('app.marketing.sources.none', { defaultValue: '—' })
+                      t('app.marketing.sources.none')
                     )}
                   </td>
                   <td className="px-4 py-3 text-slate-700">
@@ -310,7 +294,7 @@ export default function MarketingSourcesPage() {
                         ) : null}
                       </div>
                     ) : (
-                      t('app.marketing.sources.none', { defaultValue: '—' })
+                      t('app.marketing.sources.none')
                     )}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
@@ -322,7 +306,7 @@ export default function MarketingSourcesPage() {
                         ) : null}
                       </div>
                     ) : (
-                      t('app.marketing.sources.none', { defaultValue: '—' })
+                      t('app.marketing.sources.none')
                     )}
                   </td>
                   <td className="px-4 py-3 text-slate-700">
@@ -344,23 +328,21 @@ export default function MarketingSourcesPage() {
                         className="text-sm font-medium text-brand-700 hover:underline"
                         data-testid={`marketing-source-mapping-${row.source_id}`}
                       >
-                        {t('app.marketing.sources.actions.mapping', { defaultValue: 'Mapping' })}
+                        {t('app.marketing.sources.actions.mapping')}
                       </Link>
                       <Link
                         to={row.test_lead_path}
                         className="text-sm font-medium text-brand-700 hover:underline"
                         data-testid={`marketing-source-test-lead-${row.source_id}`}
                       >
-                        {t('app.marketing.sources.actions.test_lead', { defaultValue: 'Test lead' })}
+                        {t('app.marketing.sources.actions.test_lead')}
                       </Link>
                       <Link
                         to={row.settings_path}
                         className="text-sm font-medium text-slate-600 hover:underline"
                         data-testid={`marketing-source-settings-${row.source_id}`}
                       >
-                        {t('app.marketing.sources.actions.connection', {
-                          defaultValue: 'Connection',
-                        })}
+                        {t('app.marketing.sources.actions.connection')}
                       </Link>
                     </div>
                   </td>

@@ -126,7 +126,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
             {t('app.marketing.ad_bindings.help')}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            Flight: <span className="font-medium text-slate-700">{flight.name || flight.code}</span>
+            {t('app.marketing.ad_bindings.flight')}: <span className="font-medium text-slate-700">{flight.name || flight.code}</span>
           </p>
         </div>
       </div>
@@ -202,7 +202,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
         data-testid="marketing-ad-bindings-form"
       >
         <label className="min-w-[14rem] flex-1 text-xs text-slate-600">
-          Meta Ad ID
+          {t('app.marketing.ad_bindings.ad_id')}
           <input
             className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900"
             value={adId}

@@ -129,7 +129,7 @@ export function HostFlowFormSourceCard({
         </div>
         <div className="flex flex-wrap gap-1">
           <StatusPill tone={active ? 'ok' : 'muted'}>
-            {active ? 'Active binding' : 'Inactive binding'}
+            {active ? t('app.marketing.source_card.active_binding') : t('app.marketing.source_card.inactive_binding')}
           </StatusPill>
           <StatusPill tone={pub === 'published' ? 'ok' : pub === 'inactive' ? 'muted' : 'warn'}>
             {publicationLabel(pub, t)}
@@ -188,7 +188,7 @@ export function MetaLeadFormSourceCard({
     link.display_title ||
     link.lead_form_name ||
     link.name ||
-    'Lead Form (Meta)'
+    t('app.marketing.source_card.lead_form_fallback')
   const pageLine = link.page_name || null
   const binding = link.binding_status || (link.is_active ? 'bound' : 'unbound')
   const active = link.is_active && (link.profile_is_active ?? true)
@@ -201,13 +201,13 @@ export function MetaLeadFormSourceCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Lead Form (Meta) · Source
+            {t('app.marketing.source_card.meta_source')}
           </div>
           <div className="mt-1 font-semibold text-slate-900">{title}</div>
         </div>
         <div className="flex flex-wrap gap-1">
           <StatusPill tone={active ? 'ok' : 'muted'}>
-            {active ? 'Active' : 'Inactive'}
+            {active ? t('app.marketing.source_card.active') : t('app.marketing.source_card.inactive')}
           </StatusPill>
           <StatusPill tone={binding === 'bound' ? 'ok' : binding === 'unbound' ? 'warn' : 'muted'}>
             {bindingLabel(binding, t)}
@@ -217,7 +217,7 @@ export function MetaLeadFormSourceCard({
 
       <dl className="mt-3 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
         <div>
-          <dt className="text-slate-500">Provider</dt>
+          <dt className="text-slate-500">{t('app.marketing.source_card.provider')}</dt>
           <dd className="font-medium text-slate-800">{providerLabel(link.provider)}</dd>
         </div>
         <div>
@@ -227,7 +227,7 @@ export function MetaLeadFormSourceCard({
           </dd>
         </div>
         <div>
-          <dt className="text-slate-500">Lead Form</dt>
+          <dt className="text-slate-500">{t('app.marketing.source_card.lead_form')}</dt>
           <dd className="font-medium text-slate-800">
             {link.lead_form_name || title}
           </dd>

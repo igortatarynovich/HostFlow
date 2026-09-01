@@ -36,11 +36,11 @@ type DraftRule = {
 function healthLabel(status: string, t: (k: string, o?: object) => string): string {
   switch (status) {
     case 'ready':
-      return t('app.marketing.sources.health.ready', { defaultValue: 'Ready' })
+      return t('app.marketing.sources.health.ready')
     case 'needs_review':
-      return t('app.marketing.sources.health.needs_review', { defaultValue: 'Needs review' })
+      return t('app.marketing.sources.health.needs_review')
     case 'broken':
-      return t('app.marketing.sources.health.broken', { defaultValue: 'Broken' })
+      return t('app.marketing.sources.health.broken')
     default:
       return status
   }
@@ -152,7 +152,7 @@ export default function MarketingSourceMappingPage() {
     const name = mapping?.display_name || source?.display_name
     return name
       ? t('app.marketing.mapping.title_named', { values: { name } })
-      : t('app.marketing.mapping.title', { defaultValue: 'Source mapping' })
+      : t('app.marketing.mapping.title')
   }, [mapping?.display_name, source?.display_name, t])
 
   async function runAction(fn: () => Promise<void>) {
@@ -191,14 +191,14 @@ export default function MarketingSourceMappingPage() {
                 className="btn-secondary btn-sm"
                 data-testid="marketing-mapping-to-test-lead"
               >
-                {t('app.marketing.mapping.actions.test_lead', { defaultValue: 'Test lead' })}
+                {t('app.marketing.mapping.actions.test_lead')}
               </Link>
               <Link
                 to={CRM_APP_PATHS.marketingSources}
                 className="btn-secondary btn-sm"
                 data-testid="marketing-mapping-back-sources"
               >
-                {t('app.marketing.mapping.actions.back', { defaultValue: '← Sources' })}
+                {t('app.marketing.mapping.actions.back')}
               </Link>
             </div>
           }
@@ -222,7 +222,7 @@ export default function MarketingSourceMappingPage() {
 
       {loading ? (
         <p className="text-sm text-slate-500" data-testid="marketing-mapping-loading">
-          {t('app.common.loading', { defaultValue: 'Loading…' })}
+          {t('common.loading')}
         </p>
       ) : mapping ? (
         <div className="space-y-6">
@@ -233,13 +233,13 @@ export default function MarketingSourceMappingPage() {
             <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
               <div>
                 <dt className="text-slate-500">
-                  {t('app.marketing.mapping.fields.provider', { defaultValue: 'Provider' })}
+                  {t('app.marketing.mapping.fields.provider')}
                 </dt>
                 <dd data-testid="marketing-mapping-provider">{mapping.provider || '—'}</dd>
               </div>
               <div>
                 <dt className="text-slate-500">
-                  {t('app.marketing.mapping.fields.health', { defaultValue: 'Mapping Health' })}
+                  {t('app.marketing.mapping.fields.health')}
                 </dt>
                 <dd data-testid="marketing-mapping-health">
                   {healthLabel(mapping.mapping_health, t)}
@@ -247,7 +247,7 @@ export default function MarketingSourceMappingPage() {
               </div>
               <div>
                 <dt className="text-slate-500">
-                  {t('app.marketing.mapping.fields.destination', { defaultValue: 'Destination' })}
+                  {t('app.marketing.mapping.fields.destination')}
                 </dt>
                 <dd data-testid="marketing-mapping-destination">
                   {mapping.destination_label || mapping.destination || '—'}
@@ -255,7 +255,7 @@ export default function MarketingSourceMappingPage() {
               </div>
               <div>
                 <dt className="text-slate-500">
-                  {t('app.marketing.mapping.fields.rules_source', { defaultValue: 'Rules source' })}
+                  {t('app.marketing.mapping.fields.rules_source')}
                 </dt>
                 <dd data-testid="marketing-mapping-rules-source">{mapping.rules_source}</dd>
               </div>
@@ -268,7 +268,7 @@ export default function MarketingSourceMappingPage() {
           >
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-slate-900">
-                {t('app.marketing.mapping.rules.title', { defaultValue: 'Field mapping' })}
+                {t('app.marketing.mapping.rules.title')}
               </h2>
               <button
                 type="button"
@@ -286,7 +286,7 @@ export default function MarketingSourceMappingPage() {
                   })
                 }
               >
-                {t('app.marketing.mapping.actions.save', { defaultValue: 'Save mapping' })}
+                {t('app.marketing.mapping.actions.save')}
               </button>
             </div>
 
@@ -302,10 +302,10 @@ export default function MarketingSourceMappingPage() {
                 >
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
-                      <th className="px-3 py-2">Provider field</th>
-                      <th className="px-3 py-2">Sample</th>
-                      <th className="px-3 py-2">HostFlow target</th>
-                      <th className="px-3 py-2">Action</th>
+                      <th className="px-3 py-2">{t('app.marketing.mapping.table.provider_field')}</th>
+                      <th className="px-3 py-2">{t('app.marketing.mapping.table.sample')}</th>
+                      <th className="px-3 py-2">{t('app.marketing.mapping.table.target')}</th>
+                      <th className="px-3 py-2">{t('app.marketing.mapping.table.action')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -332,8 +332,8 @@ export default function MarketingSourceMappingPage() {
                             data-testid={`marketing-mapping-action-${row.source}`}
                             onChange={(e) => updateDraft(index, { action: e.target.value })}
                           >
-                            <option value="map">Map</option>
-                            <option value="ignore">Ignore</option>
+                            <option value="map">{t('app.marketing.mapping.action.map')}</option>
+                            <option value="ignore">{t('app.marketing.mapping.action.ignore')}</option>
                           </select>
                         </td>
                       </tr>
@@ -350,7 +350,7 @@ export default function MarketingSourceMappingPage() {
           >
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-slate-900">
-                {t('app.marketing.mapping.routing.title', { defaultValue: 'Routing preview' })}
+                {t('app.marketing.mapping.routing.title')}
               </h2>
               <button
                 type="button"
@@ -364,34 +364,32 @@ export default function MarketingSourceMappingPage() {
                   })
                 }
               >
-                {t('app.marketing.mapping.actions.preview_routing', {
-                  defaultValue: 'Run routing preview',
-                })}
+                {t('app.marketing.mapping.actions.preview_routing')}
               </button>
             </div>
 
             {routing ? (
               <div className="space-y-2 text-sm" data-testid="marketing-mapping-routing-result">
                 <p data-testid="marketing-mapping-routing-destination">
-                  <span className="text-slate-500">Destination: </span>
+                  <span className="text-slate-500">{t('app.marketing.mapping.routing.destination')}: </span>
                   {routing.destination_label || routing.destination || '—'}
                 </p>
                 <p data-testid="marketing-mapping-routing-needs-review">
-                  <span className="text-slate-500">Needs review: </span>
-                  {routing.needs_review ? 'yes' : 'no'}
+                  <span className="text-slate-500">{t('app.marketing.mapping.routing.needs_review')}: </span>
+                  {routing.needs_review ? t('common.yes') : t('common.no')}
                 </p>
                 <p data-testid="marketing-mapping-routing-creates">
-                  <span className="text-slate-500">Creates entities: </span>
-                  {routing.creates_entities ? 'yes' : 'no'}
+                  <span className="text-slate-500">{t('app.marketing.mapping.routing.creates')}: </span>
+                  {routing.creates_entities ? t('common.yes') : t('common.no')}
                 </p>
                 <p data-testid="marketing-mapping-routing-unmapped">
-                  <span className="text-slate-500">Unmapped: </span>
+                  <span className="text-slate-500">{t('app.marketing.mapping.routing.unmapped')}: </span>
                   {routing.unmapped_fields.length
                     ? routing.unmapped_fields.join(', ')
                     : '—'}
                 </p>
                 <p data-testid="marketing-mapping-routing-ignored">
-                  <span className="text-slate-500">Ignored: </span>
+                  <span className="text-slate-500">{t('app.marketing.mapping.routing.ignored')}: </span>
                   {routing.ignored_fields.length ? routing.ignored_fields.join(', ') : '—'}
                 </p>
                 <p className="text-slate-600" data-testid="marketing-mapping-routing-note">

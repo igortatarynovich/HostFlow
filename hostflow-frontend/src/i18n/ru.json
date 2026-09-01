@@ -946,7 +946,7 @@
         "acquisition_activity": "Активность Acquisition",
         "marketing_sources": "Sources",
         "marketing_forms": "Forms",
-        "marketing_diagnostics": "Diagnostics",
+        "marketing_diagnostics": "Диагностика",
         "automation_rules": "Правила автоматизаций",
         "settings_hiring_gates": "Барьеры воронки найма",
         "settings_risk_intel": "Операционный риск",
@@ -9386,7 +9386,7 @@
     },
     "sidebar": {
       "settings": {
-        "api_base": "API Base",
+        "api_base": "Базовый URL API",
         "api_base_placeholder": "http://localhost:8000/api/v1",
         "docs_base": "Docs Base (только чтение)",
         "tenant_id": "Tenant ID",
@@ -9506,46 +9506,47 @@
     },
     "marketing": {
       "sources": {
-        "title": "Sources",
+        "title": "Источники",
         "subtitle": "Подключённые источники, Mapping Health, ожидающие заявки и последние события.",
         "none": "—",
         "empty_title": "Пока нет источников",
         "empty_body": "Подключите Meta в Integrations или привяжите intake source — они появятся здесь.",
         "columns": {
-          "source": "Source",
-          "provider": "Provider",
-          "connection": "Connection",
-          "mapping_health": "Mapping Health",
+          "source": "Источник",
+          "provider": "Провайдер",
+          "connection": "Подключение",
+          "mapping_health": "Здоровье маппинга",
           "last_lead": "Последняя заявка",
           "waiting": "Ожидают",
           "routing_issue": "Проблема маршрута",
           "last_error": "Последняя ошибка",
-          "campaigns_flights": "Campaigns / Flights",
+          "campaigns_flights": "Кампании / Flight",
           "actions": "Действия",
           "page": "Страница",
-          "provider_form": "Форма провайдера"
+          "provider_form": "Форма провайдера",
+          "destination": "Назначение"
         },
         "connection": {
-          "connected": "Connected",
-          "attention": "Attention",
-          "disconnected": "Disconnected"
+          "connected": "Подключён",
+          "attention": "Внимание",
+          "disconnected": "Отключён"
         },
         "health": {
-          "ready": "Ready",
-          "needs_review": "Needs review",
-          "broken": "Broken"
+          "ready": "Готов",
+          "needs_review": "Нужна проверка",
+          "broken": "Сломан"
         },
         "routing_issue": {
           "missing_campaign_flight": "Campaign/Flight для этого Ad ID не настроены."
         },
         "actions": {
-          "integrations": "Integrations",
+          "integrations": "Интеграции",
           "connect": "Открыть Integrations",
-          "mapping": "Mapping",
-          "test_lead": "Test lead",
-          "connection": "Connection",
+          "mapping": "Маппинг",
+          "test_lead": "Тестовый лид",
+          "connection": "Подключение",
           "setup_campaign_flight": "Настроить Campaign/Flight",
-          "open_drift": "Diagnostics · drift"
+          "open_drift": "Диагностика · drift"
         },
         "errors": {
           "load": "Не удалось загрузить источники"
@@ -9569,7 +9570,7 @@
         "client_account": "Клиент",
         "intent": {
           "candidate_application": "кандидаты",
-          "sales_inquiry": "sales inquiry",
+          "sales_inquiry": "sales-заявка",
           "service_request": "услуга"
         }
       },
@@ -9636,14 +9637,38 @@
         },
         "cohorts": {
           "title": "Когорты",
-          "subtitle": "{days} дн. · {bucket} · CAC proxy = cost / outcome"
+          "subtitle": "{days} дн. · {bucket} · CAC proxy = cost / outcome",
+          "day": "День",
+          "week": "Неделя",
+          "month": "Месяц",
+          "col_day": "День (UTC)",
+          "col_week": "Начало недели (UTC)",
+          "col_month": "Начало месяца (UTC)"
+        },
+        "flight_status": "Flight · {status}",
+        "outcome_value": {
+          "title": "Коммерческая ценность (Outcome)",
+          "subtitle": "Задайте ценность завершённого Outcome (declared_v1). ROI = (ценность − расход) / расход.",
+          "outcome_id": "ID Outcome",
+          "amount": "Сумма",
+          "currency": "Валюта",
+          "save": "Сохранить ценность",
+          "saved": "Сохранено {amount} {currency}"
+        },
+        "observed": {
+          "fail_rate": "Доля ошибок",
+          "routing": "Маршрут",
+          "delivery_err": "Ошибки доставки",
+          "volume": "Объём"
         }
       },
       "kpi": {
         "applications": "Заявки",
         "routed": "Направлено",
         "route_errors": "Ошибки маршрута",
-        "leads": "Лиды (KPI)"
+        "leads": "Лиды (KPI)",
+        "cpl": "CPL",
+        "spend": "Расход"
       },
       "connect": {
         "primary_limit_title": "Лимит primary-источников для этого Flight",
@@ -9676,8 +9701,18 @@
           "title": "Название новой анкеты",
           "submit": "Создать и выбрать",
           "open": "Создать новую анкету",
-          "hint": "Создаёт активную HostFlow-анкету (candidate fields) через createIntakeForm и сразу выбирает её."
-        }
+          "hint": "Создаёт активную HostFlow-анкету (candidate fields) через createIntakeForm и сразу выбирает её.",
+          "default_title": "Новая маркетинговая анкета"
+        },
+        "meta": {
+          "lead_form": "Lead Form",
+          "form_id": "ID формы",
+          "page": "Страница",
+          "ads": "Объявления",
+          "last_lead": "Последний лид",
+          "aria": "Lead Form Meta"
+        },
+        "meta_kind": "Meta Lead Ads"
       },
       "source_card": {
         "public_form": "Публичная форма",
@@ -9686,7 +9721,7 @@
         "public_link": "Публичная ссылка",
         "facebook_page": "Страница Facebook",
         "last_lead": "Последний лид",
-        "hostflow_source": "Анкета HostFlow · Source",
+        "hostflow_source": "Анкета HostFlow · Источник",
         "open_form": "Открыть анкету",
         "details": "Подробнее",
         "hide_details": "Скрыть подробности",
@@ -9696,7 +9731,14 @@
         "bound": "Привязан",
         "never": "никогда",
         "untitled": "Без названия",
-        "page_id_hidden": "ID скрыт в подробностях"
+        "page_id_hidden": "ID скрыт в подробностях",
+        "meta_source": "Lead Form (Meta) · Источник",
+        "provider": "Провайдер",
+        "lead_form": "Lead Form",
+        "lead_form_fallback": "Lead Form (Meta)",
+        "active": "Активен",
+        "active_binding": "Активная привязка",
+        "inactive_binding": "Неактивная привязка"
       },
       "ad_bindings": {
         "title": "Привязка Ad ID → Flight",
@@ -9710,7 +9752,9 @@
         "bind": "Привязать к Flight",
         "confirm_unbind": "Отвязать Ad ID {id}?",
         "reprocessed": "Переобработано ожидающих: matched {matched}, processed {processed}",
-        "reprocessed_errors": ", ошибок {errors}"
+        "reprocessed_errors": ", ошибок {errors}",
+        "flight": "Flight",
+        "ad_id": "Meta Ad ID"
       },
       "setup": {
         "title": "Новая кампания",
@@ -9758,7 +9802,9 @@
         "errors": {
           "load_options": "Не удалось загрузить справочники",
           "create": "Не удалось создать кампанию"
-        }
+        },
+        "review_context_role": "CampaignTarget · role=context",
+        "review_primary_target": "Primary Target · route_intent"
       },
       "list": {
         "public_form": "Публичная форма",
@@ -9782,7 +9828,7 @@
         "create": "Создать кампанию"
       },
       "portfolio": {
-        "title": "Portfolio KPI",
+        "title": "KPI портфеля",
         "subtitle": "Сводка по кампаниям компании (только чтение).",
         "capped": " Список ограничен."
       },
@@ -9796,8 +9842,8 @@
         "drift_only": "Только mapping drift",
         "apply": "Применить",
         "show_drift": "Показать drift",
-        "replay": "Replay",
-        "replaying": "Replay…",
+        "replay": "Повторить",
+        "replaying": "Повтор…",
         "replay_hint": "Повторно прогнать lead через process pipeline (POST /leads/{id}/process)",
         "errors": {
           "load_case": "Не удалось загрузить кейс",
@@ -9807,10 +9853,55 @@
         },
         "drift_summary": "За {hours} ч: {count} заявк(и) с Mapping drift (просмотрено {scanned}).",
         "drift_summary_capped": " Скан ограничен.",
-        "drift_alert": "На этой странице {count} заявк(и) с Mapping drift — правила Source изменились после ingest."
+        "drift_alert": "На этой странице {count} заявк(и) с Mapping drift — правила Source изменились после ingest.",
+        "filter_source": "Источник",
+        "filter_flight": "Flight ID",
+        "drift_badge": "drift",
+        "duplicate": {
+          "title": "Решение по дублю",
+          "body": "Только чтение: decision_result_v1 + duplicate_match_v1. Разрешите в CRM Lead.",
+          "resolve": "Разрешить в Lead",
+          "open_candidate": "Открыть кандидата",
+          "lead_status": "Статус лида",
+          "disposition": "Disposition",
+          "match_level": "Уровень совпадения",
+          "error_code": "Код ошибки",
+          "needs_review": "Нужна проверка",
+          "suggested": "Предложенный кандидат"
+        },
+        "mapping": {
+          "title": "Маппинг / здоровье маппинга",
+          "body": "Текущий маппинг источника (не исторический штамп ingest). Откройте маппинг, чтобы проверить правила.",
+          "open": "Открыть маппинг",
+          "source": "Источник",
+          "health": "Здоровье маппинга",
+          "rules": "Правила",
+          "profile_updated": "Профиль обновлён",
+          "historical": "Историческая версия",
+          "drift": "Drift",
+          "profile_missing": "профиль отсутствует",
+          "not_stamped": "не зафиксировано",
+          "stamped": "зафиксировано",
+          "rules_count": "{count} правил",
+          "drift_yes": "да — текущие правила отличаются от ingest"
+        },
+        "case": {
+          "routing": "Маршрут",
+          "route_intent": "Намерение маршрута",
+          "campaign": "Кампания",
+          "flight": "Flight"
+        },
+        "timeline_title": "Таймлайн (Acquisition Activity)",
+        "json": {
+          "routing": "Штамп маршрута",
+          "decision": "Решение",
+          "normalized": "Нормализовано",
+          "payload": "Raw payload"
+        },
+        "export_json": "Экспорт JSON"
       },
       "mapping": {
-        "title": "Mapping источника",
+        "title": "Маппинг источника",
         "title_named": "Mapping — {name}",
         "subtitle": "Подтвердите размещение полей и посмотрите dry-run routing — без создания Candidate / Application.",
         "errors": {
@@ -9818,38 +9909,131 @@
           "action": "Не удалось выполнить действие"
         },
         "actions": {
-          "test_lead": "Test lead",
-          "back": "← Sources",
-          "save": "Сохранить mapping"
+          "test_lead": "Тестовый лид",
+          "back": "← Источники",
+          "save": "Сохранить маппинг",
+          "preview_routing": "Показать preview маршрута"
         },
         "saved": "Mapping сохранён на IntakeSourceProfile.mapping_rules",
         "rules": {
-          "empty": "Нет правил и sample полей. Сначала получите sample на Test lead."
+          "empty": "Нет правил и sample полей. Сначала получите sample на Test lead.",
+          "title": "Маппинг полей"
         },
         "routing": {
-          "empty": "Preview покажет destination, ignored и unmapped fields без production writes."
+          "empty": "Preview покажет destination, ignored и unmapped fields без production writes.",
+          "title": "Preview маршрута",
+          "destination": "Назначение",
+          "needs_review": "Нужна проверка",
+          "creates": "Создаёт сущности",
+          "unmapped": "Не сопоставлено",
+          "ignored": "Игнорируется"
+        },
+        "fields": {
+          "provider": "Провайдер",
+          "health": "Здоровье маппинга",
+          "destination": "Назначение",
+          "rules_source": "Источник правил"
+        },
+        "table": {
+          "provider_field": "Поле провайдера",
+          "sample": "Sample",
+          "target": "Поле HostFlow",
+          "action": "Действие"
+        },
+        "action": {
+          "map": "Сопоставить",
+          "ignore": "Игнорировать"
         }
       },
       "test_lead": {
-        "title": "Test lead и обнаружение полей",
-        "title_named": "Test lead — {name}",
+        "title": "Тестовый лид и обнаружение полей",
+        "title_named": "Тестовый лид — {name}",
         "subtitle": "Получите sample submission, просмотрите поля (с маскированием) и сделайте dry-run normalize — без создания Candidate / Application.",
         "errors": {
           "load": "Не удалось загрузить sample для источника",
           "action": "Не удалось выполнить действие"
         },
         "mode_a": {
-          "body": "Отправьте test lead из Meta Lead Form для этого Source, затем обновите sample — HostFlow подхватит payload без создания Candidate."
+          "body": "Отправьте test lead из Meta Lead Form для этого Source, затем обновите sample — HostFlow подхватит payload без создания Candidate.",
+          "title": "A — Официальный Meta test lead (основной)",
+          "refreshed": "Sample обновлён"
         },
         "mode_b": {
-          "body": "Следующая подходящая submission обработается как обычно и станет mapping sample (значения в UI замаскированы)."
+          "body": "Следующая подходящая submission обработается как обычно и станет mapping sample (значения в UI замаскированы).",
+          "title": "B — Захватить следующий реальный лид"
         },
         "fields": {
-          "empty": "Нет sample. Отправьте Meta test lead, включите capture next или вставьте payload."
+          "empty": "Нет sample. Отправьте Meta test lead, включите capture next или вставьте payload.",
+          "title": "Обнаружение полей",
+          "col_field": "Поле провайдера",
+          "col_sample": "Sample (маскировано)",
+          "col_target": "Предлагаемое поле",
+          "col_status": "Статус",
+          "col_action": "Действие",
+          "select_mapping": "Выбрать в маппинге"
         },
         "capture": {
           "armed": "Capture next включён до {until}"
+        },
+        "actions": {
+          "back": "← Источники",
+          "refresh": "Обновить sample",
+          "preview": "Dry-run нормализация",
+          "capture_next": "Включить capture next",
+          "use_paste": "Использовать вставленный payload",
+          "continue_mapping": "Перейти к маппингу"
+        },
+        "field": {
+          "mapped": "Сопоставлено",
+          "unmapped": "Не сопоставлено",
+          "new": "Новое"
+        },
+        "context": {
+          "title": "Источник",
+          "provider": "Провайдер",
+          "health": "Здоровье маппинга",
+          "sample_source": "Источник sample",
+          "rules": "Правила маппинга"
+        },
+        "obtain": {
+          "title": "Получить sample"
+        },
+        "mode_c": {
+          "show": "Дополнительно — вставить сохранённый payload",
+          "hide": "Скрыть расширенную вставку",
+          "invalid_json": "Некорректный JSON",
+          "invalid_json_hint": "Вставьте payload как JSON-объект.",
+          "invalid_object": "Payload должен быть JSON-объектом",
+          "invalid_object_hint": "Массивы и примитивы не принимаются.",
+          "saved": "Вставленный payload сохранён как sample"
+        },
+        "raw": {
+          "hide": "Скрыть raw payload",
+          "show": "Показать raw payload (маскировано)"
+        },
+        "normalized": {
+          "hide": "Скрыть нормализованный preview",
+          "show": "Показать нормализованный preview"
+        },
+        "preview": {
+          "done": "Dry-run нормализация завершена (сущности не созданы)"
         }
+      },
+      "metrics": {
+        "spend": "Расход",
+        "leads": "Лиды",
+        "cpl": "CPL",
+        "cac_proxy": "CAC-прокси",
+        "value": "Ценность",
+        "roi": "ROI",
+        "campaign": "Кампания",
+        "status": "Статус",
+        "flight": "Flight",
+        "share": "Доля",
+        "delta_cpl": "Δ CPL",
+        "outcomes": "Исходы",
+        "best_cpl": "лучший CPL",
+        "current": "текущий"
       }
     },
     "context_help": {
@@ -10154,7 +10338,10 @@
       "current_plan": "Текущий план",
       "trial_plan": "Trial",
       "trial_days_left": "{days} дней",
-      "company_setup": "Начало работы"
+      "company_setup": "Начало работы",
+      "module_hr": "HR",
+      "module_fleet": "Fleet",
+      "module_orders": "Orders"
     }
   },
   "public": {

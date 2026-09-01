@@ -27,11 +27,11 @@ import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friend
 function healthLabel(status: string, t: (k: string, o?: object) => string): string {
   switch (status) {
     case 'ready':
-      return t('app.marketing.sources.health.ready', { defaultValue: 'Ready' })
+      return t('app.marketing.sources.health.ready')
     case 'needs_review':
-      return t('app.marketing.sources.health.needs_review', { defaultValue: 'Needs review' })
+      return t('app.marketing.sources.health.needs_review')
     case 'broken':
-      return t('app.marketing.sources.health.broken', { defaultValue: 'Broken' })
+      return t('app.marketing.sources.health.broken')
     default:
       return status
   }
@@ -40,11 +40,11 @@ function healthLabel(status: string, t: (k: string, o?: object) => string): stri
 function fieldStatusLabel(status: string, t: (k: string, o?: object) => string): string {
   switch (status) {
     case 'mapped':
-      return t('app.marketing.test_lead.field.mapped', { defaultValue: 'Mapped' })
+      return t('app.marketing.test_lead.field.mapped')
     case 'unmapped':
-      return t('app.marketing.test_lead.field.unmapped', { defaultValue: 'Unmapped' })
+      return t('app.marketing.test_lead.field.unmapped')
     case 'new':
-      return t('app.marketing.test_lead.field.new', { defaultValue: 'New' })
+      return t('app.marketing.test_lead.field.new')
     default:
       return status
   }
@@ -107,7 +107,7 @@ export default function MarketingSourceTestLeadPage() {
     ? t('app.marketing.test_lead.title_named', {
         values: { name: source.display_name },
       })
-    : t('app.marketing.test_lead.title', { defaultValue: 'Test lead & field discovery' })
+    : t('app.marketing.test_lead.title')
 
   async function runAction(fn: () => Promise<void>) {
     setBusy(true)
@@ -140,7 +140,7 @@ export default function MarketingSourceTestLeadPage() {
               className="btn-secondary btn-sm"
               data-testid="marketing-test-lead-back-sources"
             >
-              {t('app.marketing.test_lead.actions.back', { defaultValue: '← Sources' })}
+              {t('app.marketing.test_lead.actions.back')}
             </Link>
           }
         />
@@ -172,20 +172,20 @@ export default function MarketingSourceTestLeadPage() {
             data-testid="marketing-test-lead-context"
           >
             <h2 className="text-sm font-semibold text-slate-900">
-              {t('app.marketing.test_lead.context.title', { defaultValue: 'Source' })}
+              {t('app.marketing.test_lead.context.title')}
             </h2>
             <dl className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
               <div>
                 <dt className="text-slate-500">
-                  {t('app.marketing.test_lead.context.provider', { defaultValue: 'Provider' })}
+                  {t('app.marketing.test_lead.context.provider')}
                 </dt>
                 <dd data-testid="marketing-test-lead-provider">
-                  {source?.provider || t('app.marketing.sources.none', { defaultValue: '—' })}
+                  {source?.provider || t('app.marketing.sources.none')}
                 </dd>
               </div>
               <div>
                 <dt className="text-slate-500">
-                  {t('app.marketing.test_lead.context.health', { defaultValue: 'Mapping Health' })}
+                  {t('app.marketing.test_lead.context.health')}
                 </dt>
                 <dd data-testid="marketing-test-lead-health">
                   {source ? healthLabel(String(source.mapping_health), t) : '—'}
@@ -193,9 +193,7 @@ export default function MarketingSourceTestLeadPage() {
               </div>
               <div>
                 <dt className="text-slate-500">
-                  {t('app.marketing.test_lead.context.sample_source', {
-                    defaultValue: 'Sample source',
-                  })}
+                  {t('app.marketing.test_lead.context.sample_source')}
                 </dt>
                 <dd data-testid="marketing-test-lead-sample-source">
                   {sample?.sample_source || 'none'}
@@ -203,9 +201,7 @@ export default function MarketingSourceTestLeadPage() {
               </div>
               <div>
                 <dt className="text-slate-500">
-                  {t('app.marketing.test_lead.context.rules', {
-                    defaultValue: 'Mapping rules',
-                  })}
+                  {t('app.marketing.test_lead.context.rules')}
                 </dt>
                 <dd data-testid="marketing-test-lead-rules-count">
                   {sample?.mapping_rules_count ?? source?.mapping_rules_count ?? 0}
@@ -229,14 +225,12 @@ export default function MarketingSourceTestLeadPage() {
             data-testid="marketing-test-lead-obtain"
           >
             <h2 className="text-sm font-semibold text-slate-900">
-              {t('app.marketing.test_lead.obtain.title', { defaultValue: 'Obtain sample' })}
+              {t('app.marketing.test_lead.obtain.title')}
             </h2>
             <div className="mt-3 space-y-4 text-sm text-slate-700">
               <div data-testid="marketing-test-lead-mode-a">
                 <p className="font-medium text-slate-900">
-                  {t('app.marketing.test_lead.mode_a.title', {
-                    defaultValue: 'A — Official Meta test lead (primary)',
-                  })}
+                  {t('app.marketing.test_lead.mode_a.title')}
                 </p>
                 <p className="mt-1 text-slate-600">
                   {t('app.marketing.test_lead.mode_a.body')}
@@ -251,21 +245,17 @@ export default function MarketingSourceTestLeadPage() {
                     setSample(next)
                     setPreview(null)
                     setActionMessage(
-                      t('app.marketing.test_lead.mode_a.refreshed', {
-                        defaultValue: 'Sample refreshed',
-                      }),
+                      t('app.marketing.test_lead.mode_a.refreshed'),
                     )
                   })}
                 >
-                  {t('app.marketing.test_lead.actions.refresh', { defaultValue: 'Refresh sample' })}
+                  {t('app.marketing.test_lead.actions.refresh')}
                 </button>
               </div>
 
               <div data-testid="marketing-test-lead-mode-b">
                 <p className="font-medium text-slate-900">
-                  {t('app.marketing.test_lead.mode_b.title', {
-                    defaultValue: 'B — Capture next real lead',
-                  })}
+                  {t('app.marketing.test_lead.mode_b.title')}
                 </p>
                 <p className="mt-1 text-slate-600">
                   {t('app.marketing.test_lead.mode_b.body')}
@@ -282,9 +272,7 @@ export default function MarketingSourceTestLeadPage() {
                     setActionMessage(armed.message)
                   })}
                 >
-                  {t('app.marketing.test_lead.actions.capture_next', {
-                    defaultValue: 'Arm capture next',
-                  })}
+                  {t('app.marketing.test_lead.actions.capture_next')}
                 </button>
               </div>
 
@@ -296,12 +284,8 @@ export default function MarketingSourceTestLeadPage() {
                   onClick={() => setShowAdvancedPaste((v) => !v)}
                 >
                   {showAdvancedPaste
-                    ? t('app.marketing.test_lead.mode_c.hide', {
-                        defaultValue: 'Hide advanced paste',
-                      })
-                    : t('app.marketing.test_lead.mode_c.show', {
-                        defaultValue: 'Advanced — paste saved payload',
-                      })}
+                    ? t('app.marketing.test_lead.mode_c.hide')
+                    : t('app.marketing.test_lead.mode_c.show')}
                 </button>
                 {showAdvancedPaste ? (
                   <div className="mt-2 space-y-2">
@@ -324,23 +308,15 @@ export default function MarketingSourceTestLeadPage() {
                           parsed = JSON.parse(pasteText) as Record<string, unknown>
                         } catch {
                           setError({
-                            title: t('app.marketing.test_lead.mode_c.invalid_json', {
-                              defaultValue: 'Invalid JSON',
-                            }),
-                            hint: t('app.marketing.test_lead.mode_c.invalid_json_hint', {
-                              defaultValue: 'Paste a JSON object payload.',
-                            }),
+                            title: t('app.marketing.test_lead.mode_c.invalid_json'),
+                            hint: t('app.marketing.test_lead.mode_c.invalid_json_hint'),
                           })
                           return
                         }
                         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
                           setError({
-                            title: t('app.marketing.test_lead.mode_c.invalid_object', {
-                              defaultValue: 'Payload must be a JSON object',
-                            }),
-                            hint: t('app.marketing.test_lead.mode_c.invalid_object_hint', {
-                              defaultValue: 'Arrays and primitives are not accepted.',
-                            }),
+                            title: t('app.marketing.test_lead.mode_c.invalid_object'),
+                            hint: t('app.marketing.test_lead.mode_c.invalid_object_hint'),
                           })
                           return
                         }
@@ -349,16 +325,12 @@ export default function MarketingSourceTestLeadPage() {
                           setSample(next)
                           setPreview(null)
                           setActionMessage(
-                            t('app.marketing.test_lead.mode_c.saved', {
-                              defaultValue: 'Pasted payload stored as sample',
-                            }),
+                            t('app.marketing.test_lead.mode_c.saved'),
                           )
                         })
                       }}
                     >
-                      {t('app.marketing.test_lead.actions.use_paste', {
-                        defaultValue: 'Use pasted payload',
-                      })}
+                      {t('app.marketing.test_lead.actions.use_paste')}
                     </button>
                   </div>
                 ) : null}
@@ -372,9 +344,7 @@ export default function MarketingSourceTestLeadPage() {
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-slate-900">
-                {t('app.marketing.test_lead.fields.title', {
-                  defaultValue: 'Field discovery',
-                })}
+                {t('app.marketing.test_lead.fields.title')}
               </h2>
               <button
                 type="button"
@@ -385,15 +355,11 @@ export default function MarketingSourceTestLeadPage() {
                   const result = await postMarketingSourceSamplePreview(sourceId)
                   setPreview(result)
                   setActionMessage(
-                    t('app.marketing.test_lead.preview.done', {
-                      defaultValue: 'Dry-run normalize complete (no entities created)',
-                    }),
+                    t('app.marketing.test_lead.preview.done'),
                   )
                 })}
               >
-                {t('app.marketing.test_lead.actions.preview', {
-                  defaultValue: 'Dry-run normalize',
-                })}
+                {t('app.marketing.test_lead.actions.preview')}
               </button>
             </div>
 
@@ -413,29 +379,19 @@ export default function MarketingSourceTestLeadPage() {
                   <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
                     <tr>
                       <th className="px-2 py-2">
-                        {t('app.marketing.test_lead.fields.col_field', {
-                          defaultValue: 'Provider field',
-                        })}
+                        {t('app.marketing.test_lead.fields.col_field')}
                       </th>
                       <th className="px-2 py-2">
-                        {t('app.marketing.test_lead.fields.col_sample', {
-                          defaultValue: 'Sample (masked)',
-                        })}
+                        {t('app.marketing.test_lead.fields.col_sample')}
                       </th>
                       <th className="px-2 py-2">
-                        {t('app.marketing.test_lead.fields.col_target', {
-                          defaultValue: 'Proposed target',
-                        })}
+                        {t('app.marketing.test_lead.fields.col_target')}
                       </th>
                       <th className="px-2 py-2">
-                        {t('app.marketing.test_lead.fields.col_status', {
-                          defaultValue: 'Status',
-                        })}
+                        {t('app.marketing.test_lead.fields.col_status')}
                       </th>
                       <th className="px-2 py-2">
-                        {t('app.marketing.test_lead.fields.col_action', {
-                          defaultValue: 'Action',
-                        })}
+                        {t('app.marketing.test_lead.fields.col_action')}
                       </th>
                     </tr>
                   </thead>
@@ -460,9 +416,7 @@ export default function MarketingSourceTestLeadPage() {
                             className="text-sm font-medium text-brand-700 hover:underline"
                             data-testid={`marketing-test-lead-field-map-${field.source}`}
                           >
-                            {t('app.marketing.test_lead.fields.select_mapping', {
-                              defaultValue: 'Select in Mapping',
-                            })}
+                            {t('app.marketing.test_lead.fields.select_mapping')}
                           </Link>
                         </td>
                       </tr>
@@ -493,10 +447,8 @@ export default function MarketingSourceTestLeadPage() {
               onClick={() => setShowRaw((v) => !v)}
             >
               {showRaw
-                ? t('app.marketing.test_lead.raw.hide', { defaultValue: 'Hide raw payload' })
-                : t('app.marketing.test_lead.raw.show', {
-                    defaultValue: 'Show raw payload (masked)',
-                  })}
+                ? t('app.marketing.test_lead.raw.hide')
+                : t('app.marketing.test_lead.raw.show')}
             </button>
             {showRaw ? (
               <pre
@@ -516,12 +468,8 @@ export default function MarketingSourceTestLeadPage() {
                   onClick={() => setShowNormalized((v) => !v)}
                 >
                   {showNormalized
-                    ? t('app.marketing.test_lead.normalized.hide', {
-                        defaultValue: 'Hide normalized preview',
-                      })
-                    : t('app.marketing.test_lead.normalized.show', {
-                        defaultValue: 'Show normalized preview',
-                      })}
+                    ? t('app.marketing.test_lead.normalized.hide')
+                    : t('app.marketing.test_lead.normalized.show')}
                 </button>
                 {showNormalized ? (
                   <pre
@@ -541,16 +489,14 @@ export default function MarketingSourceTestLeadPage() {
               className="btn-primary btn-sm"
               data-testid="marketing-test-lead-continue-mapping"
             >
-              {t('app.marketing.test_lead.actions.continue_mapping', {
-                defaultValue: 'Continue to Mapping',
-              })}
+              {t('app.marketing.test_lead.actions.continue_mapping')}
             </Link>
             <Link
               to={CRM_APP_PATHS.marketingSources}
               className="btn-secondary btn-sm"
               data-testid="marketing-test-lead-back-footer"
             >
-              {t('app.marketing.test_lead.actions.back', { defaultValue: '← Sources' })}
+              {t('app.marketing.test_lead.actions.back')}
             </Link>
           </div>
         </div>

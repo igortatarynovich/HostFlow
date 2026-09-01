@@ -9523,7 +9523,8 @@
           "campaigns_flights": "Campaigns / Flights",
           "actions": "Actions",
           "page": "Page",
-          "provider_form": "Provider form"
+          "provider_form": "Provider form",
+          "destination": "Destination"
         },
         "connection": {
           "connected": "Connected",
@@ -9636,14 +9637,38 @@
         },
         "cohorts": {
           "title": "Cohorts",
-          "subtitle": "{days} d · {bucket} · CAC proxy = cost / outcome"
+          "subtitle": "{days} d · {bucket} · CAC proxy = cost / outcome",
+          "day": "Day",
+          "week": "Week",
+          "month": "Month",
+          "col_day": "Day (UTC)",
+          "col_week": "Week start (UTC)",
+          "col_month": "Month start (UTC)"
+        },
+        "flight_status": "Flight · {status}",
+        "outcome_value": {
+          "title": "Commercial value (Outcome)",
+          "subtitle": "Declare value on a completed Outcome (declared_v1). ROI uses (value − spend) / spend.",
+          "outcome_id": "Outcome ID",
+          "amount": "Amount",
+          "currency": "Currency",
+          "save": "Save value",
+          "saved": "Saved {amount} {currency}"
+        },
+        "observed": {
+          "fail_rate": "Fail rate",
+          "routing": "Routing",
+          "delivery_err": "Delivery err",
+          "volume": "Volume"
         }
       },
       "kpi": {
         "applications": "Applications",
         "routed": "Routed",
         "route_errors": "Routing errors",
-        "leads": "Leads (KPI)"
+        "leads": "Leads (KPI)",
+        "cpl": "CPL",
+        "spend": "Spend"
       },
       "connect": {
         "primary_limit_title": "Primary source limit for this Flight",
@@ -9676,8 +9701,18 @@
           "title": "New form name",
           "submit": "Create and select",
           "open": "Create a new form",
-          "hint": "Creates an active HostFlow form (candidate fields) via createIntakeForm and selects it immediately."
-        }
+          "hint": "Creates an active HostFlow form (candidate fields) via createIntakeForm and selects it immediately.",
+          "default_title": "New Marketing form"
+        },
+        "meta": {
+          "lead_form": "Lead Form",
+          "form_id": "Form ID",
+          "page": "Page",
+          "ads": "Ads",
+          "last_lead": "Last lead",
+          "aria": "Meta Lead Form"
+        },
+        "meta_kind": "Meta Lead Ads"
       },
       "source_card": {
         "public_form": "Public form",
@@ -9696,7 +9731,14 @@
         "bound": "Bound",
         "never": "never",
         "untitled": "Untitled",
-        "page_id_hidden": "ID hidden in details"
+        "page_id_hidden": "ID hidden in details",
+        "meta_source": "Lead Form (Meta) · Source",
+        "provider": "Provider",
+        "lead_form": "Lead Form",
+        "lead_form_fallback": "Lead Form (Meta)",
+        "active": "Active",
+        "active_binding": "Active binding",
+        "inactive_binding": "Inactive binding"
       },
       "ad_bindings": {
         "title": "Ad ID → Flight binding",
@@ -9710,7 +9752,9 @@
         "bind": "Bind to Flight",
         "confirm_unbind": "Unbind Ad ID {id}?",
         "reprocessed": "Reprocessed waiting: matched {matched}, processed {processed}",
-        "reprocessed_errors": ", errors {errors}"
+        "reprocessed_errors": ", errors {errors}",
+        "flight": "Flight",
+        "ad_id": "Meta Ad ID"
       },
       "setup": {
         "title": "New campaign",
@@ -9758,7 +9802,9 @@
         "errors": {
           "load_options": "Failed to load catalogs",
           "create": "Failed to create the campaign"
-        }
+        },
+        "review_context_role": "CampaignTarget · role=context",
+        "review_primary_target": "Primary Target · route_intent"
       },
       "list": {
         "public_form": "Public form",
@@ -9807,7 +9853,52 @@
         },
         "drift_summary": "Last {hours} h: {count} application(s) with Mapping drift (scanned {scanned}).",
         "drift_summary_capped": " Scan is capped.",
-        "drift_alert": "{count} application(s) on this page have Mapping drift — Source rules changed after ingest."
+        "drift_alert": "{count} application(s) on this page have Mapping drift — Source rules changed after ingest.",
+        "filter_source": "Source",
+        "filter_flight": "Flight ID",
+        "drift_badge": "drift",
+        "duplicate": {
+          "title": "Duplicate decision",
+          "body": "Read-only compose from decision_result_v1 + duplicate_match_v1. Resolve in CRM Lead.",
+          "resolve": "Resolve in Lead",
+          "open_candidate": "Open candidate",
+          "lead_status": "Lead status",
+          "disposition": "Disposition",
+          "match_level": "Match level",
+          "error_code": "Error code",
+          "needs_review": "Needs review",
+          "suggested": "Suggested candidate"
+        },
+        "mapping": {
+          "title": "Mapping / Mapping Health",
+          "body": "Current Source mapping (not a historical ingest stamp). Open Mapping workspace to review rules.",
+          "open": "Open Mapping",
+          "source": "Source",
+          "health": "Mapping Health",
+          "rules": "Rules",
+          "profile_updated": "Profile updated",
+          "historical": "Historical version",
+          "drift": "Drift",
+          "profile_missing": "profile missing",
+          "not_stamped": "not stamped",
+          "stamped": "stamped",
+          "rules_count": "{count} rules",
+          "drift_yes": "yes — current rules differ from ingest"
+        },
+        "case": {
+          "routing": "Routing",
+          "route_intent": "Route intent",
+          "campaign": "Campaign",
+          "flight": "Flight"
+        },
+        "timeline_title": "Timeline (Acquisition Activity)",
+        "json": {
+          "routing": "Routing stamp",
+          "decision": "Decision",
+          "normalized": "Normalized",
+          "payload": "Raw payload"
+        },
+        "export_json": "Export JSON"
       },
       "mapping": {
         "title": "Source mapping",
@@ -9820,14 +9911,38 @@
         "actions": {
           "test_lead": "Test lead",
           "back": "← Sources",
-          "save": "Save mapping"
+          "save": "Save mapping",
+          "preview_routing": "Run routing preview"
         },
         "saved": "Mapping saved on IntakeSourceProfile.mapping_rules",
         "rules": {
-          "empty": "No rules and no sample fields. Get a sample on Test lead first."
+          "empty": "No rules and no sample fields. Get a sample on Test lead first.",
+          "title": "Field mapping"
         },
         "routing": {
-          "empty": "Preview will show destination, ignored, and unmapped fields without production writes."
+          "empty": "Preview will show destination, ignored, and unmapped fields without production writes.",
+          "title": "Routing preview",
+          "destination": "Destination",
+          "needs_review": "Needs review",
+          "creates": "Creates entities",
+          "unmapped": "Unmapped",
+          "ignored": "Ignored"
+        },
+        "fields": {
+          "provider": "Provider",
+          "health": "Mapping Health",
+          "destination": "Destination",
+          "rules_source": "Rules source"
+        },
+        "table": {
+          "provider_field": "Provider field",
+          "sample": "Sample",
+          "target": "HostFlow target",
+          "action": "Action"
+        },
+        "action": {
+          "map": "Map",
+          "ignore": "Ignore"
         }
       },
       "test_lead": {
@@ -9839,17 +9954,86 @@
           "action": "Failed to run the action"
         },
         "mode_a": {
-          "body": "Send a test lead from the Meta Lead Form for this Source, then refresh the sample — HostFlow will pick up the payload without creating a Candidate."
+          "body": "Send a test lead from the Meta Lead Form for this Source, then refresh the sample — HostFlow will pick up the payload without creating a Candidate.",
+          "title": "A — Official Meta test lead (primary)",
+          "refreshed": "Sample refreshed"
         },
         "mode_b": {
-          "body": "The next matching submission is processed as usual and becomes the mapping sample (values in the UI are masked)."
+          "body": "The next matching submission is processed as usual and becomes the mapping sample (values in the UI are masked).",
+          "title": "B — Capture next real lead"
         },
         "fields": {
-          "empty": "No sample. Send a Meta test lead, arm capture next, or paste a payload."
+          "empty": "No sample. Send a Meta test lead, arm capture next, or paste a payload.",
+          "title": "Field discovery",
+          "col_field": "Provider field",
+          "col_sample": "Sample (masked)",
+          "col_target": "Proposed target",
+          "col_status": "Status",
+          "col_action": "Action",
+          "select_mapping": "Select in Mapping"
         },
         "capture": {
           "armed": "Capture next armed until {until}"
+        },
+        "actions": {
+          "back": "← Sources",
+          "refresh": "Refresh sample",
+          "preview": "Dry-run normalize",
+          "capture_next": "Arm capture next",
+          "use_paste": "Use pasted payload",
+          "continue_mapping": "Continue to Mapping"
+        },
+        "field": {
+          "mapped": "Mapped",
+          "unmapped": "Unmapped",
+          "new": "New"
+        },
+        "context": {
+          "title": "Source",
+          "provider": "Provider",
+          "health": "Mapping Health",
+          "sample_source": "Sample source",
+          "rules": "Mapping rules"
+        },
+        "obtain": {
+          "title": "Obtain sample"
+        },
+        "mode_c": {
+          "show": "Advanced — paste saved payload",
+          "hide": "Hide advanced paste",
+          "invalid_json": "Invalid JSON",
+          "invalid_json_hint": "Paste a JSON object payload.",
+          "invalid_object": "Payload must be a JSON object",
+          "invalid_object_hint": "Arrays and primitives are not accepted.",
+          "saved": "Pasted payload stored as sample"
+        },
+        "raw": {
+          "hide": "Hide raw payload",
+          "show": "Show raw payload (masked)"
+        },
+        "normalized": {
+          "hide": "Hide normalized preview",
+          "show": "Show normalized preview"
+        },
+        "preview": {
+          "done": "Dry-run normalize complete (no entities created)"
         }
+      },
+      "metrics": {
+        "spend": "Spend",
+        "leads": "Leads",
+        "cpl": "CPL",
+        "cac_proxy": "CAC proxy",
+        "value": "Value",
+        "roi": "ROI",
+        "campaign": "Campaign",
+        "status": "Status",
+        "flight": "Flight",
+        "share": "Share",
+        "delta_cpl": "Δ CPL",
+        "outcomes": "Outcomes",
+        "best_cpl": "best CPL",
+        "current": "current"
       }
     },
     "context_help": {
@@ -10154,7 +10338,10 @@
       "current_plan": "Current plan",
       "trial_plan": "Trial",
       "trial_days_left": "{days} days left",
-      "company_setup": "Getting started"
+      "company_setup": "Getting started",
+      "module_hr": "HR",
+      "module_fleet": "Fleet",
+      "module_orders": "Orders"
     }
   },
   "public": {

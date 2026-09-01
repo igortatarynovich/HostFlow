@@ -310,7 +310,7 @@ export default function LaunchpadPage() {
 
           <ModuleCard
             icon={<IconUser size={20} stroke={1.8} />}
-            title="HR"
+            title={t('app.launchpad.module_hr')}
             status="locked"
             statusLabel={t('app.launchpad.coming_soon')}
             description={t('app.launchpad.module_hr_desc')}
@@ -322,7 +322,7 @@ export default function LaunchpadPage() {
 
           <ModuleCard
             icon={<IconTruck size={20} stroke={1.8} />}
-            title="Fleet"
+            title={t('app.launchpad.module_fleet')}
             status="locked"
             statusLabel={t('app.launchpad.coming_soon')}
             description={t('app.launchpad.module_fleet_desc')}
@@ -334,7 +334,7 @@ export default function LaunchpadPage() {
 
           <ModuleCard
             icon={<IconClipboardList size={20} stroke={1.8} />}
-            title="Orders"
+            title={t('app.launchpad.module_orders')}
             status="locked"
             statusLabel={t('app.launchpad.coming_soon')}
             description={t('app.launchpad.module_orders_desc')}
@@ -394,9 +394,7 @@ export default function LaunchpadPage() {
                   {t('app.launchpad.company_setup')}
                 </p>
                 <p className="mt-2 text-sm font-medium text-emerald-800">
-                  {t('app.onboarding.success_path.complete', {
-                    defaultValue: 'Basics done — keep hiring from Launchpad.',
-                  })}
+                  {t('app.onboarding.success_path.complete')}
                 </p>
               </div>
             ) : null}
@@ -408,7 +406,7 @@ export default function LaunchpadPage() {
               data-testid="m1-launchpad-continue-setup"
               className="inline-flex w-full shrink-0 items-center justify-center rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 lg:w-auto"
             >
-              {t('app.onboarding.success_path.go_vacancies', { defaultValue: 'Open vacancies' })}
+              {t('app.onboarding.success_path.go_vacancies')}
             </Link>
           ) : null}
         </div>

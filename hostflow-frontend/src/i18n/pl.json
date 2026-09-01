@@ -946,7 +946,7 @@
         "acquisition_activity": "Aktywność Acquisition",
         "marketing_sources": "Sources",
         "marketing_forms": "Forms",
-        "marketing_diagnostics": "Diagnostics",
+        "marketing_diagnostics": "Diagnostyka",
         "automation_rules": "Reguły automatyzacji",
         "settings_hiring_gates": "Bramki lejka rekrutacji",
         "settings_risk_intel": "Ryzyko operacyjne",
@@ -9386,7 +9386,7 @@
     },
     "sidebar": {
       "settings": {
-        "api_base": "API Base",
+        "api_base": "Bazowy URL API",
         "api_base_placeholder": "http://localhost:8000/api/v1",
         "docs_base": "Docs Base (tylko odczyt)",
         "tenant_id": "Tenant ID",
@@ -9506,46 +9506,47 @@
     },
     "marketing": {
       "sources": {
-        "title": "Sources",
+        "title": "Źródła",
         "subtitle": "Podłączone źródła, Mapping Health, oczekujące zgłoszenia i ostatnie zdarzenia.",
         "none": "—",
         "empty_title": "Brak źródeł",
         "empty_body": "Podłącz Meta w Integrations lub powiąż intake source — pojawią się tutaj.",
         "columns": {
-          "source": "Source",
-          "provider": "Provider",
-          "connection": "Connection",
-          "mapping_health": "Mapping Health",
+          "source": "Źródło",
+          "provider": "Dostawca",
+          "connection": "Połączenie",
+          "mapping_health": "Stan mapowania",
           "last_lead": "Ostatni lead",
           "waiting": "Oczekujące",
           "routing_issue": "Problem routingu",
           "last_error": "Ostatni błąd",
-          "campaigns_flights": "Campaigns / Flights",
+          "campaigns_flights": "Kampanie / Flight",
           "actions": "Akcje",
           "page": "Strona",
-          "provider_form": "Formularz dostawcy"
+          "provider_form": "Formularz dostawcy",
+          "destination": "Przeznaczenie"
         },
         "connection": {
-          "connected": "Connected",
-          "attention": "Attention",
-          "disconnected": "Disconnected"
+          "connected": "Połączony",
+          "attention": "Uwaga",
+          "disconnected": "Rozłączony"
         },
         "health": {
-          "ready": "Ready",
-          "needs_review": "Needs review",
-          "broken": "Broken"
+          "ready": "Gotowy",
+          "needs_review": "Wymaga przeglądu",
+          "broken": "Uszkodzony"
         },
         "routing_issue": {
           "missing_campaign_flight": "Campaign/Flight dla tego Ad ID nie są skonfigurowane."
         },
         "actions": {
-          "integrations": "Integrations",
+          "integrations": "Integracje",
           "connect": "Otwórz Integrations",
-          "mapping": "Mapping",
-          "test_lead": "Test lead",
-          "connection": "Connection",
+          "mapping": "Mapowanie",
+          "test_lead": "Testowy lead",
+          "connection": "Połączenie",
           "setup_campaign_flight": "Skonfiguruj Campaign/Flight",
-          "open_drift": "Diagnostics · drift"
+          "open_drift": "Diagnostyka · drift"
         },
         "errors": {
           "load": "Nie udało się załadować źródeł"
@@ -9636,14 +9637,38 @@
         },
         "cohorts": {
           "title": "Kohorty",
-          "subtitle": "{days} dn. · {bucket} · CAC proxy = cost / outcome"
+          "subtitle": "{days} dn. · {bucket} · CAC proxy = cost / outcome",
+          "day": "Dzień",
+          "week": "Tydzień",
+          "month": "Miesiąc",
+          "col_day": "Dzień (UTC)",
+          "col_week": "Początek tygodnia (UTC)",
+          "col_month": "Początek miesiąca (UTC)"
+        },
+        "flight_status": "Flight · {status}",
+        "outcome_value": {
+          "title": "Wartość komercyjna (Outcome)",
+          "subtitle": "Deklaruj wartość ukończonego Outcome (declared_v1). ROI = (wartość − wydatek) / wydatek.",
+          "outcome_id": "ID Outcome",
+          "amount": "Kwota",
+          "currency": "Waluta",
+          "save": "Zapisz wartość",
+          "saved": "Zapisano {amount} {currency}"
+        },
+        "observed": {
+          "fail_rate": "Wskaźnik błędów",
+          "routing": "Routing",
+          "delivery_err": "Błędy dostawy",
+          "volume": "Wolumen"
         }
       },
       "kpi": {
         "applications": "Zgłoszenia",
         "routed": "Przekazane",
         "route_errors": "Błędy routingu",
-        "leads": "Leady (KPI)"
+        "leads": "Leady (KPI)",
+        "cpl": "CPL",
+        "spend": "Wydatek"
       },
       "connect": {
         "primary_limit_title": "Limit źródeł primary dla tego Flight",
@@ -9676,8 +9701,18 @@
           "title": "Nazwa nowego formularza",
           "submit": "Utwórz i wybierz",
           "open": "Utwórz nowy formularz",
-          "hint": "Tworzy aktywny formularz HostFlow (pola kandydata) przez createIntakeForm i od razu go wybiera."
-        }
+          "hint": "Tworzy aktywny formularz HostFlow (pola kandydata) przez createIntakeForm i od razu go wybiera.",
+          "default_title": "Nowy formularz marketingowy"
+        },
+        "meta": {
+          "lead_form": "Lead Form",
+          "form_id": "ID formularza",
+          "page": "Strona",
+          "ads": "Reklamy",
+          "last_lead": "Ostatni lead",
+          "aria": "Lead Form Meta"
+        },
+        "meta_kind": "Meta Lead Ads"
       },
       "source_card": {
         "public_form": "Formularz publiczny",
@@ -9686,7 +9721,7 @@
         "public_link": "Link publiczny",
         "facebook_page": "Strona Facebook",
         "last_lead": "Ostatni lead",
-        "hostflow_source": "Formularz HostFlow · Source",
+        "hostflow_source": "Formularz HostFlow · Źródło",
         "open_form": "Otwórz formularz",
         "details": "Szczegóły",
         "hide_details": "Ukryj szczegóły",
@@ -9696,7 +9731,14 @@
         "bound": "Powiązany",
         "never": "nigdy",
         "untitled": "Bez nazwy",
-        "page_id_hidden": "ID ukryte w szczegółach"
+        "page_id_hidden": "ID ukryte w szczegółach",
+        "meta_source": "Lead Form (Meta) · Źródło",
+        "provider": "Dostawca",
+        "lead_form": "Lead Form",
+        "lead_form_fallback": "Lead Form (Meta)",
+        "active": "Aktywny",
+        "active_binding": "Aktywne powiązanie",
+        "inactive_binding": "Nieaktywne powiązanie"
       },
       "ad_bindings": {
         "title": "Powiązanie Ad ID → Flight",
@@ -9710,7 +9752,9 @@
         "bind": "Powiąż z Flight",
         "confirm_unbind": "Odpiąć Ad ID {id}?",
         "reprocessed": "Ponownie przetworzono oczekujące: matched {matched}, processed {processed}",
-        "reprocessed_errors": ", błędów {errors}"
+        "reprocessed_errors": ", błędów {errors}",
+        "flight": "Flight",
+        "ad_id": "Meta Ad ID"
       },
       "setup": {
         "title": "Nowa kampania",
@@ -9758,7 +9802,9 @@
         "errors": {
           "load_options": "Nie udało się wczytać katalogów",
           "create": "Nie udało się utworzyć kampanii"
-        }
+        },
+        "review_context_role": "CampaignTarget · role=context",
+        "review_primary_target": "Primary Target · route_intent"
       },
       "list": {
         "public_form": "Formularz publiczny",
@@ -9782,7 +9828,7 @@
         "create": "Utwórz kampanię"
       },
       "portfolio": {
-        "title": "Portfolio KPI",
+        "title": "KPI portfela",
         "subtitle": "Podsumowanie kampanii firmy (tylko odczyt).",
         "capped": " Lista jest ograniczona."
       },
@@ -9796,8 +9842,8 @@
         "drift_only": "Tylko mapping drift",
         "apply": "Zastosuj",
         "show_drift": "Pokaż drift",
-        "replay": "Replay",
-        "replaying": "Replay…",
+        "replay": "Ponów",
+        "replaying": "Ponawianie…",
         "replay_hint": "Ponownie przepuść lead przez process pipeline (POST /leads/{id}/process)",
         "errors": {
           "load_case": "Nie udało się wczytać sprawy",
@@ -9807,7 +9853,52 @@
         },
         "drift_summary": "Ostatnie {hours} godz.: {count} zgłoszeń z Mapping drift (przeskanowano {scanned}).",
         "drift_summary_capped": " Skan jest ograniczony.",
-        "drift_alert": "Na tej stronie {count} zgłoszeń ma Mapping drift — reguły Source zmieniły się po ingest."
+        "drift_alert": "Na tej stronie {count} zgłoszeń ma Mapping drift — reguły Source zmieniły się po ingest.",
+        "filter_source": "Źródło",
+        "filter_flight": "Flight ID",
+        "drift_badge": "drift",
+        "duplicate": {
+          "title": "Decyzja o duplikacie",
+          "body": "Tylko odczyt: decision_result_v1 + duplicate_match_v1. Rozstrzygnij w CRM Lead.",
+          "resolve": "Rozstrzygnij w Lead",
+          "open_candidate": "Otwórz kandydata",
+          "lead_status": "Status leada",
+          "disposition": "Dyspozycja",
+          "match_level": "Poziom dopasowania",
+          "error_code": "Kod błędu",
+          "needs_review": "Wymaga przeglądu",
+          "suggested": "Sugerowany kandydat"
+        },
+        "mapping": {
+          "title": "Mapowanie / stan mapowania",
+          "body": "Bieżące mapowanie źródła (nie historyczny stempel ingest). Otwórz mapowanie, aby sprawdzić reguły.",
+          "open": "Otwórz mapowanie",
+          "source": "Źródło",
+          "health": "Stan mapowania",
+          "rules": "Reguły",
+          "profile_updated": "Profil zaktualizowany",
+          "historical": "Wersja historyczna",
+          "drift": "Drift",
+          "profile_missing": "brak profilu",
+          "not_stamped": "nie ostemplowano",
+          "stamped": "ostemplowano",
+          "rules_count": "{count} reguł",
+          "drift_yes": "tak — bieżące reguły różnią się od ingest"
+        },
+        "case": {
+          "routing": "Routing",
+          "route_intent": "Intencja trasy",
+          "campaign": "Kampania",
+          "flight": "Flight"
+        },
+        "timeline_title": "Oś czasu (Acquisition Activity)",
+        "json": {
+          "routing": "Stempel routingu",
+          "decision": "Decyzja",
+          "normalized": "Znormalizowane",
+          "payload": "Surowy payload"
+        },
+        "export_json": "Eksport JSON"
       },
       "mapping": {
         "title": "Mapowanie źródła",
@@ -9818,38 +9909,131 @@
           "action": "Nie udało się wykonać działania"
         },
         "actions": {
-          "test_lead": "Test lead",
-          "back": "← Sources",
-          "save": "Zapisz mapowanie"
+          "test_lead": "Testowy lead",
+          "back": "← Źródła",
+          "save": "Zapisz mapowanie",
+          "preview_routing": "Uruchom podgląd routingu"
         },
         "saved": "Mapowanie zapisane w IntakeSourceProfile.mapping_rules",
         "rules": {
-          "empty": "Brak reguł i pól sample. Najpierw pobierz sample na Test lead."
+          "empty": "Brak reguł i pól sample. Najpierw pobierz sample na Test lead.",
+          "title": "Mapowanie pól"
         },
         "routing": {
-          "empty": "Podgląd pokaże destination, ignored i unmapped fields bez zapisów produkcyjnych."
+          "empty": "Podgląd pokaże destination, ignored i unmapped fields bez zapisów produkcyjnych.",
+          "title": "Podgląd routingu",
+          "destination": "Przeznaczenie",
+          "needs_review": "Wymaga przeglądu",
+          "creates": "Tworzy encje",
+          "unmapped": "Niezmapowane",
+          "ignored": "Ignorowane"
+        },
+        "fields": {
+          "provider": "Dostawca",
+          "health": "Stan mapowania",
+          "destination": "Przeznaczenie",
+          "rules_source": "Źródło reguł"
+        },
+        "table": {
+          "provider_field": "Pole dostawcy",
+          "sample": "Sample",
+          "target": "Pole HostFlow",
+          "action": "Akcja"
+        },
+        "action": {
+          "map": "Mapuj",
+          "ignore": "Ignoruj"
         }
       },
       "test_lead": {
-        "title": "Test lead i odkrywanie pól",
-        "title_named": "Test lead — {name}",
+        "title": "Testowy lead i odkrywanie pól",
+        "title_named": "Testowy lead — {name}",
         "subtitle": "Pobierz sample submission, przejrzyj pola (z maskowaniem) i wykonaj dry-run normalize — bez tworzenia Candidate / Application.",
         "errors": {
           "load": "Nie udało się wczytać sample źródła",
           "action": "Nie udało się wykonać działania"
         },
         "mode_a": {
-          "body": "Wyślij test lead z Meta Lead Form dla tego Source, potem odśwież sample — HostFlow przechwyci payload bez tworzenia Candidate."
+          "body": "Wyślij test lead z Meta Lead Form dla tego Source, potem odśwież sample — HostFlow przechwyci payload bez tworzenia Candidate.",
+          "title": "A — Oficjalny test lead Meta (główny)",
+          "refreshed": "Sample odświeżony"
         },
         "mode_b": {
-          "body": "Następne pasujące zgłoszenie zostanie przetworzone jak zwykle i stanie się mapping sample (wartości w UI są zamaskowane)."
+          "body": "Następne pasujące zgłoszenie zostanie przetworzone jak zwykle i stanie się mapping sample (wartości w UI są zamaskowane).",
+          "title": "B — Przechwyć następny prawdziwy lead"
         },
         "fields": {
-          "empty": "Brak sample. Wyślij Meta test lead, włącz capture next albo wklej payload."
+          "empty": "Brak sample. Wyślij Meta test lead, włącz capture next albo wklej payload.",
+          "title": "Odkrywanie pól",
+          "col_field": "Pole dostawcy",
+          "col_sample": "Sample (zamaskowany)",
+          "col_target": "Proponowane pole",
+          "col_status": "Status",
+          "col_action": "Akcja",
+          "select_mapping": "Wybierz w mapowaniu"
         },
         "capture": {
           "armed": "Capture next uzbrojony do {until}"
+        },
+        "actions": {
+          "back": "← Źródła",
+          "refresh": "Odśwież sample",
+          "preview": "Dry-run normalizacji",
+          "capture_next": "Uzbrój capture next",
+          "use_paste": "Użyj wklejonego payload",
+          "continue_mapping": "Przejdź do mapowania"
+        },
+        "field": {
+          "mapped": "Zmapowane",
+          "unmapped": "Niezmapowane",
+          "new": "Nowe"
+        },
+        "context": {
+          "title": "Źródło",
+          "provider": "Dostawca",
+          "health": "Stan mapowania",
+          "sample_source": "Źródło sample",
+          "rules": "Reguły mapowania"
+        },
+        "obtain": {
+          "title": "Pobierz sample"
+        },
+        "mode_c": {
+          "show": "Zaawansowane — wklej zapisany payload",
+          "hide": "Ukryj zaawansowane wklejanie",
+          "invalid_json": "Nieprawidłowy JSON",
+          "invalid_json_hint": "Wklej payload jako obiekt JSON.",
+          "invalid_object": "Payload musi być obiektem JSON",
+          "invalid_object_hint": "Tablice i prymitywy nie są akceptowane.",
+          "saved": "Wklejony payload zapisany jako sample"
+        },
+        "raw": {
+          "hide": "Ukryj surowy payload",
+          "show": "Pokaż surowy payload (zamaskowany)"
+        },
+        "normalized": {
+          "hide": "Ukryj znormalizowany podgląd",
+          "show": "Pokaż znormalizowany podgląd"
+        },
+        "preview": {
+          "done": "Dry-run normalizacji zakończony (nie utworzono encji)"
         }
+      },
+      "metrics": {
+        "spend": "Wydatek",
+        "leads": "Leady",
+        "cpl": "CPL",
+        "cac_proxy": "CAC proxy",
+        "value": "Wartość",
+        "roi": "ROI",
+        "campaign": "Kampania",
+        "status": "Status",
+        "flight": "Flight",
+        "share": "Udział",
+        "delta_cpl": "Δ CPL",
+        "outcomes": "Wyniki",
+        "best_cpl": "najlepszy CPL",
+        "current": "bieżący"
       }
     },
     "context_help": {
@@ -10154,7 +10338,10 @@
       "current_plan": "Bieżący plan",
       "trial_plan": "Trial",
       "trial_days_left": "{days} dni",
-      "company_setup": "Pierwsze kroki"
+      "company_setup": "Pierwsze kroki",
+      "module_hr": "HR",
+      "module_fleet": "Fleet",
+      "module_orders": "Orders"
     }
   },
   "public": {

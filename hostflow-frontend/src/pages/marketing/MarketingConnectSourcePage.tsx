@@ -109,7 +109,7 @@ export default function MarketingConnectSourcePage() {
 
   async function handleCreateHostflowForm() {
     if (!canCreateForm || !canPublic) return
-    const title = createTitle.trim() || 'New Marketing form'
+    const title = createTitle.trim() || t('app.marketing.connect.create.default_title')
     const slug = slugifyFormTitle(title)
     if (slug.length < 2) {
       setError(
@@ -278,7 +278,7 @@ export default function MarketingConnectSourcePage() {
                 }}
                 testId="marketing-connect-kind-meta"
               >
-                <span className="font-medium text-slate-900">Meta Lead Ads</span>
+                <span className="font-medium text-slate-900">{t('app.marketing.connect.meta_kind')}</span>
                 <span className="mt-1 block text-slate-600">
                   {!canMeta
                     ? t('app.marketing.connect.meta_already')
@@ -354,7 +354,7 @@ export default function MarketingConnectSourcePage() {
                             setCreateTitle('')
                           }}
                         >
-                          {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                          {t('common.actions.cancel')}
                         </button>
                       </div>
                       <p className="text-xs text-slate-500">
@@ -376,14 +376,14 @@ export default function MarketingConnectSourcePage() {
             ) : null}
 
             {sourceKind === 'meta' && canMeta && metaSources.length ? (
-              <div className="grid gap-2" role="radiogroup" aria-label="Lead Form Meta">
+              <div className="grid gap-2" role="radiogroup" aria-label={t('app.marketing.connect.meta.aria')}>
                 {metaSources.map((s) => {
                   const title =
                     s.lead_form_name ||
                     (s.display_title && !/^Meta form\s+\d+$/i.test(s.display_title)
                       ? s.display_title
                       : null) ||
-                    t('app.marketing.connect.meta.lead_form', { defaultValue: 'Lead Form' })
+                    t('app.marketing.connect.meta.lead_form')
                   const formId = s.meta_form_id || null
                   const pageLabel = s.page_name || s.page_id || null
                   const ads =
@@ -414,7 +414,7 @@ export default function MarketingConnectSourcePage() {
                       <span className="mt-1 block text-xs text-slate-600">
                         {formId ? (
                           <>
-                            {t('app.marketing.connect.meta.form_id', { defaultValue: 'Form ID' })}
+                            {t('app.marketing.connect.meta.form_id')}
                             {': '}
                             <span data-testid={`marketing-connect-meta-form-id-${s.id}`}>
                               {formId}
@@ -426,7 +426,7 @@ export default function MarketingConnectSourcePage() {
                       </span>
                       {pageLabel ? (
                         <span className="mt-0.5 block text-xs text-slate-500">
-                          {t('app.marketing.connect.meta.page', { defaultValue: 'Page' })}
+                          {t('app.marketing.connect.meta.page')}
                           {': '}
                           <span data-testid={`marketing-connect-meta-page-${s.id}`}>
                             {s.page_name ? s.page_name : pageLabel}
@@ -438,7 +438,7 @@ export default function MarketingConnectSourcePage() {
                       ) : null}
                       {ads.length ? (
                         <span className="mt-0.5 block text-xs text-slate-500">
-                          {t('app.marketing.connect.meta.ads', { defaultValue: 'Ads' })}
+                          {t('app.marketing.connect.meta.ads')}
                           {': '}
                           <span data-testid={`marketing-connect-meta-ads-${s.id}`}>
                             {ads
@@ -451,9 +451,7 @@ export default function MarketingConnectSourcePage() {
                       ) : null}
                       {s.last_submission_at ? (
                         <span className="mt-0.5 block text-xs text-slate-400">
-                          {t('app.marketing.connect.meta.last_lead', {
-                            defaultValue: 'Last lead',
-                          })}
+                          {t('app.marketing.connect.meta.last_lead')}
                           {': '}
                           {new Date(s.last_submission_at).toLocaleString()}
                         </span>

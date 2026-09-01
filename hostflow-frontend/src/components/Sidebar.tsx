@@ -35,11 +35,11 @@ export function Sidebar() {
 
         <div className="space-y-3">
           <div>
-            <div className="mb-1">{t('app.sidebar.settings.api_base', { defaultValue: 'API Base' })}</div>
+            <div className="mb-1">{t('app.sidebar.settings.api_base')}</div>
             <input
               className="w-full rounded bg-brand-800 px-2 py-1"
               defaultValue={apiBase}
-              placeholder={t('app.sidebar.settings.api_base_placeholder', { defaultValue: 'http://localhost:8000/api/v1' })}
+              placeholder={t('app.sidebar.settings.api_base_placeholder')}
               onBlur={(e) => {
                 const next = e.currentTarget.value.trim();
                 if (!next) {
@@ -64,7 +64,7 @@ export function Sidebar() {
           </div>
 
           <div>
-            <div className="mb-1">{t('app.sidebar.settings.docs_base', { defaultValue: 'Docs Base (read-only)' })}</div>
+            <div className="mb-1">{t('app.sidebar.settings.docs_base')}</div>
             <input
               className="w-full rounded bg-brand-800 px-2 py-1 opacity-80"
               value={docsBase}
@@ -73,11 +73,11 @@ export function Sidebar() {
           </div>
 
           <div>
-            <div className="mb-1">{t('app.sidebar.settings.tenant_id', { defaultValue: 'Tenant ID' })}</div>
+            <div className="mb-1">{t('app.sidebar.settings.tenant_id')}</div>
             <input
               className="w-full rounded bg-brand-800 px-2 py-1"
               defaultValue={settings.get()}
-              placeholder={t('app.sidebar.settings.tenant_placeholder', { defaultValue: 'Tenant UUID' })}
+              placeholder={t('app.sidebar.settings.tenant_placeholder')}
               onBlur={(e) => {
                 const v = e.currentTarget.value.trim();
                 if (v) {

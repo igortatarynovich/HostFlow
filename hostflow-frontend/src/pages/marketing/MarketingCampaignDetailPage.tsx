@@ -280,14 +280,14 @@ export default function MarketingCampaignDetailPage() {
     { label: t('app.marketing.kpi.route_errors'), value: counters?.routing_failed ?? 0 },
     { label: t('app.marketing.kpi.leads'), value: counters?.kpi_leads ?? 0 },
     {
-      label: 'CPL',
+      label: t('app.marketing.kpi.cpl'),
       value:
         counters?.cost_per_lead != null
           ? `${counters.cost_per_lead}${counters.currency ? ` ${counters.currency}` : ''}`
           : '—',
     },
     {
-      label: 'Spend',
+      label: t('app.marketing.kpi.spend'),
       value: counters
         ? `${counters.spend}${counters.currency ? ` ${counters.currency}` : ''}`
         : '0',
@@ -307,7 +307,7 @@ export default function MarketingCampaignDetailPage() {
           subtitle={
             <span className="inline-flex items-center gap-1.5">
               {flight
-                ? `Flight · ${statusLabel(flightStatus, t)}`
+                ? t('app.marketing.detail.flight_status', { values: { status: statusLabel(flightStatus, t) } })
                 : t('app.marketing.detail.no_flight')}
               <ContextHelp term="flight" />
             </span>
@@ -567,15 +567,15 @@ export default function MarketingCampaignDetailPage() {
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-xs text-slate-500">
                       <tr>
-                        <th className="py-2 pr-3 font-medium">Flight</th>
-                        <th className="py-2 pr-3 font-medium">Status</th>
-                        <th className="py-2 pr-3 font-medium">Spend</th>
-                        <th className="py-2 pr-3 font-medium">Leads</th>
-                        <th className="py-2 pr-3 font-medium">Share</th>
-                        <th className="py-2 pr-3 font-medium">CPL</th>
-                        <th className="py-2 pr-3 font-medium">Value</th>
-                        <th className="py-2 pr-3 font-medium">ROI</th>
-                        <th className="py-2 font-medium">Δ CPL</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.flight')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.status')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.spend')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.leads')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.share')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.cpl')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.value')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.roi')}</th>
+                        <th className="py-2 font-medium">{t('app.marketing.metrics.delta_cpl')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -588,14 +588,14 @@ export default function MarketingCampaignDetailPage() {
                           <td className="py-2 pr-3 text-slate-900">
                             <span className="font-medium">{row.name || row.code}</span>
                             {row.is_current ? (
-                              <span className="ml-2 text-xs text-slate-500">current</span>
+                              <span className="ml-2 text-xs text-slate-500">{t('app.marketing.metrics.current')}</span>
                             ) : null}
                             {row.is_best_cpl ? (
                               <span
                                 className="ml-2 rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800"
                                 data-testid="marketing-flight-compare-best-cpl"
                               >
-                                best CPL
+                                {t('app.marketing.metrics.best_cpl')}
                               </span>
                             ) : null}
                           </td>
@@ -662,7 +662,7 @@ export default function MarketingCampaignDetailPage() {
                       data-testid="marketing-cohorts-bucket-day"
                       onClick={() => switchCohortBucket('day')}
                     >
-                      Day
+                      {t('app.marketing.detail.cohorts.day')}
                     </button>
                     <button
                       type="button"
@@ -672,7 +672,7 @@ export default function MarketingCampaignDetailPage() {
                       data-testid="marketing-cohorts-bucket-week"
                       onClick={() => switchCohortBucket('week')}
                     >
-                      Week
+                      {t('app.marketing.detail.cohorts.week')}
                     </button>
                     <button
                       type="button"
@@ -682,7 +682,7 @@ export default function MarketingCampaignDetailPage() {
                       data-testid="marketing-cohorts-bucket-month"
                       onClick={() => switchCohortBucket('month')}
                     >
-                      Month
+                      {t('app.marketing.detail.cohorts.month')}
                     </button>
                   </div>
                 </div>
@@ -691,38 +691,38 @@ export default function MarketingCampaignDetailPage() {
                   data-testid="marketing-campaign-cohorts-totals"
                 >
                   <div>
-                    <div className="text-xs text-slate-500">Spend</div>
+                    <div className="text-xs text-slate-500">{t('app.marketing.metrics.spend')}</div>
                     <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                       {cohorts.spend}
                       {cohorts.currency ? ` ${cohorts.currency}` : ''}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-500">Leads</div>
+                    <div className="text-xs text-slate-500">{t('app.marketing.metrics.leads')}</div>
                     <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                       {cohorts.leads}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-500">CPL</div>
+                    <div className="text-xs text-slate-500">{t('app.marketing.metrics.cpl')}</div>
                     <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                       {cohorts.cost_per_lead != null ? cohorts.cost_per_lead : '—'}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-500">CAC proxy</div>
+                    <div className="text-xs text-slate-500">{t('app.marketing.metrics.cac_proxy')}</div>
                     <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                       {cohorts.cost_per_outcome != null ? cohorts.cost_per_outcome : '—'}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-500">Value</div>
+                    <div className="text-xs text-slate-500">{t('app.marketing.metrics.value')}</div>
                     <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                       {cohorts.outcome_value != null ? cohorts.outcome_value : '—'}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-500">ROI</div>
+                    <div className="text-xs text-slate-500">{t('app.marketing.metrics.roi')}</div>
                     <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                       {cohorts.roi != null ? cohorts.roi : '—'}
                     </div>
@@ -734,18 +734,18 @@ export default function MarketingCampaignDetailPage() {
                       <tr>
                         <th className="py-2 pr-3 font-medium">
                           {cohorts.bucket === 'week'
-                            ? 'Week start (UTC)'
+                            ? t('app.marketing.detail.cohorts.col_week')
                             : cohorts.bucket === 'month'
-                              ? 'Month start (UTC)'
-                              : 'Day (UTC)'}
+                              ? t('app.marketing.detail.cohorts.col_month')
+                              : t('app.marketing.detail.cohorts.col_day')}
                         </th>
-                        <th className="py-2 pr-3 font-medium">Spend</th>
-                        <th className="py-2 pr-3 font-medium">Leads</th>
-                        <th className="py-2 pr-3 font-medium">Outcomes</th>
-                        <th className="py-2 pr-3 font-medium">CPL</th>
-                        <th className="py-2 pr-3 font-medium">CAC proxy</th>
-                        <th className="py-2 pr-3 font-medium">Value</th>
-                        <th className="py-2 font-medium">ROI</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.spend')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.leads')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.outcomes')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.cpl')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.cac_proxy')}</th>
+                        <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.value')}</th>
+                        <th className="py-2 font-medium">{t('app.marketing.metrics.roi')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -792,15 +792,10 @@ export default function MarketingCampaignDetailPage() {
                 data-testid="marketing-outcome-commercial-value"
               >
                 <h2 className="text-sm font-semibold text-slate-900">
-                  {t('app.marketing.detail.outcome_value.title', {
-                    defaultValue: 'Commercial value (Outcome)',
-                  })}
+                  {t('app.marketing.detail.outcome_value.title')}
                 </h2>
                 <p className="mt-1 text-xs text-slate-500">
-                  {t('app.marketing.detail.outcome_value.subtitle', {
-                    defaultValue:
-                      'Declare value on a completed Outcome (declared_v1). ROI uses (value − spend) / spend.',
-                  })}
+                  {t('app.marketing.detail.outcome_value.subtitle')}
                 </p>
                 <form
                   className="mt-3 flex flex-wrap items-end gap-2"
@@ -815,7 +810,11 @@ export default function MarketingCampaignDetailPage() {
                         valueOutcomeId.trim(),
                         { amount: valueAmount.trim(), currency: valueCurrency.trim() || 'EUR' },
                       )
-                      setValueMsg(`Saved ${res.amount} ${res.currency}`)
+                      setValueMsg(
+                        t('app.marketing.detail.outcome_value.saved', {
+                          values: { amount: res.amount, currency: res.currency },
+                        }),
+                      )
                       await load()
                     } catch (err) {
                       setValueMsg(getFriendlyErrorInfo(err).message)
@@ -825,7 +824,7 @@ export default function MarketingCampaignDetailPage() {
                   }}
                 >
                   <label className="text-xs text-slate-600">
-                    Outcome ID
+                    {t('app.marketing.detail.outcome_value.outcome_id')}
                     <input
                       className="mt-1 block w-56 rounded border border-slate-300 px-2 py-2 text-sm"
                       data-testid="marketing-outcome-value-id"
@@ -834,7 +833,7 @@ export default function MarketingCampaignDetailPage() {
                     />
                   </label>
                   <label className="text-xs text-slate-600">
-                    Amount
+                    {t('app.marketing.detail.outcome_value.amount')}
                     <input
                       className="mt-1 block w-28 rounded border border-slate-300 px-2 py-2 text-sm"
                       data-testid="marketing-outcome-value-amount"
@@ -843,7 +842,7 @@ export default function MarketingCampaignDetailPage() {
                     />
                   </label>
                   <label className="text-xs text-slate-600">
-                    Currency
+                    {t('app.marketing.detail.outcome_value.currency')}
                     <input
                       className="mt-1 block w-20 rounded border border-slate-300 px-2 py-2 text-sm uppercase"
                       data-testid="marketing-outcome-value-currency"
@@ -858,7 +857,7 @@ export default function MarketingCampaignDetailPage() {
                     data-testid="marketing-outcome-value-save"
                     disabled={valueBusy}
                   >
-                    Save value
+                    {t('app.marketing.detail.outcome_value.save')}
                   </button>
                 </form>
                 {valueMsg ? (
@@ -890,7 +889,7 @@ export default function MarketingCampaignDetailPage() {
                     data-testid="marketing-optimization-observed"
                   >
                     <div>
-                      <dt className="text-amber-800/70">Fail rate</dt>
+                      <dt className="text-amber-800/70">{t('app.marketing.detail.observed.fail_rate')}</dt>
                       <dd className="font-medium tabular-nums">
                         {optimization.observed.routing_fail_rate == null
                           ? '—'
@@ -898,17 +897,17 @@ export default function MarketingCampaignDetailPage() {
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-amber-800/70">Routing</dt>
+                      <dt className="text-amber-800/70">{t('app.marketing.detail.observed.routing')}</dt>
                       <dd className="font-medium tabular-nums">
                         {optimization.observed.routing_failed}/{optimization.observed.routing_sample}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-amber-800/70">Delivery err</dt>
+                      <dt className="text-amber-800/70">{t('app.marketing.detail.observed.delivery_err')}</dt>
                       <dd className="font-medium tabular-nums">{optimization.observed.delivery_errors}</dd>
                     </div>
                     <div>
-                      <dt className="text-amber-800/70">Volume</dt>
+                      <dt className="text-amber-800/70">{t('app.marketing.detail.observed.volume')}</dt>
                       <dd className="font-medium tabular-nums">{optimization.observed.decision_volume}</dd>
                     </div>
                   </dl>

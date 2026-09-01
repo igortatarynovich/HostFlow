@@ -397,17 +397,17 @@ export default function MarketingCampaignSetupPage() {
             </div>
             <div>
               <div className="text-xs text-slate-500">{t('app.marketing.setup.review_flow')}</div>
-              <div className="font-medium text-slate-900">{preset.label}</div>
+              <div className="font-medium text-slate-900">{t(`app.marketing.flow.${preset.kind}.label`)}</div>
             </div>
             <div>
               <div className="text-xs text-slate-500">{t('app.marketing.setup.review_client')}</div>
               <div className="font-medium text-slate-900">
                 {selectedClient?.display_name || contextClientId}
               </div>
-              <div className="text-xs text-slate-500">CampaignTarget · role=context</div>
+              <div className="text-xs text-slate-500">{t('app.marketing.setup.review_context_role')}</div>
             </div>
             <div>
-              <div className="text-xs text-slate-500">Primary Target · route_intent</div>
+              <div className="text-xs text-slate-500">{t('app.marketing.setup.review_primary_target')}</div>
               <div className="font-medium text-slate-900">
                 {preset.target_type === 'vacancy'
                   ? selectedVacancy?.title || targetId

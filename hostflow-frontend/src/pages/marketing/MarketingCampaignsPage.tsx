@@ -143,7 +143,7 @@ export default function MarketingCampaignsPage() {
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-sm font-semibold text-slate-900">
-                {t('app.marketing.portfolio.title', { defaultValue: 'Portfolio KPI' })}
+                {t('app.marketing.portfolio.title')}
               </h2>
               <p className="text-xs text-slate-500">
                 {t('app.marketing.portfolio.subtitle')}
@@ -157,38 +157,38 @@ export default function MarketingCampaignsPage() {
               data-testid="marketing-campaign-portfolio-totals"
             >
               <div>
-                <div className="text-xs text-slate-500">Spend</div>
+                <div className="text-xs text-slate-500">{t('app.marketing.metrics.spend')}</div>
                 <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                   {portfolio.spend}
                   {portfolio.currency ? ` ${portfolio.currency}` : ''}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Leads</div>
+                <div className="text-xs text-slate-500">{t('app.marketing.metrics.leads')}</div>
                 <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                   {portfolio.leads}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">CPL</div>
+                <div className="text-xs text-slate-500">{t('app.marketing.metrics.cpl')}</div>
                 <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                   {portfolio.cost_per_lead != null ? portfolio.cost_per_lead : '—'}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">CAC proxy</div>
+                <div className="text-xs text-slate-500">{t('app.marketing.metrics.cac_proxy')}</div>
                 <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                   {portfolio.cost_per_outcome != null ? portfolio.cost_per_outcome : '—'}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Value</div>
+                <div className="text-xs text-slate-500">{t('app.marketing.metrics.value')}</div>
                 <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                   {portfolio.outcome_value != null ? portfolio.outcome_value : '—'}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">ROI</div>
+                <div className="text-xs text-slate-500">{t('app.marketing.metrics.roi')}</div>
                 <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                   {portfolio.roi != null ? portfolio.roi : '—'}
                 </div>
@@ -198,14 +198,14 @@ export default function MarketingCampaignsPage() {
               <table className="min-w-full text-left text-sm">
                 <thead className="text-xs text-slate-500">
                   <tr>
-                    <th className="py-2 pr-3 font-medium">Campaign</th>
-                    <th className="py-2 pr-3 font-medium">Status</th>
-                    <th className="py-2 pr-3 font-medium">Spend</th>
-                    <th className="py-2 pr-3 font-medium">Leads</th>
-                    <th className="py-2 pr-3 font-medium">CPL</th>
-                    <th className="py-2 pr-3 font-medium">CAC proxy</th>
-                    <th className="py-2 pr-3 font-medium">Value</th>
-                    <th className="py-2 font-medium">ROI</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.campaign')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.status')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.spend')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.leads')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.cpl')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.cac_proxy')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.value')}</th>
+                    <th className="py-2 font-medium">{t('app.marketing.metrics.roi')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -224,7 +224,7 @@ export default function MarketingCampaignsPage() {
                         </Link>
                         {row.is_best_cpl ? (
                           <span className="ml-2 rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                            best CPL
+                            {t('app.marketing.metrics.best_cpl')}
                           </span>
                         ) : null}
                       </td>

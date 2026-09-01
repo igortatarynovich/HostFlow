@@ -154,7 +154,7 @@ function CaseDetail({
             onClick={() => void onExport()}
             data-testid="marketing-diagnostics-export"
           >
-            Export JSON
+            {t('app.marketing.diagnostics.export_json')}
           </button>
           <button
             type="button"
@@ -201,9 +201,9 @@ function CaseDetail({
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 className="text-sm font-semibold text-amber-950">Duplicate decision</h3>
+              <h3 className="text-sm font-semibold text-amber-950">{t('app.marketing.diagnostics.duplicate.title')}</h3>
               <p className="mt-1 text-xs text-amber-900/80">
-                Read-only compose from decision_result_v1 + duplicate_match_v1. Resolve in CRM Lead.
+                {t('app.marketing.diagnostics.duplicate.body')}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -212,7 +212,7 @@ function CaseDetail({
                 to={`${CRM_APP_PATHS.leads}/${encodeURIComponent(row.lead_id)}`}
                 data-testid="marketing-diagnostics-duplicate-open-lead"
               >
-                Resolve in Lead
+                {t('app.marketing.diagnostics.duplicate.resolve')}
               </Link>
               {row.duplicate.suggested_candidate_id || row.duplicate.attach_candidate_id ? (
                 <Link
@@ -222,40 +222,40 @@ function CaseDetail({
                   )}`}
                   data-testid="marketing-diagnostics-duplicate-open-candidate"
                 >
-                  Open candidate
+                  {t('app.marketing.diagnostics.duplicate.open_candidate')}
                 </Link>
               ) : null}
             </div>
           </div>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
             <div>
-              <dt className="text-amber-900/70">Lead status</dt>
+              <dt className="text-amber-900/70">{t('app.marketing.diagnostics.duplicate.lead_status')}</dt>
               <dd className="font-medium text-amber-950" data-testid="marketing-diagnostics-duplicate-status">
                 {row.duplicate.lead_status || '—'}
               </dd>
             </div>
             <div>
-              <dt className="text-amber-900/70">Disposition</dt>
+              <dt className="text-amber-900/70">{t('app.marketing.diagnostics.duplicate.disposition')}</dt>
               <dd className="font-medium text-amber-950">{row.duplicate.disposition || '—'}</dd>
             </div>
             <div>
-              <dt className="text-amber-900/70">Match level</dt>
+              <dt className="text-amber-900/70">{t('app.marketing.diagnostics.duplicate.match_level')}</dt>
               <dd className="font-medium text-amber-950" data-testid="marketing-diagnostics-duplicate-level">
                 {row.duplicate.match_level || '—'}
               </dd>
             </div>
             <div>
-              <dt className="text-amber-900/70">Error code</dt>
+              <dt className="text-amber-900/70">{t('app.marketing.diagnostics.duplicate.error_code')}</dt>
               <dd className="font-mono text-amber-950">{row.duplicate.error_code || '—'}</dd>
             </div>
             <div>
-              <dt className="text-amber-900/70">Needs review</dt>
+              <dt className="text-amber-900/70">{t('app.marketing.diagnostics.duplicate.needs_review')}</dt>
               <dd className="font-medium text-amber-950">
-                {row.duplicate.needs_duplicate_review ? 'yes' : 'no'}
+                {row.duplicate.needs_duplicate_review ? t('common.yes') : t('common.no')}
               </dd>
             </div>
             <div>
-              <dt className="text-amber-900/70">Suggested candidate</dt>
+              <dt className="text-amber-900/70">{t('app.marketing.diagnostics.duplicate.suggested')}</dt>
               <dd className="truncate font-mono text-amber-950">
                 {row.duplicate.suggested_candidate_id ||
                   row.duplicate.attach_candidate_id ||
@@ -287,9 +287,9 @@ function CaseDetail({
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">Mapping / Mapping Health</h3>
+              <h3 className="text-sm font-semibold text-slate-900">{t('app.marketing.diagnostics.mapping.title')}</h3>
               <p className="mt-1 text-xs text-slate-600">
-                Current Source mapping (not a historical ingest stamp). Open Mapping workspace to review rules.
+                {t('app.marketing.diagnostics.mapping.body')}
               </p>
             </div>
             {row.mapping.mapping_path ? (
@@ -298,60 +298,60 @@ function CaseDetail({
                 to={row.mapping.mapping_path}
                 data-testid="marketing-diagnostics-open-mapping"
               >
-                Open Mapping
+                {t('app.marketing.diagnostics.mapping.open')}
               </Link>
             ) : null}
           </div>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
             <div>
-              <dt className="text-slate-500">Source</dt>
+              <dt className="text-slate-500">{t('app.marketing.diagnostics.mapping.source')}</dt>
               <dd className="font-medium text-slate-900" data-testid="marketing-diagnostics-mapping-name">
                 {row.mapping.display_name || row.mapping.source_id || '—'}
               </dd>
             </div>
             <div>
-              <dt className="text-slate-500">Mapping Health</dt>
+              <dt className="text-slate-500">{t('app.marketing.diagnostics.mapping.health')}</dt>
               <dd className="font-medium text-slate-900" data-testid="marketing-diagnostics-mapping-health">
                 {row.mapping.profile_missing
-                  ? 'profile missing'
+                  ? t('app.marketing.diagnostics.mapping.profile_missing')
                   : row.mapping.mapping_health || '—'}
               </dd>
             </div>
             <div>
-              <dt className="text-slate-500">Rules</dt>
+              <dt className="text-slate-500">{t('app.marketing.diagnostics.mapping.rules')}</dt>
               <dd className="font-medium text-slate-900">
                 {row.mapping.mapping_rules_count}
                 {row.mapping.rules_source ? ` · ${row.mapping.rules_source}` : ''}
               </dd>
             </div>
             <div>
-              <dt className="text-slate-500">Profile updated</dt>
+              <dt className="text-slate-500">{t('app.marketing.diagnostics.mapping.profile_updated')}</dt>
               <dd className="font-mono text-slate-800">
                 {row.mapping.profile_updated_at || '—'}
               </dd>
             </div>
             <div>
-              <dt className="text-slate-500">Historical version</dt>
+              <dt className="text-slate-500">{t('app.marketing.diagnostics.mapping.historical')}</dt>
               <dd className="font-medium text-slate-900" data-testid="marketing-diagnostics-mapping-historical">
                 {row.mapping.historical_version_available
-                  ? `${row.mapping.applied_rules_fingerprint || 'stamped'}${
+                  ? `${row.mapping.applied_rules_fingerprint || t('app.marketing.diagnostics.mapping.stamped')}${
                       row.mapping.applied_rules_count != null
-                        ? ` · ${row.mapping.applied_rules_count} rules`
+                        ? ` · ${t('app.marketing.diagnostics.mapping.rules_count', { values: { count: row.mapping.applied_rules_count } })}`
                         : ''
                     }`
-                  : 'not stamped'}
+                  : t('app.marketing.diagnostics.mapping.not_stamped')}
               </dd>
             </div>
             <div>
-              <dt className="text-slate-500">Drift</dt>
+              <dt className="text-slate-500">{t('app.marketing.diagnostics.mapping.drift')}</dt>
               <dd
                 className={`font-medium ${row.mapping.drift ? 'text-rose-700' : 'text-slate-900'}`}
                 data-testid="marketing-diagnostics-mapping-drift"
               >
                 {row.mapping.historical_version_available
                   ? row.mapping.drift
-                    ? 'yes — current rules differ from ingest'
-                    : 'no'
+                    ? t('app.marketing.diagnostics.mapping.drift_yes')
+                    : t('common.no')
                   : '—'}
               </dd>
             </div>
@@ -361,25 +361,25 @@ function CaseDetail({
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <div className="text-xs text-slate-500">Routing</div>
+          <div className="text-xs text-slate-500">{t('app.marketing.diagnostics.case.routing')}</div>
           <div className="font-medium text-slate-900">{row.routing_status || '—'}</div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <div className="text-xs text-slate-500">Route intent</div>
+          <div className="text-xs text-slate-500">{t('app.marketing.diagnostics.case.route_intent')}</div>
           <div className="font-medium text-slate-900">{row.route_intent || '—'}</div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <div className="text-xs text-slate-500">Campaign</div>
+          <div className="text-xs text-slate-500">{t('app.marketing.diagnostics.case.campaign')}</div>
           <div className="truncate font-mono text-xs text-slate-800">{row.campaign_id || '—'}</div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <div className="text-xs text-slate-500">Flight</div>
+          <div className="text-xs text-slate-500">{t('app.marketing.diagnostics.case.flight')}</div>
           <div className="truncate font-mono text-xs text-slate-800">{row.flight_id || '—'}</div>
         </div>
       </div>
 
       <section>
-        <h3 className="text-sm font-semibold text-slate-900">Timeline (Acquisition Activity)</h3>
+        <h3 className="text-sm font-semibold text-slate-900">{t('app.marketing.diagnostics.timeline_title')}</h3>
         {row.timeline.length === 0 ? (
           <p className="mt-2 text-xs text-slate-500" data-testid="marketing-diagnostics-timeline-empty">
             {t('app.marketing.diagnostics.timeline_empty')}
@@ -400,10 +400,10 @@ function CaseDetail({
       </section>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <JsonBlock title="Routing stamp" value={row.routing} testId="marketing-diagnostics-routing" />
-        <JsonBlock title="Decision" value={row.decision} testId="marketing-diagnostics-decision" />
-        <JsonBlock title="Normalized" value={row.normalized} testId="marketing-diagnostics-normalized" />
-        <JsonBlock title="Raw payload" value={row.payload} testId="marketing-diagnostics-payload" />
+        <JsonBlock title={t('app.marketing.diagnostics.json.routing')} value={row.routing} testId="marketing-diagnostics-routing" />
+        <JsonBlock title={t('app.marketing.diagnostics.json.decision')} value={row.decision} testId="marketing-diagnostics-decision" />
+        <JsonBlock title={t('app.marketing.diagnostics.json.normalized')} value={row.normalized} testId="marketing-diagnostics-normalized" />
+        <JsonBlock title={t('app.marketing.diagnostics.json.payload')} value={row.payload} testId="marketing-diagnostics-payload" />
       </div>
     </div>
   )
@@ -501,7 +501,7 @@ export default function MarketingDiagnosticsPage() {
     <PageShell data-testid="marketing-diagnostics-page">
       <PageShellHeader>
         <PageHeader
-          title={t('app.nav.items.marketing_diagnostics', { defaultValue: 'Diagnostics' })}
+          title={t('app.nav.items.marketing_diagnostics')}
           subtitle={t('app.marketing.diagnostics.subtitle')}
         />
       </PageShellHeader>
@@ -565,7 +565,7 @@ export default function MarketingDiagnosticsPage() {
               }}
             >
               <label className="min-w-[8rem] flex-1 text-xs text-slate-600">
-                Source
+                {t('app.marketing.diagnostics.filter_source')}
                 <input
                   name="source"
                   defaultValue={sourceFilter}
@@ -575,7 +575,7 @@ export default function MarketingDiagnosticsPage() {
                 />
               </label>
               <label className="min-w-[12rem] flex-[2] text-xs text-slate-600">
-                Flight ID
+                {t('app.marketing.diagnostics.filter_flight')}
                 <input
                   name="flight_id"
                   defaultValue={flightFilter}
@@ -660,7 +660,7 @@ export default function MarketingDiagnosticsPage() {
                               className="inline-flex rounded bg-rose-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-rose-800"
                               data-testid="marketing-diagnostics-drift-badge"
                             >
-                              drift
+                              {t('app.marketing.diagnostics.drift_badge')}
                             </span>
                           ) : null}
                         </div>
