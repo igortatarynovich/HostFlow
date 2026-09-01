@@ -39,6 +39,12 @@ export async function listClientAccounts(params?: {
   return Array.isArray(data?.items) ? data.items : []
 }
 
+/** Create missing Client Accounts for local client companies, then return the full list. */
+export async function ensureClientAccountsFromCompanies(): Promise<ClientAccount[]> {
+  const { data } = await api.post<ClientAccountListResponse>('/client-accounts/ensure-from-client-companies')
+  return Array.isArray(data?.items) ? data.items : []
+}
+
 export async function getClientAccount(accountId: string) {
   const { data } = await api.get<ClientAccount>(`/client-accounts/${encodeURIComponent(accountId)}`)
   return data

@@ -53,6 +53,7 @@ help:
 	@echo "  make docs-lint-baseline - rewrite scripts/docs/governance_baseline.txt with current violations (use sparingly)"
 	@echo "  make security-scorecard - regenerate docs/security/security-scorecard.md (Phase 8)"
 	@echo "  make security-scorecard-check - fail on scorecard drift or RED metrics"
+	@echo "  make deploy-live    - publish checkout to the live compose stack (hostflow.cc)"
 	@echo ""
 
 # ---- Tests (need: make install, DB reachable) ----
@@ -174,6 +175,10 @@ security-scorecard-check:
 .PHONY: repo-health
 repo-health:
 	python3 scripts/repo_health_gate.py --strict-worktrees
+
+.PHONY: deploy-live
+deploy-live:
+	bash scripts/deploy/deploy-live.sh $(ARGS)
 
 .PHONY: check-ts-imports
 check-ts-imports:

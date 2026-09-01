@@ -1792,6 +1792,28 @@
         "open_candidate": "Открыть кандидата",
         "all_reminders": "Все напоминания",
         "later": "Позже"
+      },
+      "event_types": {
+        "reminder_due": "Задача к сроку",
+        "reminder_overdue": "Задача просрочена",
+        "candidate_docs_pending_upload": "Ожидаются документы кандидата",
+        "candidate_docs_pending_upload_desc": "{name}: прогресс {ready}/{total}, не хватает {missing} файлов.",
+        "handoff_rejected": "Передача отклонена",
+        "handoff_returned": "Передача возвращена",
+        "lead_no_next_action": "У лида нет следующего шага",
+        "lead_stuck_stage": "Лид застрял на этапе",
+        "invoice_overdue": "Счёт просрочен",
+        "candidate_ready_for_handoff_auto": "Кандидат готов к передаче",
+        "document_expired": "Документ истёк",
+        "document_expiring_soon": "Документ скоро истечёт",
+        "lead": {
+          "new": {
+            "telegram": "Новый лид (Telegram)"
+          },
+          "status_changed": {
+            "telegram": "Статус лида изменён (Telegram)"
+          }
+        }
       }
     },
     "sla_incidents": {
@@ -1807,6 +1829,7 @@
       "empty_group": "В группе \"{group}\" инцидентов нет.",
       "open_dialog": "Открыть диалог",
       "mark_read": "Отметить прочитанным",
+      "due_at": "срок {date}",
       "actions": {
         "in_work": "В работе",
         "later": "Позже",
@@ -2074,7 +2097,8 @@
         "open": "Открыть",
         "clear": "Скрыть",
         "clear_all": "Очистить всё",
-        "open_center": "Открыть центр уведомлений"
+        "open_center": "Открыть центр уведомлений",
+        "reminder_group_title": "{count} ожидающих задач по этой записи"
       },
       "search": {
         "open": "Поиск",
@@ -2272,7 +2296,7 @@
           },
           "candidate_stage_changed": {
             "title": "Смена этапа кандидата",
-            "description": "Напоминать при переходе кандидата на новый этап."
+            "description": "Уведомлять, когда кандидат переходит на другой этап."
           },
           "documents_deadline": {
             "title": "Сроки документов",
@@ -2289,6 +2313,14 @@
           "intake_client_lead_skipped_no_company": {
             "title": "Публичный intake: лид не создан",
             "description": "In-app уведомление, когда клиентский запрос не смог создать лид (не определена компания-клиент)."
+          },
+          "lead_new_telegram": {
+            "title": "Telegram: новый лид",
+            "description": "Telegram-уведомление, когда создан новый лид."
+          },
+          "lead_status_changed_telegram": {
+            "title": "Telegram: смена статуса лида",
+            "description": "Telegram-уведомление, когда меняется статус лида."
           }
         }
       },
@@ -5665,10 +5697,10 @@
         "docs_missing_badge": "Документы отсутствуют",
         "docs_request_title": "Запросить документы",
         "docs_review_required": "Требуется проверка документов",
-        "due": "Должный",
-        "empty": "Пустой",
+        "due": "Срок",
+        "empty": "Нет",
         "overdue": "Просрочено",
-        "snooze": "Вздремнуть",
+        "snooze": "Отложить",
         "pipeline_completed_title": "Процесс завершён",
         "pipeline_completed_body": "Кандидат на финальной стадии рекрутинга (готов к передаче в HR, отклонён, отказ или возврат) — дальнейшие шаги воронки не применяются.",
         "title": "Следующее действие"
@@ -7096,7 +7128,7 @@
         "untitled": "Без названия"
       },
       "messages": {
-        "completed": "Завершенный",
+        "completed": "Завершено",
         "created": "Напоминание создано",
         "snoozed": "Отложено"
       },
@@ -9487,58 +9519,58 @@
       }
     },
     "notification_alerts": {
-      "title": "Notification Center",
-      "subtitle": "Open document expiry alerts from the platform event registry. Read-only — no outbound messages.",
-      "list_title": "Open alerts ({count})",
-      "empty": "No alerts match the current filters.",
-      "detail_empty": "Select an alert to view details.",
-      "expires_on": "Expires on {{date}}",
+      "title": "Центр уведомлений",
+      "subtitle": "Открытые алерты об истечении документов. Только просмотр — без исходящих сообщений.",
+      "list_title": "Открытые алерты ({count})",
+      "empty": "Нет алертов по текущим фильтрам.",
+      "detail_empty": "Выберите алерт, чтобы посмотреть детали.",
+      "expires_on": "Истекает {date}",
       "errors": {
-        "load": "Failed to load notification alerts",
-        "status": "Failed to update alert status",
-        "sync": "Failed to sync document expiry alerts"
+        "load": "Не удалось загрузить алерты",
+        "status": "Не удалось обновить статус алерта",
+        "sync": "Не удалось синхронизировать алерты об истечении"
       },
       "sync": {
-        "success": "Expiry alerts synced",
-        "summary": "Sync complete — created {{created}}, updated {{updated}}, skipped {{skipped}}"
+        "success": "Алерты об истечении синхронизированы",
+        "summary": "Синхронизация завершена — создано {created}, обновлено {updated}, пропущено {skipped}"
       },
       "toast": {
-        "resolved": "Alert marked as resolved",
-        "ignored": "Alert marked as ignored"
+        "resolved": "Алерт отмечен как решённый",
+        "ignored": "Алерт отмечен как проигнорированный"
       },
       "filters": {
-        "event_type": "Event type",
-        "event_type_all": "All expiry events",
-        "event_type_expired": "Expired documents",
-        "event_type_expiring_soon": "Expiring soon",
-        "source_layer": "Source",
-        "source_document_expiry": "Document expiry notifications",
-        "source_all": "All sources",
+        "event_type": "Тип события",
+        "event_type_all": "Все события истечения",
+        "event_type_expired": "Истёкшие документы",
+        "event_type_expiring_soon": "Скоро истекают",
+        "source_layer": "Источник",
+        "source_document_expiry": "Уведомления об истечении документов",
+        "source_all": "Все источники",
         "status": {
-          "open": "Open",
-          "resolved": "Resolved",
-          "ignored": "Ignored"
+          "open": "Открытые",
+          "resolved": "Решённые",
+          "ignored": "Проигнорированные"
         }
       },
       "event_code": {
-        "document_expired": "Document expired",
-        "document_expiring_soon": "Document expiring soon"
+        "document_expired": "Документ истёк",
+        "document_expiring_soon": "Документ скоро истечёт"
       },
       "severity": {
-        "critical": "Critical",
-        "warning": "Warning"
+        "critical": "Критический",
+        "warning": "Предупреждение"
       },
       "detail": {
-        "document_type": "Document type",
-        "owner": "Owner",
-        "expires_on": "Expires on",
-        "source_layer": "Source layer"
+        "document_type": "Тип документа",
+        "owner": "Владелец",
+        "expires_on": "Истекает",
+        "source_layer": "Слой источника"
       },
       "actions": {
-        "mark_resolved": "Mark resolved",
-        "mark_ignored": "Mark ignored",
-        "open_owner": "Open owner profile",
-        "sync_now": "Sync now"
+        "mark_resolved": "Отметить решённым",
+        "mark_ignored": "Игнорировать",
+        "open_owner": "Открыть профиль владельца",
+        "sync_now": "Синхронизировать"
       }
     },
     "sales_questionnaire": {

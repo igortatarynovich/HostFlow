@@ -40,7 +40,7 @@ Evidence collected 2026-08-28 across `docker-compose.yml`, `deploy/`, `.github/w
 | Container stack | `docker-compose.yml`, `backend/Dockerfile` | Postgres 16, Redis 7, backend uvicorn; ARQ worker and MinIO behind compose profiles |
 | Reverse proxy / SPA serving | `Caddyfile`, `deploy/nginx/hostflow.conf`, `deploy/caddy.Dockerfile` | Three serving paths exist (Caddy, nginx, FastAPI static mount) |
 | Frontend deploy note | `docs/FRONTEND_DEPLOY.md` | Executable; server-specific |
-| Frontend deploy **script** | `rebuild-frontend.sh` (measured 2026-08-31) | `npm run build` in the checkout → `rsync -a --delete` into `/var/www/hostflow-frontend/` → `docker-compose restart caddy`. This is the § False close ("`git pull` plus a manual `npm run build` on the server") existing as a committed script. `hostflow-frontend/dist` is gitignored, so the served artefact is not traceable to a commit |
+| Frontend deploy **script** | `rebuild-frontend.sh` → [`scripts/deploy/deploy-live.sh`](../../../scripts/deploy/deploy-live.sh) (updated 2026-09-01) | Live working-tree publish: build outside `dist`, rsync into the Caddy bind-mount, recreate backend (uvicorn has no `--reload`), bake `HOSTFLOW_*` into `/build` and `build.json`. Still the § False close relative to RB-1 (no retained artefacts, no throwaway stack). Host `/var/www/hostflow-frontend` is not served |
 | Troubleshooting note | `deploy/TROUBLESHOOTING.md` | Executable; assumes `hostflow.cc` host knowledge |
 | Metrics | `/metrics` + `backend/app/observability/metrics.py` | Real custom metrics (overdue documents, reminders, leads) |
 | Structured logs + request ids | `backend/app/core/observability.py`, `main.py` | `LOG_FORMAT=json`, `X-Request-ID`, security correlation |
@@ -258,6 +258,7 @@ Out: 24/7 rotation, paid support tiers, status-page product.
 
 ## History
 
+- 2026-09-01: Live compose still bind-mounted. `rebuild-frontend.sh` no longer rsyncs to the unused host `/var/www/hostflow-frontend`; [`deploy-live.sh`](../../../scripts/deploy/deploy-live.sh) publishes into `hostflow-frontend/dist`, recreates backend/arq-worker, and stamps `/build`. This does **not** close RB-1 or OL-2B.
 - 2026-08-31 (later, OL-2D): Predecessor defined as a deployable contract state. Production measured as legacy unversioned — not a valid rollback target. Status **DEFERRED_BY_INITIAL_BASELINE / NOT EXECUTED**. No `release/v*` tag. Decision: [operate-launch-ol2d-predecessor.md](operate-launch-ol2d-predecessor.md).
 - 2026-08-31 (later, OL-2C): CI aligned to `postgres:16-alpine`; canonical Alembic is repo-root `alembic.ini`; five-assertion proof-path. [operate-launch-ol2c-ci-parity.md](operate-launch-ol2c-ci-parity.md).
 - 2026-08-31 (later, OL-2B first-admin): Bootstrap admin schema closed as implementation. The throwaway composite `11f1c845` was evidence only. OL-2B remains **PASS_IMPLEMENTATION / NOT EXECUTED**.

@@ -25,6 +25,11 @@ import type {
   ReminderRecord,
 } from '../api/types'
 import { getNotificationAttentionTier } from '../utils/notificationUos'
+import {
+  notificationDisplayDescription,
+  notificationDisplayTitle,
+  notificationEventTypeLabel,
+} from '../utils/notificationPresentation'
 import { resolveNotificationOpenPath } from '../utils/resolveNotificationOpenPath'
 import { useAuth } from '../store/useAuth'
 import { canUseTeamAssigneeScope as teamAssigneeScopeAllowed } from '../auth/trustRoles'
@@ -1097,45 +1102,12 @@ export default function RemindersPage() {
   )
 
   const notificationTitle = useCallback(
-    (item: NotificationItem) => {
-      if (item.event_type === 'handoff_requested') {
-        return t('app.notifications.handoff_requested_title')
-      }
-      const et = String(item.event_type || '').trim().toLowerCase()
-      if (et === 'lead_public_intake_client') {
-        return t('app.notifications.lead_public_intake_client_title')
-      }
-      if (et === 'intake_client_lead_skipped_no_company') {
-        return t('app.notifications.intake_client_lead_skipped_no_company_title')
-      }
-      const key = `app.reminders.events.${item.event_type}`
-      const translated = t(key, { defaultValue: '' })
-      if (translated && translated !== key) return translated
-      return (
-        (item.payload?.title as string) ||
-        item.event_type ||
-        t('app.reminders.events.unknown', { values: { event: String(item.event_type || 'event') } })
-      )
-    },
+    (item: NotificationItem) => notificationDisplayTitle(item, t),
     [t]
   )
 
   const notificationDescription = useCallback(
-    (item: NotificationItem) => {
-      const payload = (item.payload || {}) as Record<string, any>
-      const et = String(item.event_type || '').trim().toLowerCase()
-      if (et === 'lead_public_intake_client') {
-        return t('app.notifications.lead_public_intake_client_desc', {
-          values: { name: String(payload.candidate_name || '').trim() || '—' },
-        })
-      }
-      if (et === 'intake_client_lead_skipped_no_company') {
-        return t('app.notifications.intake_client_lead_skipped_no_company_desc', {
-          values: { name: String(payload.candidate_name || '').trim() || '—' },
-        })
-      }
-      return String(payload.description || '').trim()
-    },
+    (item: NotificationItem) => notificationDisplayDescription(item, t),
     [t]
   )
 
@@ -2260,7 +2232,7 @@ export default function RemindersPage() {
                             </span>
                           )}
                           <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
-                            {item.event_type}
+                            {notificationEventTypeLabel(String(item.event_type || ''), t)}
                           </span>
                         </div>
                         <p className="text-sm font-semibold text-slate-900">{notificationTitle(item)}</p>

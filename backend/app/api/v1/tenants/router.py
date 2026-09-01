@@ -31,6 +31,9 @@ from backend.app.services.portal_link_limits import ensure_portal_token_issue_al
 from backend.app.services.tenant_links import list_links_for_agency
 from backend.app.models.tenant import TenantLink, Tenant, TenantType
 from backend.app.models.company import Company
+from backend.app.modules.client_accounts.ensure_for_company import (
+    ensure_manual_client_account_for_company,
+)
 
 
 router = APIRouter(prefix="/tenants", tags=["tenants"], redirect_slashes=False)
@@ -297,11 +300,15 @@ async def create_tenant_link(
     tenant_id: UUID,
     payload: schemas.TenantLinkCreate,
     db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
 ):
     """Create tenant link (agency -> company or agency -> client tenant). Optionally create client by display_name."""
     db, current_tenant = db_tenant
     if str(current_tenant) != str(tenant_id):
         raise HTTPException(status_code=403, detail="Cannot modify links of another tenant")
+    actor = str(getattr(current_user, "sub", None) or "").strip()
+    if not actor:
+        raise HTTPException(status_code=401, detail="Missing actor for client create")
 
     cid = str(payload.client_company_id) if payload.client_company_id else None
     tid = str(payload.client_tenant_id) if payload.client_tenant_id else None
@@ -359,6 +366,15 @@ async def create_tenant_link(
             features_json=features,
         )
         db.add(link)
+        await db.flush()
+        await ensure_manual_client_account_for_company(
+            db,
+            tenant_id=str(tenant_id),
+            actor_user_id=actor,
+            company=company,
+            reason="operator_link_employer_tenant",
+            link_primary_company=False,
+        )
         await db.commit()
         await db.refresh(link)
         company_name = company.name
@@ -373,9 +389,18 @@ async def create_tenant_link(
             features_json=features,
         )
         db.add(link)
+        await db.flush()
+        company = await db.get(Company, cid)
+        if company is not None:
+            await ensure_manual_client_account_for_company(
+                db,
+                tenant_id=str(tenant_id),
+                actor_user_id=actor,
+                company=company,
+                reason="operator_link_local_company",
+            )
         await db.commit()
         await db.refresh(link)
-        company = await db.get(Company, cid)
         company_name = company.name if company else None
     elif display_name:
         # Create new client company in agency tenant and link
@@ -396,6 +421,14 @@ async def create_tenant_link(
             features_json=features,
         )
         db.add(link)
+        await db.flush()
+        await ensure_manual_client_account_for_company(
+            db,
+            tenant_id=str(tenant_id),
+            actor_user_id=actor,
+            company=new_company,
+            reason="operator_add_client",
+        )
         await db.commit()
         await db.refresh(link)
         company_name = new_company.name

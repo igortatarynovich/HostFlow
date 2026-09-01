@@ -163,9 +163,11 @@ export default function NotificationAlertsPage() {
       const summary = await syncDocumentExpiryNotificationEvents()
       setLastSyncSummary(
         t('app.notification_alerts.sync.summary', {
-          created: summary.created,
-          updated: summary.updated,
-          skipped: summary.skipped,
+          values: {
+            created: summary.created,
+            updated: summary.updated,
+            skipped: summary.skipped,
+          },
         }),
       )
       notify({
@@ -274,7 +276,7 @@ export default function NotificationAlertsPage() {
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <section className="card overflow-hidden">
           <div className="border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-800">
-            {t('app.notification_alerts.list_title', { count: filteredItems.length })}
+            {t('app.notification_alerts.list_title', { values: { count: filteredItems.length } })}
           </div>
           {loading && !filteredItems.length ? (
             <div className="p-4 text-sm text-slate-500">{t('common.loading')}</div>
@@ -305,7 +307,7 @@ export default function NotificationAlertsPage() {
                         </div>
                         {expiresOn ? (
                           <div className="mt-1 text-xs text-slate-500">
-                            {t('app.notification_alerts.expires_on', { date: expiresOn })}
+                            {t('app.notification_alerts.expires_on', { values: { date: expiresOn } })}
                           </div>
                         ) : null}
                       </div>
@@ -376,7 +378,11 @@ export default function NotificationAlertsPage() {
                 </div>
                 <div>
                   <dt className="text-slate-500">{t('common.labels.status')}</dt>
-                  <dd className="font-medium text-slate-900">{selected.status}</dd>
+                  <dd className="font-medium text-slate-900">
+                    {t(`app.notification_alerts.filters.status.${selected.status}`, {
+                      defaultValue: selected.status,
+                    })}
+                  </dd>
                 </div>
               </dl>
 

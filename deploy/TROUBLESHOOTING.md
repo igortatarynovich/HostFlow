@@ -2,25 +2,25 @@
 
 ## Изменения во фронте не видны на hostflow.cc (старый UI)
 
-**Причина:** для домена статика отдаёт **контейнер `caddy`** из каталога `/var/www/hostflow-frontend` (см. `Caddyfile`). Образ Caddy собирается с **`COPY hostflow-frontend/dist`**. Пересборка **только `backend`** не обновляет JS/CSS.
+**Причины (часто вместе):**
+
+1. Выкладка шла через `rebuild-frontend.sh`, который rsync'ил в **хостовый** `/var/www/hostflow-frontend`. Caddy этот путь **не монтирует**. Он отдаёт `./hostflow-frontend/dist` из checkout (bind-mount на контейнерный `/var/www/hostflow-frontend`).
+2. Сделали `git pull` / поправили `src/`, но не пересобрали SPA. `dist` gitignored.
+3. Браузер держит старый `index.html` → старые hashed chunks.
 
 **Что сделать:**
 
-В `docker-compose.yml` сервис **caddy** монтирует `./hostflow-frontend/dist` → `/var/www/hostflow-frontend`. Достаточно:
-
 ```bash
-cd /path/to/HostFlow/hostflow-frontend && npm run build
-cd .. && docker compose up -d caddy
-# или: docker compose restart caddy
+cd /opt/HostFlow
+make deploy-live
+# только фронт: bash rebuild-frontend.sh
 ```
 
-**Важно:** одна только команда `docker compose restart caddy` **без bind-mount** dist в compose **не подхватывает** новый билд — тогда статика остаётся той, что была **запечена** в образ при `docker compose build caddy`. В этом случае после `npm run build` нужно:
+Процедура и проверки: [`docs/FRONTEND_DEPLOY.md`](../docs/FRONTEND_DEPLOY.md).
 
-```bash
-docker compose build caddy && docker compose up -d caddy
-```
+**Важно:** `docker compose restart caddy` без новой сборки в `hostflow-frontend/dist` ничего не меняет. Образ Caddy с `COPY dist` используется только если bind-mount отсутствует — тогда нужен `docker compose build caddy && docker compose up -d caddy`. На текущем стеке bind-mount есть; правильный publish — `deploy-live.sh`.
 
-Проверка: в DevTools → Network откройте любой `index-*.js` — время ответа и размер должны измениться после деплоя. Для `index.html` в Caddy уже выставлен `no-cache`.
+Проверка: `curl -sk https://hostflow.cc/build.json` — `built_at` должен совпасть с только что закончившимся деплоем. В DevTools → Network откройте любой `index-*.js` — время ответа и размер должны измениться. Для `index.html` в Caddy уже выставлен `no-cache`.
 
 ---
 

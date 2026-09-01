@@ -1792,6 +1792,28 @@
         "open_candidate": "Otwórz kandydata",
         "all_reminders": "Wszystkie przypomnienia",
         "later": "Później"
+      },
+      "event_types": {
+        "reminder_due": "Zadanie na termin",
+        "reminder_overdue": "Zadanie zaległe",
+        "candidate_docs_pending_upload": "Oczekiwane dokumenty kandydata",
+        "candidate_docs_pending_upload_desc": "{name}: postęp {ready}/{total}, brakuje jeszcze {missing} plików.",
+        "handoff_rejected": "Przekazanie odrzucone",
+        "handoff_returned": "Przekazanie zwrócone",
+        "lead_no_next_action": "Lead bez następnego kroku",
+        "lead_stuck_stage": "Lead utknął na etapie",
+        "invoice_overdue": "Faktura po terminie",
+        "candidate_ready_for_handoff_auto": "Kandydat gotowy do przekazania",
+        "document_expired": "Dokument wygasł",
+        "document_expiring_soon": "Dokument wkrótce wygaśnie",
+        "lead": {
+          "new": {
+            "telegram": "Nowy lead (Telegram)"
+          },
+          "status_changed": {
+            "telegram": "Zmiana statusu leada (Telegram)"
+          }
+        }
       }
     },
     "sla_incidents": {
@@ -1807,6 +1829,7 @@
       "empty_group": "Brak incydentów w grupie \"{group}\".",
       "open_dialog": "Otwórz dialog",
       "mark_read": "Oznacz jako przeczytane",
+      "due_at": "termin {date}",
       "actions": {
         "in_work": "W toku",
         "later": "Później",
@@ -2074,7 +2097,8 @@
         "open": "Otwórz",
         "clear": "Wyczyść",
         "clear_all": "Wyczyść wszystko",
-        "open_center": "Otwórz centrum powiadomień"
+        "open_center": "Otwórz centrum powiadomień",
+        "reminder_group_title": "{count} oczekujących zadań dla tego rekordu"
       },
       "search": {
         "open": "Szukaj",
@@ -2289,6 +2313,14 @@
           "intake_client_lead_skipped_no_company": {
             "title": "Publiczny intake: lead nie utworzony",
             "description": "Powiadomienie w aplikacji, gdy zapytanie klienta nie utworzyło leada (brak przypisanej firmy klienta)."
+          },
+          "lead_new_telegram": {
+            "title": "Telegram: nowy lead",
+            "description": "Alert Telegram, gdy pojawi się nowy lead."
+          },
+          "lead_status_changed_telegram": {
+            "title": "Telegram: zmiana statusu leada",
+            "description": "Alert Telegram, gdy zmieni się status leada."
           }
         }
       },
@@ -5361,10 +5393,10 @@
         "docs_missing_badge": "Brak dokumentów",
         "docs_request_title": "Poproś o dokumenty",
         "docs_review_required": "Wymagany przegląd dokumentów",
-        "due": "Należny",
-        "empty": "Pusty",
-        "overdue": "Zaległy",
-        "snooze": "Drzemka",
+        "due": "Termin",
+        "empty": "Brak",
+        "overdue": "Zaległe",
+        "snooze": "Odłóż",
         "pipeline_completed_title": "Proces zakończony",
         "pipeline_completed_body": "Kandydat na etapie końcowym rekrutacji (gotowy do przekazania do HR, odrzucony, rezygnacja lub zwrot) — dalsze kroki lejka nie dotyczą.",
         "title": "Następne działanie"
@@ -7056,7 +7088,7 @@
         "empty_desc": "Skontaktuj się z leadem — kolejny krok pojawi się tutaj, żeby nic nie wisiało.",
         "empty_title": "Brak follow-upów",
         "events_empty": "Brak zdarzeń.",
-        "unread": "Niewykształcony",
+        "unread": "Nieprzeczytane",
         "empty_why": "To Twoja kolejka kontaktów po pierwszym zgłoszeniu."
       },
       "errors": {
@@ -7073,7 +7105,7 @@
       },
       "events": {
         "lead_processed": "Nowy kandydat z leada",
-        "lead_needs_routing": "Lead wymaga skierowania",
+        "lead_needs_routing": "Lead wymaga routingu",
         "lead_failed": "Błąd przetwarzania leada",
         "candidate_created": "Utworzono kandydata",
         "candidate_updated": "Zaktualizowano kandydata",
@@ -7096,12 +7128,12 @@
         "untitled": "Bez tytułu"
       },
       "messages": {
-        "completed": "Zakończony",
+        "completed": "Zakończono",
         "created": "Przypomnienie utworzone",
-        "snoozed": "Drzemka"
+        "snoozed": "Odłożono"
       },
       "status": {
-        "overdue": "Zaległy"
+        "overdue": "Zaległe"
       },
       "fallback_title": "Przypomnienie",
       "layout_hint_by_candidate": "Grupuje otwarte zadania według powiązanego kandydata.",
@@ -9487,58 +9519,58 @@
       }
     },
     "notification_alerts": {
-      "title": "Notification Center",
-      "subtitle": "Open document expiry alerts from the platform event registry. Read-only — no outbound messages.",
-      "list_title": "Open alerts ({count})",
-      "empty": "No alerts match the current filters.",
-      "detail_empty": "Select an alert to view details.",
-      "expires_on": "Expires on {{date}}",
+      "title": "Centrum powiadomień",
+      "subtitle": "Otwarte alerty o wygaśnięciu dokumentów. Tylko odczyt — bez wiadomości wychodzących.",
+      "list_title": "Otwarte alerty ({count})",
+      "empty": "Brak alertów dla bieżących filtrów.",
+      "detail_empty": "Wybierz alert, aby zobaczyć szczegóły.",
+      "expires_on": "Wygasa {date}",
       "errors": {
-        "load": "Failed to load notification alerts",
-        "status": "Failed to update alert status",
-        "sync": "Failed to sync document expiry alerts"
+        "load": "Nie udało się wczytać alertów",
+        "status": "Nie udało się zaktualizować statusu alertu",
+        "sync": "Nie udało się zsynchronizować alertów o wygaśnięciu"
       },
       "sync": {
-        "success": "Expiry alerts synced",
-        "summary": "Sync complete — created {{created}}, updated {{updated}}, skipped {{skipped}}"
+        "success": "Alerty o wygaśnięciu zsynchronizowane",
+        "summary": "Synchronizacja zakończona — utworzono {created}, zaktualizowano {updated}, pominięto {skipped}"
       },
       "toast": {
-        "resolved": "Alert marked as resolved",
-        "ignored": "Alert marked as ignored"
+        "resolved": "Alert oznaczony jako rozwiązany",
+        "ignored": "Alert oznaczony jako zignorowany"
       },
       "filters": {
-        "event_type": "Event type",
-        "event_type_all": "All expiry events",
-        "event_type_expired": "Expired documents",
-        "event_type_expiring_soon": "Expiring soon",
-        "source_layer": "Source",
-        "source_document_expiry": "Document expiry notifications",
-        "source_all": "All sources",
+        "event_type": "Typ zdarzenia",
+        "event_type_all": "Wszystkie zdarzenia wygaśnięcia",
+        "event_type_expired": "Wygasłe dokumenty",
+        "event_type_expiring_soon": "Wkrótce wygasną",
+        "source_layer": "Źródło",
+        "source_document_expiry": "Powiadomienia o wygaśnięciu dokumentów",
+        "source_all": "Wszystkie źródła",
         "status": {
-          "open": "Open",
-          "resolved": "Resolved",
-          "ignored": "Ignored"
+          "open": "Otwarte",
+          "resolved": "Rozwiązane",
+          "ignored": "Zignorowane"
         }
       },
       "event_code": {
-        "document_expired": "Document expired",
-        "document_expiring_soon": "Document expiring soon"
+        "document_expired": "Dokument wygasł",
+        "document_expiring_soon": "Dokument wkrótce wygaśnie"
       },
       "severity": {
-        "critical": "Critical",
-        "warning": "Warning"
+        "critical": "Krytyczny",
+        "warning": "Ostrzeżenie"
       },
       "detail": {
-        "document_type": "Document type",
-        "owner": "Owner",
-        "expires_on": "Expires on",
-        "source_layer": "Source layer"
+        "document_type": "Typ dokumentu",
+        "owner": "Właściciel",
+        "expires_on": "Wygasa",
+        "source_layer": "Warstwa źródła"
       },
       "actions": {
-        "mark_resolved": "Mark resolved",
-        "mark_ignored": "Mark ignored",
-        "open_owner": "Open owner profile",
-        "sync_now": "Sync now"
+        "mark_resolved": "Oznacz jako rozwiązany",
+        "mark_ignored": "Zignoruj",
+        "open_owner": "Otwórz profil właściciela",
+        "sync_now": "Synchronizuj"
       }
     },
     "sales_questionnaire": {

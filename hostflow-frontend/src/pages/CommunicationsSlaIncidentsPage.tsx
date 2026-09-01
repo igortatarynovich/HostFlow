@@ -427,11 +427,15 @@ export default function CommunicationsSlaIncidentsPage() {
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-[280px] flex-1 space-y-1">
-                    <div className="text-sm font-semibold text-slate-900">{String(payload.title || t('app.notifications.communications_sla_overdue_title', { defaultValue: 'SLA overdue: reply required in dialog' }))}</div>
+                    <div className="text-sm font-semibold text-slate-900">
+                      {t('app.notifications.communications_sla_overdue_title')}
+                    </div>
                     <div className="text-sm text-slate-600">{String(payload.description || '—')}</div>
                     <div className="text-xs text-slate-500">
                       {String(payload.channel || '').toUpperCase()} · {when}
-                      {payload.sla_due_at ? ` · due ${String(payload.sla_due_at)}` : ''}
+                      {payload.sla_due_at
+                        ? ` · ${t('app.sla_incidents.due_at', { values: { date: String(payload.sla_due_at) } })}`
+                        : ''}
                     </div>
                     <div className="text-xs">
                       <span className="badge bg-slate-100 text-slate-700">{t(`app.sla_incidents.groups.${group}`)}</span>

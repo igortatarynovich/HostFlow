@@ -40,6 +40,10 @@ services:
       - REDIS_URL=redis://redis:6379/0
       # Live SMTP for questionnaire email staging acceptance (tenant_email_config).
       - EMAIL_DELIVERY_MODE=live
+      # Baked at `scripts/deploy/deploy-live.sh` recreate; /build reads these.
+      - HOSTFLOW_REVISION=${HOSTFLOW_REVISION:-unknown}
+      - HOSTFLOW_VERSION=${HOSTFLOW_VERSION:-unknown}
+      - HOSTFLOW_BUILT_AT=${HOSTFLOW_BUILT_AT:-unknown}
     depends_on:
       db:
         condition: service_healthy
@@ -83,6 +87,9 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - JOB_QUEUE_BACKEND=arq
       - EMAIL_DELIVERY_MODE=mock
+      - HOSTFLOW_REVISION=${HOSTFLOW_REVISION:-unknown}
+      - HOSTFLOW_VERSION=${HOSTFLOW_VERSION:-unknown}
+      - HOSTFLOW_BUILT_AT=${HOSTFLOW_BUILT_AT:-unknown}
     depends_on:
       db:
         condition: service_healthy

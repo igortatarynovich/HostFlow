@@ -33,6 +33,10 @@ import { useCommunicationsAccess } from '../../hooks/useCommunicationsAccess'
 import { canUseTeamAssigneeScope } from '../../auth/trustRoles'
 import { usePermissions } from '../../hooks/usePermissions'
 import { searchGlobal, type GlobalSearchResult } from '../../api/search'
+import {
+  notificationDisplayDescription,
+  notificationDisplayTitle,
+} from '../../utils/notificationPresentation'
 import { useI18n } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
 import { usePendingHandoffsCount } from '../../hooks/usePendingHandoffsCount'
@@ -75,15 +79,6 @@ function appendSearchQueryParam(path: string, query: string): string {
   if (!trimmed) return path
   const q = encodeURIComponent(trimmed)
   return path.includes('?') ? `${path}&q=${q}` : `${path}?q=${q}`
-}
-
-function humanizeEventType(eventType: string): string {
-  return eventType
-    .trim()
-    .toLowerCase()
-    .replace(/_/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/^\w/, (c) => c.toUpperCase())
 }
 
 function isBellAttentionNotification(item: NotificationItem): boolean {
@@ -234,81 +229,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const isSuperAdmin = isPlatformSuperadminRole(me?.role)
   const { entityPlural: clientsNavLabel } = useBusinessTerminology()
 
-  const getNotificationTitle = (item: NotificationItem): string => {
-    const maybeTranslateKey = (value: string): string => {
-      const v = String(value || '').trim()
-      if (!v) return ''
-      if (/^(app|common)\./.test(v)) {
-        const localized = t(v as any, { defaultValue: '' })
-        if (localized && localized !== v) return localized
-      }
-      return v
-    }
-    const eventType = String(item.event_type || '').trim().toLowerCase()
-    if (eventType === 'handoff_requested') {
-      return t('app.notifications.handoff_requested_title')
-    }
-    if (eventType === 'handoff_accepted') {
-      return t('app.notifications.handoff_accepted_title')
-    }
-    if (eventType === 'communications_sla_overdue') {
-      return t('app.notifications.communications_sla_overdue_title')
-    }
-    if (eventType === 'communications_thread_escalated') {
-      return t('app.notifications.communications_thread_escalated_title')
-    }
-    if (eventType === 'lead_public_intake_client') {
-      return t('app.notifications.lead_public_intake_client_title')
-    }
-    if (eventType === 'intake_client_lead_skipped_no_company') {
-      return t('app.notifications.intake_client_lead_skipped_no_company_title')
-    }
-    if (eventType === 'intake.questionnaire.submitted') {
-      return t('app.notifications.intake_questionnaire_submitted_title', {
-        defaultValue: 'Клиент заполнил анкету',
-      })
-    }
-    if (typeof item.payload?.title === 'string' && item.payload.title.trim()) {
-      return maybeTranslateKey(item.payload.title)
-    }
-    const localized = t(`app.notifications.event_types.${eventType}` as any, { defaultValue: '' })
-    if (localized && localized !== `app.notifications.event_types.${eventType}`) {
-      return localized
-    }
-    return humanizeEventType(eventType || 'notification')
-  }
+  const getNotificationTitle = (item: NotificationItem): string => notificationDisplayTitle(item, t)
 
-  const getNotificationDescription = (item: NotificationItem): string => {
-    const payload = (item.payload || {}) as Record<string, any>
-    const eventType = String(item.event_type || '').trim().toLowerCase()
-    if (eventType === 'lead_public_intake_client') {
-      return t('app.notifications.lead_public_intake_client_desc', {
-        values: { name: String(payload.candidate_name || '').trim() || '—' },
-      })
-    }
-    if (eventType === 'intake_client_lead_skipped_no_company') {
-      return t('app.notifications.intake_client_lead_skipped_no_company_desc', {
-        values: { name: String(payload.candidate_name || '').trim() || '—' },
-      })
-    }
-    if (eventType === 'intake.questionnaire.submitted') {
-      const line = String(payload.description || payload.body || '').trim()
-      if (line) return line
-      const contact = String(payload.contact_name || '').trim() || '—'
-      const company = String(payload.company_name || '').trim() || '—'
-      return t('app.notifications.intake_questionnaire_submitted_desc', {
-        defaultValue: '{contact} — {company}',
-        values: { contact, company },
-      })
-    }
-    const raw = String(payload.description || payload.body || '').trim()
-    if (!raw) return ''
-    if (/^(app|common)\./.test(raw)) {
-      const localized = t(raw as any, { defaultValue: '' })
-      if (localized && localized !== raw) return localized
-    }
-    return raw
-  }
+  const getNotificationDescription = (item: NotificationItem): string =>
+    notificationDisplayDescription(item, t)
 
   const unifiedPanelRows = useMemo(() => {
     type Row =

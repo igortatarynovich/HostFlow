@@ -1810,6 +1810,28 @@
         "open_candidate": "Open candidate",
         "all_reminders": "All reminders",
         "later": "Later"
+      },
+      "event_types": {
+        "reminder_due": "Task due",
+        "reminder_overdue": "Task overdue",
+        "candidate_docs_pending_upload": "Candidate documents pending",
+        "candidate_docs_pending_upload_desc": "{name}: progress {ready}/{total}, {missing} files still needed.",
+        "handoff_rejected": "Handoff rejected",
+        "handoff_returned": "Handoff returned",
+        "lead_no_next_action": "Lead has no next step",
+        "lead_stuck_stage": "Lead stuck on a stage",
+        "invoice_overdue": "Invoice overdue",
+        "candidate_ready_for_handoff_auto": "Candidate ready for handoff",
+        "document_expired": "Document expired",
+        "document_expiring_soon": "Document expiring soon",
+        "lead": {
+          "new": {
+            "telegram": "New lead (Telegram)"
+          },
+          "status_changed": {
+            "telegram": "Lead status changed (Telegram)"
+          }
+        }
       }
     },
     "sla_incidents": {
@@ -1825,6 +1847,7 @@
       "empty_group": "No incidents in \"{group}\" group.",
       "open_dialog": "Open dialog",
       "mark_read": "Mark read",
+      "due_at": "due {date}",
       "actions": {
         "in_work": "In work",
         "later": "Later",
@@ -1851,11 +1874,11 @@
     },
     "notification_alerts": {
       "title": "Notification Center",
-      "subtitle": "Open document expiry alerts from the platform event registry. Read-only — no outbound messages.",
+      "subtitle": "Open document expiry alerts. Read-only — no outbound messages.",
       "list_title": "Open alerts ({count})",
       "empty": "No alerts match the current filters.",
       "detail_empty": "Select an alert to view details.",
-      "expires_on": "Expires on {{date}}",
+      "expires_on": "Expires on {date}",
       "errors": {
         "load": "Failed to load notification alerts",
         "status": "Failed to update alert status",
@@ -1863,7 +1886,7 @@
       },
       "sync": {
         "success": "Expiry alerts synced",
-        "summary": "Sync complete — created {{created}}, updated {{updated}}, skipped {{skipped}}"
+        "summary": "Sync complete — created {created}, updated {updated}, skipped {skipped}"
       },
       "toast": {
         "resolved": "Alert marked as resolved",
@@ -2147,7 +2170,8 @@
         "open": "Open",
         "clear": "Clear",
         "clear_all": "Clear all",
-        "open_center": "Open Notification Center"
+        "open_center": "Open Notification Center",
+        "reminder_group_title": "{count} pending tasks for this record"
       },
       "search": {
         "open": "Search",
@@ -2362,6 +2386,14 @@
           "intake_client_lead_skipped_no_company": {
             "title": "Public intake: client lead not created",
             "description": "In-app alert when a client inquiry could not create a lead (no client company resolved)."
+          },
+          "lead_new_telegram": {
+            "title": "Telegram: new lead",
+            "description": "Send a Telegram alert when a new lead is created."
+          },
+          "lead_status_changed_telegram": {
+            "title": "Telegram: lead status changed",
+            "description": "Send a Telegram alert when lead status changes."
           }
         }
       },

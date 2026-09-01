@@ -18,10 +18,9 @@ export type TranslateOptions = {
   defaultValue?: string
   values?: Record<string, string | number>
   /**
-   * Legacy ad-hoc interpolation keys passed at the top level (e.g. `{ count: 3 }`)
-   * by older callers. The runtime currently only formats `options.values`, so any
-   * top-level key is best-effort and only kept here to avoid breaking the type
-   * surface. Prefer `values: { count: 3 }` for new code.
+   * Legacy ad-hoc interpolation keys passed at the top level (e.g. `{ count: 3 }`).
+   * The runtime merges those into the same substitution map as `values`.
+   * Prefer `values: { count: 3 }` for new code.
    */
   [extra: string]: unknown
 }
@@ -72,6 +71,21 @@ function format(template: string, values?: Record<string, string | number>): str
     const token = `{${key}}`
     return acc.split(token).join(String(value))
   }, template)
+}
+
+function interpolationValues(options?: TranslateOptions): Record<string, string | number> | undefined {
+  if (!options) return undefined
+  const extras: Record<string, string | number> = {}
+  for (const [key, value] of Object.entries(options)) {
+    if (key === 'defaultValue' || key === 'values') continue
+    if (typeof value === 'string' || typeof value === 'number') {
+      extras[key] = value
+    }
+  }
+  if (options.values) {
+    return { ...extras, ...options.values }
+  }
+  return Object.keys(extras).length ? extras : undefined
 }
 
 export function lookupScopedTranslation(
@@ -129,10 +143,10 @@ export function I18nProvider({
         const bundle = RESOURCES[code]
         const raw = lookup(key, bundle)
         if (raw) {
-          return format(raw, options?.values)
+          return format(raw, interpolationValues(options))
         }
       }
-      return format(options?.defaultValue ?? key, options?.values)
+      return format(options?.defaultValue ?? key, interpolationValues(options))
     }
 
     return {

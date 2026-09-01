@@ -34,7 +34,7 @@ Ten required procedures, ten missing. That count is the honest measure of operat
 
 | Procedure | Path | Scope |
 |-----------|------|-------|
-| Frontend deploy | [`docs/FRONTEND_DEPLOY.md`](../FRONTEND_DEPLOY.md) | Build + Caddy restart; a step inside RB-1, not RB-1 |
+| Frontend deploy | [`docs/FRONTEND_DEPLOY.md`](../FRONTEND_DEPLOY.md) | Live working-tree publish via [`scripts/deploy/deploy-live.sh`](../../scripts/deploy/deploy-live.sh); a step inside RB-1, not RB-1 |
 | Deploy troubleshooting | [`deploy/TROUBLESHOOTING.md`](../../deploy/TROUBLESHOOTING.md) | 502 / stale static; host-specific |
 | Security incident triage | [`docs/security/security-review-checklist.md`](../security/security-review-checklist.md) § IR | Data leak, credential compromise, malware upload |
 | Detection alert triage | [`docs/security/detection-runbooks.md`](../security/detection-runbooks.md) | Per-rule security triage |

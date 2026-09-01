@@ -20,6 +20,17 @@ fleet.hostflow.cc, finance.hostflow.cc {
 		reverse_proxy backend:8000
 	}
 
+	# Process identity / liveness — must not fall through to SPA index.html.
+	handle /build {
+		reverse_proxy backend:8000
+	}
+	handle /healthz {
+		reverse_proxy backend:8000
+	}
+	handle /health {
+		reverse_proxy backend:8000
+	}
+
 	# Статика Vite: длинный кеш (имена файлов с хэшем). Иначе не трогаем — см. ниже.
 	handle /assets/* {
 		root * /var/www/hostflow-frontend

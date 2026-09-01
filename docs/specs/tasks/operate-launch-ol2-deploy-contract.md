@@ -24,10 +24,10 @@ it:
 | `docker-compose.yml` builds the backend with `build: context: ./backend` | There is no built artefact to return to — "rollback" would mean rebuilding an old checkout against today's base image, today's PyPI index and today's apt mirror |
 | `/opt/HostFlow/backend` is bind-mounted **read-write** into the running container at `/app` | The image barely matters: the code actually executing is whatever is in the working tree at restart |
 | Caddy serves `/opt/HostFlow/hostflow-frontend/dist` directly (bind mount, read-only) | The live document root **is** the build output directory |
-| `rebuild-frontend.sh` rsyncs into `/var/www/hostflow-frontend`, a path Caddy does not serve — its newest file is dated 2026-07-31 while the served `dist` is dated 2026-08-28, and `index.html` differs | The committed deploy script's publish step has had **no effect on what is served for a month**. The real publish is `vite build` overwriting the live root in place |
-| No `emptyOutDir` override in the Vite config (default is to empty the output directory) | Every frontend build **empties the live document root** before repopulating it. There is no atomic swap and no rollback target |
-| `hostflow-frontend/dist` is gitignored; no build metadata is emitted | The served bundle cannot be traced to a commit, so the currently deployed frontend is of **unknown provenance** |
-| Backend exposes `version="0.5.0"` (a hand-edited literal in `main.py`) and `/healthz` returns `{"status":"ok"}` | The running system cannot answer "which commit are you?" at all |
+| `rebuild-frontend.sh` used to rsync into `/var/www/hostflow-frontend`, a path Caddy does not serve | **Fixed 2026-09-01:** the wrapper delegates to [`scripts/deploy/deploy-live.sh`](../../../scripts/deploy/deploy-live.sh), which rsyncs into the Caddy bind-mount `hostflow-frontend/dist`. Host `/var/www/hostflow-frontend` remains a decoy. This is still the live working-tree path, not RB-1 |
+| No `emptyOutDir` override in the Vite config (default is to empty the output directory) | `vite build` into `dist/` would empty the live root. **Live path 2026-09-01:** `deploy-live.sh` builds to a temp dir and rsyncs into `dist/`, so the bind-mount inode is kept. Still not an atomic symlink / rollback target |
+| `hostflow-frontend/dist` is gitignored | The served bundle is not in git. After `deploy-live.sh`, `dist/build.json` and `GET /build` carry the SHA baked at publish time. A restart without that script still answers `unknown` |
+| Backend exposes `version="0.5.0"` (a hand-edited literal in `main.py`) and `/healthz` returns `{"status":"ok"}` | `/healthz` still has no dependency checks. `/build` answers the baked env when the process was started by `deploy-live.sh`; otherwise `unknown` |
 
 **Therefore:** minting a tag now would label a deployment whose frontend provenance is unknown and
 whose backend is a mutable working tree. The tag would be a fiction. The contract must come first.
@@ -72,12 +72,12 @@ It qualifies only if all hold:
 4. Emits a served build-metadata file (commit SHA, build ID, build timestamp) so provenance is
    answerable from the outside.
 
-**Current state (2026-08-31, after `cdfb8697`):** `vite` now emits `dist/build.json` (clause 4, on the
-next build). `scripts/deploy/publish-frontend.sh` publishes by content-hash directory + atomic
-symlink (clauses 2 and 3) and refuses a tree without `build.json`. The **live** Caddy root is still
-the checkout `dist/`, so production still fails 2, 3, 4 until OL-2B points it at
-`/var/lib/hostflow/releases/frontend/current`. Clause 1 (`npm ci`) is enforced only by
-`build-release-artefacts.sh`, not by `rebuild-frontend.sh`.
+**Current state (2026-09-01):** `vite` emits `dist/build.json` (clause 4). `scripts/deploy/publish-frontend.sh`
+publishes by content-hash directory + atomic symlink (clauses 2 and 3) on the **release** path.
+The **live** Caddy root is still the checkout `dist/`. `deploy-live.sh` now builds outside that
+root and rsyncs in (clause 2 partially: not an atomic symlink, not retained). Production still
+fails full C-2 until OL-2B points Caddy at `/var/lib/hostflow/releases/frontend/current`.
+Clause 1 (`npm ci`) runs on live when `node_modules` is missing or older than the lockfile.
 
 ### C-3. How a commit SHA reaches the deployed build
 
@@ -91,10 +91,11 @@ The SHA is not documented alongside the deployment; it is **carried by it**.
 Until an endpoint exposes it, no deployment record may assert a commit; it may only assert what was
 *intended* to be deployed, which is not evidence.
 
-**Current state (2026-08-31, after `cdfb8697`):** `GET /build` returns `{revision, version, built_at}`
-from `HOSTFLOW_*` environment variables baked into the release image. The live backend, started
-without those variables and bind-mounted over the image, will answer `unknown`. Querying `/build` on
-production today is therefore not evidence of a commit.
+**Current state (2026-09-01):** `GET /build` returns `{revision, version, built_at}` from `HOSTFLOW_*`.
+The **release** image bakes them at `docker build`. The **live** stack bakes them when
+`scripts/deploy/deploy-live.sh` recreates backend (compose interpolates the env). A live process
+started any other way still answers `unknown`. Caddy on hostflow.cc now reverse-proxies `/build`
+instead of serving SPA `index.html` at that path.
 
 ### C-4. What "previous tag" means
 

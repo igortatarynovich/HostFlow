@@ -1273,13 +1273,16 @@ async def _run_candidate_docs_deadlines_for_tenant(db, *, tenant: Tenant, now: d
                         "source": "candidate_docs",
                         "severity": "medium",
                         "requires_action": True,
-                        "title": "Ожидаются документы кандидата",
-                        "description": (
-                            f"Кандидат {str(getattr(cand, 'first_name', '') or '').strip()} "
-                            f"{str(getattr(cand, 'last_name', '') or '').strip()}: "
-                            f"прогресс {ready}/{total}, не хватает {len(missing)}."
-                        ).strip(),
+                        "title": "app.notifications.event_types.candidate_docs_pending_upload",
+                        "description": "app.notifications.event_types.candidate_docs_pending_upload_desc",
                         "candidate_id": str(cand.id),
+                        "candidate_name": (
+                            f"{str(getattr(cand, 'first_name', '') or '').strip()} "
+                            f"{str(getattr(cand, 'last_name', '') or '').strip()}"
+                        ).strip(),
+                        "ready": ready,
+                        "total": total,
+                        "missing": len(missing),
                         "missing_count": len(missing),
                         "hours_since_ready": hours_since_ready,
                         "dedupe_key": f"candidate_docs_pending:{tenant_id}:{manager_id}:{cand.id}:{h}",

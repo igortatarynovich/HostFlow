@@ -16,6 +16,9 @@ from backend.app.modules.client_accounts.schemas import (
     ClientAccountOut,
     ClientAccountUpdate,
 )
+from backend.app.modules.client_accounts.ensure_for_company import (
+    ensure_manual_client_accounts_for_local_client_companies,
+)
 from backend.app.modules.client_accounts.service import (
     get_client_account_or_404,
     to_client_account_out,
@@ -42,6 +45,35 @@ async def list_client_accounts_endpoint(
         status=status_filter,
         limit=limit,
         offset=offset,
+    )
+    return ClientAccountListResponse(
+        items=[to_client_account_out(row) for row in items],
+        total=total,
+    )
+
+
+@router.post("/ensure-from-client-companies", response_model=ClientAccountListResponse)
+async def ensure_client_accounts_from_client_companies(
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+) -> ClientAccountListResponse:
+    """Backfill ClientAccount for local client companies (operator Add Client gap repair)."""
+    db, tenant_id = db_tenant
+    actor = str(getattr(current_user, "sub", None) or "").strip()
+    if not actor:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing actor")
+    await ensure_manual_client_accounts_for_local_client_companies(
+        db,
+        tenant_id=str(tenant_id),
+        actor_user_id=actor,
+    )
+    await db.commit()
+    items, total = await crud.list_client_accounts(
+        db,
+        tenant_id=str(tenant_id),
+        limit=200,
+        offset=0,
     )
     return ClientAccountListResponse(
         items=[to_client_account_out(row) for row in items],
