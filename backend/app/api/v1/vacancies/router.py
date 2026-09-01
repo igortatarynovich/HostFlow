@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
+from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel
 
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
@@ -292,7 +293,11 @@ async def create_vacancy(
             actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
         )
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e)) from e
+        msg = str(e)
+        code = 422 if msg == "Company not found" else 409
+        raise HTTPException(status_code=code, detail=msg) from e
+    except IntegrityError as e:
+        raise HTTPException(status_code=422, detail="Company not found") from e
 
 @router.post(
     "/{vacancy_id}/candidates",

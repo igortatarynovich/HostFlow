@@ -493,3 +493,53 @@ async def test_patch_updates_company_id(
     lookup = await client.get(f"/api/v1/vacancies/{vacancy_id}", headers=headers)
     assert lookup.status_code == 200, lookup.text
     assert lookup.json().get("company_id") == company_b
+
+
+@pytest.mark.anyio
+async def test_create_vacancy_unknown_company_is_not_500(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    headers = _headers(manager_headers)
+    response = await client.post(
+        "/api/v1/vacancies",
+        headers=headers,
+        json={
+            "company_id": str(uuid.uuid4()),
+            "title": f"[auto] missing company {uuid.uuid4().hex[:6]}",
+            "status": "open",
+            "employment_type": "full_time",
+        },
+    )
+    assert response.status_code == 422, response.text
+    assert "Company not found" in str(response.json().get("detail", ""))
+
+
+@pytest.mark.anyio
+async def test_create_vacancy_accepts_own_company_id(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    """Onboarding posts OwnCompany.id as company_id; that must not FK-500."""
+    headers = _headers(manager_headers)
+    own_resp = await client.get("/api/v1/own-companies", headers=headers)
+    assert own_resp.status_code == 200, own_resp.text
+    own_payload = own_resp.json()
+    items = own_payload.get("items") if isinstance(own_payload, dict) else own_payload
+    assert items, "Need an own company to exercise the remap"
+    own_id = items[0]["id"]
+
+    response = await client.post(
+        "/api/v1/vacancies",
+        headers=headers,
+        json={
+            "company_id": own_id,
+            "title": f"[auto] own-company remap {uuid.uuid4().hex[:6]}",
+            "status": "open",
+            "employment_type": "full_time",
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["company_id"] != own_id
+    lookup = await client.get(f"/api/v1/vacancies/{body['id']}", headers=headers)
+    assert lookup.status_code == 200, lookup.text
+    await _archive_after_test(client, headers, body["id"])
