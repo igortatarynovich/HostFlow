@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IconArrowDown, IconArrowUp, IconDeviceFloppy } from '@tabler/icons-react'
-import { useI18n } from '../../i18n'
+import { useI18n, type LocaleCode } from '../../i18n'
 import { useToast } from '../../components/Toast'
 import {
   getEntityProfileFields,
@@ -11,44 +11,23 @@ import {
 } from '../../api/intakeForms'
 import { intakePresentationFieldLabel, intakePresentationProfileTitle } from '../../utils/intakePresentationI18n'
 import { entityProfileLabel } from '../../utils/intakeFormRoutingSummary'
+import {
+  fieldAnswersHint,
+  fieldTypeLabel,
+  fieldsToPayload,
+  looksLikeI18nKey,
+  mergeCatalogWithPreset,
+  slugifyFieldCodeFromLabel,
+  type PresentationFieldDraft,
+} from '../../utils/intakeFormPresentationDraft'
 
 import type { PresentationRules } from '../../utils/presentationRules'
 
-export type PresentationFieldDraft = {
-  qualified_code: string
-  label_override: string
-  intake_level: 'required' | 'optional' | 'hidden'
-  sort_order: number
-  selected: boolean
-  presentation_rules?: PresentationRules
-}
+export type { PresentationFieldDraft }
 
 const RULE_KEYS = ['show_if', 'hide_if', 'required_if', 'readonly_if'] as const
 
 const SERVICE_SALES_PROFILE_PREFIX = 'service_sales.'
-
-function looksLikeI18nKey(value: string): boolean {
-  return /^(fields|admin|public|forms)\./.test(value)
-}
-
-function fieldsToPayload(rows: PresentationFieldDraft[]): PresentationFieldInput[] {
-  return rows
-    .filter((row) => row.selected)
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((row, index) => {
-      const rawLabel = row.label_override.trim()
-      const payload: PresentationFieldInput = {
-        qualified_code: row.qualified_code,
-        label_override: !rawLabel || looksLikeI18nKey(rawLabel) ? undefined : rawLabel,
-        intake_level: row.intake_level,
-        sort_order: (index + 1) * 10,
-      }
-      if (row.presentation_rules && Object.keys(row.presentation_rules).length > 0) {
-        payload.presentation_rules = row.presentation_rules
-      }
-      return payload
-    })
-}
 
 type Props = {
   entityProfileCode: string
@@ -59,6 +38,7 @@ type Props = {
   hideProfileSelect?: boolean
   autoLoadPreset?: boolean
   variant?: 'full' | 'wizard'
+  displayLocale?: LocaleCode
 }
 
 export function IntakeFormPresentationEditor({
@@ -70,9 +50,11 @@ export function IntakeFormPresentationEditor({
   hideProfileSelect = false,
   autoLoadPreset = false,
   variant = 'full',
+  displayLocale,
 }: Props) {
   const { t, locale } = useI18n()
   const { notify } = useToast()
+  const labelLocale = displayLocale || locale
   const [profiles, setProfiles] = useState<Array<{ code: string; name: string }>>([])
   const [profileCode, setProfileCode] = useState(entityProfileCode)
   const [catalog, setCatalog] = useState<EntityProfileFieldOption[]>([])
@@ -80,12 +62,13 @@ export function IntakeFormPresentationEditor({
   const [loading, setLoading] = useState(true)
   const [loadingPreset, setLoadingPreset] = useState(false)
   const autoLoadedFor = useRef<string | null>(null)
+  const pendingPresetRef = useRef<PresentationFieldInput[] | null>(null)
   const compact = variant === 'wizard'
 
   const catalogLabel = useCallback(
     (field: Pick<EntityProfileFieldOption, 'qualified_code' | 'label'>) =>
-      intakePresentationFieldLabel(t, field, locale),
-    [locale, t],
+      intakePresentationFieldLabel(t, field, labelLocale),
+    [labelLocale, t],
   )
 
   const loadCatalog = useCallback(
@@ -96,13 +79,16 @@ export function IntakeFormPresentationEditor({
         const payload = await getEntityProfileFields(code)
         setCatalog(payload.fields)
         setRows((prev) => {
+          if (pendingPresetRef.current?.length) {
+            return mergeCatalogWithPreset(payload.fields, pendingPresetRef.current, prev)
+          }
           const prevByCode = new Map(prev.map((row) => [row.qualified_code, row]))
           return payload.fields.map((field, index) => {
             const existing = prevByCode.get(field.qualified_code)
             if (existing) return existing
             return {
               qualified_code: field.qualified_code,
-              label_override: field.label,
+              label_override: '',
               intake_level: (field.intake_level === 'required' ? 'required' : 'optional') as
                 | 'required'
                 | 'optional'
@@ -133,6 +119,8 @@ export function IntakeFormPresentationEditor({
 
   useEffect(() => {
     setProfileCode(entityProfileCode)
+    autoLoadedFor.current = null
+    pendingPresetRef.current = null
   }, [entityProfileCode])
 
   useEffect(() => {
@@ -152,44 +140,10 @@ export function IntakeFormPresentationEditor({
     [rows],
   )
 
-  const applyPresetFields = useCallback(
-    (presetFields: PresentationFieldInput[]) => {
-      const presetByCode = new Map(presetFields.map((field) => [field.qualified_code, field]))
-      setRows((prev) => {
-        const prevByCode = new Map(prev.map((row) => [row.qualified_code, row]))
-        return catalog.map((field, index) => {
-          const presetField = presetByCode.get(field.qualified_code)
-          const existing = prevByCode.get(field.qualified_code)
-          if (presetField) {
-            return {
-              qualified_code: field.qualified_code,
-              label_override: presetField.label_override || field.label,
-              intake_level: (presetField.intake_level === 'required'
-                ? 'required'
-                : presetField.intake_level === 'hidden'
-                  ? 'hidden'
-                  : 'optional') as 'required' | 'optional' | 'hidden',
-              sort_order: presetField.sort_order ?? (index + 1) * 10,
-              selected: true,
-              presentation_rules: presetField.presentation_rules,
-            }
-          }
-          if (existing) return { ...existing, selected: false }
-          return {
-            qualified_code: field.qualified_code,
-            label_override: field.label,
-            intake_level: (field.intake_level === 'required' ? 'required' : 'optional') as
-              | 'required'
-              | 'optional'
-              | 'hidden',
-            sort_order: (index + 1) * 10,
-            selected: false,
-          }
-        })
-      })
-    },
-    [catalog],
-  )
+  const applyPresetFields = useCallback((presetFields: PresentationFieldInput[]) => {
+    pendingPresetRef.current = presetFields
+    setRows((prev) => mergeCatalogWithPreset(catalog, presetFields, prev))
+  }, [catalog])
 
   const loadPlatformPreset = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -220,13 +174,12 @@ export function IntakeFormPresentationEditor({
 
   useEffect(() => {
     if (!autoLoadPreset) return
-    if (loading || loadingPreset) return
+    if (loadingPreset) return
     if (profileCode.startsWith(SERVICE_SALES_PROFILE_PREFIX) === false) return
-    if (catalog.length === 0) return
     if (autoLoadedFor.current === profileCode) return
     autoLoadedFor.current = profileCode
     void loadPlatformPreset({ silent: true })
-  }, [autoLoadPreset, catalog.length, loadPlatformPreset, loading, loadingPreset, profileCode])
+  }, [autoLoadPreset, loadPlatformPreset, loadingPreset, profileCode])
 
   const moveRow = (qualifiedCode: string, direction: -1 | 1) => {
     const ordered = selectedRows
@@ -246,11 +199,13 @@ export function IntakeFormPresentationEditor({
     )
   }
 
-  const displayLabel = (row: PresentationFieldDraft, field: EntityProfileFieldOption) => {
+  const displayQuestion = (row: PresentationFieldDraft, field: EntityProfileFieldOption) => {
     const override = row.label_override.trim()
     if (override && !looksLikeI18nKey(override)) return override
     return catalogLabel(field)
   }
+
+  const visibleRows = compact ? catalog.filter((field) => rows.some((row) => row.qualified_code === field.qualified_code)) : catalog
 
   return (
     <div className="space-y-4">
@@ -308,6 +263,21 @@ export function IntakeFormPresentationEditor({
         </button>
       )}
 
+      {selectedRows.length > 0 ? (
+        <p className="text-xs text-slate-600">
+          {t('admin.intake_forms.selected_count', {
+            defaultValue: '{count} questions included',
+            values: { count: selectedRows.length },
+          })}
+        </p>
+      ) : (
+        <p className="text-xs text-amber-700">
+          {t('admin.intake_forms.none_selected', {
+            defaultValue: 'Select at least one question, or load a ready questionnaire.',
+          })}
+        </p>
+      )}
+
       {loading ? (
         <p className="text-sm text-slate-500">{t('common.loading')}</p>
       ) : (
@@ -316,19 +286,19 @@ export function IntakeFormPresentationEditor({
             <thead>
               <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-2 py-2">{t('admin.intake_forms.columns.include', { defaultValue: 'Include' })}</th>
+                <th className="px-2 py-2">{t('admin.intake_forms.columns.type', { defaultValue: 'Type' })}</th>
                 <th className="px-2 py-2">{t('admin.intake_forms.columns.label', { defaultValue: 'Question' })}</th>
-                {compact ? null : (
-                  <th className="px-2 py-2">{t('admin.intake_forms.columns.field', { defaultValue: 'Field code' })}</th>
-                )}
+                <th className="px-2 py-2">{t('admin.intake_forms.columns.answers', { defaultValue: 'Answers' })}</th>
                 <th className="px-2 py-2">{t('admin.intake_forms.columns.level', { defaultValue: 'Required?' })}</th>
                 <th className="px-2 py-2">{t('admin.intake_forms.columns.order', { defaultValue: 'Order' })}</th>
               </tr>
             </thead>
             <tbody>
-              {catalog.map((field) => {
+              {visibleRows.map((field) => {
                 const row = rows.find((item) => item.qualified_code === field.qualified_code)
                 if (!row) return null
                 const selectedIndex = selectedRows.findIndex((item) => item.qualified_code === row.qualified_code)
+                const derivedCode = slugifyFieldCodeFromLabel(displayQuestion(row, field))
                 return (
                   <tr key={field.qualified_code} className="border-b border-slate-50">
                     <td className="px-2 py-2">
@@ -347,11 +317,15 @@ export function IntakeFormPresentationEditor({
                         }
                       />
                     </td>
+                    <td className="px-2 py-2 text-xs font-medium text-slate-600">
+                      {fieldTypeLabel(field.field_type, t)}
+                    </td>
                     <td className="px-2 py-2">
                       <input
                         className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
-                        value={displayLabel(row, field)}
+                        value={displayQuestion(row, field)}
                         disabled={disabled || !row.selected}
+                        title={field.qualified_code}
                         onChange={(event) =>
                           setRows((prev) =>
                             prev.map((item) =>
@@ -362,10 +336,15 @@ export function IntakeFormPresentationEditor({
                           )
                         }
                       />
+                      {compact ? null : (
+                        <p className="mt-0.5 font-mono text-[10px] text-slate-400" title={field.qualified_code}>
+                          {field.qualified_code || derivedCode}
+                        </p>
+                      )}
                     </td>
-                    {compact ? null : (
-                      <td className="px-2 py-2 font-mono text-xs text-slate-600">{row.qualified_code}</td>
-                    )}
+                    <td className="max-w-xs px-2 py-2 text-xs text-slate-600">
+                      {fieldAnswersHint(field, t, labelLocale)}
+                    </td>
                     <td className="px-2 py-2">
                       <select
                         className="rounded-lg border border-slate-200 px-2 py-1 text-sm"
@@ -505,7 +484,7 @@ export function detailFieldsToDraft(detail: {
 }): PresentationFieldDraft[] {
   return detail.presentation.fields.map((field) => ({
     qualified_code: field.qualified_code,
-    label_override: field.label,
+    label_override: looksLikeI18nKey(field.label) ? '' : field.label,
     intake_level: (field.intake_level === 'required'
       ? 'required'
       : field.intake_level === 'hidden'

@@ -14674,6 +14674,11 @@
         "destination_company": "Ответы появятся в Sales → Заявки. Водитель эту анкету не заполняет.",
         "destination_candidate": "Ответы появятся в Recruitment как отклик кандидата.",
         "save_activate": "Сохранить и активировать",
+        "save_needs_questions": "Дождитесь загрузки вопросов или отметьте хотя бы один.",
+        "public_language": "Язык при открытии публичной ссылки",
+        "public_language_hint": "Анкета уже есть на польском, английском и русском. Выберите язык, на котором откроется ссылка.",
+        "form_language": "Язык анкеты",
+        "form_language_hint": "Анкета остаётся на языке, на котором вы её написали. Для своих анкет переводы не добавляем.",
         "purposes": {
           "inquiry": {
             "title": "Запрос от компании",
@@ -15177,11 +15182,32 @@
         "inactive": "Inactive"
       },
       "columns": {
-        "label": "Label",
-        "field": "Field code",
-        "level": "Intake level",
-        "widget": "Widget"
+        "include": "Включить",
+        "type": "Тип",
+        "label": "Вопрос",
+        "answers": "Ответы",
+        "field": "Код поля",
+        "level": "Обязательно?",
+        "widget": "Виджет",
+        "order": "Порядок"
       },
+      "field_types": {
+        "text": "Текст",
+        "textarea": "Длинный текст",
+        "integer": "Число",
+        "single_select": "Один вариант",
+        "multi_select": "Несколько вариантов",
+        "phone": "Телефон",
+        "email": "Email"
+      },
+      "answers": {
+        "number": "Число",
+        "phone": "Номер телефона",
+        "email": "Email",
+        "free_text": "Свободный текст"
+      },
+      "selected_count": "Включено вопросов: {count}",
+      "none_selected": "Отметьте хотя бы один вопрос или загрузите готовую анкету.",
       "submit": {
         "lead_draft": "Create: Lead draft only (no Candidate on POST /public/intake)",
         "outcome": "Submit: Decision Layer → Outcome Executor (Candidate only on create_candidate)"

@@ -14674,6 +14674,11 @@
         "destination_company": "Odpowiedzi trafią do Sales → Zapytania. Kierowca tej ankiety nie wypełnia.",
         "destination_candidate": "Odpowiedzi trafią do Recruitment jako zgłoszenie kandydata.",
         "save_activate": "Zapisz i aktywuj",
+        "save_needs_questions": "Poczekaj, aż wczytają się pytania, albo zaznacz co najmniej jedno.",
+        "public_language": "Język po otwarciu publicznego linku",
+        "public_language_hint": "Ta ankieta jest już po polsku, angielsku i rosyjsku. Wybierz język, w którym ma się otworzyć udostępniony link.",
+        "form_language": "Język ankiety",
+        "form_language_hint": "Ankieta zostaje w języku, w którym ją napiszesz. Dla własnych ankiet nie dodajemy tłumaczeń.",
         "purposes": {
           "inquiry": {
             "title": "Zapytanie firmy",
@@ -15177,11 +15182,32 @@
         "inactive": "Inactive"
       },
       "columns": {
-        "label": "Label",
-        "field": "Field code",
-        "level": "Intake level",
-        "widget": "Widget"
+        "include": "Uwzględnij",
+        "type": "Typ",
+        "label": "Pytanie",
+        "answers": "Odpowiedzi",
+        "field": "Kod pola",
+        "level": "Wymagane?",
+        "widget": "Widget",
+        "order": "Kolejność"
       },
+      "field_types": {
+        "text": "Tekst",
+        "textarea": "Długi tekst",
+        "integer": "Liczba",
+        "single_select": "Jednokrotny wybór",
+        "multi_select": "Wielokrotny wybór",
+        "phone": "Telefon",
+        "email": "E-mail"
+      },
+      "answers": {
+        "number": "Liczba",
+        "phone": "Numer telefonu",
+        "email": "Adres e-mail",
+        "free_text": "Dowolny tekst"
+      },
+      "selected_count": "Uwzględniono {count} pytań",
+      "none_selected": "Zaznacz co najmniej jedno pytanie albo wczytaj gotową ankietę.",
       "submit": {
         "lead_draft": "Create: Lead draft only (no Candidate on POST /public/intake)",
         "outcome": "Submit: Decision Layer → Outcome Executor (Candidate only on create_candidate)"

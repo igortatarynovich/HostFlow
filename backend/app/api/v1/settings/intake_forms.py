@@ -96,6 +96,8 @@ class IntakeFormCreateIn(BaseModel):
     entity_profile_code: str = Field(..., min_length=1, max_length=128)
     fields: List[PresentationFieldIn] = Field(..., min_length=1)
     is_active: bool = True
+    default_language: Optional[str] = Field(default=None, max_length=8)
+    supported_languages: Optional[List[str]] = None
 
     @field_validator("public_slug")
     @classmethod
@@ -270,7 +272,8 @@ async def get_intake_form_entity_profile_fields(
         if not qcode:
             continue
         embedded = row.get("field") if isinstance(row.get("field"), dict) else {}
-        label = _effective_label(
+        name = str(embedded.get("name") or "").strip()
+        label = name or _effective_label(
             qualified_code=qcode,
             field_row=row,
             presentation_overrides={},
@@ -336,6 +339,8 @@ async def create_intake_form(
         entity_profile_code=payload.entity_profile_code,
         fields=[f.model_dump(exclude_none=True) for f in payload.fields],
         is_active=payload.is_active,
+        default_language=payload.default_language,
+        supported_languages=payload.supported_languages,
     )
     return IntakeFormDetailOut.model_validate(result)
 

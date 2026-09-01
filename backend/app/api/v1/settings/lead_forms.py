@@ -38,6 +38,8 @@ class TenantLeadFormOut(BaseModel):
     public_slug: str | None = None
     is_active: bool
     lifecycle_status: str = FormLifecycleStatus.active.value
+    purpose: str | None = None
+    target_entity_profile_code: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -59,6 +61,8 @@ def _out(row: TenantLeadForm) -> TenantLeadFormOut:
         public_slug=getattr(row, "public_slug", None),
         is_active=bool(row.is_active),
         lifecycle_status=str(getattr(row, "lifecycle_status", None) or FormLifecycleStatus.active.value),
+        purpose=str(getattr(row, "purpose", None) or "") or None,
+        target_entity_profile_code=str(getattr(row, "target_entity_profile_code", None) or "") or None,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )

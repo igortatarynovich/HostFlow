@@ -4189,15 +4189,16 @@ async def _finalize_public_client_lead_draft(
     lead.stage = "questionnaire_submitted"
     lead.status = "new"
     normalized = dict(lead.normalized or {})
-    normalized.update(
-        {
-            "email": contacts.get("email"),
-            "phone": contacts.get("phone"),
-            "full_name": full_name or None,
-            "company_name": str(client_company.get("name") or "").strip() or None,
-            "intake_application_kind": "client",
-        }
-    )
+    if contacts.get("email"):
+        normalized["email"] = contacts.get("email")
+    if contacts.get("phone"):
+        normalized["phone"] = contacts.get("phone")
+    if full_name:
+        normalized["full_name"] = full_name
+    company_name = str(client_company.get("name") or "").strip()
+    if company_name:
+        normalized["company_name"] = company_name
+    normalized["intake_application_kind"] = "client"
     lead.normalized = {k: v for k, v in normalized.items() if v is not None}
     lead.payload = {
         **(lead.payload if isinstance(lead.payload, dict) else {}),
@@ -4498,10 +4499,16 @@ async def submit_public_intake(
                 parsed = _intake_data_from_state_dict(state).employments
                 if parsed:
                     await _upsert_employments(db, tenant_id, created_candidate_id, parsed)
+        target_lead = public_session.lead
+        target_id = str(dest_result.transport_lead_id or "").strip()
+        if target_id and target_id != str(public_session.lead.id):
+            loaded_target = await db.get(Lead, target_id)
+            if loaded_target is not None and str(loaded_target.tenant_id) == str(tenant_id):
+                target_lead = loaded_target
         await _finalize_public_client_lead_draft(
             db,
             tenant_id=str(tenant_id),
-            lead=public_session.lead,
+            lead=target_lead,
             intake_state=state,
         )
         await db.commit()

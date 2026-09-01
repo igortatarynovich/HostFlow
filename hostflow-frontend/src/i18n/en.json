@@ -14674,6 +14674,11 @@
         "destination_company": "Answers land in Sales → Inquiries. A driver does not fill this form.",
         "destination_candidate": "Answers land in Recruitment as a candidate application.",
         "save_activate": "Save and activate form",
+        "save_needs_questions": "Wait for questions to load, or tick at least one question.",
+        "public_language": "Language when the public link opens",
+        "public_language_hint": "This questionnaire already exists in Polish, English, and Russian. Pick the language the shared link should open in.",
+        "form_language": "Form language",
+        "form_language_hint": "The form stays in the language you write. We do not add translations for custom questionnaires.",
         "purposes": {
           "inquiry": {
             "title": "Company request",
@@ -14734,11 +14739,32 @@
         "inactive": "Inactive"
       },
       "columns": {
-        "label": "Label",
+        "include": "Include",
+        "type": "Type",
+        "label": "Question",
+        "answers": "Answers",
         "field": "Field code",
-        "level": "Intake level",
-        "widget": "Widget"
+        "level": "Required?",
+        "widget": "Widget",
+        "order": "Order"
       },
+      "field_types": {
+        "text": "Text",
+        "textarea": "Long text",
+        "integer": "Number",
+        "single_select": "Single choice",
+        "multi_select": "Multiple choice",
+        "phone": "Phone",
+        "email": "Email"
+      },
+      "answers": {
+        "number": "Number",
+        "phone": "Phone number",
+        "email": "Email address",
+        "free_text": "Free text"
+      },
+      "selected_count": "{count} questions included",
+      "none_selected": "Select at least one question, or load a ready questionnaire.",
       "submit": {
         "lead_draft": "Create: Lead draft only (no Candidate on POST /public/intake)",
         "outcome": "Submit: Decision Layer → Outcome Executor (Candidate only on create_candidate)"
@@ -14750,7 +14776,11 @@
       "errors": {
         "load_detail": "Failed to load intake form",
         "copy": "Could not copy",
-        "smoke": "Smoke test failed"
+        "smoke": "Smoke test failed",
+        "no_fields": "Select at least one question",
+        "load_fields": "Failed to load profile fields",
+        "load_preset": "Failed to load company questionnaire",
+        "create": "Failed to create form"
       },
       "load_driver_hiring_preset": "Load questionnaire for companies hiring drivers",
       "load_warehouse_hiring_preset": "Load questionnaire for companies hiring warehouse workers"

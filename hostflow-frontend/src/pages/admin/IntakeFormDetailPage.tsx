@@ -35,13 +35,7 @@ import {
   getFriendlyErrorInfo,
   type FriendlyErrorInfo,
 } from '../../utils/friendlyError'
-
-function publicIntakeUrlForSlug(slug: string, opts?: { applicationKind?: 'client' | 'candidate' }): string {
-  const q = new URLSearchParams({ lead_form_slug: slug })
-  if (opts?.applicationKind) q.set('application_kind', opts.applicationKind)
-  if (typeof window === 'undefined') return `/public/intake?${q.toString()}`
-  return `${window.location.origin}/public/intake?${q.toString()}`
-}
+import { isCompanyInquiryProfile, isFormLocale, publicIntakeUrlForSlug } from '../../utils/intakeFormPresentationDraft'
 
 export default function IntakeFormDetailPage() {
   const { formId = '' } = useParams<{ formId: string }>()
@@ -204,14 +198,13 @@ export default function IntakeFormDetailPage() {
   )
 
   const publicSlug = detail?.form.public_slug?.trim() || ''
-  const formPurpose = String(detail?.form.purpose || '').trim().toLowerCase()
+  const rawLang = detail?.intake_source_profile?.default_language
+  const publicLang = isFormLocale(rawLang) ? rawLang : undefined
   const publicUrl = publicSlug
-    ? publicIntakeUrlForSlug(
-        publicSlug,
-        formPurpose === 'inquiry' || formPurpose === 'questionnaire'
-          ? { applicationKind: 'client' }
-          : undefined,
-      )
+    ? publicIntakeUrlForSlug(publicSlug, {
+        applicationKind: isCompanyInquiryProfile(detail?.entity_profile.code) ? 'client' : undefined,
+        lang: publicLang,
+      })
     : ''
 
   return (
@@ -405,6 +398,7 @@ export default function IntakeFormDetailPage() {
                     initialFields={presentationDraft}
                     onEntityProfileChange={setEntityProfileCode}
                     onChange={setPresentationFields}
+                    displayLocale={publicLang}
                   />
                 </div>
                 <div className="mt-4">

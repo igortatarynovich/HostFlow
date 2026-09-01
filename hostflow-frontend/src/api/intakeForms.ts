@@ -99,6 +99,8 @@ export type IntakeFormCreateInput = {
   entity_profile_code: string
   fields: PresentationFieldInput[]
   is_active?: boolean
+  default_language?: 'pl' | 'en' | 'ru'
+  supported_languages?: Array<'pl' | 'en' | 'ru'>
 }
 
 export type IntakeFormPatchInput = {

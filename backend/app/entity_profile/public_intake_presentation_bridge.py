@@ -51,6 +51,36 @@ def _split_full_name(full_name: str) -> tuple[str, str]:
     return parts[0], " ".join(parts[1:])
 
 
+_SERVICE_SALES_PREFIX = "service_sales."
+_CONTACT_SUFFIX_TO_BUCKET = {
+    "contact_full_name": ("personal", "full_name"),
+    "contact_company_name": ("client_company", "name"),
+    "contact_phone": ("contacts", "phone"),
+    "contact_email": ("contacts", "email"),
+    "contact_website": ("client_company", "website"),
+}
+
+
+def _sync_service_sales_contacts(state: dict[str, Any], block: dict[str, Any]) -> None:
+    contacts = _record(state.get("contacts"))
+    personal = _record(state.get("personal"))
+    client_company = _record(state.get("client_company"))
+    buckets = {"contacts": contacts, "personal": personal, "client_company": client_company}
+    for code, raw in block.items():
+        if not str(code).startswith(_SERVICE_SALES_PREFIX) or _is_empty(raw):
+            continue
+        suffix = str(code).rsplit(".", 1)[-1]
+        mapping = _CONTACT_SUFFIX_TO_BUCKET.get(suffix)
+        if mapping is None:
+            continue
+        bucket_name, key = mapping
+        value = str(raw).strip() if isinstance(raw, str) else raw
+        buckets[bucket_name][key] = value
+    state["contacts"] = contacts
+    state["personal"] = personal
+    state["client_company"] = client_company
+
+
 def presentation_value_from_state(state: dict[str, Any], qualified_code: str) -> Any:
     """Read a presentation field value from intake_state (canonical store + legacy fallback)."""
     code = str(qualified_code or "").strip()
@@ -83,7 +113,7 @@ def presentation_value_from_state(state: dict[str, Any], qualified_code: str) ->
     if code == "recruitment.candidate.personal.in_poland":
         return personal.get("in_poland")
 
-    if code.startswith(f"{TARGETED_ADVERTISING_PROFILE_CODE}."):
+    if code.startswith(_SERVICE_SALES_PREFIX):
         block = _record(state.get(PRESENTATION_VALUES_V1))
         if code in block and not _is_empty(block.get(code)):
             return block.get(code)
@@ -159,28 +189,10 @@ def apply_presentation_values_to_state(
     if in_poland is not None and in_poland != "":
         personal["in_poland"] = in_poland
 
-    client_company = _record(state.get("client_company"))
-    for qualified_code, target_key, bucket in (
-        (f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_full_name", "full_name", personal),
-        (f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_company_name", "name", client_company),
-        (f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_phone", "phone", contacts),
-        (f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_email", "email", contacts),
-        (f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_website", "website", client_company),
-    ):
-        val = block.get(qualified_code)
-        if not _is_empty(val):
-            bucket[target_key] = str(val).strip() if isinstance(val, str) else val
-    if not _is_empty(block.get(f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_full_name")) or not _is_empty(
-        block.get(f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_company_name")
-    ):
-        fn = str(block.get(f"{TARGETED_ADVERTISING_PROFILE_CODE}.contact_full_name") or "").strip()
-        if fn:
-            personal["full_name"] = fn
-
     state["contacts"] = contacts
     state["personal"] = personal
     state["experience"] = experience
-    state["client_company"] = client_company
+    _sync_service_sales_contacts(state, block)
     return state
 
 

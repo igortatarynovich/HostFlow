@@ -41,6 +41,7 @@ from backend.app.intake_platform.form_definition import (
     default_submission_policy_for_entity_profile,
     format_supported_languages,
     read_form_definition,
+    resolve_create_form_languages,
 )
 from backend.app.services.plan_feature_gates import count_tenant_lead_sources, ensure_lead_source_limit
 
@@ -229,6 +230,8 @@ async def _ensure_intake_source_for_form(
     lead_form: TenantLeadForm,
     entity_profile_code: str,
     own_company_id: str,
+    default_language: Optional[str] = None,
+    supported_languages: Optional[str] = None,
 ) -> IntakeSourceProfile:
     public_slug = str(getattr(lead_form, "public_slug", None) or "").strip()
     if not public_slug:
@@ -258,6 +261,10 @@ async def _ensure_intake_source_for_form(
         existing.public_slug = public_slug
         existing.name = lead_form.title or existing.name
         existing.is_active = bool(lead_form.is_active)
+        if default_language:
+            existing.default_language = default_language
+        if supported_languages:
+            existing.supported_languages = supported_languages
         _apply_intake_routing(existing, routing)
         await db.flush()
         await _sync_public_slug_bindings(
@@ -285,8 +292,8 @@ async def _ensure_intake_source_for_form(
             lead_target_type=routing["lead_target_type"],
             entity_profile_code=str(entity_profile_code).strip(),
             source=routing["source"],
-            default_language="pl",
-            supported_languages="pl,en,ru",
+            default_language=default_language or "pl",
+            supported_languages=supported_languages or "pl,en,ru",
             is_active=bool(lead_form.is_active),
         )
     except intake_crud.IntakeRoutingValidationError as exc:
@@ -324,6 +331,8 @@ async def create_public_intake_form(
     entity_profile_code: str,
     fields: list[dict[str, Any]],
     is_active: bool = True,
+    default_language: Optional[str] = None,
+    supported_languages: Optional[list[str]] = None,
 ) -> dict[str, Any]:
     """Create lead form slot, intake source, bindings, and tenant presentation."""
     try:
@@ -364,6 +373,12 @@ async def create_public_intake_form(
         public_slug=slug,
     )
 
+    default_lang, supported_langs = resolve_create_form_languages(
+        default_language=default_language,
+        supported_languages=supported_languages,
+    )
+    supported_languages_csv = format_supported_languages(supported_langs)
+
     lead_form = TenantLeadForm(
         id=form_id,
         tenant_id=str(tenant_id),
@@ -375,7 +390,7 @@ async def create_public_intake_form(
         lead_form,
         target_entity_profile_code=entity_profile_code,
         published_version=1,
-        supported_languages=format_supported_languages(["pl", "en", "ru"]),
+        supported_languages=supported_languages_csv,
     )
     policy = default_submission_policy_for_entity_profile(entity_profile_code)
     validate_form_definition_triple(
@@ -398,6 +413,8 @@ async def create_public_intake_form(
         lead_form=lead_form,
         entity_profile_code=entity_profile_code,
         own_company_id=own_company_id,
+        default_language=default_lang,
+        supported_languages=supported_languages_csv,
     )
 
     await upsert_tenant_intake_presentation(

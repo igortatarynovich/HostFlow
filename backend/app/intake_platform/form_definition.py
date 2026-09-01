@@ -8,6 +8,7 @@ from backend.app.intake_platform.constants import (
     DEFAULT_INQUIRY_POLICY,
     DEFAULT_RECRUITMENT_APPLICATION_POLICY,
     DEFAULT_QUESTIONNAIRE_LANGUAGES,
+    FORM_LANGUAGE_CODES,
     FORM_LIFECYCLE_STATUSES,
     FORM_PURPOSES,
     FormLifecycleStatus,
@@ -73,7 +74,7 @@ def parse_supported_languages(value: Any) -> list[str]:
     langs = [part.strip() for part in raw.split(",") if part.strip()]
     out: list[str] = []
     for lang in langs:
-        if lang in {"pl", "en", "ru"} and lang not in out:
+        if lang in FORM_LANGUAGE_CODES and lang not in out:
             out.append(lang)
     return out or ["pl", "en", "ru"]
 
@@ -81,6 +82,32 @@ def parse_supported_languages(value: Any) -> list[str]:
 def format_supported_languages(languages: list[str]) -> str:
     normalized = parse_supported_languages(",".join(languages))
     return ",".join(normalized)
+
+
+def normalize_form_language(value: Any, *, fallback: str = "pl") -> str:
+    raw = str(value or "").strip().lower()
+    if raw in FORM_LANGUAGE_CODES:
+        return raw
+    fb = str(fallback or "pl").strip().lower()
+    return fb if fb in FORM_LANGUAGE_CODES else "pl"
+
+
+def resolve_create_form_languages(
+    *,
+    default_language: Any = None,
+    supported_languages: Any = None,
+) -> tuple[str, list[str]]:
+    if isinstance(supported_languages, (list, tuple)):
+        joined = ",".join(str(item) for item in supported_languages if str(item).strip())
+        supported = parse_supported_languages(joined if joined else None)
+    elif supported_languages is not None:
+        supported = parse_supported_languages(supported_languages)
+    else:
+        supported = parse_supported_languages(None)
+    default = normalize_form_language(default_language, fallback=supported[0])
+    if default not in supported:
+        default = supported[0]
+    return default, supported
 
 
 def apply_form_definition_fields(

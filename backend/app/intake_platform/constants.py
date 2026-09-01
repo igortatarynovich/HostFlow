@@ -23,6 +23,7 @@ class FormLifecycleStatus(str, Enum):
 
 
 DEFAULT_QUESTIONNAIRE_LANGUAGES = "pl,en,ru"
+FORM_LANGUAGE_CODES = ("pl", "en", "ru")
 
 
 class SubmissionPolicyMode(str, Enum):

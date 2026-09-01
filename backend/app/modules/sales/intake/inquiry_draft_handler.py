@@ -154,6 +154,15 @@ async def handle_sales_inquiry_draft(
             intake_profile=profile,
         )
 
+    from backend.app.modules.leads.lead_questionnaire_invite import merge_presentation_into_sales_summary
+
+    merge_presentation_into_sales_summary(
+        draft_lead,
+        intake_state,
+        submitted=False,
+        entity_profile_code=str(effective.target_entity_profile_code or intake_state.get("entity_profile_code") or ""),
+    )
+
     resolution = await resolve_submit_target(
         db,
         tenant_id=str(tenant_id),
@@ -167,6 +176,13 @@ async def handle_sales_inquiry_draft(
 
     if resolution.draft_lead_abandoned and str(draft_lead.id) != str(target_lead.id):
         _mark_draft_abandoned(draft_lead, target_lead_id=str(target_lead.id), match_result=resolution.match_result)
+
+    merge_presentation_into_sales_summary(
+        target_lead,
+        intake_state,
+        submitted=True,
+        entity_profile_code=str(effective.target_entity_profile_code or intake_state.get("entity_profile_code") or ""),
+    )
 
     form_id = str(getattr(form, "id", None) or "").strip() or None
     profile_id = str(getattr(profile, "id", None) or "").strip() or None

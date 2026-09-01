@@ -6,6 +6,8 @@ export type TenantLeadForm = {
   public_slug: string | null
   is_active: boolean
   lifecycle_status?: 'draft' | 'active' | 'archived'
+  purpose?: string | null
+  target_entity_profile_code?: string | null
   created_at: string
   updated_at: string
 }

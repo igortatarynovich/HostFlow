@@ -22,6 +22,13 @@ import {
 } from '../../utils/friendlyError'
 import { intakePresentationProfileTitle } from '../../utils/intakePresentationI18n'
 import {
+  FORM_LOCALES,
+  isCompanyInquiryProfile,
+  isFormLocale,
+  publicIntakeUrlForSlug,
+  type FormLocale,
+} from '../../utils/intakeFormPresentationDraft'
+import {
   defaultProfileForPurpose,
   entityProfileLabel,
   filterProfilesForPurpose,
@@ -31,13 +38,6 @@ import {
 } from '../../utils/intakeFormRoutingSummary'
 
 type Draft = { title: string; public_slug: string; is_active: boolean }
-
-function publicIntakeUrlForSlug(slug: string, opts?: { applicationKind?: 'client' | 'candidate' }): string {
-  const q = new URLSearchParams({ lead_form_slug: slug })
-  if (opts?.applicationKind) q.set('application_kind', opts.applicationKind)
-  if (typeof window === 'undefined') return `/public/intake?${q.toString()}`
-  return `${window.location.origin}/public/intake?${q.toString()}`
-}
 
 export default function LeadFormsSettingsPage() {
   const { t, locale } = useI18n()
@@ -61,6 +61,7 @@ export default function LeadFormsSettingsPage() {
   const [createSlug, setCreateSlug] = useState('')
   const [createProfileCode, setCreateProfileCode] = useState('service_sales.driver_hiring')
   const [createFields, setCreateFields] = useState<PresentationFieldInput[]>([])
+  const [createFormLanguage, setCreateFormLanguage] = useState<FormLocale>('pl')
   const [creating, setCreating] = useState(false)
 
   const syncDraftsFromRows = useCallback((rows: TenantLeadForm[]) => {
@@ -125,6 +126,13 @@ export default function LeadFormsSettingsPage() {
   }, [createProfileCode, createPurpose, filteredProfiles])
 
   useEffect(() => {
+    if (isFormLocale(locale)) setCreateFormLanguage(locale)
+  }, [locale])
+
+  const multilingualPreset =
+    isCompanyInquiryProfile(createProfileCode) || createProfileCode.startsWith('recruitment.')
+
+  useEffect(() => {
     if (!createSlug.trim() && createTitle.trim()) {
       const next = slugifyFormTitle(createTitle)
       if (next.length >= 2) setCreateSlug(next)
@@ -140,15 +148,28 @@ export default function LeadFormsSettingsPage() {
       })
       return
     }
+    const slug =
+      createSlug.trim() ||
+      slugifyFormTitle(createTitle) ||
+      slugifyFormTitle(createProfileCode.replace(/\./g, '-'))
+    if (slug.length < 2) {
+      notify({
+        title: t('admin.lead_forms.errors.slug', { defaultValue: 'Public link id must be at least 2 characters' }),
+        variant: 'error',
+      })
+      return
+    }
     setPageError(null)
     setCreating(true)
     try {
       const created = await createIntakeForm({
         title: createTitle.trim() || 'New form',
-        public_slug: createSlug.trim(),
+        public_slug: slug,
         entity_profile_code: createProfileCode,
         fields: createFields,
         is_active: true,
+        default_language: createFormLanguage,
+        supported_languages: multilingualPreset ? [...FORM_LOCALES] : [createFormLanguage],
       })
       notify({
         title: t('admin.intake_forms.toast.created', { defaultValue: 'Form created and activated' }),
@@ -158,7 +179,8 @@ export default function LeadFormsSettingsPage() {
       setCreateTitle('')
       setCreateSlug('')
       setCreateFields([])
-      navigate(settingsLeadFormBuilderPath(created.form.id))
+      await load()
+      navigate(settingsLeadFormDetailPath(created.form.id))
     } catch (err: unknown) {
       setPageError(
         getFriendlyErrorInfo(
@@ -507,6 +529,50 @@ export default function LeadFormsSettingsPage() {
                   </label>
                 </div>
 
+                <fieldset>
+                  <legend className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {multilingualPreset
+                      ? t('admin.lead_forms.wizard.public_language', {
+                          defaultValue: 'Language when the public link opens',
+                        })
+                      : t('admin.lead_forms.wizard.form_language', {
+                          defaultValue: 'Form language',
+                        })}
+                  </legend>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {multilingualPreset
+                      ? t('admin.lead_forms.wizard.public_language_hint', {
+                          defaultValue:
+                            'This questionnaire already exists in Polish, English, and Russian. Pick the language the shared link should open in.',
+                        })
+                      : t('admin.lead_forms.wizard.form_language_hint', {
+                          defaultValue:
+                            'The form stays in the language you write. We do not add translations for custom questionnaires.',
+                        })}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {FORM_LOCALES.map((lang) => (
+                      <label
+                        key={lang}
+                        className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm ${
+                          createFormLanguage === lang
+                            ? 'border-brand-300 bg-brand-50/60 font-semibold'
+                            : 'border-slate-200 bg-white'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          className="sr-only"
+                          name="form-language"
+                          checked={createFormLanguage === lang}
+                          onChange={() => setCreateFormLanguage(lang)}
+                        />
+                        {lang.toUpperCase()}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {t('admin.lead_forms.wizard.questions', { defaultValue: '3. Questions' })}
@@ -528,21 +594,31 @@ export default function LeadFormsSettingsPage() {
                       hideProfileSelect
                       autoLoadPreset={createPurpose !== 'application'}
                       variant="wizard"
+                      displayLocale={createFormLanguage}
                       onChange={setCreateFields}
                     />
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={creating || createFields.length === 0 || createSlug.trim().length < 2}
-                  onClick={() => void handleCreateForm()}
-                >
-                  {creating
-                    ? t('common.saving', { defaultValue: 'Saving…' })
-                    : t('admin.lead_forms.wizard.save_activate', { defaultValue: 'Save and activate form' })}
-                </button>
+                <div>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={creating || createFields.length === 0}
+                    onClick={() => void handleCreateForm()}
+                  >
+                    {creating
+                      ? t('common.saving', { defaultValue: 'Saving…' })
+                      : t('admin.lead_forms.wizard.save_activate', { defaultValue: 'Save and activate form' })}
+                  </button>
+                  {createFields.length === 0 ? (
+                    <p className="mt-2 text-xs text-amber-700">
+                      {t('admin.lead_forms.wizard.save_needs_questions', {
+                        defaultValue: 'Wait for questions to load, or tick at least one question.',
+                      })}
+                    </p>
+                  ) : null}
+                </div>
               </div>
             )}
           </div>
@@ -564,7 +640,11 @@ export default function LeadFormsSettingsPage() {
               const d = drafts[row.id]
               if (!d) return null
               const slugOk = d.public_slug.trim().length >= 2
-              const shareUrl = slugOk ? publicIntakeUrlForSlug(d.public_slug.trim()) : ''
+              const shareUrl = slugOk
+                ? publicIntakeUrlForSlug(d.public_slug.trim(), {
+                    applicationKind: isCompanyInquiryProfile(row.target_entity_profile_code) ? 'client' : undefined,
+                  })
+                : ''
               const dirty = isDirty(row)
               return (
                 <li key={row.id} className="rounded-xl border border-brand-100 bg-white p-4 shadow-sm">

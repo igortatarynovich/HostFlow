@@ -43,6 +43,7 @@ QUESTIONNAIRE_WAITING_STATUSES = frozenset(
 
 QUESTIONNAIRE_INVITE_TTL_DAYS = 30
 SALES_QUESTIONNAIRE_PREFIX = f"{TARGETED_ADVERTISING_PROFILE_CODE}."
+SERVICE_SALES_PREFIX = "service_sales."
 
 
 def _now() -> datetime:
@@ -76,9 +77,12 @@ def _apply_url_for_token(token: str, *, form_locale: str | None = None) -> str:
 
 def _qualified_to_sales_key(qualified_code: str) -> str | None:
     code = str(qualified_code or "").strip()
-    if not code.startswith(SALES_QUESTIONNAIRE_PREFIX):
+    if not code.startswith(SERVICE_SALES_PREFIX):
         return None
-    return code[len(SALES_QUESTIONNAIRE_PREFIX) :]
+    parts = code.split(".")
+    if len(parts) < 3:
+        return None
+    return ".".join(parts[2:])
 
 
 def invite_intake_state(invite: LeadQuestionnaireInvite) -> dict[str, Any]:
@@ -193,8 +197,8 @@ async def resolve_lead_form_for_questionnaire(
         if str(lead_form.tenant_id) != str(tenant_id):
             raise LookupError("Lead form not found or inactive")
         profile_code = str(lead_form.target_entity_profile_code or "").strip()
-        if profile_code != TARGETED_ADVERTISING_PROFILE_CODE:
-            raise LookupError("Lead form is not a targeted advertising questionnaire")
+        if not profile_code.startswith("service_sales."):
+            raise LookupError("Lead form is not a sales questionnaire")
         if str(getattr(lead_form, "lifecycle_status", FormLifecycleStatus.active.value) or FormLifecycleStatus.active.value) == FormLifecycleStatus.archived.value:
             raise LookupError("Lead form is archived")
         intake_profile = await intake_profile_for_lead_form(
@@ -511,9 +515,11 @@ def merge_presentation_into_sales_summary(
     intake_state: dict[str, Any],
     *,
     submitted: bool = False,
+    entity_profile_code: str | None = None,
 ) -> dict[str, Any]:
     """Map presentation values into lead.normalized sales summary + CRM contact blocks."""
-    field_codes = [
+    stored = _record(intake_state.get(PRESENTATION_VALUES_V1)) or _record(intake_state.get("presentation_values"))
+    advertising_codes = [
         f"{SALES_QUESTIONNAIRE_PREFIX}{suffix}"
         for suffix in (
             "need_type",
@@ -547,7 +553,10 @@ def merge_presentation_into_sales_summary(
             "additional_notes",
         )
     ]
-    values = presentation_values_dict_from_state(intake_state, field_codes)
+    values = presentation_values_dict_from_state(intake_state, advertising_codes)
+    for qualified_code, raw in stored.items():
+        if raw not in (None, "", [], {}) and str(qualified_code).startswith(SERVICE_SALES_PREFIX):
+            values[str(qualified_code)] = raw
     sales_questionnaire: dict[str, Any] = {}
     for qualified_code, raw in values.items():
         key = _qualified_to_sales_key(qualified_code)
@@ -556,7 +565,8 @@ def merge_presentation_into_sales_summary(
 
     normalized = _record(lead.normalized)
     if sales_questionnaire:
-        normalized["sales_questionnaire"] = sales_questionnaire
+        existing_sq = _record(normalized.get("sales_questionnaire"))
+        normalized["sales_questionnaire"] = {**existing_sq, **sales_questionnaire}
 
     full_name = (
         _trim(sales_questionnaire.get("contact_full_name"))
@@ -615,25 +625,38 @@ def merge_presentation_into_sales_summary(
     need_summary_parts = [
         str(sales_questionnaire.get("need_type") or "").replace("_", " ").strip(),
         str(sales_questionnaire.get("primary_outcome") or "").replace("_", " ").strip(),
+        str(sales_questionnaire.get("driver_categories") or "").replace("_", " ").strip()
+        if not isinstance(sales_questionnaire.get("driver_categories"), list)
+        else ", ".join(str(item) for item in sales_questionnaire.get("driver_categories") or []),
+        str(sales_questionnaire.get("worker_roles") or "").replace("_", " ").strip()
+        if not isinstance(sales_questionnaire.get("worker_roles"), list)
+        else ", ".join(str(item) for item in sales_questionnaire.get("worker_roles") or []),
     ]
     need_summary = " — ".join(p for p in need_summary_parts if p)
     if need_summary:
         need["summary"] = need_summary
-        need["questionnaire"] = sales_questionnaire
+        need["questionnaire"] = {**_record(need.get("questionnaire")), **sales_questionnaire}
         normalized["need"] = need
 
     next_status = (
         INVITE_STATUS_SUBMITTED if submitted else normalized.get("sales_questionnaire_status") or INVITE_STATUS_IN_PROGRESS
     )
-    normalized["entity_profile_code"] = TARGETED_ADVERTISING_PROFILE_CODE
+    profile_code = (
+        str(entity_profile_code or "").strip()
+        or str(intake_state.get("entity_profile_code") or "").strip()
+        or str(normalized.get("entity_profile_code") or "").strip()
+    )
+    if not profile_code.startswith(SERVICE_SALES_PREFIX):
+        profile_code = TARGETED_ADVERTISING_PROFILE_CODE
+    normalized["entity_profile_code"] = profile_code
     lead.normalized = normalized
     _apply_questionnaire_lifecycle(lead, str(next_status))
     normalized = _record(lead.normalized)
-    normalized["entity_profile_code"] = TARGETED_ADVERTISING_PROFILE_CODE
+    normalized["entity_profile_code"] = profile_code
     lead.normalized = normalized
 
     payload = _record(lead.payload)
-    payload["sales_questionnaire"] = sales_questionnaire
+    payload["sales_questionnaire"] = {**_record(payload.get("sales_questionnaire")), **sales_questionnaire}
     payload["questionnaire_intake_state"] = dict(intake_state)
     lead.payload = payload
     return normalized
