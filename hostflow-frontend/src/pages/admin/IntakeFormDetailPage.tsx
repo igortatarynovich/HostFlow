@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import {
   IconArrowLeft,
   IconCopy,
@@ -45,10 +45,14 @@ function publicIntakeUrlForSlug(slug: string, opts?: { applicationKind?: 'client
 
 export default function IntakeFormDetailPage() {
   const { formId = '' } = useParams<{ formId: string }>()
+  const location = useLocation()
   const { t } = useI18n()
   const { role } = usePermissions()
   const { notify } = useToast()
   const canMutate = role === 'administrator'
+  const formsListHref = location.pathname.includes('/marketing/forms')
+    ? CRM_APP_PATHS.marketingForms
+    : CRM_APP_PATHS.settingsLeadForms
 
   const [detail, setDetail] = useState<IntakeFormDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -213,7 +217,7 @@ export default function IntakeFormDetailPage() {
   return (
     <SettingsSubpageHeader
       backLabel={t('admin.intake_forms.back_list', { defaultValue: 'All intake forms' })}
-      backHref={CRM_APP_PATHS.marketingForms}
+      backHref={formsListHref}
       kicker={t('admin.intake_forms.header_kicker', { defaultValue: 'Intake sources' })}
       title={
         <span className="inline-flex items-center gap-2">
@@ -234,7 +238,7 @@ export default function IntakeFormDetailPage() {
               info={pageError}
               {...friendlyErrorBannerSecondary(
                 pageError,
-                CRM_APP_PATHS.marketingForms,
+                formsListHref,
                 t('admin.intake_forms.back_list', { defaultValue: 'All intake forms' }),
               )}
             />

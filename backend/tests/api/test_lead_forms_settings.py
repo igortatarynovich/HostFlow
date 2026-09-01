@@ -98,3 +98,29 @@ async def test_lead_form_public_slug_conflict_409(client: AsyncClient) -> None:
     p2 = await client.patch(f"{LF_BASE}/{id_b}", headers=headers, json={"public_slug": "careers-main"})
     assert p2.status_code == 409, p2.text
     assert p2.json().get("detail", {}).get("code") == "lead_form_public_slug_taken"
+
+
+@pytest.mark.anyio
+async def test_archived_form_hidden_from_default_list(client: AsyncClient) -> None:
+    headers = await _admin_headers()
+    await _patch_tenant_subscription(plan_code="team")
+    created = await client.post(LF_BASE, headers=headers, json={"title": "Disposable form"})
+    assert created.status_code == 200, created.text
+    form_id = created.json()["id"]
+
+    archived = await client.patch(
+        f"/api/v1/settings/intake-forms/{form_id}",
+        headers=headers,
+        json={"lifecycle_status": "archived"},
+    )
+    assert archived.status_code == 200, archived.text
+
+    listed = await client.get(LF_BASE, headers=headers)
+    assert listed.status_code == 200, listed.text
+    assert all(row["id"] != form_id for row in listed.json())
+
+    with_archived = await client.get(f"{LF_BASE}?include_archived=true", headers=headers)
+    assert with_archived.status_code == 200, with_archived.text
+    match = next(row for row in with_archived.json() if row["id"] == form_id)
+    assert match["lifecycle_status"] == "archived"
+    assert match["is_active"] is False

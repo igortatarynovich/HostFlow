@@ -106,10 +106,6 @@
       "host": "recruitment"
     },
     {
-      "prefix": "/app/settings/lead-forms",
-      "host": "sales"
-    },
-    {
       "prefix": "/app/settings/message-templates",
       "host": "sales"
     },
@@ -180,6 +176,10 @@
     "hr-workspace": "hr",
     "sales": "sales",
     "marketing": "sales",
+    "marketing-sources": "sales",
+    "marketing-forms": "sales",
+    "marketing-diagnostics": "sales",
+    "acquisition-activity": "sales",
     "clients": "sales",
     "client-acquisition-channels": "sales",
     "service-orders": "sales",

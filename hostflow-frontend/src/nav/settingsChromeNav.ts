@@ -84,7 +84,7 @@ export function settingsChromeTabHref(tab: SettingsChromeTabKey): string {
     case 'recruitment_setup':
       return CRM_APP_PATHS.settingsFunnels
     case 'sales_setup':
-      return CRM_APP_PATHS.marketingForms
+      return CRM_APP_PATHS.settingsLeadForms
     case 'team':
       return CRM_APP_PATHS.settingsUsers
     case 'automations':

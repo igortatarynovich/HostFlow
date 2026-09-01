@@ -12848,8 +12848,8 @@
           "description": "Управление дополнительными полями для кандидатов и документов."
         },
         "lead_forms": {
-          "label": "Лид-формы",
-          "description": "Именованные точки входа в публичный intake с опциональным slug для атрибуции."
+          "label": "Form Builder",
+          "description": "Собирайте HostFlow-формы из Field Catalog. Откройте Builder, чтобы править canvas."
         },
         "email": {
           "label": "Исходящая почта (SMTP)",
@@ -13357,10 +13357,31 @@
         "draft_not_found": "Шаблон черновика не найден"
       }
     },
+    "forms_builder": {
+      "kicker": "Forms",
+      "library_title": "Form Builder",
+      "library_subtitle": "Собирайте HostFlow-формы из Field Catalog. Откройте форму, чтобы править canvas, затем скопируйте публичный URL.",
+      "library_empty": "Пока нет форм. Создайте форму и соберите поля в Form Builder.",
+      "title": "Form Builder",
+      "subtitle": "Палитра Field Catalog · порядок на canvas · свойства · сохранение черновика.",
+      "open": "Открыть Builder",
+      "back": "Все формы",
+      "entry_title": "Form Builder",
+      "entry_help": "Соберите компоненты Field Catalog в черновик. Сохранение — только draft; публикация отдельно.",
+      "delete_confirm": "Архивировать «{title}»? Форма исчезнет из Form Builder, Marketing и Sales. Отправки сохранятся.",
+      "toast": {
+        "archived": "Форма архивирована"
+      },
+      "errors": {
+        "load": "Не удалось загрузить черновик Builder",
+        "save": "Не удалось сохранить черновик",
+        "archive": "Не удалось архивировать форму"
+      }
+    },
     "lead_forms": {
       "header_kicker": "Публичные ссылки на анкеты; каждая форма учитывается отдельно.",
-      "title": "Лид-формы",
-      "subtitle": "Точки входа в публичный intake. Укажите публичный slug, чтобы кандидаты открывали форму через /public/intake.",
+      "title": "Forms",
+      "subtitle": "Публичные ссылки на анкеты; каждая форма учитывается отдельно.",
       "new_title": "Название новой формы",
       "create": "Создать форму",
       "empty": "Пока нет лид-форм. Создайте форму, чтобы размечать источники intake.",

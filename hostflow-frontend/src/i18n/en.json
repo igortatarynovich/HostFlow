@@ -12848,8 +12848,8 @@
           "description": "Manage additional fields for candidates and documents."
         },
         "lead_forms": {
-          "label": "Intake forms",
-          "description": "Public intake sources: Entity Profile binding, field preview, public link, smoke test."
+          "label": "Form Builder",
+          "description": "Compose HostFlow forms from the Field Catalog. Open Builder to edit the canvas."
         },
         "email": {
           "label": "Outbound email (SMTP)",
@@ -13357,10 +13357,31 @@
         "draft_not_found": "Draft template not found"
       }
     },
+    "forms_builder": {
+      "kicker": "Forms",
+      "library_title": "Form Builder",
+      "library_subtitle": "Compose HostFlow forms from the Field Catalog. Open a form to edit the canvas, then share a public URL.",
+      "library_empty": "No forms yet. Create one, then assemble fields in Form Builder.",
+      "title": "Form Builder",
+      "subtitle": "Palette from Field Catalog · canvas order · properties · save draft.",
+      "open": "Open Builder",
+      "back": "All forms",
+      "entry_title": "Form Builder",
+      "entry_help": "Assemble Field Catalog components into a draft. Save draft only — publish stays separate.",
+      "delete_confirm": "Archive “{title}”? It will disappear from Form Builder, Marketing, and Sales. Existing submissions stay.",
+      "toast": {
+        "archived": "Form archived"
+      },
+      "errors": {
+        "load": "Failed to load Builder draft",
+        "save": "Failed to save draft",
+        "archive": "Failed to archive form"
+      }
+    },
     "lead_forms": {
       "header_kicker": "Public intake links you can share; each form is tracked separately.",
-      "title": "Lead forms",
-      "subtitle": "Intake entry points for the public portal. Set a public slug so candidates open a tracked form from /public/intake.",
+      "title": "Forms",
+      "subtitle": "Public intake links you can share; each form is tracked separately.",
       "new_title": "New form title",
       "create": "Create form",
       "configure": "Configure",

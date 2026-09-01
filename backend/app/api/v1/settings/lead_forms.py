@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Tuple
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.intake_platform.constants import FormLifecycleStatus
 from backend.app.models.mixins import now_utc
 from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.services.lead_forms_quota import (
@@ -36,6 +37,7 @@ class TenantLeadFormOut(BaseModel):
     title: str
     public_slug: str | None = None
     is_active: bool
+    lifecycle_status: str = FormLifecycleStatus.active.value
     created_at: datetime
     updated_at: datetime
 
@@ -56,6 +58,7 @@ def _out(row: TenantLeadForm) -> TenantLeadFormOut:
         title=row.title or "",
         public_slug=getattr(row, "public_slug", None),
         is_active=bool(row.is_active),
+        lifecycle_status=str(getattr(row, "lifecycle_status", None) or FormLifecycleStatus.active.value),
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -69,16 +72,18 @@ def _out(row: TenantLeadForm) -> TenantLeadFormOut:
 async def list_lead_forms(
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    include_archived: bool = Query(default=False),
 ) -> list[TenantLeadFormOut]:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     _ensure_tenant(ctx, tenant_id)
-    rows = (
-        await db.execute(
-            select(TenantLeadForm)
-            .where(TenantLeadForm.tenant_id == tenant_id)
-            .order_by(TenantLeadForm.created_at.asc())
+    stmt = select(TenantLeadForm).where(TenantLeadForm.tenant_id == tenant_id)
+    if not include_archived:
+        stmt = stmt.where(
+            TenantLeadForm.lifecycle_status != FormLifecycleStatus.archived.value,
         )
+    rows = (
+        await db.execute(stmt.order_by(TenantLeadForm.created_at.asc()))
     ).scalars().all()
     return [_out(r) for r in rows]
 
@@ -107,7 +112,7 @@ async def create_lead_form(
     row = TenantLeadForm(
         id=str(uuid4()),
         tenant_id=tenant_id,
-        title=(payload.title or "").strip() or "Lead form",
+        title=(payload.title or "").strip() or "New form",
         is_active=True,
     )
     db.add(row)

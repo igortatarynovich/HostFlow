@@ -106,6 +106,7 @@ export type IntakeFormPatchInput = {
   public_slug?: string
   is_active?: boolean
   entity_profile_code?: string
+  lifecycle_status?: 'draft' | 'active' | 'archived'
 }
 
 export type IntakeFormSmokeTestResult = {

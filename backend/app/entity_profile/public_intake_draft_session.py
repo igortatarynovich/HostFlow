@@ -15,6 +15,7 @@ from uuid import UUID, uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
@@ -175,18 +176,19 @@ async def find_lead_draft_by_contact(
     phone: Optional[str],
     phone_country_code: Optional[str],
 ) -> Optional[Lead]:
+    """Return the public-intake Lead for this contact key at any stage.
+
+    ``uq_leads_tenant_source_external_id`` allows only one row per
+    ``(tenant_id, source=public_intake, external_id)``. Filtering to
+    ``intake_draft`` made a second POST after submit try INSERT and 500.
+    """
     external_id = draft_external_id(email=email, phone=phone, phone_country_code=phone_country_code)
-    lead = await leads_crud.get_lead_by_external_id(
+    return await leads_crud.get_lead_by_external_id(
         db,
         tenant_id=str(tenant_id),
         source=PUBLIC_INTAKE_SOURCE,
         external_id=external_id,
     )
-    if lead is None:
-        return None
-    if str(getattr(lead, "stage", "") or "") != "intake_draft":
-        return None
-    return lead
 
 
 async def resolve_public_intake_lead_draft_tenant_id(db: AsyncSession, token: str) -> Optional[str]:
@@ -343,6 +345,62 @@ async def _resolve_company_context(
     return own_company_id, company_id, vacancy_id
 
 
+async def _refresh_public_intake_draft_session(
+    db: AsyncSession,
+    existing: Lead,
+    *,
+    contacts: dict[str, Any],
+    intake_source: str,
+    vacancy_id: Optional[str],
+    application_kind: str,
+    lead_form_meta: Optional[dict[str, Any]],
+    client_company: Optional[dict[str, Any]],
+    intake_state: dict[str, Any],
+    now: datetime,
+    expires_at: datetime,
+) -> tuple[Lead, str, datetime]:
+    """Reuse the unique public-intake Lead and refresh the apply token."""
+    is_client = application_kind == "client"
+    email = contacts.get("email")
+    phone = contacts.get("phone")
+    block = get_public_intake_draft_block(existing)
+    token = str(block.get("intake_token") or "") or _generate_token()
+    state = _record(block.get("intake_state")) or intake_state
+    state["contacts"] = {**dict(state.get("contacts") or {}), **dict(contacts)}
+    if client_company:
+        state["client_company"] = {**dict(state.get("client_company") or {}), **dict(client_company)}
+    if lead_form_meta:
+        state["lead_form"] = dict(lead_form_meta)
+    state["application_kind"] = application_kind
+    block.update(
+        {
+            "intake_token": token,
+            "intake_token_created_at": now.isoformat(),
+            "intake_token_expires_at": expires_at.isoformat(),
+            "intake_status": "draft",
+            "intake_state": state,
+            "vacancy_id": vacancy_id,
+            "source_channel": intake_source,
+        }
+    )
+    if not is_client and not block.get("status_share_token"):
+        block["status_share_token"] = _generate_token()
+    if is_client:
+        block.pop("status_share_token", None)
+    existing.vacancy_id = vacancy_id
+    normalized = set_public_intake_draft_block(existing, block)
+    normalized.setdefault("email", email)
+    normalized.setdefault("phone", phone)
+    existing.normalized = normalized
+    existing.payload = {
+        **(_record(existing.payload)),
+        "intake_state": state,
+        "public_intake_draft": True,
+    }
+    await db.flush()
+    return existing, token, expires_at
+
+
 async def create_or_reuse_public_intake_lead_draft(
     db: AsyncSession,
     *,
@@ -384,42 +442,19 @@ async def create_or_reuse_public_intake_lead_draft(
     is_client = application_kind == "client"
 
     if existing is not None:
-        block = get_public_intake_draft_block(existing)
-        token = str(block.get("intake_token") or "") or _generate_token()
-        state = _record(block.get("intake_state")) or intake_state
-        state["contacts"] = {**dict(state.get("contacts") or {}), **dict(contacts)}
-        if client_company:
-            state["client_company"] = {**dict(state.get("client_company") or {}), **dict(client_company)}
-        if lead_form_meta:
-            state["lead_form"] = dict(lead_form_meta)
-        state["application_kind"] = application_kind
-        block.update(
-            {
-                "intake_token": token,
-                "intake_token_created_at": now.isoformat(),
-                "intake_token_expires_at": expires_at.isoformat(),
-                "intake_status": "draft",
-                "intake_state": state,
-                "vacancy_id": vacancy_id,
-                "source_channel": intake_source,
-            }
+        return await _refresh_public_intake_draft_session(
+            db,
+            existing,
+            contacts=contacts,
+            intake_source=intake_source,
+            vacancy_id=vacancy_id,
+            application_kind=application_kind,
+            lead_form_meta=lead_form_meta,
+            client_company=client_company,
+            intake_state=intake_state,
+            now=now,
+            expires_at=expires_at,
         )
-        if not is_client and not block.get("status_share_token"):
-            block["status_share_token"] = _generate_token()
-        if is_client:
-            block.pop("status_share_token", None)
-        existing.vacancy_id = vacancy_id
-        normalized = set_public_intake_draft_block(existing, block)
-        normalized.setdefault("email", email)
-        normalized.setdefault("phone", phone)
-        existing.normalized = normalized
-        existing.payload = {
-            **(_record(existing.payload)),
-            "intake_state": state,
-            "public_intake_draft": True,
-        }
-        await db.flush()
-        return existing, token, expires_at
 
     own_company_id, company_id, vacancy_id = await _resolve_company_context(
         db,
@@ -462,23 +497,47 @@ async def create_or_reuse_public_intake_lead_draft(
         "email": email,
         "phone": phone,
     }
-    lead = await leads_crud.create_lead(
-        db,
-        tenant_id=str(tenant_id),
-        own_company_id=own_company_id if is_client else None,
-        company_id=None if is_client else company_id,
-        vacancy_id=None if is_client else vacancy_id,
-        payload={"intake_state": intake_state, "public_intake_draft": True, "source": intake_source},
-        normalized=normalized,
-        source=PUBLIC_INTAKE_SOURCE,
-        external_id=external_id,
-        lead_type="client" if is_client else "candidate",
-        lead_target_type="client_lead" if is_client else "candidate",
-    )
-    lead.stage = "intake_draft"
-    lead.status = "new"
-    await db.flush()
-    return lead, token, expires_at
+    try:
+        async with db.begin_nested():
+            lead = await leads_crud.create_lead(
+                db,
+                tenant_id=str(tenant_id),
+                own_company_id=own_company_id if is_client else None,
+                company_id=None if is_client else company_id,
+                vacancy_id=None if is_client else vacancy_id,
+                payload={"intake_state": intake_state, "public_intake_draft": True, "source": intake_source},
+                normalized=normalized,
+                source=PUBLIC_INTAKE_SOURCE,
+                external_id=external_id,
+                lead_type="client" if is_client else "candidate",
+                lead_target_type="client_lead" if is_client else "candidate",
+            )
+            lead.stage = "intake_draft"
+            lead.status = "new"
+            await db.flush()
+            return lead, token, expires_at
+    except IntegrityError:
+        recovered = await leads_crud.get_lead_by_external_id(
+            db,
+            tenant_id=str(tenant_id),
+            source=PUBLIC_INTAKE_SOURCE,
+            external_id=external_id,
+        )
+        if recovered is None:
+            raise
+        return await _refresh_public_intake_draft_session(
+            db,
+            recovered,
+            contacts=contacts,
+            intake_source=intake_source,
+            vacancy_id=vacancy_id,
+            application_kind=application_kind,
+            lead_form_meta=lead_form_meta,
+            client_company=client_company,
+            intake_state=intake_state,
+            now=now,
+            expires_at=expires_at,
+        )
 
 
 def session_intake_state(session: PublicIntakeSession) -> dict[str, Any]:

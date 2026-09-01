@@ -331,12 +331,13 @@ export default function SettingsLandingPage() {
       },
       {
         key: 'lead_forms',
-        label: t('admin.settings.cards.lead_forms.label'),
-        description: t('admin.settings.cards.lead_forms.description'),
-        target: CRM_APP_PATHS.marketingForms,
-        requireAny: ['settings.view', 'manager.tools', 'leads.view'],
+        label: t('admin.settings.cards.lead_forms.label', { defaultValue: 'Form Builder' }),
+        description: t('admin.settings.cards.lead_forms.description', {
+          defaultValue: 'Compose HostFlow forms from the Field Catalog. Open Builder to edit the canvas.',
+        }),
+        target: CRM_APP_PATHS.settingsLeadForms,
+        requireAny: ['settings.view', 'manager.tools', 'admin.users'],
         section: 'crm_setup',
-        requiresModules: ['leads'],
       },
       {
         key: 'billing',

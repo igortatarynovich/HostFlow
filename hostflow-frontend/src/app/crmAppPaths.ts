@@ -23,8 +23,13 @@ export function communicationsThreadPath(threadId: string): string {
   return `${P.communicationsThreadsBase}/${encodeURIComponent(threadId)}`
 }
 
+/** Forms platform constructor home (ADR-007 / P2.5) — Settings, not Marketing. */
 export function settingsLeadFormDetailPath(formId: string): string {
-  return marketingFormDetailPath(formId)
+  return `${P.settingsLeadForms}/${encodeURIComponent(formId)}`
+}
+
+export function settingsLeadFormBuilderPath(formId: string): string {
+  return `${settingsLeadFormDetailPath(formId)}/builder`
 }
 
 export function marketingCampaignPath(campaignId: string): string {
@@ -46,17 +51,14 @@ export function marketingConnectSourcePath(campaignId: string): string {
   return `${marketingCampaignPath(campaignId)}/sources/new`
 }
 
-/** C-6: Marketing-native HostFlow form detail / builder (Forms SoT unchanged). */
+/** C-6: Marketing campaign inventory of HostFlow forms (select / public URL). Builder is Settings. */
 export function marketingFormDetailPath(formId: string): string {
   return `${P.marketingForms}/${encodeURIComponent(formId)}`
 }
 
+/** Bookmarks under Marketing `/builder` resolve to the Settings constructor. */
 export function marketingFormBuilderPath(formId: string): string {
-  return `${marketingFormDetailPath(formId)}/builder`
-}
-
-export function settingsLeadFormBuilderPath(formId: string): string {
-  return marketingFormBuilderPath(formId)
+  return settingsLeadFormBuilderPath(formId)
 }
 
 export function recruitmentSearchPath(searchId: string): string {

@@ -392,6 +392,56 @@ async def test_public_intake_reuses_existing_candidate(client: AsyncClient, tena
 
 
 @pytest.mark.asyncio
+async def test_public_intake_reuses_submitted_lead_same_contact(client: AsyncClient, tenant_id: str) -> None:
+    """After submit, same contact must reuse the Lead — unique external_id forbids a second INSERT."""
+    slug = await _seed_active_lead_form(tenant_id, prefix="reuse-sub")
+    phone = f"{uuid4().int % 10**9:09d}"
+    email = f"reuse-sub-{uuid4().hex[:8]}@example.com"
+    contacts = {"phone_country_code": "+48", "phone": phone, "email": email}
+
+    first_resp = await client.post(
+        "/api/v1/public/intake",
+        headers=_headers(tenant_id),
+        json={"contacts": contacts, "lead_form_slug": slug},
+    )
+    assert first_resp.status_code == 200, first_resp.text
+    first_data = first_resp.json()
+    token = first_data["token"]
+    lead_id = first_data["lead_id"]
+    assert lead_id
+
+    submit_resp = await client.post(
+        f"/api/v1/public/apply/{token}/submit",
+        headers=_headers(tenant_id),
+        json={
+            "consents": {"general": True, "employer_share": True, "terms_acceptance": True},
+            "documents_version": {
+                "privacy": "2025-02-01",
+                "terms": "2025-02-01",
+                "cookies": "2025-02-01",
+            },
+            "cookies_accepted": True,
+        },
+    )
+    assert submit_resp.status_code == 200, submit_resp.text
+
+    async with async_session_maker() as session:
+        lead = await session.get(Lead, lead_id)
+        assert lead is not None
+        assert str(lead.stage or "") == "questionnaire_submitted"
+
+    second_resp = await client.post(
+        "/api/v1/public/intake",
+        headers=_headers(tenant_id),
+        json={"contacts": contacts, "lead_form_slug": slug, "source": "retarget"},
+    )
+    assert second_resp.status_code == 200, second_resp.text
+    second_data = second_resp.json()
+    assert second_data["lead_id"] == lead_id
+    assert second_data["token"]
+
+
+@pytest.mark.asyncio
 async def test_public_intake_matches_phone_digits_without_country_code(client: AsyncClient, tenant_id: str) -> None:
     slug = await _seed_active_lead_form(tenant_id, prefix="phone")
     candidate_id = str(uuid4())

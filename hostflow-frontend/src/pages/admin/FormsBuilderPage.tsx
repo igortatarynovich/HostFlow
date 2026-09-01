@@ -14,7 +14,8 @@ import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useToast } from '../../components/Toast'
-import { CRM_APP_PATHS, settingsLeadFormDetailPath } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { getIntakeFormDetail } from '../../api/intakeForms'
 import {
   fetchBuilderComponent,
   fetchBuilderPalette,
@@ -68,6 +69,7 @@ export default function FormsBuilderPage() {
   const [saving, setSaving] = useState(false)
   const [conflict, setConflict] = useState(false)
   const [pageError, setPageError] = useState<FriendlyErrorInfo | null>(null)
+  const [formTitle, setFormTitle] = useState('')
 
   const dirty = useMemo(() => {
     if (!composition) return false
@@ -99,6 +101,12 @@ export default function FormsBuilderPage() {
       setBuilderState(draft.builder_state)
       setSelectedId(comp.instances[0]?.instance_id ?? null)
       await loadPalette('')
+      try {
+        const detail = await getIntakeFormDetail(formId)
+        setFormTitle(String(detail.form?.title || '').trim())
+      } catch {
+        setFormTitle('')
+      }
     } catch (err: unknown) {
       setPageError(
         getFriendlyErrorInfo(
@@ -232,21 +240,21 @@ export default function FormsBuilderPage() {
     }
   }
 
-  const backHref = formId ? settingsLeadFormDetailPath(formId) : CRM_APP_PATHS.marketingForms
+  const backHref = CRM_APP_PATHS.settingsLeadForms
 
   return (
     <SettingsSubpageHeader
-      backLabel={t('admin.forms_builder.back', { defaultValue: 'Back to form' })}
+      backLabel={t('admin.forms_builder.back', { defaultValue: 'All forms' })}
       backHref={backHref}
-      kicker={t('admin.forms_builder.kicker', { defaultValue: 'Forms Builder' })}
+      kicker={t('admin.forms_builder.kicker', { defaultValue: 'Forms' })}
       title={
         <span className="inline-flex items-center gap-2">
           <IconForms size={22} stroke={1.9} className="text-brand-600" />
-          {t('admin.forms_builder.title', { defaultValue: 'Composition draft' })}
+          {formTitle || t('admin.forms_builder.title', { defaultValue: 'Form Builder' })}
         </span>
       }
       subtitle={t('admin.forms_builder.subtitle', {
-        defaultValue: 'Palette from Field Catalog · canvas order · config_fields · save draft only.',
+        defaultValue: 'Palette from Field Catalog · canvas order · properties · save draft.',
       })}
       actions={
         <div className="flex flex-wrap items-center gap-2">
@@ -296,7 +304,7 @@ export default function FormsBuilderPage() {
               {...friendlyErrorBannerSecondary(
                 pageError,
                 backHref,
-                t('admin.forms_builder.back', { defaultValue: 'Back to form' }),
+                t('admin.forms_builder.back', { defaultValue: 'All forms' }),
               )}
             />
           </div>
@@ -538,7 +546,7 @@ export default function FormsBuilderPage() {
 
         <p className="mt-4 text-xs text-slate-500">
           <Link className="text-brand-700 underline" to={backHref}>
-            {t('admin.forms_builder.back', { defaultValue: 'Back to form' })}
+            {t('admin.forms_builder.back', { defaultValue: 'All forms' })}
           </Link>
           {' · '}
           {t('admin.forms_builder.no_publish', {

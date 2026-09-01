@@ -385,7 +385,16 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
         <p className="mt-3 text-sm text-amber-800">
           {t('app.sales_questionnaire.no_forms', {
             defaultValue: 'No B2B questionnaire forms are configured for this tenant.',
-          })}
+          })}{' '}
+          <Link
+            to={CRM_APP_PATHS.settingsLeadForms}
+            className="font-semibold text-brand-800 underline"
+            data-testid="sales-questionnaire-open-constructor"
+          >
+            {t('app.sales_questionnaire.open_constructor', {
+              defaultValue: 'Open form constructor',
+            })}
+          </Link>
         </p>
       ) : null}
 

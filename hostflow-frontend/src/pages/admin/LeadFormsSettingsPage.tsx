@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { IconClipboardList, IconCopy, IconPlus } from '@tabler/icons-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { IconClipboardList, IconCopy, IconForms, IconPlus, IconTrash } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useToast } from '../../components/Toast'
-import { CRM_APP_PATHS, settingsLeadFormDetailPath } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS, settingsLeadFormBuilderPath, settingsLeadFormDetailPath } from '../../app/crmAppPaths'
 import {
   createIntakeForm,
   listIntakeFormEntityProfiles,
+  patchIntakeForm,
   type PresentationFieldInput,
 } from '../../api/intakeForms'
 import { listLeadForms, patchLeadForm, type TenantLeadForm } from '../../api/leadForms'
@@ -42,6 +43,8 @@ export default function LeadFormsSettingsPage() {
   const { role } = usePermissions()
   const { notify } = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
+  const isMarketingInventory = location.pathname.includes('/marketing/forms')
   const canMutate = role === 'administrator'
 
   const [forms, setForms] = useState<TenantLeadForm[]>([])
@@ -79,8 +82,9 @@ export default function LeadFormsSettingsPage() {
     try {
       setLoading(true)
       const rows = await listLeadForms()
-      setForms(rows)
-      syncDraftsFromRows(rows)
+      const visible = rows.filter((r) => r.lifecycle_status !== 'archived')
+      setForms(visible)
+      syncDraftsFromRows(visible)
     } catch (err: unknown) {
       setPageError(
         getFriendlyErrorInfo(err, t('admin.lead_forms.errors.load', { defaultValue: 'Failed to load lead forms' }), t),
@@ -153,7 +157,7 @@ export default function LeadFormsSettingsPage() {
       setCreateTitle('')
       setCreateSlug('')
       setCreateFields([])
-      navigate(settingsLeadFormDetailPath(created.form.id))
+      navigate(settingsLeadFormBuilderPath(created.form.id))
     } catch (err: unknown) {
       setPageError(
         getFriendlyErrorInfo(
@@ -210,6 +214,39 @@ export default function LeadFormsSettingsPage() {
     }
   }
 
+  const handleArchiveForm = async (row: TenantLeadForm) => {
+    if (!canMutate) return
+    const title = (drafts[row.id]?.title || row.title || '').trim() || row.id
+    const ok = window.confirm(
+      t('admin.forms_builder.delete_confirm', {
+        defaultValue:
+          'Archive “{title}”? It will disappear from Form Builder, Marketing, and Sales. Existing submissions stay.',
+        values: { title },
+      }),
+    )
+    if (!ok) return
+    setPageError(null)
+    setSavingId(row.id)
+    try {
+      await patchIntakeForm(row.id, { lifecycle_status: 'archived' })
+      notify({
+        title: t('admin.forms_builder.toast.archived', { defaultValue: 'Form archived' }),
+        variant: 'success',
+      })
+      await load()
+    } catch (err: unknown) {
+      setPageError(
+        getFriendlyErrorInfo(
+          err,
+          t('admin.forms_builder.errors.archive', { defaultValue: 'Failed to archive form' }),
+          t,
+        ),
+      )
+    } finally {
+      setSavingId(null)
+    }
+  }
+
   const copyText = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -252,17 +289,34 @@ export default function LeadFormsSettingsPage() {
   return (
     <SettingsSubpageHeader
       backLabel={t('admin.settings.subpage.back_all')}
-      kicker={t('admin.lead_forms.header_kicker')}
+      kicker={
+        isMarketingInventory
+          ? t('admin.lead_forms.header_kicker')
+          : t('admin.forms_builder.kicker', { defaultValue: 'Forms' })
+      }
       title={
         <span className="inline-flex items-center gap-2">
-          <IconClipboardList size={22} stroke={1.9} className="text-brand-600" />
-          {t('admin.lead_forms.title', { defaultValue: 'Lead forms' })}
+          {isMarketingInventory ? (
+            <IconClipboardList size={22} stroke={1.9} className="text-brand-600" />
+          ) : (
+            <IconForms size={22} stroke={1.9} className="text-brand-600" />
+          )}
+          {isMarketingInventory
+            ? t('app.nav.items.marketing_forms', { defaultValue: 'Forms' })
+            : t('admin.forms_builder.library_title', { defaultValue: 'Form Builder' })}
         </span>
       }
-      subtitle={t('admin.lead_forms.subtitle_b1', {
-        defaultValue:
-          'Create and configure questionnaires. Pick a purpose, add questions, then send from Sales inquiries.',
-      })}
+      subtitle={
+        isMarketingInventory
+          ? t('admin.lead_forms.subtitle_b1', {
+              defaultValue:
+                'Campaign inventory: activate a HostFlow form and copy the public URL. The constructor lives in Settings → Form Builder.',
+            })
+          : t('admin.forms_builder.library_subtitle', {
+              defaultValue:
+                'Compose HostFlow forms from the Field Catalog. Open a form to edit the canvas, then share a public URL.',
+            })
+      }
       actions={
         <Link className="text-sm font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
           {t('admin.lead_forms.link_billing', { defaultValue: 'Billing & limits' })}
@@ -415,7 +469,11 @@ export default function LeadFormsSettingsPage() {
           <p className="text-sm text-slate-500">{t('common.loading')}</p>
         ) : sortedForms.length === 0 ? (
           <p className="text-sm text-slate-500">
-            {t('admin.lead_forms.empty', { defaultValue: 'No lead forms yet. Create one to start tracking intake sources.' })}
+            {isMarketingInventory
+              ? t('admin.lead_forms.empty', { defaultValue: 'No forms yet. Create one to share a public intake URL.' })
+              : t('admin.forms_builder.library_empty', {
+                  defaultValue: 'No forms yet. Create one, then assemble fields in Form Builder.',
+                })}
           </p>
         ) : (
           <ul className="space-y-4">
@@ -482,6 +540,26 @@ export default function LeadFormsSettingsPage() {
                     >
                       {t('admin.lead_forms.configure', { defaultValue: 'Configure questions & routing' })}
                     </Link>
+                    <Link
+                      to={settingsLeadFormBuilderPath(row.id)}
+                      className="btn-primary btn-sm inline-flex items-center gap-1"
+                      data-testid="lead-form-open-builder"
+                    >
+                      <IconForms size={14} />
+                      {t('admin.forms_builder.open', { defaultValue: 'Open Builder' })}
+                    </Link>
+                    {canMutate && (
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm inline-flex items-center gap-1 text-rose-700"
+                        disabled={savingId === row.id}
+                        data-testid="lead-form-archive"
+                        onClick={() => void handleArchiveForm(row)}
+                      >
+                        <IconTrash size={14} />
+                        {t('common.actions.delete', { defaultValue: 'Delete' })}
+                      </button>
+                    )}
                   </div>
                   {slugOk && (
                     <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 p-3">

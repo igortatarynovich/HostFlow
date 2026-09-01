@@ -122,20 +122,12 @@ function LegacySettingsLeadsToMetaRedirect() {
   return <Navigate to={CRM.settingsIntegrationsMeta} replace />
 }
 
-function SettingsLeadFormsListRedirect() {
-  return <Navigate to={CRM.marketingForms} replace />
-}
-
-function SettingsLeadFormDetailRedirect() {
-  const { formId } = useParams()
-  return <Navigate to={`${CRM.marketingForms}/${encodeURIComponent(String(formId || ''))}`} replace />
-}
-
-function SettingsLeadFormBuilderRedirect() {
+/** ADR-007 / P2.5: Form Builder is the Settings platform surface, not Marketing. */
+function MarketingFormBuilderRedirect() {
   const { formId } = useParams()
   return (
     <Navigate
-      to={`${CRM.marketingForms}/${encodeURIComponent(String(formId || ''))}/builder`}
+      to={`${CRM.settingsLeadForms}/${encodeURIComponent(String(formId || ''))}/builder`}
       replace
     />
   )
@@ -872,7 +864,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   {
     key: 'marketing-forms-builder',
     path: `${seg(CRM.marketingForms)}/:formId/builder`,
-    Component: FormsBuilderPage,
+    Component: MarketingFormBuilderRedirect,
     permission: ['admin.users', 'leads.view', 'vacancies.view'],
   },
   {
@@ -938,20 +930,20 @@ export const APP_ROUTES: AppRouteConfig[] = [
   {
     key: 'settings-lead-forms',
     path: seg(CRM.settingsLeadForms),
-    Component: SettingsLeadFormsListRedirect,
-    permission: ['admin.users', 'leads.view'],
+    Component: LeadFormsSettingsPage,
+    permission: ['admin.users', 'leads.view', 'settings.view'],
   },
   {
     key: 'settings-forms-builder',
     path: `${seg(CRM.settingsLeadForms)}/:formId/builder`,
-    Component: SettingsLeadFormBuilderRedirect,
-    permission: ['admin.users', 'leads.view'],
+    Component: FormsBuilderPage,
+    permission: ['admin.users', 'leads.view', 'settings.view'],
   },
   {
     key: 'settings-intake-form-detail',
     path: `${seg(CRM.settingsLeadForms)}/:formId`,
-    Component: SettingsLeadFormDetailRedirect,
-    permission: ['admin.users', 'leads.view'],
+    Component: IntakeFormDetailPage,
+    permission: ['admin.users', 'leads.view', 'settings.view'],
   },
   {
     key: 'settings-message-templates',

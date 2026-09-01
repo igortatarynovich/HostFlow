@@ -66,6 +66,8 @@ A non-developer operator can **create, edit, activate, and copy a public URL** f
 4. Connect Source (`public_form`): **Create form** CTA → `createIntakeForm` (inline modal/wizard or short page) → auto-select new form → optional attach to Campaign/Flight.  
 5. Empty-state no longer dead-ends at Settings-only.
 
+**Shipped correction (ADR-007 / P2.5):** Composition Builder stays on Settings (`/app/settings/lead-forms/:formId/builder`). Marketing `/builder` redirects there. Settings list/detail are the constructor, not a redirect into Marketing. Marketing Forms remains campaign inventory + create-in-setup.
+
 ---
 
 ## 6. Publish verb (locked for this slice)
@@ -94,10 +96,10 @@ Do not rename these into a new Marketing-only lifecycle in C-6.
 
 ## 8. Acceptance
 
-- [x] Marketing rail includes Forms; `/app/marketing/forms` lists forms  
+- [x] Marketing rail includes Forms; `/app/marketing/forms` lists forms (campaign inventory)  
 - [x] Operator can create/edit/activate/copy public URL from Marketing paths  
-- [x] Builder reachable under Marketing path (same donor)  
-- [x] Settings lead-forms URLs redirect or deeplink to Marketing equivalents  
+- [x] Builder is the Settings constructor (`/app/settings/lead-forms/:formId/builder`, ADR-007 / P2.5); Marketing `/builder` redirects there  
+- [x] Settings lead-forms is the Forms platform SoT UI (not a redirect into Marketing)  
 - [x] Connect Source supports select-existing **and** create-new-in-flow (uses `createIntakeForm`)  
 - [x] No second Forms SoT; no Composition `commit_publish` invention unless already productized  
 - [x] Cutover docs: C-6 DONE; Product Track → C-7  
@@ -107,16 +109,17 @@ Do not rename these into a new Marketing-only lifecycle in C-6.
 
 | Layer | Path |
 |-------|------|
-| Paths | `marketingForms` = `/app/marketing/forms` (+ detail/builder helpers) |
-| Routes | Marketing remount of `LeadFormsSettingsPage` / `IntakeFormDetailPage` / `FormsBuilderPage` |
-| Redirects | `/app/settings/lead-forms…` → Marketing equivalents |
+| Paths | `settingsLeadForms` = `/app/settings/lead-forms` (constructor); `marketingForms` = `/app/marketing/forms` (campaign inventory) |
+| Routes | Settings mounts `LeadFormsSettingsPage` / `IntakeFormDetailPage` / `FormsBuilderPage`; Marketing list/detail stay; Marketing `/builder` → Settings Builder |
+| Redirects | Marketing `…/builder` → `/app/settings/lead-forms/:formId/builder` |
 | Connect | create-in-setup via `createIntakeForm` + candidate field defaults; auto-select |
 
 **Constraints / honesty notes:**
 
-- Create-in-setup is a **thin** title → `createIntakeForm` path (general candidate field pack) — full Settings wizard remains on Marketing Forms list.  
-- Operator “publish” remains `is_active` + `public_slug`; Composition Builder stays draft-only.  
-- Settings Forms card / sales_setup chrome tab now deep-link to Marketing Forms.
+- Create-in-setup is a **thin** title → `createIntakeForm` path (general candidate field pack) — full constructor remains on **Settings → Lead forms** (`/app/settings/lead-forms`, P2.5 / ADR-007).
+- Form Builder (composition canvas) is a **platform capability**, not a Marketing product surface. Marketing `/builder` **redirects** to Settings. C-6 owns campaign inventory + create-in-setup, not the Builder SoT.
+- Operator “publish” remains `is_active` + `public_slug`; Composition Builder stays draft-only.
+- Settings Forms card / sales_setup chrome tab deep-link to **Settings** Lead forms (constructor), not Marketing.
 
 ---
 

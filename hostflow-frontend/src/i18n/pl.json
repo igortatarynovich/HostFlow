@@ -12848,8 +12848,8 @@
           "description": "Zarządzanie dodatkowymi polami dla kandydatów i dokumentów."
         },
         "lead_forms": {
-          "label": "Formularze leadów",
-          "description": "Nazwane punkty wejścia do publicznego intake z opcjonalnym slugiem dla atrybucji."
+          "label": "Form Builder",
+          "description": "Składaj formularze HostFlow z Field Catalog. Otwórz Builder, aby edytować canvas."
         },
         "email": {
           "label": "Poczta wychodząca (SMTP)",
@@ -13357,10 +13357,31 @@
         "draft_not_found": "Nie znaleziono szablonu szkicu"
       }
     },
+    "forms_builder": {
+      "kicker": "Forms",
+      "library_title": "Form Builder",
+      "library_subtitle": "Składaj formularze HostFlow z Field Catalog. Otwórz formularz, aby edytować canvas, potem skopiuj publiczny URL.",
+      "library_empty": "Brak formularzy. Utwórz formularz i złóż pola w Form Builderze.",
+      "title": "Form Builder",
+      "subtitle": "Paleta Field Catalog · kolejność na canvas · właściwości · zapis szkicu.",
+      "open": "Otwórz Builder",
+      "back": "Wszystkie formularze",
+      "entry_title": "Form Builder",
+      "entry_help": "Złóż komponenty Field Catalog w szkic. Zapis to tylko draft — publikacja osobno.",
+      "delete_confirm": "Zarchiwizować „{title}”? Formularz zniknie z Form Builder, Marketing i Sales. Wysłane zgłoszenia zostaną.",
+      "toast": {
+        "archived": "Formularz zarchiwizowany"
+      },
+      "errors": {
+        "load": "Nie udało się wczytać szkicu Buildera",
+        "save": "Nie udało się zapisać szkicu",
+        "archive": "Nie udało się zarchiwizować formularza"
+      }
+    },
     "lead_forms": {
       "header_kicker": "Publiczne linki do formularzy; każdy formularz jest liczony osobno.",
-      "title": "Formularze leadów",
-      "subtitle": "Punkty wejścia do publicznego intake. Ustaw publiczny slug, aby kandydaci otwierali formularz przez /public/intake.",
+      "title": "Forms",
+      "subtitle": "Publiczne linki do formularzy; każdy formularz jest liczony osobno.",
       "new_title": "Tytuł nowego formularza",
       "create": "Utwórz formularz",
       "empty": "Brak formularzy leadów. Utwórz formularz, aby oznaczać źródła intake.",
