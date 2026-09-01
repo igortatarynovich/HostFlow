@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { IconChecklist } from '@tabler/icons-react'
-import { createOwnCompany, setActiveOwnCompany, ownCompanySettings } from '../../api/client'
+import { createOwnCompany, setActiveOwnCompany, ownCompanySettings, getOnboardingStatus } from '../../api/client'
 import { getBillingSummary } from '../../api/billing'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
@@ -127,14 +127,29 @@ export default function PlatformSetupPage() {
     }
   }, [signupSuccess])
 
+  useEffect(() => {
+    let mounted = true
+    void getOnboardingStatus()
+      .then((status) => {
+        if (!mounted) return
+        if (status?.steps?.company_created) {
+          navigate(CRM_APP_PATHS.launchpad, { replace: true })
+        }
+      })
+      .catch(() => {
+        /* stay on setup if status is unavailable */
+      })
+    return () => {
+      mounted = false
+    }
+  }, [navigate])
+
   const onIdentityContinue = useCallback(() => {
     setError(null)
     if (!identity) {
       setError(
         friendlyFormHintError(
-          t('app.platform_setup.errors.identity_required', {
-            defaultValue: 'Выберите, что лучше описывает ваш бизнес.',
-          }),
+          t('app.platform_setup.errors.identity_required'),
           t,
         ),
       )
@@ -152,9 +167,7 @@ export default function PlatformSetupPage() {
     if (!firstModule) {
       setError(
         friendlyFormHintError(
-          t('app.platform_setup.errors.module_required', {
-            defaultValue: 'Выберите, что хотите запустить первым.',
-          }),
+          t('app.platform_setup.errors.module_required'),
           t,
         ),
       )
@@ -164,9 +177,7 @@ export default function PlatformSetupPage() {
     if (!mod?.enabled) {
       setError(
         friendlyFormHintError(
-          t('app.platform_setup.errors.module_unavailable', {
-            defaultValue: 'Этот модуль пока недоступен — выберите Recruitment.',
-          }),
+          t('app.platform_setup.errors.module_unavailable'),
           t,
         ),
       )
@@ -180,11 +191,11 @@ export default function PlatformSetupPage() {
     setError(null)
     setLimitReached(false)
     if (!companyName.trim()) {
-      setError(friendlyFormHintError(t('app.platform_setup.errors.name_required', { defaultValue: 'Укажите название компании.' }), t))
+      setError(friendlyFormHintError(t('app.platform_setup.errors.name_required'), t))
       return
     }
     if (!industry || !teamSize || !countryCode || !identity || !firstModule) {
-      setError(friendlyFormHintError(t('app.platform_setup.errors.incomplete', { defaultValue: 'Заполните все поля.' }), t))
+      setError(friendlyFormHintError(t('app.platform_setup.errors.incomplete'), t))
       return
     }
     if (!hasAvailableOperatingSlots) {
@@ -276,7 +287,7 @@ export default function PlatformSetupPage() {
         })
       } else {
         setLimitReached(false)
-        const fb = t('app.platform_setup.errors.generic', { defaultValue: 'Не удалось сохранить настройки.' })
+        const fb = t('app.platform_setup.errors.generic')
         if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
           setError(getFriendlyErrorInfo(err, fb, t))
         }
@@ -288,34 +299,22 @@ export default function PlatformSetupPage() {
 
   const stepTitle = useMemo(() => {
     if (step === 'identity') {
-      return t('app.platform_setup.identity_title', {
-        defaultValue: 'Что лучше всего описывает ваш бизнес?',
-      })
+      return t('app.platform_setup.identity_title')
     }
     if (step === 'intent') {
-      return t('app.platform_setup.intent_title', {
-        defaultValue: 'Какую задачу хотите решить первой?',
-      })
+      return t('app.platform_setup.intent_title')
     }
-    return t('app.platform_setup.details_title', {
-      defaultValue: 'Несколько деталей о компании',
-    })
+    return t('app.platform_setup.details_title')
   }, [step, t])
 
   const stepSubtitle = useMemo(() => {
     if (step === 'identity') {
-      return t('app.platform_setup.identity_subtitle', {
-        defaultValue: 'HostFlow подстроит терминологию и рекомендации под ваш контекст.',
-      })
+      return t('app.platform_setup.identity_subtitle')
     }
     if (step === 'intent') {
-      return t('app.platform_setup.intent_subtitle', {
-        defaultValue: 'Первый модуль определяет, с чего начнём настройку.',
-      })
+      return t('app.platform_setup.intent_subtitle')
     }
-    return t('app.platform_setup.details_subtitle', {
-      defaultValue: 'Минимум данных — чтобы запустить выбранный модуль.',
-    })
+    return t('app.platform_setup.details_subtitle')
   }, [step, t])
 
   return (
@@ -323,17 +322,13 @@ export default function PlatformSetupPage() {
       <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="inline-flex items-center gap-1 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
           <IconChecklist size={14} stroke={1.9} />
-          {t('app.platform_setup.badge', { defaultValue: 'Настройка платформы' })}
+          {t('app.platform_setup.badge')}
         </div>
         <h1 className="mt-3 text-2xl font-semibold text-slate-900">
-          {t('app.platform_setup.welcome_title', {
-            defaultValue: 'Давайте настроим HostFlow под ваш бизнес',
-          })}
+          {t('app.platform_setup.welcome_title')}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          {t('app.platform_setup.welcome_subtitle', {
-            defaultValue: 'Это не регистрация — вы уже в системе. Осталось рассказать о бизнесе.',
-          })}
+          {t('app.platform_setup.welcome_subtitle')}
         </p>
       </section>
 
@@ -371,7 +366,7 @@ export default function PlatformSetupPage() {
             </div>
             {error ? <ErrorRecoveryBanner info={error} compact /> : null}
             <button type="button" className="btn-primary w-full py-3" onClick={onIdentityContinue}>
-              {t('common.continue', { defaultValue: 'Продолжить' })}
+              {t('common.continue')}
             </button>
           </div>
         ) : null}
@@ -407,7 +402,7 @@ export default function PlatformSetupPage() {
                     <span className="font-medium">{label}</span>
                     {!enabled ? (
                       <span className="ml-2 text-xs text-slate-400">
-                        {t('app.launchpad.coming_soon', { defaultValue: 'Скоро' })}
+                        {t('app.launchpad.coming_soon')}
                       </span>
                     ) : null}
                     <p className="mt-1 pl-6 text-xs text-slate-500">{desc}</p>
@@ -418,10 +413,10 @@ export default function PlatformSetupPage() {
             {error ? <ErrorRecoveryBanner info={error} compact /> : null}
             <div className="flex gap-2">
               <button type="button" className="btn-secondary px-4 py-3" onClick={() => setStep('identity')}>
-                {t('common.back', { defaultValue: 'Назад' })}
+                {t('common.back')}
               </button>
               <button type="button" className="btn-primary flex-1 py-3" onClick={onIntentContinue}>
-                {t('common.continue', { defaultValue: 'Продолжить' })}
+                {t('common.continue')}
               </button>
             </div>
           </div>
@@ -443,7 +438,7 @@ export default function PlatformSetupPage() {
 
             <div>
               <label htmlFor="platform-company-name" className="block text-sm font-medium text-slate-800">
-                {t('app.platform_setup.name_label', { defaultValue: 'Название компании' })}
+                {t('app.platform_setup.name_label')}
               </label>
               <input
                 id="platform-company-name"
@@ -459,7 +454,7 @@ export default function PlatformSetupPage() {
 
             <div>
               <label htmlFor="platform-industry" className="block text-sm font-medium text-slate-800">
-                {t('app.platform_setup.industry_label', { defaultValue: 'Отрасль' })}
+                {t('app.platform_setup.industry_label')}
               </label>
               <select
                 id="platform-industry"
@@ -468,7 +463,7 @@ export default function PlatformSetupPage() {
                 onChange={(e) => setIndustry(e.target.value as IndustryKey)}
                 className="mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm"
               >
-                <option value="">{t('app.platform_setup.industry_placeholder', { defaultValue: 'Выберите…' })}</option>
+                <option value="">{t('app.platform_setup.industry_placeholder')}</option>
                 {industryOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {catalogOptionLabel(opt, locale)}
@@ -479,7 +474,7 @@ export default function PlatformSetupPage() {
 
             <div>
               <div className="text-sm font-medium text-slate-800">
-                {t('app.platform_setup.team_size_label', { defaultValue: 'Размер компании' })}
+                {t('app.platform_setup.team_size_label')}
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {teamSizeOptions.map((opt) => (
@@ -508,7 +503,7 @@ export default function PlatformSetupPage() {
 
             <div>
               <label htmlFor="platform-country" className="block text-sm font-medium text-slate-800">
-                {t('app.platform_setup.country_label', { defaultValue: 'Страна' })}
+                {t('app.platform_setup.country_label')}
               </label>
               <select
                 id="platform-country"
@@ -541,7 +536,7 @@ export default function PlatformSetupPage() {
 
             <div className="flex gap-2">
               <button type="button" className="btn-secondary px-4 py-3" onClick={() => setStep('intent')} disabled={loading}>
-                {t('common.back', { defaultValue: 'Назад' })}
+                {t('common.back')}
               </button>
               <button
                 type="submit"
@@ -549,7 +544,7 @@ export default function PlatformSetupPage() {
                 disabled={loading || (!slotGuardLoading && !hasAvailableOperatingSlots)}
                 className="btn-primary flex-1 py-3 disabled:opacity-50"
               >
-                {loading ? t('common.saving') : t('app.platform_setup.finish', { defaultValue: 'Открыть Launchpad' })}
+                {loading ? t('common.saving') : t('app.platform_setup.finish')}
               </button>
             </div>
           </form>

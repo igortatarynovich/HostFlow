@@ -137,7 +137,9 @@
       "body": "We recorded the error. Refresh the page or try again — if it keeps happening, contact support.",
       "reload": "Refresh page",
       "retry": "Try again"
-    }
+    },
+    "continue": "Continue",
+    "back": "Back"
   },
   "scanner": {
     "place_in_frame": "Place the document inside the frame",
@@ -9461,7 +9463,9 @@
         "api_base_placeholder": "http://localhost:8000/api/v1",
         "docs_base": "Docs Base (read-only)",
         "tenant_id": "Tenant ID",
-        "tenant_placeholder": "Tenant UUID"
+        "tenant_placeholder": "Tenant UUID",
+        "api_invalid": "Could not parse the API address. Enter a full URL, for example http://localhost:8000/api/v1",
+        "api_hint": "Change the API base URL (leave empty for the default)."
       },
       "nav": {
         "dashboard": "Dashboard",
@@ -9517,7 +9521,9 @@
           "routing_issue": "Routing issue",
           "last_error": "Last error",
           "campaigns_flights": "Campaigns / Flights",
-          "actions": "Actions"
+          "actions": "Actions",
+          "page": "Page",
+          "provider_form": "Provider form"
         },
         "connection": {
           "connected": "Connected",
@@ -9538,11 +9544,13 @@
           "mapping": "Mapping",
           "test_lead": "Test lead",
           "connection": "Connection",
-          "setup_campaign_flight": "Configure Campaign/Flight"
+          "setup_campaign_flight": "Configure Campaign/Flight",
+          "open_drift": "Diagnostics · drift"
         },
         "errors": {
           "load": "Failed to load sources"
-        }
+        },
+        "drift_summary": "Mapping drift: {count} application(s) in {hours} h. Open Diagnostics."
       },
       "status": {
         "draft": "Draft",
@@ -9611,7 +9619,25 @@
         "timeline": "Timeline →",
         "submissions_empty": "No applications on this Flight yet. After Connect Source, new Meta leads will appear here.",
         "unnamed": "Unnamed",
-        "more_submissions": "More applications"
+        "more_submissions": "More applications",
+        "title": "Campaign",
+        "no_flight": "Flight not found",
+        "errors": {
+          "load": "Failed to load the campaign",
+          "command": "Failed to run the action",
+          "load_more": "Failed to load more applications",
+          "ad_bind": "Failed to bind Ad ID",
+          "ad_bind_patch": "Failed to update the binding",
+          "ad_unbind": "Failed to unbind Ad ID"
+        },
+        "flight_compare": {
+          "title": "Flight comparison",
+          "subtitle": "KPI by campaign waves (read-only)."
+        },
+        "cohorts": {
+          "title": "Cohorts",
+          "subtitle": "{days} d · {bucket} · CAC proxy = cost / outcome"
+        }
       },
       "kpi": {
         "applications": "Applications",
@@ -9639,7 +9665,19 @@
         "form_aria": "HostFlow form",
         "no_forms": "No active forms.",
         "open_forms": "Open forms",
-        "from_leads": "from leads"
+        "from_leads": "from leads",
+        "errors": {
+          "load": "Failed to load the campaign",
+          "create_slug": "Enter a form name (a public slug is required)",
+          "create_form": "Failed to create the form",
+          "save": "Failed to connect the source"
+        },
+        "create": {
+          "title": "New form name",
+          "submit": "Create and select",
+          "open": "Create a new form",
+          "hint": "Creates an active HostFlow form (candidate fields) via createIntakeForm and selects it immediately."
+        }
       },
       "source_card": {
         "public_form": "Public form",
@@ -9716,7 +9754,11 @@
         "back": "Back",
         "next": "Next",
         "creating": "Creating…",
-        "create": "Create campaign"
+        "create": "Create campaign",
+        "errors": {
+          "load_options": "Failed to load catalogs",
+          "create": "Failed to create the campaign"
+        }
       },
       "list": {
         "public_form": "Public form",
@@ -9727,6 +9769,87 @@
         "launch": "Launch: {when}",
         "not_launched": "not launched yet",
         "open": "Open"
+      },
+      "title": "Marketing",
+      "subtitle": "Campaigns, forms, and Flight launch — from the idea to inbound applications.",
+      "empty_title": "No campaigns yet",
+      "empty_body": "Create the first one: form → flow → launch Flight.",
+      "errors": {
+        "load": "Failed to load campaigns",
+        "command": "Failed to run the action"
+      },
+      "actions": {
+        "create": "Create campaign"
+      },
+      "portfolio": {
+        "title": "Portfolio KPI",
+        "subtitle": "Company campaign summary (read-only).",
+        "capped": " List is capped."
+      },
+      "diagnostics": {
+        "subtitle": "Operations on inbound applications: route, timeline, payload. Sources is for setup.",
+        "back_list": "← Back to list",
+        "open_lead": "Open Lead in CRM",
+        "timeline_empty": "No events for this submission_id (or the submission is not unique).",
+        "empty": "No applications for the current filter.",
+        "failed_only": "Failed / unresolved only",
+        "drift_only": "Mapping drift only",
+        "apply": "Apply",
+        "show_drift": "Show drift",
+        "replay": "Replay",
+        "replaying": "Replay…",
+        "replay_hint": "Re-run the lead through the process pipeline (POST /leads/{id}/process)",
+        "errors": {
+          "load_case": "Failed to load the case",
+          "export": "Failed to download the export",
+          "replay": "Failed to replay (process lead)",
+          "load_list": "Failed to load submissions"
+        },
+        "drift_summary": "Last {hours} h: {count} application(s) with Mapping drift (scanned {scanned}).",
+        "drift_summary_capped": " Scan is capped.",
+        "drift_alert": "{count} application(s) on this page have Mapping drift — Source rules changed after ingest."
+      },
+      "mapping": {
+        "title": "Source mapping",
+        "title_named": "Mapping — {name}",
+        "subtitle": "Confirm field placement and run dry-run routing — without creating a Candidate / Application.",
+        "errors": {
+          "load": "Failed to load mapping for the source",
+          "action": "Failed to run the action"
+        },
+        "actions": {
+          "test_lead": "Test lead",
+          "back": "← Sources",
+          "save": "Save mapping"
+        },
+        "saved": "Mapping saved on IntakeSourceProfile.mapping_rules",
+        "rules": {
+          "empty": "No rules and no sample fields. Get a sample on Test lead first."
+        },
+        "routing": {
+          "empty": "Preview will show destination, ignored, and unmapped fields without production writes."
+        }
+      },
+      "test_lead": {
+        "title": "Test lead & field discovery",
+        "title_named": "Test lead — {name}",
+        "subtitle": "Get a sample submission, review fields (masked), and dry-run normalize — without creating a Candidate / Application.",
+        "errors": {
+          "load": "Failed to load the sample for the source",
+          "action": "Failed to run the action"
+        },
+        "mode_a": {
+          "body": "Send a test lead from the Meta Lead Form for this Source, then refresh the sample — HostFlow will pick up the payload without creating a Candidate."
+        },
+        "mode_b": {
+          "body": "The next matching submission is processed as usual and becomes the mapping sample (values in the UI are masked)."
+        },
+        "fields": {
+          "empty": "No sample. Send a Meta test lead, arm capture next, or paste a payload."
+        },
+        "capture": {
+          "armed": "Capture next armed until {until}"
+        }
       }
     },
     "context_help": {
@@ -9973,6 +10096,65 @@
         "minutes_ago": "{count} min ago",
         "hours_ago": "{count} h ago"
       }
+    },
+    "platform_setup": {
+      "badge": "Platform setup",
+      "welcome_title": "Let’s set up HostFlow for your business",
+      "welcome_subtitle": "This is not registration — you are already in the system. Tell us about the business.",
+      "identity_title": "What best describes your business?",
+      "identity_subtitle": "HostFlow will adapt terminology and recommendations to your context.",
+      "intent_title": "What do you want to launch first?",
+      "intent_subtitle": "The first module decides where setup starts.",
+      "details_title": "A few company details",
+      "details_subtitle": "Minimum data — enough to start the selected module.",
+      "name_label": "Company name",
+      "industry_label": "Industry",
+      "industry_placeholder": "Select…",
+      "team_size_label": "Company size",
+      "country_label": "Country",
+      "finish": "Open Launchpad",
+      "errors": {
+        "identity_required": "Choose what best describes your business.",
+        "module_required": "Choose what you want to launch first.",
+        "module_unavailable": "This module is not available yet — choose Recruitment.",
+        "name_required": "Enter a company name.",
+        "incomplete": "Fill in all fields.",
+        "generic": "Failed to save settings."
+      }
+    },
+    "launchpad": {
+      "coming_soon": "Coming soon",
+      "open_search": "Open hiring",
+      "create_campaign": "Create campaign",
+      "welcome": "Welcome",
+      "welcome_named": "Welcome, {name}",
+      "subtitle_today": "What do you want to do today?",
+      "task_find_staff_title": "Find staff",
+      "task_find_staff_body": "Create a hiring flow and get a link for candidates.",
+      "task_find_staff_role_driver": "Looking for drivers",
+      "task_find_staff_role_warehouse": "Looking for warehouse staff",
+      "task_find_staff_role_office": "Looking for office staff",
+      "create_search": "Create hiring flow",
+      "task_find_clients_title": "Find new clients",
+      "task_find_clients_body": "Companies submit staffing requests themselves — you get a ready link and QR.",
+      "create_client_channel": "Start attracting clients",
+      "modules_title": "Your modules",
+      "module_recruitment": "Recruitment",
+      "recruitment_ready": "Ready",
+      "recruitment_create_first": "Create the first hiring flow",
+      "recruitment_open": "Available",
+      "recruitment_configure": "Not configured",
+      "module_recruitment_desc": "Hire staff and manage candidates",
+      "module_hr_desc": "Manage employees and processes",
+      "module_fleet_desc": "Transport and assignments",
+      "module_orders_desc": "Orders and documents",
+      "platform_title": "Platform",
+      "platform_account_active": "Account is active",
+      "platform_business_account": "Business account",
+      "current_plan": "Current plan",
+      "trial_plan": "Trial",
+      "trial_days_left": "{days} days left",
+      "company_setup": "Getting started"
     }
   },
   "public": {

@@ -81,9 +81,7 @@ export default function MarketingConnectSourcePage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.connect.errors.load', {
-            defaultValue: 'Не удалось загрузить кампанию',
-          }),
+          t('app.marketing.connect.errors.load'),
           t,
         ),
       )
@@ -117,9 +115,7 @@ export default function MarketingConnectSourcePage() {
       setError(
         getFriendlyErrorInfo(
           new Error('slug'),
-          t('app.marketing.connect.errors.create_slug', {
-            defaultValue: 'Укажите название анкеты (нужен публичный slug)',
-          }),
+          t('app.marketing.connect.errors.create_slug'),
           t,
         ),
       )
@@ -159,9 +155,7 @@ export default function MarketingConnectSourcePage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.connect.errors.create_form', {
-            defaultValue: 'Не удалось создать анкету',
-          }),
+          t('app.marketing.connect.errors.create_form'),
           t,
         ),
       )
@@ -194,9 +188,7 @@ export default function MarketingConnectSourcePage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.connect.errors.save', {
-            defaultValue: 'Не удалось подключить источник',
-          }),
+          t('app.marketing.connect.errors.save'),
           t,
         ),
       )
@@ -332,9 +324,7 @@ export default function MarketingConnectSourcePage() {
                     >
                       <label className="block text-sm">
                         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          {t('app.marketing.connect.create.title', {
-                            defaultValue: 'Название новой анкеты',
-                          })}
+                          {t('app.marketing.connect.create.title')}
                         </span>
                         <input
                           className="input mt-1 w-full"
@@ -352,9 +342,7 @@ export default function MarketingConnectSourcePage() {
                           data-testid="marketing-connect-create-submit"
                           onClick={() => void handleCreateHostflowForm()}
                         >
-                          {t('app.marketing.connect.create.submit', {
-                            defaultValue: 'Создать и выбрать',
-                          })}
+                          {t('app.marketing.connect.create.submit')}
                         </button>
                         <button
                           type="button"
@@ -370,10 +358,7 @@ export default function MarketingConnectSourcePage() {
                         </button>
                       </div>
                       <p className="text-xs text-slate-500">
-                        {t('app.marketing.connect.create.hint', {
-                          defaultValue:
-                            'Создаёт активную HostFlow-анкету (candidate fields) через createIntakeForm и сразу выбирает её.',
-                        })}
+                        {t('app.marketing.connect.create.hint')}
                       </p>
                     </div>
                   ) : (
@@ -383,9 +368,7 @@ export default function MarketingConnectSourcePage() {
                       data-testid="marketing-connect-create-open"
                       onClick={() => setShowCreateForm(true)}
                     >
-                      {t('app.marketing.connect.create.open', {
-                        defaultValue: 'Создать новую анкету',
-                      })}
+                      {t('app.marketing.connect.create.open')}
                     </button>
                   )
                 ) : null}

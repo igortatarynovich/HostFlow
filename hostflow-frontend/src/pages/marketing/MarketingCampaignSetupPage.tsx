@@ -87,9 +87,7 @@ export default function MarketingCampaignSetupPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.setup.errors.load_options', {
-            defaultValue: 'Не удалось загрузить справочники',
-          }),
+          t('app.marketing.setup.errors.load_options'),
           t,
         ),
       )
@@ -169,9 +167,7 @@ export default function MarketingCampaignSetupPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.setup.errors.create', {
-            defaultValue: 'Не удалось создать кампанию',
-          }),
+          t('app.marketing.setup.errors.create'),
           t,
         ),
       )

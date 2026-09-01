@@ -49,7 +49,7 @@ export function Sidebar() {
                 }
                 const normalized = apiBaseSettings.set(next);
                 if (!normalized) {
-                  alert("Не удалось распознать адрес API. Укажите полный URL, например http://localhost:8000/api/v1");
+                  alert(t('app.sidebar.settings.api_invalid'));
                   e.currentTarget.value = resolveApiBase();
                   return;
                 }
@@ -59,7 +59,7 @@ export function Sidebar() {
               }}
             />
             <p className="mt-1 text-[11px] leading-tight text-white/70">
-              Измени базовый URL API (оставь пустым для значения по умолчанию).
+              {t('app.sidebar.settings.api_hint')}
             </p>
           </div>
 

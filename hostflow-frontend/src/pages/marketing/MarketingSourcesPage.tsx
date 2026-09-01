@@ -75,9 +75,7 @@ export default function MarketingSourcesPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.sources.errors.load', {
-            defaultValue: 'Не удалось загрузить источники',
-          }),
+          t('app.marketing.sources.errors.load'),
           t,
         ),
       )
@@ -105,9 +103,7 @@ export default function MarketingSourcesPage() {
       <PageShellHeader>
         <PageHeader
           title={t('app.marketing.sources.title', { defaultValue: 'Sources' })}
-          subtitle={t('app.marketing.sources.subtitle', {
-            defaultValue: 'Подключённые источники, статус, Mapping Health и последние события.',
-          })}
+          subtitle={t('app.marketing.sources.subtitle')}
           actions={
             <Link
               to={CRM_APP_PATHS.settingsIntegrationsMeta}
@@ -129,10 +125,10 @@ export default function MarketingSourcesPage() {
         >
           <span>
             {t('app.marketing.sources.drift_summary', {
-              defaultValue:
-                'Mapping drift: {{count}} заявк(и) за {{hours}} ч. Откройте Diagnostics.',
-              count: driftSummary.drift_count,
-              hours: driftSummary.window_hours,
+              values: {
+                count: driftSummary.drift_count,
+                hours: driftSummary.window_hours,
+              },
             })}
           </span>
           <Link
@@ -155,7 +151,7 @@ export default function MarketingSourcesPage() {
 
       {loading ? (
         <p className="text-sm text-slate-500" data-testid="marketing-sources-loading">
-          {t('common.loading', { defaultValue: 'Загрузка…' })}
+          {t('common.loading')}
         </p>
       ) : null}
 
@@ -165,22 +161,17 @@ export default function MarketingSourcesPage() {
           data-testid="marketing-sources-empty"
         >
           <p className="text-base font-medium text-slate-900">
-            {t('app.marketing.sources.empty_title', {
-              defaultValue: 'Пока нет источников',
-            })}
+            {t('app.marketing.sources.empty_title')}
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            {t('app.marketing.sources.empty_body', {
-              defaultValue:
-                'Подключите Meta в Integrations или привяжите intake source — они появятся здесь.',
-            })}
+            {t('app.marketing.sources.empty_body')}
           </p>
           <Link
             to={CRM_APP_PATHS.settingsIntegrationsMeta}
             className="btn-primary btn-sm mt-4 inline-flex"
             data-testid="marketing-sources-empty-cta"
           >
-            {t('app.marketing.sources.actions.connect', { defaultValue: 'Открыть Integrations' })}
+            {t('app.marketing.sources.actions.connect')}
           </Link>
         </div>
       ) : null}
@@ -310,9 +301,7 @@ export default function MarketingSourcesPage() {
                     {row.routing_issue_code ? (
                       <div data-testid={`marketing-source-routing-issue-${row.source_id}`}>
                         <div className="text-sm text-rose-800">
-                          {t('app.marketing.sources.routing_issue.missing_campaign_flight', {
-                            defaultValue: 'Campaign/Flight для этого Ad ID не настроены.',
-                          })}
+                          {t('app.marketing.sources.routing_issue.missing_campaign_flight')}
                         </div>
                         {row.last_problematic_ad_id ? (
                           <div className="mt-0.5 font-mono text-xs text-slate-500">
@@ -347,9 +336,7 @@ export default function MarketingSourcesPage() {
                           className="text-sm font-medium text-brand-700 hover:underline"
                           data-testid={`marketing-source-setup-campaign-flight-${row.source_id}`}
                         >
-                          {t('app.marketing.sources.actions.setup_campaign_flight', {
-                            defaultValue: 'Настроить Campaign/Flight',
-                          })}
+                          {t('app.marketing.sources.actions.setup_campaign_flight')}
                         </Link>
                       ) : null}
                       <Link

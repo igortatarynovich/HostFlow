@@ -185,8 +185,8 @@ export default function LaunchpadPage() {
       : CRM_APP_PATHS.marketingNew
   const recruitmentModuleActionLabel =
     recruitmentWorkspaceAvailable && hasActiveSearch
-      ? t('app.launchpad.open_search', { defaultValue: 'Открыть подбор' })
-      : t('app.launchpad.create_campaign', { defaultValue: 'Создать кампанию' })
+      ? t('app.launchpad.open_search')
+      : t('app.launchpad.create_campaign')
 
   const trialDays = trialDaysRemaining(billing?.trial_ends_at)
   const showTrial = Boolean(billing?.gate?.trial_active || billing?.status === 'trialing' || trialDays !== null)
@@ -196,16 +196,11 @@ export default function LaunchpadPage() {
       <header>
         <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
           {displayName
-            ? t('app.launchpad.welcome_named', {
-                defaultValue: 'Добро пожаловать, {name}',
-                values: { name: displayName },
-              })
-            : t('app.launchpad.welcome', { defaultValue: 'Добро пожаловать' })}
+            ? t('app.launchpad.welcome_named', { values: { name: displayName } })
+            : t('app.launchpad.welcome')}
         </h1>
         <p className="mt-2 text-sm text-slate-600 sm:text-base">
-          {t('app.launchpad.subtitle_today', {
-            defaultValue: 'Что вы хотите сделать сегодня?',
-          })}
+          {t('app.launchpad.subtitle_today')}
         </p>
       </header>
 
@@ -225,18 +220,16 @@ export default function LaunchpadPage() {
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">
-                {t('app.launchpad.task_find_staff_title', { defaultValue: 'Найти сотрудников' })}
+                {t('app.launchpad.task_find_staff_title')}
               </h2>
               <p className="mt-2 text-sm text-slate-600 sm:text-base">
-                {t('app.launchpad.task_find_staff_body', {
-                  defaultValue: 'Создайте подбор и получите ссылку для кандидатов.',
-                })}
+                {t('app.launchpad.task_find_staff_body')}
               </p>
               <ul className="mt-4 space-y-2 text-sm text-slate-700">
                 {[
-                  t('app.launchpad.task_find_staff_role_driver', { defaultValue: 'Ищете водителей' }),
-                  t('app.launchpad.task_find_staff_role_warehouse', { defaultValue: 'Ищете работников склада' }),
-                  t('app.launchpad.task_find_staff_role_office', { defaultValue: 'Ищете офисных сотрудников' }),
+                  t('app.launchpad.task_find_staff_role_driver'),
+                  t('app.launchpad.task_find_staff_role_warehouse'),
+                  t('app.launchpad.task_find_staff_role_office'),
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <IconCircleCheck size={18} className="shrink-0 text-emerald-600" aria-hidden />
@@ -256,8 +249,8 @@ export default function LaunchpadPage() {
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700 sm:mt-6 sm:w-auto sm:self-start sm:text-base"
           >
             {lastSearchId && hasActiveSearch
-              ? t('app.launchpad.open_search', { defaultValue: 'Открыть подбор' })
-              : t('app.launchpad.create_search', { defaultValue: 'Создать подбор' })}
+              ? t('app.launchpad.open_search')
+              : t('app.launchpad.create_search')}
             <IconArrowRight size={16} stroke={2} aria-hidden />
           </Link>
         </article>
@@ -268,14 +261,10 @@ export default function LaunchpadPage() {
         >
           <CompanyInquiriesIllustration />
           <h3 className="mt-4 text-lg font-semibold text-slate-900">
-            {t('app.launchpad.task_find_clients_title', {
-              defaultValue: 'Найти новых клиентов',
-            })}
+            {t('app.launchpad.task_find_clients_title')}
           </h3>
           <p className="mt-2 flex-1 text-sm text-slate-600">
-            {t('app.launchpad.task_find_clients_body', {
-              defaultValue: 'Компании сами оставляют заявки на подбор персонала — вы получаете готовую ссылку и QR.',
-            })}
+            {t('app.launchpad.task_find_clients_body')}
           </p>
           <div className="mt-4 space-y-3">
             <Link
@@ -283,9 +272,7 @@ export default function LaunchpadPage() {
               data-testid="m1-launchpad-create-client-channel"
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-300 bg-white px-4 py-3 text-sm font-semibold text-brand-800 hover:bg-brand-50 sm:w-auto"
             >
-              {t('app.launchpad.create_client_channel', {
-                defaultValue: 'Начать привлечение клиентов',
-              })}
+              {t('app.launchpad.create_client_channel')}
               <IconArrowRight size={14} stroke={1.9} aria-hidden />
             </Link>
           </div>
@@ -294,12 +281,12 @@ export default function LaunchpadPage() {
 
       <section>
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.launchpad.modules_title', { defaultValue: 'Ваши модули' })}
+          {t('app.launchpad.modules_title')}
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <ModuleCard
             icon={<IconSearch size={20} stroke={1.8} />}
-            title={t('app.launchpad.module_recruitment', { defaultValue: 'Recruitment' })}
+            title={t('app.launchpad.module_recruitment')}
             status={
               readinessLoading ? 'configure' : recruitmentWorkspaceAvailable && hasActiveSearch ? 'ready' : 'configure'
             }
@@ -307,18 +294,14 @@ export default function LaunchpadPage() {
               readinessLoading
                 ? t('common.loading')
                 : recruitmentWorkspaceAvailable && hasActiveSearch
-                  ? t('app.launchpad.recruitment_ready', { defaultValue: 'Готов' })
+                  ? t('app.launchpad.recruitment_ready')
                   : recruitmentWorkspaceAvailable && !hasActiveSearch
-                    ? t('app.launchpad.recruitment_create_first', {
-                        defaultValue: 'Создайте первый подбор',
-                      })
+                    ? t('app.launchpad.recruitment_create_first')
                     : recruitmentWorkspaceAvailable
-                      ? t('app.launchpad.recruitment_open', { defaultValue: 'Доступен' })
-                      : t('app.launchpad.recruitment_configure', { defaultValue: 'Не настроен' })
+                      ? t('app.launchpad.recruitment_open')
+                      : t('app.launchpad.recruitment_configure')
             }
-            description={t('app.launchpad.module_recruitment_desc', {
-              defaultValue: 'Подбор сотрудников и управление кандидатами',
-            })}
+            description={t('app.launchpad.module_recruitment_desc')}
             actionLabel={recruitmentModuleActionLabel}
             actionTo={recruitmentModulePath}
             testId="m1-launchpad-module-recruitment"
@@ -329,11 +312,9 @@ export default function LaunchpadPage() {
             icon={<IconUser size={20} stroke={1.8} />}
             title="HR"
             status="locked"
-            statusLabel={t('app.launchpad.coming_soon', { defaultValue: 'Скоро' })}
-            description={t('app.launchpad.module_hr_desc', {
-              defaultValue: 'Управление сотрудниками и процессами',
-            })}
-            actionLabel={t('app.launchpad.coming_soon', { defaultValue: 'Скоро' })}
+            statusLabel={t('app.launchpad.coming_soon')}
+            description={t('app.launchpad.module_hr_desc')}
+            actionLabel={t('app.launchpad.coming_soon')}
             actionTo="#"
             testId="m1-launchpad-module-hr"
             actionTestId="m1-launchpad-module-hr-action"
@@ -343,11 +324,9 @@ export default function LaunchpadPage() {
             icon={<IconTruck size={20} stroke={1.8} />}
             title="Fleet"
             status="locked"
-            statusLabel={t('app.launchpad.coming_soon', { defaultValue: 'Скоро' })}
-            description={t('app.launchpad.module_fleet_desc', {
-              defaultValue: 'Транспорт и назначения',
-            })}
-            actionLabel={t('app.launchpad.coming_soon', { defaultValue: 'Скоро' })}
+            statusLabel={t('app.launchpad.coming_soon')}
+            description={t('app.launchpad.module_fleet_desc')}
+            actionLabel={t('app.launchpad.coming_soon')}
             actionTo="#"
             testId="m1-launchpad-module-fleet"
             actionTestId="m1-launchpad-module-fleet-action"
@@ -357,11 +336,9 @@ export default function LaunchpadPage() {
             icon={<IconClipboardList size={20} stroke={1.8} />}
             title="Orders"
             status="locked"
-            statusLabel={t('app.launchpad.coming_soon', { defaultValue: 'Скоро' })}
-            description={t('app.launchpad.module_orders_desc', {
-              defaultValue: 'Заказы и документы',
-            })}
-            actionLabel={t('app.launchpad.coming_soon', { defaultValue: 'Скоро' })}
+            statusLabel={t('app.launchpad.coming_soon')}
+            description={t('app.launchpad.module_orders_desc')}
+            actionLabel={t('app.launchpad.coming_soon')}
             actionTo="#"
             testId="m1-launchpad-module-orders"
             actionTestId="m1-launchpad-module-orders-action"
@@ -377,12 +354,12 @@ export default function LaunchpadPage() {
           <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t('app.launchpad.platform_title', { defaultValue: 'Платформа' })}
+                {t('app.launchpad.platform_title')}
               </p>
               <ul className="mt-2 space-y-1.5 text-sm text-slate-800">
                 <li className="flex items-center gap-2">
                   <IconCheck size={16} className="text-emerald-600" aria-hidden />
-                  {t('app.launchpad.platform_account_active', { defaultValue: 'Аккаунт активен' })}
+                  {t('app.launchpad.platform_account_active')}
                 </li>
                 <li className="flex items-center gap-2">
                   {platformConfigured ? (
@@ -390,7 +367,7 @@ export default function LaunchpadPage() {
                   ) : (
                     <span className="inline-block h-4 w-4 rounded-full border-2 border-amber-400" aria-hidden />
                   )}
-                  {t('app.launchpad.platform_business_account', { defaultValue: 'Бизнес-аккаунт' })}
+                  {t('app.launchpad.platform_business_account')}
                 </li>
               </ul>
             </div>
@@ -398,17 +375,14 @@ export default function LaunchpadPage() {
             {showTrial ? (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {t('app.launchpad.current_plan', { defaultValue: 'Текущий план' })}
+                  {t('app.launchpad.current_plan')}
                 </p>
                 <p className="mt-2 text-sm font-semibold text-slate-900">
-                  {t('app.launchpad.trial_plan', { defaultValue: 'Trial' })}
+                  {t('app.launchpad.trial_plan')}
                 </p>
                 {trialDays !== null ? (
                   <p className="text-sm text-slate-600">
-                    {t('app.launchpad.trial_days_left', {
-                      defaultValue: '{days} дней',
-                      values: { days: trialDays },
-                    })}
+                    {t('app.launchpad.trial_days_left', { values: { days: trialDays } })}
                   </p>
                 ) : null}
               </div>
@@ -417,7 +391,7 @@ export default function LaunchpadPage() {
             {pathComplete ? (
               <div className="sm:col-span-2 lg:col-span-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {t('app.launchpad.company_setup', { defaultValue: 'Getting started' })}
+                  {t('app.launchpad.company_setup')}
                 </p>
                 <p className="mt-2 text-sm font-medium text-emerald-800">
                   {t('app.onboarding.success_path.complete', {

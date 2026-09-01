@@ -63,9 +63,7 @@ function CaseDetail({
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.diagnostics.errors.load_case', {
-            defaultValue: 'Не удалось загрузить кейс',
-          }),
+          t('app.marketing.diagnostics.errors.load_case'),
           t,
         ),
       )
@@ -101,9 +99,7 @@ function CaseDetail({
       setExportError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.diagnostics.errors.export', {
-            defaultValue: 'Не удалось скачать export',
-          }),
+          t('app.marketing.diagnostics.errors.export'),
           t,
         ),
       )
@@ -121,9 +117,7 @@ function CaseDetail({
       setReplayError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.diagnostics.errors.replay', {
-            defaultValue: 'Не удалось выполнить Replay (process lead)',
-          }),
+          t('app.marketing.diagnostics.errors.replay'),
           t,
         ),
       )
@@ -142,7 +136,7 @@ function CaseDetail({
             onClick={onBack}
             data-testid="marketing-diagnostics-back"
           >
-            ← К списку
+            {t('app.marketing.diagnostics.back_list')}
           </button>
           <h2 className="mt-2 text-lg font-semibold text-slate-900">
             {row.full_name || row.email || row.phone || row.lead_id}
@@ -168,20 +162,18 @@ function CaseDetail({
             disabled={replaying}
             onClick={() => void onReplay()}
             data-testid="marketing-diagnostics-replay"
-            title={t('app.marketing.diagnostics.replay_hint', {
-              defaultValue: 'Повторно прогнать lead через process pipeline (POST /leads/{id}/process)',
-            })}
+            title={t('app.marketing.diagnostics.replay_hint')}
           >
             {replaying
-              ? t('app.marketing.diagnostics.replaying', { defaultValue: 'Replay…' })
-              : t('app.marketing.diagnostics.replay', { defaultValue: 'Replay' })}
+              ? t('app.marketing.diagnostics.replaying')
+              : t('app.marketing.diagnostics.replay')}
           </button>
           <Link
             className="btn-secondary btn-sm"
             to={`${CRM_APP_PATHS.leads}/${encodeURIComponent(row.lead_id)}`}
             data-testid="marketing-diagnostics-open-lead"
           >
-            Открыть Lead в CRM
+            {t('app.marketing.diagnostics.open_lead')}
           </Link>
         </div>
       </div>
@@ -390,7 +382,7 @@ function CaseDetail({
         <h3 className="text-sm font-semibold text-slate-900">Timeline (Acquisition Activity)</h3>
         {row.timeline.length === 0 ? (
           <p className="mt-2 text-xs text-slate-500" data-testid="marketing-diagnostics-timeline-empty">
-            Нет событий по submission_id (или submission не уникален).
+            {t('app.marketing.diagnostics.timeline_empty')}
           </p>
         ) : (
           <ol className="mt-2 space-y-2" data-testid="marketing-diagnostics-timeline">
@@ -459,9 +451,7 @@ export default function MarketingDiagnosticsPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.diagnostics.errors.load_list', {
-            defaultValue: 'Не удалось загрузить submissions',
-          }),
+          t('app.marketing.diagnostics.errors.load_list'),
           t,
         ),
       )
@@ -512,10 +502,7 @@ export default function MarketingDiagnosticsPage() {
       <PageShellHeader>
         <PageHeader
           title={t('app.nav.items.marketing_diagnostics', { defaultValue: 'Diagnostics' })}
-          subtitle={t('app.marketing.diagnostics.subtitle', {
-            defaultValue:
-              'Операции по поступившим заявкам: маршрут, timeline, payload. Sources — настройка.',
-          })}
+          subtitle={t('app.marketing.diagnostics.subtitle')}
         />
       </PageShellHeader>
 
@@ -526,16 +513,14 @@ export default function MarketingDiagnosticsPage() {
         >
           <span>
             {t('app.marketing.diagnostics.drift_summary', {
-              defaultValue:
-                'За {{hours}} ч: {{count}} заявк(и) с Mapping drift (просмотрено {{scanned}}).',
-              hours: driftSummary.window_hours,
-              count: driftSummary.drift_count,
-              scanned: driftSummary.scanned,
+              values: {
+                hours: driftSummary.window_hours,
+                count: driftSummary.drift_count,
+                scanned: driftSummary.scanned,
+              },
             })}
             {driftSummary.scan_capped
-              ? t('app.marketing.diagnostics.drift_summary_capped', {
-                  defaultValue: ' Скан ограничен.',
-                })
+              ? t('app.marketing.diagnostics.drift_summary_capped')
               : ''}
           </span>
           {!driftOnly ? (
@@ -545,7 +530,7 @@ export default function MarketingDiagnosticsPage() {
               data-testid="marketing-diagnostics-drift-summary-link"
               onClick={() => patchFilters({ drift_only: true })}
             >
-              {t('app.marketing.diagnostics.show_drift', { defaultValue: 'Показать drift' })}
+              {t('app.marketing.diagnostics.show_drift')}
             </button>
           ) : null}
         </div>
@@ -606,7 +591,7 @@ export default function MarketingDiagnosticsPage() {
                   defaultChecked={failedOnly}
                   data-testid="marketing-diagnostics-filter-failed"
                 />
-                Только failed / unresolved
+                {t('app.marketing.diagnostics.failed_only')}
               </label>
               <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
                 <input
@@ -615,10 +600,10 @@ export default function MarketingDiagnosticsPage() {
                   defaultChecked={driftOnly}
                   data-testid="marketing-diagnostics-filter-drift"
                 />
-                Только mapping drift
+                {t('app.marketing.diagnostics.drift_only')}
               </label>
               <button type="submit" className="btn-secondary btn-sm" data-testid="marketing-diagnostics-filter-apply">
-                Применить
+                {t('app.marketing.diagnostics.apply')}
               </button>
             </form>
 
@@ -629,9 +614,7 @@ export default function MarketingDiagnosticsPage() {
               >
                 <span>
                   {t('app.marketing.diagnostics.drift_alert', {
-                    defaultValue:
-                      'На этой странице {{count}} заявк(и) с Mapping drift — правила Source изменились после ingest.',
-                    count: driftAlertCount,
+                    values: { count: driftAlertCount },
                   })}
                 </span>
                 <button
@@ -640,7 +623,7 @@ export default function MarketingDiagnosticsPage() {
                   data-testid="marketing-diagnostics-drift-alert-filter"
                   onClick={() => patchFilters({ drift_only: true })}
                 >
-                  Показать drift
+                  {t('app.marketing.diagnostics.show_drift')}
                 </button>
               </div>
             ) : null}
@@ -650,7 +633,7 @@ export default function MarketingDiagnosticsPage() {
               <p className="text-sm text-slate-500">…</p>
             ) : items.length === 0 ? (
               <p className="text-sm text-slate-500" data-testid="marketing-diagnostics-empty">
-                Нет заявок по текущему фильтру.
+                {t('app.marketing.diagnostics.empty')}
               </p>
             ) : (
               <ul className="space-y-2" data-testid="marketing-diagnostics-list">

@@ -137,7 +137,9 @@
       "body": "Zapisaliśmy błąd. Odśwież stronę lub spróbuj ponownie — jeśli problem wróci, skontaktuj się z pomocą.",
       "reload": "Odśwież stronę",
       "retry": "Spróbuj ponownie"
-    }
+    },
+    "continue": "Kontynuuj",
+    "back": "Wstecz"
   },
   "scanner": {
     "place_in_frame": "Place the document inside the frame",
@@ -9388,7 +9390,9 @@
         "api_base_placeholder": "http://localhost:8000/api/v1",
         "docs_base": "Docs Base (tylko odczyt)",
         "tenant_id": "Tenant ID",
-        "tenant_placeholder": "UUID tenanta"
+        "tenant_placeholder": "UUID tenanta",
+        "api_invalid": "Nie udało się rozpoznać adresu API. Podaj pełny URL, np. http://localhost:8000/api/v1",
+        "api_hint": "Zmień bazowy URL API (zostaw puste, aby użyć wartości domyślnej)."
       },
       "nav": {
         "dashboard": "Pulpit",
@@ -9517,7 +9521,9 @@
           "routing_issue": "Problem routingu",
           "last_error": "Ostatni błąd",
           "campaigns_flights": "Campaigns / Flights",
-          "actions": "Akcje"
+          "actions": "Akcje",
+          "page": "Strona",
+          "provider_form": "Formularz dostawcy"
         },
         "connection": {
           "connected": "Connected",
@@ -9538,11 +9544,13 @@
           "mapping": "Mapping",
           "test_lead": "Test lead",
           "connection": "Connection",
-          "setup_campaign_flight": "Skonfiguruj Campaign/Flight"
+          "setup_campaign_flight": "Skonfiguruj Campaign/Flight",
+          "open_drift": "Diagnostics · drift"
         },
         "errors": {
           "load": "Nie udało się załadować źródeł"
-        }
+        },
+        "drift_summary": "Mapping drift: {count} zgłoszeń w {hours} godz. Otwórz Diagnostics."
       },
       "status": {
         "draft": "Szkic",
@@ -9611,7 +9619,25 @@
         "timeline": "Oś czasu →",
         "submissions_empty": "Brak zgłoszeń na tym Flight. Po Connect Source nowe leady Meta pojawią się tutaj.",
         "unnamed": "Bez imienia",
-        "more_submissions": "Więcej zgłoszeń"
+        "more_submissions": "Więcej zgłoszeń",
+        "title": "Kampania",
+        "no_flight": "Nie znaleziono Flight",
+        "errors": {
+          "load": "Nie udało się wczytać kampanii",
+          "command": "Nie udało się wykonać działania",
+          "load_more": "Nie udało się wczytać kolejnych zgłoszeń",
+          "ad_bind": "Nie udało się powiązać Ad ID",
+          "ad_bind_patch": "Nie udało się zmienić powiązania",
+          "ad_unbind": "Nie udało się odpiąć Ad ID"
+        },
+        "flight_compare": {
+          "title": "Porównanie Flight",
+          "subtitle": "KPI według fal kampanii (tylko odczyt)."
+        },
+        "cohorts": {
+          "title": "Kohorty",
+          "subtitle": "{days} dn. · {bucket} · CAC proxy = cost / outcome"
+        }
       },
       "kpi": {
         "applications": "Zgłoszenia",
@@ -9639,7 +9665,19 @@
         "form_aria": "Formularz HostFlow",
         "no_forms": "Brak aktywnych formularzy.",
         "open_forms": "Otwórz formularze",
-        "from_leads": "z leadów"
+        "from_leads": "z leadów",
+        "errors": {
+          "load": "Nie udało się wczytać kampanii",
+          "create_slug": "Podaj nazwę formularza (wymagany jest publiczny slug)",
+          "create_form": "Nie udało się utworzyć formularza",
+          "save": "Nie udało się podłączyć źródła"
+        },
+        "create": {
+          "title": "Nazwa nowego formularza",
+          "submit": "Utwórz i wybierz",
+          "open": "Utwórz nowy formularz",
+          "hint": "Tworzy aktywny formularz HostFlow (pola kandydata) przez createIntakeForm i od razu go wybiera."
+        }
       },
       "source_card": {
         "public_form": "Formularz publiczny",
@@ -9716,7 +9754,11 @@
         "back": "Wstecz",
         "next": "Dalej",
         "creating": "Tworzenie…",
-        "create": "Utwórz kampanię"
+        "create": "Utwórz kampanię",
+        "errors": {
+          "load_options": "Nie udało się wczytać katalogów",
+          "create": "Nie udało się utworzyć kampanii"
+        }
       },
       "list": {
         "public_form": "Formularz publiczny",
@@ -9727,6 +9769,87 @@
         "launch": "Start: {when}",
         "not_launched": "jeszcze nie uruchomiono",
         "open": "Otwórz"
+      },
+      "title": "Marketing",
+      "subtitle": "Kampanie, formularze i start Flight — od pomysłu do przychodzących zgłoszeń.",
+      "empty_title": "Brak kampanii",
+      "empty_body": "Utwórz pierwszą: formularz → przepływ → start Flight.",
+      "errors": {
+        "load": "Nie udało się wczytać kampanii",
+        "command": "Nie udało się wykonać działania"
+      },
+      "actions": {
+        "create": "Utwórz kampanię"
+      },
+      "portfolio": {
+        "title": "Portfolio KPI",
+        "subtitle": "Podsumowanie kampanii firmy (tylko odczyt).",
+        "capped": " Lista jest ograniczona."
+      },
+      "diagnostics": {
+        "subtitle": "Operacje na przychodzących zgłoszeniach: trasa, oś czasu, payload. Sources służy do konfiguracji.",
+        "back_list": "← Do listy",
+        "open_lead": "Otwórz Lead w CRM",
+        "timeline_empty": "Brak zdarzeń dla submission_id (albo zgłoszenie nie jest unikalne).",
+        "empty": "Brak zgłoszeń dla bieżącego filtra.",
+        "failed_only": "Tylko failed / unresolved",
+        "drift_only": "Tylko mapping drift",
+        "apply": "Zastosuj",
+        "show_drift": "Pokaż drift",
+        "replay": "Replay",
+        "replaying": "Replay…",
+        "replay_hint": "Ponownie przepuść lead przez process pipeline (POST /leads/{id}/process)",
+        "errors": {
+          "load_case": "Nie udało się wczytać sprawy",
+          "export": "Nie udało się pobrać eksportu",
+          "replay": "Nie udało się wykonać Replay (process lead)",
+          "load_list": "Nie udało się wczytać zgłoszeń"
+        },
+        "drift_summary": "Ostatnie {hours} godz.: {count} zgłoszeń z Mapping drift (przeskanowano {scanned}).",
+        "drift_summary_capped": " Skan jest ograniczony.",
+        "drift_alert": "Na tej stronie {count} zgłoszeń ma Mapping drift — reguły Source zmieniły się po ingest."
+      },
+      "mapping": {
+        "title": "Mapowanie źródła",
+        "title_named": "Mapping — {name}",
+        "subtitle": "Potwierdź rozmieszczenie pól i uruchom dry-run routing — bez tworzenia Candidate / Application.",
+        "errors": {
+          "load": "Nie udało się wczytać mapowania źródła",
+          "action": "Nie udało się wykonać działania"
+        },
+        "actions": {
+          "test_lead": "Test lead",
+          "back": "← Sources",
+          "save": "Zapisz mapowanie"
+        },
+        "saved": "Mapowanie zapisane w IntakeSourceProfile.mapping_rules",
+        "rules": {
+          "empty": "Brak reguł i pól sample. Najpierw pobierz sample na Test lead."
+        },
+        "routing": {
+          "empty": "Podgląd pokaże destination, ignored i unmapped fields bez zapisów produkcyjnych."
+        }
+      },
+      "test_lead": {
+        "title": "Test lead i odkrywanie pól",
+        "title_named": "Test lead — {name}",
+        "subtitle": "Pobierz sample submission, przejrzyj pola (z maskowaniem) i wykonaj dry-run normalize — bez tworzenia Candidate / Application.",
+        "errors": {
+          "load": "Nie udało się wczytać sample źródła",
+          "action": "Nie udało się wykonać działania"
+        },
+        "mode_a": {
+          "body": "Wyślij test lead z Meta Lead Form dla tego Source, potem odśwież sample — HostFlow przechwyci payload bez tworzenia Candidate."
+        },
+        "mode_b": {
+          "body": "Następne pasujące zgłoszenie zostanie przetworzone jak zwykle i stanie się mapping sample (wartości w UI są zamaskowane)."
+        },
+        "fields": {
+          "empty": "Brak sample. Wyślij Meta test lead, włącz capture next albo wklej payload."
+        },
+        "capture": {
+          "armed": "Capture next uzbrojony do {until}"
+        }
       }
     },
     "context_help": {
@@ -9973,6 +10096,65 @@
         "minutes_ago": "{count} min temu",
         "hours_ago": "{count} godz. temu"
       }
+    },
+    "platform_setup": {
+      "badge": "Konfiguracja platformy",
+      "welcome_title": "Skonfigurujmy HostFlow pod Twój biznes",
+      "welcome_subtitle": "To nie rejestracja — jesteś już w systemie. Opowiedz o biznesie.",
+      "identity_title": "Co najlepiej opisuje Twój biznes?",
+      "identity_subtitle": "HostFlow dopasuje terminologię i rekomendacje do Twojego kontekstu.",
+      "intent_title": "Co chcesz uruchomić jako pierwsze?",
+      "intent_subtitle": "Pierwszy moduł określa, od czego zaczniemy konfigurację.",
+      "details_title": "Kilka szczegółów o firmie",
+      "details_subtitle": "Minimum danych — żeby uruchomić wybrany moduł.",
+      "name_label": "Nazwa firmy",
+      "industry_label": "Branża",
+      "industry_placeholder": "Wybierz…",
+      "team_size_label": "Wielkość firmy",
+      "country_label": "Kraj",
+      "finish": "Otwórz Launchpad",
+      "errors": {
+        "identity_required": "Wybierz, co najlepiej opisuje Twój biznes.",
+        "module_required": "Wybierz, co chcesz uruchomić jako pierwsze.",
+        "module_unavailable": "Ten moduł nie jest jeszcze dostępny — wybierz Recruitment.",
+        "name_required": "Podaj nazwę firmy.",
+        "incomplete": "Wypełnij wszystkie pola.",
+        "generic": "Nie udało się zapisać ustawień."
+      }
+    },
+    "launchpad": {
+      "coming_soon": "Wkrótce",
+      "open_search": "Otwórz rekrutację",
+      "create_campaign": "Utwórz kampanię",
+      "welcome": "Witamy",
+      "welcome_named": "Witamy, {name}",
+      "subtitle_today": "Co chcesz zrobić dzisiaj?",
+      "task_find_staff_title": "Znajdź pracowników",
+      "task_find_staff_body": "Utwórz rekrutację i otrzymaj link dla kandydatów.",
+      "task_find_staff_role_driver": "Szukasz kierowców",
+      "task_find_staff_role_warehouse": "Szukasz pracowników magazynu",
+      "task_find_staff_role_office": "Szukasz pracowników biurowych",
+      "create_search": "Utwórz rekrutację",
+      "task_find_clients_title": "Znajdź nowych klientów",
+      "task_find_clients_body": "Firmy same zostawiają zgłoszenia na rekrutację — otrzymujesz gotowy link i QR.",
+      "create_client_channel": "Zacznij pozyskiwać klientów",
+      "modules_title": "Twoje moduły",
+      "module_recruitment": "Recruitment",
+      "recruitment_ready": "Gotowy",
+      "recruitment_create_first": "Utwórz pierwszą rekrutację",
+      "recruitment_open": "Dostępny",
+      "recruitment_configure": "Nie skonfigurowany",
+      "module_recruitment_desc": "Rekrutacja pracowników i zarządzanie kandydatami",
+      "module_hr_desc": "Zarządzanie pracownikami i procesami",
+      "module_fleet_desc": "Transport i przydziały",
+      "module_orders_desc": "Zamówienia i dokumenty",
+      "platform_title": "Platforma",
+      "platform_account_active": "Konto jest aktywne",
+      "platform_business_account": "Konto biznesowe",
+      "current_plan": "Bieżący plan",
+      "trial_plan": "Trial",
+      "trial_days_left": "{days} dni",
+      "company_setup": "Pierwsze kroki"
     }
   },
   "public": {

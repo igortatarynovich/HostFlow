@@ -124,7 +124,7 @@ export default function MarketingCampaignDetailPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.load', { defaultValue: 'Не удалось загрузить кампанию' }),
+          t('app.marketing.detail.errors.load'),
           t,
         ),
       )
@@ -180,7 +180,7 @@ export default function MarketingCampaignDetailPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.command', { defaultValue: 'Не удалось выполнить действие' }),
+          t('app.marketing.detail.errors.command'),
           t,
         ),
       )
@@ -203,7 +203,7 @@ export default function MarketingCampaignDetailPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.command', { defaultValue: 'Не удалось выполнить действие' }),
+          t('app.marketing.detail.errors.command'),
           t,
         ),
       )
@@ -227,7 +227,7 @@ export default function MarketingCampaignDetailPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.command', { defaultValue: 'Не удалось выполнить действие' }),
+          t('app.marketing.detail.errors.command'),
           t,
         ),
       )
@@ -255,9 +255,7 @@ export default function MarketingCampaignDetailPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.load_more', {
-            defaultValue: 'Не удалось подгрузить заявки',
-          }),
+          t('app.marketing.detail.errors.load_more'),
           t,
         ),
       )
@@ -302,7 +300,7 @@ export default function MarketingCampaignDetailPage() {
         <PageHeader
           title={
             <span className="inline-flex items-center gap-1.5">
-              {campaign?.name || t('app.marketing.detail.title', { defaultValue: 'Кампания' })}
+              {campaign?.name || t('app.marketing.detail.title')}
               <ContextHelp term="campaign" />
             </span>
           }
@@ -310,7 +308,7 @@ export default function MarketingCampaignDetailPage() {
             <span className="inline-flex items-center gap-1.5">
               {flight
                 ? `Flight · ${statusLabel(flightStatus, t)}`
-                : t('app.marketing.detail.no_flight', { defaultValue: 'Flight не найден' })}
+                : t('app.marketing.detail.no_flight')}
               <ContextHelp term="flight" />
             </span>
           }
@@ -559,14 +557,10 @@ export default function MarketingCampaignDetailPage() {
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h2 className="text-sm font-semibold text-slate-900">
-                    {t('app.marketing.detail.flight_compare.title', {
-                      defaultValue: 'Сравнение Flight',
-                    })}
+                    {t('app.marketing.detail.flight_compare.title')}
                   </h2>
                   <p className="text-xs text-slate-500">
-                    {t('app.marketing.detail.flight_compare.subtitle', {
-                      defaultValue: 'KPI по волнам кампании (только чтение).',
-                    })}
+                    {t('app.marketing.detail.flight_compare.subtitle')}
                   </p>
                 </div>
                 <div className="mt-3 overflow-x-auto">
@@ -648,15 +642,14 @@ export default function MarketingCampaignDetailPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h2 className="text-sm font-semibold text-slate-900">
-                      {t('app.marketing.detail.cohorts.title', {
-                        defaultValue: 'Когорты',
-                      })}
+                      {t('app.marketing.detail.cohorts.title')}
                     </h2>
                     <p className="text-xs text-slate-500">
                       {t('app.marketing.detail.cohorts.subtitle', {
-                        defaultValue: '{{days}} дн. · {{bucket}} · CAC proxy = cost / outcome',
-                        days: cohorts.window_days,
-                        bucket: cohorts.bucket,
+                        values: {
+                          days: cohorts.window_days,
+                          bucket: cohorts.bucket,
+                        },
                       })}
                     </p>
                   </div>

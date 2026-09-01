@@ -82,9 +82,7 @@ export default function MarketingSourceTestLeadPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.test_lead.errors.load', {
-            defaultValue: 'Не удалось загрузить sample для источника',
-          }),
+          t('app.marketing.test_lead.errors.load'),
           t,
         ),
       )
@@ -107,7 +105,6 @@ export default function MarketingSourceTestLeadPage() {
 
   const title = source?.display_name
     ? t('app.marketing.test_lead.title_named', {
-        defaultValue: 'Test lead — {{name}}',
         values: { name: source.display_name },
       })
     : t('app.marketing.test_lead.title', { defaultValue: 'Test lead & field discovery' })
@@ -122,9 +119,7 @@ export default function MarketingSourceTestLeadPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.test_lead.errors.action', {
-            defaultValue: 'Не удалось выполнить действие',
-          }),
+          t('app.marketing.test_lead.errors.action'),
           t,
         ),
       )
@@ -138,10 +133,7 @@ export default function MarketingSourceTestLeadPage() {
       <PageShellHeader>
         <PageHeader
           title={title}
-          subtitle={t('app.marketing.test_lead.subtitle', {
-            defaultValue:
-              'Получите sample submission, просмотрите поля (с маскированием) и сделайте dry-run normalize — без создания Candidate / Application.',
-          })}
+          subtitle={t('app.marketing.test_lead.subtitle')}
           actions={
             <Link
               to={CRM_APP_PATHS.marketingSources}
@@ -171,7 +163,7 @@ export default function MarketingSourceTestLeadPage() {
 
       {loading ? (
         <p className="text-sm text-slate-500" data-testid="marketing-test-lead-loading">
-          {t('common.loading', { defaultValue: 'Загрузка…' })}
+          {t('common.loading')}
         </p>
       ) : (
         <div className="space-y-6">
@@ -226,7 +218,6 @@ export default function MarketingSourceTestLeadPage() {
                 data-testid="marketing-test-lead-capture-armed"
               >
                 {t('app.marketing.test_lead.capture.armed', {
-                  defaultValue: 'Capture next armed until {{until}}',
                   values: { until: sample.capture_next_until },
                 })}
               </p>
@@ -248,10 +239,7 @@ export default function MarketingSourceTestLeadPage() {
                   })}
                 </p>
                 <p className="mt-1 text-slate-600">
-                  {t('app.marketing.test_lead.mode_a.body', {
-                    defaultValue:
-                      'Отправьте test lead из Meta Lead Form для этого Source, затем обновите sample — HostFlow подхватит payload без создания Candidate.',
-                  })}
+                  {t('app.marketing.test_lead.mode_a.body')}
                 </p>
                 <button
                   type="button"
@@ -280,10 +268,7 @@ export default function MarketingSourceTestLeadPage() {
                   })}
                 </p>
                 <p className="mt-1 text-slate-600">
-                  {t('app.marketing.test_lead.mode_b.body', {
-                    defaultValue:
-                      'Следующая подходящая submission обработается как обычно и станет mapping sample (значения в UI замаскированы).',
-                  })}
+                  {t('app.marketing.test_lead.mode_b.body')}
                 </p>
                 <button
                   type="button"
@@ -417,9 +402,7 @@ export default function MarketingSourceTestLeadPage() {
                 className="mt-3 text-sm text-slate-500"
                 data-testid="marketing-test-lead-fields-empty"
               >
-                {t('app.marketing.test_lead.fields.empty', {
-                  defaultValue: 'Нет sample. Отправьте Meta test lead, включите capture next или вставьте payload.',
-                })}
+                {t('app.marketing.test_lead.fields.empty')}
               </p>
             ) : (
               <div className="mt-3 overflow-x-auto">

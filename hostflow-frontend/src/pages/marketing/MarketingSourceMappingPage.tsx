@@ -134,9 +134,7 @@ export default function MarketingSourceMappingPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.mapping.errors.load', {
-            defaultValue: 'Не удалось загрузить mapping для источника',
-          }),
+          t('app.marketing.mapping.errors.load'),
           t,
         ),
       )
@@ -153,10 +151,7 @@ export default function MarketingSourceMappingPage() {
   const title = useMemo(() => {
     const name = mapping?.display_name || source?.display_name
     return name
-      ? t('app.marketing.mapping.title_named', {
-          defaultValue: 'Mapping — {{name}}',
-          values: { name },
-        })
+      ? t('app.marketing.mapping.title_named', { values: { name } })
       : t('app.marketing.mapping.title', { defaultValue: 'Source mapping' })
   }, [mapping?.display_name, source?.display_name, t])
 
@@ -170,9 +165,7 @@ export default function MarketingSourceMappingPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.mapping.errors.action', {
-            defaultValue: 'Не удалось выполнить действие',
-          }),
+          t('app.marketing.mapping.errors.action'),
           t,
         ),
       )
@@ -190,10 +183,7 @@ export default function MarketingSourceMappingPage() {
       <PageShellHeader>
         <PageHeader
           title={title}
-          subtitle={t('app.marketing.mapping.subtitle', {
-            defaultValue:
-              'Подтвердите размещение полей и посмотрите dry-run routing — без создания Candidate / Application.',
-          })}
+          subtitle={t('app.marketing.mapping.subtitle')}
           actions={
             <div className="flex flex-wrap gap-2">
               <Link
@@ -291,9 +281,7 @@ export default function MarketingSourceMappingPage() {
                     setMapping(saved)
                     setDrafts(draftsFromMappingAndSample(saved, sample))
                     setActionMessage(
-                      t('app.marketing.mapping.saved', {
-                        defaultValue: 'Mapping сохранён на IntakeSourceProfile.mapping_rules',
-                      }),
+                      t('app.marketing.mapping.saved'),
                     )
                   })
                 }
@@ -304,10 +292,7 @@ export default function MarketingSourceMappingPage() {
 
             {drafts.length === 0 ? (
               <p className="text-sm text-slate-500" data-testid="marketing-mapping-rules-empty">
-                {t('app.marketing.mapping.rules.empty', {
-                  defaultValue:
-                    'Нет правил и sample полей. Сначала получите sample на Test lead.',
-                })}
+                {t('app.marketing.mapping.rules.empty')}
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -415,10 +400,7 @@ export default function MarketingSourceMappingPage() {
               </div>
             ) : (
               <p className="text-sm text-slate-500" data-testid="marketing-mapping-routing-empty">
-                {t('app.marketing.mapping.routing.empty', {
-                  defaultValue:
-                    'Preview покажет destination, ignored и unmapped fields без production writes.',
-                })}
+                {t('app.marketing.mapping.routing.empty')}
               </p>
             )}
           </section>

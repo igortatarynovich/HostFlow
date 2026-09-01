@@ -61,9 +61,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
       setLocalError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.ad_bind', {
-            defaultValue: 'Не удалось привязать Ad ID',
-          }),
+          t('app.marketing.detail.errors.ad_bind'),
           t,
         ),
       )
@@ -85,9 +83,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
       setLocalError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.ad_bind_patch', {
-            defaultValue: 'Не удалось изменить привязку',
-          }),
+          t('app.marketing.detail.errors.ad_bind_patch'),
           t,
         ),
       )
@@ -109,9 +105,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
       setLocalError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.ad_unbind', {
-            defaultValue: 'Не удалось отвязать Ad ID',
-          }),
+          t('app.marketing.detail.errors.ad_unbind'),
           t,
         ),
       )

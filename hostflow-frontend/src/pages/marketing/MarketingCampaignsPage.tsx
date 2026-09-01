@@ -76,7 +76,7 @@ export default function MarketingCampaignsPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.errors.load', { defaultValue: 'Не удалось загрузить кампании' }),
+          t('app.marketing.errors.load'),
           t,
         ),
       )
@@ -104,7 +104,7 @@ export default function MarketingCampaignsPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.errors.command', { defaultValue: 'Не удалось выполнить действие' }),
+          t('app.marketing.errors.command'),
           t,
         ),
       )
@@ -117,14 +117,12 @@ export default function MarketingCampaignsPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.marketing.title', { defaultValue: 'Маркетинг' })}
-          subtitle={t('app.marketing.subtitle', {
-            defaultValue: 'Кампании, формы и запуск Flight — от идеи до входящих заявок.',
-          })}
+          title={t('app.marketing.title')}
+          subtitle={t('app.marketing.subtitle')}
           kind="browse"
           primaryAction={
             <Link to={CRM_APP_PATHS.marketingNew} className="btn-primary btn-sm">
-              {t('app.marketing.actions.create', { defaultValue: 'Создать кампанию' })}
+              {t('app.marketing.actions.create')}
             </Link>
           }
           secondaryActions={
@@ -148,11 +146,9 @@ export default function MarketingCampaignsPage() {
                 {t('app.marketing.portfolio.title', { defaultValue: 'Portfolio KPI' })}
               </h2>
               <p className="text-xs text-slate-500">
-                {t('app.marketing.portfolio.subtitle', {
-                  defaultValue: 'Сводка по кампаниям компании (только чтение).',
-                })}
+                {t('app.marketing.portfolio.subtitle')}
                 {portfolio.scan_capped
-                  ? t('app.marketing.portfolio.capped', { defaultValue: ' Список ограничен.' })
+                  ? t('app.marketing.portfolio.capped')
                   : ''}
               </p>
             </div>
@@ -261,15 +257,13 @@ export default function MarketingCampaignsPage() {
         {!loading && items.length === 0 && !error ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
             <p className="text-sm font-medium text-slate-800">
-              {t('app.marketing.empty_title', { defaultValue: 'Пока нет кампаний' })}
+              {t('app.marketing.empty_title')}
             </p>
             <p className="mt-1 text-sm text-slate-600">
-              {t('app.marketing.empty_body', {
-                defaultValue: 'Создайте первую: форма → поток → запуск Flight.',
-              })}
+              {t('app.marketing.empty_body')}
             </p>
             <Link to={CRM_APP_PATHS.marketingNew} className="btn-primary btn-sm mt-4 inline-flex">
-              {t('app.marketing.actions.create', { defaultValue: 'Создать кампанию' })}
+              {t('app.marketing.actions.create')}
             </Link>
           </div>
         ) : null}

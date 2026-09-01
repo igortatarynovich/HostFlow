@@ -137,7 +137,9 @@
       "body": "Мы уже записали ошибку. Обновите страницу или попробуйте ещё раз — если проблема повторится, напишите в поддержку.",
       "reload": "Обновить страницу",
       "retry": "Попробовать ещё раз"
-    }
+    },
+    "continue": "Продолжить",
+    "back": "Назад"
   },
   "scanner": {
     "place_in_frame": "Разместите документ внутри рамки",
@@ -9388,7 +9390,9 @@
         "api_base_placeholder": "http://localhost:8000/api/v1",
         "docs_base": "Docs Base (только чтение)",
         "tenant_id": "Tenant ID",
-        "tenant_placeholder": "UUID тенанта"
+        "tenant_placeholder": "UUID тенанта",
+        "api_invalid": "Не удалось распознать адрес API. Укажите полный URL, например http://localhost:8000/api/v1",
+        "api_hint": "Измени базовый URL API (оставь пустым для значения по умолчанию)."
       },
       "nav": {
         "dashboard": "Дашборд",
@@ -9517,7 +9521,9 @@
           "routing_issue": "Проблема маршрута",
           "last_error": "Последняя ошибка",
           "campaigns_flights": "Campaigns / Flights",
-          "actions": "Действия"
+          "actions": "Действия",
+          "page": "Страница",
+          "provider_form": "Форма провайдера"
         },
         "connection": {
           "connected": "Connected",
@@ -9538,11 +9544,13 @@
           "mapping": "Mapping",
           "test_lead": "Test lead",
           "connection": "Connection",
-          "setup_campaign_flight": "Настроить Campaign/Flight"
+          "setup_campaign_flight": "Настроить Campaign/Flight",
+          "open_drift": "Diagnostics · drift"
         },
         "errors": {
           "load": "Не удалось загрузить источники"
-        }
+        },
+        "drift_summary": "Mapping drift: {count} заявк(и) за {hours} ч. Откройте Diagnostics."
       },
       "status": {
         "draft": "Черновик",
@@ -9611,7 +9619,25 @@
         "timeline": "Таймлайн →",
         "submissions_empty": "Пока нет заявок на этот Flight. После Connect Source новые Meta-лиды появятся здесь.",
         "unnamed": "Без имени",
-        "more_submissions": "Ещё заявки"
+        "more_submissions": "Ещё заявки",
+        "title": "Кампания",
+        "no_flight": "Flight не найден",
+        "errors": {
+          "load": "Не удалось загрузить кампанию",
+          "command": "Не удалось выполнить действие",
+          "load_more": "Не удалось подгрузить заявки",
+          "ad_bind": "Не удалось привязать Ad ID",
+          "ad_bind_patch": "Не удалось изменить привязку",
+          "ad_unbind": "Не удалось отвязать Ad ID"
+        },
+        "flight_compare": {
+          "title": "Сравнение Flight",
+          "subtitle": "KPI по волнам кампании (только чтение)."
+        },
+        "cohorts": {
+          "title": "Когорты",
+          "subtitle": "{days} дн. · {bucket} · CAC proxy = cost / outcome"
+        }
       },
       "kpi": {
         "applications": "Заявки",
@@ -9639,7 +9665,19 @@
         "form_aria": "Анкета HostFlow",
         "no_forms": "Нет активных анкет.",
         "open_forms": "Открыть анкеты",
-        "from_leads": "из лидов"
+        "from_leads": "из лидов",
+        "errors": {
+          "load": "Не удалось загрузить кампанию",
+          "create_slug": "Укажите название анкеты (нужен публичный slug)",
+          "create_form": "Не удалось создать анкету",
+          "save": "Не удалось подключить источник"
+        },
+        "create": {
+          "title": "Название новой анкеты",
+          "submit": "Создать и выбрать",
+          "open": "Создать новую анкету",
+          "hint": "Создаёт активную HostFlow-анкету (candidate fields) через createIntakeForm и сразу выбирает её."
+        }
       },
       "source_card": {
         "public_form": "Публичная форма",
@@ -9716,7 +9754,11 @@
         "back": "Назад",
         "next": "Далее",
         "creating": "Создание…",
-        "create": "Создать кампанию"
+        "create": "Создать кампанию",
+        "errors": {
+          "load_options": "Не удалось загрузить справочники",
+          "create": "Не удалось создать кампанию"
+        }
       },
       "list": {
         "public_form": "Публичная форма",
@@ -9727,6 +9769,87 @@
         "launch": "Запуск: {when}",
         "not_launched": "ещё не запускали",
         "open": "Открыть"
+      },
+      "title": "Маркетинг",
+      "subtitle": "Кампании, формы и запуск Flight — от идеи до входящих заявок.",
+      "empty_title": "Пока нет кампаний",
+      "empty_body": "Создайте первую: форма → поток → запуск Flight.",
+      "errors": {
+        "load": "Не удалось загрузить кампании",
+        "command": "Не удалось выполнить действие"
+      },
+      "actions": {
+        "create": "Создать кампанию"
+      },
+      "portfolio": {
+        "title": "Portfolio KPI",
+        "subtitle": "Сводка по кампаниям компании (только чтение).",
+        "capped": " Список ограничен."
+      },
+      "diagnostics": {
+        "subtitle": "Операции по поступившим заявкам: маршрут, timeline, payload. Sources — настройка.",
+        "back_list": "← К списку",
+        "open_lead": "Открыть Lead в CRM",
+        "timeline_empty": "Нет событий по submission_id (или submission не уникален).",
+        "empty": "Нет заявок по текущему фильтру.",
+        "failed_only": "Только failed / unresolved",
+        "drift_only": "Только mapping drift",
+        "apply": "Применить",
+        "show_drift": "Показать drift",
+        "replay": "Replay",
+        "replaying": "Replay…",
+        "replay_hint": "Повторно прогнать lead через process pipeline (POST /leads/{id}/process)",
+        "errors": {
+          "load_case": "Не удалось загрузить кейс",
+          "export": "Не удалось скачать export",
+          "replay": "Не удалось выполнить Replay (process lead)",
+          "load_list": "Не удалось загрузить submissions"
+        },
+        "drift_summary": "За {hours} ч: {count} заявк(и) с Mapping drift (просмотрено {scanned}).",
+        "drift_summary_capped": " Скан ограничен.",
+        "drift_alert": "На этой странице {count} заявк(и) с Mapping drift — правила Source изменились после ingest."
+      },
+      "mapping": {
+        "title": "Mapping источника",
+        "title_named": "Mapping — {name}",
+        "subtitle": "Подтвердите размещение полей и посмотрите dry-run routing — без создания Candidate / Application.",
+        "errors": {
+          "load": "Не удалось загрузить mapping для источника",
+          "action": "Не удалось выполнить действие"
+        },
+        "actions": {
+          "test_lead": "Test lead",
+          "back": "← Sources",
+          "save": "Сохранить mapping"
+        },
+        "saved": "Mapping сохранён на IntakeSourceProfile.mapping_rules",
+        "rules": {
+          "empty": "Нет правил и sample полей. Сначала получите sample на Test lead."
+        },
+        "routing": {
+          "empty": "Preview покажет destination, ignored и unmapped fields без production writes."
+        }
+      },
+      "test_lead": {
+        "title": "Test lead и обнаружение полей",
+        "title_named": "Test lead — {name}",
+        "subtitle": "Получите sample submission, просмотрите поля (с маскированием) и сделайте dry-run normalize — без создания Candidate / Application.",
+        "errors": {
+          "load": "Не удалось загрузить sample для источника",
+          "action": "Не удалось выполнить действие"
+        },
+        "mode_a": {
+          "body": "Отправьте test lead из Meta Lead Form для этого Source, затем обновите sample — HostFlow подхватит payload без создания Candidate."
+        },
+        "mode_b": {
+          "body": "Следующая подходящая submission обработается как обычно и станет mapping sample (значения в UI замаскированы)."
+        },
+        "fields": {
+          "empty": "Нет sample. Отправьте Meta test lead, включите capture next или вставьте payload."
+        },
+        "capture": {
+          "armed": "Capture next включён до {until}"
+        }
       }
     },
     "context_help": {
@@ -9973,6 +10096,65 @@
         "minutes_ago": "{count} мин назад",
         "hours_ago": "{count} ч назад"
       }
+    },
+    "platform_setup": {
+      "badge": "Настройка платформы",
+      "welcome_title": "Давайте настроим HostFlow под ваш бизнес",
+      "welcome_subtitle": "Это не регистрация — вы уже в системе. Осталось рассказать о бизнесе.",
+      "identity_title": "Что лучше всего описывает ваш бизнес?",
+      "identity_subtitle": "HostFlow подстроит терминологию и рекомендации под ваш контекст.",
+      "intent_title": "Какую задачу хотите решить первой?",
+      "intent_subtitle": "Первый модуль определяет, с чего начнём настройку.",
+      "details_title": "Несколько деталей о компании",
+      "details_subtitle": "Минимум данных — чтобы запустить выбранный модуль.",
+      "name_label": "Название компании",
+      "industry_label": "Отрасль",
+      "industry_placeholder": "Выберите…",
+      "team_size_label": "Размер компании",
+      "country_label": "Страна",
+      "finish": "Открыть Launchpad",
+      "errors": {
+        "identity_required": "Выберите, что лучше описывает ваш бизнес.",
+        "module_required": "Выберите, что хотите запустить первым.",
+        "module_unavailable": "Этот модуль пока недоступен — выберите Recruitment.",
+        "name_required": "Укажите название компании.",
+        "incomplete": "Заполните все поля.",
+        "generic": "Не удалось сохранить настройки."
+      }
+    },
+    "launchpad": {
+      "coming_soon": "Скоро",
+      "open_search": "Открыть подбор",
+      "create_campaign": "Создать кампанию",
+      "welcome": "Добро пожаловать",
+      "welcome_named": "Добро пожаловать, {name}",
+      "subtitle_today": "Что вы хотите сделать сегодня?",
+      "task_find_staff_title": "Найти сотрудников",
+      "task_find_staff_body": "Создайте подбор и получите ссылку для кандидатов.",
+      "task_find_staff_role_driver": "Ищете водителей",
+      "task_find_staff_role_warehouse": "Ищете работников склада",
+      "task_find_staff_role_office": "Ищете офисных сотрудников",
+      "create_search": "Создать подбор",
+      "task_find_clients_title": "Найти новых клиентов",
+      "task_find_clients_body": "Компании сами оставляют заявки на подбор персонала — вы получаете готовую ссылку и QR.",
+      "create_client_channel": "Начать привлечение клиентов",
+      "modules_title": "Ваши модули",
+      "module_recruitment": "Recruitment",
+      "recruitment_ready": "Готов",
+      "recruitment_create_first": "Создайте первый подбор",
+      "recruitment_open": "Доступен",
+      "recruitment_configure": "Не настроен",
+      "module_recruitment_desc": "Подбор сотрудников и управление кандидатами",
+      "module_hr_desc": "Управление сотрудниками и процессами",
+      "module_fleet_desc": "Транспорт и назначения",
+      "module_orders_desc": "Заказы и документы",
+      "platform_title": "Платформа",
+      "platform_account_active": "Аккаунт активен",
+      "platform_business_account": "Бизнес-аккаунт",
+      "current_plan": "Текущий план",
+      "trial_plan": "Trial",
+      "trial_days_left": "{days} дней",
+      "company_setup": "Начало работы"
     }
   },
   "public": {
