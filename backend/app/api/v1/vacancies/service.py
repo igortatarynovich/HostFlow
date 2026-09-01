@@ -92,11 +92,19 @@ class VacancyService:
         own_company_id: str | None = None,
         actor_user_id: str | None = None,
     ) -> VacancyOut:
+        from backend.app.modules.companies.crud import resolve_company_id_for_vacancy
+
+        resolved_company_id = await resolve_company_id_for_vacancy(
+            self.repo.db,
+            tenant_id=tenant_id,
+            company_id=str(payload.company_id),
+            actor_user_id=actor_user_id,
+        )
         values: Dict[str, Any] = {
             "id": str(uuid4()),
             "tenant_id": tenant_id,
             "own_company_id": own_company_id,
-            "company_id": str(payload.company_id),
+            "company_id": resolved_company_id,
             "title": payload.title,
             "description": payload.description,
             "location": payload.location,
@@ -125,7 +133,7 @@ class VacancyService:
                 line, _order = await resolve_order_line_for_vacancy_bind(
                     self.repo.db,
                     tenant_id=tenant_id,
-                    company_id=str(payload.company_id),
+                    company_id=resolved_company_id,
                     order_line_id=str(order_line_id),
                 )
             except OrderLineBindError as exc:
@@ -149,7 +157,7 @@ class VacancyService:
             await ensure_vacancy_funnel_assignment_allowed(
                 self.repo.db,
                 tenant_id=tenant_id,
-                company_id=str(payload.company_id),
+                company_id=resolved_company_id,
                 funnel_id=values.get("funnel_id"),
                 candidate_profile_id=values.get("candidate_profile_id"),
             )

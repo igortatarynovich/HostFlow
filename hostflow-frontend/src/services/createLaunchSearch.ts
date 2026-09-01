@@ -66,7 +66,7 @@ function companyRole(extra: unknown): string {
     .toLowerCase()
 }
 
-async function resolveOperatingCompanyId(): Promise<{ companyId: string; companyName: string }> {
+export async function resolveOperatingCompanyId(): Promise<{ companyId: string; companyName: string }> {
   const own = await listOwnCompanies()
   const ownCompany = own.items?.[0]
   if (!ownCompany?.id) {

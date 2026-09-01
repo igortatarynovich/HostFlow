@@ -10,6 +10,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models import Company
+from backend.app.models.own_company import OwnCompany
 from backend.app.models.tenant import Tenant, TenantLink, TenantType
 from backend.app.models.user import Role as UserRole, User
 from backend.app.services.operating_company_slots import get_operating_company_slots
@@ -19,6 +20,7 @@ from .funnel_presets import normalize_industry
 from .schemas import (
     BillingProfile,
     ComplianceProfile,
+    CompanyCreate,
     CompanyReadiness,
     Contact,
     IntegrationsProfile,
@@ -780,6 +782,76 @@ async def bootstrap_tenant_for_own_company_onboarding(
 
         await apply_working_hours_preset_to_user_if_empty(db, user_id=aid, preset=whp)
     await db.flush()
+
+
+async def resolve_company_id_for_vacancy(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str,
+    actor_user_id: str | None = None,
+) -> str:
+    """Map a vacancy ``company_id`` to a row in ``companies``.
+
+    Onboarding's first-vacancy step offers OwnCompany ids in the same
+    dropdown as CRM clients. ``vacancies.company_id`` is an FK to
+    ``companies``, so posting the own-company id used to 500. If the id is
+    this tenant's OwnCompany, reuse or create the mirrored operating Company.
+    """
+    session = _extract_session(db)
+    cid = str(company_id or "").strip()
+    if not cid:
+        raise ValueError("Company not found")
+
+    existing = (
+        await session.execute(
+            select(Company).where(Company.id == cid, Company.tenant_id == tenant_id)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return str(existing.id)
+
+    own = (
+        await session.execute(
+            select(OwnCompany).where(OwnCompany.id == cid, OwnCompany.tenant_id == tenant_id)
+        )
+    ).scalar_one_or_none()
+    if own is None:
+        raise ValueError("Company not found")
+
+    rows = (
+        await session.execute(select(Company).where(Company.tenant_id == tenant_id))
+    ).scalars().all()
+    for row in rows:
+        extra = row.extra if isinstance(row.extra, dict) else {}
+        mirrored = str(extra.get("mirrored_own_company_id") or "").strip()
+        if mirrored == str(own.id):
+            return str(row.id)
+        role = str(extra.get("company_role") or "").strip().lower()
+        if role in ("", "operating"):
+            return str(row.id)
+
+    extra = own.extra if isinstance(own.extra, dict) else {}
+    business_type = str(extra.get("business_type") or "").strip().lower()
+    if business_type not in ("agency", "employer", "services"):
+        business_type = "employer"
+    created = await create_company(
+        session,
+        CompanyCreate(
+            name=str(own.name or "Company"),
+            company_type=business_type,  # type: ignore[arg-type]
+            company_role="operating",
+            extra={
+                "company_role": "operating",
+                "company_type": business_type,
+                "setup_source": "vacancy_create",
+                "mirrored_own_company_id": str(own.id),
+            },
+        ),
+        actor_user_id=actor_user_id,
+        commit=False,
+    )
+    return str(created.id)
 
 
 async def update_company_extra_section(

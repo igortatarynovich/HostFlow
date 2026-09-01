@@ -39,6 +39,7 @@ import {
   type OnboardingWizardStepKey,
 } from '../api/client'
 import { createVacancy } from '../api/vacancies'
+import { resolveOperatingCompanyId } from '../services/createLaunchSearch'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { PageHeader } from '../components/nav/PageHeader'
@@ -820,8 +821,14 @@ function StepVacancy({
       setBusy(true)
       setErr(null)
       try {
+        const selected = companyOptions.find((c) => c.id === companyId)
+        let vacancyCompanyId = companyId
+        if (selected?.group === 'own') {
+          const operating = await resolveOperatingCompanyId()
+          vacancyCompanyId = operating.companyId
+        }
         const created = await createVacancy({
-          company_id: companyId,
+          company_id: vacancyCompanyId,
           title: trimmed,
           employment_type: employmentType,
           extra: { onboarding_source: 'wizard_step4' },
@@ -841,7 +848,7 @@ function StepVacancy({
         setBusy(false)
       }
     },
-    [title, companyId, employmentType, onCreated, t],
+    [title, companyId, companyOptions, employmentType, onCreated, t],
   )
 
   if (loadingCompanies) {
