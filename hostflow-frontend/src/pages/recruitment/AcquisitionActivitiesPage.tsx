@@ -31,12 +31,12 @@ export default function AcquisitionActivitiesPage() {
       await refresh()
       await refreshPulse()
       notify({
-        title: t('app.acquisition.action_done', { defaultValue: 'Готово' }),
+        title: t('app.acquisition.action_done'),
         variant: 'success',
       })
     } catch {
       notify({
-        title: t('app.acquisition.action_failed', { defaultValue: 'Не удалось выполнить действие' }),
+        title: t('app.acquisition.action_failed'),
         variant: 'error',
       })
     } finally {
@@ -56,17 +56,14 @@ export default function AcquisitionActivitiesPage() {
   )
 
   if (loading) {
-    return <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p>
+    return <p className="text-sm text-slate-500">{t('common.loading')}</p>
   }
 
   if (sorted.length === 0) {
     return (
       <section className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
         <p className="text-sm text-slate-600">
-          {t('app.acquisition.empty_activities_legacy', {
-            defaultValue:
-              'Исторических активностей нет. Новые запуски создаются только в Marketing (Campaign → Flight).',
-          })}
+          {t('app.acquisition.empty_activities_legacy')}
         </p>
       </section>
     )
@@ -85,7 +82,7 @@ export default function AcquisitionActivitiesPage() {
           onArchive={() => {
             if (
               window.confirm(
-                t('app.acquisition.archive_confirm', { defaultValue: 'Архивировать эту активность?' }),
+                t('app.acquisition.archive_confirm'),
               )
             ) {
               void runAction(activity.id, 'archive')

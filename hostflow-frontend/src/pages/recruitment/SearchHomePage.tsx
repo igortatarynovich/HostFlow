@@ -5,7 +5,7 @@ import { api } from '../../api/client'
 import { listRecruitmentApplications } from '../../api/applications'
 import { CRM_APP_PATHS, recruitmentSearchPath } from '../../app/crmAppPaths'
 import { RECRUITMENT_INBOX_PATH } from '../../app/recruitmentInboxPaths'
-import { useI18n } from '../../i18n'
+import { useI18n, type TranslateFn } from '../../i18n'
 import { getIntakeFormDetail, putIntakeFormPresentation } from '../../api/intakeForms'
 import { loadLaunchSearch } from '../../services/launchSearchSession'
 import {
@@ -29,12 +29,15 @@ function normalizeRole(value: string | undefined): SearchRole {
   return 'driver'
 }
 
-function stageLabel(stage: string | null | undefined): string {
+function stageLabel(stage: string | null | undefined, t: TranslateFn): string {
   const s = String(stage || '').trim().toLowerCase()
-  if (!s || s === 'new') return 'Новый'
-  if (s === 'to_call' || s === 'to_contact' || s === 'no_answer') return 'Ждёт звонка'
-  if (s === 'docs_wait') return 'Документы'
-  return s
+  if (!s || s === 'new') return t('app.candidates.stage_labels.new')
+  if (s === 'to_call' || s === 'to_contact') {
+    return t(`app.candidates.stage_labels.${s}`)
+  }
+  if (s === 'no_answer') return t('app.candidates.stage_labels.no_answer')
+  if (s === 'docs_wait') return t('app.candidates.stage_labels.docs_wait')
+  return t(`app.candidates.stage_labels.${s}`, { defaultValue: s })
 }
 
 /** Process Workspace for a search — candidates in pipeline, not raw inbound applications. */
@@ -113,8 +116,8 @@ export default function SearchHomePage() {
     <div className="space-y-4" data-testid="m1-search-home">
       {formStale ? (
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-          <p className="font-medium">{t('app.search_home.stale_warning_title', { defaultValue: 'Старая анкета' })}</p>
-          <p className="mt-1">{t('app.search_home.stale_warning_body', { defaultValue: 'Обновите форму — кандидаты должны видеть полный опросник.' })}</p>
+          <p className="font-medium">{t('app.search_home.stale_warning_title')}</p>
+          <p className="mt-1">{t('app.search_home.stale_warning_body')}</p>
           <button
             type="button"
             disabled={updatingForm || !leadFormId}
@@ -122,7 +125,7 @@ export default function SearchHomePage() {
             className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
           >
             <IconRefresh size={14} />
-            {updatingForm ? t('common.loading') : t('app.search_home.update_form', { defaultValue: 'Обновить форму' })}
+            {updatingForm ? t('common.loading') : t('app.search_home.update_form')}
           </button>
         </section>
       ) : null}
@@ -131,17 +134,17 @@ export default function SearchHomePage() {
         <section className="rounded-xl border border-brand-200 bg-brand-50/50 p-4">
           <p className="text-sm font-semibold text-slate-900">
             {pendingApplications === 1
-              ? '1 отклик ждёт обработки'
-              : `${pendingApplications} откликов ждут обработки`}
+              ? t('app.search_home.pending_one')
+              : t('app.search_home.pending_many', { values: { count: pendingApplications } })}
           </p>
           <p className="mt-1 text-sm text-slate-600">
-            Новые необработанные отклики обрабатываются в Application Workspace, не в подборе.
+            {t('app.search_home.pending_body')}
           </p>
           <Link
             to={RECRUITMENT_INBOX_PATH}
             className="mt-3 inline-flex items-center gap-2 rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
           >
-            Открыть отклики
+            {t('app.search_home.pending_open')}
             <IconArrowRight size={16} />
           </Link>
         </section>
@@ -152,17 +155,22 @@ export default function SearchHomePage() {
           <div className="flex items-center gap-2">
             <IconUsers size={18} className="text-brand-700" />
             <h3 className="text-sm font-semibold text-slate-900">
-              {t('app.search_home.pipeline_title', { defaultValue: 'Кандидаты в подборе' })}
+              {t('app.search_home.pipeline_title')}
             </h3>
           </div>
           <Link to={candidatesHref} className="text-xs font-medium text-brand-700 hover:underline">
-            {t('app.search_home.all_candidates', { defaultValue: 'Все кандидаты' })}
+            {t('app.search_home.all_candidates')}
           </Link>
         </div>
         {status?.headcount_target ? (
           <p className="mt-2 text-xs text-slate-500">
-            {status.hired ?? 0} нанято · {status.active_candidates ?? 0} в работе · {status.awaiting_call ?? 0} ждут
-            звонка
+            {t('app.search_home.pipeline_stats', {
+              values: {
+                hired: status.hired ?? 0,
+                active: status.active_candidates ?? 0,
+                awaiting: status.awaiting_call ?? 0,
+              },
+            })}
           </p>
         ) : null}
         {loading ? (
@@ -173,10 +181,10 @@ export default function SearchHomePage() {
               <li key={row.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2 text-sm">
                 <div>
                   <span className="font-medium text-slate-900">
-                    {row.full_name?.trim() || t('app.candidates.unnamed', { defaultValue: 'Кандидат' })}
+                    {row.full_name?.trim() || t('app.search_home.unnamed_candidate')}
                   </span>
                   <p className="text-xs text-slate-500">
-                    {stageLabel(row.stage)}
+                    {stageLabel(row.stage, t)}
                     {row.created_at ? ` · ${new Date(row.created_at).toLocaleString()}` : ''}
                   </p>
                 </div>
@@ -185,27 +193,21 @@ export default function SearchHomePage() {
                   state={candidateLinkState}
                   className="text-brand-700 hover:underline"
                 >
-                  {t('app.search_home.open_candidate', { defaultValue: 'Открыть' })}
+                  {t('app.search_home.open_candidate')}
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
           <p className="mt-3 text-sm text-slate-600">
-            {t('app.search_home.pipeline_empty', {
-              defaultValue:
-                'Пока нет кандидатов в этом подборе. После обработки отклика в «Откликах» кандидат появится здесь.',
-            })}
+            {t('app.search_home.pipeline_empty')}
           </p>
         )}
       </section>
 
       <section className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-4 text-sm text-slate-600">
         <p>
-          {t('app.search_home.process_hint', {
-            defaultValue:
-              'Подбор — Process Workspace: прогресс, кандидаты и реклама. Входящие отклики до решения — только в «Откликах».',
-          })}
+          {t('app.search_home.process_hint')}
         </p>
         <button
           type="button"
@@ -215,7 +217,7 @@ export default function SearchHomePage() {
           }}
           className="mt-2 text-xs font-medium text-brand-700 hover:underline"
         >
-          {t('app.search_home.refresh', { defaultValue: 'Обновить' })}
+          {t('app.search_home.refresh')}
         </button>
       </section>
     </div>

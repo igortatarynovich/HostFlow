@@ -38,15 +38,10 @@ export default function AcquisitionLayout() {
         data-testid="acquisition-legacy-banner"
       >
         <p className="font-medium">
-          {t('app.acquisition.legacy_readonly_title', {
-            defaultValue: 'Подборы / Acquisition — legacy read-only',
-          })}
+          {t('app.acquisition.legacy_readonly_title')}
         </p>
         <p className="mt-1 text-amber-900/90">
-          {t('app.acquisition.legacy_readonly_body', {
-            defaultValue:
-              'Новые запуски создаются только в Marketing (Campaign → Flight). Здесь остаются исторические активности до reconciliation.',
-          })}
+          {t('app.acquisition.legacy_readonly_body')}
         </p>
         {snapshot?.reconciliation?.status === 'linked' && linkedCampaignHref ? (
           <p className="mt-2">
@@ -55,9 +50,7 @@ export default function AcquisitionLayout() {
               className="inline-flex items-center gap-1 font-medium text-brand-700 underline"
               data-testid="acquisition-linked-campaign"
             >
-              {t('app.acquisition.open_linked_campaign', {
-                defaultValue: 'Открыть связанный Campaign',
-              })}
+              {t('app.acquisition.open_linked_campaign')}
               {snapshot.reconciliation.linked_campaign_name
                 ? `: ${snapshot.reconciliation.linked_campaign_name}`
                 : ''}
@@ -67,10 +60,7 @@ export default function AcquisitionLayout() {
         ) : null}
         {snapshot?.reconciliation?.status === 'unresolved' ? (
           <p className="mt-2 text-amber-900/80" data-testid="acquisition-reconciliation-unresolved">
-            {t('app.acquisition.reconciliation_unresolved', {
-              defaultValue:
-                'Связь с Campaign не установлена однозначно — данные сохранены для reconciliation.',
-            })}
+            {t('app.acquisition.reconciliation_unresolved')}
           </p>
         ) : null}
       </section>
@@ -84,18 +74,18 @@ export default function AcquisitionLayout() {
             data-testid="acquisition-go-marketing-setup"
           >
             <IconPlus size={16} stroke={1.9} />
-            {t('app.acquisition.launch_in_marketing', { defaultValue: 'Создать в Marketing' })}
+            {t('app.acquisition.launch_in_marketing')}
           </Link>
         </div>
         <nav
           className="mt-3 flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-white p-1"
-          aria-label={t('app.acquisition.tabs_aria', { defaultValue: 'Разделы привлечения' })}
+          aria-label={t('app.acquisition.tabs_aria')}
         >
           <NavLink to={`${acquisitionBase}/activities`} end className={subTabClass}>
-            {t('app.acquisition.tab_activities', { defaultValue: 'Активности' })}
+            {t('app.acquisition.tab_activities')}
           </NavLink>
           <NavLink to={`${acquisitionBase}/journal`} className={subTabClass}>
-            {t('app.acquisition.tab_journal', { defaultValue: 'Журнал' })}
+            {t('app.acquisition.tab_journal')}
           </NavLink>
         </nav>
       </Toolbar>

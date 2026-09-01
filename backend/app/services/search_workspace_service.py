@@ -50,8 +50,10 @@ def _item(
     work_kind: str | None = None,
     queue: list[str] | None = None,
     count: int | None = None,
+    activity_name: str | None = None,
+    channel: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    row: dict[str, Any] = {
         "id": id,
         "severity": severity,
         "headline": headline,
@@ -67,6 +69,11 @@ def _item(
         "queue": queue or [],
         "count": count,
     }
+    if activity_name:
+        row["activity_name"] = activity_name
+    if channel:
+        row["channel"] = channel
+    return row
 
 
 _REASON_BY_KIND: dict[str, str] = {
@@ -110,20 +117,22 @@ def _draft_setup_later(activities: list[dict[str, Any]], search_id: str) -> list
             continue
         if str(act.get("status") or "") != "draft":
             continue
-        name = str(act.get("name") or "Активность")
+        name = str(act.get("name") or "").strip()
         ch = str(act.get("channel_type") or act.get("type") or "")
         if ch == "meta":
             items.append(
                 _item(
                     id=f"later_setup_{act.get('id')}",
                     severity="info",
-                    headline=f"Настроить «{name}»",
+                    headline=f"Настроить «{name}»" if name else "Настроить активность",
                     message="Подключите Meta и привяжите объявления.",
                     action_label="Настроить",
                     target="acquisition",
                     href=_search_path(search_id, "/acquisition/meta"),
                     bucket="later",
                     activity_id=str(act.get("id") or ""),
+                    kind="later_setup",
+                    activity_name=name or None,
                 )
             )
         elif ch in ("google", "tiktok", "telegram", "referral"):
@@ -133,12 +142,15 @@ def _draft_setup_later(activities: list[dict[str, Any]], search_id: str) -> list
                     id=f"later_channel_{act.get('id')}",
                     severity="info",
                     headline=f"Подключить {label}",
-                    message=f"Активность «{name}» ждёт настройки.",
+                    message=f"Активность «{name}» ждёт настройки." if name else "Активность ждёт настройки.",
                     action_label="Открыть",
                     target="acquisition",
                     href=_search_path(search_id, "/acquisition/activities"),
                     bucket="later",
                     activity_id=str(act.get("id") or ""),
+                    kind="later_channel",
+                    activity_name=name or None,
+                    channel=label,
                 )
             )
     return items
@@ -260,6 +272,7 @@ def _build_day_plan(
                 target="acquisition",
                 href=marketing_setup_path_for_search(str(search_id)),
                 bucket="later",
+                kind="acquisition_expand",
             )
         )
 
@@ -280,6 +293,9 @@ def _build_day_plan(
             target="acquisition",
             href=href,
             activity_id=str(act_id) if act_id else None,
+            kind=kind or str(row.get("id") or ""),
+            activity_name=str(row.get("activity_name") or "").strip() or None,
+            count=int(row["count"]) if row.get("count") is not None else None,
         )
         if str(row.get("severity")) == "error":
             today.append(acq_item)
@@ -320,6 +336,7 @@ def _build_day_plan(
                 target="acquisition",
                 href=_search_path(search_id, "/acquisition/audience"),
                 bucket="later",
+                kind="audience_setup",
             )
         )
 
@@ -360,6 +377,7 @@ def _build_day_plan(
                 href=candidates_href,
                 icon="🎉",
                 kind="search_near_goal",
+                count=remaining,
             ),
         )
         later = [i for i in later if i.get("id") != "search_near_goal"]

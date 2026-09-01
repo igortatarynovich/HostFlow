@@ -16,6 +16,8 @@ export type SearchDayItem = {
   work_kind?: 'call' | 'docs' | 'interview' | string | null
   queue?: string[]
   count?: number | null
+  activity_name?: string | null
+  channel?: string | null
 }
 
 export type SearchDayMode = 'operate' | 'wait_leads' | 'near_goal' | 'filled' | 'idle'

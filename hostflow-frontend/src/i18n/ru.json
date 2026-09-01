@@ -36,7 +36,7 @@
       "open": "Открыть",
       "actions": "Действия",
       "advanced": "Расширенный",
-      "dismiss": "Уволить",
+      "dismiss": "Скрыть",
       "insert": "Вставить",
       "prev": "Предыдущий",
       "remove": "Удалить",
@@ -97,10 +97,10 @@
     },
     "and_more": "и многое другое",
     "cancel": "Отмена",
-    "save": "Сохранять",
+    "save": "Сохранить",
     "sending": "Отправка…",
     "sort": {
-      "asc": "восходящий",
+      "asc": "По возрастанию",
       "desc": "По убыванию"
     },
     "today": "Сегодня",
@@ -655,7 +655,7 @@
         "notes_empty": "В снимке найма нет заметок.",
         "debug_snapshot": "Сырой снимок найма (отладка)",
         "recruiter_summary": "Сводка рекрутера (на момент найма)",
-        "name": "Имя",
+        "name": "ФИО",
         "transfer_meta": "Передача",
         "open_recruitment_record": "Открыть запись рекрутинга (только чтение)",
         "missing_queue": "Недостающие (очередь)",
@@ -937,7 +937,7 @@
         "settings_ttv": "Отчёт TTV",
         "profile": "Профиль",
         "logout": "Выйти",
-        "email": "электронная почта",
+        "email": "Email",
         "messages": "Сообщения",
         "setup": "Настройка",
         "no_next_action": "Без следующего действия",
@@ -1304,7 +1304,7 @@
       "revoke_link": "Отозвать",
       "create_portal_link": "Создать ссылку",
       "handoff_label": "Передача кандидатов",
-      "see_vacancies_label": "Видеть вакансии",
+      "see_vacancies_label": "Смотреть вакансии",
       "see_reduced_label": "Урезанные профили",
       "search_placeholder": "Поиск по названию или домену…",
       "display_name_placeholder": "например, MROZEK TRANSPORT",
@@ -2360,28 +2360,28 @@
       "legal_notice_cookies": "Политикой cookies",
       "errors": {
         "consent_required": "Чтобы продолжить, необходимо принять Условия и Политику конфиденциальности.",
-        "generic": "Общий",
-        "password_mismatch": "Несоответствие пароля",
-        "password_short": "Пароль короткий"
+        "generic": "Не удалось создать аккаунт. Попробуйте ещё раз.",
+        "password_mismatch": "Пароли не совпадают",
+        "password_short": "Пароль должен быть не короче 8 символов"
       },
       "fields": {
-        "confirm": "Подтвердить",
-        "full_name": "Полное имя",
+        "confirm": "Подтвердите пароль",
+        "full_name": "Имя (необязательно)",
         "password": "Пароль",
-        "workspace": "Рабочая область",
-        "workspace_placeholder": "Заполнитель рабочей области"
+        "workspace": "Название пространства",
+        "workspace_placeholder": "Acme Recruiting"
       },
-      "have_account": "Иметь аккаунт",
+      "have_account": "Уже есть аккаунт?",
       "plan_labels": {
         "solo": "Solo",
         "team": "Team",
         "business": "Business"
       },
-      "selected_plan": "Выбранный план",
+      "selected_plan": "Выбранный план: {plan}",
       "sign_in": "Войти",
-      "submit": "Отправить",
-      "subtitle": "Субтитры",
-      "title": "Название"
+      "submit": "Создать аккаунт",
+      "subtitle": "Начните с пробного периода — команду пригласите позже.",
+      "title": "Создайте рабочее пространство CRM"
     },
     "login": {
       "title": "Вход в HostFlow",
@@ -2573,7 +2573,7 @@
         },
         "create": {
           "title": "Создать тенант",
-          "name": "Имя",
+          "name": "Название",
           "workspace_label": "Название воркспейса (опционально)",
           "slug": "Слаг",
           "initial_admin_email": "Email администратора",
@@ -3482,9 +3482,9 @@
             "inactive": "Override выключен",
             "search_hint": "Поиск по tenant ID",
             "no_results": "Нет результатов",
-            "subtitle": "Субтитры",
+            "subtitle": "Все действия администратора идут в этот тенант. Используйте осторожно.",
             "suggestions": "Предложения",
-            "title": "Название"
+            "title": "Override тенанта: {name}"
           },
           "actions": {
             "title": "Действия",
@@ -3513,7 +3513,7 @@
             "title": "Название"
           },
           "labels": {
-            "email": "электронная почта",
+            "email": "Email",
             "name": "Имя",
             "role": "Роль",
             "temp_password": "Временный пароль",
@@ -3962,14 +3962,14 @@
             "empty": "Нет активных запросов на водителей."
           },
           "invoice_workspace": {
-            "subtitle": "Субтитры",
-            "title": "Название"
+            "subtitle": "Создавайте и ведите счета, выставленные из этого профиля.",
+            "title": "Рабочее место счетов"
           },
           "orders_workspace": {
             "empty": "Пустой",
             "link": "Ссылка",
-            "subtitle": "Субтитры",
-            "title": "Название"
+            "subtitle": "Заказы, договоры и счета ведутся в этой карточке.",
+            "title": "Рабочее место заказов"
           },
           "receivables": {
             "title": "Дебиторская задолженность",
@@ -4064,7 +4064,7 @@
             "empty": "Пустой",
             "enabled": "Включено",
             "notes": "Примечания",
-            "notes_placeholder": "Заполнитель примечаний",
+            "notes_placeholder": "Внутренние заметки…",
             "required": "Требуется",
             "select_document_type": "Выберите тип документа",
             "title": "Название"
@@ -4078,7 +4078,7 @@
           "lanes": "Маршруты"
         },
         "fields": {
-          "name": "Имя",
+          "name": "Название",
           "legal_name": "Юр. название",
           "tax_id": "Tax ID / NIP",
           "phone": "Телефон",
@@ -4107,7 +4107,7 @@
           "bank_name": "Банк",
           "iban": "IBAN",
           "swift": "SWIFT/BIC",
-          "label": "Этикетка",
+          "label": "Метка",
           "primary": "Основной",
           "primary_contact": "Основной контакт",
           "portal_user": "Пользователь портала",
@@ -4262,7 +4262,7 @@
           "slice_item": "Отрезной элемент",
           "slice_manager": "Менеджер срезов",
           "slice_status": "Статус фрагмента",
-          "subtitle": "Субтитры",
+          "subtitle": "Период, детализация тренда и измерение среза.",
           "title": "Название",
           "trend_month": "Тренд месяца",
           "trend_week": "Трендовая неделя"
@@ -4292,7 +4292,7 @@
           "orders": "Заказы",
           "profit": "Прибыль",
           "revenue": "Доход",
-          "subtitle": "Субтитры",
+          "subtitle": "Рейтинг по выбранному измерению",
           "title": "Название"
         },
         "top_clients": {
@@ -4301,7 +4301,7 @@
           "orders": "Заказы",
           "profit": "Прибыль",
           "revenue": "Доход",
-          "subtitle": "Субтитры",
+          "subtitle": "Рейтинг по прибыли и выручке",
           "title": "Название"
         },
         "trends": {
@@ -4313,7 +4313,7 @@
           "paid": "Платный",
           "profit": "Прибыль",
           "revenue": "Доход",
-          "subtitle": "Субтитры",
+          "subtitle": "Выручка и прибыль по периодам",
           "title": "Название"
         }
       },
@@ -4327,7 +4327,7 @@
           "title": "Новая услуга",
           "labels": {
             "code": "Код",
-            "name": "Имя",
+            "name": "Название",
             "category": "Категория",
             "price": "Цена",
             "vat": "НДС %",
@@ -4352,7 +4352,7 @@
         },
         "table": {
           "code": "Код",
-          "name": "Имя",
+          "name": "Название",
           "category": "Категория",
           "price": "Цена",
           "orders_count": "Заказы",
@@ -4553,7 +4553,7 @@
         },
         "saved_filters": {
           "apply": "Применить",
-          "placeholder": "Заполнитель",
+          "placeholder": "Название сохранённого фильтра",
           "save": "Сохранить"
         }
       },
@@ -4622,7 +4622,7 @@
           "mark_paid": "Марк заплатил",
           "send": "Отправить"
         },
-        "subtitle": "Субтитры",
+        "subtitle": "Счета и оплаты по сервисным заказам.",
         "subtitle_scoped": "Область действия субтитров",
         "title": "Название"
       },
@@ -4675,7 +4675,7 @@
           "delivered": "Доставлено",
           "title": "Название"
         },
-        "subtitle": "Субтитры",
+        "subtitle": "Подзаголовок",
         "title": "Название"
       }
     },
@@ -5165,7 +5165,7 @@
             "click": "Клики CTA",
             "ctr": "CTR",
             "day": "День",
-            "dismiss": "Dismiss",
+            "dismiss": "Скрыть",
             "impression": "Показы"
           },
           "day1": "День 1",
@@ -5324,7 +5324,7 @@
             "no_answer": "Не отвечает",
             "wrong_number": "Неверный номер",
             "unavailable": "Недоступен",
-            "callback_requested": "Перезвонить",
+            "callback_requested": "Запрос перезвона",
             "interested": "Заинтересован",
             "not_interested": "Не заинтересован"
           }
@@ -5659,7 +5659,7 @@
         "docs_verify_title": "Проверить загруженные документы",
         "docs_verify_description": "Кандидат загрузил документы. Проверьте и подтвердите/отклоните перед переходом этапа.",
         "complete": "Полный",
-        "create": "Создавать",
+        "create": "Создать",
         "create_task": "Создать задачу",
         "docs_blocking": "Блокировка документов",
         "docs_missing_badge": "Документы отсутствуют",
@@ -5718,7 +5718,7 @@
         "complete": "Завершить",
         "snooze_15": "+15м",
         "snooze_60": "+1ч",
-        "remind": "Напоминать"
+        "remind": "Напомнить"
       },
       "employment": {
         "title": "Опыт работы",
@@ -6536,7 +6536,7 @@
       "table": {
         "columns": {
           "title": "Колонки",
-          "name": "Имя",
+          "name": "ФИО",
           "short": "Short ID",
           "email": "Email",
           "phone": "Телефон",
@@ -6578,7 +6578,7 @@
         "show_more": "Показать ещё",
         "total": "Всего: {count}",
         "total_filtered": "Показано: {shown} из {total}",
-        "call": "Вызов",
+        "call": "Позвонить",
         "click_to_sort": "Нажмите, чтобы отсортировать",
         "deselect": "Отменить выбор",
         "deselect_all": "Отменить выбор всех",
@@ -6600,7 +6600,7 @@
         "customize_layout_done": "Готово",
         "customize_layout_title": "Меняйте порядок столбцов (⋮⋮) и ширину. Состав колонок — в меню ⋯.",
         "customize_banner": "Режим настройки: тяните ⋮⋮ в заголовках для порядка; правый край заголовка — ширина.",
-        "select": "Выбирать",
+        "select": "Выбрать",
         "select_all": "Выбрать все",
         "select_candidate": "Выберите кандидата",
         "sort_by": "Сортировать по",
@@ -6836,7 +6836,9 @@
         "employment_pending": "На трудоустройстве",
         "ready_for_hr": "Готов к передаче в HR",
         "processing_by_hr": "В обработке у HR",
-        "hired": "Принят HR"
+        "hired": "Принят HR",
+        "to_call": "Ждёт звонка",
+        "to_contact": "Ждёт контакта"
       },
       "row_status": {
         "rejected": "Отклонён (статус)",
@@ -6923,7 +6925,8 @@
         "masked_policy": "Персональные данные скрыты политикой доступа.",
         "rel_vacancy": "Вакансия",
         "rel_relation": "Связь"
-      }
+      },
+      "unnamed": "Кандидат"
     },
     "tasks": {
       "hub_eyebrow": "Задачи",
@@ -7997,7 +8000,7 @@
           "website": "Сайт",
           "fleet_size": "Размер флота",
           "transport_type": "Тип перевозок",
-          "full_name": "Имя",
+          "full_name": "ФИО",
           "role": "Должность",
           "phone": "Телефон",
           "what_needed": "Что нужно",
@@ -8052,7 +8055,7 @@
         "completed": "Готово",
         "empty": "Пока нет задач"
       },
-      "subtitle": "Субтитры",
+      "subtitle": "Запланированная работа",
       "title": "Название"
     },
     "automations": {
@@ -8103,7 +8106,7 @@
       "subtitle": "Почему что-то произошло? Фильтруйте действия по объекту, дате и префиксу.",
       "empty": "Пустой",
       "errors": {
-        "load": "Загрузить"
+        "load": "Не удалось загрузить журнал автоматизации"
       },
       "filters": {
         "action_prefix": "Префикс действия",
@@ -8241,7 +8244,7 @@
         "refresh": "Обновить"
       },
       "errors": {
-        "load": "Загрузить",
+        "load": "Не удалось загрузить переписку",
         "auto_assign": "Не удалось автоматически назначить тред.",
         "dispatch_one": "Не удалось отправить это сообщение.",
         "dispatch_queued": "Не удалось поставить исходящие в очередь.",
@@ -8306,7 +8309,7 @@
           "snooze_30m": "Отложить на 30м",
           "start": "Start",
           "reopen": "Reopen",
-          "cancel": "Cancel",
+          "cancel": "Отмена",
           "duplicate": "Duplicate",
           "manage": "Manage",
           "complete": "Complete",
@@ -8663,24 +8666,24 @@
         "states": {
           "no_match": "Нет совпадений"
         },
-        "subtitle": "Субтитры"
+        "subtitle": "Подзаголовок"
       },
       "ia": {
         "calendar_subtitle": "Время задач и активностей (те же данные, что в «Задачах»). Опционально планер и отпуска. Очередь работы — в разделе Задачи.",
         "calendar_title": "Календарь",
         "email_title": "Название электронного письма",
-        "my_availability_subtitle": "Мой доступный подзаголовок",
-        "my_availability_title": "Мой статус доступности",
+        "my_availability_subtitle": "Личный график, статус доступности, перерывы и заявки на отпуск.",
+        "my_availability_title": "Моя доступность",
         "my_requests": "Мои запросы",
-        "open_time_off": "Открытое время выходной",
-        "planner_subtitle": "Подзаголовок планировщика",
-        "planner_title": "Название планировщика",
-        "team_availability_subtitle": "Подзаголовок доступности команды",
-        "team_availability_title": "Название доступности команды",
-        "timeoff_subtitle": "Подзаголовок перерыва",
-        "timeoff_title": "Название перерыва",
-        "working_hours_subtitle": "Подзаголовок рабочего времени",
-        "working_hours_title": "Название рабочего времени"
+        "open_time_off": "Открыть заявки на отсутствие",
+        "planner_subtitle": "Операционное планирование задач. Отдельно от почты и мессенджеров.",
+        "planner_title": "Планировщик",
+        "team_availability_subtitle": "Графики, занятость, статусы доступности и готовность очереди.",
+        "team_availability_title": "Доступность команды",
+        "timeoff_subtitle": "Отпуск, отгул и больничный — с согласованием руководителя.",
+        "timeoff_title": "Заявки на отпуск и отсутствие",
+        "working_hours_subtitle": "Задайте недельный график — планировщик и календарь используют его как базовую доступность.",
+        "working_hours_title": "Рабочие часы"
       },
       "labels": {
         "at_time": "Во время",
@@ -8745,7 +8748,7 @@
           "messenger_inbound": "Входящий мессенджер",
           "messenger_inbound_hint": "Подсказка о входе в мессенджер"
         },
-        "subtitle": "Субтитры",
+        "subtitle": "Подзаголовок",
         "title": "Название"
       },
       "states": {
@@ -8778,14 +8781,14 @@
           "start": "Старт"
         },
         "assignee": {
-          "label": "Этикетка",
+          "label": "Метка",
           "unassigned": "Неназначенный"
         },
         "errors": {
-          "create": "Создать",
-          "load": "Загрузить",
+          "create": "Не удалось создать событие в планировщике",
+          "load": "Не удалось загрузить планировщик",
           "outside_hours": "В нерабочее время",
-          "update": "Обновить"
+          "update": "Не удалось обновить событие в планировщике"
         },
         "filters": {
           "all_kinds": "Все виды",
@@ -8804,7 +8807,7 @@
           "call": "Позвонить",
           "followup": "Последующие действия",
           "meeting": "Встреча",
-          "shift": "Сдвиг",
+          "shift": "Смена",
           "task": "Задача"
         },
         "priority": {
@@ -8827,34 +8830,34 @@
       }
     },
     "forgot_password": {
-      "back": "Назад",
+      "back": "Назад ко входу",
       "errors": {
-        "generic": "Общий"
+        "generic": "Не удалось отправить ссылку сброса"
       },
-      "sent": "Отправлено",
-      "submit": "Отправить",
-      "subtitle": "Субтитры",
-      "title": "Название",
+      "sent": "Если этот адрес зарегистрирован, мы отправили ссылку. Проверьте почту (и спам).",
+      "submit": "Отправить ссылку",
+      "subtitle": "Укажите email — отправим ссылку для нового пароля.",
+      "title": "Забыли пароль?",
       "fields": {
         "email_placeholder": "email@example.com"
       }
     },
     "invite_accept": {
-      "confirm": "Подтвердить",
+      "confirm": "Подтвердите пароль",
       "errors": {
-        "generic": "Общий",
-        "mismatch": "Несоответствие",
-        "too_short": "Слишком короткий"
+        "generic": "Приглашение недействительно или истекло",
+        "mismatch": "Пароли не совпадают",
+        "too_short": "Пароль должен быть не короче 8 символов"
       },
       "full_name": "Полное имя",
-      "no_token": "Нет токена",
-      "no_token_hint": "Нет подсказки по токену",
+      "no_token": "Нет токена приглашения",
+      "no_token_hint": "Откройте ссылку из письма с приглашением.",
       "password": "Пароль",
       "short_id": "Короткий идентификатор",
-      "submit": "Отправить",
-      "subtitle": "Субтитры",
-      "success": "Успех",
-      "title": "Название"
+      "submit": "Принять и войти",
+      "subtitle": "Задайте пароль и заполните данные.",
+      "success": "Аккаунт активирован. Перенаправление…",
+      "title": "Принять приглашение"
     },
     "invoices": {
       "actions": "Действия",
@@ -8896,7 +8899,7 @@
       "correction_of": "Исправление",
       "correction_original_required": "Требуется оригинал исправления",
       "correction_reason": "Причина исправления",
-      "correction_reason_placeholder": "Заполнитель причины исправления",
+      "correction_reason_placeholder": "Например: исправленный NIP, адрес, количество или сумма.",
       "correction_reason_required": "Требуется причина исправления",
       "create": "Создать",
       "create_company_required": "Требуется создать компанию",
@@ -8909,7 +8912,7 @@
       "current": "Текущий",
       "delivery": "Доставка",
       "delivery_missing_recipient": "Отсутствует получатель доставки",
-      "delivery_not_sent": "Посылка не отправлена",
+      "delivery_not_sent": "Ещё не отправлено",
       "delta_total": "Дельта всего",
       "drilldown": {
         "company": "Компания",
@@ -9019,7 +9022,7 @@
         "send_failed": "Отправить не удалось",
         "sent": "Отправлено",
         "status": "Статус",
-        "subtitle": "Субтитры",
+        "subtitle": "Статус, напоминания и платежи.",
         "title": "Название"
       },
       "title": "Название",
@@ -9051,7 +9054,7 @@
       },
       "card": {
         "business_type": "Тип бизнеса",
-        "email": "электронная почта",
+        "email": "Email",
         "manager": "Менеджер",
         "owner": "Владелец"
       },
@@ -9082,7 +9085,7 @@
         "billing": "Биллинг",
         "branding": "Брендинг",
         "legal": "Юридический",
-        "subtitle": "Субтитры",
+        "subtitle": "Подзаголовок",
         "title": "Название"
       },
       "profile": {
@@ -9232,7 +9235,7 @@
           "billing_link": "Billing"
         },
         "submit": "Отправить",
-        "subtitle": "Субтитры",
+        "subtitle": "Подзаголовок",
         "title": "Название",
         "type_agency": "Агентство",
         "type_agency_desc": "Работа с кандидатами и передача клиентам.",
@@ -10404,6 +10407,251 @@
       "module_hr": "HR",
       "module_fleet": "Fleet",
       "module_orders": "Orders"
+    },
+    "searches_list": {
+      "title": "Подборы"
+    },
+    "search_home": {
+      "default_title": "Подбор",
+      "stale_warning_title": "Старая анкета",
+      "stale_warning_body": "Обновите форму — кандидаты должны видеть полный опросник.",
+      "update_form": "Обновить форму",
+      "pipeline_title": "Кандидаты в подборе",
+      "all_candidates": "Все кандидаты",
+      "pipeline_empty": "Пока нет кандидатов в этом подборе. После обработки отклика в «Откликах» кандидат появится здесь.",
+      "process_hint": "Подбор — Process Workspace: прогресс, кандидаты и реклама. Входящие отклики до решения — только в «Откликах».",
+      "refresh": "Обновить",
+      "open_candidate": "Открыть",
+      "unnamed_candidate": "Кандидат",
+      "pipeline_stats": "{hired} нанято · {active} в работе · {awaiting} ждут звонка",
+      "pending_one": "1 отклик ждёт обработки",
+      "pending_many": "{count} откликов ждут обработки",
+      "pending_body": "Новые необработанные отклики обрабатываются в Application Workspace, не в подборе.",
+      "pending_open": "Открыть отклики",
+      "stage": {
+        "awaiting_call": "Ждёт звонка"
+      }
+    },
+    "search_workspace": {
+      "tab_overview": "Обзор",
+      "tab_acquisition": "Привлечение",
+      "tab_candidates": "Кандидаты",
+      "tabs_aria": "Разделы подбора",
+      "status_line": "{hired} из {target} позиций · {active} в работе · {awaiting} ждут звонка",
+      "status": {
+        "active": "Активен",
+        "on_hold": "На паузе",
+        "archived": "В архиве"
+      }
+    },
+    "search_next": {
+      "title": "Следующее действие",
+      "start": "Начать",
+      "after_that": "После этого",
+      "all_clear_title": "На сегодня всё сделано",
+      "all_clear_body": "Новые отклики обрабатываются в разделе «Отклики». Здесь — прогресс подбора и кандидаты.",
+      "session_progress": "Кандидат {current} из {total}",
+      "session_stop": "К подбору",
+      "session_next": "Готово — следующий",
+      "session_done": "Готово — вернуться",
+      "kind": {
+        "call": "Звонки",
+        "docs": "Документы",
+        "interview": "Интервью"
+      }
+    },
+    "search_day": {
+      "later_title": "Потом",
+      "later_hint": "Улучшения и расширение — когда операционка закрыта."
+    },
+    "search_pulse": {
+      "activity_fallback": "активность",
+      "action": {
+        "start": "Начать",
+        "launch": "Запустить",
+        "marketing": "В Marketing",
+        "acquisition": "Привлечение",
+        "audience": "Аудитория",
+        "open_inbox": "Открыть отклики",
+        "candidates": "Кандидаты",
+        "setup": "Настроить",
+        "open": "Открыть",
+        "view": "Посмотреть"
+      },
+      "reason": {
+        "candidates_awaiting_call": "Это сейчас самое важное для закрытия подбора.",
+        "candidates_missing_docs": "Без документов кандидаты не двигаются дальше.",
+        "candidates_stale_interview": "Интервью — следующий шаг к трудоустройству.",
+        "acquisition_launch": "Нужен приток новых откликов.",
+        "wait_leads": "Новые отклики обрабатываются в разделе «Отклики», не здесь.",
+        "search_near_goal": "Финальный рывок до закрытия подбора.",
+        "search_filled": "Подбор достиг цели."
+      },
+      "candidates_awaiting_call": {
+        "headline_one": "Свяжитесь с новым кандидатом",
+        "headline_many": "Позвонить {count} новым кандидатам",
+        "message_one": "1 кандидат ждёт первого контакта.",
+        "message_many": "{count} кандидатов ждут первого контакта."
+      },
+      "candidates_missing_docs": {
+        "headline": "Проверить документы",
+        "message_one": "У одного кандидата не хватает документов.",
+        "message_many": "У {count} кандидатов не хватает документов."
+      },
+      "candidates_stale_interview": {
+        "headline": "Провести интервью",
+        "message": "По {count} кандидатам не было движения более 4 дней."
+      },
+      "acquisition_launch": {
+        "headline": "Запустить рекламу",
+        "message": "Поток откликов слабый — нужна реклама для «{title}»."
+      },
+      "acquisition_expand": {
+        "headline": "Расширить рекламу",
+        "message": "Создайте новую Campaign/Flight в Marketing (не через Подборы)."
+      },
+      "search_filled": {
+        "headline": "Подбор закрыт",
+        "message": "Часть рекламы можно остановить."
+      },
+      "audience_setup": {
+        "headline": "Настроить аудиторию",
+        "message": "Опишите, кого ищете — позже это поможет с таргетингом."
+      },
+      "wait_leads": {
+        "headline": "Ждём новые отклики",
+        "message": "Реклама работает. Новые необработанные отклики — в разделе «Отклики»."
+      },
+      "search_near_goal": {
+        "headline": "Подбор почти закрыт",
+        "message": "Осталось найти ещё {count} человек."
+      },
+      "later_setup": {
+        "headline": "Настроить «{name}»",
+        "message": "Подключите Meta и привяжите объявления."
+      },
+      "later_channel": {
+        "headline": "Подключить {channel}",
+        "message": "Активность «{name}» ждёт настройки."
+      },
+      "cpl_up": {
+        "headline": "Кампания «{name}»",
+        "message": "Стоимость лида выросла на {count}%."
+      },
+      "no_recent_leads": {
+        "headline": "Кампания «{name}»",
+        "message": "Нет новых откликов {count} дн."
+      },
+      "spend_no_leads": {
+        "headline": "Кампания «{name}»",
+        "message": "Расход есть, откликов нет — проверьте объявление и форму."
+      }
+    },
+    "search_meta": {
+      "title": "Meta Ads",
+      "subtitle_v2": "Свяжите рекламу Meta с подбором «{name}» — HostFlow сам настроит маршрут лидов.",
+      "checklist_title": "Что сделать",
+      "connect_prompt": "Начните с подключения Meta — дальше выберете рекламу для этого подбора.",
+      "connect_cta": "Войти через Facebook",
+      "connect_error": "Не удалось начать подключение Meta",
+      "admin_only": "Подключение Meta доступно администратору workspace.",
+      "oauth_unavailable": "Быстрое подключение Meta недоступно на текущем плане или сервере.",
+      "campaign_picker_title": "Реклама для этого подбора",
+      "ad_account_label_named": "Рекламный кабинет: {name}",
+      "ready_badge": "Настроено",
+      "empty_hint": "Создайте Lead Ad в Meta Ads Manager или вернитесь сюда позже.",
+      "reconnect_cta": "Обновить доступ Meta",
+      "reconnect_page_hint": "При входе выберите Facebook-страницу, с которой идёт реклама на этот подбор (не любую страницу из списка).",
+      "ads_count": "{count} объявлений",
+      "bind_cta": "Связать с подбором",
+      "bind_success": "Реклама связана с подбором",
+      "bind_partial": "Часть кампаний пропущена — проверьте права Meta",
+      "bind_error": "Не удалось связать рекламу с подбором",
+      "back_to_acquisition": "К привлечению",
+      "steps": {
+        "connect_title": "Подключить Meta",
+        "connect_body_v2": "Войдите через Facebook — HostFlow получит доступ к вашей рекламе и лидам.",
+        "campaigns_title": "Выберите рекламу для этого подбора",
+        "campaigns_body": "Отметьте кампании — HostFlow сам свяжет объявления, формы и маршрут лидов.",
+        "done_title": "Готово",
+        "done_body": "Новые отклики с выбранной рекламы будут попадать в этот подбор."
+      }
+    },
+    "acquisition": {
+      "legacy_readonly_title": "Подборы / Acquisition — legacy read-only",
+      "legacy_readonly_body": "Новые запуски создаются только в Marketing (Campaign → Flight). Здесь остаются исторические активности до reconciliation.",
+      "open_linked_campaign": "Открыть связанный Campaign",
+      "reconciliation_unresolved": "Связь с Campaign не установлена однозначно — данные сохранены для reconciliation.",
+      "launch_in_marketing": "Создать в Marketing",
+      "launch_title": "Запуск новой рекламы",
+      "tabs_aria": "Разделы привлечения",
+      "tab_activities": "Активности",
+      "tab_journal": "Журнал",
+      "sync_in_progress": "Обновляем данные…",
+      "sync_failed_status": "Не удалось обновить данные Meta.",
+      "sync_failed_ago": "Последние данные получены {ago}.",
+      "last_updated": "Последнее обновление: {ago}",
+      "auto_sync_hint": "Обновляется автоматически каждые {minutes} минут",
+      "go_marketing_setup": "Открыть Marketing setup",
+      "audience_readonly": "Редактирование аудитории в Подборах отключено. Настройки таргетинга ведутся в Marketing (Campaign → Flight).",
+      "audience_title": "Кого мы сейчас ищем?",
+      "audience_countries": "Страны",
+      "audience_age": "Возраст",
+      "audience_experience": "Опыт",
+      "audience_languages": "Языки",
+      "audience_gender": "Пол",
+      "audience_interests": "Интересы",
+      "audience_notes": "Заметки",
+      "journal_today": "Сегодня",
+      "journal_yesterday": "Вчера",
+      "journal_empty": "Журнал пока пуст. Здесь будут синхронизации, новые активности и изменения метрик.",
+      "journal_title": "Журнал изменений",
+      "action_done": "Готово",
+      "action_failed": "Не удалось выполнить действие",
+      "empty_activities_legacy": "Исторических активностей нет. Новые запуски создаются только в Marketing (Campaign → Flight).",
+      "archive_confirm": "Архивировать эту активность?",
+      "legacy_launch_disabled_title": "Запуск рекламы перенесён в Marketing",
+      "legacy_launch_disabled_body": "Новые запуски создаются только как Campaign → Flight. Подборы больше не создают acquisition activities.",
+      "status_running": "Работает",
+      "status": {
+        "running": "Работает",
+        "active": "Активна",
+        "needs_attention": "Требует внимания",
+        "draft": "Черновик",
+        "paused": "Приостановлена",
+        "archived": "В архиве",
+        "no_responses": "Нет откликов"
+      },
+      "next_kind": {
+        "setup": "Завершите настройку активности",
+        "no_leads": "Расход есть, откликов нет — проверьте форму и объявление",
+        "cost_increase": "Стоимость лида выросла"
+      },
+      "works_on": "Работает на:",
+      "activity_last_sync": "Последнее обновление: {ago}",
+      "spend_7d": "€{amount} / 7д",
+      "action_open_meta": "Открыть в Meta",
+      "action_bindings": "Изменить привязку к подборам",
+      "action_pause": "Приостановить",
+      "action_resume": "Возобновить",
+      "action_duplicate": "Дублировать",
+      "action_archive": "Архивировать",
+      "action_open_link": "Открыть ссылку",
+      "action_view": "Посмотреть рекламу",
+      "action_edit_soon": "Изменить — скоро",
+      "metric_responses": "Отклики (7д)",
+      "metric_spend": "Потрачено (7д)",
+      "funnel_title": "Путь до результата",
+      "funnel_leads": "лидов",
+      "funnel_candidates": "кандидатов",
+      "funnel_interviews": "интервью",
+      "funnel_offers": "офферов",
+      "funnel_hired": "трудоустроены",
+      "cost_per_hire": "Стоимость одного сотрудника €{amount}",
+      "next_action": "Следующее действие",
+      "bindings_title": "Привязка к подборам",
+      "bindings_hint": "Выберите подборы, на которые работает эта активность.",
+      "bindings_current": "текущий"
     }
   },
   "public": {
@@ -12785,48 +13033,48 @@
       "verifying": "Проверяем…"
     },
     "not_found": {
-      "badge": "Значок",
-      "go_home": "Иди домой",
-      "go_login": "Войдите в систему",
-      "subtitle": "Субтитры",
-      "title": "Название"
+      "badge": "404",
+      "go_home": "На главную",
+      "go_login": "Перейти к входу",
+      "subtitle": "Адрес неверный или страница была перемещена.",
+      "title": "Страница не найдена"
     },
     "notifications": {
-      "description": "Описание",
-      "document_status": "Статус документа",
-      "email": "электронная почта",
+      "description": "Получайте уведомления об изменении статуса документов и заявки.",
+      "document_status": "Изменения статуса документов",
+      "email": "Email",
       "errors": {
-        "email_or_phone_required": "Требуется электронная почта или телефон",
-        "permission_denied": "Разрешение отклонено",
-        "push_not_configured": "Push не настроен",
-        "push_not_configured_desc": "Нажмите не настроенное описание",
-        "push_not_supported": "Push не поддерживается",
-        "push_subscribe_failed": "Принудительная подписка не удалась",
-        "subscribe_failed": "Подписаться не удалось",
-        "unsubscribe_failed": "Отписаться не удалось"
+        "email_or_phone_required": "Укажите email или телефон",
+        "permission_denied": "Разрешение не предоставлено",
+        "push_not_configured": "Push-уведомления не настроены",
+        "push_not_configured_desc": "На сервере не настроен VAPID-ключ.",
+        "push_not_supported": "Push-уведомления не поддерживаются",
+        "push_subscribe_failed": "Не удалось подписаться на push-уведомления",
+        "subscribe_failed": "Не удалось оформить подписку",
+        "unsubscribe_failed": "Не удалось отменить подписку"
       },
       "phone": "Телефон",
       "push": {
         "active": "Активный",
-        "description": "Описание",
-        "disable": "Отключить",
-        "enable": "Включить",
+        "description": "Получайте уведомления даже когда браузер закрыт.",
+        "disable": "Отключить push",
+        "enable": "Включить push",
         "inactive": "Неактивный",
-        "permission_denied": "Разрешение отклонено",
-        "title": "Название"
+        "permission_denied": "Разрешение на уведомления отклонено. Разрешите в настройках браузера.",
+        "title": "Push-уведомления"
       },
       "reminders": "Напоминания",
-      "stage_changes": "Изменения этапов",
+      "stage_changes": "Изменения этапа заявки",
       "subscribe": "Подписаться",
       "subscribe_to": "Подписаться на",
-      "subscribed": "Подписан",
+      "subscribed": "Вы подписаны на уведомления",
       "success": {
-        "push_subscribed": "Нажмите подписку",
-        "subscribed": "Подписан",
-        "unsubscribed": "Отменил подписку"
+        "push_subscribed": "Push-уведомления включены",
+        "subscribed": "Подписка оформлена",
+        "unsubscribed": "Подписка отменена"
       },
-      "title": "Название",
-      "unsubscribe": "Отписаться",
+      "title": "Уведомления",
+      "unsubscribe": "Отписаться от всех",
       "placeholders": {
         "email": "your@email.com"
       },
@@ -13019,7 +13267,7 @@
         "description": "Скоро здесь появится живая конфигурация. Пока показываем демо-данные.",
         "table": {
           "code": "Код",
-          "name": "Имя",
+          "name": "Название",
           "required": "Нужно загрузить",
           "process": "Процесс",
           "status": "Статус",
@@ -13381,7 +13629,7 @@
         "file_required_to_approve": "Сначала загрузите файл — без него документ нельзя подтвердить или одобрить."
       },
       "template": {
-        "select": "Выбирать"
+        "select": "Выбрать"
       },
       "runtime_badges": {
         "expiring_soon": "Expiring soon",
@@ -13750,7 +13998,7 @@
         "title": "Подключённые страницы Facebook",
         "routing_hint": "Лиды маршрутизируются по Page ID активного подключения — не по ad account. Ad account ID только метаданные. Отключите или удалите строку, чтобы этот тенант перестал принимать эту страницу.",
         "plan_limit_reached": "На тарифе доступно {limit} подключение(й) Meta. Чтобы добавить ещё — Настройки → Биллинг.",
-        "label": "Этикетка",
+        "label": "Метка",
         "status": "Статус",
         "webhook_secret": "Секрет вебхука",
         "access_token": "Access token",
@@ -13764,7 +14012,7 @@
           "page_id": "Facebook Page ID"
         },
         "table": {
-          "label": "Этикетка",
+          "label": "Метка",
           "status": "Статус",
           "ad_id": "ad_id",
           "ad_account": "Ad account",
@@ -15229,7 +15477,11 @@
       "errors": {
         "load_detail": "Failed to load intake form",
         "copy": "Could not copy",
-        "smoke": "Smoke test failed"
+        "smoke": "Smoke test failed",
+        "no_fields": "Выберите хотя бы один вопрос",
+        "load_fields": "Не удалось загрузить поля профиля",
+        "load_preset": "Не удалось загрузить анкету компании",
+        "create": "Не удалось создать форму"
       },
       "load_driver_hiring_preset": "Подставить анкету для компаний, которым нужны водители",
       "load_warehouse_hiring_preset": "Подставить анкету для компаний, которым нужны складские работники"

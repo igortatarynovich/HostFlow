@@ -314,7 +314,7 @@ def _build_attention_items(
     for act in activities:
         if act.get("lifecycle") == "archived":
             continue
-        name = str(act.get("name") or "Активность")
+        name = str(act.get("name") or "").strip()
         act_id = str(act.get("id") or "")
         history = [h for h in (act.get("metrics_history") or []) if isinstance(h, dict)]
         metrics_7d = (act.get("metrics") or {}).get("period_7d") or {}
@@ -335,6 +335,8 @@ def _build_attention_items(
                             "message": f"Стоимость лида выросла на {int(round(delta * 100))}%.",
                             "kind": "cpl_up",
                             "activity_id": act_id,
+                            "activity_name": name,
+                            "count": int(round(delta * 100)),
                         }
                     )
 
@@ -348,6 +350,8 @@ def _build_attention_items(
                     "message": f"Нет новых откликов {days_idle} дн.",
                     "kind": "no_recent_leads",
                     "activity_id": act_id,
+                    "activity_name": name,
+                    "count": int(days_idle),
                 }
             )
         elif int(metrics_7d.get("leads") or 0) == 0 and float(metrics_7d.get("spend") or 0) > 20:
@@ -359,6 +363,7 @@ def _build_attention_items(
                     "message": "Расход есть, откликов нет — проверьте объявление и форму.",
                     "kind": "spend_no_leads",
                     "activity_id": act_id,
+                    "activity_name": name,
                 }
             )
 

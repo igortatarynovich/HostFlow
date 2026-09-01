@@ -17,31 +17,28 @@ export default function AcquisitionAudiencePage() {
   const marketingHref = snapshot?.marketing_setup_path || CRM_APP_PATHS.marketing
 
   if (loading) {
-    return <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p>
+    return <p className="text-sm text-slate-500">{t('common.loading')}</p>
   }
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm" data-testid="m1-acquisition-audience">
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-        {t('app.acquisition.audience_readonly', {
-          defaultValue:
-            'Редактирование аудитории в Подборах отключено. Настройки таргетинга ведутся в Marketing (Campaign → Flight).',
-        })}{' '}
+        {t('app.acquisition.audience_readonly')}{' '}
         <Link to={marketingHref} className="font-medium text-brand-700 underline">
-          {t('app.acquisition.go_marketing_setup', { defaultValue: 'Открыть Marketing' })}
+          {t('app.acquisition.go_marketing_setup')}
         </Link>
       </div>
 
       <h3 className="mt-4 text-base font-semibold text-slate-900">
-        {t('app.acquisition.audience_title', { defaultValue: 'Кого мы сейчас ищем?' })}
+        {t('app.acquisition.audience_title')}
       </h3>
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>
-          <dt className="text-slate-500">{t('app.acquisition.audience_countries', { defaultValue: 'Страны' })}</dt>
+          <dt className="text-slate-500">{t('app.acquisition.audience_countries')}</dt>
           <dd className="font-medium text-slate-900">{joinList(aud?.countries)}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">{t('app.acquisition.audience_age', { defaultValue: 'Возраст' })}</dt>
+          <dt className="text-slate-500">{t('app.acquisition.audience_age')}</dt>
           <dd className="font-medium text-slate-900">
             {aud?.age_min != null || aud?.age_max != null
               ? `${aud?.age_min ?? '—'} – ${aud?.age_max ?? '—'}`
@@ -49,23 +46,23 @@ export default function AcquisitionAudiencePage() {
           </dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-slate-500">{t('app.acquisition.audience_experience', { defaultValue: 'Опыт' })}</dt>
+          <dt className="text-slate-500">{t('app.acquisition.audience_experience')}</dt>
           <dd className="font-medium text-slate-900">{aud?.experience || '—'}</dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-slate-500">{t('app.acquisition.audience_languages', { defaultValue: 'Языки' })}</dt>
+          <dt className="text-slate-500">{t('app.acquisition.audience_languages')}</dt>
           <dd className="font-medium text-slate-900">{joinList(aud?.languages)}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">{t('app.acquisition.audience_gender', { defaultValue: 'Пол' })}</dt>
+          <dt className="text-slate-500">{t('app.acquisition.audience_gender')}</dt>
           <dd className="font-medium text-slate-900">{aud?.gender || '—'}</dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-slate-500">{t('app.acquisition.audience_interests', { defaultValue: 'Интересы' })}</dt>
+          <dt className="text-slate-500">{t('app.acquisition.audience_interests')}</dt>
           <dd className="font-medium text-slate-900">{joinList(aud?.interests)}</dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-slate-500">{t('app.acquisition.audience_notes', { defaultValue: 'Заметки' })}</dt>
+          <dt className="text-slate-500">{t('app.acquisition.audience_notes')}</dt>
           <dd className="font-medium text-slate-900">{aud?.notes || '—'}</dd>
         </div>
       </dl>

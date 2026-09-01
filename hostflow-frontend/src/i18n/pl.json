@@ -1,9 +1,9 @@
 {
   "common": {
-    "loading": "Loading…",
-    "retry": "Spróbować ponownie",
+    "loading": "Ładowanie…",
+    "retry": "Spróbuj ponownie",
     "access_denied": "Brak dostępu do tej sekcji.",
-    "saving": "Saving…",
+    "saving": "Zapisywanie…",
     "yes": "Tak",
     "no": "Nie",
     "labels": {
@@ -14,16 +14,16 @@
       "actions": "Akcje"
     },
     "actions": {
-      "back": "Back",
-      "next": "Next",
-      "edit": "Edit",
-      "delete": "Delete",
-      "cancel": "Cancel",
+      "back": "Wstecz",
+      "next": "Dalej",
+      "edit": "Edytuj",
+      "delete": "Usuń",
+      "cancel": "Anuluj",
       "save": "Zapisz",
-      "create": "Create",
-      "close": "Close",
+      "create": "Utwórz",
+      "close": "Zamknij",
       "more": "Więcej akcji",
-      "clear": "Clear",
+      "clear": "Wyczyść",
       "reset": "Resetuj",
       "retry": "Ponów",
       "add": "Dodaj",
@@ -36,7 +36,7 @@
       "open": "Otwórz",
       "actions": "Działania",
       "advanced": "Zaawansowane",
-      "dismiss": "Odrzuć",
+      "dismiss": "Ukryj",
       "insert": "Wstaw",
       "prev": "Poprzednia",
       "remove": "Usuń",
@@ -96,9 +96,9 @@
       "if_available": "jeśli dostępne"
     },
     "and_more": "i więcej",
-    "cancel": "Anulować",
-    "save": "Ratować",
-    "sending": "Przesyłka…",
+    "cancel": "Anuluj",
+    "save": "Zapisz",
+    "sending": "Wysyłanie…",
     "sort": {
       "asc": "Rosnąco",
       "desc": "Malejąco"
@@ -106,7 +106,7 @@
     "today": "Dzisiaj",
     "saved": "Zapisano",
     "apply": "Zastosuj",
-    "clear": "Jasne",
+    "clear": "Wyczyść",
     "copy": "Kopiuj",
     "edit": "Edytuj",
     "enabled": "Włączone",
@@ -655,7 +655,7 @@
         "notes_empty": "Brak notatek w snapshocie zatrudnienia.",
         "debug_snapshot": "Surowy snapshot zatrudnienia (debug)",
         "recruiter_summary": "Podsumowanie rekrutera (w momencie zatrudnienia)",
-        "name": "Imię",
+        "name": "Imię i nazwisko",
         "transfer_meta": "Transfer",
         "open_recruitment_record": "Otwórz rekord rekrutacji (tylko do odczytu)",
         "missing_queue": "Brakujące (kolejka)",
@@ -1304,7 +1304,7 @@
       "revoke_link": "Cofnij",
       "create_portal_link": "Utwórz link",
       "handoff_label": "Przekazanie kandydatów",
-      "see_vacancies_label": "Widzieć wakaty",
+      "see_vacancies_label": "Zobacz wakaty",
       "see_reduced_label": "Profile skrócone",
       "search_placeholder": "Szukaj po nazwie lub domenie...",
       "display_name_placeholder": "np. Northwind Logistics",
@@ -1326,7 +1326,7 @@
       "empty_cta_companies": "Puste firmy CTA",
       "empty_desc": "Pusty opis",
       "empty_title_dynamic": "Pusta dynamika tytułu",
-      "not_found_dynamic": "Nie znaleziono dynamicznego",
+      "not_found_dynamic": "Nie znaleziono: {entity}",
       "quick_defaults": "Szybkie ustawienia domyślne",
       "subtitle_dynamic": "Dynamika napisów",
       "title_dynamic": "Tytuł dynamiczny",
@@ -2360,28 +2360,28 @@
       "legal_notice_cookies": "Polityką cookies",
       "errors": {
         "consent_required": "Aby kontynuować, musisz zaakceptować Regulamin i Politykę prywatności.",
-        "generic": "Ogólne",
-        "password_mismatch": "Niezgodność hasła",
-        "password_short": "Hasło krótkie"
+        "generic": "Nie udało się utworzyć konta. Spróbuj ponownie.",
+        "password_mismatch": "Hasła nie są takie same",
+        "password_short": "Hasło musi mieć co najmniej 8 znaków"
       },
       "fields": {
-        "confirm": "Potwierdź",
-        "full_name": "Pełne imię i nazwisko",
+        "confirm": "Potwierdź hasło",
+        "full_name": "Imię i nazwisko (opcjonalnie)",
         "password": "Hasło",
-        "workspace": "Obszar roboczy",
-        "workspace_placeholder": "Symbol zastępczy obszaru roboczego"
+        "workspace": "Nazwa workspace'u",
+        "workspace_placeholder": "Acme Recruiting"
       },
-      "have_account": "Posiadaj konto",
+      "have_account": "Masz już konto?",
       "plan_labels": {
         "solo": "Solo",
         "team": "Team",
         "business": "Business"
       },
-      "selected_plan": "Wybrany plan",
+      "selected_plan": "Wybrany plan: {plan}",
       "sign_in": "Zaloguj się",
-      "submit": "Prześlij",
-      "subtitle": "Podtytuł",
-      "title": "Tytuł"
+      "submit": "Utwórz konto",
+      "subtitle": "Zacznij od okresu próbnego — zespół zaprosisz później.",
+      "title": "Utwórz przestrzeń CRM"
     },
     "login": {
       "title": "Zaloguj się do HostFlow",
@@ -2573,7 +2573,7 @@
         },
         "create": {
           "title": "Utwórz tenanta",
-          "name": "Imię",
+          "name": "Nazwa",
           "workspace_label": "Nazwa workspace'u (opcjonalnie)",
           "slug": "Slug",
           "initial_admin_email": "Email administratora",
@@ -3438,7 +3438,7 @@
           "fields": {
             "role": "Rola",
             "created_at": "Utworzono",
-            "name": "Imię",
+            "name": "Imię i nazwisko",
             "code": "Kod"
           },
           "companies": {
@@ -3482,9 +3482,9 @@
             "inactive": "Override nieaktywny",
             "search_hint": "Szukaj po tenant ID",
             "no_results": "Brak wyników",
-            "subtitle": "Podtytuł",
+            "subtitle": "Wszystkie działania admina idą do tego tenanta. Używaj ostrożnie.",
             "suggestions": "Sugestie",
-            "title": "Tytuł"
+            "title": "Override tenanta: {name}"
           },
           "actions": {
             "title": "Akcje użytkownika",
@@ -3670,7 +3670,7 @@
         "orders_revenue_hint": "Aktywne zamówienia w procesie",
         "catalog_active": "Aktywne usługi",
         "catalog_hint": "{total} w katalogu",
-        "orders_avg_check": "Średni check",
+        "orders_avg_check": "Średni rachunek",
         "orders_avg_check_hint": "Średnia wartość zakończonych"
       },
       "tabs": {
@@ -3739,14 +3739,14 @@
           "slice_item": "Pokrój element",
           "slice_manager": "Menedżer plasterków",
           "slice_status": "Stan plasterka",
-          "subtitle": "Podtytuł",
+          "subtitle": "Zmień okres, ziarnistość trendu i wymiar podziału.",
           "title": "Tytuł",
           "trend_month": "Miesiąc trendu",
           "trend_week": "Tydzień trendów"
         },
         "drilldown": {
           "active": "Aktywny",
-          "clear": "Jasne"
+          "clear": "Wyczyść"
         },
         "profile": {
           "clients_total": "Klienci ogółem",
@@ -3769,7 +3769,7 @@
           "orders": "Zamówienia",
           "profit": "Zysk",
           "revenue": "Przychody",
-          "subtitle": "Podtytuł",
+          "subtitle": "Ranking według wybranego wymiaru",
           "title": "Tytuł"
         },
         "top_clients": {
@@ -3778,7 +3778,7 @@
           "orders": "Zamówienia",
           "profit": "Zysk",
           "revenue": "Przychody",
-          "subtitle": "Podtytuł",
+          "subtitle": "Ranking według zysku i przychodu",
           "title": "Tytuł"
         },
         "trends": {
@@ -3790,7 +3790,7 @@
           "paid": "Płatny",
           "profit": "Zysk",
           "revenue": "Przychody",
-          "subtitle": "Podtytuł",
+          "subtitle": "Przychód i zysk w podziale na okresy",
           "title": "Tytuł"
         }
       },
@@ -3804,7 +3804,7 @@
           "title": "Nowa usługa",
           "labels": {
             "code": "Kod",
-            "name": "Imię",
+            "name": "Nazwa",
             "category": "Kategoria",
             "price": "Cena",
             "vat": "VAT %",
@@ -3829,7 +3829,7 @@
         },
         "table": {
           "code": "Kod",
-          "name": "Imię",
+          "name": "Nazwa",
           "category": "Kategoria",
           "price": "Cena",
           "orders_count": "Zlecenia",
@@ -4030,7 +4030,7 @@
         },
         "saved_filters": {
           "apply": "Zastosuj",
-          "placeholder": "Symbol zastępczy",
+          "placeholder": "Nazwa zapisanego filtra",
           "save": "Zapisz"
         }
       },
@@ -4099,7 +4099,7 @@
           "mark_paid": "Marek zapłacił",
           "send": "Wyślij"
         },
-        "subtitle": "Podtytuł",
+        "subtitle": "Faktury i płatności za zamówienia usług.",
         "subtitle_scoped": "Zakres napisów",
         "title": "Tytuł"
       },
@@ -4642,7 +4642,7 @@
             "click": "Kliknięcia CTA",
             "ctr": "CTR",
             "day": "Dzień",
-            "dismiss": "Dismiss",
+            "dismiss": "Odrzuć",
             "impression": "Wyświetlenia"
           },
           "day1": "Dzień 1",
@@ -4801,7 +4801,7 @@
             "no_answer": "Brak odpowiedzi",
             "wrong_number": "Zły numer",
             "unavailable": "Niedostępny",
-            "callback_requested": "Oddzwonić",
+            "callback_requested": "Prośba o oddzwonienie",
             "interested": "Zainteresowany",
             "not_interested": "Niezainteresowany"
           }
@@ -5003,7 +5003,7 @@
         "generate_short_id": "Generuj ID",
         "history": "Historia zmian",
         "history_loading": "Ładujemy historię…",
-        "export_bundle": "Pobrać profil kandydata",
+        "export_bundle": "Pobierz profil kandydata",
         "exporting_bundle": "Pakujemy profil…",
         "upload_link": "Link do uploadu",
         "upload_link_creating": "Tworzymy link…",
@@ -5016,7 +5016,7 @@
         "remove_tag": "Usuń tag {tag}",
         "add_favorite": "Dodaj ulubione",
         "cancel_edit": "Anuluj edycję",
-        "edit": "Redagować",
+        "edit": "Edytuj",
         "remove_favorite": "Usuń ulubione"
       },
       "confirm": {
@@ -5131,7 +5131,7 @@
         "complete": "Zakończ",
         "snooze_15": "+15m",
         "snooze_60": "+1h",
-        "remind": "Przypomnieć"
+        "remind": "Przypomnij"
       },
       "employment": {
         "title": "Historia zatrudnienia",
@@ -5355,7 +5355,7 @@
         "docs_verify_title": "Zweryfikuj wgrane dokumenty",
         "docs_verify_description": "Kandydat wgrał dokumenty. Zweryfikuj i zatwierdź/odrzuć przed zmianą etapu.",
         "complete": "Kompletny",
-        "create": "Tworzyć",
+        "create": "Utwórz",
         "create_task": "Utwórz zadanie",
         "docs_blocking": "Blokowanie dokumentów",
         "docs_missing_badge": "Brak dokumentów",
@@ -5949,14 +5949,14 @@
             "empty": "Brak aktywnych zamówień na kierowców."
           },
           "invoice_workspace": {
-            "subtitle": "Podtytuł",
-            "title": "Tytuł"
+            "subtitle": "Twórz i zarządzaj fakturami wystawianymi z tego profilu.",
+            "title": "Przestrzeń faktur"
           },
           "orders_workspace": {
             "empty": "Pusty",
             "link": "Link",
-            "subtitle": "Podtytuł",
-            "title": "Tytuł"
+            "subtitle": "Zamówienia, umowy i faktury są obsługiwane w tej karcie.",
+            "title": "Przestrzeń zamówień"
           },
           "receivables": {
             "title": "Należności",
@@ -6051,7 +6051,7 @@
             "empty": "Pusty",
             "enabled": "Włączone",
             "notes": "Notatki",
-            "notes_placeholder": "Symbol zastępczy notatek",
+            "notes_placeholder": "Notatki wewnętrzne…",
             "required": "Wymagane",
             "select_document_type": "Wybierz typ dokumentu",
             "title": "Tytuł"
@@ -6065,7 +6065,7 @@
           "lanes": "Relacje tras"
         },
         "fields": {
-          "name": "Imię",
+          "name": "Nazwa",
           "legal_name": "Nazwa prawna",
           "tax_id": "NIP / Tax ID",
           "phone": "Telefon",
@@ -6536,7 +6536,7 @@
       "table": {
         "columns": {
           "title": "Kolumny",
-          "name": "Imię",
+          "name": "Imię i nazwisko",
           "short": "Short ID",
           "email": "Email",
           "phone": "Telefon",
@@ -6578,7 +6578,7 @@
         "show_more": "Pokaż więcej",
         "total": "Razem: {count}",
         "total_filtered": "Pokazano: {shown} z {total}",
-        "call": "Dzwonić",
+        "call": "Zadzwoń",
         "click_to_sort": "Kliknij, aby posortować",
         "deselect": "Odznacz",
         "deselect_all": "Odznacz wszystko",
@@ -6600,7 +6600,7 @@
         "customize_layout_done": "Zakończ dostosowanie",
         "customize_layout_title": "Zmiana kolejności (⋮⋮) i szerokości kolumn. Widoczność kolumn — w menu ⋯.",
         "customize_banner": "Tryb układu: przeciągnij ⋮⋮ w nagłówkach, by zmienić kolejność; krawędź nagłówka — szerokość.",
-        "select": "Wybierać",
+        "select": "Wybierz",
         "select_all": "Zaznacz wszystko",
         "select_candidate": "Wybierz kandydata",
         "sort_by": "Sortuj według",
@@ -6836,7 +6836,9 @@
         "employment_pending": "W trakcie zatrudnienia",
         "ready_for_hr": "Gotowy do przekazania do HR",
         "processing_by_hr": "W trakcie obsługi przez HR",
-        "hired": "Przyjęty przez HR"
+        "hired": "Przyjęty przez HR",
+        "to_call": "Czeka na telefon",
+        "to_contact": "Czeka na kontakt"
       },
       "row_status": {
         "rejected": "Odrzucony (status)",
@@ -6849,7 +6851,7 @@
         "archived": "Zarchiwizowany"
       },
       "errors": {
-        "retry": "Spróbować ponownie",
+        "retry": "Spróbuj ponownie",
         "title": "Tytuł"
       },
       "no_next_action": {
@@ -6923,7 +6925,8 @@
         "masked_policy": "Dane osobowe są ukryte przez politykę dostępu.",
         "rel_vacancy": "Wakat",
         "rel_relation": "Powiązanie"
-      }
+      },
+      "unnamed": "Kandydat"
     },
     "tasks": {
       "hub_eyebrow": "Zadania",
@@ -7254,7 +7257,7 @@
           "results": {
             "no_answer": "Brak odpowiedzi",
             "answered": "Odebrał",
-            "callback_requested": "Oddzwonić",
+            "callback_requested": "Oddzwoń",
             "interested": "Zainteresowany",
             "not_interested": "Niezainteresowany",
             "wrong_number": "Zły numer",
@@ -7997,7 +8000,7 @@
           "website": "Strona",
           "fleet_size": "Wielkość floty",
           "transport_type": "Typ transportu",
-          "full_name": "Imię",
+          "full_name": "Imię i nazwisko",
           "role": "Stanowisko",
           "phone": "Telefon",
           "what_needed": "Czego potrzeba",
@@ -8052,7 +8055,7 @@
         "completed": "Gotowe",
         "empty": "Brak zadań"
       },
-      "subtitle": "Podtytuł",
+      "subtitle": "Zaplanowana praca",
       "title": "Tytuł"
     },
     "automations": {
@@ -8103,7 +8106,7 @@
       "subtitle": "Dlaczego coś się stało? Filtruj działania po obiekcie, dacie i prefiksie.",
       "empty": "Pusty",
       "errors": {
-        "load": "Załaduj"
+        "load": "Nie udało się wczytać dziennika automatyzacji"
       },
       "filters": {
         "action_prefix": "Przedrostek akcji",
@@ -8241,7 +8244,7 @@
         "refresh": "Odśwież"
       },
       "errors": {
-        "load": "Załaduj",
+        "load": "Nie udało się wczytać rozmowy",
         "auto_assign": "Nie udało się automatycznie przypisać wątku.",
         "dispatch_one": "Nie udało się wysłać tej wiadomości.",
         "dispatch_queued": "Nie udało się dodać wiadomości wychodzących do kolejki.",
@@ -8306,7 +8309,7 @@
           "snooze_30m": "Odłóż 30m",
           "start": "Start",
           "reopen": "Reopen",
-          "cancel": "Cancel",
+          "cancel": "Anuluj",
           "duplicate": "Duplicate",
           "manage": "Manage",
           "complete": "Complete",
@@ -8669,18 +8672,18 @@
         "calendar_subtitle": "Widok czasowy zadań i aktywności (te same dane co Zadania). Opcjonalnie planer i urlopy. Kolejkę wykonania prowadź w Zadaniach.",
         "calendar_title": "Kalendarz",
         "email_title": "Tytuł e-maila",
-        "my_availability_subtitle": "Podtytuł „Moja dostępność”.",
-        "my_availability_title": "Tytuł mojej dostępności",
+        "my_availability_subtitle": "Twój grafik, status dostępności, przerwy i wnioski o urlop.",
+        "my_availability_title": "Moja dostępność",
         "my_requests": "Moje prośby",
-        "open_time_off": "Otwarty czas wolny",
-        "planner_subtitle": "Podtytuł planisty",
-        "planner_title": "Tytuł planisty",
-        "team_availability_subtitle": "Podtytuł dotyczący dostępności zespołu",
-        "team_availability_title": "Tytuł dostępności zespołu",
-        "timeoff_subtitle": "Podtytuł przerwy",
-        "timeoff_title": "Tytuł przerwy",
-        "working_hours_subtitle": "Podtytuł Godziny pracy",
-        "working_hours_title": "Tytuł godziny pracy"
+        "open_time_off": "Otwórz wnioski o nieobecność",
+        "planner_subtitle": "Planowanie operacyjne dla menedżerów i zadań. Osobno od skrzynek e-mail i wiadomości.",
+        "planner_title": "Planer",
+        "team_availability_subtitle": "Grafiki, obłożenie, stany dostępności i gotowość kolejki.",
+        "team_availability_title": "Dostępność zespołu",
+        "timeoff_subtitle": "Urlop, dzień wolny i L4 — z akceptacją przełożonego.",
+        "timeoff_title": "Wnioski o urlop i nieobecność",
+        "working_hours_subtitle": "Ustaw tygodniowy grafik. Planer i kalendarz biorą go jako bazową dostępność.",
+        "working_hours_title": "Godziny pracy"
       },
       "labels": {
         "at_time": "W odpowiednim czasie",
@@ -8782,10 +8785,10 @@
           "unassigned": "Nieprzypisany"
         },
         "errors": {
-          "create": "Utwórz",
-          "load": "Załaduj",
+          "create": "Nie udało się utworzyć wydarzenia w planerze",
+          "load": "Nie udało się wczytać planera",
           "outside_hours": "Poza godzinami pracy",
-          "update": "Aktualizacja"
+          "update": "Nie udało się zaktualizować wydarzenia w planerze"
         },
         "filters": {
           "all_kinds": "Wszystkie rodzaje",
@@ -8804,7 +8807,7 @@
           "call": "Zadzwoń",
           "followup": "Kontynuacja",
           "meeting": "Spotkanie",
-          "shift": "Przesunięcie",
+          "shift": "Zmiana",
           "task": "Zadanie"
         },
         "priority": {
@@ -8827,34 +8830,34 @@
       }
     },
     "forgot_password": {
-      "back": "Powrót",
+      "back": "Wróć do logowania",
       "errors": {
-        "generic": "Ogólne"
+        "generic": "Nie udało się wysłać linku resetu"
       },
-      "sent": "Wysłane",
-      "submit": "Prześlij",
-      "subtitle": "Podtytuł",
-      "title": "Tytuł",
+      "sent": "Jeśli ten adres jest zarejestrowany, wysłaliśmy link. Sprawdź skrzynkę (i spam).",
+      "submit": "Wyślij link",
+      "subtitle": "Podaj adres e-mail. Wyślemy link do ustawienia nowego hasła.",
+      "title": "Nie pamiętasz hasła?",
       "fields": {
         "email_placeholder": "email@example.com"
       }
     },
     "invite_accept": {
-      "confirm": "Potwierdź",
+      "confirm": "Potwierdź hasło",
       "errors": {
-        "generic": "Ogólne",
-        "mismatch": "Niedopasowanie",
-        "too_short": "Za krótki"
+        "generic": "Zaproszenie jest nieprawidłowe lub wygasło",
+        "mismatch": "Hasła nie są takie same",
+        "too_short": "Hasło musi mieć co najmniej 8 znaków"
       },
       "full_name": "Pełne imię i nazwisko",
-      "no_token": "Brak tokena",
-      "no_token_hint": "Żadnej podpowiedzi",
+      "no_token": "Brak tokenu zaproszenia",
+      "no_token_hint": "Użyj linku z zaproszenia e-mail.",
       "password": "Hasło",
       "short_id": "Krótki identyfikator",
-      "submit": "Prześlij",
-      "subtitle": "Podtytuł",
-      "success": "Sukces",
-      "title": "Tytuł"
+      "submit": "Akceptuj i zaloguj",
+      "subtitle": "Ustaw hasło i uzupełnij dane.",
+      "success": "Konto aktywowane. Przekierowanie…",
+      "title": "Przyjmij zaproszenie"
     },
     "invoices": {
       "actions": "Działania",
@@ -8896,7 +8899,7 @@
       "correction_of": "Korekta",
       "correction_original_required": "Wymagany oryginał korygujący",
       "correction_reason": "Powód korekty",
-      "correction_reason_placeholder": "Symbol zastępczy przyczyny korekty",
+      "correction_reason_placeholder": "Np. poprawiony NIP, adres, ilość lub kwota.",
       "correction_reason_required": "Wymagana korekta",
       "create": "Utwórz",
       "create_company_required": "Wymagane utworzenie firmy",
@@ -8909,7 +8912,7 @@
       "current": "Aktualny",
       "delivery": "Dostawa",
       "delivery_missing_recipient": "Brak odbiorcy dostawy",
-      "delivery_not_sent": "Przesyłka nie została wysłana",
+      "delivery_not_sent": "Jeszcze nie wysłano",
       "delta_total": "Suma delty",
       "drilldown": {
         "company": "Firma",
@@ -9019,7 +9022,7 @@
         "send_failed": "Wysyłanie nie powiodło się",
         "sent": "Wysłane",
         "status": "Stan",
-        "subtitle": "Podtytuł",
+        "subtitle": "Status, przypomnienia i aktywność płatności.",
         "title": "Tytuł"
       },
       "title": "Tytuł",
@@ -10404,6 +10407,251 @@
       "module_hr": "HR",
       "module_fleet": "Fleet",
       "module_orders": "Orders"
+    },
+    "searches_list": {
+      "title": "Rekrutacje"
+    },
+    "search_home": {
+      "default_title": "Rekrutacja",
+      "stale_warning_title": "Nieaktualny formularz",
+      "stale_warning_body": "Zaktualizuj formularz, aby kandydaci widzieli pełną ankietę.",
+      "update_form": "Zaktualizuj formularz",
+      "pipeline_title": "Kandydaci w rekrutacji",
+      "all_candidates": "Wszyscy kandydaci",
+      "pipeline_empty": "W tej rekrutacji nie ma jeszcze kandydatów. Po obsłudze zgłoszenia w Odpowiedziach kandydat pojawi się tutaj.",
+      "process_hint": "Rekrutacja to przestrzeń procesu: postęp, kandydaci i reklama. Przychodzące zgłoszenia do decyzji są tylko w Odpowiedziach.",
+      "refresh": "Odśwież",
+      "open_candidate": "Otwórz",
+      "unnamed_candidate": "Kandydat",
+      "pipeline_stats": "{hired} zatrudnionych · {active} w toku · {awaiting} czeka na telefon",
+      "pending_one": "1 zgłoszenie czeka na obsługę",
+      "pending_many": "{count} zgłoszeń czeka na obsługę",
+      "pending_body": "Nowe nieobsłużone zgłoszenia są przetwarzane w Application Workspace, nie w rekrutacji.",
+      "pending_open": "Otwórz odpowiedzi",
+      "stage": {
+        "awaiting_call": "Czeka na telefon"
+      }
+    },
+    "search_workspace": {
+      "tab_overview": "Przegląd",
+      "tab_acquisition": "Pozyskiwanie",
+      "tab_candidates": "Kandydaci",
+      "tabs_aria": "Sekcje rekrutacji",
+      "status_line": "{hired} z {target} stanowisk · {active} w toku · {awaiting} czeka na telefon",
+      "status": {
+        "active": "Aktywna",
+        "on_hold": "Wstrzymana",
+        "archived": "W archiwum"
+      }
+    },
+    "search_next": {
+      "title": "Następne działanie",
+      "start": "Rozpocznij",
+      "after_that": "Potem",
+      "all_clear_title": "Na dziś wszystko zrobione",
+      "all_clear_body": "Nowe zgłoszenia są obsługiwane w Odpowiedziach. Tutaj widać postęp rekrutacji i kandydatów.",
+      "session_progress": "Kandydat {current} z {total}",
+      "session_stop": "Do rekrutacji",
+      "session_next": "Gotowe — następny",
+      "session_done": "Gotowe — wróć",
+      "kind": {
+        "call": "Telefony",
+        "docs": "Dokumenty",
+        "interview": "Rozmowy"
+      }
+    },
+    "search_day": {
+      "later_title": "Później",
+      "later_hint": "Ulepszenia i rozszerzenie — gdy bieżąca praca jest zamknięta."
+    },
+    "search_pulse": {
+      "activity_fallback": "aktywność",
+      "action": {
+        "start": "Rozpocznij",
+        "launch": "Uruchom",
+        "marketing": "Otwórz Marketing",
+        "acquisition": "Pozyskiwanie",
+        "audience": "Grupa odbiorców",
+        "open_inbox": "Otwórz odpowiedzi",
+        "candidates": "Kandydaci",
+        "setup": "Skonfiguruj",
+        "open": "Otwórz",
+        "view": "Zobacz"
+      },
+      "reason": {
+        "candidates_awaiting_call": "To teraz najważniejszy krok do zamknięcia rekrutacji.",
+        "candidates_missing_docs": "Bez dokumentów kandydaci nie mogą iść dalej.",
+        "candidates_stale_interview": "Rozmowa kwalifikacyjna to kolejny krok do zatrudnienia.",
+        "acquisition_launch": "Potrzebny jest napływ nowych zgłoszeń.",
+        "wait_leads": "Nowe zgłoszenia są obsługiwane w Odpowiedziach, nie tutaj.",
+        "search_near_goal": "Ostatni krok do zamknięcia rekrutacji.",
+        "search_filled": "Rekrutacja osiągnęła cel."
+      },
+      "candidates_awaiting_call": {
+        "headline_one": "Skontaktuj się z nowym kandydatem",
+        "headline_many": "Zadzwoń do {count} nowych kandydatów",
+        "message_one": "1 kandydat czeka na pierwszy kontakt.",
+        "message_many": "{count} kandydatów czeka na pierwszy kontakt."
+      },
+      "candidates_missing_docs": {
+        "headline": "Sprawdź dokumenty",
+        "message_one": "Jednemu kandydatowi brakuje dokumentów.",
+        "message_many": "{count} kandydatów nie ma kompletnych dokumentów."
+      },
+      "candidates_stale_interview": {
+        "headline": "Przeprowadź rozmowy",
+        "message": "U {count} kandydatów nie było ruchu od ponad 4 dni."
+      },
+      "acquisition_launch": {
+        "headline": "Uruchom reklamę",
+        "message": "Napływ zgłoszeń jest słaby — potrzebna jest reklama dla „{title}”."
+      },
+      "acquisition_expand": {
+        "headline": "Rozszerz reklamę",
+        "message": "Utwórz nową Campaign/Flight w Marketingu (nie z Rekrutacji)."
+      },
+      "search_filled": {
+        "headline": "Rekrutacja zamknięta",
+        "message": "Część reklam można wstrzymać."
+      },
+      "audience_setup": {
+        "headline": "Skonfiguruj grupę odbiorców",
+        "message": "Opisz, kogo szukasz — później pomoże to w targetowaniu."
+      },
+      "wait_leads": {
+        "headline": "Czekamy na nowe zgłoszenia",
+        "message": "Reklama działa. Nowe nieobsłużone zgłoszenia są w Odpowiedziach."
+      },
+      "search_near_goal": {
+        "headline": "Rekrutacja prawie zamknięta",
+        "message": "Zostało znaleźć jeszcze {count} osób."
+      },
+      "later_setup": {
+        "headline": "Skonfiguruj „{name}”",
+        "message": "Podłącz Meta i powiąż ogłoszenia."
+      },
+      "later_channel": {
+        "headline": "Podłącz {channel}",
+        "message": "Aktywność „{name}” czeka na konfigurację."
+      },
+      "cpl_up": {
+        "headline": "Kampania „{name}”",
+        "message": "Koszt leada wzrósł o {count}%."
+      },
+      "no_recent_leads": {
+        "headline": "Kampania „{name}”",
+        "message": "Brak nowych zgłoszeń od {count} dni."
+      },
+      "spend_no_leads": {
+        "headline": "Kampania „{name}”",
+        "message": "Jest wydatek, ale nie ma zgłoszeń — sprawdź ogłoszenie i formularz."
+      }
+    },
+    "search_meta": {
+      "title": "Meta Ads",
+      "subtitle_v2": "Powiąż reklamę Meta z rekrutacją „{name}” — HostFlow sam ustawi trasę leadów.",
+      "checklist_title": "Co zrobić",
+      "connect_prompt": "Zacznij od podłączenia Meta — potem wybierzesz reklamę dla tej rekrutacji.",
+      "connect_cta": "Zaloguj się przez Facebook",
+      "connect_error": "Nie udało się rozpocząć połączenia Meta",
+      "admin_only": "Podłączenie Meta jest dostępne dla administratora workspace.",
+      "oauth_unavailable": "Szybkie podłączenie Meta jest niedostępne na bieżącym planie lub serwerze.",
+      "campaign_picker_title": "Reklama dla tej rekrutacji",
+      "ad_account_label_named": "Konto reklamowe: {name}",
+      "ready_badge": "Skonfigurowano",
+      "empty_hint": "Utwórz Lead Ad w Meta Ads Manager lub wróć później.",
+      "reconnect_cta": "Odśwież dostęp Meta",
+      "reconnect_page_hint": "Przy logowaniu wybierz stronę Facebook, z której idzie reklama na tę rekrutację (nie dowolną stronę z listy).",
+      "ads_count": "{count} ogłoszeń",
+      "bind_cta": "Powiąż z rekrutacją",
+      "bind_success": "Reklama powiązana z rekrutacją",
+      "bind_partial": "Część kampanii pominięto — sprawdź uprawnienia Meta",
+      "bind_error": "Nie udało się powiązać reklamy z rekrutacją",
+      "back_to_acquisition": "Do pozyskiwania",
+      "steps": {
+        "connect_title": "Podłącz Meta",
+        "connect_body_v2": "Zaloguj się przez Facebook — HostFlow uzyska dostęp do reklam i leadów.",
+        "campaigns_title": "Wybierz reklamę dla tej rekrutacji",
+        "campaigns_body": "Zaznacz kampanie — HostFlow sam powiąże ogłoszenia, formularze i trasę leadów.",
+        "done_title": "Gotowe",
+        "done_body": "Nowe zgłoszenia z wybranej reklamy trafią do tej rekrutacji."
+      }
+    },
+    "acquisition": {
+      "legacy_readonly_title": "Rekrutacje / Acquisition — legacy tylko do odczytu",
+      "legacy_readonly_body": "Nowe uruchomienia tworzy się tylko w Marketingu (Campaign → Flight). Tutaj zostają historyczne aktywności do reconcilacji.",
+      "open_linked_campaign": "Otwórz powiązany Campaign",
+      "reconciliation_unresolved": "Powiązanie z Campaign nie jest jednoznaczne — dane zachowano do reconcilacji.",
+      "launch_in_marketing": "Utwórz w Marketingu",
+      "launch_title": "Uruchomienie nowej reklamy",
+      "tabs_aria": "Sekcje pozyskiwania",
+      "tab_activities": "Aktywności",
+      "tab_journal": "Dziennik",
+      "sync_in_progress": "Odświeżamy dane…",
+      "sync_failed_status": "Nie udało się odświeżyć danych Meta.",
+      "sync_failed_ago": "Ostatnie dane otrzymano {ago}.",
+      "last_updated": "Ostatnia aktualizacja: {ago}",
+      "auto_sync_hint": "Odświeża się automatycznie co {minutes} min",
+      "go_marketing_setup": "Otwórz Marketing setup",
+      "audience_readonly": "Edycja grupy odbiorców w Rekrutacjach jest wyłączona. Targetowanie prowadzi się w Marketingu (Campaign → Flight).",
+      "audience_title": "Kogo teraz szukamy?",
+      "audience_countries": "Kraje",
+      "audience_age": "Wiek",
+      "audience_experience": "Doświadczenie",
+      "audience_languages": "Języki",
+      "audience_gender": "Płeć",
+      "audience_interests": "Zainteresowania",
+      "audience_notes": "Notatki",
+      "journal_today": "Dzisiaj",
+      "journal_yesterday": "Wczoraj",
+      "journal_empty": "Dziennik jest pusty. Tutaj pojawią się synchronizacje, nowe aktywności i zmiany metryk.",
+      "journal_title": "Dziennik zmian",
+      "action_done": "Gotowe",
+      "action_failed": "Nie udało się wykonać działania",
+      "empty_activities_legacy": "Brak historycznych aktywności. Nowe uruchomienia tworzy się tylko w Marketingu (Campaign → Flight).",
+      "archive_confirm": "Zarchiwizować tę aktywność?",
+      "legacy_launch_disabled_title": "Uruchamianie reklamy przeniesiono do Marketingu",
+      "legacy_launch_disabled_body": "Nowe uruchomienia tworzy się tylko jako Campaign → Flight. Rekrutacje nie tworzą już aktywności acquisition.",
+      "status_running": "Działa",
+      "status": {
+        "running": "Działa",
+        "active": "Aktywna",
+        "needs_attention": "Wymaga uwagi",
+        "draft": "Szkic",
+        "paused": "Wstrzymana",
+        "archived": "W archiwum",
+        "no_responses": "Brak zgłoszeń"
+      },
+      "next_kind": {
+        "setup": "Dokończ konfigurację aktywności",
+        "no_leads": "Jest wydatek, ale nie ma zgłoszeń — sprawdź formularz i ogłoszenie",
+        "cost_increase": "Koszt leada wzrósł"
+      },
+      "works_on": "Działa na:",
+      "activity_last_sync": "Ostatnia aktualizacja: {ago}",
+      "spend_7d": "€{amount} / 7 d",
+      "action_open_meta": "Otwórz w Meta",
+      "action_bindings": "Zmień powiązanie z rekrutacjami",
+      "action_pause": "Wstrzymaj",
+      "action_resume": "Wznów",
+      "action_duplicate": "Duplikuj",
+      "action_archive": "Archiwizuj",
+      "action_open_link": "Otwórz link",
+      "action_view": "Zobacz reklamę",
+      "action_edit_soon": "Edycja — wkrótce",
+      "metric_responses": "Zgłoszenia (7 d)",
+      "metric_spend": "Wydano (7 d)",
+      "funnel_title": "Ścieżka do wyniku",
+      "funnel_leads": "leadów",
+      "funnel_candidates": "kandydatów",
+      "funnel_interviews": "rozmów",
+      "funnel_offers": "ofert",
+      "funnel_hired": "zatrudnionych",
+      "cost_per_hire": "Koszt jednego pracownika €{amount}",
+      "next_action": "Następne działanie",
+      "bindings_title": "Powiązanie z rekrutacjami",
+      "bindings_hint": "Wybierz rekrutacje, na które działa ta aktywność.",
+      "bindings_current": "bieżąca"
     }
   },
   "public": {
@@ -12785,48 +13033,48 @@
       "verifying": "Weryfikacja…"
     },
     "not_found": {
-      "badge": "Odznaka",
-      "go_home": "Idź do domu",
-      "go_login": "Idź się zalogować",
-      "subtitle": "Podtytuł",
-      "title": "Tytuł"
+      "badge": "404",
+      "go_home": "Na stronę główną",
+      "go_login": "Przejdź do logowania",
+      "subtitle": "Adres jest nieprawidłowy albo strona została przeniesiona.",
+      "title": "Nie znaleziono strony"
     },
     "notifications": {
-      "description": "Opis",
-      "document_status": "Stan dokumentu",
+      "description": "Otrzymuj informacje o statusie dokumentów i zgłoszenia.",
+      "document_status": "Zmiany statusu dokumentów",
       "email": "E-mail",
       "errors": {
-        "email_or_phone_required": "Wymagany e-mail lub telefon",
-        "permission_denied": "Odmowa pozwolenia",
-        "push_not_configured": "Push nie jest skonfigurowany",
-        "push_not_configured_desc": "Push nie skonfigurowany opis",
-        "push_not_supported": "Push nie jest obsługiwany",
-        "push_subscribe_failed": "Subskrypcja push nie powiodła się",
-        "subscribe_failed": "Subskrypcja nie powiodła się",
-        "unsubscribe_failed": "Nie udało się anulować subskrypcji"
+        "email_or_phone_required": "Podaj e-mail lub telefon",
+        "permission_denied": "Nie udzielono zgody",
+        "push_not_configured": "Powiadomienia push nie są skonfigurowane",
+        "push_not_configured_desc": "Na serwerze nie skonfigurowano klucza VAPID.",
+        "push_not_supported": "Powiadomienia push nie są obsługiwane",
+        "push_subscribe_failed": "Nie udało się włączyć powiadomień push",
+        "subscribe_failed": "Nie udało się zapisać na powiadomienia",
+        "unsubscribe_failed": "Nie udało się wypisać z powiadomień"
       },
       "phone": "Telefon",
       "push": {
         "active": "Aktywny",
-        "description": "Opis",
-        "disable": "Wyłącz",
-        "enable": "Włącz",
+        "description": "Otrzymuj powiadomienia nawet przy zamkniętej przeglądarce.",
+        "disable": "Wyłącz push",
+        "enable": "Włącz push",
         "inactive": "Nieaktywny",
-        "permission_denied": "Odmowa pozwolenia",
-        "title": "Tytuł"
+        "permission_denied": "Przeglądarka zablokowała powiadomienia. Włącz je w ustawieniach.",
+        "title": "Powiadomienia push"
       },
       "reminders": "Przypomnienia",
-      "stage_changes": "Zmiany sceniczne",
-      "subscribe": "Subskrybuj",
-      "subscribe_to": "Subskrybuj",
-      "subscribed": "Zasubskrybowano",
+      "stage_changes": "Zmiany etapu zgłoszenia",
+      "subscribe": "Zapisz się",
+      "subscribe_to": "Zapisz się na",
+      "subscribed": "Jesteś zapisany(-a) na powiadomienia",
       "success": {
-        "push_subscribed": "Naciśnij subskrypcję",
-        "subscribed": "Zasubskrybowano",
-        "unsubscribed": "Niesubskrybowany"
+        "push_subscribed": "Powiadomienia push włączone",
+        "subscribed": "Subskrypcja zapisana",
+        "unsubscribed": "Wypisano z powiadomień"
       },
-      "title": "Tytuł",
-      "unsubscribe": "Zrezygnuj z subskrypcji",
+      "title": "Powiadomienia",
+      "unsubscribe": "Wypisz się ze wszystkich",
       "placeholders": {
         "email": "your@email.com"
       },
@@ -12887,7 +13135,7 @@
       "company": "Firma",
       "company_placeholder": "Nazwa firmy",
       "contact": "Osoba kontaktowa",
-      "name_placeholder": "Imię",
+      "name_placeholder": "Imię i nazwisko",
       "phone_placeholder": "Telefon",
       "need": "Czego potrzebujesz",
       "who": "Kogo szukasz?",
@@ -13019,7 +13267,7 @@
         "description": "Wkrótce pojawi się tu konfiguracja typów i wymagań. Na razie pokazujemy dane demo.",
         "table": {
           "code": "Kod",
-          "name": "Imię",
+          "name": "Nazwa",
           "required": "Wymagane przesłanie",
           "process": "Proces",
           "status": "Status",
@@ -13131,7 +13379,7 @@
         "applying": "Stosowanie",
         "downloading": "Ściąganie",
         "ordering": "Zamawianie",
-        "sending": "Przesyłka"
+        "sending": "Wysyłanie"
       },
       "filters": {
         "group": "Grupa",
@@ -13381,7 +13629,7 @@
         "file_required_to_approve": "Najpierw prześlij plik — bez niego nie można zatwierdzić dokumentu."
       },
       "template": {
-        "select": "Wybierać"
+        "select": "Wybierz"
       },
       "runtime_badges": {
         "expiring_soon": "Expiring soon",
@@ -15229,7 +15477,11 @@
       "errors": {
         "load_detail": "Failed to load intake form",
         "copy": "Could not copy",
-        "smoke": "Smoke test failed"
+        "smoke": "Smoke test failed",
+        "no_fields": "Wybierz co najmniej jedno pytanie",
+        "load_fields": "Nie udało się wczytać pól profilu",
+        "load_preset": "Nie udało się wczytać ankiety firmy",
+        "create": "Nie udało się utworzyć formularza"
       },
       "load_driver_hiring_preset": "Wczytaj ankietę dla firm rekrutujących kierowców",
       "load_warehouse_hiring_preset": "Wczytaj ankietę dla firm rekrutujących pracowników magazynu"

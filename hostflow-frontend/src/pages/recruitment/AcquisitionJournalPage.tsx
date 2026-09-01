@@ -11,8 +11,8 @@ function dateFnsLocale(code: LocaleCode) {
 }
 
 function groupLabel(date: Date, locale: LocaleCode, t: ReturnType<typeof useI18n>['t']): string {
-  if (isToday(date)) return t('app.acquisition.journal_today', { defaultValue: 'Сегодня' })
-  if (isYesterday(date)) return t('app.acquisition.journal_yesterday', { defaultValue: 'Вчера' })
+  if (isToday(date)) return t('app.acquisition.journal_today')
+  if (isYesterday(date)) return t('app.acquisition.journal_yesterday')
   return format(date, 'd MMMM', { locale: dateFnsLocale(locale) })
 }
 
@@ -39,16 +39,14 @@ export default function AcquisitionJournalPage() {
   const entries = snapshot?.journal ?? []
 
   if (loading) {
-    return <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p>
+    return <p className="text-sm text-slate-500">{t('common.loading')}</p>
   }
 
   if (entries.length === 0) {
     return (
       <section className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
         <p className="text-sm text-slate-600">
-          {t('app.acquisition.journal_empty', {
-            defaultValue: 'Журнал пока пуст. Здесь будут синхронизации, новые активности и изменения метрик.',
-          })}
+          {t('app.acquisition.journal_empty')}
         </p>
       </section>
     )
@@ -59,7 +57,7 @@ export default function AcquisitionJournalPage() {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm" data-testid="m1-acquisition-journal">
       <h3 className="text-sm font-semibold text-slate-900">
-        {t('app.acquisition.journal_title', { defaultValue: 'Журнал изменений' })}
+        {t('app.acquisition.journal_title')}
       </h3>
       <div className="mt-4 space-y-6">
         {groups.map((group) => {

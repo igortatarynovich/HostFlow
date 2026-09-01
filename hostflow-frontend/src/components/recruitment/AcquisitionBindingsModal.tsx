@@ -24,8 +24,7 @@ export function AcquisitionBindingsModal({
   currentSearchId,
   selectedIds,
   onClose,
-  onSave,
-}: AcquisitionBindingsModalProps) {
+  onSave }: AcquisitionBindingsModalProps) {
   const { t } = useI18n()
   const [rows, setRows] = useState<Vacancy[]>([])
   const [picked, setPicked] = useState<string[]>(selectedIds)
@@ -75,12 +74,10 @@ export function AcquisitionBindingsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
         <h3 className="text-base font-semibold text-slate-900">
-          {t('app.acquisition.bindings_title', { defaultValue: 'Привязка к подборам' })}
+          {t('app.acquisition.bindings_title')}
         </h3>
         <p className="mt-1 text-sm text-slate-600">
-          {t('app.acquisition.bindings_hint', {
-            defaultValue: 'Выберите подборы, на которые работает эта активность.',
-          })}
+          {t('app.acquisition.bindings_hint')}
         </p>
         <ul className="mt-4 max-h-64 space-y-2 overflow-y-auto">
           {rows.map((row) => {
@@ -99,7 +96,7 @@ export function AcquisitionBindingsModal({
                   <span className="text-sm text-slate-800">{row.title || id}</span>
                   {locked ? (
                     <span className="ml-auto text-xs text-slate-400">
-                      {t('app.acquisition.bindings_current', { defaultValue: 'текущий' })}
+                      {t('app.acquisition.bindings_current')}
                     </span>
                   ) : null}
                 </label>
@@ -113,7 +110,7 @@ export function AcquisitionBindingsModal({
             onClick={onClose}
             className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            {t('common.cancel', { defaultValue: 'Отмена' })}
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -121,7 +118,7 @@ export function AcquisitionBindingsModal({
             onClick={() => void handleSave()}
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
-            {t('common.save', { defaultValue: 'Сохранить' })}
+            {t('common.save')}
           </button>
         </div>
       </div>

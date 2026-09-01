@@ -2433,28 +2433,28 @@
       "legal_notice_cookies": "Cookie Policy",
       "errors": {
         "consent_required": "You must accept Terms and Privacy Policy to continue.",
-        "generic": "Generic",
-        "password_mismatch": "Password mismatch",
-        "password_short": "Password short"
+        "generic": "Could not create the account. Try again.",
+        "password_mismatch": "Passwords do not match",
+        "password_short": "Password must be at least 8 characters"
       },
       "fields": {
-        "confirm": "Confirm",
-        "full_name": "Full name",
+        "confirm": "Confirm password",
+        "full_name": "Full name (optional)",
         "password": "Password",
-        "workspace": "Workspace",
-        "workspace_placeholder": "Workspace placeholder"
+        "workspace": "Workspace name",
+        "workspace_placeholder": "Acme Recruiting"
       },
-      "have_account": "Have account",
+      "have_account": "Already have an account?",
       "plan_labels": {
         "solo": "Solo",
         "team": "Team",
         "business": "Business"
       },
-      "selected_plan": "Selected plan",
+      "selected_plan": "Selected plan: {plan}",
       "sign_in": "Sign in",
-      "submit": "Submit",
-      "subtitle": "Subtitle",
-      "title": "Title"
+      "submit": "Create account",
+      "subtitle": "Start with a trial and invite your team later.",
+      "title": "Create your CRM workspace"
     },
     "login": {
       "title": "Sign in to HostFlow",
@@ -3555,9 +3555,9 @@
             "inactive": "Override inactive",
             "search_hint": "Search by tenant ID",
             "no_results": "No results",
-            "subtitle": "Subtitle",
+            "subtitle": "All admin actions go to this tenant. Use with caution.",
             "suggestions": "Suggestions",
-            "title": "Title"
+            "title": "Tenant override: {name}"
           },
           "actions": {
             "title": "User actions",
@@ -4035,14 +4035,14 @@
             "empty": "No active driver requests."
           },
           "invoice_workspace": {
-            "subtitle": "Subtitle",
-            "title": "Title"
+            "subtitle": "Create and manage invoices issued from this operating profile.",
+            "title": "Invoicing workspace"
           },
           "orders_workspace": {
             "empty": "Empty",
             "link": "Link",
-            "subtitle": "Subtitle",
-            "title": "Title"
+            "subtitle": "Orders, contracts and invoices are managed in this card.",
+            "title": "Orders workspace"
           },
           "receivables": {
             "title": "Receivables",
@@ -4137,7 +4137,7 @@
             "empty": "Empty",
             "enabled": "Enabled",
             "notes": "Notes",
-            "notes_placeholder": "Notes placeholder",
+            "notes_placeholder": "Internal notes…",
             "required": "Required",
             "select_document_type": "Select document type",
             "title": "Title"
@@ -4335,7 +4335,7 @@
           "slice_item": "Slice item",
           "slice_manager": "Slice manager",
           "slice_status": "Slice status",
-          "subtitle": "Subtitle",
+          "subtitle": "Change period, trend granularity and slice dimension.",
           "title": "Title",
           "trend_month": "Trend month",
           "trend_week": "Trend week"
@@ -4365,7 +4365,7 @@
           "orders": "Orders",
           "profit": "Profit",
           "revenue": "Revenue",
-          "subtitle": "Subtitle",
+          "subtitle": "Pivot-like ranking by selected dimension",
           "title": "Title"
         },
         "top_clients": {
@@ -4374,7 +4374,7 @@
           "orders": "Orders",
           "profit": "Profit",
           "revenue": "Revenue",
-          "subtitle": "Subtitle",
+          "subtitle": "Ranked by profit and revenue",
           "title": "Title"
         },
         "trends": {
@@ -4386,7 +4386,7 @@
           "paid": "Paid",
           "profit": "Profit",
           "revenue": "Revenue",
-          "subtitle": "Subtitle",
+          "subtitle": "Revenue and profit by period bucket",
           "title": "Title"
         }
       },
@@ -4626,7 +4626,7 @@
         },
         "saved_filters": {
           "apply": "Apply",
-          "placeholder": "Placeholder",
+          "placeholder": "Saved filter name",
           "save": "Save"
         }
       },
@@ -4695,7 +4695,7 @@
           "mark_paid": "Mark paid",
           "send": "Send"
         },
-        "subtitle": "Subtitle",
+        "subtitle": "Invoices and payments for service orders.",
         "subtitle_scoped": "Subtitle scoped",
         "title": "Title"
       },
@@ -6909,7 +6909,9 @@
         "employment_pending": "Employment in progress",
         "ready_for_hr": "Ready for HR handoff",
         "processing_by_hr": "In HR processing",
-        "hired": "Accepted by HR"
+        "hired": "Accepted by HR",
+        "to_call": "Waiting for a call",
+        "to_contact": "Waiting for contact"
       },
       "row_status": {
         "rejected": "Rejected (status)",
@@ -6996,7 +6998,8 @@
         "masked_policy": "Personal data is hidden by the access policy.",
         "rel_vacancy": "Vacancy",
         "rel_relation": "Relation"
-      }
+      },
+      "unnamed": "Candidate"
     },
     "tasks": {
       "hub_eyebrow": "Tasks",
@@ -8125,7 +8128,7 @@
         "completed": "Done",
         "empty": "No activities yet"
       },
-      "subtitle": "Subtitle",
+      "subtitle": "Planned work for you",
       "title": "Title"
     },
     "automations": {
@@ -8176,7 +8179,7 @@
       "subtitle": "Why did something happen? Filter automation-fired actions by target, time, and action prefix.",
       "empty": "Empty",
       "errors": {
-        "load": "Load"
+        "load": "Failed to load automation log"
       },
       "filters": {
         "action_prefix": "Action prefix",
@@ -8314,7 +8317,7 @@
         "refresh": "Refresh"
       },
       "errors": {
-        "load": "Load",
+        "load": "Failed to load the conversation",
         "auto_assign": "Could not auto-assign the thread.",
         "dispatch_one": "Could not send this message.",
         "dispatch_queued": "Could not queue outbound messages.",
@@ -8742,18 +8745,18 @@
         "calendar_subtitle": "Time view of tasks and activities (same data as Tasks). Optional planner and time-off layers. Use Tasks for the execution queue.",
         "calendar_title": "Calendar",
         "email_title": "Email title",
-        "my_availability_subtitle": "My availability subtitle",
-        "my_availability_title": "My availability title",
+        "my_availability_subtitle": "Personal work schedule, availability status, breaks, and leave requests.",
+        "my_availability_title": "My Availability",
         "my_requests": "My requests",
-        "open_time_off": "Open time off",
-        "planner_subtitle": "Planner subtitle",
-        "planner_title": "Planner title",
-        "team_availability_subtitle": "Team availability subtitle",
-        "team_availability_title": "Team availability title",
-        "timeoff_subtitle": "Timeoff subtitle",
-        "timeoff_title": "Timeoff title",
-        "working_hours_subtitle": "Working hours subtitle",
-        "working_hours_title": "Working hours title"
+        "open_time_off": "Open time-off requests",
+        "planner_subtitle": "Operational planning for managers and tasks. Separate from email and message inboxes.",
+        "planner_title": "Planner",
+        "team_availability_subtitle": "Schedules, occupancy, availability states, and queue readiness.",
+        "team_availability_title": "Team Availability",
+        "timeoff_subtitle": "Vacation, day off, and sick-leave requests with manager approval.",
+        "timeoff_title": "Time-off Requests",
+        "working_hours_subtitle": "Set your weekly working schedule. Planner and calendar use it as baseline availability.",
+        "working_hours_title": "Working hours"
       },
       "labels": {
         "at_time": "At time",
@@ -8855,10 +8858,10 @@
           "unassigned": "Unassigned"
         },
         "errors": {
-          "create": "Create",
-          "load": "Load",
+          "create": "Failed to create planner event",
+          "load": "Failed to load planner",
           "outside_hours": "Outside hours",
-          "update": "Update"
+          "update": "Failed to update planner event"
         },
         "filters": {
           "all_kinds": "All kinds",
@@ -8900,34 +8903,34 @@
       }
     },
     "forgot_password": {
-      "back": "Back",
+      "back": "Back to sign in",
       "errors": {
-        "generic": "Generic"
+        "generic": "Could not send reset link"
       },
-      "sent": "Sent",
-      "submit": "Submit",
-      "subtitle": "Subtitle",
-      "title": "Title",
+      "sent": "If this address is registered, we sent a link. Check your inbox (and spam).",
+      "submit": "Send link",
+      "subtitle": "Enter your email. We will send a link to set a new password.",
+      "title": "Forgot password?",
       "fields": {
         "email_placeholder": "email@example.com"
       }
     },
     "invite_accept": {
-      "confirm": "Confirm",
+      "confirm": "Confirm password",
       "errors": {
-        "generic": "Generic",
-        "mismatch": "Mismatch",
-        "too_short": "Too short"
+        "generic": "Invalid or expired invitation",
+        "mismatch": "Passwords do not match",
+        "too_short": "Password must be at least 8 characters"
       },
       "full_name": "Full name",
-      "no_token": "No token",
-      "no_token_hint": "No token hint",
+      "no_token": "Invitation token is missing",
+      "no_token_hint": "Use the link from the invitation email.",
       "password": "Password",
       "short_id": "Short ID",
-      "submit": "Submit",
-      "subtitle": "Subtitle",
-      "success": "Success",
-      "title": "Title"
+      "submit": "Accept and sign in",
+      "subtitle": "Set a password and complete your details.",
+      "success": "Account activated. Redirecting…",
+      "title": "Accept invitation"
     },
     "invoices": {
       "actions": "Actions",
@@ -8969,7 +8972,7 @@
       "correction_of": "Correction of",
       "correction_original_required": "Correction original required",
       "correction_reason": "Correction reason",
-      "correction_reason_placeholder": "Correction reason placeholder",
+      "correction_reason_placeholder": "Example: corrected NIP, legal address, quantity or billed amount.",
       "correction_reason_required": "Correction reason required",
       "create": "Create",
       "create_company_required": "Create company required",
@@ -8982,7 +8985,7 @@
       "current": "Current",
       "delivery": "Delivery",
       "delivery_missing_recipient": "Delivery missing recipient",
-      "delivery_not_sent": "Delivery not sent",
+      "delivery_not_sent": "Not sent yet",
       "delta_total": "Delta total",
       "drilldown": {
         "company": "Company",
@@ -9092,7 +9095,7 @@
         "send_failed": "Send failed",
         "sent": "Sent",
         "status": "Status",
-        "subtitle": "Subtitle",
+        "subtitle": "Status, reminders and payment activity.",
         "title": "Title"
       },
       "title": "Title",
@@ -10404,6 +10407,251 @@
       "module_hr": "HR",
       "module_fleet": "Fleet",
       "module_orders": "Orders"
+    },
+    "searches_list": {
+      "title": "Searches"
+    },
+    "search_home": {
+      "default_title": "Search",
+      "stale_warning_title": "Outdated form",
+      "stale_warning_body": "Update the form so candidates see the full questionnaire.",
+      "update_form": "Update form",
+      "pipeline_title": "Candidates in this search",
+      "all_candidates": "All candidates",
+      "pipeline_empty": "No candidates in this search yet. After an application is processed in Applications, the candidate will appear here.",
+      "process_hint": "A search is a process workspace: progress, candidates, and ads. Inbound applications stay in Applications until a decision.",
+      "refresh": "Refresh",
+      "open_candidate": "Open",
+      "unnamed_candidate": "Candidate",
+      "pipeline_stats": "{hired} hired · {active} in pipeline · {awaiting} waiting for a call",
+      "pending_one": "1 application is waiting",
+      "pending_many": "{count} applications are waiting",
+      "pending_body": "Unprocessed applications are handled in Application Workspace, not in the search.",
+      "pending_open": "Open applications",
+      "stage": {
+        "awaiting_call": "Waiting for a call"
+      }
+    },
+    "search_workspace": {
+      "tab_overview": "Overview",
+      "tab_acquisition": "Acquisition",
+      "tab_candidates": "Candidates",
+      "tabs_aria": "Search sections",
+      "status_line": "{hired} of {target} positions · {active} in pipeline · {awaiting} waiting for a call",
+      "status": {
+        "active": "Active",
+        "on_hold": "On hold",
+        "archived": "Archived"
+      }
+    },
+    "search_next": {
+      "title": "Next action",
+      "start": "Start",
+      "after_that": "After that",
+      "all_clear_title": "All done for today",
+      "all_clear_body": "New applications are processed in Applications. This workspace shows search progress and candidates.",
+      "session_progress": "Candidate {current} of {total}",
+      "session_stop": "Back to search",
+      "session_next": "Done — next",
+      "session_done": "Done — return",
+      "kind": {
+        "call": "Calls",
+        "docs": "Documents",
+        "interview": "Interviews"
+      }
+    },
+    "search_day": {
+      "later_title": "Later",
+      "later_hint": "Improvements and expansion — once day-to-day work is covered."
+    },
+    "search_pulse": {
+      "activity_fallback": "activity",
+      "action": {
+        "start": "Start",
+        "launch": "Launch",
+        "marketing": "Open Marketing",
+        "acquisition": "Acquisition",
+        "audience": "Audience",
+        "open_inbox": "Open applications",
+        "candidates": "Candidates",
+        "setup": "Set up",
+        "open": "Open",
+        "view": "View"
+      },
+      "reason": {
+        "candidates_awaiting_call": "This is the most important step to fill the search.",
+        "candidates_missing_docs": "Without documents, candidates cannot move forward.",
+        "candidates_stale_interview": "Interview is the next step toward hiring.",
+        "acquisition_launch": "You need an inflow of new applications.",
+        "wait_leads": "New applications are processed in Applications, not here.",
+        "search_near_goal": "Final push to close the search.",
+        "search_filled": "The search has reached its goal."
+      },
+      "candidates_awaiting_call": {
+        "headline_one": "Contact the new candidate",
+        "headline_many": "Call {count} new candidates",
+        "message_one": "1 candidate is waiting for first contact.",
+        "message_many": "{count} candidates are waiting for first contact."
+      },
+      "candidates_missing_docs": {
+        "headline": "Review documents",
+        "message_one": "1 candidate is missing documents.",
+        "message_many": "{count} candidates are missing documents."
+      },
+      "candidates_stale_interview": {
+        "headline": "Run interviews",
+        "message": "{count} candidates have had no movement for more than 4 days."
+      },
+      "acquisition_launch": {
+        "headline": "Launch ads",
+        "message": "Application flow is weak — ads are needed for “{title}”."
+      },
+      "acquisition_expand": {
+        "headline": "Expand ads",
+        "message": "Create a new Campaign/Flight in Marketing (not from Searches)."
+      },
+      "search_filled": {
+        "headline": "Search filled",
+        "message": "Some ads can be paused."
+      },
+      "audience_setup": {
+        "headline": "Set up audience",
+        "message": "Describe who you are looking for — this will help with targeting later."
+      },
+      "wait_leads": {
+        "headline": "Waiting for new applications",
+        "message": "Ads are running. Unprocessed applications are in Applications."
+      },
+      "search_near_goal": {
+        "headline": "Search almost filled",
+        "message": "{count} more people to find."
+      },
+      "later_setup": {
+        "headline": "Set up “{name}”",
+        "message": "Connect Meta and bind ads."
+      },
+      "later_channel": {
+        "headline": "Connect {channel}",
+        "message": "Activity “{name}” is waiting to be set up."
+      },
+      "cpl_up": {
+        "headline": "Campaign “{name}”",
+        "message": "Cost per lead rose by {count}%."
+      },
+      "no_recent_leads": {
+        "headline": "Campaign “{name}”",
+        "message": "No new applications for {count} days."
+      },
+      "spend_no_leads": {
+        "headline": "Campaign “{name}”",
+        "message": "There is spend but no applications — check the ad and the form."
+      }
+    },
+    "search_meta": {
+      "title": "Meta Ads",
+      "subtitle_v2": "Link Meta ads to the “{name}” search — HostFlow will set up the lead route.",
+      "checklist_title": "What to do",
+      "connect_prompt": "Start by connecting Meta — then choose ads for this search.",
+      "connect_cta": "Continue with Facebook",
+      "connect_error": "Could not start Meta connection",
+      "admin_only": "Connecting Meta is available to the workspace administrator.",
+      "oauth_unavailable": "Quick Meta connect is not available on the current plan or server.",
+      "campaign_picker_title": "Ads for this search",
+      "ad_account_label_named": "Ad account: {name}",
+      "ready_badge": "Set up",
+      "empty_hint": "Create a Lead Ad in Meta Ads Manager or come back later.",
+      "reconnect_cta": "Refresh Meta access",
+      "reconnect_page_hint": "When signing in, choose the Facebook Page that runs ads for this search (not any page from the list).",
+      "ads_count": "{count} ads",
+      "bind_cta": "Link to search",
+      "bind_success": "Ads linked to the search",
+      "bind_partial": "Some campaigns were skipped — check Meta permissions",
+      "bind_error": "Could not link ads to the search",
+      "back_to_acquisition": "Back to acquisition",
+      "steps": {
+        "connect_title": "Connect Meta",
+        "connect_body_v2": "Sign in with Facebook — HostFlow will get access to your ads and leads.",
+        "campaigns_title": "Choose ads for this search",
+        "campaigns_body": "Select campaigns — HostFlow will link ads, forms, and the lead route.",
+        "done_title": "Done",
+        "done_body": "New applications from the selected ads will arrive in this search."
+      }
+    },
+    "acquisition": {
+      "legacy_readonly_title": "Searches / Acquisition — legacy read-only",
+      "legacy_readonly_body": "New launches are created only in Marketing (Campaign → Flight). Historical activities stay here until reconciliation.",
+      "open_linked_campaign": "Open linked Campaign",
+      "reconciliation_unresolved": "The Campaign link is not unique — data is kept for reconciliation.",
+      "launch_in_marketing": "Create in Marketing",
+      "launch_title": "Launch new ads",
+      "tabs_aria": "Acquisition sections",
+      "tab_activities": "Activities",
+      "tab_journal": "Journal",
+      "sync_in_progress": "Refreshing data…",
+      "sync_failed_status": "Could not refresh Meta data.",
+      "sync_failed_ago": "Last successful data {ago}.",
+      "last_updated": "Last updated: {ago}",
+      "auto_sync_hint": "Refreshes automatically every {minutes} minutes",
+      "go_marketing_setup": "Open Marketing setup",
+      "audience_readonly": "Audience editing in Searches is turned off. Targeting is managed in Marketing (Campaign → Flight).",
+      "audience_title": "Who are we looking for now?",
+      "audience_countries": "Countries",
+      "audience_age": "Age",
+      "audience_experience": "Experience",
+      "audience_languages": "Languages",
+      "audience_gender": "Gender",
+      "audience_interests": "Interests",
+      "audience_notes": "Notes",
+      "journal_today": "Today",
+      "journal_yesterday": "Yesterday",
+      "journal_empty": "The journal is empty. Syncs, new activities, and metric changes will appear here.",
+      "journal_title": "Change journal",
+      "action_done": "Done",
+      "action_failed": "Could not complete the action",
+      "empty_activities_legacy": "There are no historical activities. New launches are created only in Marketing (Campaign → Flight).",
+      "archive_confirm": "Archive this activity?",
+      "legacy_launch_disabled_title": "Ad launch moved to Marketing",
+      "legacy_launch_disabled_body": "New launches are created only as Campaign → Flight. Searches no longer create acquisition activities.",
+      "status_running": "Running",
+      "status": {
+        "running": "Running",
+        "active": "Active",
+        "needs_attention": "Needs attention",
+        "draft": "Draft",
+        "paused": "Paused",
+        "archived": "Archived",
+        "no_responses": "No applications"
+      },
+      "next_kind": {
+        "setup": "Finish setting up this activity",
+        "no_leads": "There is spend but no applications — check the form and the ad",
+        "cost_increase": "Cost per lead increased"
+      },
+      "works_on": "Runs on:",
+      "activity_last_sync": "Last updated: {ago}",
+      "spend_7d": "€{amount} / 7d",
+      "action_open_meta": "Open in Meta",
+      "action_bindings": "Change search bindings",
+      "action_pause": "Pause",
+      "action_resume": "Resume",
+      "action_duplicate": "Duplicate",
+      "action_archive": "Archive",
+      "action_open_link": "Open link",
+      "action_view": "View ads",
+      "action_edit_soon": "Edit — coming soon",
+      "metric_responses": "Applications (7d)",
+      "metric_spend": "Spent (7d)",
+      "funnel_title": "Path to result",
+      "funnel_leads": "leads",
+      "funnel_candidates": "candidates",
+      "funnel_interviews": "interviews",
+      "funnel_offers": "offers",
+      "funnel_hired": "hired",
+      "cost_per_hire": "Cost per hire €{amount}",
+      "next_action": "Next action",
+      "bindings_title": "Bind to searches",
+      "bindings_hint": "Choose the searches this activity runs on.",
+      "bindings_current": "current"
     }
   },
   "public": {
@@ -12785,48 +13033,48 @@
       "verifying": "Verifying…"
     },
     "not_found": {
-      "badge": "Badge",
-      "go_home": "Go home",
-      "go_login": "Go login",
-      "subtitle": "Subtitle",
-      "title": "Title"
+      "badge": "404",
+      "go_home": "Go to home",
+      "go_login": "Go to login",
+      "subtitle": "The address is invalid or the page has moved.",
+      "title": "Page not found"
     },
     "notifications": {
-      "description": "Description",
-      "document_status": "Document status",
+      "description": "Get updates about your documents and application status.",
+      "document_status": "Document status changes",
       "email": "Email",
       "errors": {
-        "email_or_phone_required": "Email or phone required",
-        "permission_denied": "Permission denied",
-        "push_not_configured": "Push not configured",
-        "push_not_configured_desc": "Push not configured desc",
-        "push_not_supported": "Push not supported",
-        "push_subscribe_failed": "Push subscribe failed",
-        "subscribe_failed": "Subscribe failed",
-        "unsubscribe_failed": "Unsubscribe failed"
+        "email_or_phone_required": "Email or phone is required",
+        "permission_denied": "Permission was not granted",
+        "push_not_configured": "Push notifications are not configured",
+        "push_not_configured_desc": "The server has no VAPID key configured.",
+        "push_not_supported": "Push notifications are not supported",
+        "push_subscribe_failed": "Could not enable push notifications",
+        "subscribe_failed": "Could not subscribe",
+        "unsubscribe_failed": "Could not unsubscribe"
       },
       "phone": "Phone",
       "push": {
         "active": "Active",
-        "description": "Description",
-        "disable": "Disable",
-        "enable": "Enable",
+        "description": "Get notifications even when the browser is closed.",
+        "disable": "Disable push",
+        "enable": "Enable push",
         "inactive": "Inactive",
-        "permission_denied": "Permission denied",
-        "title": "Title"
+        "permission_denied": "Notification permission was denied. Allow it in the browser settings.",
+        "title": "Push notifications"
       },
       "reminders": "Reminders",
-      "stage_changes": "Stage changes",
+      "stage_changes": "Application stage changes",
       "subscribe": "Subscribe",
       "subscribe_to": "Subscribe to",
-      "subscribed": "Subscribed",
+      "subscribed": "You are subscribed to notifications",
       "success": {
-        "push_subscribed": "Push subscribed",
-        "subscribed": "Subscribed",
+        "push_subscribed": "Push notifications enabled",
+        "subscribed": "Subscription saved",
         "unsubscribed": "Unsubscribed"
       },
-      "title": "Title",
-      "unsubscribe": "Unsubscribe",
+      "title": "Notifications",
+      "unsubscribe": "Unsubscribe from all",
       "placeholders": {
         "email": "your@email.com"
       },

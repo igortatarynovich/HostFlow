@@ -10,10 +10,10 @@ import {
   candidateHref,
 } from '../../services/searchWorkSession'
 
-const KIND_LABEL: Record<string, string> = {
-  call: 'Звонки',
-  docs: 'Документы',
-  interview: 'Интервью',
+const KIND_LABEL_KEY: Record<string, string> = {
+  call: 'app.search_next.kind.call',
+  docs: 'app.search_next.kind.docs',
+  interview: 'app.search_next.kind.interview',
 }
 
 export function SearchWorkSessionBar() {
@@ -58,10 +58,9 @@ export function SearchWorkSessionBar() {
     >
       <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-slate-800">
-          <span className="font-semibold">{KIND_LABEL[session.kind] || session.kind}</span>
+          <span className="font-semibold">{t(KIND_LABEL_KEY[session.kind] || 'app.search_next.title')}</span>
           <span className="mx-2 text-slate-400">·</span>
           {t('app.search_next.session_progress', {
-            defaultValue: 'Кандидат {current} из {total}',
             values: { current, total },
           })}
         </div>
@@ -71,7 +70,7 @@ export function SearchWorkSessionBar() {
             onClick={handleStop}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            {t('app.search_next.session_stop', { defaultValue: 'К подбору' })}
+            {t('app.search_next.session_stop')}
           </button>
           <button
             type="button"
@@ -79,8 +78,8 @@ export function SearchWorkSessionBar() {
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           >
             {current < total
-              ? t('app.search_next.session_next', { defaultValue: 'Готово — следующий' })
-              : t('app.search_next.session_done', { defaultValue: 'Готово — вернуться' })}
+              ? t('app.search_next.session_next')
+              : t('app.search_next.session_done')}
           </button>
         </div>
       </div>

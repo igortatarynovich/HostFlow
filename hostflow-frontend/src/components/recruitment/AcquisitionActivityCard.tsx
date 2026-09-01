@@ -3,6 +3,7 @@ import { enUS, pl as plFns, ru as ruFns } from 'date-fns/locale'
 import { IconAlertTriangle, IconCircleCheck } from '@tabler/icons-react'
 import type { AcquisitionActivity } from '../../api/searchAcquisition'
 import { useI18n, type LocaleCode } from '../../i18n'
+import { acquisitionActivityStatusLabel } from '../../utils/searchWorkspaceI18n'
 
 function dateFnsLocale(code: LocaleCode) {
   if (code === 'pl') return plFns
@@ -48,10 +49,7 @@ export function AcquisitionActivityCard({
     ? formatDistanceToNow(new Date(activity.last_sync_at), { addSuffix: true, locale: dfLocale })
     : null
 
-  const statusLabel =
-    lifecycle === 'active' && activity.status === 'active'
-      ? t('app.acquisition.status_running', { defaultValue: 'Работает' })
-      : activity.status_label || t(`app.acquisition.status.${activity.status}`, { defaultValue: activity.status })
+  const statusLabel = acquisitionActivityStatusLabel(activity, t)
 
   return (
     <article
@@ -77,7 +75,7 @@ export function AcquisitionActivityCard({
           {activity.search_titles && activity.search_titles.length > 0 ? (
             <div className="mt-2 text-sm text-slate-600">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                {t('app.acquisition.works_on', { defaultValue: 'Работает на:' })}
+                {t('app.acquisition.works_on')}
               </p>
               <ul className="mt-1 list-inside list-disc">
                 {activity.search_titles.map((title) => (
@@ -89,15 +87,14 @@ export function AcquisitionActivityCard({
           {lastSync ? (
             <p className="mt-2 text-xs text-slate-500">
               {t('app.acquisition.activity_last_sync', {
-                defaultValue: 'Последнее обновление: {ago}',
-                values: { ago: lastSync },
-              })}
+                
+                values: { ago: lastSync } })}
             </p>
           ) : null}
         </div>
         {(activity.channel_type === 'meta' || activity.type === 'meta') && week.spend != null ? (
           <div className="text-right text-sm text-slate-600">
-            <p>€{Number(week.spend ?? 0).toFixed(0)} / 7д</p>
+            <p>{t('app.acquisition.spend_7d', { values: { amount: Number(week.spend ?? 0).toFixed(0) } })}</p>
             {week.cpl != null ? <p className="text-xs">CPL €{week.cpl.toFixed(2)}</p> : null}
           </div>
         ) : null}
@@ -111,7 +108,7 @@ export function AcquisitionActivityCard({
             rel="noopener noreferrer"
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            {t('app.acquisition.action_open_meta', { defaultValue: 'Открыть в Meta' })}
+            {t('app.acquisition.action_open_meta')}
           </a>
         ) : null}
         {actions.update_bindings && onEditBindings ? (
@@ -121,7 +118,7 @@ export function AcquisitionActivityCard({
             onClick={onEditBindings}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            {t('app.acquisition.action_bindings', { defaultValue: 'Изменить привязку к подборам' })}
+            {t('app.acquisition.action_bindings')}
           </button>
         ) : null}
         {actions.pause ? (
@@ -131,7 +128,7 @@ export function AcquisitionActivityCard({
             onClick={onPause}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            {t('app.acquisition.action_pause', { defaultValue: 'Приостановить' })}
+            {t('app.acquisition.action_pause')}
           </button>
         ) : null}
         {actions.resume ? (
@@ -141,7 +138,7 @@ export function AcquisitionActivityCard({
             onClick={onResume}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            {t('app.acquisition.action_resume', { defaultValue: 'Возобновить' })}
+            {t('app.acquisition.action_resume')}
           </button>
         ) : null}
         {actions.duplicate && onDuplicate ? (
@@ -151,7 +148,7 @@ export function AcquisitionActivityCard({
             onClick={onDuplicate}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            {t('app.acquisition.action_duplicate', { defaultValue: 'Дублировать' })}
+            {t('app.acquisition.action_duplicate')}
           </button>
         ) : null}
         {actions.archive ? (
@@ -161,7 +158,7 @@ export function AcquisitionActivityCard({
             onClick={onArchive}
             className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
           >
-            {t('app.acquisition.action_archive', { defaultValue: 'Архивировать' })}
+            {t('app.acquisition.action_archive')}
           </button>
         ) : null}
         {activity.public_url ? (
@@ -171,7 +168,7 @@ export function AcquisitionActivityCard({
             rel="noopener noreferrer"
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            {t('app.acquisition.action_open_link', { defaultValue: 'Открыть ссылку' })}
+            {t('app.acquisition.action_open_link')}
           </a>
         ) : null}
       </div>

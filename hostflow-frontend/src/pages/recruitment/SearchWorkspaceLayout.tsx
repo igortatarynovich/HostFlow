@@ -18,6 +18,7 @@ import {
 } from '../../services/launchSearchSession'
 import { SearchNextActionPanel } from '../../components/recruitment/SearchNextActionPanel'
 import { useSearchWorkspacePulse } from '../../hooks/useSearchWorkspacePulse'
+import { searchWorkspaceStatusLabel } from '../../utils/searchWorkspaceI18n'
 import { SearchWorkspaceContext, type SearchWorkspaceContextValue } from './searchWorkspaceContext'
 
 export type { SearchWorkspaceContextValue as SearchWorkspaceContext }
@@ -37,6 +38,8 @@ export default function SearchWorkspaceLayout() {
   const [searchName, setSearchName] = useState(cached?.name ?? '')
   const [companyName, setCompanyName] = useState(cached?.companyName ?? '')
   const [publicUrl, setPublicUrl] = useState(cached?.publicUrl ?? '')
+  const [vacancyStatus, setVacancyStatus] = useState('')
+  const [vacancyArchived, setVacancyArchived] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const { pulse, loading: pulseLoading, refresh: refreshPulse } = useSearchWorkspacePulse(searchId, {
     enabled: !notFound,
@@ -48,12 +51,16 @@ export default function SearchWorkspaceLayout() {
       const { data: vacancy } = await api.get(`/vacancies/${searchId}`)
       const row = vacancy as {
         title?: string
+        status?: string | null
+        is_archived?: boolean | null
         company?: { name?: string | null }
         extra?: unknown
       }
       setNotFound(false)
-      setSearchName(String(row.title ?? cached?.name ?? t('app.search_home.default_title', { defaultValue: 'Подбор' })))
+      setSearchName(String(row.title ?? cached?.name ?? t('app.search_home.default_title')))
       setCompanyName(String(row.company?.name ?? cached?.companyName ?? ''))
+      setVacancyStatus(String(row.status ?? ''))
+      setVacancyArchived(Boolean(row.is_archived))
       persistLastLaunchSearchId(searchId)
     } catch (err) {
       if ((err as { response?: { status?: number } })?.response?.status === 404) {
@@ -63,7 +70,7 @@ export default function SearchWorkspaceLayout() {
       }
       if (cached?.name) setSearchName(cached.name)
     }
-  }, [cached?.companyName, cached?.name, searchId, t])
+  }, [cached, searchId, t])
 
   useEffect(() => {
     void load()
@@ -74,21 +81,21 @@ export default function SearchWorkspaceLayout() {
   const acquisitionPath = recruitmentSearchAcquisitionPath(searchId)
 
   const breadcrumbItems = useMemo(() => {
-    const searchesLabel = t('app.searches_list.title', { defaultValue: 'Подборы' })
+    const searchesLabel = t('app.searches_list.title')
     const items: { label: string; to?: string }[] = [
       { label: searchesLabel, to: CRM_APP_PATHS.recruitmentSearches },
     ]
     const path = location.pathname
-    const acquisitionLabel = t('app.search_workspace.tab_acquisition', { defaultValue: 'Привлечение' })
+    const acquisitionLabel = t('app.search_workspace.tab_acquisition')
 
     if (path.includes('/acquisition/meta')) {
       items.push({ label: searchName || '…', to: overviewPath })
       items.push({ label: acquisitionLabel, to: acquisitionPath })
-      items.push({ label: t('app.search_meta.title', { defaultValue: 'Meta Ads' }) })
+      items.push({ label: t('app.search_meta.title') })
     } else if (path.includes('/acquisition/new')) {
       items.push({ label: searchName || '…', to: overviewPath })
       items.push({ label: acquisitionLabel, to: acquisitionPath })
-      items.push({ label: t('app.acquisition.launch_title', { defaultValue: 'Запуск новой рекламы' }) })
+      items.push({ label: t('app.acquisition.launch_title') })
     } else if (path.includes('/acquisition')) {
       items.push({ label: searchName || '…', to: overviewPath })
       items.push({ label: acquisitionLabel })
@@ -110,6 +117,7 @@ export default function SearchWorkspaceLayout() {
   }
 
   const status = pulse?.status
+  const statusLabel = searchWorkspaceStatusLabel(t, vacancyStatus, vacancyArchived)
 
   if (notFound) {
     return (
@@ -131,9 +139,9 @@ export default function SearchWorkspaceLayout() {
             subtitle={companyName || undefined}
             kind="browse"
             secondaryActions={
-              status?.label ? (
+              pulse ? (
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  {status.label}
+                  {statusLabel}
                 </span>
               ) : undefined
             }
@@ -142,7 +150,6 @@ export default function SearchWorkspaceLayout() {
           {status?.headcount_target ? (
             <p className="mt-2 text-sm text-slate-600">
               {t('app.search_workspace.status_line', {
-                defaultValue: '{hired} из {target} позиций · {active} в работе · {awaiting} ждут звонка',
                 values: {
                   hired: status.hired ?? 0,
                   target: status.headcount_target,
@@ -154,24 +161,29 @@ export default function SearchWorkspaceLayout() {
           ) : null}
 
           <div className="mt-3">
-            <SearchNextActionPanel pulse={pulse} searchId={searchId} loading={pulseLoading} />
+            <SearchNextActionPanel
+              pulse={pulse}
+              searchId={searchId}
+              searchName={searchName}
+              loading={pulseLoading}
+            />
           </div>
 
           <nav
             className="mt-3 flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-slate-50/90 p-1"
-            aria-label={t('app.search_workspace.tabs_aria', { defaultValue: 'Разделы подбора' })}
+            aria-label={t('app.search_workspace.tabs_aria')}
           >
             <NavLink to={overviewPath} end className={tabClass}>
-              {t('app.search_workspace.tab_overview', { defaultValue: 'Обзор' })}
+              {t('app.search_workspace.tab_overview')}
             </NavLink>
             <NavLink to={acquisitionPath} className={tabClass}>
-              {t('app.search_workspace.tab_acquisition', { defaultValue: 'Привлечение' })}
+              {t('app.search_workspace.tab_acquisition')}
             </NavLink>
             <Link
               to={candidatesHref}
               className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white/80 hover:text-slate-900"
             >
-              {t('app.search_workspace.tab_candidates', { defaultValue: 'Кандидаты' })}
+              {t('app.search_workspace.tab_candidates')}
             </Link>
           </nav>
         </PageShellHeader>

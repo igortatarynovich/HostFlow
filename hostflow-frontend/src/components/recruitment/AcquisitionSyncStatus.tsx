@@ -23,7 +23,7 @@ export function AcquisitionSyncStatus({ snapshot, syncing }: AcquisitionSyncStat
   if (syncing) {
     return (
       <p className="text-xs text-slate-500">
-        {t('app.acquisition.sync_in_progress', { defaultValue: 'Обновляем данные…' })}
+        {t('app.acquisition.sync_in_progress')}
       </p>
     )
   }
@@ -34,14 +34,9 @@ export function AcquisitionSyncStatus({ snapshot, syncing }: AcquisitionSyncStat
       : null
     return (
       <p className="text-xs text-amber-800">
-        {t('app.acquisition.sync_failed_status', {
-          defaultValue: 'Не удалось обновить данные Meta.',
-        })}
+        {t('app.acquisition.sync_failed_status')}
         {ago
-          ? ` ${t('app.acquisition.sync_failed_ago', {
-              defaultValue: 'Последние данные получены {ago}.',
-              values: { ago },
-            })}`
+          ? ` ${t('app.acquisition.sync_failed_ago', { values: { ago } })}`
           : null}
       </p>
     )
@@ -52,20 +47,14 @@ export function AcquisitionSyncStatus({ snapshot, syncing }: AcquisitionSyncStat
     const ago = formatDistanceToNow(new Date(last), { addSuffix: true, locale: dfLocale })
     return (
       <p className="text-xs text-slate-500">
-        {t('app.acquisition.last_updated', {
-          defaultValue: 'Последнее обновление: {ago}',
-          values: { ago },
-        })}
+        {t('app.acquisition.last_updated', { values: { ago } })}
       </p>
     )
   }
 
   return (
     <p className="text-xs text-slate-500">
-      {t('app.acquisition.auto_sync_hint', {
-        defaultValue: 'Обновляется автоматически каждые {minutes} минут',
-        values: { minutes: interval },
-      })}
+      {t('app.acquisition.auto_sync_hint', { values: { minutes: interval } })}
     </p>
   )
 }
