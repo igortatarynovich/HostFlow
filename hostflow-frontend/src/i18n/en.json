@@ -7701,7 +7701,8 @@
           "reached": "Reached",
           "not_reached": "No answer",
           "next_contact": "Next contact",
-          "next_contact_required": "Pick a date and time to call back."
+          "next_contact_required": "Pick a date and time to call back.",
+          "rodo_later": "RODO is still required before creating a candidate. You can log this call now."
         },
         "identity": {
           "form": "form"

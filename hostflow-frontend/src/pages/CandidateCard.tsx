@@ -4840,12 +4840,12 @@ export default function CandidateCard(){
                 />
               ) : null}
 
+              <CandidateLeadOriginPanel
+                candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
+                candidateNote={model.note}
+              />
+
               {showRequirementsSummaryCard ? (
-                <>
-                  <CandidateLeadOriginPanel
-                    candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
-                    candidateNote={model.note}
-                  />
                   <RequirementsWorkspaceSummaryCard
                   candidateId={String(model.id)}
                   workspace={requirementsWorkspace}
@@ -4859,7 +4859,6 @@ export default function CandidateCard(){
                     setRequirementBlockersLoading(loading)
                   }}
                 />
-                </>
               ) : null}
 
               {showFullRequirementsChecklist ? (

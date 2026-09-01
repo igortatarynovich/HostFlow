@@ -3,6 +3,7 @@ import { IconPhone } from '@tabler/icons-react'
 import type { Lead } from '../../api/types'
 import { useI18n } from '../../i18n'
 import { leadShowsDuplicateMark } from '../../utils/leadDuplicateReview'
+import { Button } from '../ui/Button'
 import { StatusBadge } from '../ui/StatusBadge'
 
 type Props = {
@@ -73,45 +74,27 @@ export default function LeadIntakeIdentityBar({
         ) : null}
         <p className="mt-1 text-xs text-slate-500">{sourceBits}</p>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {canTel ? (
-          <a
-            href={`tel:${digitsPhone(phone)}`}
-            className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold"
-          >
+          <a href={`tel:${digitsPhone(phone)}`} className="btn btn-primary inline-flex items-center gap-1.5">
             <IconPhone size={16} stroke={1.75} aria-hidden />
             {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
           </a>
         ) : (
-          <span className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-400">
+          <span className="btn btn-secondary inline-flex cursor-not-allowed items-center gap-1.5 opacity-50">
             <IconPhone size={16} stroke={1.75} aria-hidden />
             {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
           </span>
         )}
-        <button
-          type="button"
-          className="inline-flex items-center rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          disabled={createDisabled || createBusy}
-          onClick={onCreate}
-        >
+        <Button type="button" variant="secondary" size="sm" disabled={createDisabled || createBusy} onClick={onCreate}>
           {createBusy ? t('common.loading') : createLabel}
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-          disabled={poolDisabled}
-          onClick={onPool}
-        >
-          {poolLabel}
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center rounded-xl px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
-          disabled={rejectDisabled}
-          onClick={onReject}
-        >
+        </Button>
+        <Button type="button" variant="ghost" size="sm" disabled={rejectDisabled} onClick={onReject} className="text-rose-700 hover:text-rose-800">
           {rejectLabel}
-        </button>
+        </Button>
+        <Button type="button" variant="ghost" size="sm" disabled={poolDisabled} onClick={onPool}>
+          {poolLabel}
+        </Button>
       </div>
     </div>
   )

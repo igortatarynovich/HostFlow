@@ -78,30 +78,43 @@ export function CandidateLeadOriginPanel({
                 <dd className="font-medium text-slate-900">{intakeStatus}</dd>
               </div>
             ) : null}
-            {callResult ? (
+            {callHistory.length === 0 && callResult ? (
               <div>
                 <dt className="text-xs text-slate-500">
                   {t('app.candidate_card.from_lead_call', { defaultValue: 'Lead call result' })}
                 </dt>
                 <dd className="font-medium text-slate-900">
-                  {callResult}
+                  {t(`app.leads.detail.call_result.results.${callResult}`, { defaultValue: callResult })}
                   {callNote ? ` — ${callNote}` : ''}
                 </dd>
               </div>
             ) : null}
-            {callHistory.length > 1 ? (
+            {callHistory.length > 0 ? (
               <div className="sm:col-span-2">
                 <dt className="text-xs text-slate-500">
                   {t('app.candidate_card.from_lead_calls', { defaultValue: 'Call history' })}
                 </dt>
                 <dd className="font-medium text-slate-900">
                   <ul className="mt-1 space-y-1 text-sm">
-                    {callHistory.map((item, idx) => (
-                      <li key={`${text(item.at)}-${idx}`}>
-                        {text(item.result)}
-                        {text(item.note) ? ` — ${text(item.note)}` : ''}
-                      </li>
-                    ))}
+                    {callHistory.map((item, idx) => {
+                      const result = text(item.result)
+                      const at = text(item.at)
+                      const nextAt = text(item.next_contact_at)
+                      return (
+                        <li key={`${at}-${idx}`}>
+                          {t(`app.leads.detail.call_result.results.${result}`, { defaultValue: result })}
+                          {text(item.note) ? ` — ${text(item.note)}` : ''}
+                          {at ? <span className="text-slate-500"> · {new Date(at).toLocaleString()}</span> : null}
+                          {nextAt ? (
+                            <span className="text-slate-500">
+                              {' '}
+                              · {t('app.leads.intake_workspace.call.next_contact', { defaultValue: 'Next contact' })}{' '}
+                              {new Date(nextAt).toLocaleString()}
+                            </span>
+                          ) : null}
+                        </li>
+                      )
+                    })}
                   </ul>
                 </dd>
               </div>

@@ -233,38 +233,29 @@ export default function LeadIntakeWorkspacePanel({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-8 overflow-y-auto px-4 py-5">
-        <LeadIntakeIdentityBar
-          lead={lead}
-          displayName={displayName}
-          formatDate={formatDate}
-          createLabel={t('app.leads.intake_workspace.unified.create_candidate')}
-          rejectLabel={t('app.leads.intake_workspace.decision_rail.reject_open')}
-          poolLabel={t('app.leads.detail.intake_resolution.intake_actions.pool')}
-          createBusy={processing || routingBusy}
-          poolDisabled={poolBusy}
-          onCreate={() => void onProcess()}
-          onReject={() => setRejectNonce((n) => n + 1)}
-          onPool={() => void runPool()}
-        />
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+        <div className="space-y-4">
+          <LeadIntakeIdentityBar
+            lead={lead}
+            displayName={displayName}
+            formatDate={formatDate}
+            createLabel={t('app.leads.intake_workspace.unified.create_candidate')}
+            rejectLabel={t('app.leads.intake_workspace.decision_rail.reject_open')}
+            poolLabel={t('app.leads.detail.intake_resolution.intake_actions.pool')}
+            createBusy={processing || routingBusy}
+            poolDisabled={poolBusy}
+            onCreate={() => void onProcess()}
+            onReject={() => setRejectNonce((n) => n + 1)}
+            onPool={() => void runPool()}
+          />
 
-        <LeadIntakeFormAnswers lead={lead} />
+          <LeadIntakeFormAnswers lead={lead} />
 
+          <LeadIntakeCallStep lead={lead} onLeadUpdated={onLeadUpdated} showTelButton={false} />
+        </div>
+
+        <div className="mt-8 space-y-8">
         <LeadDuplicateReviewPanel lead={lead} onLeadUpdated={onLeadUpdated} />
-
-        <LeadIntakeCallStep lead={lead} onLeadUpdated={onLeadUpdated} showTelButton={false} />
-
-        <LeadIntakeCandidateSnapshot lead={lead} />
-
-        <LeadIntakeRecruitmentContextBlock
-          lead={lead}
-          companyLabel={companyLabel}
-          vacancyLabel={vacancyLabel}
-          duplicateLine={dupLine}
-          routeLine={routeLine}
-          campaignLine={formatUtm(n.utm)}
-          createdLabel={formatDate(lead.created_at)}
-        />
 
         <LeadIntakeDecisionRail
           layout="embedded"
@@ -279,6 +270,25 @@ export default function LeadIntakeWorkspacePanel({
           forceRejectOpen={rejectNonce}
         />
 
+        <details className="overflow-hidden rounded-xl bg-slate-500/[0.04]">
+          <summary className="cursor-pointer px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.leads.intake_workspace.snapshot.qual_toggle')}
+          </summary>
+          <div className="space-y-8 border-t border-slate-200/60 p-4">
+            <LeadIntakeCandidateSnapshot lead={lead} />
+
+            <LeadIntakeRecruitmentContextBlock
+              lead={lead}
+              companyLabel={companyLabel}
+              vacancyLabel={vacancyLabel}
+              duplicateLine={dupLine}
+              routeLine={routeLine}
+              campaignLine={formatUtm(n.utm)}
+              createdLabel={formatDate(lead.created_at)}
+            />
+          </div>
+        </details>
+
         {moreSection ? (
           <details className="overflow-hidden rounded-xl bg-slate-500/[0.04]">
             <summary className="cursor-pointer px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -287,6 +297,7 @@ export default function LeadIntakeWorkspacePanel({
             <div className="border-t border-slate-200/60 bg-slate-50/30 p-3">{moreSection}</div>
           </details>
         ) : null}
+        </div>
       </div>
     </div>
   )

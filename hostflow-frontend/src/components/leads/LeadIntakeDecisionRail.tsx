@@ -214,7 +214,7 @@ export default function LeadIntakeDecisionRail({
 
   const displayVacancyCards = sortedVacancies.slice(0, VACANCY_CARD_LIMIT)
 
-  const showProcessPrimary =
+  const showProcessAtEnd =
     routing.kind === 'none' &&
     !block &&
     st !== 'duplicate_review' &&
@@ -235,7 +235,6 @@ export default function LeadIntakeDecisionRail({
       onLeadUpdated(updated)
       notify({ title: t('app.leads.detail.intake_resolution.confirm_success'), variant: 'success' })
       setVacancyOverrideOpen(false)
-      if (rodoOk) await onRequestProcess()
     } catch (err: unknown) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.intake_resolution.confirm_failed'))) {
         return
@@ -248,7 +247,7 @@ export default function LeadIntakeDecisionRail({
     } finally {
       setConfirming(false)
     }
-  }, [lead.id, notify, onLeadUpdated, onRequestProcess, planLimitModal, selectedVacancyId, t, rodoOk])
+  }, [lead.id, notify, onLeadUpdated, planLimitModal, selectedVacancyId, t])
 
   const runIntakeDecision = useCallback(
     async (body: Parameters<typeof submitLeadIntakeDecision>[1]) => {
@@ -377,11 +376,11 @@ export default function LeadIntakeDecisionRail({
               </div>
               <button
                 type="button"
-                className="btn-primary w-full rounded-xl py-3.5 text-base font-semibold shadow-sm disabled:opacity-50"
+                className="btn-secondary w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50"
                 disabled={busy || poolBusy}
-                onClick={() => onConfirmRouting(routing.vacancyId, rodoOk)}
+                onClick={() => onConfirmRouting(routing.vacancyId, false)}
               >
-                {busy ? t('common.loading') : t('app.leads.intake_workspace.unified.confirm_and_create')}
+                {busy ? t('common.loading') : t('app.leads.routing.confirm_vacancy')}
               </button>
               <button
                 type="button"
@@ -445,11 +444,11 @@ export default function LeadIntakeDecisionRail({
               </label>
               <button
                 type="button"
-                className="btn-primary w-full rounded-xl py-3.5 text-base font-semibold shadow-sm disabled:opacity-50"
+                className="btn-secondary w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50"
                 disabled={confirming || !selectedVacancyId.trim()}
                 onClick={() => void handleConfirmSelection()}
               >
-                {confirming ? t('common.loading') : t('app.leads.intake_workspace.unified.confirm_and_create')}
+                {confirming ? t('common.loading') : t('app.leads.routing.confirm_vacancy')}
               </button>
               {(routing.kind === 'confirm_suggested' || routing.kind === 'confirm_current') && vacancyOverrideOpen ? (
                 <button type="button" className="w-full text-center text-xs font-medium text-slate-600 underline-offset-2 hover:underline" onClick={() => setVacancyOverrideOpen(false)}>
@@ -574,22 +573,11 @@ export default function LeadIntakeDecisionRail({
         {duplicateReview && showIntakeDecisions && !intakeRejected ? (
           <button
             type="button"
-            className="btn-primary w-full rounded-xl py-3.5 text-base font-semibold shadow-sm disabled:opacity-50"
+            className="btn-secondary w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50"
             disabled={acting}
             onClick={() => void runDuplicateCreateNew()}
           >
             {acting ? t('common.loading') : t('app.leads.intake_workspace.decision_rail.qualify_not_duplicate')}
-          </button>
-        ) : null}
-
-        {showProcessPrimary ? (
-          <button
-            type="button"
-            className="btn-primary w-full rounded-xl py-3.5 text-base font-semibold shadow-sm disabled:opacity-50"
-            disabled={processing || routingBusy}
-            onClick={() => void onRequestProcess()}
-          >
-            {processing ? t('common.loading') : t('app.leads.intake_workspace.unified.create_candidate')}
           </button>
         ) : null}
 
@@ -635,6 +623,17 @@ export default function LeadIntakeDecisionRail({
         {showIntakeDecisions && !intakeRejected && !hideSecondaryWhileDuplicate ? (
           <button type="button" className="text-left text-sm font-medium text-rose-700 underline-offset-2 hover:underline disabled:opacity-50" disabled={acting} onClick={() => setRejectExpanded((x) => !x)}>
             {rejectExpanded ? t('app.leads.intake_workspace.decision_rail.reject_cancel') : t('app.leads.intake_workspace.decision_rail.reject_open')}
+          </button>
+        ) : null}
+
+        {showProcessAtEnd ? (
+          <button
+            type="button"
+            className="btn-secondary w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50"
+            disabled={processing || routingBusy}
+            onClick={() => void onRequestProcess()}
+          >
+            {processing ? t('common.loading') : t('app.leads.intake_workspace.unified.create_candidate')}
           </button>
         ) : null}
       </section>

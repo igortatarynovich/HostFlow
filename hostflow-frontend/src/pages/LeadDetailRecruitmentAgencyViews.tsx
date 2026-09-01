@@ -97,28 +97,44 @@ export function RecruitmentAgencyIntakeDetailView({
   const [rejectNonce, setRejectNonce] = useState(0)
 
   return (
-    <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,65fr)_minmax(280px,35fr)] lg:gap-10">
-      <div className="space-y-8">
-        <LeadIntakeIdentityBar
-          lead={lead}
-          displayName={name}
-          formatDate={formatDateValue}
-          createLabel={t('app.leads.intake_workspace.unified.create_candidate')}
-          rejectLabel={t('app.leads.intake_workspace.decision_rail.reject_open')}
-          poolLabel={t('app.leads.detail.intake_resolution.intake_actions.pool')}
-          createBusy={processing || routingConfirming}
-          poolDisabled={poolBusy}
-          onCreate={onRequestProcess}
-          onReject={() => setRejectNonce((n) => n + 1)}
-          onPool={onPool}
-        />
+    <div className="space-y-6">
+      <LeadIntakeIdentityBar
+        lead={lead}
+        displayName={name}
+        formatDate={formatDateValue}
+        createLabel={t('app.leads.intake_workspace.unified.create_candidate')}
+        rejectLabel={t('app.leads.intake_workspace.decision_rail.reject_open')}
+        poolLabel={t('app.leads.detail.intake_resolution.intake_actions.pool')}
+        createBusy={processing || routingConfirming}
+        poolDisabled={poolBusy}
+        onCreate={onRequestProcess}
+        onReject={() => setRejectNonce((n) => n + 1)}
+        onPool={onPool}
+      />
 
-        <LeadIntakeFormAnswers lead={lead} />
+      <LeadIntakeFormAnswers lead={lead} />
 
-        <LeadDuplicateReviewPanel lead={lead} onLeadUpdated={onLeadUpdated} />
+      <LeadIntakeCallStep lead={lead} onLeadUpdated={onLeadUpdated} showTelButton={false} />
 
-        <LeadIntakeCallStep lead={lead} onLeadUpdated={onLeadUpdated} showTelButton={false} />
+      <LeadDuplicateReviewPanel lead={lead} onLeadUpdated={onLeadUpdated} />
 
+      <LeadIntakeDecisionRail
+        lead={lead}
+        processing={processing}
+        routingBusy={routingConfirming}
+        poolBusy={poolBusy}
+        onLeadUpdated={onLeadUpdated}
+        onRequestProcess={onRequestProcess}
+        onConfirmRouting={onConfirmRouting}
+        onPool={onPool}
+        forceRejectOpen={rejectNonce}
+      />
+
+      <details className="overflow-hidden rounded-xl bg-slate-500/[0.04]">
+        <summary className="cursor-pointer px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.leads.intake_workspace.snapshot.qual_toggle')}
+        </summary>
+        <div className="space-y-8 border-t border-slate-200/60 p-4">
         <LeadIntakeCandidateSnapshot lead={lead} />
 
         <LeadIntakeRecruitmentContextBlock
@@ -146,20 +162,6 @@ export function RecruitmentAgencyIntakeDetailView({
             <LeadQualificationSummaryCard lead={lead} isServicesTenant={false} formatAt={(iso) => formatDateValue(iso, locale)} />
           </div>
         </details>
-      </div>
-
-      <div className="flex flex-col gap-6 lg:sticky lg:top-4 lg:self-start">
-        <LeadIntakeDecisionRail
-          lead={lead}
-          processing={processing}
-          routingBusy={routingConfirming}
-          poolBusy={poolBusy}
-          onLeadUpdated={onLeadUpdated}
-          onRequestProcess={onRequestProcess}
-          onConfirmRouting={onConfirmRouting}
-          onPool={onPool}
-          forceRejectOpen={rejectNonce}
-        />
 
         {lead.recruiter_id ? (
           <p className="text-[11px] text-slate-500">
@@ -191,7 +193,8 @@ export function RecruitmentAgencyIntakeDetailView({
             )}
           </div>
         </details>
-      </div>
+        </div>
+      </details>
     </div>
   )
 }

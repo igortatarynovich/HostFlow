@@ -39,6 +39,13 @@ function toDatetimeLocalValue(iso: string | null | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function formatWhen(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString()
+}
+
 function fromDatetimeLocalValue(raw: string): string | null {
   const s = raw.trim()
   if (!s) return null
@@ -74,7 +81,7 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
     : null
 
   const handleSave = async () => {
-    if (saving || !rodoOk) return
+    if (saving) return
     if (needsCallbackTime && !fromDatetimeLocalValue(nextContact)) {
       notify({
         title: t('app.leads.intake_workspace.call.next_contact_required', {
@@ -120,7 +127,7 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
             <button
               key={code}
               type="button"
-              disabled={saving || !rodoOk}
+              disabled={saving}
               onClick={() => setCallResult(code)}
               className={clsx(
                 'rounded-lg px-2.5 py-1.5 text-xs font-semibold ring-1 transition-colors disabled:opacity-50',
@@ -159,24 +166,25 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
       {showTelButton ? (
         <div className="flex flex-wrap gap-2">
           {canTel ? (
-            rodoOk ? (
-              <a
-                href={`tel:${digitsPhone(phone)}`}
-                className="btn-primary inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold"
-              >
-                <IconPhone size={18} stroke={1.75} aria-hidden />
-                {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
-              </a>
-            ) : (
-              <span className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm font-semibold text-slate-400">
-                <IconPhone size={18} stroke={1.75} aria-hidden />
-                {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
-              </span>
-            )
+            <a
+              href={`tel:${digitsPhone(phone)}`}
+              className="btn-primary inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold"
+            >
+              <IconPhone size={18} stroke={1.75} aria-hidden />
+              {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
+            </a>
           ) : (
             <p className="text-sm text-amber-800">{t('app.leads.intake_workspace.decision_rail.call_no_phone')}</p>
           )}
         </div>
+      ) : null}
+
+      {!rodoOk ? (
+        <p className="text-[11px] text-slate-500">
+          {t('app.leads.intake_workspace.call.rodo_later', {
+            defaultValue: 'RODO is still required before creating a candidate. You can log this call now.',
+          })}
+        </p>
       ) : null}
 
       {renderGroup('app.leads.intake_workspace.call.reached', LEAD_CALL_REACHED_CODES)}
@@ -191,7 +199,7 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
             type="datetime-local"
             className="input w-full rounded-xl border-0 bg-slate-500/[0.06] px-3 py-2 text-sm ring-1 ring-slate-900/[0.06]"
             value={nextContact}
-            disabled={saving || !rodoOk}
+            disabled={saving}
             onChange={(e) => setNextContact(e.target.value)}
           />
         </label>
@@ -202,7 +210,7 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
         <textarea
           className="input min-h-[4rem] w-full rounded-xl border-0 bg-slate-500/[0.06] px-3 py-2 text-sm ring-1 ring-slate-900/[0.06]"
           value={callNote}
-          disabled={saving || !rodoOk}
+          disabled={saving}
           maxLength={2000}
           placeholder={t('app.leads.detail.call_result.fields.note_placeholder')}
           onChange={(e) => setCallNote(e.target.value)}
@@ -212,18 +220,25 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
       <button
         type="button"
         className="w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-        disabled={saving || !rodoOk}
+        disabled={saving}
         onClick={() => void handleSave()}
       >
         {saving ? t('common.loading') : t('app.leads.detail.call_result.save')}
       </button>
 
-      {history.length > 1 ? (
-        <ul className="space-y-1 text-[11px] text-slate-500">
-          {history.slice(0, 5).map((item, idx) => (
+      {history.length > 0 ? (
+        <ul className="space-y-1.5 text-[11px] text-slate-600">
+          {history.slice(0, 8).map((item, idx) => (
             <li key={`${item.at || idx}-${item.result}`}>
-              {resultLabel(String(item.result))}
+              <span className="font-medium text-slate-800">{resultLabel(String(item.result))}</span>
               {item.note ? ` — ${item.note}` : ''}
+              {item.at ? <span className="text-slate-400"> · {formatWhen(item.at)}</span> : null}
+              {item.next_contact_at ? (
+                <span className="text-slate-400">
+                  {' '}
+                  · {t('app.leads.intake_workspace.call.next_contact', { defaultValue: 'Next contact' })} {formatWhen(item.next_contact_at)}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>

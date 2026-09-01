@@ -38,6 +38,69 @@ describe('leadIntakeFormAnswerRows', () => {
     expect(leadIntakeFormAnswerRows(metaLead({ normalized: {} }))).toEqual([])
   })
 
+  it('reads Meta field_data from payload when field_answers is absent', () => {
+    const rows = leadIntakeFormAnswerRows(
+      metaLead({
+        normalized: {},
+        payload: {
+          field_data: [
+            { name: 'full_name', values: ['Jan Kowalski'] },
+            { name: 'Jaką masz kategorię?', values: ['C+E'] },
+          ],
+        },
+      }),
+    )
+    expect(rows.map((r) => r.label)).toEqual(['Full name', 'Jaką masz kategorię?'])
+    expect(rows[1]?.value).toBe('C+E')
+  })
+
+  it('reads nested webhook field_data', () => {
+    const rows = leadIntakeFormAnswerRows(
+      metaLead({
+        payload: {
+          entry: [
+            {
+              changes: [
+                {
+                  value: {
+                    field_data: [{ name: 'phone_number', values: ['+48111'] }],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    )
+    expect(rows).toEqual([{ name: 'phone_number', label: 'Phone', value: '+48111' }])
+  })
+
+  it('falls back to normalized contact fields', () => {
+    const rows = leadIntakeFormAnswerRows(
+      metaLead({
+        normalized: { full_name: 'Anna Nowak', phone: '+48222' },
+      }),
+    )
+    expect(rows.map((r) => r.value)).toEqual(['Anna Nowak', '+48222'])
+  })
+
+  it('humanizes underscored Meta question names and answer values', () => {
+    const rows = leadIntakeFormAnswerRows(
+      metaLead({
+        normalized: {
+          field_answers: [
+            {
+              name: 'какая_категория_водительских_прав_у_вас_открыта?',
+              values: ['категории_c_и_c+e'],
+            },
+          ],
+        },
+      }),
+    )
+    expect(rows[0]?.label).toBe('какая категория водительских прав у вас открыта?')
+    expect(rows[0]?.value).toBe('категории c и c+e')
+  })
+
   it('prefers stored question labels over field codes', () => {
     const rows = leadIntakeFormAnswerRows(
       metaLead({

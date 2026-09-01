@@ -17,6 +17,8 @@ const SKIP_NAMES = new Set([
   'form_id',
   'created_time',
   'campaign_id',
+  'page_id',
+  'created_at',
 ])
 
 const STANDARD_FIELD_LABELS: Record<string, string> = {
@@ -30,6 +32,8 @@ const STANDARD_FIELD_LABELS: Record<string, string> = {
   country: 'Country',
 }
 
+const CONTACT_FALLBACK_KEYS = ['full_name', 'first_name', 'last_name', 'phone', 'phone_number', 'email', 'city', 'country']
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   return value as Record<string, unknown>
@@ -38,12 +42,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function formatValues(values: unknown): string {
   if (Array.isArray(values)) {
     return values
-      .map((v) => String(v ?? '').trim())
+      .map((v) => maybeHumanizeAnswer(String(v ?? '').trim()))
       .filter(Boolean)
       .join(', ')
   }
-  const s = String(values ?? '').trim()
-  return s
+  return maybeHumanizeAnswer(String(values ?? '').trim())
+}
+
+function maybeHumanizeAnswer(raw: string): string {
+  if (!raw) return ''
+  if (!raw.includes('_') || raw.includes(' ')) return raw
+  return humanizeFieldName(raw)
 }
 
 function looksLikeHumanQuestion(raw: string): boolean {
@@ -91,26 +100,78 @@ function resolveLabel(name: string, stored: string | null): string {
   return stored || humanizeFieldName(name)
 }
 
+function rowValue(row: Record<string, unknown>): string {
+  if (row.values != null) return formatValues(row.values)
+  if (row.value != null) return formatValues(row.value)
+  if (row.answers != null) return formatValues(row.answers)
+  return ''
+}
+
+function collectFieldDataArrays(payload: unknown): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = []
+  const pushList = (raw: unknown) => {
+    if (!Array.isArray(raw)) return
+    for (const item of raw) {
+      const row = asRecord(item)
+      if (row) out.push(row)
+    }
+  }
+
+  const rec = asRecord(payload)
+  if (!rec) return out
+  pushList(rec.field_data)
+
+  const entry = Array.isArray(rec.entry) ? asRecord(rec.entry[0]) : null
+  const change = entry && Array.isArray(entry.changes) ? asRecord(entry.changes[0]) : null
+  const value = asRecord(change?.value)
+  if (value) pushList(value.field_data)
+
+  return out
+}
+
+function pushAnswer(
+  out: LeadIntakeFormAnswerRow[],
+  seen: Set<string>,
+  name: string,
+  value: string,
+  stored: string | null,
+): void {
+  if (shouldSkipName(name) || !value) return
+  const key = name.toLowerCase()
+  if (seen.has(key)) return
+  seen.add(key)
+  out.push({ name, label: resolveLabel(name, stored), value })
+}
+
 /** Meta / form answers — human question text, not field_code. */
 export function leadIntakeFormAnswerRows(lead: Lead | null | undefined): LeadIntakeFormAnswerRow[] {
   const n = asRecord(lead?.normalized)
-  const raw = n?.field_answers
-  if (!Array.isArray(raw)) return []
   const labels = asRecord(n?.form_question_labels_v1)
   const out: LeadIntakeFormAnswerRow[] = []
   const seen = new Set<string>()
-  for (const item of raw) {
-    const row = asRecord(item)
-    if (!row) continue
-    const name = String(row.name ?? '').trim()
-    if (shouldSkipName(name)) continue
-    const value = formatValues(row.values)
-    if (!value) continue
-    const key = name.toLowerCase()
-    if (seen.has(key)) continue
-    seen.add(key)
-    const stored = lookupStoredLabel(name, row, labels)
-    out.push({ name, label: resolveLabel(name, stored), value })
+
+  const ingestAnswerList = (raw: unknown) => {
+    if (!Array.isArray(raw)) return
+    for (const item of raw) {
+      const row = asRecord(item)
+      if (!row) continue
+      const name = String(row.name ?? row.key ?? '').trim()
+      const value = rowValue(row)
+      const stored = lookupStoredLabel(name, row, labels)
+      pushAnswer(out, seen, name, value, stored)
+    }
   }
+
+  ingestAnswerList(n?.field_answers)
+  ingestAnswerList(n?.additional_answers)
+  ingestAnswerList(collectFieldDataArrays(lead?.payload))
+
+  if (out.length === 0 && n) {
+    for (const key of CONTACT_FALLBACK_KEYS) {
+      const value = formatValues(n[key])
+      pushAnswer(out, seen, key, value, lookupStoredLabel(key, {}, labels))
+    }
+  }
+
   return out
 }
