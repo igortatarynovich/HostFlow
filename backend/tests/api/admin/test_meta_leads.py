@@ -151,6 +151,8 @@ async def test_meta_leads_credentials_flow(client, manager_headers, tenant_id):
     created = create_resp.json()
     credential_id = created["id"]
     assert created["has_secret"] is True
+    assert created["ad_account_id"] == "123456789"
+    assert created["page_id"] == "987654321"
 
     list_resp = await client.get(
         "/api/v1/settings/leads/credentials",
@@ -158,7 +160,28 @@ async def test_meta_leads_credentials_flow(client, manager_headers, tenant_id):
     )
     assert list_resp.status_code == 200
     items = list_resp.json()
-    assert any(item["id"] == credential_id for item in items)
+    listed = next(item for item in items if item["id"] == credential_id)
+    assert listed["ad_account_id"] == "123456789"
+    assert listed["page_id"] == "987654321"
+
+    clear_resp = await client.patch(
+        f"/api/v1/settings/leads/credentials/{credential_id}",
+        headers=manager_headers,
+        json={"ad_account_id": None, "page_id": None},
+    )
+    assert clear_resp.status_code == 200, clear_resp.text
+    cleared = clear_resp.json()
+    assert cleared["ad_account_id"] is None
+    assert cleared["page_id"] is None
+
+    disable_resp = await client.patch(
+        f"/api/v1/settings/leads/credentials/{credential_id}",
+        headers=manager_headers,
+        json={"status": "disabled", "page_id": "987654321"},
+    )
+    assert disable_resp.status_code == 200, disable_resp.text
+    assert disable_resp.json()["status"] == "disabled"
+    assert disable_resp.json()["page_id"] == "987654321"
 
     rotate_resp = await client.post(
         f"/api/v1/settings/leads/credentials/{credential_id}/rotate",

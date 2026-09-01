@@ -13557,7 +13557,7 @@
         "reconnect": "Переподключить Facebook",
         "open_leads": "Открыть лиды",
         "manage_advanced": "Управление учётными данными",
-        "disconnect_hint": "Чтобы полностью отключить интеграцию, удалите учётные данные Meta на вкладке «Дополнительно»."
+        "disconnect_hint": "Лиды попадают в этот тенант по Page ID активного подключения, а не по ad account. Отключите или удалите строку ниже, чтобы эта страница сюда больше не приходила."
       },
       "processing": {
         "title": "Обработка лидов"
@@ -13570,6 +13570,8 @@
       "notices": {
         "settings_saved": "Настройки Meta Leads обновлены",
         "credential_created": "Подключение сохранено",
+        "credential_disabled": "Подключение отключено — этот тенант не будет принимать лиды с этой страницы.",
+        "credential_enabled": "Подключение включено.",
         "secret_rotated": "Новый секрет: {secret}",
         "mapping_saved": "Маппинг сохранён",
         "lead_rerouted": "Лид отправлен в обработку",
@@ -13583,6 +13585,8 @@
         "settings_update": "Не удалось обновить настройки",
         "credential_label": "Укажите название подключения",
         "credential_create": "Не удалось создать подключение",
+        "credential_disable": "Не удалось отключить подключение",
+        "credential_enable": "Не удалось включить подключение",
         "secret_rotate": "Не удалось обновить секрет",
         "credential_delete": "Не удалось удалить подключение",
         "mapping_required": "Укажите ad_id и vacancy_id",
@@ -13608,6 +13612,8 @@
       },
       "prompts": {
         "delete_credential": "Удалить учётные данные Meta?",
+        "disable_credential": "Отключить «{label}»? Этот тенант перестанет принимать лиды со страницы {page}.",
+        "delete_credential_detail": "Удалить «{label}»? Страница {page} и ad account {account} больше не будут подключены к этому тенанту. Ту же страницу потом можно подключить в другом тенанте.",
         "delete_mapping": "Удалить маппинг для объявления {adId}?",
         "reroute_vacancy": "Выберите вакансию",
         "reroute_vacancy_id": "Введите vacancy_id (или оставьте пустым — кандидат только с компанией)",
@@ -13741,30 +13747,34 @@
         "save_tenant": "Сохранить маппинг тенанта"
       },
       "credentials": {
-        "title": "Добавить подключение",
+        "title": "Подключённые страницы Facebook",
+        "routing_hint": "Лиды маршрутизируются по Page ID активного подключения — не по ad account. Ad account ID только метаданные. Отключите или удалите строку, чтобы этот тенант перестал принимать эту страницу.",
         "plan_limit_reached": "На тарифе доступно {limit} подключение(й) Meta. Чтобы добавить ещё — Настройки → Биллинг.",
         "label": "Этикетка",
         "status": "Статус",
         "webhook_secret": "Секрет вебхука",
         "access_token": "Access token",
         "statuses": {
-          "active": "active",
-          "disabled": "disabled",
+          "active": "активно",
+          "disabled": "отключено",
           "rotation_pending": "rotation_pending"
         },
         "fields": {
-          "ad_account_id": "ad_account_id",
-          "page_id": "page_id"
+          "ad_account_id": "Ad account ID",
+          "page_id": "Facebook Page ID"
         },
         "table": {
           "label": "Этикетка",
           "status": "Статус",
           "ad_id": "ad_id",
-          "page_id": "page_id",
+          "ad_account": "Ad account",
+          "page_id": "Page ID",
           "signature": "Подпись"
         },
         "actions": {
-          "rotate": "Обновить секрет"
+          "rotate": "Обновить секрет",
+          "disable": "Отключить",
+          "enable": "Включить"
         },
         "empty": "Нет сохранённых подключений"
       },

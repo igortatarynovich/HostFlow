@@ -28,6 +28,7 @@ import {
   startMetaOAuth,
   updateMetaAdsMap,
   updateLeadMessageTemplate,
+  updateMetaLeadCredential,
   updateMetaLeadSettings,
 } from '../../api/metaLeads'
 import type { UnmappedAdGroup } from '../../api/metaLeads'
@@ -1236,11 +1237,59 @@ export default function MetaLeadsAdminPage() {
     }
   }, [planLimitModal, t])
 
-  const handleCredentialDelete = useCallback(async (id: string) => {
-    if (!window.confirm(t('admin.meta_leads.prompts.delete_credential'))) return
+  const handleCredentialStatus = useCallback(
+    async (entry: MetaLeadCredential, next: 'active' | 'disabled') => {
+      if (
+        next === 'disabled' &&
+        !window.confirm(
+          t('admin.meta_leads.prompts.disable_credential', {
+            values: { label: entry.label, page: entry.page_id || '—' },
+          }),
+        )
+      ) {
+        return
+      }
+      try {
+        const updated = await updateMetaLeadCredential(entry.id, { status: next })
+        setCredentials((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+        setNotice(
+          next === 'disabled'
+            ? t('admin.meta_leads.notices.credential_disabled')
+            : t('admin.meta_leads.notices.credential_enabled'),
+        )
+      } catch (err: any) {
+        console.error('[MetaLeadsAdmin] credential status failed', err)
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            next === 'disabled'
+              ? t('admin.meta_leads.errors.credential_disable')
+              : t('admin.meta_leads.errors.credential_enable'),
+            t,
+          ),
+        )
+      }
+    },
+    [t],
+  )
+
+  const handleCredentialDelete = useCallback(async (entry: MetaLeadCredential) => {
+    if (
+      !window.confirm(
+        t('admin.meta_leads.prompts.delete_credential_detail', {
+          values: {
+            label: entry.label,
+            page: entry.page_id || '—',
+            account: entry.ad_account_id || '—',
+          },
+        }),
+      )
+    ) {
+      return
+    }
     try {
-      await deleteMetaLeadCredential(id)
-      setCredentials((prev) => prev.filter((item) => item.id !== id))
+      await deleteMetaLeadCredential(entry.id)
+      setCredentials((prev) => prev.filter((item) => item.id !== entry.id))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] delete credential failed', err)
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.credential_delete'))) {
@@ -2348,6 +2397,75 @@ export default function MetaLeadsAdminPage() {
                 : t('admin.meta_leads.overview.last_lead_none')}
             </li>
           </ul>
+          {credentials.length > 0 ? (
+            <div className="mt-4 overflow-x-auto rounded border border-slate-200">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      {t('admin.meta_leads.credentials.table.label')}
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      {t('admin.meta_leads.credentials.table.status')}
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      {t('admin.meta_leads.credentials.table.page_id')}
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      {t('admin.meta_leads.credentials.table.ad_account')}
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      {t('common.labels.actions')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {credentials.map((entry) => (
+                    <tr key={entry.id} className={entry.status === 'disabled' ? 'bg-slate-50 text-slate-500' : undefined}>
+                      <td className="px-3 py-2 text-slate-900">{entry.label}</td>
+                      <td className="px-3 py-2 text-slate-600">
+                        {t(`admin.meta_leads.credentials.statuses.${entry.status}`, {
+                          defaultValue: entry.status,
+                        })}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs text-slate-700">{entry.page_id ?? '—'}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-slate-700">{entry.ad_account_id ?? '—'}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-wrap gap-2">
+                          {entry.status === 'active' ? (
+                            <button
+                              type="button"
+                              className="btn-secondary btn-xs"
+                              onClick={() => void handleCredentialStatus(entry, 'disabled')}
+                            >
+                              {t('admin.meta_leads.credentials.actions.disable')}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-secondary btn-xs"
+                              onClick={() => void handleCredentialStatus(entry, 'active')}
+                            >
+                              {t('admin.meta_leads.credentials.actions.enable')}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn-danger btn-xs"
+                            onClick={() => void handleCredentialDelete(entry)}
+                          >
+                            {t('common.actions.delete')}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">{t('admin.meta_leads.credentials.empty')}</p>
+          )}
           <div className="mt-6 flex flex-wrap gap-2">
             {selfServe?.oauth_quick_connect_enabled && me?.role === 'administrator' && !credentialsAtCap ? (
               <button
@@ -2770,6 +2888,7 @@ export default function MetaLeadsAdminPage() {
         <section className="space-y-4">
           <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.credentials.title')}</h2>
+            <p className="mt-1 text-sm text-slate-600">{t('admin.meta_leads.credentials.routing_hint')}</p>
             {credentialsAtCap && (
               <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                 {t('admin.meta_leads.credentials.plan_limit_reached', {
@@ -2852,7 +2971,7 @@ export default function MetaLeadsAdminPage() {
                 <tr>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.label')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.status')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.ad_id')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.ad_account')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.page_id')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.signature')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('common.labels.actions')}</th>
@@ -2870,14 +2989,35 @@ export default function MetaLeadsAdminPage() {
                   </tr>
                 )}
                 {credentials.map((entry) => (
-                  <tr key={entry.id}>
+                  <tr key={entry.id} className={entry.status === 'disabled' ? 'bg-slate-50 text-slate-500' : undefined}>
                     <td className="px-4 py-2 text-slate-900">{entry.label}</td>
-                    <td className="px-4 py-2 text-slate-600">{entry.status}</td>
-                    <td className="px-4 py-2 text-slate-600">{entry.ad_account_last4 ?? '—'}</td>
-                    <td className="px-4 py-2 text-slate-600">{entry.page_id_masked ?? '—'}</td>
+                    <td className="px-4 py-2 text-slate-600">
+                      {t(`admin.meta_leads.credentials.statuses.${entry.status}`, {
+                        defaultValue: entry.status,
+                      })}
+                    </td>
+                    <td className="px-4 py-2 font-mono text-xs text-slate-700">{entry.ad_account_id ?? '—'}</td>
+                    <td className="px-4 py-2 font-mono text-xs text-slate-700">{entry.page_id ?? '—'}</td>
                     <td className="px-4 py-2 text-slate-600">{formatDateTime(entry.last_verified_at)}</td>
                     <td className="px-4 py-2">
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        {entry.status === 'active' ? (
+                          <button
+                            type="button"
+                            className="btn-secondary btn-xs"
+                            onClick={() => void handleCredentialStatus(entry, 'disabled')}
+                          >
+                            {t('admin.meta_leads.credentials.actions.disable')}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn-secondary btn-xs"
+                            onClick={() => void handleCredentialStatus(entry, 'active')}
+                          >
+                            {t('admin.meta_leads.credentials.actions.enable')}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="btn-secondary btn-xs"
@@ -2888,7 +3028,7 @@ export default function MetaLeadsAdminPage() {
                         <button
                           type="button"
                           className="btn-danger btn-xs"
-                          onClick={() => void handleCredentialDelete(entry.id)}
+                          onClick={() => void handleCredentialDelete(entry)}
                         >
                           {t('common.actions.delete')}
                         </button>

@@ -53,6 +53,7 @@ vi.mock('../../../api/metaLeads', async () => {
     updateMetaLeadSettings: mockUpdateSettings,
     listMetaLeadCredentials: mockListCredentials,
     createMetaLeadCredential: mockCreateCredential,
+    updateMetaLeadCredential: vi.fn(),
     rotateMetaLeadCredential: mockRotateCredential,
     deleteMetaLeadCredential: mockDeleteCredential,
     listMetaAdsMap: mockListMapping,

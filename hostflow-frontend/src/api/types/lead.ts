@@ -253,6 +253,8 @@ export interface MetaLeadCredential {
   label: string;
   status: MetaCredentialStatus;
   has_secret: boolean;
+  ad_account_id?: string | null;
+  page_id?: string | null;
   ad_account_last4?: string | null;
   page_id_masked?: string | null;
   created_at: string;

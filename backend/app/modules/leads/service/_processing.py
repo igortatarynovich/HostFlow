@@ -454,10 +454,10 @@ async def process_normalized_lead(
     if not resolved_company_id and not sales_lead_without_candidate:
         resolved_company_id = await _validate_company_id(db, tenant_id, fallback_company_hint)
 
-    if not resolved_company_id and not sales_lead_without_candidate:
-        resolved_company_id = await crud.get_default_company_id(db, tenant_id)
-
-    if not resolved_company_id and not sales_lead_without_candidate:
+    # Unmapped ads stay without a company until confirm-vacancy. Do not pick the
+    # oldest tenant company (that silently attached Focus Meta leads to POLTRAKT
+    # and its company-access recruiters).
+    if not resolved_company_id and not sales_lead_without_candidate and vacancy is not None:
         raise LeadProcessingError("needs_routing", "COMPANY_NOT_RESOLVED")
 
     if resolved_company_id:

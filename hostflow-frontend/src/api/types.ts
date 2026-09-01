@@ -219,6 +219,8 @@ export interface TenantRecord extends TenantSummary {
   is_active: boolean;
   client_portal_enabled: boolean;
   status_sharing_allowed: boolean;
+  /** Agency linked this tenant as a handoff client. Standalone employers stay false. */
+  client_handoff_view?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -974,6 +976,8 @@ export interface MetaLeadCredential {
   label: string;
   status: MetaCredentialStatus;
   has_secret: boolean;
+  ad_account_id?: string | null;
+  page_id?: string | null;
   ad_account_last4?: string | null;
   page_id_masked?: string | null;
   created_at: string;

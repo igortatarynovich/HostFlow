@@ -13542,7 +13542,7 @@
         "reconnect": "Reconnect Facebook",
         "open_leads": "Open Leads",
         "manage_advanced": "Manage credentials",
-        "disconnect_hint": "To fully disconnect, remove Meta credentials in the Advanced tab."
+        "disconnect_hint": "Routing is by Facebook Page ID on an active connection, not by ad account. Disable or delete a row below to stop this workspace receiving that Page."
       },
       "processing": {
         "title": "Lead processing"
@@ -13555,6 +13555,8 @@
       "notices": {
         "settings_saved": "Meta Leads settings updated",
         "credential_created": "Credential saved",
+        "credential_disabled": "Connection disabled — this workspace will not receive leads from that Page.",
+        "credential_enabled": "Connection enabled.",
         "secret_rotated": "New secret: {secret}",
         "mapping_saved": "Mapping saved",
         "lead_rerouted": "Lead sent for processing",
@@ -13568,6 +13570,8 @@
         "settings_update": "Could not update settings",
         "credential_label": "Enter a credential name",
         "credential_create": "Could not create credential",
+        "credential_disable": "Could not disable connection",
+        "credential_enable": "Could not enable connection",
         "secret_rotate": "Could not rotate secret",
         "credential_delete": "Could not delete credential",
         "mapping_required": "Specify ad_id and vacancy_id",
@@ -13608,6 +13612,8 @@
       },
       "prompts": {
         "delete_credential": "Delete this Meta credential?",
+        "disable_credential": "Disable “{label}”? This workspace will stop receiving leads from Page {page}.",
+        "delete_credential_detail": "Delete “{label}”? Page {page} and ad account {account} will no longer be connected to this workspace. You can connect the same Page on another tenant afterwards.",
         "delete_mapping": "Delete mapping for ad {adId}?",
         "reroute_vacancy": "Select a vacancy",
         "reroute_vacancy_id": "Enter vacancy_id (or leave empty to create candidate with company only)",
@@ -13741,7 +13747,8 @@
         "save_tenant": "Save tenant mapping"
       },
       "credentials": {
-        "title": "Add credential",
+        "title": "Connected Facebook Pages",
+        "routing_hint": "Leads are routed by Facebook Page ID on an active connection — not by ad account. The ad account ID is metadata only. Disable or delete a row to stop this workspace receiving that Page.",
         "plan_limit_reached": "Your plan allows {limit} Meta credential(s). Upgrade in Settings → Billing to add another.",
         "label": "Label",
         "status": "Status",
@@ -13753,18 +13760,21 @@
           "rotation_pending": "rotation_pending"
         },
         "fields": {
-          "ad_account_id": "ad_account_id",
-          "page_id": "page_id"
+          "ad_account_id": "Ad account ID",
+          "page_id": "Facebook Page ID"
         },
         "table": {
           "label": "Label",
           "status": "Status",
           "ad_id": "ad_id",
-          "page_id": "page_id",
+          "ad_account": "Ad account",
+          "page_id": "Page ID",
           "signature": "Signature"
         },
         "actions": {
-          "rotate": "Rotate secret"
+          "rotate": "Rotate secret",
+          "disable": "Disable",
+          "enable": "Enable"
         },
         "empty": "No saved credentials"
       },

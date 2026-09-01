@@ -13542,7 +13542,7 @@
         "reconnect": "Połącz ponownie z Facebook",
         "open_leads": "Otwórz Leady",
         "manage_advanced": "Zarządzaj połączeniami",
-        "disconnect_hint": "Aby całkowicie odłączyć, usuń dane Meta na zakładce Zaawansowane."
+        "disconnect_hint": "Leady trafiają do tego obszaru według Page ID aktywnego połączenia, nie według ad account. Wyłącz lub usuń wiersz poniżej, żeby ta strona przestała tu przychodzić."
       },
       "processing": {
         "title": "Przetwarzanie leadów"
@@ -13570,6 +13570,8 @@
       "notices": {
         "settings_saved": "Ustawienia Meta Leads zapisane",
         "credential_created": "Połączenie zapisane",
+        "credential_disabled": "Połączenie wyłączone — ten obszar nie będzie przyjmował leadów z tej strony.",
+        "credential_enabled": "Połączenie włączone.",
         "secret_rotated": "Nowy sekret: {secret}",
         "mapping_saved": "Mapowanie zapisane",
         "lead_rerouted": "Lead wysłany do obsługi",
@@ -13583,6 +13585,8 @@
         "settings_update": "Nie udało się zaktualizować ustawień",
         "credential_label": "Podaj nazwę połączenia",
         "credential_create": "Nie udało się utworzyć połączenia",
+        "credential_disable": "Nie udało się wyłączyć połączenia",
+        "credential_enable": "Nie udało się włączyć połączenia",
         "secret_rotate": "Nie udało się odświeżyć sekretu",
         "credential_delete": "Nie udało się usunąć połączenia",
         "mapping_required": "Podaj ad_id i vacancy_id",
@@ -13608,6 +13612,8 @@
       },
       "prompts": {
         "delete_credential": "Usunąć to połączenie Meta?",
+        "disable_credential": "Wyłączyć „{label}”? Ten obszar przestanie przyjmować leady ze strony {page}.",
+        "delete_credential_detail": "Usunąć „{label}”? Strona {page} i ad account {account} nie będą już podłączone do tego obszaru. Tę samą stronę można potem podłączyć w innym tenancie.",
         "delete_mapping": "Usunąć mapowanie dla ogłoszenia {adId}?",
         "reroute_vacancy": "Wybierz rekrutację",
         "reroute_vacancy_id": "Podaj vacancy_id (lub zostaw puste — kandydat tylko z firmą)",
@@ -13741,30 +13747,34 @@
         "save_tenant": "Zapisz mapowanie tenanta"
       },
       "credentials": {
-        "title": "Dodaj połączenie",
+        "title": "Podłączone strony Facebook",
+        "routing_hint": "Leady są routowane po Page ID aktywnego połączenia — nie po ad account. Ad account ID to tylko metadane. Wyłącz lub usuń wiersz, żeby ten obszar przestał przyjmować tę stronę.",
         "plan_limit_reached": "Twój plan pozwala na {limit} credential(i) Meta. Ulepsz plan w Ustawienia → Billing, aby dodać kolejne.",
         "label": "Etykieta",
         "status": "Status",
         "webhook_secret": "Sekret webhooka",
         "access_token": "Access token",
         "statuses": {
-          "active": "active",
-          "disabled": "disabled",
+          "active": "aktywne",
+          "disabled": "wyłączone",
           "rotation_pending": "rotation_pending"
         },
         "fields": {
-          "ad_account_id": "ad_account_id",
-          "page_id": "page_id"
+          "ad_account_id": "Ad account ID",
+          "page_id": "Facebook Page ID"
         },
         "table": {
           "label": "Etykieta",
           "status": "Status",
           "ad_id": "ad_id",
-          "page_id": "page_id",
+          "ad_account": "Ad account",
+          "page_id": "Page ID",
           "signature": "Podpis"
         },
         "actions": {
-          "rotate": "Odśwież sekret"
+          "rotate": "Odśwież sekret",
+          "disable": "Wyłącz",
+          "enable": "Włącz"
         },
         "empty": "Brak zapisanych połączeń"
       },

@@ -56,11 +56,12 @@ async def test_process_normalized_lead_unmapped_ad_stays_needs_routing(db) -> No
         await session.execute(
             sa.text(
                 """
-                INSERT INTO meta_lead_settings (tenant_id, auto_create_enabled, leads_processing_mode_v1)
-                VALUES (:tenant_id, true, 'automatic')
+                INSERT INTO meta_lead_settings (tenant_id, auto_create_enabled, leads_processing_mode_v1, default_company_id)
+                VALUES (:tenant_id, true, 'automatic', NULL)
                 ON CONFLICT (tenant_id) DO UPDATE SET
                     auto_create_enabled = EXCLUDED.auto_create_enabled,
-                    leads_processing_mode_v1 = EXCLUDED.leads_processing_mode_v1
+                    leads_processing_mode_v1 = EXCLUDED.leads_processing_mode_v1,
+                    default_company_id = NULL
                 """
             ),
             {"tenant_id": tenant_id},
@@ -97,7 +98,8 @@ async def test_process_normalized_lead_unmapped_ad_stays_needs_routing(db) -> No
             row = await session.execute(
                 sa.text(
                     """
-                    SELECT status, error, vacancy_id, candidate_id, normalized->'vacancy_routing_fallback_v1'
+                    SELECT status, error, vacancy_id, candidate_id, company_id,
+                           normalized->'vacancy_routing_fallback_v1'
                     FROM leads
                     WHERE external_id = :external_id
                     LIMIT 1
@@ -105,11 +107,12 @@ async def test_process_normalized_lead_unmapped_ad_stays_needs_routing(db) -> No
                 ),
                 {"external_id": external_id},
             )
-            status, error, vacancy_id, candidate_id, fallback = row.fetchone()
+            status, error, vacancy_id, candidate_id, company_id, fallback = row.fetchone()
             assert status == "needs_routing"
             assert error == "AD_NOT_MAPPED"
             assert vacancy_id is None
             assert candidate_id is None
+            assert company_id is None
             assert fallback is None
     finally:
         async with async_session_maker() as session:

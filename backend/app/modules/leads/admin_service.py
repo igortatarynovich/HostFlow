@@ -781,13 +781,17 @@ async def delete_lead_message_template(db: AsyncSession, tenant_id: str, templat
 def _credential_to_schema(entry) -> MetaCredentialOut:
     decrypted_ad_account = decrypt_secret(entry.encrypted_ad_account_id)
     decrypted_page_id = decrypt_secret(entry.encrypted_page_id)
+    ad_account_id = (decrypted_ad_account or "").strip() or None
+    page_id = (decrypted_page_id or "").strip() or None
     return MetaCredentialOut(
         id=UUID(entry.id),
         label=entry.label,
         status=entry.status,  # type: ignore[arg-type]
         has_secret=bool(entry.encrypted_secret),
-        ad_account_last4=_mask_tail(decrypted_ad_account, keep=4),
-        page_id_masked=_mask_tail(decrypted_page_id, keep=4),
+        ad_account_id=ad_account_id,
+        page_id=page_id,
+        ad_account_last4=_mask_tail(ad_account_id, keep=4),
+        page_id_masked=_mask_tail(page_id, keep=4),
         created_at=entry.created_at,
         updated_at=entry.updated_at,
         last_verified_at=entry.last_verified_at,
@@ -835,6 +839,7 @@ async def update_credential(
         updates = payload.model_dump(exclude_unset=True)
     else:  # pragma: no cover
         updates = payload.dict(exclude_unset=True)
+    fields_set = getattr(payload, "model_fields_set", None) or set(updates.keys())
     secret_update = updates.pop("secret", None)
     access_update = updates.pop("access_token", None)
     ad_account_update = updates.pop("ad_account_id", None)
@@ -845,12 +850,18 @@ async def update_credential(
         "status": updates.get("status"),
         "encrypted_secret": encrypt_secret(secret_update) if secret_update is not None else None,
         "encrypted_access_token": encrypt_secret(access_update) if access_update is not None else None,
-        "encrypted_ad_account_id": encrypt_secret(ad_account_update) if ad_account_update is not None else None,
-        "encrypted_page_id": encrypt_secret(page_id_update) if page_id_update is not None else None,
     }
     if secret_update is not None:
         kwargs["last_rotation_at"] = now
     await crud.update_meta_credential(db, entry, **kwargs)
+    # Identifiers are not secrets; empty/null PATCH disconnects them from this tenant.
+    if "ad_account_id" in fields_set:
+        raw = str(ad_account_update).strip() if ad_account_update is not None else ""
+        entry.encrypted_ad_account_id = encrypt_secret(raw) if raw else None
+    if "page_id" in fields_set:
+        raw = str(page_id_update).strip() if page_id_update is not None else ""
+        entry.encrypted_page_id = encrypt_secret(raw) if raw else None
+    await db.flush()
     return _credential_to_schema(entry)
 
 

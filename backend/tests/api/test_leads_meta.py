@@ -6,9 +6,11 @@ import sqlalchemy as sa
 import hmac
 import hashlib
 
+from backend.app.core.crypto import encrypt_secret
 from backend.app.db.session import async_session_maker
 from backend.app.models import Candidate, Lead
 from backend.app.models.company import Company
+from backend.app.models.lead import MetaLeadCredential
 from backend.app.core.settings import settings
 from backend.app.modules.leads import webhook as meta_webhook_mod
 
@@ -522,6 +524,15 @@ async def test_meta_webhook_idempotent_processing(client, tenant_id, monkeypatch
         company_id = await _ensure_company(session, tenant_id)
         vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
         await _ensure_meta_settings(session, tenant_id, token)
+        session.add(
+            MetaLeadCredential(
+                tenant_id=tenant_id,
+                label=f"idem-{page_id}",
+                status="active",
+                encrypted_page_id=encrypt_secret(page_id),
+            )
+        )
+        await session.commit()
 
     inner = _meta_payload(
         vacancy_id,

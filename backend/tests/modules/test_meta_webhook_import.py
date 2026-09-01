@@ -7,8 +7,26 @@ import pytest
 import sqlalchemy as sa
 
 from backend.app.core.settings import settings
+from backend.app.core.crypto import encrypt_secret
 from backend.app.db.session import async_session_maker
+from backend.app.models.lead import MetaLeadCredential
 from backend.app.modules.leads import pipeline, webhook
+
+
+DEFAULT_TENANT_ID = "11111111-1111-1111-1111-111111111111"
+
+
+async def _ensure_page_credential(page_id: str, *, tenant_id: str = DEFAULT_TENANT_ID, status: str = "active") -> None:
+    async with async_session_maker() as session:
+        session.add(
+            MetaLeadCredential(
+                tenant_id=tenant_id,
+                label=f"page-{page_id}",
+                status=status,
+                encrypted_page_id=encrypt_secret(page_id),
+            )
+        )
+        await session.commit()
 
 
 async def _ensure_settings_row() -> None:
@@ -79,6 +97,7 @@ async def test_webhook_with_field_data_creates_lead(monkeypatch, client):
     suf = uuid.uuid4().hex[:12]
     page_id = f"PAGE-FIELD-{suf}"
     lead_id = f"lead-field-{suf}"
+    await _ensure_page_credential(page_id)
 
     payload = {
         "object": "page",
@@ -143,6 +162,7 @@ async def test_webhook_skeleton_does_not_overwrite_field_data(monkeypatch, clien
     suf = uuid.uuid4().hex[:12]
     page_a = f"SKE-PAGE-{suf}"
     lead_id = f"lead-skeleton-{suf}"
+    await _ensure_page_credential(page_a)
     payload_full = {
         "object": "page",
         "entry": [
@@ -283,6 +303,7 @@ async def test_webhook_resurrects_failed_lead(monkeypatch, client):
     monkeypatch.setattr(webhook.admin_service, "get_active_secret_candidates", no_signatures)
     lead_id = f"lead-resurrect-{uuid.uuid4().hex[:6]}"
     page_r = f"PAGE-R-{uuid.uuid4().hex[:12]}"
+    await _ensure_page_credential(page_r)
 
     payload_skeleton = {
         "object": "page",
@@ -408,6 +429,7 @@ async def test_webhook_graph_fallback(monkeypatch, client):
     suf = uuid.uuid4().hex[:12]
     page_g = f"PAGE-G-{suf}"
     lead_id = f"lead-graph-{suf}"
+    await _ensure_page_credential(page_g)
     payload = {
         "object": "page",
         "entry": [
@@ -491,3 +513,89 @@ async def test_webhook_graph_fallback(monkeypatch, client):
         status, phone = row.fetchone()
         assert status in ("processed", "needs_routing")
         assert phone == "+33123456789"
+
+
+@pytest.mark.anyio
+async def test_webhook_unknown_page_does_not_use_verify_token(monkeypatch, client):
+    await _ensure_settings_row()
+
+    async def no_signatures(*args, **kwargs):
+        return []
+
+    monkeypatch.setattr(webhook.admin_service, "get_active_secret_candidates", no_signatures)
+    page_id = f"PAGE-UNKNOWN-{uuid.uuid4().hex[:12]}"
+    lead_id = f"lead-unknown-{uuid.uuid4().hex[:12]}"
+    payload = {
+        "object": "page",
+        "entry": [
+            {
+                "id": page_id,
+                "changes": [
+                    {
+                        "field": "leadgen",
+                        "value": {
+                            "leadgen_id": lead_id,
+                            "page_id": page_id,
+                            "form_id": "FORM-UNKNOWN",
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+
+    resp = await client.post(
+        "/api/v1/leads/meta/webhook",
+        params={"verify_token": "hostflow123"},
+        content=json.dumps(payload),
+        headers=_signed_headers(payload),
+    )
+    assert resp.status_code == 403, resp.text
+    assert "Tenant not resolved" in resp.text
+
+    async with async_session_maker() as session:
+        row = await session.execute(
+            sa.text("SELECT COUNT(*) FROM leads WHERE external_id = :lead_id"),
+            {"lead_id": lead_id},
+        )
+        assert row.scalar_one() == 0
+
+
+@pytest.mark.anyio
+async def test_webhook_disabled_page_credential_is_rejected(monkeypatch, client):
+    await _ensure_settings_row()
+
+    async def no_signatures(*args, **kwargs):
+        return []
+
+    monkeypatch.setattr(webhook.admin_service, "get_active_secret_candidates", no_signatures)
+    page_id = f"PAGE-DISABLED-{uuid.uuid4().hex[:12]}"
+    lead_id = f"lead-disabled-{uuid.uuid4().hex[:12]}"
+    await _ensure_page_credential(page_id, status="disabled")
+    payload = {
+        "object": "page",
+        "entry": [
+            {
+                "id": page_id,
+                "changes": [
+                    {
+                        "field": "leadgen",
+                        "value": {
+                            "leadgen_id": lead_id,
+                            "page_id": page_id,
+                            "form_id": "FORM-DISABLED",
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+
+    resp = await client.post(
+        "/api/v1/leads/meta/webhook",
+        params={"verify_token": "hostflow123"},
+        content=json.dumps(payload),
+        headers=_signed_headers(payload),
+    )
+    assert resp.status_code == 403, resp.text
+    assert "Tenant not resolved" in resp.text

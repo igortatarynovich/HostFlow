@@ -798,6 +798,8 @@ class MetaCredentialOut(BaseModel):
     label: str
     status: MetaCredentialStatus
     has_secret: bool
+    ad_account_id: Optional[str] = None
+    page_id: Optional[str] = None
     ad_account_last4: Optional[str] = None
     page_id_masked: Optional[str] = None
     created_at: datetime

@@ -95,12 +95,15 @@ async def receive(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload") from exc
 
     # Page-bound credentials first: Graph token + app secret live on the credential row's tenant.
-    # Shared verify_token across tenants would otherwise pick the wrong tenant (e.g. Focus) and yield GRAPH_NO_TOKEN.
-    page_resolution = await admin_service.resolve_tenant_by_page_ids(
-        db, admin_service.extract_page_ids(parsed_payload)
-    )
+    # A page_id that no tenant owns must not fall through to a shared verify_token
+    # (that dump would land Work Host / other BM pages in Focus).
+    page_ids = admin_service.extract_page_ids(parsed_payload)
+    page_resolution = await admin_service.resolve_tenant_by_page_ids(db, page_ids)
     if page_resolution:
         tenant_id, signature_owner = page_resolution
+    elif page_ids:
+        logger.warning("Meta webhook: page_id %s is not connected to any tenant", page_ids)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant not resolved")
     else:
         token_resolution = await admin_service.resolve_tenant_by_verify_token(db, verify_token)
         if token_resolution:
