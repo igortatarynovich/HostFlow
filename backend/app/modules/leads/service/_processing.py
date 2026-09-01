@@ -32,6 +32,7 @@ from backend.app.entity_profile.decision_layer import (
 )
 from backend.app.entity_profile.outcome_executor import (
     apply_blocked_duplicate_outcome,
+    apply_prior_open_lead_duplicate_outcome,
     execute_create_candidate_outcome,
 )
 from backend.app.models import Candidate, Lead, OwnCompany, Tenant
@@ -702,6 +703,7 @@ async def process_normalized_lead(
         force_candidate_conversion=force_candidate_conversion,
         vacancy_id=str(vacancy.id) if vacancy else None,
         company_id=resolved_company_id,
+        current_lead_id=str(lead.id) if lead is not None else None,
     )
     decision_ctx = IngestDecisionContext(
         effective_processing_mode=effective_processing_mode,
@@ -725,6 +727,33 @@ async def process_normalized_lead(
 
     if ingest_decision.disposition == IngestDisposition.blocked_duplicate.value:
         duplicate = ingest_decision.duplicate_match.candidate
+        if duplicate is None and ingest_decision.duplicate_match.prior_lead is not None:
+            prior = ingest_decision.duplicate_match.prior_lead
+            await apply_prior_open_lead_duplicate_outcome(
+                db,
+                lead=lead,
+                normalized=normalized,
+                decision=ingest_decision,
+            )
+            await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+                db,
+                tenant_id=tenant_id,
+                lead_id=str(lead.id),
+                normalized=normalized,
+            )
+            return MetaLeadResult(
+                lead_id=lead.id,
+                status="duplicated",
+                vacancy_id=lead.vacancy_id or getattr(prior, "vacancy_id", None),
+                candidate_id=str(prior.candidate_id) if getattr(prior, "candidate_id", None) else None,
+                recruiter_id=None,
+                business_type=business_type,
+                outcome_entity_type="company" if is_sales_route_intent(route_intent) else "candidate",
+                outcome_entity_id=resolved_company_id if is_sales_route_intent(route_intent) else None,
+                outcome_entity_name=resolved_company_name if is_sales_route_intent(route_intent) else None,
+                error=None,
+                is_new=created_new,
+            )
         dup_id = await apply_blocked_duplicate_outcome(
             db,
             tenant_id=tenant_id,
@@ -759,11 +788,12 @@ async def process_normalized_lead(
             review_error = str(acq["unresolved_reason"])
         else:
             review_error = "DUPLICATE_REVIEW_PENDING"
+        dup_review = "duplicate_review" in (ingest_decision.blocking_reasons or [])
         now_marker = datetime.now(timezone.utc)
         await crud.update_lead(
             db,
             lead,
-            status="needs_routing",
+            status="duplicate_review" if dup_review else "needs_routing",
             vacancy_id=lead.vacancy_id,
             normalized=normalized,
             error=review_error,
@@ -791,7 +821,7 @@ async def process_normalized_lead(
         await db.commit()
         return MetaLeadResult(
             lead_id=lead.id,
-            status="needs_routing",
+            status="duplicate_review" if dup_review else "needs_routing",
             vacancy_id=lead.vacancy_id,
             candidate_id=None,
             recruiter_id=None,

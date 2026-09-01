@@ -24,6 +24,7 @@ from backend.app.entity_profile.ingest_runtime import (
 from backend.app.entity_profile.outcome_executor import (
     OutcomeExecutionResult,
     apply_blocked_duplicate_outcome,
+    apply_prior_open_lead_duplicate_outcome,
     execute_create_candidate_outcome,
     execute_create_client_outcome,
     execute_create_service_order_outcome,
@@ -79,6 +80,7 @@ __all__ = [
     "IngestEnvelope",
     "UnknownCanonicalFieldError",
     "apply_blocked_duplicate_outcome",
+    "apply_prior_open_lead_duplicate_outcome",
     "ensure_platform_entity_profile_catalog",
     "compile_draft",
     "ensure_tenant_entity_profile_defaults",

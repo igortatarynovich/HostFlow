@@ -39,6 +39,7 @@ class DecisionInput:
     company_id: Optional[str] = None
     force_candidate_conversion: bool = False
     existing_candidate_id: Optional[str] = None
+    current_lead_id: Optional[str] = None
 
     @classmethod
     def from_normalized(
@@ -51,6 +52,7 @@ class DecisionInput:
         vacancy_id: Optional[str] = None,
         company_id: Optional[str] = None,
         existing_candidate_id: Optional[str] = None,
+        current_lead_id: Optional[str] = None,
     ) -> DecisionInput:
         envelope = normalized.get("ingest_envelope_v1")
         if not isinstance(envelope, dict):
@@ -76,6 +78,7 @@ class DecisionInput:
             company_id=str(company_id or "").strip() or None,
             force_candidate_conversion=bool(force_candidate_conversion),
             existing_candidate_id=str(existing_candidate_id or "").strip() or None,
+            current_lead_id=str(current_lead_id or "").strip() or None,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -146,6 +149,7 @@ class DecisionResult:
             "duplicate_match": {
                 "level": dup.level,
                 "candidate_id": str(dup.candidate.id) if dup.candidate is not None else None,
+                "prior_lead_id": str(dup.prior_lead.id) if dup.prior_lead is not None else None,
                 "reasons": list(dup.reasons),
                 "hr_blockers": list(dup.hr_blockers),
                 "needs_duplicate_review": dup.needs_duplicate_review,
@@ -314,6 +318,7 @@ async def evaluate_ingest_decision(
         normalized=decision_input.normalized_payload,
         email=email,
         phone=phone,
+        exclude_lead_id=decision_input.current_lead_id,
     )
 
     warnings: list[str] = list(outcome_resolution.warnings)
@@ -350,6 +355,20 @@ async def evaluate_ingest_decision(
                 blocking_reasons=blocking + ["exact_duplicate"],
                 warnings=warnings,
             )
+
+    if (
+        duplicate_match.level == "exact"
+        and duplicate_match.prior_lead is not None
+        and duplicate_match.candidate is None
+    ):
+        return DecisionResult(
+            disposition=IngestDisposition.blocked_duplicate.value,
+            outcome_resolution=outcome_resolution,
+            duplicate_match=duplicate_match,
+            may_create_candidate=False,
+            blocking_reasons=blocking + ["exact_duplicate_lead"],
+            warnings=warnings,
+        )
 
     if duplicate_match.needs_duplicate_review:
         blocking.append("duplicate_review")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,6 +87,53 @@ async def apply_blocked_duplicate_outcome(
     except Exception:
         await db.rollback()
     return str(duplicate.id)
+
+
+async def apply_prior_open_lead_duplicate_outcome(
+    db: AsyncSession,
+    *,
+    lead: Lead,
+    normalized: dict[str, Any],
+    decision: DecisionResult,
+) -> Optional[str]:
+    """Collapse a later ingest onto an existing open lead (no candidate yet)."""
+    prior = decision.duplicate_match.prior_lead
+    if prior is None:
+        raise ValueError("blocked_duplicate lead match requires prior_lead")
+    dm = (
+        dict(normalized.get("duplicate_match_v1") or {})
+        if isinstance(normalized.get("duplicate_match_v1"), dict)
+        else {}
+    )
+    dm.update(
+        {
+            "level": decision.duplicate_match.level,
+            "prior_lead_id": str(prior.id),
+            "reasons": list(decision.duplicate_match.reasons),
+            "error_code": "EXACT_DUPLICATE_OPEN_LEAD",
+            "stamped_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    normalized["duplicate_match_v1"] = dm
+    from backend.app.modules.leads.duplicate_resolution import record_repeat_open_lead_intake
+
+    await record_repeat_open_lead_intake(
+        prior=prior,
+        duplicate_lead=lead,
+        match_reasons=list(decision.duplicate_match.reasons),
+    )
+    await crud.update_lead(
+        db,
+        lead,
+        status="duplicated",
+        vacancy_id=lead.vacancy_id or getattr(prior, "vacancy_id", None),
+        normalized=normalized,
+        error=None,
+    )
+    await db.flush()
+    await db.commit()
+    cid = str(getattr(prior, "candidate_id", None) or "").strip()
+    return cid or None
 
 
 async def execute_create_candidate_outcome(

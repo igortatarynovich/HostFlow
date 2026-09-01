@@ -35,6 +35,7 @@ class LeadDuplicateMatch:
     candidate: Optional[Candidate]
     reasons: list[str]
     hr_blockers: list[str]
+    prior_lead: Optional[Lead] = None
 
     @property
     def needs_duplicate_review(self) -> bool:
@@ -322,6 +323,93 @@ async def _find_probable_by_name_and_phone_fragment(
     return None
 
 
+def _lead_phone_digits_expr():
+    return func.regexp_replace(
+        func.coalesce(Lead.normalized["phone"].as_string(), ""),
+        r"[^0-9]",
+        "",
+        "g",
+    )
+
+
+async def _find_prior_open_lead_by_contact(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    email_lower: Optional[str],
+    phone_digits: str,
+    exclude_lead_id: Optional[str],
+) -> tuple[Optional[Lead], list[str]]:
+    """Oldest non-terminal lead with the same email or operational phone."""
+    base = [
+        Lead.tenant_id == tenant_id,
+        func.lower(func.coalesce(Lead.status, "")).notin_(("duplicated", "rejected")),
+    ]
+    excl = str(exclude_lead_id or "").strip()
+    if excl:
+        base.append(Lead.id != excl)
+
+    if email_lower:
+        stmt = (
+            select(Lead)
+            .where(
+                and_(
+                    *base,
+                    func.lower(func.coalesce(Lead.normalized["email"].as_string(), "")) == email_lower,
+                )
+            )
+            .order_by(Lead.created_at.asc())
+            .limit(1)
+        )
+        hit = (await db.execute(stmt)).scalar_one_or_none()
+        if hit is not None:
+            return hit, ["lead_email"]
+
+    if len(phone_digits) >= 9:
+        last9 = phone_digits[-9:]
+        stored = _lead_phone_digits_expr()
+        stmt = (
+            select(Lead)
+            .where(
+                and_(
+                    *base,
+                    stored != "",
+                    or_(stored == phone_digits, stored.like(f"%{last9}")),
+                )
+            )
+            .order_by(Lead.created_at.asc())
+            .limit(1)
+        )
+        hit = (await db.execute(stmt)).scalar_one_or_none()
+        if hit is not None:
+            return hit, ["lead_phone_operational"]
+    return None, []
+
+
+async def record_repeat_open_lead_intake(
+    *,
+    prior: Lead,
+    duplicate_lead: Lead,
+    match_reasons: list[str],
+) -> None:
+    """Trail on the surviving open lead when a later ingest is the same person."""
+    n = dict(prior.normalized or {}) if isinstance(prior.normalized, dict) else {}
+    rows = n.get("lead_repeat_intakes_v1")
+    if not isinstance(rows, list):
+        rows = []
+    rows.append(
+        {
+            "lead_id": str(duplicate_lead.id),
+            "source": duplicate_lead.source,
+            "external_id": duplicate_lead.external_id,
+            "ingested_at": datetime.now(timezone.utc).isoformat(),
+            "match_reasons": list(match_reasons),
+        }
+    )
+    n["lead_repeat_intakes_v1"] = rows[-50:]
+    prior.normalized = n
+
+
 async def resolve_lead_duplicate_match(
     db: AsyncSession,
     *,
@@ -330,6 +418,7 @@ async def resolve_lead_duplicate_match(
     normalized: dict[str, Any],
     email: Optional[str],
     phone: Optional[str],
+    exclude_lead_id: Optional[str] = None,
 ) -> LeadDuplicateMatch:
     """Classify duplicate match for a normalized lead payload."""
     ignored = duplicate_ignored_candidate_ids(normalized)
@@ -428,6 +517,35 @@ async def resolve_lead_duplicate_match(
             candidate=probable,
             reasons=["name_and_phone_fragment"],
             hr_blockers=blockers,
+        )
+
+    prior, prior_reasons = await _find_prior_open_lead_by_contact(
+        db,
+        tenant_id=tenant_id,
+        email_lower=em,
+        phone_digits=phone_digits,
+        exclude_lead_id=exclude_lead_id,
+    )
+    if prior is not None:
+        cid = str(getattr(prior, "candidate_id", None) or "").strip()
+        if cid:
+            cand = await db.get(Candidate, cid)
+            cand = _candidate_unless_ignored(cand, ignored)
+            if cand is not None and getattr(cand, "deleted_at", None) is None:
+                blockers = await _hr_duplicate_blockers(db, tenant_id=tenant_id, candidate_id=str(cand.id))
+                return LeadDuplicateMatch(
+                    level="exact",
+                    candidate=cand,
+                    reasons=list(prior_reasons) + ["prior_lead_candidate"],
+                    hr_blockers=blockers,
+                    prior_lead=prior,
+                )
+        return LeadDuplicateMatch(
+            level="exact",
+            candidate=None,
+            reasons=list(prior_reasons) or ["prior_open_lead"],
+            hr_blockers=[],
+            prior_lead=prior,
         )
 
     return LeadDuplicateMatch(level="none", candidate=None, reasons=[], hr_blockers=[])
@@ -564,6 +682,8 @@ def stamp_duplicate_review_normalized_v1(
         "error_code": error_code,
         "stamped_at": datetime.now(timezone.utc).isoformat(),
     }
+    if match.prior_lead is not None:
+        stamp["prior_lead_id"] = str(match.prior_lead.id)
     prior = build_duplicate_prior_summary(match.candidate)
     if prior:
         stamp["prior"] = prior
