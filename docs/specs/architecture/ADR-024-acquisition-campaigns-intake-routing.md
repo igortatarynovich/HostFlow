@@ -436,6 +436,8 @@ Acquisition **не** дублирует automation engine: триггеры/acti
 
 Модульные хосты — контекст своего target.
 
+**Operator disclosure (SPA `/app/marketing`):** эти пять экранов — карта capability, не обязательный first-paint. Порядок зон, hide-when-empty и куда уходят Flight / Source / Ad-binding на первом экране — [`../frontend/ACQUISITION_MARKETING_IA_V1.md`](../frontend/ACQUISITION_MARKETING_IA_V1.md). Доменные имена не меняются; UI может не показывать слово «Flight», пока волна одна (§1.2).
+
 ### 13. Итоговая модель (глоссарий)
 
 ```text

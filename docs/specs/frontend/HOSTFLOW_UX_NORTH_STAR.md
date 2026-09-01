@@ -47,6 +47,7 @@ This north star applies to:
 - Fleet entities
 - Compliance entities
 - Documents entities
+- Acquisition operator surface (`/app/marketing`) — zone contract [`ACQUISITION_MARKETING_IA_V1.md`](ACQUISITION_MARKETING_IA_V1.md)
 - future operational modules
 
 ## Derived Rules

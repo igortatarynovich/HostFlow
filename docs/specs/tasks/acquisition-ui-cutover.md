@@ -12,6 +12,8 @@
 **Shipped tip:** `integration/release-product-a-b` @ Diagnostics #205 + C-7  
 **Active slice:** [Source Diagnostics PR9](acquisition-source-diagnostics.md) drift notification Wave-1 — `/app/marketing/diagnostics`
 
+**Operator IA (presentation, unscheduled):** [`ACQUISITION_MARKETING_IA_V1.md`](../frontend/ACQUISITION_MARKETING_IA_V1.md) — first-paint disclosure for `/app/marketing` and `/app/marketing/:campaignId`. Does **not** reopen C-1…C-7 and does **not** amend the Product Track.
+
 > Stage 4 **runtime** is DONE. Stage 4 **product/UI cutover** is **PASS** (C-7).  
 > Operator launch path is Marketing-only: Connect → Source → Test Lead → Mapping → Form → Campaign → Flight → Lead.  
 > Legacy Подборы launch surfaces are retired/read-only; historical `acquisition_v1` JSON kept (inventory documented in C-7 brief §8).

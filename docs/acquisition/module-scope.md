@@ -105,6 +105,14 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 
 **CampaignTemplate** catalog + instantiate — после V1 (ориентир V2). Multi-Flight UX — тоже после V1.
 
+## Operator UI (presentation)
+
+Доменная модель **не** меняется: `Campaign → Flight → Endpoint → Submission → Result → Outcome`.
+
+Операторский SPA `/app/marketing` **не** рисует этот граф на первом экране. Порядок раскрытия зафиксирован в [`../specs/frontend/ACQUISITION_MARKETING_IA_V1.md`](../specs/frontend/ACQUISITION_MARKETING_IA_V1.md).
+
+Две плоскости данных (тот же документ): **A** — живые заявки и судьба Result/Outcome в HostFlow; **B** — рекламные расходы и производные (CPL и т.д.) только из `acq_flight_spend_entries`. Live Meta Ads Insights **не** является SoT и не требуется для UI. Ручной импорт Meta export — писатель в существующий spend SoT (не второй ledger). Слово «Flight» на Overview можно не показывать, пока волна одна (ADR-024 §1.2). Это не продукт `marketing.*`. Реализация контракта **не** сдвигает Product Track.
+
 ## Anti-scope (Stage 3A / V1)
 
 - Не Marketing product / `marketing.*`  

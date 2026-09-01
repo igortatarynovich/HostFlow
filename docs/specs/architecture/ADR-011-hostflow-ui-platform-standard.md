@@ -2,7 +2,7 @@
 
 **Статус:** Accepted (целевая модель + фиксация текущей имплементации).  
 **Область:** HostFlow SPA (`hostflow-frontend`), публичные формы/порталы на том же стеке; маркетинговые страницы — в рамках той же **палитры и типографики**, но с отдельными layout-правилами.  
-**Связано с:** [`ADR-010`](ADR-010-unified-resource-list-shell.md) (профиль списков), [`pipedesign.md`](../../pipedesign.md) (визуальное направление лендинга), [`pipe.md`](../../pipe.md) (продуктовый blueprint).
+**Связано с:** [`ADR-010`](ADR-010-unified-resource-list-shell.md) (профиль списков), [`pipedesign.md`](../../pipedesign.md) (визуальное направление лендинга), [`pipe.md`](../../pipe.md) (продуктовый blueprint). Операторский Acquisition SPA: [`../frontend/ACQUISITION_MARKETING_IA_V1.md`](../frontend/ACQUISITION_MARKETING_IA_V1.md) (зоны и disclosure; без новых примитивов).
 
 ## 1. Иерархия источников правды
 
@@ -137,6 +137,7 @@
 
 - [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md)  
 - [`pipedesign.md`](../../pipedesign.md)  
+- [`../frontend/ACQUISITION_MARKETING_IA_V1.md`](../frontend/ACQUISITION_MARKETING_IA_V1.md)  
 - `hostflow-frontend/tailwind.config.cjs`  
 - `hostflow-frontend/src/styles/components.css`  
 
