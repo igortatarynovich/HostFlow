@@ -3,6 +3,8 @@
 Donor compose: ``campaign_source_cards.enrich_intake_source_card``.
 When ``form_name`` / page name are missing in SoT, hydrate once from Meta Graph
 (page access token) and cache ``form_name`` on ``meta_lead_form_mappings``.
+Connected Pages also contribute active ``/{page-id}/leadgen_forms`` so Connect
+Source is not empty before the first lead.
 
 See ``docs/specs/tasks/acquisition-ui-cutover-connect-source-picker-enrichment.md``.
 """
@@ -292,6 +294,51 @@ def parse_discovered_form_id(option_id: str) -> Optional[str]:
     return fid or None
 
 
+async def discover_leadgen_forms_from_connected_pages(
+    db: AsyncSession, *, tenant_id: str
+) -> list[dict[str, Optional[str]]]:
+    """Active Lead Forms on Pages with stored Meta credentials (no wait for first lead)."""
+    from backend.app.core.crypto import decrypt_secret
+    from backend.app.modules.leads import crud as leads_crud
+    from backend.app.modules.leads.meta_marketing_graph import fetch_page_leadgen_forms
+
+    entries = await leads_crud.list_meta_credentials(db, tenant_id=tenant_id)
+    out: list[dict[str, Optional[str]]] = []
+    seen: set[str] = set()
+    for entry in entries:
+        if str(getattr(entry, "status", "") or "").strip().lower() != "active":
+            continue
+        page_id = (decrypt_secret(entry.encrypted_page_id) or "").strip()
+        token = (decrypt_secret(entry.encrypted_access_token) or "").strip()
+        if not page_id or not token:
+            continue
+        try:
+            rows = await fetch_page_leadgen_forms(page_id, token, limit=50)
+        except Exception as exc:
+            logger.info("graph leadgen_forms failed page_id=%s: %s", page_id, exc)
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            status = str(row.get("status") or "ACTIVE").strip().upper()
+            if status not in {"", "ACTIVE"}:
+                continue
+            fid = str(row.get("id") or "").strip()
+            if not fid or fid in seen:
+                continue
+            seen.add(fid)
+            name = str(row.get("name") or "").strip() or None
+            out.append(
+                {
+                    "form_id": fid,
+                    "page_id": page_id,
+                    "form_name": name,
+                    "source": "meta",
+                }
+            )
+    return out
+
+
 async def build_intake_source_options(
     db: AsyncSession,
     *,
@@ -331,6 +378,26 @@ async def build_intake_source_options(
         discovered_rows = await leads_crud.list_discovered_meta_forms_from_leads(
             db, tenant_id=str(tenant_id), source="meta", limit=50
         )
+        mapping_rows = await leads_crud.list_meta_form_mapping_rows(
+            db, tenant_id=str(tenant_id), source="meta"
+        )
+        for row in mapping_rows:
+            fid = str(getattr(row, "form_id", "") or "").strip()
+            if not fid:
+                continue
+            discovered_rows.append(
+                {
+                    "form_id": fid,
+                    "page_id": str(getattr(row, "page_id", "") or "").strip() or None,
+                    "form_name": str(getattr(row, "form_name", "") or "").strip() or None,
+                    "source": "meta",
+                }
+            )
+        if hydrate_graph:
+            graph_rows = await discover_leadgen_forms_from_connected_pages(
+                db, tenant_id=str(tenant_id)
+            )
+            discovered_rows.extend(graph_rows)
         for row in discovered_rows:
             fid = str(row.get("form_id") or "").strip()
             if fid and fid not in known_form_ids:
@@ -403,6 +470,8 @@ async def build_intake_source_options(
                 lead_form_name = str(getattr(meta_map, "form_name", None) or "").strip() or None
                 if not page_id:
                     page_id = str(getattr(meta_map, "page_id", None) or "").strip() or None
+            if not lead_form_name:
+                lead_form_name = str(row.get("form_name") or "").strip() or None
             ads = list(sample_ads_map.get(fid, []))
             all_ad_ids.update(ads)
             code = f"meta-form-{fid}"
@@ -472,6 +541,7 @@ async def build_intake_source_options(
 __all__ = [
     "DISCOVERED_ID_PREFIX",
     "build_intake_source_options",
+    "discover_leadgen_forms_from_connected_pages",
     "discovered_option_id",
     "parse_discovered_form_id",
     "sample_ad_ids_by_form_id",

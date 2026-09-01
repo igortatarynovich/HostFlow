@@ -35,6 +35,7 @@ On Connect Source → Meta Lead Ads, each option shows enough to pick without op
 - **Page** — name from Graph when token available; else page ID
 - recent **Ads** with Graph / `meta_ads_map.note` / vacancy labels when available
 - optional: last submission timestamp
+- **empty catalog is not a lock:** picker lists Lead Forms from the connected Page (`/{page-id}/leadgen_forms`) and saved mappings, not only forms already seen on leads
 
 ---
 

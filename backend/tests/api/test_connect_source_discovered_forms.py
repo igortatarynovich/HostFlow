@@ -14,7 +14,7 @@ from backend.app.acquisition.connect_source_picker import (
 )
 from backend.app.db.session import async_session_maker
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
-from backend.app.models.lead import Lead
+from backend.app.models.lead import Lead, MetaLeadFormMapping
 from backend.app.models.own_company import OwnCompany
 from backend.tests.conftest import _init_data, _set_tenant
 
@@ -166,6 +166,83 @@ async def test_intake_source_options_includes_discovered_meta_forms(
     assert discovered["id"] == discovered_option_id(form_id)
     assert discovered["provider"] == "meta"
     assert str(ad_id) in (discovered.get("sample_ad_ids") or [])
+
+
+@pytest.mark.asyncio
+async def test_intake_source_options_includes_saved_meta_form_mappings(
+    client: AsyncClient, auth_headers: dict, tenant_id: str
+) -> None:
+    await _init_data()
+    own_company_id = await _default_own_company_id(tenant_id)
+    headers = {**auth_headers, "X-Own-Company-Id": own_company_id}
+    form_id = f"7{uuid4().int % 10**15:015d}"
+    page_id = "259905353877064"
+
+    async with async_session_maker() as session:
+        await _set_tenant(session, tenant_id)
+        session.add(
+            MetaLeadFormMapping(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                source="meta",
+                form_id=form_id,
+                page_id=page_id,
+                form_name="CE Drivers mapping",
+                mapping_rules=[],
+            )
+        )
+        await session.commit()
+
+    resp = await client.get(
+        "/api/v1/platform/campaigns/intake-source-options",
+        headers=headers,
+        params={"provider": "meta"},
+    )
+    assert resp.status_code == 200, resp.text
+    by_form = {str(r.get("meta_form_id") or ""): r for r in resp.json()}
+    assert form_id in by_form
+    row = by_form[form_id]
+    assert row["needs_create"] is True
+    assert row["lead_form_name"] == "CE Drivers mapping"
+    assert row["page_id"] == page_id
+
+
+@pytest.mark.asyncio
+async def test_intake_source_options_includes_graph_page_forms(
+    client: AsyncClient, auth_headers: dict, tenant_id: str, monkeypatch
+) -> None:
+    await _init_data()
+    own_company_id = await _default_own_company_id(tenant_id)
+    headers = {**auth_headers, "X-Own-Company-Id": own_company_id}
+    form_id = f"6{uuid4().int % 10**15:015d}"
+
+    async def _fake_graph(_db, *, tenant_id: str):  # noqa: ARG001
+        return [
+            {
+                "form_id": form_id,
+                "page_id": "111222333",
+                "form_name": "Graph CE form",
+                "source": "meta",
+            }
+        ]
+
+    monkeypatch.setattr(
+        "backend.app.acquisition.connect_source_picker.discover_leadgen_forms_from_connected_pages",
+        _fake_graph,
+    )
+
+    resp = await client.get(
+        "/api/v1/platform/campaigns/intake-source-options",
+        headers=headers,
+        params={"provider": "meta"},
+    )
+    assert resp.status_code == 200, resp.text
+    by_form = {str(r.get("meta_form_id") or ""): r for r in resp.json()}
+    assert form_id in by_form
+    row = by_form[form_id]
+    assert row["needs_create"] is True
+    assert row["lead_form_name"] == "Graph CE form"
+    assert row["page_id"] == "111222333"
 
 
 @pytest.mark.asyncio

@@ -271,7 +271,7 @@ export default function MarketingConnectSourcePage() {
               </MarketingOptionCard>
               <MarketingOptionCard
                 selected={sourceKind === 'meta'}
-                disabled={!canMeta || !metaSources.length}
+                disabled={!canMeta}
                 onClick={() => {
                   setSourceKind('meta')
                   setFormId('')
@@ -372,6 +372,22 @@ export default function MarketingConnectSourcePage() {
                     </button>
                   )
                 ) : null}
+              </div>
+            ) : null}
+
+            {sourceKind === 'meta' && canMeta && !metaSources.length ? (
+              <div
+                className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950"
+                data-testid="marketing-connect-meta-empty"
+              >
+                <p>{t('app.marketing.connect.meta_empty_detail')}</p>
+                <Link
+                  to={CRM_APP_PATHS.settingsIntegrationsMeta}
+                  className="btn-primary btn-sm inline-flex"
+                  data-testid="marketing-connect-open-meta"
+                >
+                  {t('app.marketing.connect.open_meta')}
+                </Link>
               </div>
             ) : null}
 

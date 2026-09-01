@@ -73,6 +73,9 @@ describe('C-6 Marketing Forms IA', () => {
     expect(src).toContain('marketing-connect-create-open')
     expect(src).toContain('marketing-connect-create-submit')
     expect(src).toContain('CRM_APP_PATHS.marketingForms')
+    expect(src).toContain('CRM_APP_PATHS.settingsIntegrationsMeta')
+    expect(src).toContain('marketing-connect-open-meta')
+    expect(src).toContain('marketing-connect-meta-empty')
   })
 
   it('Settings Form Builder library opens the canvas and can archive unused forms', () => {

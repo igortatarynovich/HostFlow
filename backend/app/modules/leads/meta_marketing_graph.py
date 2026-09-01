@@ -38,6 +38,18 @@ async def fetch_page_node(page_id: str, access_token: str) -> dict[str, Any]:
     return await _graph_get(str(page_id), access_token=access_token, params={"fields": "id,name"})
 
 
+async def fetch_page_leadgen_forms(
+    page_id: str, access_token: str, *, limit: int = 50
+) -> list[dict[str, Any]]:
+    """Lead Forms published on a connected Facebook Page (Connect Source picker)."""
+    return await _graph_get_paged(
+        f"{page_id}/leadgen_forms",
+        access_token=access_token,
+        params={"fields": "id,name,status,locale"},
+        limit=limit,
+    )
+
+
 async def fetch_ad_node(ad_id: str, access_token: str) -> dict[str, Any]:
     fields = "id,name,status,effective_status,campaign_id,adset_id"
     return await _graph_get(str(ad_id), access_token=access_token, params={"fields": fields})

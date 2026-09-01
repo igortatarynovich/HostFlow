@@ -1062,8 +1062,9 @@ class IntakeSourceOptionOut(BaseModel):
     """Picker option for Marketing Workspace — bindable IntakeSourceProfile rows.
 
     Enrichment: ``campaign_source_cards`` + optional Meta Graph hydrate
-    (``connect_source_picker``). Discovered Meta forms from leads may appear with
-    ``needs_create=true`` until Connect materializes a profile.
+    (``connect_source_picker``). Discovered Meta forms from the connected Page,
+    saved mappings, or leads may appear with ``needs_create=true`` until Connect
+    materializes a profile.
     """
 
     id: str
@@ -1095,8 +1096,9 @@ async def list_intake_source_options(
 ):
     """List active intake sources for the current company (Marketing setup picker).
 
-    For provider=meta (or unset), also includes Meta Lead Forms discovered from
-    recent leads that are not yet IntakeSourceProfile rows (``needs_create``).
+    For provider=meta (or unset), also includes Meta Lead Forms from connected Pages
+    (Graph), saved mappings, and recent leads that are not yet IntakeSourceProfile
+    rows (``needs_create``).
     """
     from backend.app.acquisition.connect_source_picker import build_intake_source_options
 
