@@ -21,7 +21,7 @@ from backend.app.services.tenant_quota import sum_file_entries_bytes
     "plan,expected",
     [
         ("starter", None),
-        ("trial", None),
+        ("trial", 10),
         ("free", None),
         ("solo", None),
         ("team", 10),
@@ -38,11 +38,22 @@ def test_focus_personnel_unlocks_tier_gates() -> None:
     assert automation_rules_enabled_cap("starter", tenant_id=FOCUS_PERSONNEL_TENANT_ID) == 10_000
 
 
+def test_trial_unlocks_team_tier_feature_flags() -> None:
+    """SSOT: 30-day trial is full product (Team-tier flags), not Solo paywall."""
+    assert plan_allows_team_tier_features("trial") is True
+    assert plan_allows_team_tier_features("starter") is False
+    assert plan_allows_team_tier_features("solo") is False
+    from backend.app.services.plan_feature_gates import plan_allows_meta_leads_oauth
+
+    assert plan_allows_meta_leads_oauth("trial") is True
+    assert plan_allows_meta_leads_oauth("starter") is False
+
+
 @pytest.mark.parametrize(
     ("plan", "bucket"),
     [
         ("starter", "starter"),
-        ("trial", "starter"),
+        ("trial", "team"),
         ("agency_basic", "team"),
         ("team", "team"),
         ("business", "pro"),

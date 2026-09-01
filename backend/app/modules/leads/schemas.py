@@ -539,7 +539,7 @@ class LeadNextActionsResponse(BaseModel):
     plan_code: str = Field(default="starter", description="Resolved TenantLicense.plan (lowercase).")
     nba_tier: Literal["solo", "team"] = Field(
         default="solo",
-        description="solo: starter/trial/free/solo — some NBA groups may be locked; team: Team-tier and above.",
+        description="solo: starter/free/solo — some NBA groups may be locked; team: Team-tier, trial, and above.",
     )
     groups: List[NextActionGroupOut] = Field(default_factory=list)
 

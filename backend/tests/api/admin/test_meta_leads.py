@@ -593,6 +593,43 @@ async def test_meta_self_serve_onboarding_includes_oauth_flags(client, manager_h
 
 
 @pytest.mark.anyio
+async def test_meta_self_serve_onboarding_oauth_flags_on_trial_plan(
+    client, manager_headers, tenant_id, monkeypatch
+):
+    monkeypatch.setattr(settings, "meta_leads_app_id", "1102404865044655", raising=False)
+    monkeypatch.setattr(settings, "meta_leads_shared_app_secret", "sec", raising=False)
+    monkeypatch.setattr(settings, "frontend_url", "https://app.test.example", raising=False)
+    monkeypatch.setattr(settings, "meta_leads_oauth_redirect_uri", None, raising=False)
+    async with async_session_maker() as session:
+        await session.execute(
+            sa.text("UPDATE tenant_licenses SET plan = 'trial' WHERE tenant_id = :t"),
+            {"t": tenant_id},
+        )
+        await session.commit()
+    resp = await client.get("/api/v1/settings/leads/meta/self-serve-onboarding", headers=manager_headers)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data.get("oauth_quick_connect_enabled") is True
+    assert data.get("meta_oauth_plan_allowed") is True
+    assert data.get("meta_oauth_server_ready") is True
+
+
+@pytest.mark.anyio
+async def test_meta_oauth_start_allowed_on_trial_plan(client, manager_headers, tenant_id, monkeypatch):
+    monkeypatch.setattr(settings, "meta_leads_app_id", "1102404865044655", raising=False)
+    monkeypatch.setattr(settings, "meta_leads_shared_app_secret", "sec", raising=False)
+    monkeypatch.setattr(settings, "frontend_url", "https://app.test.example", raising=False)
+    async with async_session_maker() as session:
+        await session.execute(
+            sa.text("UPDATE tenant_licenses SET plan = 'trial' WHERE tenant_id = :t"),
+            {"t": tenant_id},
+        )
+        await session.commit()
+    resp = await client.post("/api/v1/settings/leads/meta/oauth/start", headers=manager_headers)
+    assert resp.status_code != 403, resp.text
+
+
+@pytest.mark.anyio
 async def test_meta_oauth_start_403_on_starter_plan(client, manager_headers, tenant_id):
     async with async_session_maker() as session:
         await session.execute(

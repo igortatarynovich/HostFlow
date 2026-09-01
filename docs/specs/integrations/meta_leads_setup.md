@@ -177,7 +177,7 @@ On **Team-tier plans and above**, workspace **administrators** can use **Connect
 | --- | --- |
 | `META_LEADS_OAUTH_REDIRECT_URI` | Optional. Overrides the redirect URI (must match Meta app **Valid OAuth Redirect URIs** exactly). Default: `{FRONTEND_URL}/app/settings/integrations/meta`. |
 
-Starter / trial / solo tenants receive **403** with `code: plan_meta_leads_oauth`.
+Starter / solo tenants receive **403** with `code: plan_meta_leads_oauth`. **Trial** tenants are allowed (SSOT: 30-day full product / Team-tier flags).
 
 ---
 

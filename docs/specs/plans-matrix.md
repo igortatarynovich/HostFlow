@@ -12,7 +12,7 @@
 
 - **Внутренний код плана** (`plan_code`): `starter`, `team`, `pro`, `enterprise` (TODO 2.1.C). Используется в `TenantLicense.plan`, в Stripe metadata, в проверках кода.
 - **Маркетинговое имя:** `Solo`, `Team`, `Business`, `Enterprise`. Только в UI и лендинге.
-- **Trial:** мета-статус `subscription.status='trial'`. Сейчас мапится в `starter`-каплы — должен иметь собственные SSOT-капы (TODO 2.1.D).
+- **Trial:** мета-статус `subscription.status='trial'` или `TenantLicense.plan='trial'`. Фичи — уровень Team (включая Meta OAuth); объём — SSOT trial-капы (50 лидов / 20 conversion / 2 portal shares / 5 automation runs), не Solo paywall.
 
 ---
 
@@ -60,12 +60,12 @@
 
 ## 4. Фичи (вкл./выкл. по тарифам)
 
-(Источник: `plan_feature_gates.py` + `useTeamTierFeatures.ts`. «Team-tier features» = всё, что закрыто для `_TEAM_TIER_BLOCKED_PLANS = {starter, trial, free, solo}`.)
+(Источник: `plan_feature_gates.py` + `useTeamTierFeatures.ts`. «Team-tier features» = всё, что закрыто для `_TEAM_TIER_BLOCKED_PLANS = {starter, free, solo}`. **`trial` не в этом наборе** — trial открывает Team-фичи.)
 
 | Фича | Solo | Team | Business | Enterprise | Where enforced |
 |------|------|------|----------|------------|----------------|
 | **Лиды — Meta intake** | ✓ (1 credential, 25 mapping rules) | ✓ unlim | ✓ unlim | ✓ | `ensure_meta_lead_*` |
-| **Лиды — Meta OAuth quick-connect** | ✗ | ✓ | ✓ | ✓ | `ensure_meta_leads_oauth_allowed` |
+| **Лиды — Meta OAuth quick-connect** | ✗ (trial: ✓) | ✓ | ✓ | ✓ | `ensure_meta_leads_oauth_allowed` |
 | **Лиды — Generic JSON inbound webhook** | ✗ | ✓ | ✓ | ✓ | `ensure_leads_generic_inbound_webhook_allowed` |
 | **Лиды — Custom field definitions (active, non-system)** | 10 | unlim | unlim | unlim | `ensure_lead_custom_field_definition_create_allowed` (+ pack `pack_custom_fields_25/100`) |
 | **Лиды — Lead forms (active)** | 0 | base + pack | base + pack | base + pack | `lead_forms_quota` (+ `pack_lead_forms_5`) |
@@ -103,7 +103,7 @@
 
 | Состояние | Что можно | Что нельзя | Where enforced |
 |-----------|-----------|------------|----------------|
-| **Trial** (`subscription.status='trial'`, 30 дней) | Функционал уровня Team/Business с trial-капами по SSOT; полный продукт, не client-handoff view | — | `lead_quota` (через мапинг `trial → starter`), `billing_restrictions` |
+| **Trial** (`subscription.status='trial'` или `plan='trial'`, 30 дней) | Функционал уровня Team с trial-капами по SSOT; полный продукт, не client-handoff view. Meta OAuth / Facebook Login включены. | — | `plan_feature_gates.tenant_allows_team_tier_features`, `lead_quota` (trial 50), `billing_restrictions` |
 | **Active** | По текущему `plan_code` | — | — |
 | **Past_due** (Stripe) | Чтение, экспорт, оплата; завершение текущих задач; закрытие существующих кандидатов (2.1.G v1) | Прочие side-effect write (создание лидов, исходящие comms, automation, non-terminal candidate edits) | `billing_restrictions.ensure_billing_*_allowed` + action-level allowlist |
 | **Canceled / Expired** | Только просмотр истории + оплата | Любые мутации, любые исходящие | `billing_restrictions` + `useLicenseStatus` баннер |

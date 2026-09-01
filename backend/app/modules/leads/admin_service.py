@@ -30,8 +30,8 @@ from backend.app.services.plan_feature_gates import (
     ensure_meta_leads_oauth_allowed,
     lead_meta_credentials_cap,
     lead_meta_field_mapping_rules_cap,
-    plan_allows_meta_leads_oauth,
     resolve_tenant_plan_code,
+    tenant_allows_team_tier_features,
 )
 from backend.app.modules.leads.schemas import (
     LeadOut,
@@ -399,10 +399,9 @@ async def get_meta_self_serve_onboarding(
     disp = (settings.meta_leads_app_display_name or "HostFlow Leads").strip() or "HostFlow Leads"
     doc = (settings.meta_leads_docs_url or "").strip() or None
     gv = (settings.meta_graph_api_version or "v24.0").strip() or "v24.0"
-    plan = await resolve_tenant_plan_code(db, tenant_id)
     oauth_uri = meta_oauth.meta_leads_oauth_redirect_uri()
     oauth_ready = meta_oauth.oauth_configuration_ready()
-    plan_ok = plan_allows_meta_leads_oauth(plan)
+    plan_ok = await tenant_allows_team_tier_features(db, tenant_id)
     oauth_qc = bool(plan_ok and oauth_ready)
     return MetaLeadSelfServeOnboardingOut(
         meta_app_id=app_id,

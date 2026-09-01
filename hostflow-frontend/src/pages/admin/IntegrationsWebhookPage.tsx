@@ -18,10 +18,12 @@ import { useI18n } from '../../i18n'
 import { useLicenseStatus } from '../../hooks/useLicenseStatus'
 import { ACTIVATION_PATHS } from '../../app/activationRoutes'
 
-const TEAM_BLOCKED = new Set(['solo', 'starter', 'trial', 'free'])
+const TEAM_BLOCKED = new Set(['solo', 'starter', 'free'])
 
 function isTeamTierPlan(plan: string | null | undefined): boolean {
-  return !TEAM_BLOCKED.has((plan || 'starter').toLowerCase())
+  const p = (plan || 'starter').toLowerCase()
+  if (p === 'trial') return true
+  return !TEAM_BLOCKED.has(p)
 }
 
 /**
