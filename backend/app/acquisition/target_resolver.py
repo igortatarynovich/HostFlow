@@ -4,13 +4,17 @@ Registry validation decides *what kinds* of targets are allowed.
 This module decides whether a concrete ``target_id`` exists and is
 accessible under the Campaign's tenant + own-company scope.
 
+Unscoped rows (``own_company_id`` NULL) are tenant-wide and allowed —
+manual Client Accounts and older vacancies often have no operating-company stamp.
+A row stamped to a *different* own-company is still rejected (no existence leak).
+
 Campaign never takes ownership of Recruitment/Sales domain rows —
 it only references them by type/id.
 """
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.validation import CampaignValidationError
@@ -18,6 +22,11 @@ from backend.app.models.additional_service import Service
 from backend.app.models.client_account import ClientAccount
 from backend.app.models.fleet_vehicle import FleetVehicle
 from backend.app.models.vacancy import Vacancy
+
+
+def _in_own_company_scope(column, own_company_id: str):
+    """Tenant-wide rows (own_company_id NULL) are in scope for the campaign owner."""
+    return or_(column.is_(None), column == own_company_id)
 
 
 async def assert_promotion_target_accessible(
@@ -71,8 +80,8 @@ async def _assert_vacancy(
         select(Vacancy.id).where(
             Vacancy.id == target_id,
             Vacancy.tenant_id == tenant_id,
-            Vacancy.own_company_id == own_company_id,
             Vacancy.is_archived.is_(False),
+            _in_own_company_scope(Vacancy.own_company_id, own_company_id),
         )
     )
     if row.scalar_one_or_none() is None:
@@ -103,7 +112,7 @@ async def _assert_client_account(
         select(ClientAccount.id).where(
             ClientAccount.id == target_id,
             ClientAccount.tenant_id == tenant_id,
-            ClientAccount.own_company_id == own_company_id,
+            _in_own_company_scope(ClientAccount.own_company_id, own_company_id),
         )
     )
     if row.scalar_one_or_none() is None:
