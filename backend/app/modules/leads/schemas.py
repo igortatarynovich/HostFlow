@@ -851,8 +851,8 @@ class MetaLeadSettingsOut(BaseModel):
     # §2.5 / §2.10: Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids (fallback when no ad/id map).
     lead_fit_ordered_vacancy_ids: List[UUID] = Field(default_factory=list)
     lead_rodo_send_mode: str = Field(
-        default="manual",
-        description="manual | auto_on_lead_created | auto_on_first_action (Tenant.settings.lead_rodo_v1).",
+        default="auto_on_lead_created",
+        description="Platform-mandatory RODO evaluation. Tenants cannot disable fulfillment; stored weaker modes are coerced.",
     )
     lead_rodo_channels: List[str] = Field(default_factory=lambda: ["email"])
     lead_rodo_template_id: Optional[str] = None
@@ -905,7 +905,7 @@ class MetaLeadSettingsUpdate(BaseModel):
     )
     lead_rodo_send_mode: Optional[str] = Field(
         default=None,
-        description="manual | auto_on_lead_created | auto_on_first_action.",
+        description="Ignored if set to manual/first-action — evaluation and fulfillment stay mandatory.",
     )
     lead_rodo_channels: Optional[List[str]] = None
     lead_rodo_template_id: Optional[str] = None

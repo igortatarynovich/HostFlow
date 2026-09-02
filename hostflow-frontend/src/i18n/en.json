@@ -16856,10 +16856,12 @@
       "status": {
         "needs_setup": "RODO — needs setup",
         "needs_setup_detail": "Missing the email the candidate will receive.",
-        "active": "RODO — active",
-        "active_detail": "New applications automatically receive: {name}.",
-        "manual": "RODO — manual",
-        "manual_detail": "A recruiter sends the RODO notice from the lead card."
+        "active": "RODO information obligation: Active — managed by HostFlow",
+        "active_detail": "Fulfillment uses your message: {name}. HostFlow still decides whether delivery is required.",
+        "manual": "RODO information obligation: Active — managed by HostFlow",
+        "manual_detail": "HostFlow evaluates art. 13/14 for every lead and fulfills the obligation when it applies.",
+        "platform_required": "RODO information obligation: Active — managed by HostFlow",
+        "platform_required_detail": "HostFlow evaluates the information obligation for every lead (GDPR art. 13 or 14) and fulfills it when required. You set the controller, clause, sender, and copy. You cannot turn this off."
       },
       "composer": {
         "title_rodo": "RODO message",
@@ -16878,7 +16880,8 @@
         "hide": "Hide advanced settings",
         "show_technical": "Show technical details",
         "hide_technical": "Hide technical details",
-        "send_first_action": "Also send before the first call, email, or process action"
+        "send_first_action": "Also send before the first call, email, or process action",
+        "platform_rodo_note": "The information obligation is a platform compliance policy: HostFlow evaluates every lead and fulfills it when required. You cannot disable evaluation. Missing tenant configuration uses the HostFlow default delivery and notice."
       },
       "template_created_select_save": "RODO email template created and selected. Click “Save firm policy” to apply it.",
       "template_hub_apply_hint": "Creating a template does not send it. After save, open Lead lifecycle email, select the template, and click Save firm policy.",
@@ -16899,11 +16902,14 @@
         "duty_title": "RODO / information duty",
         "document": "RODO document",
         "document_ok": "RODO {name} ✓",
-        "document_missing": "No RODO document — add it in Legal",
-        "auto_send": "Send after a new application arrives",
+        "document_missing": "Using the HostFlow platform clause — add a firm clause in Legal if needed",
+        "auto_send": "RODO information obligation: Active — managed by HostFlow",
+        "auto_send_locked_hint": "HostFlow evaluates art. 13/14 for every lead. Delivery uses your sender when configured, otherwise the HostFlow mailbox. You cannot turn this off.",
+        "obligation_status": "RODO information obligation: Active — managed by HostFlow",
+        "obligation_status_hint": "HostFlow evaluates whether art. 13 or art. 14 applies, whether the notice was already given, and whether delivery is required. You configure the controller, clause, sender, language, and branding — you cannot turn the obligation off.",
         "message": "Email message",
-        "empty_title": "You don’t have a RODO message yet.",
-        "empty_body": "Create the email the candidate will receive together with the link to the RODO document.",
+        "empty_title": "You don’t have a custom RODO message yet.",
+        "empty_body": "If you do not add a custom message, HostFlow sends the platform default on behalf of this firm. Missing configuration never skips the obligation.",
         "create_message": "Create message",
         "edit_message": "Edit message",
         "template_vs_legal": "This list is email copy (subject + body). A RODO clause under Legal documents is the legal text behind {rodo_link} — it never appears here.",
@@ -17032,7 +17038,7 @@
       "default_rodo": {
         "name": "RODO / art. 14",
         "subject": "RODO / GDPR — information about personal data processing",
-        "body": "Hello {first_name},\n\nPlease see the information about processing of your personal data (RODO, art. 14):\n\n{rodo_link}\n\nBest regards"
+        "body": "Hello {first_name},\n\n{controller_name} is the controller of your personal data. Please see the information about processing of your personal data:\n\n{rodo_link}\n\nBest regards,\n{controller_name}"
       }
     },
     "communications_settings": {

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+from dataclasses import replace
 from typing import Any, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.communications.command import CommunicationCommand, SendCommunicationContent
+from backend.app.communications.intent import CommunicationIntent
 from backend.app.communications.intent_policy import evaluate_intent_policy
 from backend.app.communications.send_communication import (
     SendCommunicationError,
@@ -15,6 +18,8 @@ from backend.app.communications.send_communication import (
     send_communication,
 )
 from backend.app.communications.snapshot import build_outbound_snapshot
+
+logger = logging.getLogger(__name__)
 
 
 class CommunicationSender(Protocol):
@@ -53,6 +58,62 @@ async def _default_email_transport(
         body=body,
         html_body=html_body,
     )
+
+
+async def _platform_compliance_email_transport(
+    *,
+    to: str,
+    subject: str,
+    body: str,
+) -> None:
+    """Platform mailbox fallback (info@hostflow.cc)."""
+    from backend.app.services.system_email import send_system_email
+
+    ok = await send_system_email(to=to, subject=subject, body=body)
+    if not ok:
+        raise SendCommunicationError(
+            "Platform compliance email failed",
+            details={"reason": "system_email_send_failed"},
+        )
+
+
+async def deliver_gdpr_notice_email(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    to: str,
+    subject: str,
+    body: str,
+    html_body: str | None = None,
+) -> dict[str, str]:
+    """Send the information notice: tenant SMTP first, platform mailbox if missing/broken.
+
+    HostFlow is delivery infrastructure. The named controller remains the tenant firm.
+    """
+    from backend.app.services.lead_lifecycle_email_policy import PLATFORM_RODO_FROM_EMAIL
+    from backend.app.services.tenant_email import get_tenant_email_config
+
+    cfg = await get_tenant_email_config(db, str(tenant_id))
+    if cfg is not None and str(getattr(cfg, "smtp_host", "") or "").strip() and str(
+        getattr(cfg, "from_email", "") or ""
+    ).strip():
+        try:
+            await _default_email_transport(
+                db,
+                tenant_id=str(tenant_id),
+                to=to,
+                subject=subject,
+                body=body,
+                html_body=html_body,
+            )
+            return {"via": "tenant_smtp", "from_email": str(cfg.from_email).strip()}
+        except Exception:
+            logger.info(
+                "gdpr_notice_tenant_smtp_fallback",
+                extra={"tenant_id": str(tenant_id)},
+            )
+    await _platform_compliance_email_transport(to=to, subject=subject, body=body)
+    return {"via": "platform_smtp", "from_email": PLATFORM_RODO_FROM_EMAIL}
 
 
 class PlatformCommunicationSender:
@@ -147,6 +208,17 @@ async def prepare_and_send_communication(
     if command.requested_link_intents:
         enriched_meta["requested_link_intents"] = list(command.requested_link_intents)
 
+    gdpr_delivery: dict[str, str] = {}
+    if intent == CommunicationIntent.GDPR_NOTICE:
+        from backend.app.services.lead_lifecycle_email_policy import PLATFORM_RODO_FROM_EMAIL
+        from backend.app.services.tenant_email import get_tenant_email_config
+
+        cfg = await get_tenant_email_config(db, str(command.tenant_id))
+        if cfg is not None and str(getattr(cfg, "from_email", "") or "").strip():
+            enriched_meta["from_email"] = str(cfg.from_email).strip()
+        else:
+            enriched_meta["from_email"] = PLATFORM_RODO_FROM_EMAIL
+
     content = command.content
     assert content is not None
     executable = CommunicationCommand(
@@ -196,6 +268,17 @@ async def prepare_and_send_communication(
         html = content.body_html
 
         async def _platform_email_transport() -> None:
+            if intent == CommunicationIntent.GDPR_NOTICE:
+                delivered = await deliver_gdpr_notice_email(
+                    db,
+                    tenant_id=command.tenant_id,
+                    to=to_addr,
+                    subject=subject,
+                    body=body,
+                    html_body=html,
+                )
+                gdpr_delivery.update(delivered)
+                return
             await _default_email_transport(
                 db,
                 tenant_id=command.tenant_id,
@@ -207,9 +290,19 @@ async def prepare_and_send_communication(
 
         effective_transport = _platform_email_transport
 
-    return await send_communication(
+    result = await send_communication(
         db,
         executable,
         transport=effective_transport,
         skip_transport=skip_transport,
     )
+    if gdpr_delivery.get("via") or gdpr_delivery.get("from_email"):
+        result = replace(
+            result,
+            delivery_via=gdpr_delivery.get("via"),
+            from_email=gdpr_delivery.get("from_email"),
+        )
+        if gdpr_delivery.get("from_email"):
+            enriched_meta["from_email"] = gdpr_delivery["from_email"]
+            enriched_meta["delivery_via"] = gdpr_delivery.get("via")
+    return result

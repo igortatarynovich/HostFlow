@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional, Type
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 __all__ = (
     "HrModuleSettingsV1",
@@ -32,8 +32,13 @@ class LeadLifecycleEmailPolicyV1(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     version: Literal[1] = 1
-    rodo_send_mode: Literal["manual", "auto_on_lead_created", "auto_on_first_action"] = "manual"
+    rodo_send_mode: Literal["manual", "auto_on_lead_created", "auto_on_first_action"] = "auto_on_lead_created"
     rodo_template_ref: Optional[str] = Field(default=None, max_length=128)
+
+    @field_validator("rodo_send_mode", mode="before")
+    @classmethod
+    def _platform_rodo_send_mode(cls, _value: Any) -> str:
+        return "auto_on_lead_created"
     ops_enabled: bool = False
     application_received: LeadLifecycleOpsPurposeV1 = Field(default_factory=LeadLifecycleOpsPurposeV1)
     rejection: LeadLifecycleOpsPurposeV1 = Field(default_factory=LeadLifecycleOpsPurposeV1)

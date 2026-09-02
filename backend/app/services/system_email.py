@@ -14,8 +14,8 @@ from backend.app.services.tenant_email import _send_smtp_sync
 def _get_system_smtp_config() -> Optional[dict]:
     """Return system SMTP config from env, or None if not configured."""
     host = (settings.system_smtp_host or "").strip()
-    from_email = (settings.system_from_email or "").strip()
-    if not host or not from_email:
+    from_email = (settings.system_from_email or "").strip() or "info@hostflow.cc"
+    if not host:
         return None
     return {
         "host": host,

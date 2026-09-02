@@ -16856,10 +16856,12 @@
       "status": {
         "needs_setup": "RODO — wymaga konfiguracji",
         "needs_setup_detail": "Brakuje wiadomości e-mail, którą otrzyma kandydat.",
-        "active": "RODO — aktywne",
-        "active_detail": "Nowe zgłoszenia automatycznie otrzymują: {name}.",
-        "manual": "RODO — ręcznie",
-        "manual_detail": "Rekruter wysyła informację RODO z karty leada."
+        "active": "Obowiązek informacyjny RODO: aktywny — zarządza HostFlow",
+        "active_detail": "Do realizacji używana jest Twoja wiadomość: {name}. HostFlow nadal decyduje, czy wysyłka jest wymagana.",
+        "manual": "Obowiązek informacyjny RODO: aktywny — zarządza HostFlow",
+        "manual_detail": "HostFlow ocenia art. 13/14 dla każdego leada i realizuje obowiązek, gdy ma zastosowanie.",
+        "platform_required": "Obowiązek informacyjny RODO: aktywny — zarządza HostFlow",
+        "platform_required_detail": "HostFlow ocenia obowiązek informacyjny dla każdego leada (art. 13 lub 14 RODO) i realizuje go, gdy jest to wymagane. Ustawiasz administratora, klauzulę, nadawcę i treść. Nie można tego wyłączyć."
       },
       "composer": {
         "title_rodo": "Wiadomość RODO",
@@ -16878,7 +16880,8 @@
         "hide": "Ukryj ustawienia zaawansowane",
         "show_technical": "Pokaż szczegóły techniczne",
         "hide_technical": "Ukryj szczegóły techniczne",
-        "send_first_action": "Wyślij też przed pierwszym połączeniem, e-mailem lub procesowaniem"
+        "send_first_action": "Wyślij też przed pierwszym połączeniem, e-mailem lub procesowaniem",
+        "platform_rodo_note": "Obowiązek informacyjny to platformowa polityka compliance: HostFlow ocenia każdego leada i realizuje obowiązek, gdy ma zastosowanie. Nie można wyłączyć oceny. Brak konfiguracji tenanta oznacza domyślną dostawę i treść HostFlow."
       },
       "template_created_select_save": "Szablon e-mail RODO utworzony i wybrany. Kliknij „Zapisz politykę firmy”, aby go zastosować.",
       "template_hub_apply_hint": "Utworzenie szablonu nic nie wysyła. Potem otwórz E-mail cyklu życia leada, wybierz szablon i kliknij Zapisz politykę firmy.",
@@ -16899,11 +16902,14 @@
         "duty_title": "RODO / obowiązek informacyjny",
         "document": "Dokument RODO",
         "document_ok": "RODO {name} ✓",
-        "document_missing": "Brak dokumentu RODO — dodaj w Dokumentach prawnych",
-        "auto_send": "Wyślij po otrzymaniu nowego zgłoszenia",
+        "document_missing": "Używana jest klauzula platformy HostFlow — w razie potrzeby dodaj klauzulę firmy w Dokumentach prawnych",
+        "auto_send": "Obowiązek informacyjny RODO: aktywny — zarządza HostFlow",
+        "auto_send_locked_hint": "HostFlow ocenia art. 13/14 dla każdego leada. Dostawa idzie z Twojego nadawcy, jeśli jest skonfigurowany, w przeciwnym razie ze skrzynki HostFlow. Nie można tego wyłączyć.",
+        "obligation_status": "Obowiązek informacyjny RODO: aktywny — zarządza HostFlow",
+        "obligation_status_hint": "HostFlow ustala, czy stosuje się art. 13 czy art. 14, czy informacja została już przekazana i czy potrzebna jest wysyłka. Konfigurujesz administratora, klauzulę, nadawcę, język i branding — nie możesz wyłączyć obowiązku.",
         "message": "Wiadomość e-mail",
-        "empty_title": "Nie masz jeszcze wiadomości RODO.",
-        "empty_body": "Utwórz wiadomość, którą kandydat otrzyma razem z linkiem do dokumentu RODO.",
+        "empty_title": "Nie masz jeszcze własnej wiadomości RODO.",
+        "empty_body": "Jeśli nie dodasz własnej wiadomości, HostFlow wyśle treść platformową w imieniu tej firmy. Brak konfiguracji nigdy nie pomija obowiązku.",
         "create_message": "Utwórz wiadomość",
         "edit_message": "Edytuj wiadomość",
         "template_vs_legal": "Ta lista to treść e-mail (temat + treść). Klauzula RODO w dokumentach prawnych to tekst pod {rodo_link} — nie pojawia się tutaj.",
@@ -17032,7 +17038,7 @@
       "default_rodo": {
         "name": "RODO — nowe zgłoszenie",
         "subject": "RODO / GDPR — informacje o przetwarzaniu danych osobowych",
-        "body": "Dzień dobry {first_name},\n\nPrzekazujemy informację o przetwarzaniu Twoich danych osobowych (RODO, art. 14):\n\n{rodo_link}\n\nPozdrawiamy"
+        "body": "Dzień dobry {first_name},\n\nAdministratorem Twoich danych osobowych jest {controller_name}. Przekazujemy informację o przetwarzaniu danych osobowych:\n\n{rodo_link}\n\nPozdrawiamy,\n{controller_name}"
       }
     },
     "communications_settings": {

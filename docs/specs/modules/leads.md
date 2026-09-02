@@ -122,7 +122,7 @@ UI: identity bar + answers table + `LeadIntakeCallStep` на intake workspace; �
 
 Политика арендатора (preset) в **`Tenant.settings.lead_rodo_v1`**, поля в **`GET/PATCH /api/v1/settings/leads/settings`**:
 
-- `lead_rodo_send_mode` — `manual` | `auto_on_lead_created` | `auto_on_first_action`
+- `lead_rodo_send_mode` — platform-mandatory obligation evaluation (stored `manual` / `auto_on_first_action` are coerced). Tenant cannot disable fulfillment. Delivery uses tenant SMTP when configured, otherwise `info@hostflow.cc`. Controller named in the notice is the operating firm, not HostFlow.
 - `lead_rodo_channels` — по умолчанию `["email"]`
 - `lead_rodo_template_id` — опционально, версия активного `rodo_clause`
 
@@ -132,7 +132,7 @@ UI: identity bar + answers table + `LeadIntakeCallStep` на intake workspace; �
 - `POST /api/v1/leads/{id}/compliance/rodo/source-provided`
 - `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk art.14 re-send (Pipeline; default failed; dry_run)
 
-Состояние: `Lead.normalized.rodo` (`sent`, `source_provided`, `pending_channel`, `failed`). Ingest hook после создания лида — `apply_lead_rodo_on_ingest` в `process_normalized_lead`. Канон: [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8.0.1.
+Состояние: `Lead.normalized.rodo` (`sent`, `source_provided`, `exempt`, `pending_channel`, `failed`). Ingest hook после создания лида — `apply_lead_rodo_on_ingest` (обязательная оценка + fulfillment при необходимости). Канон: [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8.0.1.
 
 ### Формат ответа
 ```json
@@ -154,7 +154,7 @@ UI: identity bar + answers table + `LeadIntakeCallStep` на intake workspace; �
 - Доступна ролям с правом `leads.view` (администратор, супервайзер, рекрутер, viewer-readonly).
 - Админка `Админка → Лиды` (`/admin/meta-leads`) предназначена для владельцев интеграции (права `admin.metaLeads`). Разделы:
   - **Подключение** — формы для ввода `META_WEBHOOK_SECRET`, access token, идентификаторов рекламных аккаунтов; статус вебхука, дата последней проверки подписи, кнопка «Перегенерировать секрет», подсказки по настройке Meta.
-  - **Маппинг и fallback** — CRUD по `meta_ads_map`, поиск по `ad_id`/вакансии, настройка `default_company_id`, флаг `auto_create_enabled`, назначение рекрутёров по умолчанию, переключатель «Отключить автосоздание», **режим RODO для новых лидов** (`lead_rodo_send_mode`).
+  - **Маппинг и fallback** — CRUD по `meta_ads_map`, поиск по `ad_id`/вакансии, настройка `default_company_id`, флаг `auto_create_enabled`, назначение рекрутёров по умолчанию, переключатель «Отключить автосоздание». RODO — платформенная обязательная оценка (Control Center: Active — managed by HostFlow; sender/clause/copy are tenant-configurable).
   - **Логи и маршрутизация** — список лидов (фильтры `failed`, `needs_routing`), кнопка «Маршрутизировать», ручное назначение вакансии/компании, перезапуск обработки, индикаторы SLA (лиды, висящие > `reroute_after_hours`).
 - В логах UI по умолчанию скрывает PII (email/phone) согласно флагу `mask_pii_in_logs`. Администраторы могут раскрыть данные по требованию комплаенса.
 
@@ -169,7 +169,7 @@ UI: identity bar + answers table + `LeadIntakeCallStep` на intake workspace; �
    - fallback → статус `needs_routing`.
 3. **Resolve company** — по найденной вакансии, либо по `company_id` из payload, либо первая компания арендатора.
 4. **Store lead** — создаётся запись в `leads` со статусом `new`, внешний идентификатор сохраняется в `leads.external_id` (уникально по tenant/source).
-4b. **Lead RODO (optional)** — по `lead_rodo_v1`: после sync custom fields на **новом** лиде — `apply_lead_rodo_on_ingest` (auto-send, `source_provided`, или `pending_channel`); см. § Lead-stage RODO.
+4b. **Lead RODO (mandatory evaluation)** — `apply_lead_rodo_on_ingest`: art.13 vs art.14, already provided / exempt / delivery required; see § Lead-stage RODO.
 5. **Deduplicate** — поиск кандидата по email/phone внутри `tenant_id` и компании. При совпадении статус `duplicated`.
 6. **Create candidate** — если дубля нет, вызывается `create_candidate_full`:
    - `source='meta'`, `origin={'meta': normalized}`;

@@ -97,7 +97,7 @@ Application rules: Application row only when vacancy or explicit pool intent aft
 | Topic | Specification |
 |--------|----------------|
 | **Notice at source** | Public form consents → `source_provided` in intake state |
-| **Auto-send on ingest** | N/A for draft create; tenant `lead_rodo_send_mode` applies if Lead enters gated CRM actions (not used for this channel's primary path) |
+| **Auto-send on ingest** | N/A for draft create; platform-mandatory obligation evaluation applies when a CRM Lead is created |
 | **Channel missing** | Consents captured on form submit |
 | **Replay idempotency** | Draft reuse by stable contact key |
 | **Gated actions** | CRM intake-decision/process **not exposed** for `public_intake` |

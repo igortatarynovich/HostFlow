@@ -141,7 +141,9 @@ describe('LeadLifecycleEmailSettingsPage', () => {
       </MemoryRouter>,
     )
 
-    expect(await screen.findByText('RODO — needs setup')).toBeInTheDocument()
+    expect(
+      (await screen.findAllByText('RODO information obligation: Active — managed by HostFlow')).length,
+    ).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: 'Create message' }).length).toBeGreaterThan(0)
     expect(screen.queryByText('Effective policy (resolve-preview)')).not.toBeInTheDocument()
     expect(screen.queryByText('Master enabled')).not.toBeInTheDocument()

@@ -82,6 +82,8 @@ class SendCommunicationResult:
     created_thread: bool
     idempotent_replay: bool
     entity_link_ids: tuple[str, ...] = ()
+    delivery_via: str | None = None
+    from_email: str | None = None
 
 
 TransportFn = Callable[[], Awaitable[Any]]
