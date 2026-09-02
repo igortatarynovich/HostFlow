@@ -105,7 +105,7 @@ export function EntityWorkspaceShell({
           />
 
           <main
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-100 p-4"
+            className="min-h-0 flex-1 overflow-y-auto bg-slate-100 p-3"
             data-entity-workspace-zone="content"
           >
             <div className="mx-auto max-w-5xl">{activeContent}</div>

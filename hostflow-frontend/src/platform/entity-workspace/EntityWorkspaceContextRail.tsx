@@ -31,17 +31,17 @@ export function EntityWorkspaceContextRail({
   const blocks: Partial<Record<EntityContextRailBlockId, ReactNode>> = {}
 
   const nextActionBlock = model.decisionTitle || model.actions?.primary ? (
-    <div className="rounded-xl border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 shadow-sm">
+    <div className="rounded-lg border border-brand-200 bg-brand-50/70 p-2.5">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-700/80">
         {labels?.next_actions ?? t('app.platform.context_rail.next_action')}
       </p>
-      {model.decisionTitle ? <p className="mt-2 text-base font-bold text-slate-900">{model.decisionTitle}</p> : null}
-      {model.decisionWhy ? <p className="mt-1 text-sm leading-relaxed text-slate-600">{model.decisionWhy}</p> : null}
+      {model.decisionTitle ? <p className="mt-1 text-sm font-semibold text-slate-900">{model.decisionTitle}</p> : null}
+      {model.decisionWhy ? <p className="mt-0.5 text-xs leading-snug text-slate-600">{model.decisionWhy}</p> : null}
       {model.actions?.primary ? (
         model.actions.primary.href ? (
           <a
             href={model.actions.primary.href}
-            className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-800"
+            className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800"
           >
             {model.actions.primary.label}
           </a>
@@ -49,7 +49,7 @@ export function EntityWorkspaceContextRail({
           <button
             type="button"
             onClick={model.actions.primary.onClick}
-            className="mt-4 w-full rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-800"
+            className="mt-2 w-full rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800"
           >
             {model.actions.primary.label}
           </button>
@@ -59,7 +59,7 @@ export function EntityWorkspaceContextRail({
         <button
           type="button"
           onClick={model.onCreateTask}
-          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
         >
           {model.createTaskLabel ?? t('app.platform.entity_workspace.create_task')}
         </button>
@@ -226,7 +226,7 @@ export function EntityWorkspaceContextRail({
   if (!visibleBlocks.length) {
     return (
       <aside
-        className="flex shrink-0 flex-col border-l border-slate-200 bg-white p-4 text-sm text-slate-500"
+        className="flex shrink-0 flex-col border-l border-slate-200 bg-white p-3 text-sm text-slate-500"
         style={{ width: widthPx, minWidth: widthPx, maxWidth: widthPx }}
         data-entity-workspace-zone="context-rail"
         data-entity-workspace-slot="context-rail"
@@ -243,7 +243,7 @@ export function EntityWorkspaceContextRail({
       data-entity-workspace-zone="context-rail"
       data-entity-workspace-slot="context-rail"
     >
-      <div className="space-y-4 p-4">
+      <div className="space-y-3 px-3 py-2">
         {visibleBlocks.map((blockId) => (
           <section key={blockId}>
             {blockTitles[blockId] ? (

@@ -48,7 +48,7 @@ export function SearchNextActionPanel({
 
   if (loading) {
     return (
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-white p-2.5">
         <p className="text-sm text-slate-500">{t('common.loading')}</p>
       </section>
     )
@@ -72,7 +72,7 @@ export function SearchNextActionPanel({
 
   if (!next && later.length === 0) {
     return (
-      <section className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 shadow-sm">
+      <section className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-2.5">
         <h2 className="text-sm font-semibold text-slate-900">
           {t('app.search_next.all_clear_title')}
         </h2>
@@ -82,21 +82,22 @@ export function SearchNextActionPanel({
   }
 
   return (
-    <section className="space-y-4" data-testid="m1-search-next-action">
+    <section className="space-y-2" data-testid="m1-search-next-action">
       {next ? (
-        <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">
-            {t('app.search_next.title')}
-          </p>
-          <h2 className="mt-2 text-lg font-semibold text-slate-900">
-            {next.icon ? `${next.icon} ` : null}
-            {next.headline}
-          </h2>
-          <p className="mt-2 text-sm text-slate-700">{next.reason || next.message}</p>
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand-200 bg-brand-50/60 px-2.5 py-1.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-800">
+              {t('app.search_next.title')}
+            </p>
+            <h2 className="truncate text-sm font-semibold text-slate-900" title={next.reason || next.message}>
+              {next.icon ? `${next.icon} ` : null}
+              {next.headline}
+            </h2>
+          </div>
           <button
             type="button"
             onClick={handleStart}
-            className="mt-4 rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
+            className="shrink-0 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
           >
             {next.action_label || t('app.search_next.start')}
           </button>
@@ -104,19 +105,19 @@ export function SearchNextActionPanel({
       ) : null}
 
       {afterThat.length > 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-900">{t('app.search_next.after_that')}</h3>
-          <div className="mt-3">
+        <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+          <h3 className="text-xs font-semibold text-slate-900">{t('app.search_next.after_that')}</h3>
+          <div className="mt-1.5">
             <AfterThatList items={afterThat} />
           </div>
         </div>
       ) : null}
 
       {later.length > 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
-          <h3 className="text-sm font-semibold text-slate-700">{t('app.search_day.later_title')}</h3>
-          <p className="mt-1 text-xs text-slate-500">{t('app.search_day.later_hint')}</p>
-          <div className="mt-3">
+        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-2.5 py-2">
+          <h3 className="text-xs font-semibold text-slate-700">{t('app.search_day.later_title')}</h3>
+          <p className="mt-0.5 text-[11px] text-slate-500">{t('app.search_day.later_hint')}</p>
+          <div className="mt-1.5">
             <AfterThatList items={later} />
           </div>
         </div>

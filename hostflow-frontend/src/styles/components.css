@@ -108,8 +108,8 @@
   }
 
   /* Табы */
-  .tabs { @apply flex gap-2 border-b border-gray-200; }
-  .tab { @apply -mb-px px-3 py-2 text-slate-500 border-b-2 border-transparent; }
+  .tabs { @apply flex gap-1 border-b border-gray-200; }
+  .tab { @apply -mb-px px-2.5 py-1 text-xs text-slate-500 border-b-2 border-transparent; }
   .tab-active { @apply text-brand-700 border-brand-500; }
 
   .app-surface {
@@ -177,7 +177,7 @@
    * скромнее, чтобы не оставлять серую полосу под PageShell.
    */
   .crm-page-inset {
-    @apply px-4 py-4 sm:px-5 lg:px-8;
+    @apply px-4 py-2 sm:px-5 lg:px-6;
   }
 
   /**
@@ -194,7 +194,7 @@
 
   /** Вертикальный ритм между крупными блоками страницы (баннеры, сетка, шапка). */
   .crm-page-stack {
-    @apply flex min-h-0 w-full flex-1 flex-col gap-4;
+    @apply flex min-h-0 w-full flex-1 flex-col gap-2;
   }
 
   /**
@@ -205,10 +205,10 @@
     border-radius: 0 !important;
   }
   .app-ui :where(h1) {
-    @apply text-2xl font-semibold tracking-tight text-slate-900;
+    @apply text-lg font-semibold tracking-tight text-slate-900;
   }
   .app-ui :where(h2) {
-    @apply text-xl font-semibold text-slate-900;
+    @apply text-base font-semibold text-slate-900;
   }
   .app-ui :where(h3) {
     @apply text-base font-semibold text-slate-900;

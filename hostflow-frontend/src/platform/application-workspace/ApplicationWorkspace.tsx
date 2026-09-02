@@ -234,9 +234,9 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
         )}
         aria-current={isSelected ? 'true' : undefined}
       >
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-sm font-bold text-brand-800">
+        <td className="px-3 py-2">
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-100 text-xs font-bold text-brand-800">
               {(app.title || app.contact.name).charAt(0).toUpperCase()}
             </span>
             <div className="min-w-0">
@@ -257,62 +257,55 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
             </div>
           </div>
         </td>
-        <td className="px-4 py-3 text-sm text-slate-600">
+        <td className="px-3 py-2 text-sm text-slate-600">
           <p>{app.contact.name}</p>
           {app.contact.phone ? <p className="text-xs text-slate-400">{app.contact.phone}</p> : null}
         </td>
-        <td className="px-4 py-3 text-sm text-slate-600">{app.source || '—'}</td>
-        <td className="px-4 py-3 text-sm text-slate-600">{badge || '—'}</td>
-        <td className="px-4 py-3">
+        <td className="px-3 py-2 text-sm text-slate-600">{app.source || '—'}</td>
+        <td className="px-3 py-2 text-sm text-slate-600">{badge || '—'}</td>
+        <td className="px-3 py-2">
           <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[status as keyof typeof APPLICATION_STATUS_BADGE]}`}>
             {applicationStatusLabel(status, t)}
           </span>
         </td>
-        <td className="px-4 py-3 text-sm text-slate-500">{formatApplicationRelativeTime(app.created_at, t, locale)}</td>
+        <td className="px-3 py-2 text-sm text-slate-500">{formatApplicationRelativeTime(app.created_at, t, locale)}</td>
       </tr>
     )
   }
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-slate-50/80">
-      <div className="shrink-0 space-y-4 border-b border-slate-200 bg-white px-4 py-4">
-        <h1 className="text-lg font-bold text-slate-900">{config.objectNamePlural}</h1>
+      <div className="shrink-0 space-y-2 border-b border-slate-200 bg-white px-3 py-2">
+        <h1 className="sr-only">{config.objectNamePlural}</h1>
 
         {newToContactCount > 0 ? (
-          <section className="rounded-xl border border-brand-200 bg-gradient-to-r from-brand-50/80 to-white px-4 py-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
-                  <IconPhone size={20} stroke={1.9} />
-                </span>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-                    {t('app.platform.application_workspace.next_action')}
-                  </p>
-                  <p className="mt-1 text-lg font-bold text-slate-900">{config.heroCallTitle(newToContactCount)}</p>
-                  <p className="mt-1 text-sm text-slate-600">{config.heroCallHint}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => void startCallSession()}
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800"
-              >
-                {t('app.platform.application_workspace.start_work')}
-                <IconArrowRight size={16} stroke={2} />
-              </button>
+          <section className="flex items-center gap-2 border border-brand-200 bg-brand-50/70 px-2.5 py-1.5" title={config.heroCallHint}>
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center bg-brand-100 text-brand-700">
+              <IconPhone size={16} stroke={1.9} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-700">
+                {t('app.platform.application_workspace.next_action')}
+              </p>
+              <p className="truncate text-sm font-semibold text-slate-900">{config.heroCallTitle(newToContactCount)}</p>
             </div>
+            <button
+              type="button"
+              onClick={() => void startCallSession()}
+              className="inline-flex shrink-0 items-center gap-1.5 bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800"
+            >
+              {t('app.platform.application_workspace.start_work')}
+              <IconArrowRight size={14} stroke={2} />
+            </button>
           </section>
         ) : (
-          <section className="rounded-xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
-            <span className="inline-flex items-center gap-2">
-              <IconInbox size={18} stroke={1.9} className="text-slate-400" />
-              {config.heroEmptyText}
-            </span>
+          <section className="flex items-center gap-2 border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600">
+            <IconInbox size={16} stroke={1.9} className="shrink-0 text-slate-400" />
+            <span className="truncate">{config.heroEmptyText}</span>
           </section>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap gap-1">
             {config.tabs.map((def) => (
               <button
@@ -320,7 +313,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                 type="button"
                 onClick={() => setTab(def.id)}
                 className={clsx(
-                  'rounded-lg px-3 py-2 text-sm font-medium transition',
+                  'rounded-md px-2.5 py-1 text-xs font-medium transition',
                   tab === def.id ? 'bg-brand-700 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50',
                 )}
               >
@@ -330,9 +323,9 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
           </div>
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600"
           >
-            <IconFilter size={14} stroke={1.9} />
+            <IconFilter size={12} stroke={1.9} />
             {t('app.platform.application_workspace.newest_first')}
           </button>
         </div>
@@ -357,12 +350,12 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
             <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
               <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_contact')}</th>
-                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_details')}</th>
-                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_source')}</th>
-                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_extra')}</th>
-                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_status')}</th>
-                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_time')}</th>
+                  <th className="px-3 py-2">{t('app.platform.application_workspace.col_contact')}</th>
+                  <th className="px-3 py-2">{t('app.platform.application_workspace.col_details')}</th>
+                  <th className="px-3 py-2">{t('app.platform.application_workspace.col_source')}</th>
+                  <th className="px-3 py-2">{t('app.platform.application_workspace.col_extra')}</th>
+                  <th className="px-3 py-2">{t('app.platform.application_workspace.col_status')}</th>
+                  <th className="px-3 py-2">{t('app.platform.application_workspace.col_time')}</th>
                 </tr>
               </thead>
               <tbody>{filteredApplications.map((app) => renderListItem(app))}</tbody>
@@ -392,7 +385,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
 
           {splitView ? (
             <aside
-              className="flex min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-slate-200 bg-slate-50 shadow-[inset_1px_0_0_rgb(226_232_240)]"
+              className="flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-slate-50 shadow-[inset_1px_0_0_rgb(226_232_240)]"
               style={{
                 width: DEFAULT_DETAIL_RAIL_WIDTH_PX,
                 minWidth: DEFAULT_DETAIL_RAIL_WIDTH_PX,
@@ -403,7 +396,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
               {detailLoading || !selectedApplication ? (
                 <p className="p-6 text-sm text-slate-500">{t('common.loading')}</p>
               ) : (
-                <div className="min-w-0">
+                <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
                   {config.renderDetail({
                     application: selectedApplication,
                     onRefresh: () => void refreshApplication(selectedApplication.id),

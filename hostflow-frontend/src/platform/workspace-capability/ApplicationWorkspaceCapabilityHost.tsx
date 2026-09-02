@@ -26,40 +26,40 @@ export function ApplicationWorkspaceCapabilityHost({ contributions, ...ctx }: Pr
       data-workspace-capability-host="application_workspace"
       data-proof-consumer="recruitment_application"
     >
-      <header className="flex shrink-0 items-start justify-between gap-2 border-b border-slate-100 p-4" data-host-region="header">
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <header className="flex shrink-0 items-start justify-between gap-2 border-b border-slate-100 px-3 py-2" data-host-region="header">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
           {byRegion.header.map((row) => renderWorkspaceContribution(row, renderCtx))}
         </div>
         <button
           type="button"
           onClick={ctx.onClose}
-          className="rounded-none p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="rounded-none p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           aria-label={t('common.close', { defaultValue: 'Закрыть' })}
         >
-          <IconX size={18} stroke={2} />
+          <IconX size={16} stroke={2} />
         </button>
       </header>
-      {byRegion.summary.length ? (
-        <section className="shrink-0 border-b border-slate-100 p-4" data-host-region="summary">
-          {byRegion.summary.map((row) => renderWorkspaceContribution(row, renderCtx))}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {byRegion.summary.length ? (
+          <section className="border-b border-slate-100 px-3 py-2" data-host-region="summary">
+            {byRegion.summary.map((row) => renderWorkspaceContribution(row, renderCtx))}
+          </section>
+        ) : null}
+        <section className="border-b border-slate-100 px-3 py-2" data-host-region="decision">
+          {byRegion.decision.map((row) => renderWorkspaceContribution(row, renderCtx))}
         </section>
-      ) : null}
-      <section className="shrink-0 border-b border-slate-100 p-4" data-host-region="decision">
-        {byRegion.decision.map((row) => renderWorkspaceContribution(row, renderCtx))}
-      </section>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {byRegion.overview.length ? (
-          <div className="space-y-4 border-b border-slate-100 p-4" data-host-region="overview">
+          <div className="space-y-3 border-b border-slate-100 px-3 py-2" data-host-region="overview">
             {byRegion.overview.map((row) => renderWorkspaceContribution(row, renderCtx))}
           </div>
         ) : null}
         {byRegion.platform_slot.length ? (
-          <div className="space-y-4 border-b border-slate-100 p-4" data-host-region="platform_slot">
+          <div className="space-y-3 border-b border-slate-100 px-3 py-2" data-host-region="platform_slot">
             {byRegion.platform_slot.map((row) => renderWorkspaceContribution(row, renderCtx))}
           </div>
         ) : null}
         {byRegion.rail.length ? (
-          <div className="space-y-4 p-4" data-host-region="rail">
+          <div className="space-y-3 px-3 py-2" data-host-region="rail">
             {byRegion.rail.map((row) => renderWorkspaceContribution(row, renderCtx))}
           </div>
         ) : null}

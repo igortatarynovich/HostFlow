@@ -135,5 +135,10 @@ describe('host runtime equivalence', () => {
     expect(container.querySelector('[data-host-region="decision"]')).toBeTruthy()
     expect(container.querySelector('[data-host-region="overview"]')).toBeTruthy()
     expect(container.querySelector('[data-capability-id="fixture.optional_addon"]')).toBeTruthy()
+    expect(host?.className).toContain('overflow-hidden')
+    expect(host?.className).not.toContain('overflow-y-auto')
+    const scroll = container.querySelector('[data-host-region="overview"]')?.parentElement
+    expect(scroll?.className).toContain('overflow-y-auto')
+    expect(scroll?.className).not.toContain('overscroll-contain')
   })
 })

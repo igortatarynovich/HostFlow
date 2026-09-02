@@ -104,7 +104,7 @@ export function TodayTasksPeek() {
     <div className="relative" ref={rootRef}>
       <button
         type="button"
-        className="relative rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50"
+        className="relative rounded-full border border-slate-200 p-1.5 text-slate-700 transition hover:bg-slate-50"
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={t('app.topbar.tasks_peek.label', { defaultValue: 'Today’s tasks' })}

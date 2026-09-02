@@ -35,7 +35,7 @@ function BlockSection({
 }) {
   if (!children) return null
   return (
-    <section className={clsx('border-b border-slate-100 px-4 py-3', className)}>
+    <section className={clsx('border-b border-slate-100 px-3 py-2', className)}>
       {title ? <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{title}</h4> : null}
       {children}
     </section>
@@ -45,9 +45,9 @@ function BlockSection({
 function ActionButton({ action, size }: { action: { id: string; label: string; onClick?: () => void; href?: string }; size: 'primary' | 'secondary' | 'link' }) {
   const cls =
     size === 'primary'
-      ? 'w-full justify-center rounded-lg bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800'
+      ? 'w-full justify-center rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800'
       : size === 'secondary'
-        ? 'rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50'
+        ? 'rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50'
         : 'text-sm text-brand-700 hover:underline'
   const inner = action.label
   if (action.href) {
@@ -142,20 +142,20 @@ export function DetailRail({
           {h.titleHref ? (
             <Link
               to={h.titleHref}
-              className="text-lg font-bold text-brand-700 hover:text-brand-800 hover:underline"
+              className="text-sm font-semibold text-brand-700 hover:text-brand-800 hover:underline"
               data-entity-link="primary"
             >
               {h.title}
             </Link>
           ) : (
-            <h2 className="text-lg font-bold text-slate-900">{h.title}</h2>
+            <h2 className="text-sm font-semibold text-slate-900">{h.title}</h2>
           )}
           {h.subtitle ? <p className="mt-0.5 text-sm text-slate-500">{h.subtitle}</p> : null}
           {h.meta ? <p className="mt-1 text-xs text-slate-400">{h.meta}</p> : null}
           {h.entityWorkspaceHref ? (
             <Link
               to={h.entityWorkspaceHref}
-              className="mt-2 inline-flex text-sm font-medium text-brand-700 hover:underline"
+              className="mt-1 inline-flex text-xs font-medium text-brand-700 hover:underline"
               data-entity-link="primary"
             >
               {h.entityWorkspaceLabel ?? t('app.platform.detail_rail.open_full')}
@@ -224,7 +224,7 @@ export function DetailRail({
     blocks.next_action = (
       <div
         className={clsx(
-          'rounded-xl border p-4',
+          'rounded-lg border p-2.5',
           variant === 'terminal' && 'border-slate-200 bg-slate-100/80',
           variant === 'blocker' && 'border-amber-200 bg-amber-50/60',
           variant === 'success' && 'border-emerald-200 bg-emerald-50/50',
@@ -249,10 +249,10 @@ export function DetailRail({
             ))}
           </div>
         ) : null}
-        <p className="mt-3 text-base font-bold leading-tight text-slate-900">{n.title}</p>
-        {n.body ? <p className="mt-2 text-sm text-slate-600">{n.body}</p> : null}
+        <p className="mt-1.5 text-sm font-semibold leading-tight text-slate-900">{n.title}</p>
+        {n.body ? <p className="mt-1 text-xs text-slate-600">{n.body}</p> : null}
         {n.whyBody ? (
-          <div className="mt-3 border-l-2 border-slate-300 pl-3">
+          <div className="mt-1.5 border-l-2 border-slate-300 pl-2">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
               {n.whyTitle ?? t('app.platform.detail_rail.why')}
             </p>
@@ -263,7 +263,7 @@ export function DetailRail({
           <button
             type="button"
             onClick={n.primaryAction.onClick}
-            className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800"
+            className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800"
           >
             {n.primaryAction.label}
           </button>
@@ -286,7 +286,7 @@ export function DetailRail({
     blocks.outcome = (
       <div
         className={clsx(
-          'rounded-xl border p-4',
+          'rounded-lg border p-2.5',
           variant === 'terminal' && 'border-slate-200 bg-slate-100/80',
           variant === 'success' && 'border-emerald-200 bg-emerald-50/50',
           variant === 'default' && 'border-brand-200 bg-brand-50/50',
@@ -295,10 +295,10 @@ export function DetailRail({
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
           {t('app.platform.detail_rail.process_outcome')}
         </p>
-        <p className="mt-3 text-base font-bold leading-tight text-slate-900">{o.title}</p>
-        {o.body ? <p className="mt-2 text-sm text-slate-600">{o.body}</p> : null}
+        <p className="mt-1.5 text-sm font-semibold leading-tight text-slate-900">{o.title}</p>
+        {o.body ? <p className="mt-1 text-xs text-slate-600">{o.body}</p> : null}
         {o.whyLabel ? (
-          <div className="mt-3 border-l-2 border-slate-300 pl-3">
+          <div className="mt-1.5 border-l-2 border-slate-300 pl-2">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
               {t('app.platform.context_rail.why')}
             </p>
@@ -472,21 +472,21 @@ export function DetailRail({
     if (!content) return null
     if (blockId === 'header') {
       return (
-        <div key={blockId} className="shrink-0 border-b border-slate-100 px-4 py-3">
+        <div key={blockId} className="shrink-0 border-b border-slate-100 px-3 py-2">
           {content}
         </div>
       )
     }
     if (blockId === 'next_action' || blockId === 'outcome') {
       return (
-        <div key={blockId} className="shrink-0 border-b border-slate-100 px-4 py-4">
+        <div key={blockId} className="border-b border-slate-100 px-3 py-2">
           {content}
         </div>
       )
     }
     if (blockId === 'contacts' || blockId === 'actions') {
       return (
-        <div key={blockId} className="shrink-0 border-b border-slate-100 px-4 py-3">
+        <div key={blockId} className="border-b border-slate-100 px-3 py-2">
           {content}
         </div>
       )
@@ -517,14 +517,14 @@ export function DetailRail({
         <>
           <div className="shrink-0">
             {fixedBlockIds.map((blockId) => renderBlock(blockId))}
-            {model?.decision ? (
-              <div className="shrink-0 border-b border-slate-100 px-4 py-4" data-context-rail-zone="decision">
-                <ContextRailDecisionZone decision={model.decision} />
-              </div>
-            ) : null}
           </div>
-          {scrollBlockIds.length ? (
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-context-rail-zone="scroll">
+          {scrollBlockIds.length || model?.decision ? (
+            <div className="min-h-0 flex-1 overflow-y-auto" data-context-rail-zone="scroll">
+              {model?.decision ? (
+                <div className="border-b border-slate-100 px-3 py-2" data-context-rail-zone="decision">
+                  <ContextRailDecisionZone decision={model.decision} />
+                </div>
+              ) : null}
               {scrollBlockIds.map((blockId) => renderBlock(blockId))}
             </div>
           ) : null}

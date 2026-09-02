@@ -44,7 +44,7 @@ export function PageShellHeader({
   return (
     <div
       data-hf-page-shell-header
-      className={clsx('shrink-0 px-4 pt-4 pb-2', className)}
+      className={clsx('shrink-0 px-4 pt-2 pb-1', className)}
     >
       {children}
     </div>

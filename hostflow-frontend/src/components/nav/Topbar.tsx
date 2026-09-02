@@ -623,7 +623,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       <header
         className={[
           'relative z-50 flex items-center justify-between gap-2 border-b border-slate-200 bg-white shadow-sm',
-          compact ? 'h-14 px-2 sm:px-3 lg:px-4' : 'h-16 px-3 sm:px-4 lg:px-6',
+          compact ? 'h-11 px-2 sm:px-3 lg:px-4' : 'h-14 px-3 sm:px-4 lg:px-6',
         ].join(' ')}
       >
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -651,7 +651,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
             <img
               src="/logo_hf.svg"
               alt=""
-              className={compact ? 'h-7 w-auto' : 'h-8 w-auto'}
+              className={compact ? 'h-6 w-auto' : 'h-7 w-auto'}
               width={120}
               height={32}
             />
@@ -682,8 +682,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
           <button
             type="button"
             className={[
-              'hidden items-center gap-2 rounded-md border border-slate-200 px-4 text-sm text-slate-600 transition hover:bg-slate-50 lg:inline-flex',
-              compact ? 'py-1.5' : 'py-2',
+              'hidden items-center gap-2 rounded-md border border-slate-200 px-3 text-sm text-slate-600 transition hover:bg-slate-50 lg:inline-flex',
+              compact ? 'py-1' : 'py-1.5',
             ].join(' ')}
             onClick={() => setSearchOpen(true)}
           >
@@ -697,7 +697,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
             <div className="relative" ref={notifRef}>
               <button
                 type="button"
-                className="relative rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50"
+                className="relative rounded-full border border-slate-200 p-1.5 text-slate-700 transition hover:bg-slate-50"
                 aria-label={
                   bellAttentionCount > 0
                     ? t('app.topbar.actions.notifications_with_urgent', {
@@ -962,10 +962,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
           <div className="relative" ref={menuRef}>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-2 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:px-3"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-1.5 py-1 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:px-2.5"
               onClick={() => setMenuOpen((prev) => !prev)}
             >
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-900 text-white">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-900 text-xs text-white">
                 {initials}
               </span>
               <span className="hidden md:inline">{me?.full_name || me?.email || t('app.shell.actions.profile')}</span>

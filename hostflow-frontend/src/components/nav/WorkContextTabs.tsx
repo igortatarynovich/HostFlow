@@ -142,9 +142,9 @@ export default function WorkContextTabs({ businessType = 'agency' }: WorkContext
   if (!globalWorkStripVisible(pathname) || tabs.length === 0) return null
 
   return (
-    <div className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 sm:px-4 lg:px-8">
+    <div className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50/95 px-3 py-0.5 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 sm:px-4 lg:px-6">
       <nav
-        className="flex max-w-full flex-wrap items-center gap-x-1 gap-y-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex max-w-full flex-nowrap items-center gap-x-0.5 overflow-x-auto py-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         aria-label={t('app.work.context_strip.aria', { defaultValue: 'Operational sections' })}
       >
         {tabs.map((tab) => {
@@ -154,7 +154,7 @@ export default function WorkContextTabs({ businessType = 'agency' }: WorkContext
               key={tab.key}
               to={tab.to}
               className={clsx(
-                'shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition',
+                'shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition',
                 active
                   ? 'bg-white text-brand-800 shadow-sm ring-1 ring-slate-200'
                   : 'text-slate-600 hover:bg-white/80 hover:text-slate-900',

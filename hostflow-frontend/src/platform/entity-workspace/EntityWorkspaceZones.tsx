@@ -39,20 +39,20 @@ export function EntityWorkspaceHeaderZone({
       .toUpperCase()
 
   return (
-    <header className="shrink-0 border-b border-slate-200 bg-white px-6 py-4" data-entity-workspace-zone="header">
+    <header className="shrink-0 border-b border-slate-200 bg-white px-4 py-2.5" data-entity-workspace-zone="header">
       {extension?.backHref ? (
         <Link
           to={extension.backHref}
-          className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-brand-700"
+          className="mb-1.5 inline-flex items-center gap-2 text-xs font-medium text-slate-600 hover:text-brand-700"
         >
-          <IconArrowLeft size={16} />
+          <IconArrowLeft size={14} />
           {extension.backLabel ?? 'Назад'}
         </Link>
       ) : null}
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-1 items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-brand-100 to-brand-200 text-lg font-bold text-brand-800 ring-1 ring-brand-200">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-brand-100 to-brand-200 text-sm font-bold text-brand-800 ring-1 ring-brand-200">
             {extension?.avatarUrl ? (
               <img src={extension.avatarUrl} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -62,14 +62,14 @@ export function EntityWorkspaceHeaderZone({
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{resourceTypeLabel}</p>
             <div className="mt-0.5 flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-2xl font-bold tracking-tight text-slate-900">{header.title}</h1>
+              <h1 className="truncate text-lg font-semibold tracking-tight text-slate-900">{header.title}</h1>
               {header.outcomeLabel ? (
                 <SemanticBadge label={header.outcomeLabel} semanticRole={header.outcomeSemantic ?? 'status'} size="sm" shape="pill" />
               ) : header.statusLabel ? (
                 <SemanticBadge label={header.statusLabel} semanticRole={header.statusSemantic ?? 'process_stage'} size="sm" shape="pill" />
               ) : null}
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
               {extension?.entityRefLabel ? <span>{extension.entityRefLabel}</span> : null}
               {header.stageLabel && header.stageLabel !== header.statusLabel ? (
                 <SemanticBadge label={header.stageLabel} semanticRole={header.stageSemantic ?? 'process_stage'} size="sm" shape="pill" />
@@ -160,7 +160,7 @@ export function EntityWorkspaceSummaryStrip({ summary }: { summary: EntityWorksp
       }))
 
   return (
-    <section className="shrink-0 border-b border-slate-200 bg-slate-50/70 px-6 py-4" data-entity-workspace-zone="summary">
+    <section className="shrink-0 border-b border-slate-200 bg-slate-50/70 px-4 py-2" data-entity-workspace-zone="summary">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {cards.map((card) => {
           const tone = card.tone ?? 'default'
@@ -218,18 +218,18 @@ export function EntityWorkspaceNavTabs({
 }: EntityWorkspaceNavTabsProps) {
   return (
     <nav
-      className="shrink-0 border-b border-slate-200 bg-white px-4"
+      className="shrink-0 border-b border-slate-200 bg-white px-3"
       data-entity-workspace-zone="navigation"
       aria-label={ariaLabel}
     >
-      <div className="flex gap-1 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-0.5 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sections.map((sectionId) => (
           <button
             key={sectionId}
             type="button"
             onClick={() => onSectionChange(sectionId)}
             className={clsx(
-              'shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition',
+              'shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition',
               activeSectionId === sectionId
                 ? 'bg-brand-700 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',

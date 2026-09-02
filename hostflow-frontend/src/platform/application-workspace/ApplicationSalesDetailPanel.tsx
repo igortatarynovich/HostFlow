@@ -86,7 +86,7 @@ export function ApplicationSalesDetailPanel({
 
   return (
     <div
-      className="flex flex-col"
+      className="flex h-full min-h-0 flex-col"
       data-entity-workspace-slot="context-rail"
       data-entity-workspace-consumer={SALES_INQUIRY_COMPOSITION_CONSUMER_ID}
     >
@@ -142,7 +142,7 @@ export function ApplicationSalesDetailPanel({
         ),
         contacts: (
           <div className="flex items-start gap-3" data-testid="sales-rail-contact">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-800">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">
               {applicationInitial(application)}
             </span>
             <div className="min-w-0 flex-1">
@@ -152,7 +152,7 @@ export function ApplicationSalesDetailPanel({
               {telHref ? (
                 <a
                   href={telHref}
-                  className="mt-1 block break-all text-2xl font-semibold tracking-wide text-slate-900 hover:text-brand-700"
+                  className="mt-0.5 block break-all text-sm font-semibold tracking-wide text-slate-900 hover:text-brand-700"
                   data-testid="sales-rail-phone"
                 >
                   {contactPhone}
@@ -183,6 +183,7 @@ export function ApplicationSalesDetailPanel({
                   <MetaFormAnswersSection
                     answers={application.extensions?.meta_form_answers}
                     additionalAnswers={application.extensions?.additional_answers}
+                    labels={application.extensions?.form_question_labels_v1}
                   />
                   <SalesInquiryCallNotesSection
                     leadId={transportLeadId}

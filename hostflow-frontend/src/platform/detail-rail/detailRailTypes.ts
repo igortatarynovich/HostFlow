@@ -27,17 +27,15 @@ export const DETAIL_RAIL_BLOCK_ORDER: DetailRailBlockId[] = [
   'footer_actions',
 ]
 
-/** Fixed zone — always visible; never scrolls with table or rail body. */
-export const DETAIL_RAIL_FIXED_BLOCK_IDS: readonly DetailRailBlockId[] = [
-  'header',
+/** Sticky identity header only. Decision / next action scroll with context on short laptop viewports. */
+export const DETAIL_RAIL_FIXED_BLOCK_IDS: readonly DetailRailBlockId[] = ['header']
+
+/** Scroll zone — decision, context and depth; Entity Workspace holds full record. */
+export const DETAIL_RAIL_SCROLL_BLOCK_IDS: readonly DetailRailBlockId[] = [
   'contacts',
   'next_action',
   'outcome',
   'actions',
-]
-
-/** Scroll zone — contextual depth; Entity Workspace holds full record. */
-export const DETAIL_RAIL_SCROLL_BLOCK_IDS: readonly DetailRailBlockId[] = [
   'summary',
   'history',
   'documents',

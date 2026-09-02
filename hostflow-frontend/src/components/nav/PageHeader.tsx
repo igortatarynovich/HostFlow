@@ -81,8 +81,8 @@ export function PageHeader({
   const hasActions = Boolean(primaryAction) || Boolean(secondaryActions)
 
   return (
-    <header className={clsx('flex flex-col gap-2', className)}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <header className={clsx('flex flex-col gap-1', className)}>
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
         <PageBreadcrumb
           items={breadcrumbItems}
           currentLabel={breadcrumbCurrentLabel}
@@ -90,14 +90,14 @@ export function PageHeader({
           className="min-w-0 flex-1"
         />
         {hasActions ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
             {secondaryActions}
             {primaryAction}
           </div>
         ) : null}
       </div>
       {title ? (
-        <h1 className="truncate text-xl font-semibold text-slate-900 sm:text-2xl">
+        <h1 className="truncate text-lg font-semibold text-slate-900">
           {title}
         </h1>
       ) : null}

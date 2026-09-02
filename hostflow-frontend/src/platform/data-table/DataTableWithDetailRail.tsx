@@ -29,9 +29,9 @@ export function DataTableWithDetailRail<TRow>({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" data-list-workspace="table-detail-rail-v1">
-      {toolbar ? <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3">{toolbar}</div> : null}
-      {statusTabs ? <div className="shrink-0 border-b border-slate-100 bg-white px-4 py-2">{statusTabs}</div> : null}
-      {filterRow ? <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-4 py-2">{filterRow}</div> : null}
+      {toolbar ? <div className="shrink-0 border-b border-slate-200 bg-white px-3 py-1.5">{toolbar}</div> : null}
+      {statusTabs ? <div className="shrink-0 border-b border-slate-100 bg-white px-3 py-1">{statusTabs}</div> : null}
+      {filterRow ? <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-3 py-1">{filterRow}</div> : null}
       {bulkBar ? <div className="shrink-0">{bulkBar}</div> : null}
 
       <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">

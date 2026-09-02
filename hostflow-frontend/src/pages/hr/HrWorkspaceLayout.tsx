@@ -25,7 +25,7 @@ export default function HrWorkspaceLayout() {
           kind="browse"
         />
         <nav
-          className="tabs mt-3 flex-wrap"
+          className="tabs mt-1.5 flex-wrap"
           aria-label={t('app.nav.hr.workspace.nav_aria', { defaultValue: 'HR sections' })}
         >
           <NavLink to={p.hr} end className={tabClass}>

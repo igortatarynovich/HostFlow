@@ -26,7 +26,7 @@ export { useSearchWorkspace } from './searchWorkspaceContext'
 
 const tabClass = ({ isActive }: { isActive: boolean }) =>
   clsx(
-    'rounded-lg px-3 py-2 text-sm font-medium transition',
+    'rounded-md px-2.5 py-1 text-xs font-medium transition',
     isActive ? 'bg-white text-brand-800 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white/80 hover:text-slate-900',
   )
 
@@ -148,7 +148,7 @@ export default function SearchWorkspaceLayout() {
           />
 
           {status?.headcount_target ? (
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-1 text-xs text-slate-600">
               {t('app.search_workspace.status_line', {
                 values: {
                   hired: status.hired ?? 0,
@@ -160,7 +160,7 @@ export default function SearchWorkspaceLayout() {
             </p>
           ) : null}
 
-          <div className="mt-3">
+          <div className="mt-1.5">
             <SearchNextActionPanel
               pulse={pulse}
               searchId={searchId}
@@ -170,7 +170,7 @@ export default function SearchWorkspaceLayout() {
           </div>
 
           <nav
-            className="mt-3 flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-slate-50/90 p-1"
+            className="mt-1.5 flex flex-wrap gap-0.5 rounded-lg border border-slate-200 bg-slate-50/90 p-0.5"
             aria-label={t('app.search_workspace.tabs_aria')}
           >
             <NavLink to={overviewPath} end className={tabClass}>
@@ -181,7 +181,7 @@ export default function SearchWorkspaceLayout() {
             </NavLink>
             <Link
               to={candidatesHref}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white/80 hover:text-slate-900"
+              className="rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-white/80 hover:text-slate-900"
             >
               {t('app.search_workspace.tab_candidates')}
             </Link>

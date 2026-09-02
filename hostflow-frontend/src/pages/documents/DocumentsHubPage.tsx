@@ -17,7 +17,7 @@ const TAB_KEYS: HubTab[] = ['all', 'missing', 'expiring', 'verification', 'hr', 
 
 function tabClass(active: boolean) {
   return clsx(
-    'rounded-md px-3 py-2 text-sm font-medium transition',
+    'rounded-md px-2.5 py-1 text-xs font-medium transition',
     active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
   )
 }
@@ -106,18 +106,18 @@ export default function DocumentsHubPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-slate-50/80">
-      <header className="border-b border-slate-200 bg-white px-4 py-4 lg:px-6">
+      <header className="border-b border-slate-200 bg-white px-3 py-2 lg:px-4">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-lg font-semibold text-slate-900">
             {t('app.documents_hub.title', { defaultValue: 'Documents hub' })}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-0.5 truncate text-xs text-slate-500">
             {t('app.documents_hub.subtitle', {
               defaultValue:
                 'Unified read-first access. Ownership stays with recruitment, HR, or shared contexts — this screen only aggregates views.',
             })}
           </p>
-          <nav className="mt-4 flex flex-wrap gap-1" aria-label={t('app.documents_hub.nav_aria', { defaultValue: 'Documents hub sections' })}>
+          <nav className="mt-1.5 flex flex-wrap gap-0.5" aria-label={t('app.documents_hub.nav_aria', { defaultValue: 'Documents hub sections' })}>
             {TAB_KEYS.map((key) => {
               if ((key === 'missing' || key === 'expiring' || key === 'hr') && !canHrDocs) return null
               if (key === 'registry' && !canDocsManage) return null
