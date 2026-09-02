@@ -33,4 +33,11 @@ describe('crmWorkspaceLayout', () => {
     expect(ownsCrmWorkspaceScroll(P.recruitmentInbox)).toBe(true)
     expect(isEdgeToEdgeTablePath(P.recruitmentInbox)).toBe(true)
   })
+
+  it('lets marketing forms own inner scroll so PageShell can scroll', () => {
+    expect(ownsCrmWorkspaceScroll(P.marketingForms)).toBe(true)
+    expect(ownsCrmWorkspaceScroll(`${P.marketingForms}/form-1`)).toBe(true)
+    expect(isEdgeToEdgeTablePath(P.marketingForms)).toBe(false)
+    expect(ownsCrmWorkspaceScroll(P.marketing)).toBe(false)
+  })
 })

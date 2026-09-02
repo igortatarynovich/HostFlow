@@ -62,6 +62,7 @@ export function ownsCrmWorkspaceScroll(pathname: string): boolean {
     isPathOrChild(path, P.settings) ||
     isPathOrChild(path, P.recruitmentSearches) ||
     isPathOrChild(path, P.sales) ||
-    isPathOrChild(path, P.inbox)
+    isPathOrChild(path, P.inbox) ||
+    isPathOrChild(path, P.marketingForms)
   )
 }
