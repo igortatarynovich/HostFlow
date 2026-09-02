@@ -3,7 +3,6 @@ import { getCommunicationsSettings, listCommunicationTimeOffRequests, type Commu
 import { listManagers } from '../api/client'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
-import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
@@ -112,7 +111,6 @@ export default function TeamAvailabilityPage() {
 
   return (
     <PageShell>
-      <WorkspaceTopNav active="calendar" />
       <PageShellHeader>
         <PageHeader
           title={t('app.communications.ia.team_availability_title', { defaultValue: 'Team Availability' })}

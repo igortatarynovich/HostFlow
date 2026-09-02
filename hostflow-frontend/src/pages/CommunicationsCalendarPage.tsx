@@ -2,7 +2,6 @@ import clsx from 'clsx'
 import { type ClipboardEvent, FormEvent, type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
-import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import {
   completeActivity,
   createActivity,
@@ -3743,7 +3742,6 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
 
   return (
     <PageShell>
-      <WorkspaceTopNav active="calendar" />
       {calendarContent}
     </PageShell>
   )

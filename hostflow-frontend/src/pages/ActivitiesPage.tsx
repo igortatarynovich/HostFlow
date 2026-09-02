@@ -1,5 +1,4 @@
 import { useI18n } from '../i18n'
-import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { ActivitiesPanel } from '../components/activities/ActivitiesPanel'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
@@ -9,7 +8,6 @@ export default function ActivitiesPage() {
 
   return (
     <PageShell>
-      <WorkspaceTopNav active="tasks" />
       <PageShellHeader>
         <PageHeader
           title={t('app.activities.title', { defaultValue: 'Activities' })}

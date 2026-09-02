@@ -11,7 +11,7 @@ export function SidebarOwnCompanySection() {
 
   return (
     <>
-      <div className="mx-3 mb-3 rounded-lg border border-white/15 bg-white/5 px-2.5 py-2">
+      <div className="mb-3 min-w-0 overflow-hidden rounded-lg border border-white/15 bg-white/5 px-2.5 py-2">
         <div className="flex flex-wrap items-center gap-1.5">
           {oc.ownCompanies.length > 0 ? (
             <select

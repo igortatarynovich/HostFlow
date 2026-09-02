@@ -508,7 +508,7 @@ export function Sidebar({
     const crossHost = /^https?:\/\//i.test(itemPath)
     const navClass = (active: boolean) =>
       clsx(
-        'block rounded-lg px-3 py-3 text-sm font-medium transition',
+        'block whitespace-nowrap rounded-lg px-3 py-3 text-sm font-medium transition',
         active ? 'bg-white text-brand-900 shadow-sm' : 'text-white hover:bg-white/15 hover:text-white',
       )
 
@@ -625,19 +625,20 @@ export function Sidebar({
     <>
       <div
         className={clsx(
-          'relative z-[100] bg-brand-900 transition-[width] duration-300',
-          open ? 'w-screen max-w-sm lg:w-72 lg:max-w-none' : 'w-0'
+          'relative z-[100] h-full w-0 shrink-0 overflow-hidden bg-brand-900 transition-[width] duration-300',
+          open && 'lg:w-max',
         )}
         aria-hidden={!open}
       >
         <div
           className={clsx(
-            'fixed inset-y-0 left-0 flex h-full flex-col bg-brand-900 text-white transition-transform duration-300',
-            open ? 'translate-x-0' : '-translate-x-full',
-            'w-screen max-w-sm lg:max-w-none lg:w-72'
+            'flex h-full w-max max-w-sm flex-col bg-brand-900 px-3 text-white transition-transform duration-300',
+            open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+            'fixed inset-y-0 left-0',
+            'lg:static lg:max-w-none',
           )}
         >
-          <div className="px-4 py-3">
+          <div className="py-3">
             <div className="min-w-0">
               <div className="text-xs font-medium text-white/65" title={t('app.shell.sidebar.workspace')}>
                 {t('app.shell.sidebar.workspace')}
@@ -650,12 +651,12 @@ export function Sidebar({
 
           <SidebarOwnCompanySection />
 
-          <nav className="flex-1 overflow-y-auto px-3 pb-6">
+          <nav className="flex-1 overflow-y-auto pb-6">
             {sidebarBucketed ? (
               <>
                 {dashboardNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_dashboard')}
                     </div>
                     <div className="space-y-1">{dashboardNavItems.map(renderPrimaryNavItem)}</div>
@@ -663,7 +664,7 @@ export function Sidebar({
                 )}
                 {workHubNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.work')}
                     </div>
                     <div className="space-y-1">{workHubNavItems.map(renderPrimaryNavItem)}</div>
@@ -671,7 +672,7 @@ export function Sidebar({
                 )}
                 {inboxNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_communications')}
                     </div>
                     <div className="space-y-1">{inboxNavItems.map(renderPrimaryNavItem)}</div>
@@ -679,9 +680,9 @@ export function Sidebar({
                 )}
                 {recruitmentNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_recruitment')}
                       </div>
                       <div className="space-y-1">{recruitmentNavItems.map(renderPrimaryNavItem)}</div>
@@ -690,9 +691,9 @@ export function Sidebar({
                 )}
                 {hrNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_hr')}
                       </div>
                       <div className="space-y-1">{hrNavItems.map(renderPrimaryNavItem)}</div>
@@ -701,9 +702,9 @@ export function Sidebar({
                 )}
                 {marketingNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3" data-testid="sidebar-section-marketing">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_marketing')}
                       </div>
                       <div className="space-y-1">{marketingNavItems.map(renderPrimaryNavItem)}</div>
@@ -712,9 +713,9 @@ export function Sidebar({
                 )}
                 {salesNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3" data-testid="sidebar-section-sales">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_sales')}
                       </div>
                       <div className="space-y-1">{salesNavItems.map(renderPrimaryNavItem)}</div>
@@ -723,9 +724,9 @@ export function Sidebar({
                 )}
                 {servicesNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_services')}
                       </div>
                       <div className="space-y-1">{servicesNavItems.map(renderPrimaryNavItem)}</div>
@@ -734,9 +735,9 @@ export function Sidebar({
                 )}
                 {financeNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_finance')}
                       </div>
                       <div className="space-y-1">{financeNavItems.map(renderPrimaryNavItem)}</div>
@@ -745,9 +746,9 @@ export function Sidebar({
                 )}
                 {tasksNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_tasks_calendar')}
                       </div>
                       <div className="space-y-1">{tasksNavItems.map(renderPrimaryNavItem)}</div>
@@ -756,9 +757,9 @@ export function Sidebar({
                 )}
                 {processingNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_processing')}
                       </div>
                       <div className="space-y-1">{processingNavItems.map(renderPrimaryNavItem)}</div>
@@ -767,9 +768,9 @@ export function Sidebar({
                 )}
                 {teamNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_team')}
                       </div>
                       <div className="space-y-1">{teamNavItems.map(renderPrimaryNavItem)}</div>
@@ -778,9 +779,9 @@ export function Sidebar({
                 )}
                 {documentsNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_documents')}
                       </div>
                       <div className="space-y-1">{documentsNavItems.map(renderPrimaryNavItem)}</div>
@@ -789,9 +790,9 @@ export function Sidebar({
                 )}
                 {automationsNavItems.length > 0 && (
                   <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_automations')}
                       </div>
                       <div className="space-y-1">{automationsNavItems.map(renderPrimaryNavItem)}</div>
@@ -800,7 +801,7 @@ export function Sidebar({
                 )}
                 {integrationsNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_integrations')}
                     </div>
                     <div className="space-y-1">{integrationsNavItems.map(renderPrimaryNavItem)}</div>
@@ -808,19 +809,19 @@ export function Sidebar({
                 )}
                 {analyticsNavItems.length > 0 && (
                   <div className="mb-4">
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
-                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="my-2 border-t border-white/10" role="separator" />
+                    <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_analytics')}
                     </div>
                     <div className="space-y-1">{analyticsNavItems.map(renderPrimaryNavItem)}</div>
                   </div>
                 )}
                 {(organizationNavItems.length > 0 || settingsHubNavItems.length > 0 || profileNavItems.length > 0) && (
-                  <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                  <div className="my-2 border-t border-white/10" role="separator" />
                 )}
                 {organizationNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_organization')}
                     </div>
                     <div className="space-y-1">{organizationNavItems.map(renderPrimaryNavItem)}</div>
@@ -828,7 +829,7 @@ export function Sidebar({
                 )}
                 {settingsHubNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_settings')}
                     </div>
                     <div className="space-y-1">{settingsHubNavItems.map(renderPrimaryNavItem)}</div>
@@ -836,7 +837,7 @@ export function Sidebar({
                 )}
                 {profileNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_personal')}
                     </div>
                     <div className="space-y-1">{profileNavItems.map(renderPrimaryNavItem)}</div>
@@ -845,7 +846,7 @@ export function Sidebar({
               </>
             ) : (
               <div className="mb-4">
-                <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                <div className="whitespace-nowrap px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                   {t('app.shell.sidebar.section_menu')}
                 </div>
                 <div className="space-y-1">{coreNavItems.map(renderPrimaryNavItem)}</div>

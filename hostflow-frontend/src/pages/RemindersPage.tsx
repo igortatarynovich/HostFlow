@@ -35,7 +35,6 @@ import { useAuth } from '../store/useAuth'
 import { canUseTeamAssigneeScope as teamAssigneeScopeAllowed } from '../auth/trustRoles'
 import { useI18n } from '../i18n'
 import { activateClickOnSpaceEnter, runActionOnSpaceEnter } from '../utils/a11yClick'
-import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import ReminderExplainabilityPopover from '../components/explainability/ReminderExplainabilityPopover'
@@ -1654,7 +1653,6 @@ export default function RemindersPage() {
 
   return (
     <PageShell>
-      <WorkspaceTopNav active="tasks" />
       <PageShellHeader>
         <PageHeader
           title={t('app.tasks.hub_title')}

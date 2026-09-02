@@ -1,14 +1,6 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import clsx from 'clsx'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { Outlet, useLocation } from 'react-router-dom'
 import { SALES_HOME_PATH, SALES_ORDERS_PATH } from '../../app/salesPaths'
 import { useI18n } from '../../i18n'
-
-const tabClass = ({ isActive }: { isActive: boolean }) =>
-  clsx(
-    'rounded-md px-2.5 py-1 text-xs font-medium transition',
-    isActive ? 'bg-white text-brand-900 shadow-sm' : 'text-slate-600 hover:bg-white/60 hover:text-slate-900',
-  )
 
 export default function SalesWorkspaceLayout() {
   const { t } = useI18n()
@@ -30,26 +22,6 @@ export default function SalesWorkspaceLayout() {
               ? t('app.sales_workspace.inquiries_title', { defaultValue: 'Обращения' })
               : t('app.sales_workspace.title', { defaultValue: 'Продажи' })}
         </h1>
-        <nav
-          className="mt-1.5 inline-flex flex-wrap gap-0.5 rounded-lg bg-slate-100/80 p-0.5"
-          aria-label={t('app.sales_workspace.nav_aria', { defaultValue: 'Разделы продаж' })}
-        >
-          <NavLink to={SALES_HOME_PATH} end className={tabClass}>
-            {t('app.sales_workspace.nav.inquiries', { defaultValue: 'Обращения' })}
-          </NavLink>
-          <NavLink to={CRM_APP_PATHS.clientsDirectory} className={tabClass}>
-            {t('app.sales_workspace.nav.clients', { defaultValue: 'Клиенты' })}
-          </NavLink>
-          <NavLink to={CRM_APP_PATHS.services} className={tabClass}>
-            {t('app.sales_workspace.nav.services', { defaultValue: 'Услуги' })}
-          </NavLink>
-          <NavLink to={SALES_ORDERS_PATH} className={tabClass}>
-            {t('app.sales_workspace.nav.orders', { defaultValue: 'Заказы' })}
-          </NavLink>
-          <NavLink to={CRM_APP_PATHS.invoices} className={tabClass}>
-            {t('app.sales_workspace.nav.invoices', { defaultValue: 'Счета' })}
-          </NavLink>
-        </nav>
       </header>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Outlet />

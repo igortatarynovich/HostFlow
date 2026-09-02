@@ -13,7 +13,6 @@ import {
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
-import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
@@ -242,7 +241,6 @@ export default function MyAvailabilityPage() {
 
   return (
     <PageShell>
-      <WorkspaceTopNav active="calendar" />
       <PageShellHeader>
         <PageHeader
           title={t('app.communications.ia.my_availability_title', { defaultValue: 'My Availability' })}
