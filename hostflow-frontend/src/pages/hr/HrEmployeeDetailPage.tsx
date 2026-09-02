@@ -260,7 +260,7 @@ export default function HrEmployeeDetailPage() {
 
   return (
     <PageShell
-      className="hr-employee-workspace w-full min-w-0 overflow-visible"
+      className="hr-employee-workspace w-full min-w-0"
       data-entity-workspace-consumer={isCutover ? HR_EMPLOYEE_COMPOSITION_CONSUMER_ID : undefined}
     >
       <div className="w-full min-w-0">

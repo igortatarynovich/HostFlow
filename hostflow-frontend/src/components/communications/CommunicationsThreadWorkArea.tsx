@@ -172,7 +172,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
         className={clsx(
           'space-y-3 overflow-auto pr-1',
           layout === 'page' && 'max-h-[70vh]',
-          layout === 'inboxCenter' && 'min-h-0 flex-1 max-h-[min(50vh,28rem)] xl:max-h-[calc(100vh-14rem)]',
+          layout === 'inboxCenter' && 'min-h-0 flex-1 max-h-[min(50vh,28rem)] xl:max-h-[calc(100dvh-14rem)]',
         )}
       >
         {sortedMessages.length === 0 && (

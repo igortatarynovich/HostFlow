@@ -398,16 +398,21 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
         <section className="m-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</section>
       ) : (
         <div
-          className="grid min-h-0 flex-1 overflow-hidden"
+          className={clsx(
+            'grid min-h-0 min-w-0 flex-1',
+            splitView
+              ? 'max-lg:auto-rows-min max-lg:grid-cols-1 max-lg:overflow-y-auto lg:overflow-hidden lg:grid-cols-[minmax(0,1fr)_var(--hf-detail-rail-width)] lg:grid-rows-[minmax(0,1fr)]'
+              : 'grid-cols-1 grid-rows-[minmax(0,1fr)] overflow-hidden',
+          )}
           data-hf-decision-mode={splitView ? 'context' : 'table'}
-          style={{
-            gridTemplateColumns: splitView
-              ? `minmax(0, 1fr) ${DEFAULT_DETAIL_RAIL_WIDTH_PX}px`
-              : 'minmax(0, 1fr)',
-            gridTemplateRows: 'minmax(0, 1fr)',
-          }}
+          style={{ ['--hf-detail-rail-width' as string]: `${DEFAULT_DETAIL_RAIL_WIDTH_PX}px` }}
         >
-          <div className="min-h-0 min-w-0 overflow-auto bg-white">
+          <div
+            className={clsx(
+              'min-h-0 min-w-0 overflow-auto bg-white',
+              splitView && 'max-lg:max-h-[min(45dvh,24rem)]',
+            )}
+          >
             <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
               <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
@@ -449,12 +454,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
 
           {splitView ? (
             <aside
-              className="flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-slate-50 shadow-[inset_1px_0_0_rgb(226_232_240)]"
-              style={{
-                width: DEFAULT_DETAIL_RAIL_WIDTH_PX,
-                minWidth: DEFAULT_DETAIL_RAIL_WIDTH_PX,
-                maxWidth: DEFAULT_DETAIL_RAIL_WIDTH_PX,
-              }}
+              className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-t border-slate-200 bg-slate-50 shadow-[inset_1px_0_0_rgb(226_232_240)] max-lg:max-h-[min(70dvh,32rem)] lg:h-full lg:w-[var(--hf-detail-rail-width)] lg:min-w-[var(--hf-detail-rail-width)] lg:max-w-[var(--hf-detail-rail-width)] lg:border-l lg:border-t-0"
               data-detail-rail="application-context"
             >
               {detailLoading || !selectedApplication ? (

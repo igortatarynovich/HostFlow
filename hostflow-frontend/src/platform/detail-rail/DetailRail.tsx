@@ -500,8 +500,8 @@ export function DetailRail({
 
   return (
     <aside
-      className="flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-slate-50 shadow-[inset_1px_0_0_rgb(226_232_240)]"
-      style={{ width: widthPx, minWidth: widthPx, maxWidth: widthPx }}
+      className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-t border-slate-200 bg-slate-50 shadow-[inset_1px_0_0_rgb(226_232_240)] max-lg:max-h-[min(70dvh,32rem)] lg:h-full lg:w-[var(--hf-detail-rail-width)] lg:min-w-[var(--hf-detail-rail-width)] lg:max-w-[var(--hf-detail-rail-width)] lg:border-l lg:border-t-0"
+      style={{ ['--hf-detail-rail-width' as string]: `${widthPx}px` }}
       data-detail-rail="v1"
       data-detail-rail-readonly="true"
       data-resource-id={model?.resourceId}

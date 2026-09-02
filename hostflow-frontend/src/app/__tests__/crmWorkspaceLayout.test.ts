@@ -29,6 +29,17 @@ describe('crmWorkspaceLayout', () => {
     expect(isEdgeToEdgeTablePath(`${P.vacancies}/vac-1`)).toBe(false)
   })
 
+  it('lets candidate, lead, client, and invoice detail own scroll without going edge-to-edge', () => {
+    expect(ownsCrmWorkspaceScroll(`${P.candidates}/cand-1`)).toBe(true)
+    expect(isEdgeToEdgeTablePath(`${P.candidates}/cand-1`)).toBe(false)
+    expect(ownsCrmWorkspaceScroll(`${P.leads}/lead-1`)).toBe(true)
+    expect(isEdgeToEdgeTablePath(`${P.leads}/lead-1`)).toBe(false)
+    expect(ownsCrmWorkspaceScroll(`${P.agencyClients}/co-1`)).toBe(true)
+    expect(isEdgeToEdgeTablePath(`${P.agencyClients}/co-1`)).toBe(false)
+    expect(ownsCrmWorkspaceScroll(`${P.invoices}/inv-1`)).toBe(true)
+    expect(isEdgeToEdgeTablePath(`${P.invoices}/inv-1`)).toBe(false)
+  })
+
   it('lets recruitment inbox own scroll and stay edge-to-edge', () => {
     expect(ownsCrmWorkspaceScroll(P.recruitmentInbox)).toBe(true)
     expect(isEdgeToEdgeTablePath(P.recruitmentInbox)).toBe(true)

@@ -233,7 +233,7 @@ export default function CandidateStageDecisionPanel({
     (docsPipelineBlocking || docsSoftAdvisory || vacancyPipelineBlocking || contactAttemptPipelineBlocking)
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-3">
+    <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-semibold text-slate-700">
@@ -440,7 +440,7 @@ export default function CandidateStageDecisionPanel({
         </div>
       ) : null}
 
-      <div className="mt-3">
+      <div className="mt-3 min-w-0">
         <CandidateStageJourneyPanel
           locale={locale}
           variant="horizontal"
