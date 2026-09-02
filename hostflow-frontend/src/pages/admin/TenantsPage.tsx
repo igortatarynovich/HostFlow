@@ -353,9 +353,7 @@ export default function TenantsPage() {
     (status?: string | null) => {
       if (!status) return t('common.labels.not_available')
       const normalized = status.toLowerCase()
-      return t(`app.platform.tenants.access.status.${normalized}`, {
-        defaultValue: status.replace(/_/g, ' '),
-      })
+      return t(`app.platform.tenants.access.status.${normalized}`)
     },
     [t],
   )
@@ -502,16 +500,12 @@ export default function TenantsPage() {
     if (!selected) return
     const confirmText = t('app.platform.tenants.actions.impersonate_confirm', formatValues({ name: selected.name }))
     if (!window.confirm(confirmText)) return
-    const reasonPrompt = t('app.platform.tenants.actions.impersonate_reason_prompt', {
-      defaultValue: 'Reason for impersonation (required, min 3 characters):',
-    })
+    const reasonPrompt = t('app.platform.tenants.actions.impersonate_reason_prompt')
     const reasonRaw = window.prompt(reasonPrompt, '')
     const reason = (reasonRaw || '').trim()
     if (reason.length < 3) {
       setActionError(
-        t('app.platform.tenants.errors.impersonate_reason_required', {
-          defaultValue: 'A justification of at least 3 characters is required.',
-        }),
+        t('app.platform.tenants.errors.impersonate_reason_required'),
       )
       return
     }
@@ -1272,9 +1266,9 @@ export default function TenantsPage() {
                   </div>
 
                   <div className="rounded border border-slate-100 p-3">
-                    <h4 className="text-sm font-semibold text-slate-900">Legal/Public Hosts</h4>
+                    <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.legal_hosts.title')}</h4>
                     <p className="mt-1 text-xs text-slate-500">
-                      Host mapping for dynamic `/legal/*.html` tenant resolution.
+                      {t('app.platform.tenants.legal_hosts.subtitle')}
                     </p>
                     {legalHostError && (
                       <ErrorRecoveryBanner
@@ -1287,7 +1281,7 @@ export default function TenantsPage() {
                     )}
                     <div className="mt-3 grid gap-3 md:grid-cols-2">
                       <label className="text-xs font-medium text-slate-500">
-                        public_domain
+                        {t('app.platform.tenants.legal_hosts.public_domain')}
                         <input
                           className="input mt-1"
                           value={String(legalHostSettings.public_domain || '')}
@@ -1296,7 +1290,7 @@ export default function TenantsPage() {
                         />
                       </label>
                       <label className="text-xs font-medium text-slate-500">
-                        legal_domain
+                        {t('app.platform.tenants.legal_hosts.legal_domain')}
                         <input
                           className="input mt-1"
                           value={String(legalHostSettings.legal_domain || '')}
@@ -1305,7 +1299,7 @@ export default function TenantsPage() {
                         />
                       </label>
                       <label className="text-xs font-medium text-slate-500 md:col-span-2">
-                        custom_domain
+                        {t('app.platform.tenants.legal_hosts.custom_domain')}
                         <input
                           className="input mt-1"
                           value={String(legalHostSettings.custom_domain || '')}
@@ -1314,7 +1308,7 @@ export default function TenantsPage() {
                         />
                       </label>
                       <label className="text-xs font-medium text-slate-500 md:col-span-2">
-                        public_hosts (comma-separated)
+                        {t('app.platform.tenants.legal_hosts.public_hosts')}
                         <input
                           className="input mt-1"
                           value={legalHostRaw.public_hosts}
@@ -1323,7 +1317,7 @@ export default function TenantsPage() {
                         />
                       </label>
                       <label className="text-xs font-medium text-slate-500 md:col-span-2">
-                        domains (comma-separated)
+                        {t('app.platform.tenants.legal_hosts.domains')}
                         <input
                           className="input mt-1"
                           value={legalHostRaw.domains}
@@ -1332,7 +1326,7 @@ export default function TenantsPage() {
                         />
                       </label>
                       <label className="text-xs font-medium text-slate-500 md:col-span-2">
-                        legal_hosts (comma-separated)
+                        {t('app.platform.tenants.legal_hosts.legal_hosts_list')}
                         <input
                           className="input mt-1"
                           value={legalHostRaw.legal_hosts}

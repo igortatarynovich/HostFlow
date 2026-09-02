@@ -66,9 +66,9 @@ function parseCsv(value: string): string[] {
     .filter(Boolean)
 }
 
-function parseVariables(raw: string): CommunicationTemplateVariable[] {
+function parseVariables(raw: string, invalidMessage: string): CommunicationTemplateVariable[] {
   const parsed = JSON.parse(raw || '[]')
-  if (!Array.isArray(parsed)) throw new Error('variables must be a JSON array')
+  if (!Array.isArray(parsed)) throw new Error(invalidMessage)
   return parsed.map((row) => ({
     name: String(row?.name || '').trim(),
     var_type: String(row?.var_type || 'string').trim() || 'string',
@@ -118,9 +118,7 @@ export default function CommunicationTemplatesPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_templates.errors.load', {
-            defaultValue: 'Failed to load communication templates',
-          }),
+          t('admin.communications_templates.errors.load'),
           t,
         ),
       )
@@ -163,9 +161,7 @@ export default function CommunicationTemplatesPage() {
           setError(
             getFriendlyErrorInfo(
               err,
-              t('admin.communications_templates.errors.versions', {
-                defaultValue: 'Failed to load versions',
-              }),
+              t('admin.communications_templates.errors.versions'),
               t,
             ),
           )
@@ -207,15 +203,13 @@ export default function CommunicationTemplatesPage() {
       setCreateKey('')
       setCreateName('')
       setNotice(
-        t('admin.communications_templates.notices.created', { defaultValue: 'Template created' }),
+        t('admin.communications_templates.notices.created'),
       )
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_templates.errors.create', {
-            defaultValue: 'Failed to create template',
-          }),
+          t('admin.communications_templates.errors.create'),
           t,
         ),
       )
@@ -230,7 +224,10 @@ export default function CommunicationTemplatesPage() {
     setError(null)
     setNotice(null)
     try {
-      const variables = parseVariables(draftForm.variablesJson)
+      const variables = parseVariables(
+        draftForm.variablesJson,
+        t('admin.communications_templates.errors.variables_json'),
+      )
       const updated = await updateCommunicationTemplateDraft(selected.id, {
         subject: draftForm.subject,
         body_text: draftForm.body_text,
@@ -242,15 +239,13 @@ export default function CommunicationTemplatesPage() {
       })
       upsertLocal(updated)
       setNotice(
-        t('admin.communications_templates.notices.draft_saved', { defaultValue: 'Draft saved' }),
+        t('admin.communications_templates.notices.draft_saved'),
       )
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_templates.errors.save_draft', {
-            defaultValue: 'Failed to save draft',
-          }),
+          t('admin.communications_templates.errors.save_draft'),
           t,
         ),
       )
@@ -268,15 +263,13 @@ export default function CommunicationTemplatesPage() {
       const published = await publishCommunicationTemplate(selected.id)
       upsertLocal(published)
       setNotice(
-        t('admin.communications_templates.notices.published', { defaultValue: 'Published' }),
+        t('admin.communications_templates.notices.published'),
       )
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_templates.errors.publish', {
-            defaultValue: 'Failed to publish',
-          }),
+          t('admin.communications_templates.errors.publish'),
           t,
         ),
       )
@@ -294,15 +287,13 @@ export default function CommunicationTemplatesPage() {
       const archived = await archiveCommunicationTemplate(selected.id)
       upsertLocal(archived)
       setNotice(
-        t('admin.communications_templates.notices.archived', { defaultValue: 'Archived' }),
+        t('admin.communications_templates.notices.archived'),
       )
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_templates.errors.archive', {
-            defaultValue: 'Failed to archive',
-          }),
+          t('admin.communications_templates.errors.archive'),
           t,
         ),
       )
@@ -327,9 +318,7 @@ export default function CommunicationTemplatesPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_templates.errors.preview', {
-            defaultValue: 'Preview failed',
-          }),
+          t('admin.communications_templates.errors.preview'),
           t,
         ),
       )
@@ -349,9 +338,7 @@ export default function CommunicationTemplatesPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_templates.errors.diff', {
-            defaultValue: 'Diff failed',
-          }),
+          t('admin.communications_templates.errors.diff'),
           t,
         ),
       )
@@ -363,22 +350,13 @@ export default function CommunicationTemplatesPage() {
   return (
     <SettingsSubpageHeader
       backHref={CRM_APP_PATHS.settingsCommunications}
-      backLabel={t('admin.communications_templates.actions.back', {
-        defaultValue: '← Communications admin',
-      })}
-      kicker={t('admin.communications_templates.header_kicker', { defaultValue: 'templates' })}
-      title={t('admin.communications_templates.title', {
-        defaultValue: 'Communication templates',
-      })}
-      subtitle={t('admin.communications_templates.subtitle', {
-        defaultValue:
-          'Intent-bound, versioned message bodies. Presentation only — not messenger canned replies or lead message templates.',
-      })}
+      backLabel={t('admin.communications_templates.actions.back')}
+      kicker={t('admin.communications_templates.header_kicker')}
+      title={t('admin.communications_templates.title')}
+      subtitle={t('admin.communications_templates.subtitle')}
       actions={
         <Link to={CRM_APP_PATHS.settingsCommunicationsMessengers} className="btn-secondary">
-          {t('admin.communications_templates.actions.messenger_snippets', {
-            defaultValue: 'Messenger snippets',
-          })}
+          {t('admin.communications_templates.actions.messenger_snippets')}
         </Link>
       }
     >
@@ -391,7 +369,7 @@ export default function CommunicationTemplatesPage() {
 
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          {t('admin.communications_templates.create.key', { defaultValue: 'Key' })}
+          {t('admin.communications_templates.create.key')}
           <input
             className="rounded border border-slate-300 px-2 py-1 text-sm"
             value={createKey}
@@ -400,16 +378,16 @@ export default function CommunicationTemplatesPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          {t('admin.communications_templates.create.name', { defaultValue: 'Name' })}
+          {t('admin.communications_templates.create.name')}
           <input
             className="rounded border border-slate-300 px-2 py-1 text-sm"
             value={createName}
             onChange={(e) => setCreateName(e.target.value)}
-            placeholder="Welcome email"
+            placeholder={t('admin.communications_templates.create.name_placeholder')}
           />
         </label>
         <button type="button" className="btn-primary btn-sm" disabled={busy || !createKey.trim()} onClick={() => void handleCreate()}>
-          {t('admin.communications_templates.create.submit', { defaultValue: 'Create draft' })}
+          {t('admin.communications_templates.create.submit')}
         </button>
         <label className="ml-auto flex items-center gap-2 text-xs text-slate-600">
           <input
@@ -417,24 +395,22 @@ export default function CommunicationTemplatesPage() {
             checked={includeArchived}
             onChange={(e) => setIncludeArchived(e.target.checked)}
           />
-          {t('admin.communications_templates.include_archived', {
-            defaultValue: 'Include archived',
-          })}
+          {t('admin.communications_templates.include_archived')}
         </label>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
         <section className="rounded-lg border border-slate-200 bg-white">
           <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('admin.communications_templates.list_title', { defaultValue: 'Templates' })}
+            {t('admin.communications_templates.list_title')}
           </div>
           {loading ? (
             <p className="p-3 text-sm text-slate-500">
-              {t('common.loading', { defaultValue: 'Loading…' })}
+              {t('common.loading')}
             </p>
           ) : items.length === 0 ? (
             <p className="p-3 text-sm text-slate-500">
-              {t('admin.communications_templates.empty', { defaultValue: 'No templates yet.' })}
+              {t('admin.communications_templates.empty')}
             </p>
           ) : (
             <ul className="max-h-[70vh] overflow-auto text-sm">
@@ -452,8 +428,10 @@ export default function CommunicationTemplatesPage() {
                     <span className="text-xs text-slate-500">
                       {row.status}
                       {row.latest_published
-                        ? ` · v${row.latest_published.version_number}`
-                        : ' · draft only'}
+                        ? t('admin.communications_templates.list.version', {
+                            version: row.latest_published.version_number,
+                          })
+                        : t('admin.communications_templates.list.draft_only')}
                     </span>
                   </button>
                 </li>
@@ -465,9 +443,7 @@ export default function CommunicationTemplatesPage() {
         <div className="space-y-4">
           {!selected ? (
             <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
-              {t('admin.communications_templates.select_prompt', {
-                defaultValue: 'Select or create a template.',
-              })}
+              {t('admin.communications_templates.select_prompt')}
             </section>
           ) : (
             <>
@@ -479,14 +455,10 @@ export default function CommunicationTemplatesPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button type="button" className="btn-secondary btn-sm" disabled={busy} onClick={() => void handleSaveDraft()}>
-                      {t('admin.communications_templates.actions.save_draft', {
-                        defaultValue: 'Save draft',
-                      })}
+                      {t('admin.communications_templates.actions.save_draft')}
                     </button>
                     <button type="button" className="btn-primary btn-sm" disabled={busy} onClick={() => void handlePublish()}>
-                      {t('admin.communications_templates.actions.publish', {
-                        defaultValue: 'Publish',
-                      })}
+                      {t('admin.communications_templates.actions.publish')}
                     </button>
                     <button
                       type="button"
@@ -494,16 +466,14 @@ export default function CommunicationTemplatesPage() {
                       disabled={busy || selected.status === 'archived'}
                       onClick={() => void handleArchive()}
                     >
-                      {t('admin.communications_templates.actions.archive', {
-                        defaultValue: 'Archive',
-                      })}
+                      {t('admin.communications_templates.actions.archive')}
                     </button>
                   </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="flex flex-col gap-1 text-xs text-slate-600 md:col-span-2">
-                    Subject
+                    {t('admin.communications_templates.fields.subject')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.subject}
@@ -511,7 +481,7 @@ export default function CommunicationTemplatesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600 md:col-span-2">
-                    Body (text)
+                    {t('admin.communications_templates.fields.body_text')}
                     <textarea
                       className="min-h-[120px] rounded border border-slate-300 px-2 py-1 font-mono text-sm"
                       value={draftForm.body_text}
@@ -519,7 +489,7 @@ export default function CommunicationTemplatesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600 md:col-span-2">
-                    Body (html)
+                    {t('admin.communications_templates.fields.body_html')}
                     <textarea
                       className="min-h-[80px] rounded border border-slate-300 px-2 py-1 font-mono text-sm"
                       value={draftForm.body_html}
@@ -527,7 +497,7 @@ export default function CommunicationTemplatesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    Locale
+                    {t('admin.communications_templates.fields.locale')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.locale}
@@ -535,7 +505,7 @@ export default function CommunicationTemplatesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    Channels (csv)
+                    {t('admin.communications_templates.fields.channels')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.channels}
@@ -543,7 +513,7 @@ export default function CommunicationTemplatesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600 md:col-span-2">
-                    Intent keys (csv)
+                    {t('admin.communications_templates.fields.intent_keys')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.intent_keys}
@@ -551,7 +521,7 @@ export default function CommunicationTemplatesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600 md:col-span-2">
-                    Variables (JSON array)
+                    {t('admin.communications_templates.fields.variables')}
                     <textarea
                       className="min-h-[120px] rounded border border-slate-300 px-2 py-1 font-mono text-xs"
                       value={draftForm.variablesJson}
@@ -565,7 +535,7 @@ export default function CommunicationTemplatesPage() {
 
               <section className="rounded-lg border border-slate-200 bg-white p-4">
                 <h3 className="mb-2 text-sm font-semibold text-slate-900">
-                  {t('admin.communications_templates.preview_title', { defaultValue: 'Preview' })}
+                  {t('admin.communications_templates.preview_title')}
                 </h3>
                 <div className="mb-3 grid gap-3 md:grid-cols-[1fr_140px_auto]">
                   <textarea
@@ -580,18 +550,22 @@ export default function CommunicationTemplatesPage() {
                     placeholder="email"
                   />
                   <button type="button" className="btn-secondary btn-sm h-fit" disabled={busy} onClick={() => void handlePreview()}>
-                    {t('admin.communications_templates.actions.preview', {
-                      defaultValue: 'Preview draft',
-                    })}
+                    {t('admin.communications_templates.actions.preview')}
                   </button>
                 </div>
                 {previewResult ? (
                   <div className="space-y-2 text-sm">
                     <p className="text-xs text-slate-500">
-                      ok={String(previewResult.ok)} · version={previewResult.template_version_id}
+                      {t('admin.communications_templates.preview.meta', {
+                        ok: String(previewResult.ok),
+                        version: previewResult.template_version_id,
+                      })}
                     </p>
                     <pre className="overflow-auto rounded bg-slate-50 p-2 text-xs text-slate-800">
-                      {`Subject: ${previewResult.subject ?? ''}\n\n${previewResult.body_text ?? ''}`}
+                      {t('admin.communications_templates.preview.rendered', {
+                        subject: previewResult.subject ?? '',
+                        body: previewResult.body_text ?? '',
+                      })}
                     </pre>
                     {(previewResult.diagnostics || []).length > 0 ? (
                       <ul className="text-xs text-amber-800">
@@ -608,19 +582,17 @@ export default function CommunicationTemplatesPage() {
 
               <section className="rounded-lg border border-slate-200 bg-white p-4">
                 <h3 className="mb-2 text-sm font-semibold text-slate-900">
-                  {t('admin.communications_templates.history_title', {
-                    defaultValue: 'Version history',
-                  })}
+                  {t('admin.communications_templates.history_title')}
                 </h3>
                 <div className="overflow-auto">
                   <table className="min-w-full text-xs">
                     <thead>
                       <tr className="border-b border-slate-100 text-left text-slate-500">
-                        <th className="px-2 py-1">#</th>
-                        <th className="px-2 py-1">Status</th>
-                        <th className="px-2 py-1">Locale</th>
-                        <th className="px-2 py-1">Published</th>
-                        <th className="px-2 py-1">Id</th>
+                        <th className="px-2 py-1">{t('admin.communications_templates.history.col_number')}</th>
+                        <th className="px-2 py-1">{t('common.labels.status')}</th>
+                        <th className="px-2 py-1">{t('admin.communications_templates.history.col_locale')}</th>
+                        <th className="px-2 py-1">{t('admin.communications_templates.history.col_published')}</th>
+                        <th className="px-2 py-1">{t('common.labels.id')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -629,7 +601,7 @@ export default function CommunicationTemplatesPage() {
                           <td className="px-2 py-1">{v.version_number}</td>
                           <td className="px-2 py-1">{v.status}</td>
                           <td className="px-2 py-1">{v.locale}</td>
-                          <td className="px-2 py-1">{v.published_at || '—'}</td>
+                          <td className="px-2 py-1">{v.published_at || t('common.labels.not_available')}</td>
                           <td className="px-2 py-1 font-mono">{v.id}</td>
                         </tr>
                       ))}
@@ -638,37 +610,43 @@ export default function CommunicationTemplatesPage() {
                 </div>
                 <div className="mt-3 flex flex-wrap items-end gap-2">
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    From
+                    {t('admin.communications_templates.history.from')}
                     <select
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={diffFrom}
                       onChange={(e) => setDiffFrom(e.target.value)}
                     >
-                      <option value="">—</option>
+                      <option value="">{t('common.labels.not_available')}</option>
                       {versions.map((v) => (
                         <option key={v.id} value={v.id}>
-                          v{v.version_number} ({v.status})
+                          {t('admin.communications_templates.history.version_option', {
+                            version: v.version_number,
+                            status: v.status,
+                          })}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    To
+                    {t('admin.communications_templates.history.to')}
                     <select
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={diffTo}
                       onChange={(e) => setDiffTo(e.target.value)}
                     >
-                      <option value="">—</option>
+                      <option value="">{t('common.labels.not_available')}</option>
                       {versions.map((v) => (
                         <option key={v.id} value={v.id}>
-                          v{v.version_number} ({v.status})
+                          {t('admin.communications_templates.history.version_option', {
+                            version: v.version_number,
+                            status: v.status,
+                          })}
                         </option>
                       ))}
                     </select>
                   </label>
                   <button type="button" className="btn-secondary btn-sm" disabled={busy || !diffFrom || !diffTo} onClick={() => void handleDiff()}>
-                    Diff
+                    {t('admin.communications_templates.history.diff')}
                   </button>
                 </div>
                 {diffResult ? (

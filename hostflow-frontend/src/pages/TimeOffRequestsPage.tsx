@@ -188,10 +188,20 @@ export default function TimeOffRequestsPage() {
                     {row.payload?.time_window?.from && row.payload?.time_window?.to ? ` · ${row.payload.time_window.from}-${row.payload.time_window.to}` : ''}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
-                    requester={row.requester_label || row.requester_user_id} · status={row.status} · approver={row.approver_label || row.approver_user_id || '—'}
+                    {t('app.communications.timeoff.row_meta', {
+                      values: {
+                        requester: row.requester_label || row.requester_user_id,
+                        status: row.status,
+                        approver: row.approver_label || row.approver_user_id || t('common.labels.not_available'),
+                      },
+                    })}
                   </div>
                   {row.reason && <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{row.reason}</div>}
-                  {row.decision_note && <div className="mt-2 text-xs text-slate-500">Decision note: {row.decision_note}</div>}
+                  {row.decision_note && (
+                    <div className="mt-2 text-xs text-slate-500">
+                      {t('app.communications.timeoff.decision_note', { values: { note: row.decision_note } })}
+                    </div>
+                  )}
                 </div>
                 {row.status === 'pending' && (
                   <div className="w-full max-w-sm space-y-2">

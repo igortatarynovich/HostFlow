@@ -1,3 +1,5 @@
+import { useI18n } from '../../i18n'
+
 /**
  * CL7 — D4 places Requirement Engine evaluation next to Flight-map.
  *
@@ -11,6 +13,7 @@ export const ENTITY_PROFILE_ENGINE_EVAL_V1 = 'entity_profile_engine_eval.v1'
 export const ENTITY_PROFILE_VACANCY_OVERLAY_V1 = 'entity_profile_vacancy_overlay.v1'
 
 export function CandidateEngineEvalPanel() {
+  const { t } = useI18n()
   return (
     <section
       data-host-region="engine-eval"
@@ -26,11 +29,8 @@ export function CandidateEngineEvalPanel() {
       data-layout-widget="false"
       className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
     >
-      <p className="font-medium text-slate-800">Requirement Engine</p>
-      <p>
-        Ready or not ready, with blockers. Overlay is a defined input.
-        Not a boolean. Not Hub asks. Not vacancy UI. Profile may only ref.
-      </p>
+      <p className="font-medium text-slate-800">{t('app.entity_workspace.engine_eval.title')}</p>
+      <p>{t('app.entity_workspace.engine_eval.body')}</p>
     </section>
   )
 }

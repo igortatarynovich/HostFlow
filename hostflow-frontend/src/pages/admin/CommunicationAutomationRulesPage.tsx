@@ -99,9 +99,7 @@ export default function CommunicationAutomationRulesPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_automation.errors.load', {
-            defaultValue: 'Failed to load automation rules',
-          }),
+          t('admin.communications_automation.errors.load'),
           t,
         ),
       )
@@ -137,9 +135,7 @@ export default function CommunicationAutomationRulesPage() {
           setError(
             getFriendlyErrorInfo(
               err,
-              t('admin.communications_automation.errors.history', {
-                defaultValue: 'Failed to load history',
-              }),
+              t('admin.communications_automation.errors.history'),
               t,
             ),
           )
@@ -181,18 +177,12 @@ export default function CommunicationAutomationRulesPage() {
       upsertLocal(created)
       setCreateKey('')
       setCreateName('')
-      setNotice(
-        t('admin.communications_automation.notices.created', {
-          defaultValue: 'Rule created',
-        }),
-      )
+      setNotice(t('admin.communications_automation.notices.created'))
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_automation.errors.create', {
-            defaultValue: 'Failed to create rule',
-          }),
+          t('admin.communications_automation.errors.create'),
           t,
         ),
       )
@@ -216,7 +206,7 @@ export default function CommunicationAutomationRulesPage() {
         event_type?: string
         event_filter?: Record<string, unknown>
       }>
-      if (!Array.isArray(triggersRaw)) throw new Error('triggers must be a JSON array')
+      if (!Array.isArray(triggersRaw)) throw new Error(t('admin.communications_automation.errors.triggers_json'))
       const updated = await updateCommunicationAutomationDraft(selected.id, {
         intent_key: draftForm.intent_key,
         preferred_template_key: draftForm.preferred_template_key || null,
@@ -232,18 +222,12 @@ export default function CommunicationAutomationRulesPage() {
         clear_channel: !draftForm.channel.trim(),
       })
       upsertLocal(updated)
-      setNotice(
-        t('admin.communications_automation.notices.draft_saved', {
-          defaultValue: 'Draft saved',
-        }),
-      )
+      setNotice(t('admin.communications_automation.notices.draft_saved'))
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_automation.errors.save_draft', {
-            defaultValue: 'Failed to save draft',
-          }),
+          t('admin.communications_automation.errors.save_draft'),
           t,
         ),
       )
@@ -260,18 +244,12 @@ export default function CommunicationAutomationRulesPage() {
     try {
       const published = await publishCommunicationAutomationRule(selected.id)
       upsertLocal(published)
-      setNotice(
-        t('admin.communications_automation.notices.published', {
-          defaultValue: 'Published',
-        }),
-      )
+      setNotice(t('admin.communications_automation.notices.published'))
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_automation.errors.publish', {
-            defaultValue: 'Failed to publish',
-          }),
+          t('admin.communications_automation.errors.publish'),
           t,
         ),
       )
@@ -291,9 +269,7 @@ export default function CommunicationAutomationRulesPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_automation.errors.enable', {
-            defaultValue: 'Failed to update enabled flag',
-          }),
+          t('admin.communications_automation.errors.enable'),
           t,
         ),
       )
@@ -310,18 +286,12 @@ export default function CommunicationAutomationRulesPage() {
     try {
       const archived = await archiveCommunicationAutomationRule(selected.id)
       upsertLocal(archived)
-      setNotice(
-        t('admin.communications_automation.notices.archived', {
-          defaultValue: 'Archived',
-        }),
-      )
+      setNotice(t('admin.communications_automation.notices.archived'))
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_automation.errors.archive', {
-            defaultValue: 'Failed to archive',
-          }),
+          t('admin.communications_automation.errors.archive'),
           t,
         ),
       )
@@ -347,9 +317,7 @@ export default function CommunicationAutomationRulesPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_automation.errors.dry_run', {
-            defaultValue: 'Dry-run failed',
-          }),
+          t('admin.communications_automation.errors.dry_run'),
           t,
         ),
       )
@@ -361,24 +329,13 @@ export default function CommunicationAutomationRulesPage() {
   return (
     <SettingsSubpageHeader
       backHref={CRM_APP_PATHS.settingsCommunications}
-      backLabel={t('admin.communications_automation.actions.back', {
-        defaultValue: '← Communications admin',
-      })}
-      kicker={t('admin.communications_automation.header_kicker', {
-        defaultValue: 'automation',
-      })}
-      title={t('admin.communications_automation.title', {
-        defaultValue: 'Communication automation',
-      })}
-      subtitle={t('admin.communications_automation.subtitle', {
-        defaultValue:
-          'Event → Rules → Intent only. Not legacy reminder automations and not a send path.',
-      })}
+      backLabel={t('admin.communications_automation.actions.back')}
+      kicker={t('admin.communications_automation.header_kicker')}
+      title={t('admin.communications_automation.title')}
+      subtitle={t('admin.communications_automation.subtitle')}
       actions={
         <Link to={CRM_APP_PATHS.settingsCommunicationsTemplates} className="btn-secondary">
-          {t('admin.communications_automation.actions.templates', {
-            defaultValue: 'Communication templates',
-          })}
+          {t('admin.communications_automation.actions.templates')}
         </Link>
       }
     >
@@ -391,7 +348,7 @@ export default function CommunicationAutomationRulesPage() {
 
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Key
+          {t('admin.communications_automation.create.key')}
           <input
             className="rounded border border-slate-300 px-2 py-1 text-sm"
             value={createKey}
@@ -400,7 +357,7 @@ export default function CommunicationAutomationRulesPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Name
+          {t('admin.communications_automation.create.name')}
           <input
             className="rounded border border-slate-300 px-2 py-1 text-sm"
             value={createName}
@@ -408,7 +365,7 @@ export default function CommunicationAutomationRulesPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Intent key
+          {t('admin.communications_automation.create.intent_key')}
           <input
             className="rounded border border-slate-300 px-2 py-1 text-sm"
             value={createIntent}
@@ -421,9 +378,7 @@ export default function CommunicationAutomationRulesPage() {
           disabled={busy || !createKey.trim() || !createIntent.trim()}
           onClick={() => void handleCreate()}
         >
-          {t('admin.communications_automation.create.submit', {
-            defaultValue: 'Create draft',
-          })}
+          {t('admin.communications_automation.create.submit')}
         </button>
         <label className="ml-auto flex items-center gap-2 text-xs text-slate-600">
           <input
@@ -431,26 +386,22 @@ export default function CommunicationAutomationRulesPage() {
             checked={includeArchived}
             onChange={(e) => setIncludeArchived(e.target.checked)}
           />
-          {t('admin.communications_automation.include_archived', {
-            defaultValue: 'Include archived',
-          })}
+          {t('admin.communications_automation.include_archived')}
         </label>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
         <section className="rounded-lg border border-slate-200 bg-white">
           <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('admin.communications_automation.list_title', { defaultValue: 'Rules' })}
+            {t('admin.communications_automation.list_title')}
           </div>
           {loading ? (
             <p className="p-3 text-sm text-slate-500">
-              {t('common.loading', { defaultValue: 'Loading…' })}
+              {t('common.loading')}
             </p>
           ) : items.length === 0 ? (
             <p className="p-3 text-sm text-slate-500">
-              {t('admin.communications_automation.empty', {
-                defaultValue: 'No automation rules yet.',
-              })}
+              {t('admin.communications_automation.empty')}
             </p>
           ) : (
             <ul className="max-h-[70vh] overflow-auto text-sm">
@@ -467,10 +418,14 @@ export default function CommunicationAutomationRulesPage() {
                     <span className="font-mono text-xs text-slate-500">{row.key}</span>
                     <span className="text-xs text-slate-500">
                       {row.status}
-                      {row.enabled ? ' · on' : ' · off'}
+                      {row.enabled
+                        ? t('admin.communications_automation.list.enabled_on')
+                        : t('admin.communications_automation.list.enabled_off')}
                       {row.latest_published
-                        ? ` · v${row.latest_published.version_number}`
-                        : ' · draft only'}
+                        ? t('admin.communications_automation.list.version', {
+                            version: row.latest_published.version_number,
+                          })
+                        : t('admin.communications_automation.list.draft_only')}
                     </span>
                   </button>
                 </li>
@@ -482,9 +437,7 @@ export default function CommunicationAutomationRulesPage() {
         <div className="space-y-4">
           {!selected ? (
             <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
-              {t('admin.communications_automation.select_prompt', {
-                defaultValue: 'Select or create a rule.',
-              })}
+              {t('admin.communications_automation.select_prompt')}
             </section>
           ) : (
             <>
@@ -501,7 +454,7 @@ export default function CommunicationAutomationRulesPage() {
                       disabled={busy}
                       onClick={() => void handleSaveDraft()}
                     >
-                      Save draft
+                      {t('admin.communications_automation.actions.save_draft')}
                     </button>
                     <button
                       type="button"
@@ -509,7 +462,7 @@ export default function CommunicationAutomationRulesPage() {
                       disabled={busy}
                       onClick={() => void handlePublish()}
                     >
-                      Publish
+                      {t('admin.communications_automation.actions.publish')}
                     </button>
                     <button
                       type="button"
@@ -517,7 +470,9 @@ export default function CommunicationAutomationRulesPage() {
                       disabled={busy || selected.status === 'archived'}
                       onClick={() => void handleToggleEnabled()}
                     >
-                      {selected.enabled ? 'Disable' : 'Enable'}
+                      {selected.enabled
+                        ? t('admin.communications_automation.actions.disable')
+                        : t('admin.communications_automation.actions.enable')}
                     </button>
                     <button
                       type="button"
@@ -525,14 +480,14 @@ export default function CommunicationAutomationRulesPage() {
                       disabled={busy || selected.status === 'archived'}
                       onClick={() => void handleArchive()}
                     >
-                      Archive
+                      {t('admin.communications_automation.actions.archive')}
                     </button>
                   </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    Intent key
+                    {t('admin.communications_automation.fields.intent_key')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.intent_key}
@@ -542,7 +497,7 @@ export default function CommunicationAutomationRulesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    Preferred template key
+                    {t('admin.communications_automation.fields.preferred_template_key')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.preferred_template_key}
@@ -555,7 +510,7 @@ export default function CommunicationAutomationRulesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    Channel
+                    {t('admin.communications_automation.fields.channel')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.channel}
@@ -565,7 +520,7 @@ export default function CommunicationAutomationRulesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    Recipient strategy
+                    {t('admin.communications_automation.fields.recipient_strategy')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.recipient_strategy}
@@ -578,7 +533,7 @@ export default function CommunicationAutomationRulesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600 md:col-span-2">
-                    Conditions (JSON)
+                    {t('admin.communications_automation.fields.conditions_json')}
                     <textarea
                       className="min-h-[100px] rounded border border-slate-300 px-2 py-1 font-mono text-xs"
                       value={draftForm.conditionsJson}
@@ -588,7 +543,7 @@ export default function CommunicationAutomationRulesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600 md:col-span-2">
-                    Variables mapping (JSON)
+                    {t('admin.communications_automation.fields.variables_json')}
                     <textarea
                       className="min-h-[80px] rounded border border-slate-300 px-2 py-1 font-mono text-xs"
                       value={draftForm.variablesJson}
@@ -598,7 +553,7 @@ export default function CommunicationAutomationRulesPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600 md:col-span-2">
-                    Triggers (JSON array)
+                    {t('admin.communications_automation.fields.triggers_json')}
                     <textarea
                       className="min-h-[100px] rounded border border-slate-300 px-2 py-1 font-mono text-xs"
                       value={draftForm.triggersJson}
@@ -611,7 +566,9 @@ export default function CommunicationAutomationRulesPage() {
               </section>
 
               <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <h3 className="mb-2 text-sm font-semibold text-slate-900">Dry-run</h3>
+                <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                  {t('admin.communications_automation.dry_run.title')}
+                </h3>
                 <div className="mb-3 grid gap-3 md:grid-cols-[180px_1fr_auto]">
                   <input
                     className="rounded border border-slate-300 px-2 py-1 text-sm"
@@ -630,7 +587,7 @@ export default function CommunicationAutomationRulesPage() {
                     disabled={busy}
                     onClick={() => void handleDryRun()}
                   >
-                    Run
+                    {t('admin.communications_automation.actions.run')}
                   </button>
                 </div>
                 {dryRunResult ? (
@@ -641,15 +598,17 @@ export default function CommunicationAutomationRulesPage() {
               </section>
 
               <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <h3 className="mb-2 text-sm font-semibold text-slate-900">Versions</h3>
+                <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                  {t('admin.communications_automation.versions.title')}
+                </h3>
                 <div className="overflow-auto">
                   <table className="min-w-full text-xs">
                     <thead>
                       <tr className="border-b border-slate-100 text-left text-slate-500">
-                        <th className="px-2 py-1">#</th>
-                        <th className="px-2 py-1">Status</th>
-                        <th className="px-2 py-1">Intent</th>
-                        <th className="px-2 py-1">Published</th>
+                        <th className="px-2 py-1">{t('admin.communications_automation.versions.col_number')}</th>
+                        <th className="px-2 py-1">{t('common.labels.status')}</th>
+                        <th className="px-2 py-1">{t('admin.communications_automation.versions.col_intent')}</th>
+                        <th className="px-2 py-1">{t('admin.communications_automation.versions.col_published')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -658,7 +617,7 @@ export default function CommunicationAutomationRulesPage() {
                           <td className="px-2 py-1">{v.version_number}</td>
                           <td className="px-2 py-1">{v.status}</td>
                           <td className="px-2 py-1">{v.intent_key}</td>
-                          <td className="px-2 py-1">{v.published_at || '—'}</td>
+                          <td className="px-2 py-1">{v.published_at || t('common.labels.not_available')}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -668,19 +627,21 @@ export default function CommunicationAutomationRulesPage() {
 
               <section className="rounded-lg border border-slate-200 bg-white p-4">
                 <h3 className="mb-2 text-sm font-semibold text-slate-900">
-                  Recent decisions
+                  {t('admin.communications_automation.decisions.title')}
                 </h3>
                 {decisions.length === 0 ? (
-                  <p className="text-xs text-slate-500">No decisions yet (dry-run does not persist).</p>
+                  <p className="text-xs text-slate-500">
+                    {t('admin.communications_automation.decisions.empty')}
+                  </p>
                 ) : (
                   <div className="overflow-auto">
                     <table className="min-w-full text-xs">
                       <thead>
                         <tr className="border-b border-slate-100 text-left text-slate-500">
-                          <th className="px-2 py-1">Outcome</th>
-                          <th className="px-2 py-1">Event</th>
-                          <th className="px-2 py-1">Reasons</th>
-                          <th className="px-2 py-1">At</th>
+                          <th className="px-2 py-1">{t('admin.communications_automation.decisions.col_outcome')}</th>
+                          <th className="px-2 py-1">{t('admin.communications_automation.decisions.col_event')}</th>
+                          <th className="px-2 py-1">{t('admin.communications_automation.decisions.col_reasons')}</th>
+                          <th className="px-2 py-1">{t('admin.communications_automation.decisions.col_at')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -689,7 +650,7 @@ export default function CommunicationAutomationRulesPage() {
                             <td className="px-2 py-1">{d.outcome}</td>
                             <td className="px-2 py-1">{d.event_type}</td>
                             <td className="px-2 py-1">{(d.reason_codes || []).join(', ')}</td>
-                            <td className="px-2 py-1">{d.created_at || '—'}</td>
+                            <td className="px-2 py-1">{d.created_at || t('common.labels.not_available')}</td>
                           </tr>
                         ))}
                       </tbody>

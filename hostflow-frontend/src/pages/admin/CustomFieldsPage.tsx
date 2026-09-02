@@ -458,7 +458,7 @@ function DefinitionForm({
   fieldTypeOptions: Array<{ value: CustomFieldType; label: string }>
   onSave: (payload: CustomFieldDefinitionCreate) => Promise<void>
   onCancel: () => void
-  t: (key: string, opts?: { defaultValue?: string }) => string
+  t: (key: string, opts?: { values?: Record<string, string | number> }) => string
 }) {
   const [scope, setScope] = useState<CustomFieldScope>(definition?.scope || 'CANDIDATE')
   const [documentTypeId, setDocumentTypeId] = useState(definition?.document_type_id || '')

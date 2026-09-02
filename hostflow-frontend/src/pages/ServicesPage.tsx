@@ -465,11 +465,11 @@ export function ServicesPage() {
       setBillingInvoices(Array.isArray(data) ? data : [])
     } catch (e: any) {
       setBillingInvoices([])
-      setBillingError(e?.response?.data?.detail || e?.message || 'Failed to load invoices')
+      setBillingError(e?.response?.data?.detail || e?.message || t('app.services.errors.load_invoices'))
     } finally {
       setBillingLoading(false)
     }
-  }, [billingStatusFilter, selectedOrderId])
+  }, [billingStatusFilter, selectedOrderId, t])
 
   useEffect(() => {
     if (tab !== 'billing') return
@@ -778,7 +778,7 @@ export function ServicesPage() {
         await action()
         await refreshBillingInvoices()
       } catch (e: any) {
-        setBillingError(e?.response?.data?.detail || e?.message || 'Action failed')
+        setBillingError(e?.response?.data?.detail || e?.message || t('app.services.errors.action_failed'))
       } finally {
         setBillingRowAction(null)
       }
@@ -979,7 +979,7 @@ export function ServicesPage() {
                     const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
                     navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
                   } catch (e: any) {
-                    setBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                    setBillingError(e?.response?.data?.detail || e?.message || t('app.services.errors.create_invoice'))
                     setTabAndUrl('billing')
                   }
                 }}
@@ -1372,7 +1372,7 @@ export function ServicesPage() {
                       const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
                       navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
                     } catch (e: any) {
-                      setBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                      setBillingError(e?.response?.data?.detail || e?.message || t('app.services.errors.create_invoice'))
                     }
                   }}
                 >
@@ -1933,7 +1933,9 @@ function OrdersTab({
   }
 
   const managerLabelForOrder = (order: AdditionalServiceOrder) => {
-    return order.assigned_to ? `Manager ${order.assigned_to.slice(0, 8)}` : 'Unassigned'
+    return order.assigned_to
+      ? t('app.services.orders.manager_label', { values: { id: order.assigned_to.slice(0, 8) } })
+      : t('app.services.orders.unassigned')
   }
 
   const visibleOrders = useMemo(() => {
@@ -2526,7 +2528,7 @@ function OrdersTab({
                                 await sendInvoice(String(selectedInvoiceSummary.invoice_id))
                                 onRefreshInvoices()
                               } catch (e: any) {
-                                setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to send invoice')
+                                setOrderBillingError(e?.response?.data?.detail || e?.message || t('app.services.errors.send_invoice'))
                               } finally {
                                 setOrderBillingAction(null)
                               }
@@ -2556,7 +2558,7 @@ function OrdersTab({
                                 })
                                 onRefreshInvoices()
                               } catch (e: any) {
-                                setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to mark as paid')
+                                setOrderBillingError(e?.response?.data?.detail || e?.message || t('app.services.errors.mark_paid'))
                               } finally {
                                 setOrderBillingAction(null)
                               }
@@ -2581,7 +2583,7 @@ function OrdersTab({
                               onRefreshInvoices()
                               navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
                             } catch (e: any) {
-                              setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                              setOrderBillingError(e?.response?.data?.detail || e?.message || t('app.services.errors.create_invoice'))
                             } finally {
                               setOrderBillingAction(null)
                             }
@@ -3335,7 +3337,7 @@ function OrderDetail({
                   const invoice = await createInvoiceFromServiceOrder(order.id)
                   navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
                 } catch (e: any) {
-                  setInvoiceError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                  setInvoiceError(e?.response?.data?.detail || e?.message || t('app.services.errors.create_invoice'))
                 } finally {
                   setCreatingInvoice(false)
                 }
@@ -3460,7 +3462,7 @@ function OrderDetail({
                       await sendInvoice(String(invoiceSummary.invoice_id))
                       onInvoiceChanged()
                     } catch (e: any) {
-                      setInvoiceError(e?.response?.data?.detail || e?.message || 'Failed to send invoice')
+                      setInvoiceError(e?.response?.data?.detail || e?.message || t('app.services.errors.send_invoice'))
                     } finally {
                       setInvoiceActionLoading(null)
                     }
@@ -3490,7 +3492,7 @@ function OrderDetail({
                       })
                       onInvoiceChanged()
                     } catch (e: any) {
-                      setInvoiceError(e?.response?.data?.detail || e?.message || 'Failed to mark as paid')
+                      setInvoiceError(e?.response?.data?.detail || e?.message || t('app.services.errors.mark_paid'))
                     } finally {
                       setInvoiceActionLoading(null)
                     }
@@ -3513,7 +3515,7 @@ function OrderDetail({
                     const invoice = await createInvoiceFromServiceOrder(order.id)
                     navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
                   } catch (e: any) {
-                    setInvoiceError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                    setInvoiceError(e?.response?.data?.detail || e?.message || t('app.services.errors.create_invoice'))
                   } finally {
                     setCreatingInvoice(false)
                   }

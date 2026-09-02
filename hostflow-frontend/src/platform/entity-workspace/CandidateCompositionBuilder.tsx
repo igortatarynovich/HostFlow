@@ -1,3 +1,5 @@
+import { useI18n } from '../../i18n'
+
 /**
  * CL4 — D4 places two builder modes next to the Information zone.
  *
@@ -11,6 +13,7 @@ export const BUILDER_MODE_CARD = 'card'
 export const BUILDER_MODE_FORM = 'form'
 
 export function CandidateCompositionBuilder() {
+  const { t } = useI18n()
   return (
     <section
       data-host-region="composition-builder"
@@ -18,7 +21,7 @@ export function CandidateCompositionBuilder() {
       data-builder-modes="card,form"
       className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
     >
-      <p className="font-medium text-slate-800">Composition builder</p>
+      <p className="font-medium text-slate-800">{t('app.entity_workspace.composition_builder.title')}</p>
       <div
         data-builder-mode={BUILDER_MODE_CARD}
         data-page-type="candidate.card"
@@ -27,7 +30,7 @@ export function CandidateCompositionBuilder() {
         data-places-on-d4="true"
         className="mt-2"
       >
-        Card → layout instance on D4 Information zone. Not a form template.
+        {t('app.entity_workspace.composition_builder.card')}
       </div>
       <div
         data-builder-mode={BUILDER_MODE_FORM}
@@ -37,7 +40,7 @@ export function CandidateCompositionBuilder() {
         data-places-on-d4="false"
         className="mt-1"
       >
-        Form → Forms platform definition. Not rendered as the D4 card.
+        {t('app.entity_workspace.composition_builder.form')}
       </div>
     </section>
   )

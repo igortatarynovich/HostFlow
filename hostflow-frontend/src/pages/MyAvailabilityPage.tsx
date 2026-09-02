@@ -261,7 +261,9 @@ export default function MyAvailabilityPage() {
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
       <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
         <div>{t('app.profile.labels.user', { defaultValue: 'User' })}: <strong>{me?.full_name || me?.email || me?.id || '—'}</strong></div>
-        <div className="mt-2 text-xs text-slate-500">Pending requests: {pendingCount}</div>
+        <div className="mt-2 text-xs text-slate-500">
+          {t('app.communications.my_availability.pending_requests', { values: { count: pendingCount } })}
+        </div>
         <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
           <div className="text-sm font-semibold text-slate-900">
             {t('app.communications.ia.working_hours_title', { defaultValue: 'Working hours' })}
@@ -303,7 +305,7 @@ export default function MyAvailabilityPage() {
                       checked={Boolean(d.enabled)}
                       onChange={(e) => updateDay(d.weekday, { enabled: e.target.checked })}
                     />
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d.weekday] ?? `D${d.weekday}`}
+                    {t(`app.communications.my_availability.weekday.${d.weekday}`)}
                   </label>
                   <button type="button" className="btn-secondary btn-sm" disabled={!d.enabled} onClick={() => void addWindow(d.weekday)}>
                     {t('common.actions.add', { defaultValue: 'Add' })}
@@ -407,7 +409,14 @@ export default function MyAvailabilityPage() {
                   {row.partial_day ? ` · ${row.partial_day}` : ''}
                   {row.payload?.time_window?.from && row.payload?.time_window?.to ? ` · ${row.payload.time_window.from}-${row.payload.time_window.to}` : ''}
                 </div>
-                <div className="mt-1 text-xs text-slate-500">status={row.status} · approver={row.approver_label || row.approver_user_id || '—'}</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {t('app.communications.my_availability.row_meta', {
+                    values: {
+                      status: row.status,
+                      approver: row.approver_label || row.approver_user_id || t('common.labels.not_available'),
+                    },
+                  })}
+                </div>
                 {row.reason && <div className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{row.reason}</div>}
                 {row.status === 'pending' && (
                   <div className="mt-2">

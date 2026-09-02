@@ -96,9 +96,7 @@ export default function CommunicationCampaignsPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_campaigns.errors.load', {
-            defaultValue: 'Failed to load campaigns',
-          }),
+          t('admin.communications_campaigns.errors.load'),
           t,
         ),
       )
@@ -135,9 +133,7 @@ export default function CommunicationCampaignsPage() {
           setError(
             getFriendlyErrorInfo(
               err,
-              t('admin.communications_campaigns.errors.history', {
-                defaultValue: 'Failed to load versions/runs',
-              }),
+              t('admin.communications_campaigns.errors.history'),
               t,
             ),
           )
@@ -180,18 +176,12 @@ export default function CommunicationCampaignsPage() {
       upsertLocal(created)
       setCreateKey('')
       setCreateName('')
-      setNotice(
-        t('admin.communications_campaigns.notices.created', {
-          defaultValue: 'Campaign created',
-        }),
-      )
+      setNotice(t('admin.communications_campaigns.notices.created'))
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_campaigns.errors.create', {
-            defaultValue: 'Failed to create campaign',
-          }),
+          t('admin.communications_campaigns.errors.create'),
           t,
         ),
       )
@@ -210,7 +200,7 @@ export default function CommunicationCampaignsPage() {
       try {
         definition = JSON.parse(draftForm.audienceJson) as Record<string, unknown>
       } catch {
-        throw new Error('Audience definition must be valid JSON')
+        throw new Error(t('admin.communications_campaigns.errors.audience_json'))
       }
       const updated = await updateCommunicationCampaignDraft(selected.id, {
         intent_key: draftForm.intent_key.trim(),
@@ -223,18 +213,12 @@ export default function CommunicationCampaignsPage() {
         clear_preferred_template_key: !draftForm.preferred_template_key.trim(),
       })
       upsertLocal(updated)
-      setNotice(
-        t('admin.communications_campaigns.notices.draft_saved', {
-          defaultValue: 'Draft saved',
-        }),
-      )
+      setNotice(t('admin.communications_campaigns.notices.draft_saved'))
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_campaigns.errors.save', {
-            defaultValue: 'Failed to save draft',
-          }),
+          t('admin.communications_campaigns.errors.save'),
           t,
         ),
       )
@@ -253,18 +237,12 @@ export default function CommunicationCampaignsPage() {
       upsertLocal(published)
       const vers = await listCommunicationCampaignVersions(selected.id)
       setVersions(vers)
-      setNotice(
-        t('admin.communications_campaigns.notices.published', {
-          defaultValue: 'Published immutable version',
-        }),
-      )
+      setNotice(t('admin.communications_campaigns.notices.published'))
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_campaigns.errors.publish', {
-            defaultValue: 'Failed to publish',
-          }),
+          t('admin.communications_campaigns.errors.publish'),
           t,
         ),
       )
@@ -280,18 +258,12 @@ export default function CommunicationCampaignsPage() {
     try {
       const archived = await archiveCommunicationCampaign(selected.id)
       upsertLocal(archived)
-      setNotice(
-        t('admin.communications_campaigns.notices.archived', {
-          defaultValue: 'Campaign archived',
-        }),
-      )
+      setNotice(t('admin.communications_campaigns.notices.archived'))
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_campaigns.errors.archive', {
-            defaultValue: 'Failed to archive',
-          }),
+          t('admin.communications_campaigns.errors.archive'),
           t,
         ),
       )
@@ -309,16 +281,16 @@ export default function CommunicationCampaignsPage() {
       const result = await dryRunCommunicationCampaignAudience(selected.id)
       setDryRunSummary(
         result.ok
-          ? `ok · ${result.recipients.length} recipient(s)`
-          : `failed · ${(result.diagnostics || []).map((d) => d.code).join(', ')}`,
+          ? t('admin.communications_campaigns.dry_run.ok', { count: result.recipients.length })
+          : t('admin.communications_campaigns.dry_run.failed', {
+              codes: (result.diagnostics || []).map((d) => d.code).join(', '),
+            }),
       )
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_campaigns.errors.dry_run', {
-            defaultValue: 'Audience dry-run failed',
-          }),
+          t('admin.communications_campaigns.errors.dry_run'),
           t,
         ),
       )
@@ -330,12 +302,8 @@ export default function CommunicationCampaignsPage() {
   const handleCreateAndExecuteRun = async () => {
     if (!selected?.latest_published) {
       setError({
-        title: t('admin.communications_campaigns.errors.need_publish', {
-          defaultValue: 'Publish a version before running',
-        }),
-        hint: t('admin.communications_campaigns.errors.need_publish_hint', {
-          defaultValue: 'Use Publish, then Run (request_only).',
-        }),
+        title: t('admin.communications_campaigns.errors.need_publish'),
+        hint: t('admin.communications_campaigns.errors.need_publish_hint'),
       })
       return
     }
@@ -351,22 +319,22 @@ export default function CommunicationCampaignsPage() {
       })
       const summary = executed.orchestration.summary
       setLastRunResult(
-        `${executed.orchestration.status} · emitted ${summary.emitted}/${summary.total}` +
-          (summary.failed ? ` · failed ${summary.failed}` : ''),
+        t('admin.communications_campaigns.run.summary', {
+          status: executed.orchestration.status,
+          emitted: summary.emitted,
+          total: summary.total,
+        }) +
+          (summary.failed
+            ? t('admin.communications_campaigns.run.failed_suffix', { failed: summary.failed })
+            : ''),
       )
       setRuns(await listCommunicationCampaignRuns(selected.id, 10))
-      setNotice(
-        t('admin.communications_campaigns.notices.run_done', {
-          defaultValue: 'Run executed (request_only — no transport)',
-        }),
-      )
+      setNotice(t('admin.communications_campaigns.notices.run_done'))
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('admin.communications_campaigns.errors.run', {
-            defaultValue: 'Failed to run campaign',
-          }),
+          t('admin.communications_campaigns.errors.run'),
           t,
         ),
       )
@@ -378,22 +346,13 @@ export default function CommunicationCampaignsPage() {
   return (
     <SettingsSubpageHeader
       backHref={CRM_APP_PATHS.settingsCommunications}
-      backLabel={t('admin.communications_campaigns.back', {
-        defaultValue: 'Communications',
-      })}
-      kicker="campaigns"
-      title={t('admin.communications_campaigns.title', {
-        defaultValue: 'Communication campaigns',
-      })}
-      subtitle={t('admin.communications_campaigns.subtitle', {
-        defaultValue:
-          'Audience + plan → Intent per recipient. No shared campaign thread, no N× Write.',
-      })}
+      backLabel={t('admin.communications_campaigns.back')}
+      kicker={t('admin.communications_campaigns.header_kicker')}
+      title={t('admin.communications_campaigns.title')}
+      subtitle={t('admin.communications_campaigns.subtitle')}
       actions={
         <Link to={CRM_APP_PATHS.settingsCommunicationsAutomation} className="btn-secondary">
-          {t('admin.communications_campaigns.link_automation', {
-            defaultValue: 'Automation',
-          })}
+          {t('admin.communications_campaigns.link_automation')}
         </Link>
       }
     >
@@ -410,7 +369,7 @@ export default function CommunicationCampaignsPage() {
 
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-3">
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Key
+          {t('admin.communications_campaigns.create.key')}
           <input
             className="rounded border border-slate-300 px-2 py-1 text-sm"
             value={createKey}
@@ -418,7 +377,7 @@ export default function CommunicationCampaignsPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Name
+          {t('admin.communications_campaigns.create.name')}
           <input
             className="rounded border border-slate-300 px-2 py-1 text-sm"
             value={createName}
@@ -426,7 +385,7 @@ export default function CommunicationCampaignsPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Intent key
+          {t('admin.communications_campaigns.create.intent_key')}
           <input
             className="rounded border border-slate-300 px-2 py-1 text-sm"
             value={createIntent}
@@ -439,9 +398,7 @@ export default function CommunicationCampaignsPage() {
           disabled={busy || !createKey.trim() || !createIntent.trim()}
           onClick={() => void handleCreate()}
         >
-          {t('admin.communications_campaigns.create.submit', {
-            defaultValue: 'Create draft',
-          })}
+          {t('admin.communications_campaigns.create.submit')}
         </button>
         <label className="ml-auto flex items-center gap-2 text-xs text-slate-600">
           <input
@@ -449,28 +406,22 @@ export default function CommunicationCampaignsPage() {
             checked={includeArchived}
             onChange={(e) => setIncludeArchived(e.target.checked)}
           />
-          {t('admin.communications_campaigns.include_archived', {
-            defaultValue: 'Include archived',
-          })}
+          {t('admin.communications_campaigns.include_archived')}
         </label>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
         <section className="rounded-lg border border-slate-200 bg-white">
           <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('admin.communications_campaigns.list_title', {
-              defaultValue: 'Campaigns',
-            })}
+            {t('admin.communications_campaigns.list_title')}
           </div>
           {loading ? (
             <p className="p-3 text-sm text-slate-500">
-              {t('common.loading', { defaultValue: 'Loading…' })}
+              {t('common.loading')}
             </p>
           ) : items.length === 0 ? (
             <p className="p-3 text-sm text-slate-500">
-              {t('admin.communications_campaigns.empty', {
-                defaultValue: 'No campaigns yet.',
-              })}
+              {t('admin.communications_campaigns.empty')}
             </p>
           ) : (
             <ul className="max-h-[70vh] overflow-auto text-sm">
@@ -488,8 +439,10 @@ export default function CommunicationCampaignsPage() {
                     <span className="text-xs text-slate-500">
                       {row.status}
                       {row.latest_published
-                        ? ` · v${row.latest_published.version_number}`
-                        : ' · draft only'}
+                        ? t('admin.communications_campaigns.list.version', {
+                            version: row.latest_published.version_number,
+                          })
+                        : t('admin.communications_campaigns.list.draft_only')}
                     </span>
                   </button>
                 </li>
@@ -501,9 +454,7 @@ export default function CommunicationCampaignsPage() {
         <div className="space-y-4">
           {!selected ? (
             <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
-              {t('admin.communications_campaigns.select_prompt', {
-                defaultValue: 'Select or create a campaign.',
-              })}
+              {t('admin.communications_campaigns.select_prompt')}
             </section>
           ) : (
             <>
@@ -520,7 +471,7 @@ export default function CommunicationCampaignsPage() {
                       disabled={busy}
                       onClick={() => void handleSaveDraft()}
                     >
-                      Save draft
+                      {t('admin.communications_campaigns.actions.save_draft')}
                     </button>
                     <button
                       type="button"
@@ -528,7 +479,7 @@ export default function CommunicationCampaignsPage() {
                       disabled={busy}
                       onClick={() => void handlePublish()}
                     >
-                      Publish
+                      {t('admin.communications_campaigns.actions.publish')}
                     </button>
                     <button
                       type="button"
@@ -536,7 +487,7 @@ export default function CommunicationCampaignsPage() {
                       disabled={busy}
                       onClick={() => void handleDryRun()}
                     >
-                      Audience dry-run
+                      {t('admin.communications_campaigns.actions.audience_dry_run')}
                     </button>
                     <button
                       type="button"
@@ -544,7 +495,7 @@ export default function CommunicationCampaignsPage() {
                       disabled={busy || !selected.latest_published}
                       onClick={() => void handleCreateAndExecuteRun()}
                     >
-                      Run (request_only)
+                      {t('admin.communications_campaigns.actions.run_request_only')}
                     </button>
                     <button
                       type="button"
@@ -552,21 +503,25 @@ export default function CommunicationCampaignsPage() {
                       disabled={busy || selected.status === 'archived'}
                       onClick={() => void handleArchive()}
                     >
-                      Archive
+                      {t('admin.communications_campaigns.actions.archive')}
                     </button>
                   </div>
                 </div>
 
                 {dryRunSummary ? (
-                  <p className="mb-3 text-xs text-slate-600">Dry-run: {dryRunSummary}</p>
+                  <p className="mb-3 text-xs text-slate-600">
+                    {t('admin.communications_campaigns.dry_run.label', { summary: dryRunSummary })}
+                  </p>
                 ) : null}
                 {lastRunResult ? (
-                  <p className="mb-3 text-xs text-slate-600">Last run: {lastRunResult}</p>
+                  <p className="mb-3 text-xs text-slate-600">
+                    {t('admin.communications_campaigns.run.label', { result: lastRunResult })}
+                  </p>
                 ) : null}
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    Intent key
+                    {t('admin.communications_campaigns.fields.intent_key')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.intent_key}
@@ -576,7 +531,7 @@ export default function CommunicationCampaignsPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    Preferred template key
+                    {t('admin.communications_campaigns.fields.preferred_template_key')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.preferred_template_key}
@@ -589,7 +544,7 @@ export default function CommunicationCampaignsPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    Channel
+                    {t('admin.communications_campaigns.fields.channel')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.channel}
@@ -599,7 +554,7 @@ export default function CommunicationCampaignsPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600">
-                    Audience type
+                    {t('admin.communications_campaigns.fields.audience_type')}
                     <input
                       className="rounded border border-slate-300 px-2 py-1 text-sm"
                       value={draftForm.audienceType}
@@ -609,7 +564,7 @@ export default function CommunicationCampaignsPage() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-slate-600 md:col-span-2">
-                    Audience definition (JSON)
+                    {t('admin.communications_campaigns.fields.audience_json')}
                     <textarea
                       className="min-h-[140px] rounded border border-slate-300 px-2 py-1 font-mono text-xs"
                       value={draftForm.audienceJson}
@@ -622,15 +577,27 @@ export default function CommunicationCampaignsPage() {
               </section>
 
               <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <h3 className="mb-2 text-sm font-semibold text-slate-900">Versions</h3>
+                <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                  {t('admin.communications_campaigns.versions.title')}
+                </h3>
                 {versions.length === 0 ? (
-                  <p className="text-xs text-slate-500">No versions yet.</p>
+                  <p className="text-xs text-slate-500">
+                    {t('admin.communications_campaigns.versions.empty')}
+                  </p>
                 ) : (
                   <ul className="space-y-1 text-xs text-slate-600">
                     {versions.map((v) => (
                       <li key={v.id} className="font-mono">
-                        v{v.version_number} · {v.status} · {v.intent_key}
-                        {v.published_at ? ` · ${v.published_at}` : ''}
+                        {t('admin.communications_campaigns.versions.row', {
+                          version: v.version_number,
+                          status: v.status,
+                          intent: v.intent_key,
+                        })}
+                        {v.published_at
+                          ? t('admin.communications_campaigns.versions.published_at', {
+                              at: v.published_at,
+                            })
+                          : ''}
                       </li>
                     ))}
                   </ul>
@@ -638,14 +605,20 @@ export default function CommunicationCampaignsPage() {
               </section>
 
               <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <h3 className="mb-2 text-sm font-semibold text-slate-900">Recent runs</h3>
+                <h3 className="mb-2 text-sm font-semibold text-slate-900">
+                  {t('admin.communications_campaigns.runs.title')}
+                </h3>
                 {runs.length === 0 ? (
-                  <p className="text-xs text-slate-500">No runs yet.</p>
+                  <p className="text-xs text-slate-500">{t('admin.communications_campaigns.runs.empty')}</p>
                 ) : (
                   <ul className="space-y-1 text-xs text-slate-600">
                     {runs.map((r) => (
                       <li key={r.id} className="font-mono">
-                        {r.status} · recipients {r.recipient_count ?? '—'} · {r.idempotency_key}
+                        {t('admin.communications_campaigns.runs.row', {
+                          status: r.status,
+                          count: r.recipient_count ?? t('common.labels.not_available'),
+                          key: r.idempotency_key,
+                        })}
                       </li>
                     ))}
                   </ul>
