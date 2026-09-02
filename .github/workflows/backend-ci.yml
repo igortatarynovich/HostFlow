@@ -27,6 +27,8 @@ on:
       - "docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json"
       - "docs/specs/tasks/lifecycle-identity-li1*"
       - "docs/specs/tasks/engine-document-request-dr1*"
+      - "docs/specs/tasks/requirement-policy-management.md"
+      - "docs/specs/architecture/requirement-policy-authority.md"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/actions/backend-pytest/**"
@@ -52,6 +54,8 @@ on:
       - "docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json"
       - "docs/specs/tasks/lifecycle-identity-li1*"
       - "docs/specs/tasks/engine-document-request-dr1*"
+      - "docs/specs/tasks/requirement-policy-management.md"
+      - "docs/specs/architecture/requirement-policy-authority.md"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/actions/backend-pytest/**"
@@ -96,6 +100,7 @@ jobs:
       li1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.li1 == 'true' }}
       dr1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1 == 'true' }}
       dr1_runtime: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1_runtime == 'true' }}
+      rpm1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm1 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -259,6 +264,14 @@ jobs:
               - 'hostflow-frontend/src/platform/entity-workspace/CandidateFlightMapPanel.tsx'
               - 'hostflow-frontend/src/platform/entity-workspace/CandidateQaPanel.tsx'
               - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+            rpm1:
+              - 'backend/app/reference/requirement_policy_authority.py'
+              - 'backend/app/reference/document_policy_merge.py'
+              - 'backend/tests/platform/test_requirement_policy_authority_gate.py'
+              - 'scripts/architecture/check_requirement_policy_authority_boundary.py'
+              - 'scripts/architecture/requirement_policy_authority_boundary_*'
+              - 'docs/specs/tasks/requirement-policy-management.md'
+              - 'docs/specs/architecture/requirement-policy-authority.md'
 
   guards:
     name: guards
@@ -671,6 +684,21 @@ jobs:
         with:
           tests: tests/entity_field_composition/test_vacancy_overlay_contract_gate.py
 
+  rpm1-authority-gate:
+    name: Requirement Policy Authority Gate
+    needs: changes
+    if: needs.changes.outputs.rpm1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RPM-1 Authority gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_requirement_policy_authority_gate.py') == ''
+        run: echo "RPM-1 Authority gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_requirement_policy_authority_gate.py') != ''
+        with:
+          tests: tests/platform/test_requirement_policy_authority_gate.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -711,6 +739,7 @@ jobs:
       - cl6-flight-map-gate
       - cl7-engine-eval-gate
       - overlay-contract-gate
+      - rpm1-authority-gate
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:

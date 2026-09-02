@@ -177,7 +177,7 @@ Recorded at Goal seal. Not a PASS.
 
 | Capability | Authority | Operator surface | E2E consumption | Acceptance |
 |------------|-----------|------------------|-----------------|------------|
-| Requirement Policy Management | partial (R5 on E8-eval) | no | no | OPEN |
+| Requirement Policy Management | **sealed** (RPM-1: one write = R5 merge; [requirement-policy-authority.md](../architecture/requirement-policy-authority.md)) | no (RPM-2) | no | OPEN |
 | Mapping Authority | no (three contracts) | partial (C-5 / intake editors) | partial | OPEN |
 | External Intake / Forms Publish | partial (Foundation serve→execute) | no (P3 locked) | partial | OPEN |
 | Hiring workflow E2E | partial (funnels / gates / transfer) | partial | not proven vs policy authority | OPEN |
@@ -199,7 +199,8 @@ Recorded at Goal seal. Not a PASS.
 
 ## Refs
 
-- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [RPM-1](../tasks/requirement-policy-management.md)  
+- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [RPM-2](../tasks/requirement-policy-management.md) after RPM-1 Authority Gate PASS  
+- [Requirement Policy Authority](../architecture/requirement-policy-authority.md) — operator question + write  
 - [Dependency-position review](v1-release-dag-dependency-position.md) — why RPM is first  
 - [Release Readiness Gate](release-readiness-gate.md) — entry conditions, seven questions, Release Candidate, derived RC date  
 - [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md) — RS-1…RS-12 and the coverage matrix  

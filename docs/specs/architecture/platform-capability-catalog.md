@@ -300,7 +300,7 @@ Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes`
 
 ### Documents
 
-**Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md)  
+**Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-018`](ADR-018-requirement-policy-evaluation-model.md) · [`requirement-policy-authority.md`](requirement-policy-authority.md) · [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md)  
 **Public Contract:** [`documents-public-contract.md`](documents-public-contract.md) (`documents.public_contract.v1`)  
 **Task:** [`../tasks/documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md)
 
@@ -320,7 +320,7 @@ Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes`
 | **Events** | Publishes: `document.created` / `linked` / `verified` / `expired` |
 | **Forbidden** | Employee / Candidate / Vehicle / Invoice **domain** SoT; module-local file table как SoT; SMTP для бизнес-статусов |
 | **Data Ownership** | Document; DocumentVersion; DocumentType; DocumentTemplate; DocumentLink; DocumentRequirement; DocumentReview |
-| **Contract tests** | `backend/tests/platform/test_documents_e1_contract_seal_gate.py` · `test_documents_e2_public_contract_gate.py` |
+| **Contract tests** | `backend/tests/platform/test_documents_e1_contract_seal_gate.py` · `test_documents_e2_public_contract_gate.py` · `test_requirement_policy_authority_gate.py` |
 
 ---
 

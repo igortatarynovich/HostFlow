@@ -243,7 +243,7 @@ Evidence Record становится **результатом** Evaluation, не
 
 - Full HR / Fleet policies
 - All document type schemas globally
-- Admin UI for policy editing
+- Admin UI for policy editing — **now owned by** [Requirement Policy Management](../tasks/requirement-policy-management.md). Write authority is sealed in [requirement-policy-authority.md](requirement-policy-authority.md) (`requirement_policy_authority.v1`, RPM-1 **PASS**). The operator overlay is **RPM-2**, not a second Documents Admin vs Rules Admin.
 - Automatic policy migration for all in-flight candidates
 
 ---
@@ -412,6 +412,7 @@ PR 2B evaluator consumes the same policy + DocumentData facts.
 - DocumentData contract: `backend/app/document_hub/document_data_contract.py`
 - Evaluator input contract: `backend/app/requirement_rules/evaluation_input_contract.py`
 - **PR 2B reuse audit:** Variant B — DocumentRuntime (facts) + RequirementEvaluationService (policy); related automation-plane reuse notes in [`../platform/existing-runtime-reuse-review-automation-plane.md`](../platform/existing-runtime-reuse-review-automation-plane.md)
+- **Operator write of this policy (RPM):** [`requirement-policy-authority.md`](requirement-policy-authority.md) — one question, one write, nine classified answerers. Applies this ADR; does not replace evaluation.
 - **Next platform layer:** [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) — Automation & Capability Engine (after 2B-3)
 - Legacy aliases: [`document-type-legacy-aliases-v1.json`](../platform/document-type-legacy-aliases-v1.json)
 - CI guard: `backend/scripts/check_document_type_registry.py`
