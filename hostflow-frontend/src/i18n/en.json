@@ -14519,6 +14519,10 @@
         "merge_templates": {
           "label": "Merge templates",
           "description": "Document merge templates and field bindings for generated files."
+        },
+        "lead_lifecycle_email": {
+          "description": "Automatically send RODO and status emails when a lead arrives.",
+          "label": "Candidate communication"
         }
       },
       "audit": {
@@ -15693,6 +15697,191 @@
       "missing_user": "This access record has no user_id",
       "confirm_revoke": "Revoke access for {email}?",
       "retry_hint": "Retry the action or refresh the page."
+    },
+    "lead_lifecycle_email": {
+      "page_title": "Candidate communication",
+      "subtitle": "When a new application arrives, send RODO information automatically.",
+      "status": {
+        "needs_setup": "RODO — needs setup",
+        "needs_setup_detail": "Missing the email the candidate will receive.",
+        "active": "RODO — active",
+        "active_detail": "New applications automatically receive: {name}.",
+        "manual": "RODO — manual",
+        "manual_detail": "A recruiter sends the RODO notice from the lead card."
+      },
+      "composer": {
+        "title_rodo": "RODO message",
+        "title_ops": "Automatic message",
+        "name": "Name",
+        "subject": "Subject",
+        "body": "Body",
+        "link_note": "The link to the RODO document is added automatically.",
+        "cancel": "Cancel",
+        "save_and_use": "Save and use",
+        "saving": "Saving…",
+        "applied": "Message saved and assigned. New applications will use it."
+      },
+      "advanced": {
+        "show": "Advanced settings",
+        "hide": "Hide advanced settings",
+        "show_technical": "Show technical details",
+        "hide_technical": "Hide technical details",
+        "send_first_action": "Also send before the first call, email, or process action"
+      },
+      "template_created_select_save": "RODO email template created and selected. Click “Save firm policy” to apply it.",
+      "template_hub_apply_hint": "Creating a template does not send it. After save, open Lead lifecycle email, select the template, and click Save firm policy.",
+      "template_hub_empty": "No lead email templates yet. Create one above (name, subject, body), then bind it in the Control Center.",
+      "template": {
+        "empty": "— no email templates yet —",
+        "select": "— select template —"
+      },
+      "misconfig": {
+        "title": "Misconfiguration",
+        "rodo_auto_no_template": "RODO auto-send is on, but no email template is selected.",
+        "ops_no_template": "{label}: enabled without template",
+        "hint": "A legal RODO clause is not an email template. Create a lead email template, select it here, then save the firm policy.",
+        "rodo_no_template": "RODO auto-send enabled without template"
+      },
+      "rodo": {
+        "title": "RODO / art.14",
+        "duty_title": "RODO / information duty",
+        "document": "RODO document",
+        "document_ok": "RODO {name} ✓",
+        "document_missing": "No RODO document — add it in Legal",
+        "auto_send": "Send after a new application arrives",
+        "message": "Email message",
+        "empty_title": "You don’t have a RODO message yet.",
+        "empty_body": "Create the email the candidate will receive together with the link to the RODO document.",
+        "create_message": "Create message",
+        "edit_message": "Edit message",
+        "template_vs_legal": "This list is email copy (subject + body). A RODO clause under Legal documents is the legal text behind {rodo_link} — it never appears here.",
+        "send_mode": "Send mode",
+        "mode_manual": "Manual",
+        "mode_auto_created": "Auto on lead created",
+        "mode_auto_first": "Auto on first gated action",
+        "template": "Email template",
+        "empty_catalog": "No sendable email templates yet. Create one here, or open Manage templates, then come back and select it.",
+        "select_then_save": "Select the template, then click “Save firm policy” at the bottom."
+      },
+      "actions": {
+        "manage_templates": "Manage templates",
+        "create_rodo_template": "Create RODO email template",
+        "creating": "Creating…",
+        "open_legal": "Legal RODO clause"
+      },
+      "errors": {
+        "load_failed": "Failed to load Control Center",
+        "load_company": "Failed to load company policy",
+        "save_failed": "Failed to save policy",
+        "save_override": "Failed to save vacancy override",
+        "create_template": "Failed to create email template"
+      },
+      "bindings_moved_body": "Assign RODO and status emails per company under Settings → Communications → Candidate communication. This page is the shared catalog for power users.",
+      "bindings_moved_title": "Company sending policy lives in Candidate communication",
+      "client_overlay_saved": "Client overlay saved (optional white-label)",
+      "kicker": "Communications",
+      "loading": "Loading…",
+      "link_smtp": "SMTP",
+      "link_templates": "Templates",
+      "link_meta": "Meta (deep-link)",
+      "misconfiguration": "Misconfiguration",
+      "own_company": "Own company (firm SoT)",
+      "select_own_company": "Select own company…",
+      "client_overlay": "Client overlay (optional)",
+      "none_firm_only": "None — firm policy only",
+      "source_hint": "Source: {source}. Save writes the firm policy on OwnCompany. Client overlay is optional white-label.",
+      "select_own_to_edit": "Select an own company to edit firm lifecycle email policy.",
+      "section": {
+        "rodo": "RODO / art. 14",
+        "ops": "Operational emails",
+        "preview": "Effective policy (resolve-preview)",
+        "vacancy_override": "Vacancy sparse override"
+      },
+      "send_mode": "Send mode",
+      "select_template": "— select template —",
+      "master_enabled": "Master enabled",
+      "purpose": {
+        "gdpr_notice": "RODO / art. 14",
+        "submission_acknowledgement": "Application received",
+        "intake_rejection_notice": "Intake rejection",
+        "moving_forward_notice": "Moving forward"
+      },
+      "ops": {
+        "section": "Automatic messages",
+        "col_event": "Event",
+        "col_send": "Send",
+        "col_message": "Message",
+        "on": "On",
+        "off": "Off",
+        "configure": "Set up message",
+        "application_received": "New application",
+        "rejection": "Rejection",
+        "moving_forward": "Candidate moving forward"
+      },
+      "default_ops": {
+        "application_received": {
+          "name": "Application received",
+          "subject": "We received your application",
+          "body": "Hello {first_name},\n\nWe have received your application and will be in touch.\n\nBest regards"
+        },
+        "rejection": {
+          "name": "Rejection",
+          "subject": "Update on your application",
+          "body": "Hello {first_name},\n\nThank you for your application. We will not be moving forward this time.\n\nBest regards"
+        },
+        "moving_forward": {
+          "name": "Moving forward",
+          "subject": "Next step in your application",
+          "body": "Hello {first_name},\n\nYour application is moving forward. We will contact you with the next steps.\n\nBest regards"
+        }
+      },
+      "refresh": "Refresh",
+      "vacancy_context": "Vacancy (optional override context)",
+      "company_only": "Company only",
+      "preview": {
+        "send": "Send",
+        "enabled": "Enabled",
+        "layer": "Layer",
+        "block_code": "Block code",
+        "template_ref": "Template",
+        "reason": "Reason",
+        "empty": "No preview yet.",
+        "purpose": "Purpose"
+      },
+      "vacancy_override_hint": "Only set keys you want to override. Missing keys inherit company policy.",
+      "select_vacancy_for_override": "Select a vacancy in the preview panel to edit overrides.",
+      "override_enabled": "Override enabled",
+      "save_vacancy_override": "Save vacancy override",
+      "save_firm": "Save firm policy",
+      "load_client_overlay": "Load client overlay into editor",
+      "save_client_overlay": "Save as client overlay",
+      "layers": {
+        "own_company": "Own company",
+        "client": "Client overlay",
+        "vacancy": "Vacancy override",
+        "tenant_preset": "Tenant preset",
+        "none": "None"
+      },
+      "block_codes": {
+        "unknown_purpose": "Unknown purpose",
+        "missing_own_company": "Own company is missing",
+        "policy_template_missing": "Template is missing",
+        "policy_misconfigured": "Policy is misconfigured",
+        "disabled": "Disabled"
+      },
+      "reasons": {
+        "unknown_purpose": "Unknown lifecycle purpose.",
+        "missing_own_company": "Lead has no own company; lifecycle email policy requires an operating firm.",
+        "policy_template_missing": "RODO auto-send enabled but template is missing.",
+        "policy_template_missing_manual": "RODO template is missing; configure it on this page.",
+        "disabled": "Outbound disabled by vacancy override.",
+        "ops_template_missing": "Purpose enabled but template is missing."
+      },
+      "default_rodo": {
+        "name": "RODO / art. 14",
+        "subject": "RODO / GDPR — information about personal data processing",
+        "body": "Hello {first_name},\n\nPlease see the information about processing of your personal data (RODO, art. 14):\n\n{rodo_link}\n\nBest regards"
+      }
     }
   }
 }

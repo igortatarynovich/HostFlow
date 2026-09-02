@@ -1,7 +1,7 @@
 # Lead lifecycle email policy (v1)
 
 **Status:** NORMATIVE (L2 — workflow / operating canon)  
-**Date:** 2026-07-29 · **Updated:** 2026-07-31 (own-company SoT)  
+**Date:** 2026-07-29 · **Updated:** 2026-09-02 (recruiter Control Center IA)  
 **Owner:** Communication capability (settings + templates); Leads module consumes resolver  
 **Parents:** [ADR-033](../architecture/ADR-033-lead-lifecycle-email-company-policy.md) · [ADR-005](../architecture/ADR-005-three-level-settings-hierarchy.md) · [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) · [c0-0 Communication canon §14](../tasks/c0-0-communication-canon.md) · [§8.0.1–8.0.2 intake continuity](lead-intake-resolution-and-activity-continuity.md)
 
@@ -117,10 +117,11 @@ Runtime callers: `lead_rodo`, `lead_communications` via `resolve_lifecycle_email
 ## 7. Control Center IA
 
 - Route: `/app/settings/communications/lead-lifecycle-email`
-- **Target IA (slice B):** Own Company selector → four purpose cards → **Effective policy** panel (resolve-preview) → optional Client overlay → Vacancy overrides → links to SMTP + templates.
-- **Until slice B:** client-company GET/PUT remain for overlay editing; own-company GET/PUT address the SoT blob on `OwnCompany.extra`.
+- **Operator IA:** recruiter scenario first — status (needs setup / active / manual) → RODO information-duty card (document + auto-send + message) → in-page **Save and use** composer → automatic-message events table. Do not send the operator through Hub catalog → bind → save policy as the happy path.
+- **Diagnostics:** `resolve-preview`, layer, `template_ref`, `block_code`, client overlay, and vacancy sparse override stay behind **Advanced settings** / **Show technical details**. They remain available for admins; they are not the default screen.
+- Own-company GET/PUT remain the SoT blob on `OwnCompany.extra`. Client-company GET/PUT remain overlay editing.
 - Meta Integrations: **deep-link only** (not SoT UI).
-- Misconfiguration strip: `enabled && !template_ref` (auto RODO modes).
+- Misconfiguration is a recruiter status + **Create message** on the same page (`enabled && !template_ref` for auto RODO modes).
 
 ### RBAC
 

@@ -14519,6 +14519,10 @@
         "merge_templates": {
           "label": "Szablony scalania",
           "description": "Szablony scalania dokumentów i powiązania pól dla generowanych plików."
+        },
+        "lead_lifecycle_email": {
+          "description": "Automatyczna wysyłka RODO i e-maili statusu po nowym zgłoszeniu.",
+          "label": "Komunikacja z kandydatem"
         }
       },
       "audit": {
@@ -15693,6 +15697,191 @@
       "missing_user": "Rekord nie ma user_id",
       "confirm_revoke": "Odebrać dostęp użytkownikowi {email}?",
       "retry_hint": "Ponów działanie lub odśwież stronę."
+    },
+    "lead_lifecycle_email": {
+      "page_title": "Komunikacja z kandydatem",
+      "subtitle": "Gdy przychodzi nowe zgłoszenie, wyślij kandydatowi informację RODO.",
+      "status": {
+        "needs_setup": "RODO — wymaga konfiguracji",
+        "needs_setup_detail": "Brakuje wiadomości e-mail, którą otrzyma kandydat.",
+        "active": "RODO — aktywne",
+        "active_detail": "Nowe zgłoszenia automatycznie otrzymują: {name}.",
+        "manual": "RODO — ręcznie",
+        "manual_detail": "Rekruter wysyła informację RODO z karty leada."
+      },
+      "composer": {
+        "title_rodo": "Wiadomość RODO",
+        "title_ops": "Wiadomość automatyczna",
+        "name": "Nazwa",
+        "subject": "Temat",
+        "body": "Treść",
+        "link_note": "Link do dokumentu RODO zostanie dodany automatycznie.",
+        "cancel": "Anuluj",
+        "save_and_use": "Zapisz i użyj",
+        "saving": "Zapisywanie…",
+        "applied": "Wiadomość zapisana i przypisana. Nowe zgłoszenia będą jej używać."
+      },
+      "advanced": {
+        "show": "Ustawienia zaawansowane",
+        "hide": "Ukryj ustawienia zaawansowane",
+        "show_technical": "Pokaż szczegóły techniczne",
+        "hide_technical": "Ukryj szczegóły techniczne",
+        "send_first_action": "Wyślij też przed pierwszym połączeniem, e-mailem lub procesowaniem"
+      },
+      "template_created_select_save": "Szablon e-mail RODO utworzony i wybrany. Kliknij „Zapisz politykę firmy”, aby go zastosować.",
+      "template_hub_apply_hint": "Utworzenie szablonu nic nie wysyła. Potem otwórz E-mail cyklu życia leada, wybierz szablon i kliknij Zapisz politykę firmy.",
+      "template_hub_empty": "Brak szablonów e-mail leadów. Utwórz jeden powyżej (nazwa, temat, treść), a następnie przypisz go w Centrum sterowania.",
+      "template": {
+        "empty": "— brak szablonów e-mail —",
+        "select": "— wybierz szablon —"
+      },
+      "misconfig": {
+        "title": "Błędna konfiguracja",
+        "rodo_auto_no_template": "Automatyczna wysyłka RODO jest włączona, ale nie wybrano szablonu e-mail.",
+        "ops_no_template": "{label}: włączone bez szablonu",
+        "hint": "Klauzula RODO w dokumentach prawnych to nie szablon e-mail. Utwórz szablon wiadomości, wybierz go tutaj, a następnie zapisz politykę firmy.",
+        "rodo_no_template": "Automatyczne RODO włączone bez szablonu"
+      },
+      "rodo": {
+        "title": "RODO / art.14",
+        "duty_title": "RODO / obowiązek informacyjny",
+        "document": "Dokument RODO",
+        "document_ok": "RODO {name} ✓",
+        "document_missing": "Brak dokumentu RODO — dodaj w Dokumentach prawnych",
+        "auto_send": "Wyślij po otrzymaniu nowego zgłoszenia",
+        "message": "Wiadomość e-mail",
+        "empty_title": "Nie masz jeszcze wiadomości RODO.",
+        "empty_body": "Utwórz wiadomość, którą kandydat otrzyma razem z linkiem do dokumentu RODO.",
+        "create_message": "Utwórz wiadomość",
+        "edit_message": "Edytuj wiadomość",
+        "template_vs_legal": "Ta lista to treść e-mail (temat + treść). Klauzula RODO w dokumentach prawnych to tekst pod {rodo_link} — nie pojawia się tutaj.",
+        "send_mode": "Tryb wysyłki",
+        "mode_manual": "Ręcznie",
+        "mode_auto_created": "Auto przy utworzeniu leada",
+        "mode_auto_first": "Auto przy pierwszej zablokowanej akcji",
+        "template": "Szablon e-mail",
+        "empty_catalog": "Brak szablonów e-mail do wysyłki. Utwórz jeden tutaj albo otwórz Zarządzaj szablonami, wróć i wybierz go.",
+        "select_then_save": "Wybierz szablon, a następnie kliknij „Zapisz politykę firmy” na dole."
+      },
+      "actions": {
+        "manage_templates": "Zarządzaj szablonami",
+        "create_rodo_template": "Utwórz szablon e-mail RODO",
+        "creating": "Tworzenie…",
+        "open_legal": "Klauzula RODO (dokumenty prawne)"
+      },
+      "errors": {
+        "load_failed": "Nie udało się wczytać Control Center",
+        "load_company": "Nie udało się wczytać polityki firmy",
+        "save_failed": "Nie udało się zapisać polityki",
+        "save_override": "Nie udało się zapisać nadpisania wakatu",
+        "create_template": "Nie udało się utworzyć szablonu e-mail"
+      },
+      "bindings_moved_body": "Przypisuj szablony RODO i e-maili operacyjnych per firma (z nadpisaniem wakatu) w Ustawienia → Komunikacja → E-mail cyklu życia leada. Ta strona to wspólny katalog szablonów.",
+      "bindings_moved_title": "Polityka firmy jest w Communications Control Center",
+      "client_overlay_saved": "Zapisano nakładkę klienta (opcjonalny white-label)",
+      "kicker": "Komunikacja",
+      "loading": "Wczytywanie…",
+      "link_smtp": "SMTP",
+      "link_templates": "Szablony",
+      "link_meta": "Meta (deep-link)",
+      "misconfiguration": "Błędna konfiguracja",
+      "own_company": "Własna firma (źródło polityki)",
+      "select_own_company": "Wybierz własną firmę…",
+      "client_overlay": "Nakładka klienta (opcjonalnie)",
+      "none_firm_only": "Brak — tylko polityka firmy",
+      "source_hint": "Źródło: {source}. Zapis ustawia politykę firmy na OwnCompany. Nakładka klienta to opcjonalny white-label.",
+      "select_own_to_edit": "Wybierz własną firmę, aby edytować politykę e-maili cyklu życia.",
+      "section": {
+        "rodo": "RODO / art. 14",
+        "ops": "E-maile operacyjne",
+        "preview": "Obowiązująca polityka (podgląd)",
+        "vacancy_override": "Punktowe nadpisanie wakatu"
+      },
+      "send_mode": "Tryb wysyłki",
+      "select_template": "— wybierz szablon —",
+      "master_enabled": "Włączone globalnie",
+      "purpose": {
+        "gdpr_notice": "RODO / art. 14",
+        "submission_acknowledgement": "Zgłoszenie otrzymane",
+        "intake_rejection_notice": "Odrzucenie na intaku",
+        "moving_forward_notice": "Kolejny etap"
+      },
+      "ops": {
+        "section": "Automatyczne wiadomości",
+        "col_event": "Zdarzenie",
+        "col_send": "Wysyłka",
+        "col_message": "Wiadomość",
+        "on": "Wł.",
+        "off": "Wył.",
+        "configure": "Skonfiguruj wiadomość",
+        "application_received": "Nowe zgłoszenie",
+        "rejection": "Odrzucenie",
+        "moving_forward": "Kandydat przechodzi dalej"
+      },
+      "default_ops": {
+        "application_received": {
+          "name": "Potwierdzenie zgłoszenia",
+          "subject": "Otrzymaliśmy Twoje zgłoszenie",
+          "body": "Dzień dobry {first_name},\n\nOtrzymaliśmy Twoje zgłoszenie i wkrótce się odezwiemy.\n\nPozdrawiamy"
+        },
+        "rejection": {
+          "name": "Odrzucenie",
+          "subject": "Informacja o rekrutacji",
+          "body": "Dzień dobry {first_name},\n\nDziękujemy za zgłoszenie. Tym razem nie będziemy kontynuować procesu.\n\nPozdrawiamy"
+        },
+        "moving_forward": {
+          "name": "Kolejny etap",
+          "subject": "Następny krok w rekrutacji",
+          "body": "Dzień dobry {first_name},\n\nTwoje zgłoszenie przechodzi dalej. Skontaktujemy się w sprawie kolejnych kroków.\n\nPozdrawiamy"
+        }
+      },
+      "refresh": "Odśwież",
+      "vacancy_context": "Wakat (opcjonalny kontekst nadpisania)",
+      "company_only": "Tylko firma",
+      "preview": {
+        "send": "Wysyłka",
+        "enabled": "Włączone",
+        "layer": "Warstwa",
+        "block_code": "Kod blokady",
+        "template_ref": "Szablon",
+        "reason": "Powód",
+        "empty": "Brak podglądu.",
+        "purpose": "Cel"
+      },
+      "vacancy_override_hint": "Ustaw tylko pola, które chcesz nadpisać. Brakujące dziedziczą politykę firmy.",
+      "select_vacancy_for_override": "Wybierz wakat w panelu podglądu, aby edytować nadpisania.",
+      "override_enabled": "Nadpisanie włączone",
+      "save_vacancy_override": "Zapisz nadpisanie wakatu",
+      "save_firm": "Zapisz politykę firmy",
+      "load_client_overlay": "Wczytaj nakładkę klienta do edytora",
+      "save_client_overlay": "Zapisz jako nakładkę klienta",
+      "layers": {
+        "own_company": "Własna firma",
+        "client": "Nakładka klienta",
+        "vacancy": "Nadpisanie wakatu",
+        "tenant_preset": "Preset tenanta",
+        "none": "Brak"
+      },
+      "block_codes": {
+        "unknown_purpose": "Nieznany cel",
+        "missing_own_company": "Brak własnej firmy",
+        "policy_template_missing": "Brak szablonu",
+        "policy_misconfigured": "Polityka jest źle skonfigurowana",
+        "disabled": "Wyłączone"
+      },
+      "reasons": {
+        "unknown_purpose": "Nieznany cel cyklu życia.",
+        "missing_own_company": "Lead nie ma własnej firmy; polityka e-maili wymaga firmy operacyjnej.",
+        "policy_template_missing": "Automatyczne RODO włączone, ale brakuje szablonu.",
+        "policy_template_missing_manual": "Brak szablonu RODO; skonfiguruj go na tej stronie.",
+        "disabled": "Wysyłka wyłączona nadpisaniem wakatu.",
+        "ops_template_missing": "Cel włączony, ale brakuje szablonu."
+      },
+      "default_rodo": {
+        "name": "RODO — nowe zgłoszenie",
+        "subject": "RODO / GDPR — informacje o przetwarzaniu danych osobowych",
+        "body": "Dzień dobry {first_name},\n\nPrzekazujemy informację o przetwarzaniu Twoich danych osobowych (RODO, art. 14):\n\n{rodo_link}\n\nPozdrawiamy"
+      }
     }
   }
 }
