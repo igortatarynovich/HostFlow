@@ -145,6 +145,7 @@ class LeadQuestionnaireFormOptionOut(BaseModel):
     lifecycle_status: Optional[str] = None
     supported_languages: list[str] = Field(default_factory=list)
     presentation_code: Optional[str] = None
+    target_entity_profile_code: Optional[str] = None
 
 
 class SalesQuestionnaireContextOut(BaseModel):

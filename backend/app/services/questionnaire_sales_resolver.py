@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.entity_profile.constants import TARGETED_ADVERTISING_PROFILE_CODE
+from backend.app.entity_profile.constants import SERVICE_SALES_MODULE, TARGETED_ADVERTISING_PROFILE_CODE
 from backend.app.entity_profile.presentation_write import build_tenant_form_presentation_code
 from backend.app.entity_profile.seed_targeted_advertising_form import ensure_tenant_targeted_advertising_intake_form
 from backend.app.intake_platform.constants import FormLifecycleStatus
@@ -137,14 +137,76 @@ async def resolve_sales_questionnaire_context(
     }
 
 
+def _is_active_sales_questionnaire_form(form: TenantLeadForm) -> bool:
+    lifecycle = str(
+        getattr(form, "lifecycle_status", FormLifecycleStatus.active.value) or FormLifecycleStatus.active.value
+    )
+    if lifecycle == FormLifecycleStatus.archived.value:
+        return False
+    if not bool(form.is_active):
+        return False
+    profile_code = str(getattr(form, "target_entity_profile_code", None) or "").strip()
+    return profile_code.startswith(f"{SERVICE_SALES_MODULE}.")
+
+
+async def _ready_sales_form_option(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form: TenantLeadForm,
+    auto_repair: bool,
+) -> dict[str, Any] | None:
+    profile_code = str(getattr(form, "target_entity_profile_code", None) or "").strip()
+    public_slug = str(form.public_slug or "").strip()
+    if auto_repair and profile_code == TARGETED_ADVERTISING_PROFILE_CODE:
+        await repair_targeted_advertising_form(db, tenant_id=str(tenant_id), lead_form=form)
+    if not public_slug:
+        return None
+    intake_profile = await intake_profile_for_lead_form(
+        db,
+        tenant_id=str(tenant_id),
+        lead_form=form,
+    )
+    if intake_profile is None:
+        return None
+    if not await form_has_tenant_presentation(db, tenant_id=str(tenant_id), lead_form=form):
+        return None
+    presentation_code = str(getattr(intake_profile, "presentation_code", None) or "").strip() or None
+    if not presentation_code:
+        presentation_code = build_tenant_form_presentation_code(
+            entity_profile_code=profile_code or TARGETED_ADVERTISING_PROFILE_CODE,
+            public_slug=public_slug,
+        )
+    return _form_option_payload(form, presentation_code=presentation_code)
+
+
 async def list_active_questionnaire_forms_for_sales(
     db: AsyncSession,
     *,
     tenant_id: str,
 ) -> list[dict[str, Any]]:
-    context = await resolve_sales_questionnaire_context(db, tenant_id=str(tenant_id), auto_repair=True)
-    forms: list[dict[str, Any]] = []
-    if context.get("primary_form"):
-        forms.append(context["primary_form"])
-    forms.extend(context.get("alternate_forms") or [])
-    return forms
+    """Active company questionnaires operators can send from Sales (any service_sales profile)."""
+    rows = (
+        await db.execute(
+            select(TenantLeadForm)
+            .where(
+                TenantLeadForm.tenant_id == str(tenant_id),
+                TenantLeadForm.is_active.is_(True),
+            )
+            .order_by(TenantLeadForm.is_system_preset.asc(), TenantLeadForm.updated_at.desc())
+        )
+    ).scalars().all()
+
+    ready: list[dict[str, Any]] = []
+    for form in rows:
+        if not _is_active_sales_questionnaire_form(form):
+            continue
+        option = await _ready_sales_form_option(
+            db,
+            tenant_id=str(tenant_id),
+            form=form,
+            auto_repair=True,
+        )
+        if option is not None:
+            ready.append(option)
+    return ready

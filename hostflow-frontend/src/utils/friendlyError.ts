@@ -67,7 +67,14 @@ function pickDetail(err: any): string | undefined {
   if (typeof detail === 'string') return detail.trim() || undefined
   if (Array.isArray(detail)) {
     const msg = detail
-      .map((item) => (typeof item?.msg === 'string' ? item.msg : ''))
+      .map((item) => {
+        const text = typeof item?.msg === 'string' ? item.msg.replace(/^Value error, /i, '') : ''
+        const loc = Array.isArray(item?.loc)
+          ? item.loc.filter((part: unknown) => part !== 'body').join('.')
+          : ''
+        if (text && loc) return `${loc}: ${text}`
+        return text
+      })
       .filter(Boolean)
       .join('; ')
     return msg || undefined

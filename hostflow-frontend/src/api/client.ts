@@ -1345,9 +1345,10 @@ export type LeadQuestionnaireFormOption = {
   lifecycle_status?: string | null
   supported_languages?: string[]
   presentation_code?: string | null
+  target_entity_profile_code?: string | null
 }
 
-/** List B2B targeted-advertising questionnaire forms for send picker (F3-B-02). */
+/** Active B2B company questionnaires operators can send from Sales. */
 export async function listLeadQuestionnaireForms(): Promise<LeadQuestionnaireFormOption[]> {
   const { data } = await api.get<LeadQuestionnaireFormOption[]>('/leads/questionnaire-forms')
   return data

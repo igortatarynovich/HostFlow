@@ -39,6 +39,72 @@ def test_bridge_copies_driver_hiring_contacts() -> None:
     assert state["contacts"]["phone"] == "+48123456789"
 
 
+def test_merge_keeps_platform_widget_and_rules() -> None:
+    from backend.app.entity_profile.presentation_write import merge_client_fields_with_platform_preset
+
+    merged = merge_client_fields_with_platform_preset(
+        [
+            {
+                "qualified_code": "service_sales.driver_hiring.driver_categories",
+                "intake_level": "required",
+                "sort_order": 10,
+            }
+        ],
+        [
+            {
+                "qualified_code": "service_sales.driver_hiring.driver_categories",
+                "widget_hint": "multi_select",
+                "presentation_rules": {
+                    "show_if": {
+                        "source_field": "service_sales.driver_hiring.drivers_needed",
+                        "operator": "truthy",
+                    }
+                },
+            }
+        ],
+    )
+    assert merged[0]["widget_hint"] == "multi_select"
+    assert merged[0]["presentation_rules"]["show_if"]["source_field"].endswith("drivers_needed")
+
+
+def test_public_form_profile_code_fits_column() -> None:
+    from backend.app.services.intake_form_write_service import _public_form_profile_code
+
+    long_slug = "x" * 64
+    code = _public_form_profile_code(long_slug)
+    assert len(code) <= 64
+    assert code.startswith("public-form-")
+
+
+def test_create_in_coerces_underscore_slug_and_bad_rule_operator() -> None:
+    from backend.app.api.v1.settings.intake_forms import IntakeFormCreateIn
+
+    payload = IntakeFormCreateIn.model_validate(
+        {
+            "title": "Drivers",
+            "public_slug": "company_needs_drivers",
+            "entity_profile_code": "service_sales.driver_hiring",
+            "fields": [
+                {
+                    "qualified_code": "service_sales.driver_hiring.contact_email",
+                    "intake_level": "required",
+                    "presentation_rules": {
+                        "show_if": {
+                            "source_field": "service_sales.driver_hiring.contact_phone",
+                            "operator": "contains",
+                            "value": "x",
+                        }
+                    },
+                }
+            ],
+        }
+    )
+    assert payload.public_slug == "company-needs-drivers"
+    assert payload.fields[0].presentation_rules is not None
+    assert payload.fields[0].presentation_rules.show_if is not None
+    assert payload.fields[0].presentation_rules.show_if.operator == "eq"
+
+
 def test_merge_driver_hiring_answers_keeps_profile_and_contacts() -> None:
     lead = SimpleNamespace(normalized={}, payload={}, stage="new")
     state = {

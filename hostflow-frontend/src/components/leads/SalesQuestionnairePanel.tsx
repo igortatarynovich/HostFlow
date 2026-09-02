@@ -312,7 +312,7 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
     }
   }, [ensureLink, notify, phone, t])
 
-  const showFormPicker = forms.length > 1
+  const showFormPicker = forms.length >= 1
 
   return (
     <section className="rounded-xl border border-brand-100 bg-brand-50/40 p-4" data-testid="sales-questionnaire-panel">
@@ -387,7 +387,7 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
             defaultValue: 'No B2B questionnaire forms are configured for this tenant.',
           })}{' '}
           <Link
-            to={CRM_APP_PATHS.settingsLeadForms}
+            to={CRM_APP_PATHS.marketingForms}
             className="font-semibold text-brand-800 underline"
             data-testid="sales-questionnaire-open-constructor"
           >

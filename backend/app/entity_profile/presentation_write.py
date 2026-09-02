@@ -16,10 +16,7 @@ from backend.app.entity_profile.constants import REQUIREMENT_OPTIONAL, REQUIREME
 from backend.app.entity_profile.exceptions import EntityProfileNotFoundError
 from backend.app.entity_profile.facade import resolve_entity_profile_facade
 from backend.app.entity_profile.mapping_validation import allowed_qualified_codes_from_profile_view
-from backend.app.entity_profile.presentation_rules import (
-    PresentationRulesWriteError,
-    validate_presentation_rules_for_subset,
-)
+from backend.app.entity_profile.presentation_rules import drop_invalid_presentation_rules
 from backend.app.models.entity_profile import EpIntakePresentation
 
 
@@ -104,6 +101,49 @@ def _normalize_field_rows(fields: list[dict[str, Any]]) -> tuple[list[str], dict
     return field_subset, presentation_overrides
 
 
+def merge_client_fields_with_platform_preset(
+    client_fields: list[dict[str, Any]],
+    preset_fields: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Overlay operator choices onto the platform questionnaire (widgets, rules, labels)."""
+    preset_by_code: dict[str, dict[str, Any]] = {}
+    for raw in preset_fields:
+        if not isinstance(raw, dict):
+            continue
+        code = str(raw.get("qualified_code") or "").strip()
+        if code:
+            preset_by_code[code] = dict(raw)
+
+    merged: list[dict[str, Any]] = []
+    for raw in client_fields:
+        if not isinstance(raw, dict):
+            continue
+        code = str(raw.get("qualified_code") or "").strip()
+        if not code:
+            continue
+        base = dict(preset_by_code.get(code) or {})
+        row: dict[str, Any] = {
+            "qualified_code": code,
+            "intake_level": raw.get("intake_level") or base.get("intake_level") or "optional",
+            "sort_order": raw.get("sort_order") if raw.get("sort_order") is not None else base.get("sort_order"),
+        }
+        label = str(raw.get("label_override") or raw.get("label") or "").strip()
+        if not label:
+            label = str(base.get("label_override") or base.get("label") or "").strip()
+        if label:
+            row["label_override"] = label[:255]
+        widget = str(raw.get("widget_hint") or base.get("widget_hint") or "").strip()
+        if widget:
+            row["widget_hint"] = widget[:64]
+        rules = raw.get("presentation_rules")
+        if not isinstance(rules, dict) or not rules:
+            rules = base.get("presentation_rules")
+        if isinstance(rules, dict) and rules:
+            row["presentation_rules"] = dict(rules)
+        merged.append(row)
+    return merged
+
+
 async def validate_presentation_fields_for_profile(
     db: AsyncSession,
     *,
@@ -142,9 +182,10 @@ async def validate_presentation_fields_for_profile(
 
     allowed = allowed_qualified_codes_from_profile_view(profile_view)
     field_subset, presentation_overrides = _normalize_field_rows(fields)
-
     unknown = [code for code in field_subset if code not in allowed]
-    if unknown:
+    field_subset = [code for code in field_subset if code in allowed]
+    presentation_overrides = {code: override for code, override in presentation_overrides.items() if code in allowed}
+    if not field_subset:
         raise PresentationWriteError(
             code="presentation_field_not_in_profile",
             message="Presentation fields must belong to the selected Entity Profile",
@@ -159,14 +200,7 @@ async def validate_presentation_fields_for_profile(
                 details={"qualified_code": code},
             )
 
-    try:
-        validate_presentation_rules_for_subset(presentation_overrides, field_subset)
-    except PresentationRulesWriteError as exc:
-        raise PresentationWriteError(
-            code=exc.code,
-            message=exc.message,
-            details=exc.details,
-        ) from exc
+    presentation_overrides = drop_invalid_presentation_rules(presentation_overrides, field_subset)
 
     return field_subset, presentation_overrides, profile_view
 

@@ -140,6 +140,21 @@ export function IntakeFormPresentationEditor({
     [rows],
   )
 
+  const visibleRows = useMemo(() => {
+    if (!compact) return catalog
+    const catalogCodes = new Set(catalog.map((field) => field.qualified_code))
+    const extras: EntityProfileFieldOption[] = rows
+      .filter((row) => !catalogCodes.has(row.qualified_code))
+      .map((row) => ({
+        qualified_code: row.qualified_code,
+        label: row.label_override || row.qualified_code,
+        intake_level: row.intake_level,
+        field_type: null,
+        sort_order: row.sort_order,
+      }))
+    return extras.length ? [...catalog, ...extras] : catalog
+  }, [catalog, compact, rows])
+
   const applyPresetFields = useCallback((presetFields: PresentationFieldInput[]) => {
     pendingPresetRef.current = presetFields
     setRows((prev) => mergeCatalogWithPreset(catalog, presetFields, prev))
@@ -204,8 +219,6 @@ export function IntakeFormPresentationEditor({
     if (override && !looksLikeI18nKey(override)) return override
     return catalogLabel(field)
   }
-
-  const visibleRows = compact ? catalog.filter((field) => rows.some((row) => row.qualified_code === field.qualified_code)) : catalog
 
   return (
     <div className="space-y-4">

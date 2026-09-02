@@ -195,6 +195,45 @@ def _validate_condition(
         )
 
 
+def drop_invalid_presentation_rules(
+    presentation_overrides: dict[str, Any],
+    field_subset: list[str],
+) -> dict[str, Any]:
+    """Keep only P10A rules whose source field is still in the selected subset."""
+    subset = frozenset(str(code).strip() for code in field_subset if str(code).strip())
+    out: dict[str, Any] = {}
+    for target_field, override in (presentation_overrides or {}).items():
+        code = str(target_field or "").strip()
+        if not isinstance(override, dict):
+            out[target_field] = override
+            continue
+        next_override = dict(override)
+        rules = override.get("presentation_rules")
+        if not isinstance(rules, dict):
+            out[code or target_field] = next_override
+            continue
+        kept: dict[str, Any] = {}
+        for rule_key, condition in rules.items():
+            key = str(rule_key or "").strip()
+            if key not in RULE_KEYS or not isinstance(condition, dict):
+                continue
+            source = str(condition.get("source_field") or condition.get("field") or "").strip()
+            operator = str(condition.get("operator") or "eq").strip().lower()
+            if not source or source not in subset or source == code or operator not in VALID_OPERATORS:
+                continue
+            kept[key] = {
+                "source_field": source,
+                "operator": operator,
+                "value": condition.get("value"),
+            }
+        if kept:
+            next_override["presentation_rules"] = kept
+        else:
+            next_override.pop("presentation_rules", None)
+        out[code or target_field] = next_override
+    return out
+
+
 def validate_presentation_rules_for_subset(
     presentation_overrides: dict[str, Any],
     field_subset: list[str],
