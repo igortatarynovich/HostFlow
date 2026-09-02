@@ -4842,7 +4842,6 @@ export default function CandidateCard(){
 
               <CandidateLeadOriginPanel
                 candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
-                candidateNote={model.note}
               />
 
               {showRequirementsSummaryCard ? (

@@ -12,20 +12,40 @@ export type FormAnswerSource = {
   contactFallback?: Record<string, unknown> | null
 }
 
+/** Meta ads / Graph attribution — not candidate or client answers. */
 const SKIP_NAMES = new Set([
   'id',
   'lead_id',
   'leadgen_id',
   'external_id',
   'ad_id',
+  'ad_name',
   'adset_id',
+  'adset_name',
+  'ad_set_id',
+  'ad_set_name',
   'adgroup_id',
+  'adgroup_name',
+  'ad_group_id',
+  'ad_group_name',
   'form_id',
+  'form_name',
   'created_time',
   'campaign_id',
+  'campaign_name',
   'page_id',
+  'page_name',
   'created_at',
+  'is_organic',
+  'is_organic_lead',
+  'platform',
+  'publisher_platform',
+  'placement',
 ])
+
+function canonicalAnswerName(name: string): string {
+  return name.trim().toLowerCase().replace(/[\s-]+/g, '_')
+}
 
 const STANDARD_FIELD_LABELS: Record<string, string> = {
   full_name: 'Full name',
@@ -73,7 +93,7 @@ function humanizeFieldName(raw: string): string {
 }
 
 function shouldSkipName(name: string): boolean {
-  const key = name.trim().toLowerCase()
+  const key = canonicalAnswerName(name)
   if (!key) return true
   if (SKIP_NAMES.has(key)) return true
   if (key.startsWith('utm')) return true

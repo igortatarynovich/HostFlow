@@ -108,7 +108,7 @@ Sequence диаграмма (логический порядок):
 - Persistence: latest → `Lead.normalized.call_result_v1`; history → `Lead.normalized.call_results_v1` (append, max 50); блоки сохраняются при re-normalize
 - Audit: `lead.call_result` — activity `call → outcome → note → actor → timestamp → next_contact_at`
 - Recruitment: первое сохранение результата переводит intake lifecycle **new → in_progress** (`intake_resolution_v1`). CRM `stage` — только compatibility (`contacted`). «Не дозвонились» не является стадией лида.
-- Convert несёт **всю** историю звонков + исходные `field_answers` в `candidate.extra.lead_continuity_v1` / `intake_answers_v1` и глушит повторный «Call candidate»
+- Convert несёт историю звонков и ссылку на исходный лид (`candidate.extra.lead_continuity_v1`, `source_lead_id`) и глушит повторный «Call candidate». В карточку кандидата попадают только ответы с executable-маппингом на поля кандидата; исходный опросник остаётся на лиде (`normalized.field_answers`).
 - Gate: lead RODO (`communication_call`), billing side-effects; terminal rejected client lead → 422
 - Список: `GET /leads?intake_lifecycle=new|in_progress|needs_decision|pool|completed` — единственная проекция intake (`intake_resolution_v1`). Legacy `intake_lane` aliases принимаются.
 

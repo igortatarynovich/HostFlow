@@ -137,11 +137,6 @@ def build_lead_continuity_snapshot(lead: Any) -> dict[str, Any]:
             if "call_results_v1" not in carried_fields:
                 carried_fields.append("call_results_v1")
 
-    answers = norm.get("field_answers")
-    if isinstance(answers, list) and answers:
-        snapshot["intake_answers_v1"] = [dict(a) for a in answers if isinstance(a, dict)]
-        carried_fields.append("intake_answers_v1")
-
     return snapshot
 
 
@@ -170,9 +165,6 @@ async def carry_lead_context_on_conversion(
 
     if carried_fields:
         extra["lead_continuity_v1"] = snapshot
-        answers = snapshot.get("intake_answers_v1")
-        if isinstance(answers, list) and answers and "intake_answers_v1" not in extra:
-            extra["intake_answers_v1"] = answers
     else:
         extra["lead_continuity_v1"] = {
             "schema_version": LEAD_CONTINUITY_SCHEMA,

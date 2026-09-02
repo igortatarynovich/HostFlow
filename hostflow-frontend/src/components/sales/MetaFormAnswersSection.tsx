@@ -1,8 +1,10 @@
 import { useI18n } from '../../i18n'
+import { formAnswerRowsFromSources } from '../../utils/formAnswerRows'
 
-export type MetaFormAnswerRow = {
-  name?: unknown
-  values?: unknown
+export type MetaFormAnswersSectionProps = {
+  answers?: unknown
+  additionalAnswers?: unknown
+  labels?: unknown
 }
 
 function text(value: unknown): string {
@@ -10,25 +12,21 @@ function text(value: unknown): string {
   return String(value).trim()
 }
 
-function formatValues(values: unknown): string {
-  if (Array.isArray(values)) {
-    return values.map((v) => text(v)).filter(Boolean).join(', ')
-  }
-  return text(values)
+function canonicalName(name: string): string {
+  return name.trim().toLowerCase().replace(/[\s-]+/g, '_')
 }
 
-export type MetaFormAnswersSectionProps = {
-  answers?: unknown
-  additionalAnswers?: unknown
-}
-
-/** Meta Lead Ads Q&A on the Sales inquiry card — never drop unmapped answers. */
-export function MetaFormAnswersSection({ answers, additionalAnswers }: MetaFormAnswersSectionProps) {
+/** Candidate/client answers from Meta. Ads attribution (campaign, adset, platform) is not shown. */
+export function MetaFormAnswersSection({ answers, additionalAnswers, labels }: MetaFormAnswersSectionProps) {
   const { t } = useI18n()
-  const rows = Array.isArray(answers) ? (answers as MetaFormAnswerRow[]) : []
+  const rows = formAnswerRowsFromSources({
+    fieldAnswers: answers,
+    additionalAnswers,
+    labels,
+  })
   const additionalNames = new Set(
-    (Array.isArray(additionalAnswers) ? (additionalAnswers as MetaFormAnswerRow[]) : [])
-      .map((row) => text(row.name).toLowerCase())
+    (Array.isArray(additionalAnswers) ? additionalAnswers : [])
+      .map((row) => canonicalName(text((row as { name?: unknown }).name)))
       .filter(Boolean),
   )
 
@@ -40,20 +38,19 @@ export function MetaFormAnswersSection({ answers, additionalAnswers }: MetaFormA
         {t('app.sales_inquiry.meta_form_answers', { defaultValue: 'Ответы из формы Meta' })}
       </h3>
       <dl className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
-        {rows.map((row, idx) => {
-          const name = text(row.name) || `Field ${idx + 1}`
-          const isAdditional = additionalNames.has(name.toLowerCase())
+        {rows.map((row) => {
+          const isAdditional = additionalNames.has(canonicalName(row.name))
           return (
-            <div key={`${name}-${idx}`} className="min-w-0">
+            <div key={row.name} className="min-w-0">
               <dt className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-                <span>{name}</span>
+                <span>{row.label}</span>
                 {isAdditional ? (
                   <span className="rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
                     {t('app.sales_inquiry.additional_answer', { defaultValue: 'доп.' })}
                   </span>
                 ) : null}
               </dt>
-              <dd className="mt-0.5 break-words text-sm text-slate-900">{formatValues(row.values) || '—'}</dd>
+              <dd className="mt-0.5 break-words text-sm text-slate-900">{row.value || '—'}</dd>
             </div>
           )
         })}

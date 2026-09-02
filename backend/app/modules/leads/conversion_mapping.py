@@ -1,8 +1,9 @@
 """Execute intake mapping onto Candidate fields at Lead → Candidate conversion.
 
 Rule: if an answer has an executable mapping to a Candidate destination, copy
-it at convert. Unmapped answers stay on the candidate as the original
-questionnaire (``extra.intake_answers_v1``). Conversion must not drop data.
+it at convert onto the matching candidate column / extra / personal field.
+Unmapped answers stay on the Lead (``normalized.field_answers``). They must
+not be copied onto the candidate card as a questionnaire dump.
 
 This is not a conversion-specific field whitelist. Destinations come from the
 intake field registry (qualified codes) plus compact ``mapping_applied_v1``
@@ -77,6 +78,12 @@ _SKIP_ANSWER_NAMES = frozenset(
         "form_id",
         "created_time",
         "campaign_id",
+        "campaign_name",
+        "page_id",
+        "platform",
+        "is_organic",
+        "inbox_url",
+        "retailer_item_id",
     }
 )
 
@@ -163,6 +170,13 @@ def _value_from_normalized(normalized: Mapping[str, Any], target: str) -> Any:
     return _coerce_scalar(normalized.get(target))
 
 
+def _is_skippable_source(name: str) -> bool:
+    key = name.strip().lower()
+    if not key:
+        return True
+    return key in _SKIP_ANSWER_NAMES or key.startswith("utm")
+
+
 def _value_from_field_answers(normalized: Mapping[str, Any], source: str) -> Any:
     raw = normalized.get("field_answers")
     if not isinstance(raw, list):
@@ -243,6 +257,8 @@ def apply_executable_intake_mapping(normalized: Mapping[str, Any] | None) -> Con
 
     for rule in _executable_rules_from_normalized(n):
         source = str(rule.get("source") or "").strip()
+        if source and _is_skippable_source(source):
+            continue
         qualified = str(rule.get("qualified_field_code") or "").strip()
         target = str(rule.get("normalized_target") or rule.get("target") or "").strip()
         value = _value_from_normalized(n, target) if target else None
@@ -257,19 +273,6 @@ def apply_executable_intake_mapping(normalized: Mapping[str, Any] | None) -> Con
                 wrote = True
         if wrote and source:
             out.mapped_sources.append(source)
-
-    answers = n.get("field_answers")
-    if isinstance(answers, list):
-        kept: list[dict[str, Any]] = []
-        for item in answers:
-            if not isinstance(item, Mapping):
-                continue
-            name = str(item.get("name") or "").strip()
-            if not name or name.lower() in _SKIP_ANSWER_NAMES or name.lower().startswith("utm"):
-                continue
-            kept.append(dict(item))
-        if kept:
-            out.extra["intake_answers_v1"] = kept
 
     return out
 

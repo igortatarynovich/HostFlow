@@ -43,19 +43,47 @@ def test_executable_rules_write_unknown_candidate_qualified_to_extra() -> None:
     assert mapped.extra.get("driving_license_category") == "C+E"
 
 
-def test_unmapped_answers_stay_on_intake_answers() -> None:
+def test_unmapped_answers_are_not_copied_to_candidate() -> None:
     mapped = apply_executable_intake_mapping(
         {
             "field_answers": [
                 {"name": "custom_hobby", "values": ["chess"], "label": "Hobby"},
                 {"name": "utm_source", "values": ["fb"]},
+                {
+                    "name": "inbox_url",
+                    "values": ["https://business.facebook.com/latest/thread"],
+                },
+                {
+                    "name": "какой у вас опыт работы водителем c+e в международных перевозках по ес?",
+                    "values": ["1–2_года"],
+                },
             ]
         }
     )
-    answers = mapped.extra.get("intake_answers_v1") or []
-    names = [a["name"] for a in answers]
-    assert "custom_hobby" in names
-    assert "utm_source" not in names
+    assert "intake_answers_v1" not in mapped.extra
+    assert "custom_hobby" not in mapped.extra
+    assert "inbox_url" not in mapped.extra
+    assert "inbox_url" not in mapped.columns
+
+
+def test_technical_inbox_url_is_not_written_even_with_rule() -> None:
+    mapped = apply_executable_intake_mapping(
+        {
+            "field_answers": [
+                {"name": "inbox_url", "values": ["https://business.facebook.com/latest/thread"]},
+            ],
+            "mapping_applied_v1": {
+                "executable_rules": [
+                    {
+                        "source": "inbox_url",
+                        "normalized_target": "inbox_url",
+                    }
+                ]
+            },
+        }
+    )
+    assert "inbox_url" not in mapped.extra
+    assert "intake_answers_v1" not in mapped.extra
 
 
 def test_compact_rules_skip_lead_hints() -> None:
