@@ -13845,35 +13845,35 @@
       "presentation": {
         "fields": {
           "recruitment.candidate.first_name": "Имя",
-          "service_sales.targeted_advertising.need_type": "Кого ищем?",
-          "service_sales.targeted_advertising.primary_outcome": "Какой результат нужен?",
-          "service_sales.targeted_advertising.recruitment_roles": "Какие должности нужны?",
-          "service_sales.targeted_advertising.recruitment_other_role": "Другая должность",
-          "service_sales.targeted_advertising.recruitment_headcount": "Сколько человек",
-          "service_sales.targeted_advertising.work_location_country": "Страна работы",
-          "service_sales.targeted_advertising.work_location_city": "Город работы",
-          "service_sales.targeted_advertising.application_channel": "Куда приходят отклики",
-          "service_sales.targeted_advertising.job_posting_ready": "Готово ли объявление",
-          "service_sales.targeted_advertising.recruitment_materials": "Материалы для набора",
-          "service_sales.targeted_advertising.promotion_subject": "Что продвигаем",
-          "service_sales.targeted_advertising.industry": "Отрасль",
-          "service_sales.targeted_advertising.target_audience_description": "Описание аудитории",
-          "service_sales.targeted_advertising.qualified_lead_definition": "Что считать качественным лидом",
-          "service_sales.targeted_advertising.client_geo_scope": "География",
-          "service_sales.targeted_advertising.client_geo_detail": "Город / регион",
-          "service_sales.targeted_advertising.conversion_destination": "Куда вести заявки",
-          "service_sales.targeted_advertising.offer_ready": "Готова ли оферта",
-          "service_sales.targeted_advertising.marketing_materials": "Рекламные материалы",
-          "service_sales.targeted_advertising.prior_ads_experience": "Опыт с рекламой",
-          "service_sales.targeted_advertising.monthly_ad_budget": "Месячный бюджет",
-          "service_sales.targeted_advertising.start_timeline": "Когда стартовать",
-          "service_sales.targeted_advertising.decision_maker": "Кто принимает решение",
-          "service_sales.targeted_advertising.contact_full_name": "Контактное лицо",
-          "service_sales.targeted_advertising.contact_company_name": "Компания",
-          "service_sales.targeted_advertising.contact_phone": "Телефон",
-          "service_sales.targeted_advertising.contact_email": "Email",
-          "service_sales.targeted_advertising.contact_website": "Сайт",
-          "service_sales.targeted_advertising.additional_notes": "Комментарий",
+          "service_sales.targeted_advertising.need_type": "Чего касается ваша потребность?",
+          "service_sales.targeted_advertising.primary_outcome": "Какой результат для вас самый важный?",
+          "service_sales.targeted_advertising.recruitment_roles": "Каких сотрудников вы хотите нанимать?",
+          "service_sales.targeted_advertising.recruitment_other_role": "Какая должность?",
+          "service_sales.targeted_advertising.recruitment_headcount": "Сколько сотрудников вам нужно сейчас?",
+          "service_sales.targeted_advertising.work_location_country": "Где находится место работы?",
+          "service_sales.targeted_advertising.work_location_city": "Укажите город или базу",
+          "service_sales.targeted_advertising.application_channel": "Как кандидаты должны откликаться?",
+          "service_sales.targeted_advertising.job_posting_ready": "Есть ли у вас готовое объявление о работе?",
+          "service_sales.targeted_advertising.recruitment_materials": "Есть ли у вас материалы для рекрутинговой рекламы?",
+          "service_sales.targeted_advertising.promotion_subject": "Что вы хотите продвигать?",
+          "service_sales.targeted_advertising.industry": "В какой отрасли работает компания?",
+          "service_sales.targeted_advertising.target_audience_description": "Кого именно вы хотите привлечь?",
+          "service_sales.targeted_advertising.qualified_lead_definition": "Какой контакт или лид вы считаете подходящим?",
+          "service_sales.targeted_advertising.client_geo_scope": "Где вы хотите привлекать клиентов?",
+          "service_sales.targeted_advertising.client_geo_detail": "Укажите город или регион",
+          "service_sales.targeted_advertising.conversion_destination": "Куда должны попадать клиенты из рекламы?",
+          "service_sales.targeted_advertising.offer_ready": "Есть ли у вас готовое предложение?",
+          "service_sales.targeted_advertising.marketing_materials": "Есть ли у вас рекламные материалы?",
+          "service_sales.targeted_advertising.prior_ads_experience": "Пользовались ли вы раньше рекламой в Facebook или Instagram?",
+          "service_sales.targeted_advertising.monthly_ad_budget": "Какой месячный бюджет вы хотите выделить непосредственно на рекламу?",
+          "service_sales.targeted_advertising.start_timeline": "Когда вы хотите начать?",
+          "service_sales.targeted_advertising.decision_maker": "Кто принимает решение о сотрудничестве?",
+          "service_sales.targeted_advertising.contact_full_name": "Имя и фамилия",
+          "service_sales.targeted_advertising.contact_company_name": "Название компании",
+          "service_sales.targeted_advertising.contact_phone": "Номер телефона",
+          "service_sales.targeted_advertising.contact_email": "Адрес электронной почты",
+          "service_sales.targeted_advertising.contact_website": "Сайт или профиль компании",
+          "service_sales.targeted_advertising.additional_notes": "Есть ли что-то важное, что нам следует знать?",
           "service_sales.driver_hiring.contact_company_name": "Название компании",
           "service_sales.driver_hiring.base_location": "Где находится база?",
           "service_sales.driver_hiring.drivers_needed": "Сколько водителей требуется?",
@@ -14032,7 +14032,31 @@
           "service_sales.warehouse_hiring.weekly_candidate_capacity": "Сколько кандидатов можете обрабатывать в неделю?",
           "service_sales.warehouse_hiring.contact_full_name": "Контактное лицо по рекрутингу — имя",
           "service_sales.warehouse_hiring.contact_phone": "Контактное лицо по рекрутингу — телефон",
-          "service_sales.warehouse_hiring.contact_email": "Контактное лицо по рекрутингу — e-mail"
+          "service_sales.warehouse_hiring.contact_email": "Контактное лицо по рекрутингу — e-mail",
+          "recruitment.candidate.last_name": "Фамилия",
+          "recruitment.candidate.contacts.phone": "Телефон",
+          "recruitment.candidate.contacts.email": "Email",
+          "recruitment.candidate.contacts.phone_country_code": "Код страны телефона",
+          "recruitment.candidate.contacts.preferred_messenger": "Предпочтительный мессенджер",
+          "platform.identity.citizenship": "Гражданство",
+          "platform.identity.birth_date": "Дата рождения",
+          "platform.identity.address": "Адрес",
+          "recruitment.candidate.experience.years_ce": "Стаж CE в ЕС",
+          "recruitment.candidate.experience.years_similar_role": "Опыт на похожей роли",
+          "recruitment.candidate.experience.trailer_types[]": "Типы прицепов",
+          "recruitment.candidate.experience.route_types[]": "Типы маршрутов",
+          "recruitment.candidate.experience.intl_experience": "Международный опыт",
+          "recruitment.candidate.personal.in_poland": "Вы в Польше?",
+          "recruitment.candidate.personal.current_location": "Текущее местоположение",
+          "recruitment.candidate.personal.residency_status": "Статус пребывания в Польше",
+          "recruitment.candidate.personal.has_adr": "Есть ли ADR?",
+          "recruitment.candidate.qualifications.forklift_license": "Удостоверение на погрузчик",
+          "recruitment.candidate.qualifications.eu_license_with_code_95": "Права ЕС с кодом 95",
+          "recruitment.candidate.qualifications.tachograph_card": "Карта тахографа",
+          "recruitment.candidate.employments[]": "История работы",
+          "recruitment.candidate.agreements.general": "Я принимаю политику конфиденциальности",
+          "recruitment.candidate.agreements.employer_share": "Я согласен на передачу данных работодателю",
+          "recruitment.candidate.agreements.terms_acceptance": "Я принимаю условия"
         },
         "profiles": {
           "recruitment.candidate.office_worker": "Офисный сотрудник",
@@ -14658,7 +14682,161 @@
                 "51_100": "51–100",
                 "100_plus": "100+"
               }
+            },
+            "need_type": {
+              "employee_recruitment": "Подбор сотрудников",
+              "client_acquisition": "Поиск клиентов",
+              "product_sales": "Продажа продукта",
+              "service_promotion": "Продвижение услуги"
+            },
+            "primary_outcome": {
+              "more_inquiries": "Больше запросов от клиентов",
+              "more_applications": "Больше откликов кандидатов",
+              "more_sales": "Больше продаж",
+              "brand_awareness": "Узнаваемость бренда",
+              "other": "Другой результат"
+            },
+            "recruitment_roles": {
+              "driver_ce": "Водитель CE",
+              "driver_c": "Водитель C",
+              "warehouse": "Складской работник",
+              "mechanic": "Механик",
+              "dispatcher": "Диспетчер",
+              "other": "Другая должность"
+            },
+            "recruitment_headcount": {
+              "1_3": "1–3 человека",
+              "4_10": "4–10 человек",
+              "11_20": "11–20 человек",
+              "21_50": "21–50 человек",
+              "50_plus": "Более 50 человек"
+            },
+            "work_location_country": {
+              "poland": "Польша",
+              "germany": "Германия",
+              "other_eu": "Другая страна ЕС",
+              "other": "Другая страна"
+            },
+            "application_channel": {
+              "phone": "Телефон",
+              "whatsapp": "WhatsApp",
+              "form": "Онлайн-форма",
+              "email": "Email"
+            },
+            "job_posting_ready": {
+              "ready": "Да, объявление готово",
+              "partial": "Частично готово",
+              "need_help": "Нужна помощь"
+            },
+            "recruitment_materials": {
+              "photos": "Фото",
+              "logo": "Логотип",
+              "job_description": "Описание вакансии",
+              "video": "Видео",
+              "none": "Нет материалов"
+            },
+            "promotion_subject": {
+              "service": "Услуга",
+              "product": "Продукт",
+              "company_brand": "Бренд компании"
+            },
+            "industry": {
+              "transport": "Транспорт и логистика",
+              "logistics": "Экспедирование",
+              "construction": "Строительство",
+              "manufacturing": "Производство",
+              "services": "Услуги",
+              "other": "Другая отрасль"
+            },
+            "client_geo_scope": {
+              "poland": "Вся Польша",
+              "single_city": "Один город",
+              "selected_region": "Выбранный регион",
+              "europe": "Европа",
+              "international": "Международно"
+            },
+            "conversion_destination": {
+              "whatsapp": "WhatsApp",
+              "phone": "Телефон",
+              "form": "Форма на сайте",
+              "website": "Сайт",
+              "messenger": "Messenger"
+            },
+            "offer_ready": {
+              "ready": "Да, оффер готов",
+              "partial": "Частично готов",
+              "need_help": "Нужна помощь"
+            },
+            "marketing_materials": {
+              "photos": "Фото",
+              "logo": "Логотип",
+              "video": "Видео",
+              "catalog": "Каталог / прайс",
+              "none": "Нет материалов"
+            },
+            "monthly_ad_budget": {
+              "under_1000": "До 1 000 PLN",
+              "1000_2000": "1 000 – 2 000 PLN",
+              "2000_5000": "2 000 – 5 000 PLN",
+              "5000_10000": "5 000 – 10 000 PLN",
+              "over_10000": "Более 10 000 PLN",
+              "undecided": "Пока не знаю"
+            },
+            "start_timeline": {
+              "asap": "Как можно скорее",
+              "two_weeks": "В течение 2 недель",
+              "one_month": "В течение месяца",
+              "later": "Позже",
+              "undecided": "Пока не знаю"
+            },
+            "decision_maker": {
+              "owner": "Владелец компании",
+              "manager": "Руководитель",
+              "marketing": "Маркетолог",
+              "other": "Другой человек"
             }
+          },
+          "yes_no": {
+            "yes": "Да",
+            "no": "Нет"
+          },
+          "location": {
+            "in_poland": "В Польше",
+            "not_in_poland": "Не в Польше",
+            "other": "Другая страна"
+          },
+          "residency": {
+            "visa": "Виза",
+            "karta_pobytu": "Карта побыта",
+            "in_process": "В процессе оформления",
+            "none": "Документа пока нет",
+            "eu_citizen": "Гражданин ЕС"
+          },
+          "years": {
+            "0": "Нет опыта",
+            "1": "1 год",
+            "2": "2 года",
+            "3": "3 года",
+            "5": "5 лет",
+            "10": "10 лет",
+            "10+": "10+ лет"
+          },
+          "trailer_types": {
+            "mega": "Mega",
+            "standard": "Штора стандарт",
+            "platform": "Площадка",
+            "frigo": "Рефрижератор",
+            "tent": "Тент",
+            "container": "Контейнер",
+            "tandem": "Тандем",
+            "car_transporter": "Автовоз"
+          },
+          "route_types": {
+            "eu": "ЕС",
+            "cis": "СНГ",
+            "uk": "Великобритания",
+            "scandi": "Скандинавия",
+            "local": "Локальные"
           }
         },
         "consent_general_link": "политику конфиденциальности",
@@ -18325,6 +18503,67 @@
       "load_error": "Не удалось загрузить политику передачи",
       "open_settings": "Открыть настройки",
       "title": "Политика передачи"
+    }
+  },
+  "forms": {
+    "field": {
+      "text": {
+        "label": "Короткий текст",
+        "placeholder": "Введите текст"
+      },
+      "textarea": {
+        "label": "Длинный текст",
+        "placeholder": "Введите подробности"
+      },
+      "number": {
+        "label": "Число",
+        "placeholder": "0"
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "name@company.com"
+      },
+      "phone": {
+        "label": "Телефон",
+        "placeholder": "+48…"
+      },
+      "date": {
+        "label": "Дата",
+        "placeholder": "Выберите дату"
+      },
+      "checkbox": {
+        "label": "Флажок"
+      },
+      "radio": {
+        "label": "Один вариант"
+      },
+      "select": {
+        "label": "Выпадающий список",
+        "placeholder": "Выберите…"
+      },
+      "multiselect": {
+        "label": "Несколько вариантов",
+        "placeholder": "Выберите…"
+      },
+      "file": {
+        "label": "Файл"
+      },
+      "hidden": {
+        "label": "Скрытое поле"
+      }
+    },
+    "config": {
+      "label": "Вопрос",
+      "help_text": "Подсказка",
+      "required": "Обязательно",
+      "placeholder": "Плейсхолдер",
+      "min_length": "Мин. длина",
+      "max_length": "Макс. длина",
+      "min": "Минимум",
+      "max": "Максимум",
+      "options": "Варианты ответа",
+      "accept": "Допустимые типы файлов",
+      "default_value": "Значение по умолчанию"
     }
   }
 }

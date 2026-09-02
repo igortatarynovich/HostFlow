@@ -127,134 +127,134 @@ function salesQuestionnaireOptions(t: TFn, locale: LocaleCode, suffix: string): 
   switch (suffix) {
     case 'need_type':
       return [
-        pl('employee_recruitment', 'Pozyskiwanie pracowników'),
-        pl('client_acquisition', 'Pozyskiwanie klientów'),
-        pl('product_sales', 'Sprzedaż produktu'),
-        pl('service_promotion', 'Promocja usługi'),
+        pl('employee_recruitment', 'Hiring employees'),
+        pl('client_acquisition', 'Finding clients'),
+        pl('product_sales', 'Product sales'),
+        pl('service_promotion', 'Service promotion'),
       ]
     case 'primary_outcome':
       return [
-        pl('more_inquiries', 'Więcej zapytań od klientów'),
-        pl('more_applications', 'Więcej aplikacji od kandydatów'),
-        pl('more_sales', 'Więcej sprzedaży'),
-        pl('brand_awareness', 'Większa rozpoznawalność marki'),
-        pl('other', 'Inny wynik'),
+        pl('more_inquiries', 'More client inquiries'),
+        pl('more_applications', 'More candidate applications'),
+        pl('more_sales', 'More sales'),
+        pl('brand_awareness', 'Greater brand awareness'),
+        pl('other', 'Other result'),
       ]
     case 'recruitment_roles':
       return [
-        pl('driver_ce', 'Kierowca CE'),
-        pl('driver_c', 'Kierowca C'),
-        pl('warehouse', 'Pracownik magazynu'),
-        pl('mechanic', 'Mechanik'),
-        pl('dispatcher', 'Dyspozytor'),
-        pl('other', 'Inne stanowisko'),
+        pl('driver_ce', 'C+E driver'),
+        pl('driver_c', 'C driver'),
+        pl('warehouse', 'Warehouse worker'),
+        pl('mechanic', 'Mechanic'),
+        pl('dispatcher', 'Dispatcher'),
+        pl('other', 'Other role'),
       ]
     case 'recruitment_headcount':
       return [
-        pl('1_3', '1–3 osoby'),
-        pl('4_10', '4–10 osób'),
-        pl('11_20', '11–20 osób'),
-        pl('21_50', '21–50 osób'),
-        pl('50_plus', 'Powyżej 50 osób'),
+        pl('1_3', '1–3 people'),
+        pl('4_10', '4–10 people'),
+        pl('11_20', '11–20 people'),
+        pl('21_50', '21–50 people'),
+        pl('50_plus', 'More than 50 people'),
       ]
     case 'work_location_country':
       return [
-        pl('poland', 'Polska'),
-        pl('germany', 'Niemcy'),
-        pl('other_eu', 'Inny kraj UE'),
-        pl('other', 'Inny kraj'),
+        pl('poland', 'Poland'),
+        pl('germany', 'Germany'),
+        pl('other_eu', 'Other EU country'),
+        pl('other', 'Other country'),
       ]
     case 'application_channel':
       return [
-        pl('phone', 'Telefon'),
+        pl('phone', 'Phone'),
         pl('whatsapp', 'WhatsApp'),
-        pl('form', 'Formularz online'),
-        pl('email', 'E-mail'),
+        pl('form', 'Online form'),
+        pl('email', 'Email'),
       ]
     case 'job_posting_ready':
       return [
-        pl('ready', 'Tak, gotowe ogłoszenie'),
-        pl('partial', 'Częściowo przygotowane'),
-        pl('need_help', 'Potrzebujemy pomocy'),
+        pl('ready', 'Yes, the posting is ready'),
+        pl('partial', 'Partially prepared'),
+        pl('need_help', 'We need help'),
       ]
     case 'recruitment_materials':
       return [
-        pl('photos', 'Zdjęcia'),
-        pl('logo', 'Logo firmy'),
-        pl('job_description', 'Opis stanowiska'),
-        pl('video', 'Materiały wideo'),
-        pl('none', 'Brak materiałów'),
+        pl('photos', 'Photos'),
+        pl('logo', 'Company logo'),
+        pl('job_description', 'Job description'),
+        pl('video', 'Video'),
+        pl('none', 'No materials'),
       ]
     case 'promotion_subject':
       return [
-        pl('service', 'Usługa'),
-        pl('product', 'Produkt'),
-        pl('company_brand', 'Marka firmy'),
+        pl('service', 'Service'),
+        pl('product', 'Product'),
+        pl('company_brand', 'Company brand'),
       ]
     case 'industry':
       return [
-        pl('transport', 'Transport i logistyka'),
-        pl('logistics', 'Spedycja'),
-        pl('construction', 'Budownictwo'),
-        pl('manufacturing', 'Produkcja'),
-        pl('services', 'Usługi'),
-        pl('other', 'Inna branża'),
+        pl('transport', 'Transport and logistics'),
+        pl('logistics', 'Freight forwarding'),
+        pl('construction', 'Construction'),
+        pl('manufacturing', 'Manufacturing'),
+        pl('services', 'Services'),
+        pl('other', 'Other industry'),
       ]
     case 'client_geo_scope':
       return [
-        pl('poland', 'Cała Polska'),
-        pl('single_city', 'Jedno miasto'),
-        pl('selected_region', 'Wybrany region'),
-        pl('europe', 'Europa'),
-        pl('international', 'Międzynarodowo'),
+        pl('poland', 'All of Poland'),
+        pl('single_city', 'One city'),
+        pl('selected_region', 'Selected region'),
+        pl('europe', 'Europe'),
+        pl('international', 'International'),
       ]
     case 'conversion_destination':
       return [
         pl('whatsapp', 'WhatsApp'),
-        pl('phone', 'Telefon'),
-        pl('form', 'Formularz na stronie'),
-        pl('website', 'Strona internetowa'),
+        pl('phone', 'Phone'),
+        pl('form', 'Website form'),
+        pl('website', 'Website'),
         pl('messenger', 'Messenger'),
       ]
     case 'offer_ready':
       return [
-        pl('ready', 'Tak, gotowa oferta'),
-        pl('partial', 'Częściowo przygotowana'),
-        pl('need_help', 'Potrzebujemy pomocy'),
+        pl('ready', 'Yes, the offer is ready'),
+        pl('partial', 'Partially prepared'),
+        pl('need_help', 'We need help'),
       ]
     case 'marketing_materials':
       return [
-        pl('photos', 'Zdjęcia'),
-        pl('logo', 'Logo firmy'),
-        pl('video', 'Materiały wideo'),
-        pl('catalog', 'Katalog / cennik'),
-        pl('none', 'Brak materiałów'),
+        pl('photos', 'Photos'),
+        pl('logo', 'Company logo'),
+        pl('video', 'Video'),
+        pl('catalog', 'Catalog / price list'),
+        pl('none', 'No materials'),
       ]
     case 'prior_ads_experience':
-      return optionGroup(t, locale, 'yes_no', ['yes', 'no'], { yes: 'Tak', no: 'Nie' })
+      return optionGroup(t, locale, 'yes_no', ['yes', 'no'], { yes: 'Yes', no: 'No' })
     case 'monthly_ad_budget':
       return [
-        pl('under_1000', 'Do 1 000 PLN'),
-        pl('1000_2000', '1 000 – 2 000 PLN'),
-        pl('2000_5000', '2 000 – 5 000 PLN'),
-        pl('5000_10000', '5 000 – 10 000 PLN'),
-        pl('over_10000', 'Powyżej 10 000 PLN'),
-        pl('undecided', 'Jeszcze nie wiem'),
+        pl('under_1000', 'Up to 1,000 PLN'),
+        pl('1000_2000', '1,000 – 2,000 PLN'),
+        pl('2000_5000', '2,000 – 5,000 PLN'),
+        pl('5000_10000', '5,000 – 10,000 PLN'),
+        pl('over_10000', 'Over 10,000 PLN'),
+        pl('undecided', 'Not decided yet'),
       ]
     case 'start_timeline':
       return [
-        pl('asap', 'Jak najszybciej'),
-        pl('two_weeks', 'W ciągu 2 tygodni'),
-        pl('one_month', 'W ciągu miesiąca'),
-        pl('later', 'Później'),
-        pl('undecided', 'Jeszcze nie wiem'),
+        pl('asap', 'As soon as possible'),
+        pl('two_weeks', 'Within 2 weeks'),
+        pl('one_month', 'Within a month'),
+        pl('later', 'Later'),
+        pl('undecided', 'Not decided yet'),
       ]
     case 'decision_maker':
       return [
-        pl('owner', 'Właściciel firmy'),
-        pl('manager', 'Kierownik'),
-        pl('marketing', 'Osoba ds. marketingu'),
-        pl('other', 'Inna osoba'),
+        pl('owner', 'Company owner'),
+        pl('manager', 'Manager'),
+        pl('marketing', 'Marketing person'),
+        pl('other', 'Someone else'),
       ]
     default:
       return []
@@ -314,6 +314,16 @@ export function fieldOptionsForCode(
       '5': '5 years',
       '10': '10 years',
       '10+': '10+ years',
+    })
+  }
+
+  if (code === 'recruitment.candidate.experience.route_types[]') {
+    return optionGroup(t, locale, 'route_types', ['eu', 'cis', 'uk', 'scandi', 'local'], {
+      eu: 'EU',
+      cis: 'CIS',
+      uk: 'United Kingdom',
+      scandi: 'Scandinavia',
+      local: 'Local',
     })
   }
 

@@ -36,6 +36,17 @@ function humanizeQualifiedCode(code: string): string {
   return last.replace(/_/g, ' ')
 }
 
+const TEMPLATE_LOCALES: LocaleCode[] = ['en', 'ru', 'pl']
+
+/** True when `label` is empty, an i18n key, or matches a platform template string in any locale. */
+export function isPlatformTemplateLabel(qualifiedCode: string, label: string): boolean {
+  const raw = String(label || '').trim()
+  if (!raw || looksLikeI18nKey(raw)) return true
+  const code = String(qualifiedCode || '').trim()
+  if (!code) return false
+  return TEMPLATE_LOCALES.some((loc) => lookupScopedTranslation(loc, 'public.intake.presentation.fields', code) === raw)
+}
+
 export function intakePresentationFieldLabel(
   t: TFn,
   field: Pick<FormPresentationRuntime['fields'][number], 'qualified_code' | 'label'>,
@@ -46,12 +57,35 @@ export function intakePresentationFieldLabel(
   if (!code) return raw
   const scoped = locale ? lookupScopedTranslation(locale, 'public.intake.presentation.fields', code) : undefined
   if (scoped) return scoped
+  if (raw && isPlatformTemplateLabel(code, raw)) {
+    const fallbackLocale = locale || 'en'
+    const translated = lookupScopedTranslation(fallbackLocale, 'public.intake.presentation.fields', code)
+    if (translated) return translated
+  }
   if (raw && !looksLikeI18nKey(raw)) return raw
   if (raw) {
     const viaT = t(raw, { defaultValue: '' })
     if (viaT && viaT !== raw) return viaT
   }
   return humanizeQualifiedCode(code)
+}
+
+export function resolveIntakeQuestionLabel(
+  t: TFn,
+  field: Pick<FormPresentationRuntime['fields'][number], 'qualified_code' | 'label'> & {
+    label_override?: string | null
+  },
+  locale?: LocaleCode,
+): string {
+  const override = String(field.label_override || '').trim()
+  if (override && !isPlatformTemplateLabel(field.qualified_code, override)) {
+    return override
+  }
+  return intakePresentationFieldLabel(
+    t,
+    { qualified_code: field.qualified_code, label: field.label || override },
+    locale,
+  )
 }
 
 export function intakePresentationSearchRoleLabel(

@@ -13845,35 +13845,35 @@
       "presentation": {
         "fields": {
           "recruitment.candidate.first_name": "First name",
-          "service_sales.targeted_advertising.need_type": "Who are you looking for?",
-          "service_sales.targeted_advertising.primary_outcome": "What result do you need?",
-          "service_sales.targeted_advertising.recruitment_roles": "Which roles do you need?",
-          "service_sales.targeted_advertising.recruitment_other_role": "Other role",
-          "service_sales.targeted_advertising.recruitment_headcount": "How many people",
-          "service_sales.targeted_advertising.work_location_country": "Work country",
-          "service_sales.targeted_advertising.work_location_city": "Work city",
-          "service_sales.targeted_advertising.application_channel": "Where should applications go",
-          "service_sales.targeted_advertising.job_posting_ready": "Is the job posting ready",
-          "service_sales.targeted_advertising.recruitment_materials": "Hiring materials",
-          "service_sales.targeted_advertising.promotion_subject": "What are we promoting",
-          "service_sales.targeted_advertising.industry": "Industry",
-          "service_sales.targeted_advertising.target_audience_description": "Audience description",
-          "service_sales.targeted_advertising.qualified_lead_definition": "What is a qualified lead",
-          "service_sales.targeted_advertising.client_geo_scope": "Geography",
-          "service_sales.targeted_advertising.client_geo_detail": "City / region",
-          "service_sales.targeted_advertising.conversion_destination": "Where should leads go",
-          "service_sales.targeted_advertising.offer_ready": "Is the offer ready",
-          "service_sales.targeted_advertising.marketing_materials": "Ad materials",
-          "service_sales.targeted_advertising.prior_ads_experience": "Previous ads experience",
-          "service_sales.targeted_advertising.monthly_ad_budget": "Monthly ad budget",
-          "service_sales.targeted_advertising.start_timeline": "When to start",
-          "service_sales.targeted_advertising.decision_maker": "Who decides",
-          "service_sales.targeted_advertising.contact_full_name": "Contact name",
-          "service_sales.targeted_advertising.contact_company_name": "Company",
-          "service_sales.targeted_advertising.contact_phone": "Phone",
-          "service_sales.targeted_advertising.contact_email": "Email",
-          "service_sales.targeted_advertising.contact_website": "Website",
-          "service_sales.targeted_advertising.additional_notes": "Notes",
+          "service_sales.targeted_advertising.need_type": "What is your need about?",
+          "service_sales.targeted_advertising.primary_outcome": "What result matters most to you?",
+          "service_sales.targeted_advertising.recruitment_roles": "Which employees do you want to hire?",
+          "service_sales.targeted_advertising.recruitment_other_role": "Which role?",
+          "service_sales.targeted_advertising.recruitment_headcount": "How many employees do you need right now?",
+          "service_sales.targeted_advertising.work_location_country": "Where is the workplace located?",
+          "service_sales.targeted_advertising.work_location_city": "Please enter the city or base",
+          "service_sales.targeted_advertising.application_channel": "How should candidates apply?",
+          "service_sales.targeted_advertising.job_posting_ready": "Do you have a ready job posting?",
+          "service_sales.targeted_advertising.recruitment_materials": "Do you have materials for recruitment ads?",
+          "service_sales.targeted_advertising.promotion_subject": "What do you want to promote?",
+          "service_sales.targeted_advertising.industry": "What industry does the company operate in?",
+          "service_sales.targeted_advertising.target_audience_description": "Who exactly do you want to attract?",
+          "service_sales.targeted_advertising.qualified_lead_definition": "What contact or lead do you consider a good fit?",
+          "service_sales.targeted_advertising.client_geo_scope": "Where do you want to acquire clients?",
+          "service_sales.targeted_advertising.client_geo_detail": "Please enter the city or region",
+          "service_sales.targeted_advertising.conversion_destination": "Where should clients from ads go?",
+          "service_sales.targeted_advertising.offer_ready": "Do you have a ready offer?",
+          "service_sales.targeted_advertising.marketing_materials": "Do you have advertising materials?",
+          "service_sales.targeted_advertising.prior_ads_experience": "Have you used Facebook or Instagram ads before?",
+          "service_sales.targeted_advertising.monthly_ad_budget": "What monthly budget do you want to spend directly on ads?",
+          "service_sales.targeted_advertising.start_timeline": "When do you want to start?",
+          "service_sales.targeted_advertising.decision_maker": "Who decides about working together?",
+          "service_sales.targeted_advertising.contact_full_name": "Full name",
+          "service_sales.targeted_advertising.contact_company_name": "Company name",
+          "service_sales.targeted_advertising.contact_phone": "Phone number",
+          "service_sales.targeted_advertising.contact_email": "Email address",
+          "service_sales.targeted_advertising.contact_website": "Website or company profile",
+          "service_sales.targeted_advertising.additional_notes": "Is there anything important we should know?",
           "service_sales.driver_hiring.contact_company_name": "Company name",
           "service_sales.driver_hiring.base_location": "Where is the base?",
           "service_sales.driver_hiring.drivers_needed": "How many drivers do you need?",
@@ -14032,7 +14032,31 @@
           "service_sales.warehouse_hiring.weekly_candidate_capacity": "How many candidates can you process per week?",
           "service_sales.warehouse_hiring.contact_full_name": "Recruiting contact name",
           "service_sales.warehouse_hiring.contact_phone": "Recruiting contact phone",
-          "service_sales.warehouse_hiring.contact_email": "Recruiting contact email"
+          "service_sales.warehouse_hiring.contact_email": "Recruiting contact email",
+          "recruitment.candidate.last_name": "Last name",
+          "recruitment.candidate.contacts.phone": "Phone",
+          "recruitment.candidate.contacts.email": "Email",
+          "recruitment.candidate.contacts.phone_country_code": "Phone country code",
+          "recruitment.candidate.contacts.preferred_messenger": "Preferred messenger",
+          "platform.identity.citizenship": "Citizenship",
+          "platform.identity.birth_date": "Date of birth",
+          "platform.identity.address": "Address",
+          "recruitment.candidate.experience.years_ce": "CE driving experience in the EU",
+          "recruitment.candidate.experience.years_similar_role": "Experience in a similar role",
+          "recruitment.candidate.experience.trailer_types[]": "Trailer types",
+          "recruitment.candidate.experience.route_types[]": "Route types",
+          "recruitment.candidate.experience.intl_experience": "International experience",
+          "recruitment.candidate.personal.in_poland": "Are you in Poland?",
+          "recruitment.candidate.personal.current_location": "Current location",
+          "recruitment.candidate.personal.residency_status": "Residency status in Poland",
+          "recruitment.candidate.personal.has_adr": "Do you have ADR?",
+          "recruitment.candidate.qualifications.forklift_license": "Forklift license",
+          "recruitment.candidate.qualifications.eu_license_with_code_95": "EU licence with code 95",
+          "recruitment.candidate.qualifications.tachograph_card": "Tachograph card",
+          "recruitment.candidate.employments[]": "Employment history",
+          "recruitment.candidate.agreements.general": "I accept the privacy policy",
+          "recruitment.candidate.agreements.employer_share": "I agree to share data with the employer",
+          "recruitment.candidate.agreements.terms_acceptance": "I accept the terms"
         },
         "profiles": {
           "recruitment.candidate.office_worker": "Office worker",
@@ -14658,7 +14682,161 @@
                 "51_100": "51–100",
                 "100_plus": "100+"
               }
+            },
+            "need_type": {
+              "employee_recruitment": "Hiring employees",
+              "client_acquisition": "Finding clients",
+              "product_sales": "Product sales",
+              "service_promotion": "Service promotion"
+            },
+            "primary_outcome": {
+              "more_inquiries": "More client inquiries",
+              "more_applications": "More candidate applications",
+              "more_sales": "More sales",
+              "brand_awareness": "Greater brand awareness",
+              "other": "Other result"
+            },
+            "recruitment_roles": {
+              "driver_ce": "C+E driver",
+              "driver_c": "C driver",
+              "warehouse": "Warehouse worker",
+              "mechanic": "Mechanic",
+              "dispatcher": "Dispatcher",
+              "other": "Other role"
+            },
+            "recruitment_headcount": {
+              "1_3": "1–3 people",
+              "4_10": "4–10 people",
+              "11_20": "11–20 people",
+              "21_50": "21–50 people",
+              "50_plus": "More than 50 people"
+            },
+            "work_location_country": {
+              "poland": "Poland",
+              "germany": "Germany",
+              "other_eu": "Other EU country",
+              "other": "Other country"
+            },
+            "application_channel": {
+              "phone": "Phone",
+              "whatsapp": "WhatsApp",
+              "form": "Online form",
+              "email": "Email"
+            },
+            "job_posting_ready": {
+              "ready": "Yes, the posting is ready",
+              "partial": "Partially prepared",
+              "need_help": "We need help"
+            },
+            "recruitment_materials": {
+              "photos": "Photos",
+              "logo": "Company logo",
+              "job_description": "Job description",
+              "video": "Video",
+              "none": "No materials"
+            },
+            "promotion_subject": {
+              "service": "Service",
+              "product": "Product",
+              "company_brand": "Company brand"
+            },
+            "industry": {
+              "transport": "Transport and logistics",
+              "logistics": "Freight forwarding",
+              "construction": "Construction",
+              "manufacturing": "Manufacturing",
+              "services": "Services",
+              "other": "Other industry"
+            },
+            "client_geo_scope": {
+              "poland": "All of Poland",
+              "single_city": "One city",
+              "selected_region": "Selected region",
+              "europe": "Europe",
+              "international": "International"
+            },
+            "conversion_destination": {
+              "whatsapp": "WhatsApp",
+              "phone": "Phone",
+              "form": "Website form",
+              "website": "Website",
+              "messenger": "Messenger"
+            },
+            "offer_ready": {
+              "ready": "Yes, the offer is ready",
+              "partial": "Partially prepared",
+              "need_help": "We need help"
+            },
+            "marketing_materials": {
+              "photos": "Photos",
+              "logo": "Company logo",
+              "video": "Video",
+              "catalog": "Catalog / price list",
+              "none": "No materials"
+            },
+            "monthly_ad_budget": {
+              "under_1000": "Up to 1,000 PLN",
+              "1000_2000": "1,000 – 2,000 PLN",
+              "2000_5000": "2,000 – 5,000 PLN",
+              "5000_10000": "5,000 – 10,000 PLN",
+              "over_10000": "Over 10,000 PLN",
+              "undecided": "Not decided yet"
+            },
+            "start_timeline": {
+              "asap": "As soon as possible",
+              "two_weeks": "Within 2 weeks",
+              "one_month": "Within a month",
+              "later": "Later",
+              "undecided": "Not decided yet"
+            },
+            "decision_maker": {
+              "owner": "Company owner",
+              "manager": "Manager",
+              "marketing": "Marketing person",
+              "other": "Someone else"
             }
+          },
+          "yes_no": {
+            "yes": "Yes",
+            "no": "No"
+          },
+          "location": {
+            "in_poland": "In Poland",
+            "not_in_poland": "Outside Poland",
+            "other": "Other country"
+          },
+          "residency": {
+            "visa": "Visa",
+            "karta_pobytu": "Residence card",
+            "in_process": "Residence permit in process",
+            "none": "No document yet",
+            "eu_citizen": "EU citizen"
+          },
+          "years": {
+            "0": "No experience",
+            "1": "1 year",
+            "2": "2 years",
+            "3": "3 years",
+            "5": "5 years",
+            "10": "10 years",
+            "10+": "10+ years"
+          },
+          "trailer_types": {
+            "mega": "Mega",
+            "standard": "Standard curtain",
+            "platform": "Platform",
+            "frigo": "Refrigerated",
+            "tent": "Tent",
+            "container": "Container",
+            "tandem": "Tandem",
+            "car_transporter": "Car transporter"
+          },
+          "route_types": {
+            "eu": "EU",
+            "cis": "CIS",
+            "uk": "United Kingdom",
+            "scandi": "Scandinavia",
+            "local": "Local"
           }
         },
         "consent_general_link": "privacy policy",
@@ -18325,6 +18503,67 @@
       "load_error": "Failed to load transfer policy",
       "open_settings": "Open settings",
       "title": "Transfer Policy"
+    }
+  },
+  "forms": {
+    "field": {
+      "text": {
+        "label": "Short text",
+        "placeholder": "Enter text"
+      },
+      "textarea": {
+        "label": "Long text",
+        "placeholder": "Enter details"
+      },
+      "number": {
+        "label": "Number",
+        "placeholder": "0"
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "name@company.com"
+      },
+      "phone": {
+        "label": "Phone",
+        "placeholder": "+48…"
+      },
+      "date": {
+        "label": "Date",
+        "placeholder": "Select a date"
+      },
+      "checkbox": {
+        "label": "Checkbox"
+      },
+      "radio": {
+        "label": "Single choice"
+      },
+      "select": {
+        "label": "Dropdown",
+        "placeholder": "Select…"
+      },
+      "multiselect": {
+        "label": "Multiple choice",
+        "placeholder": "Select…"
+      },
+      "file": {
+        "label": "File"
+      },
+      "hidden": {
+        "label": "Hidden field"
+      }
+    },
+    "config": {
+      "label": "Question",
+      "help_text": "Help text",
+      "required": "Required",
+      "placeholder": "Placeholder",
+      "min_length": "Min length",
+      "max_length": "Max length",
+      "min": "Minimum",
+      "max": "Maximum",
+      "options": "Answer options",
+      "accept": "Accepted file types",
+      "default_value": "Default value"
     }
   }
 }

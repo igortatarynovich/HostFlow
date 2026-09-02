@@ -9,7 +9,11 @@ import {
   type EntityProfileFieldOption,
   type PresentationFieldInput,
 } from '../../api/intakeForms'
-import { intakePresentationFieldLabel, intakePresentationProfileTitle } from '../../utils/intakePresentationI18n'
+import {
+  intakePresentationFieldLabel,
+  intakePresentationProfileTitle,
+  resolveIntakeQuestionLabel,
+} from '../../utils/intakePresentationI18n'
 import { entityProfileLabel } from '../../utils/intakeFormRoutingSummary'
 import {
   fieldAnswersHint,
@@ -214,11 +218,16 @@ export function IntakeFormPresentationEditor({
     )
   }
 
-  const displayQuestion = (row: PresentationFieldDraft, field: EntityProfileFieldOption) => {
-    const override = row.label_override.trim()
-    if (override && !looksLikeI18nKey(override)) return override
-    return catalogLabel(field)
-  }
+  const displayQuestion = (row: PresentationFieldDraft, field: EntityProfileFieldOption) =>
+    resolveIntakeQuestionLabel(
+      t,
+      {
+        qualified_code: row.qualified_code,
+        label: field.label,
+        label_override: row.label_override,
+      },
+      labelLocale,
+    )
 
   return (
     <div className="space-y-4">

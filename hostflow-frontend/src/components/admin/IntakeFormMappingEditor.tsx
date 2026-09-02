@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconDeviceFloppy, IconPlayerPlay, IconPlus, IconTrash, IconWand } from '@tabler/icons-react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
+import { intakePresentationFieldLabel } from '../../utils/intakePresentationI18n'
 import { useToast } from '../../components/Toast'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
@@ -72,7 +73,7 @@ type Props = {
 }
 
 export function IntakeFormMappingEditor({ formId, entityProfileCode, disabled = false }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { notify } = useToast()
   const [loading, setLoading] = useState(true)
   const [provider, setProvider] = useState('')
@@ -290,7 +291,7 @@ export function IntakeFormMappingEditor({ formId, entityProfileCode, disabled = 
                       </option>
                       {profileFields.map((field) => (
                         <option key={field.qualified_code} value={field.qualified_code}>
-                          {field.label} ({field.qualified_code})
+                          {intakePresentationFieldLabel(t, field, locale)} ({field.qualified_code})
                         </option>
                       ))}
                     </select>

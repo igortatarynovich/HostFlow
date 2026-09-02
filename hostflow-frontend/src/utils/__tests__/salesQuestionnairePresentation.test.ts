@@ -71,6 +71,19 @@ describe('sales questionnaire presentation', () => {
     expect(options.find((item) => item.value === 'client_acquisition')?.label).toMatch(/klient/i)
   })
 
+  it('exposes English and Russian option labels for need_type', () => {
+    expect(
+      fieldOptionsForCode(`${SERVICE_SALES_QUESTIONNAIRE_PREFIX}need_type`, t, 'en').find(
+        (item) => item.value === 'client_acquisition',
+      )?.label,
+    ).toBe('Finding clients')
+    expect(
+      fieldOptionsForCode(`${SERVICE_SALES_QUESTIONNAIRE_PREFIX}need_type`, t, 'ru').find(
+        (item) => item.value === 'client_acquisition',
+      )?.label,
+    ).toBe('Поиск клиентов')
+  })
+
   it('renders single_select and multi_select widgets', () => {
     expect(
       resolveFieldWidget({
