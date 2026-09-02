@@ -10,9 +10,11 @@ export type FormAnswerSource = {
   labels?: unknown
   payload?: unknown
   contactFallback?: Record<string, unknown> | null
+  /** Applications: questions only — hide contact identity, ads, links. */
+  questionnaireOnly?: boolean
 }
 
-/** Meta ads / Graph attribution — not candidate or client answers. */
+/** Meta ads / Graph attribution / Messenger links — not candidate or client answers. */
 const SKIP_NAMES = new Set([
   'id',
   'lead_id',
@@ -41,6 +43,19 @@ const SKIP_NAMES = new Set([
   'platform',
   'publisher_platform',
   'placement',
+  'inbox_url',
+  'messenger',
+  'retailer_item_id',
+])
+
+const CONTACT_IDENTITY_NAMES = new Set([
+  'full_name',
+  'first_name',
+  'last_name',
+  'phone',
+  'phone_number',
+  'email',
+  'work_email',
 ])
 
 function canonicalAnswerName(name: string): string {
@@ -75,10 +90,24 @@ function formatValues(values: unknown): string {
   return maybeHumanizeAnswer(String(values ?? '').trim())
 }
 
+function sentenceCase(raw: string): string {
+  const s = raw.trim()
+  if (!s) return s
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function looksLikeStructuredValue(raw: string): boolean {
+  if (raw.includes('@')) return true
+  if (/^https?:\/\//i.test(raw)) return true
+  if (/^\+?\d[\d\s().-]{5,}$/.test(raw)) return true
+  return false
+}
+
 function maybeHumanizeAnswer(raw: string): string {
   if (!raw) return ''
-  if (!raw.includes('_') || raw.includes(' ')) return raw
-  return humanizeFieldName(raw)
+  if (looksLikeStructuredValue(raw)) return raw
+  const humanized = !raw.includes('_') || raw.includes(' ') ? raw : humanizeFieldName(raw)
+  return sentenceCase(humanized)
 }
 
 function looksLikeHumanQuestion(raw: string): boolean {
@@ -92,11 +121,13 @@ function humanizeFieldName(raw: string): string {
   return raw.replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-function shouldSkipName(name: string): boolean {
+function shouldSkipName(name: string, questionnaireOnly: boolean): boolean {
   const key = canonicalAnswerName(name)
   if (!key) return true
   if (SKIP_NAMES.has(key)) return true
   if (key.startsWith('utm')) return true
+  if (key.endsWith('_url')) return true
+  if (questionnaireOnly && CONTACT_IDENTITY_NAMES.has(key)) return true
   return false
 }
 
@@ -118,12 +149,12 @@ function lookupStoredLabel(
 
 function resolveLabel(name: string, stored: string | null): string {
   if (stored && (looksLikeHumanQuestion(stored) || stored.toLowerCase() !== name.toLowerCase())) {
-    return stored
+    return sentenceCase(humanizeFieldName(stored))
   }
   const standard = STANDARD_FIELD_LABELS[name.toLowerCase()]
   if (standard) return standard
-  if (looksLikeHumanQuestion(name)) return name.replace(/[_]+/g, ' ').trim()
-  return stored || humanizeFieldName(name)
+  if (looksLikeHumanQuestion(name)) return sentenceCase(humanizeFieldName(name))
+  return sentenceCase(stored || humanizeFieldName(name))
 }
 
 function rowValue(row: Record<string, unknown>): string {
@@ -161,8 +192,9 @@ function pushAnswer(
   name: string,
   value: string,
   stored: string | null,
+  questionnaireOnly: boolean,
 ): void {
-  if (shouldSkipName(name) || !value) return
+  if (shouldSkipName(name, questionnaireOnly) || !value) return
   const key = name.toLowerCase()
   if (seen.has(key)) return
   seen.add(key)
@@ -172,6 +204,7 @@ function pushAnswer(
 /** Form Q&A from Application (or any projected lists). No Lead type. */
 export function formAnswerRowsFromSources(source: FormAnswerSource): FormAnswerRow[] {
   const labels = asRecord(source.labels)
+  const questionnaireOnly = Boolean(source.questionnaireOnly)
   const out: FormAnswerRow[] = []
   const seen = new Set<string>()
 
@@ -183,7 +216,7 @@ export function formAnswerRowsFromSources(source: FormAnswerSource): FormAnswerR
       const name = String(row.name ?? row.key ?? '').trim()
       const value = rowValue(row)
       const stored = lookupStoredLabel(name, row, labels)
-      pushAnswer(out, seen, name, value, stored)
+      pushAnswer(out, seen, name, value, stored, questionnaireOnly)
     }
   }
 
@@ -191,10 +224,10 @@ export function formAnswerRowsFromSources(source: FormAnswerSource): FormAnswerR
   ingestAnswerList(source.additionalAnswers)
   ingestAnswerList(collectFieldDataArrays(source.payload))
 
-  if (out.length === 0 && source.contactFallback) {
+  if (out.length === 0 && source.contactFallback && !questionnaireOnly) {
     for (const key of CONTACT_FALLBACK_KEYS) {
       const value = formatValues(source.contactFallback[key])
-      pushAnswer(out, seen, key, value, lookupStoredLabel(key, {}, labels))
+      pushAnswer(out, seen, key, value, lookupStoredLabel(key, {}, labels), false)
     }
   }
 

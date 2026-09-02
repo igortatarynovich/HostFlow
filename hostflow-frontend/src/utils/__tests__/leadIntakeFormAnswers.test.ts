@@ -55,6 +55,29 @@ describe('leadIntakeFormAnswerRows', () => {
     expect(rows[1]?.value).toBe('Yes')
   })
 
+  it('hides Messenger inbox_url from operator Q&A', () => {
+    const rows = leadIntakeFormAnswerRows(
+      metaLead({
+        normalized: {
+          field_answers: [
+            { name: 'full_name', values: ['Jan Kowalski'] },
+            {
+              name: 'inbox_url',
+              values: ['https://business.facebook.com/latest/28393661780251008?nav_ref=thread_view_by_psid'],
+            },
+            { name: 'у вас есть действующее водительское удостоверение категории c+e?', values: ['да'] },
+          ],
+        },
+      }),
+    )
+    expect(rows.map((r) => r.name)).toEqual([
+      'full_name',
+      'у вас есть действующее водительское удостоверение категории c+e?',
+    ])
+    expect(rows[1]?.label).toBe('У вас есть действующее водительское удостоверение категории c+e?')
+    expect(rows[1]?.value).toBe('Да')
+  })
+
   it('returns empty when field_answers missing', () => {
     expect(leadIntakeFormAnswerRows(metaLead({ normalized: {} }))).toEqual([])
   })
@@ -118,8 +141,8 @@ describe('leadIntakeFormAnswerRows', () => {
         },
       }),
     )
-    expect(rows[0]?.label).toBe('какая категория водительских прав у вас открыта?')
-    expect(rows[0]?.value).toBe('категории c и c+e')
+    expect(rows[0]?.label).toBe('Какая категория водительских прав у вас открыта?')
+    expect(rows[0]?.value).toBe('Категории c и c+e')
   })
 
   it('prefers stored question labels over field codes', () => {

@@ -55,9 +55,9 @@ function ApplicationAnswers({ application }: { application: Application }) {
         <div className="mt-3 rounded-xl bg-white px-4 py-3 ring-1 ring-slate-900/[0.06]">
           <FieldGrid cols={1}>
             {rows.map((row) => (
-              <div key={row.name}>
-                <div className="text-sm text-slate-500">{row.label}</div>
-                <div className="mt-0.5 text-base font-medium text-slate-900">{row.value}</div>
+              <div key={row.name} className="min-w-0">
+                <div className="text-sm leading-snug text-slate-500">{row.label}</div>
+                <div className="mt-0.5 break-words text-base font-medium text-slate-900">{row.value}</div>
               </div>
             ))}
           </FieldGrid>

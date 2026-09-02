@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from backend.app.models import Lead
+from backend.app.modules.leads.conversion_mapping import is_operator_questionnaire_field
 from backend.app.modules.leads.normalizer import resolve_b2b_inquiry_company_name
 
 from .schemas import ApplicationContactOut, ApplicationOut, ApplicationStatus, ApplicationTabBucket
@@ -306,6 +307,20 @@ def _field_data_from_payload(payload: Any) -> List[Dict[str, Any]]:
     return out
 
 
+def _questionnaire_answers(rows: Any) -> list:
+    if not isinstance(rows, list):
+        return []
+    out: list = []
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        name = _text(item.get("name") or item.get("key"))
+        if not name or not is_operator_questionnaire_field(name):
+            continue
+        out.append(item)
+    return out
+
+
 def _recruitment_form_answers(normalized: Dict[str, Any], payload: Any) -> tuple[list, list]:
     field_answers = normalized.get("field_answers") if isinstance(normalized.get("field_answers"), list) else []
     additional_answers = (
@@ -313,7 +328,7 @@ def _recruitment_form_answers(normalized: Dict[str, Any], payload: Any) -> tuple
     )
     if not field_answers:
         field_answers = _field_data_from_payload(payload)
-    return field_answers, additional_answers
+    return _questionnaire_answers(field_answers), _questionnaire_answers(additional_answers)
 
 
 def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:

@@ -28,6 +28,45 @@ def test_recruitment_mapper_sets_transport_lead_id_and_comments() -> None:
     assert app.extensions["meta_form_answers"][0]["name"] == "kategoria"
 
 
+def test_recruitment_mapper_keeps_only_questionnaire_answers() -> None:
+    lead = Lead(
+        id="11111111-1111-1111-1111-111111111111",
+        tenant_id="11111111-1111-1111-1111-111111111111",
+        source="meta",
+        status="new",
+        lead_type="candidate",
+        payload={},
+        normalized={
+            "full_name": "Kudakwashe Tapfumaneyi",
+            "email": "kudakwashetapfumaneyi5@gmail.com",
+            "phone": "+48503499897",
+            "field_answers": [
+                {
+                    "name": "какой у вас опыт работы водителем c+e в международных перевозках по ес?",
+                    "values": ["1–2_года"],
+                },
+                {"name": "full_name", "values": ["Kudakwashe Tapfumaneyi"]},
+                {"name": "phone", "values": ["+48503499897"]},
+                {"name": "email", "values": ["kudakwashetapfumaneyi5@gmail.com"]},
+                {
+                    "name": "inbox_url",
+                    "values": ["https://business.facebook.com/latest/28393661780251008"],
+                },
+                {"name": "campaign_name", "values": ["Leads RU C/CE Driver"]},
+            ],
+            "additional_answers": [
+                {"name": "inbox_url", "values": ["https://business.facebook.com/latest/28393661780251008"]},
+            ],
+        },
+    )
+    app = lead_to_recruitment_application(lead)
+    names = [row["name"] for row in app.extensions["meta_form_answers"]]
+    assert names == ["какой у вас опыт работы водителем c+e в международных перевозках по ес?"]
+    assert app.extensions["additional_answers"] == []
+    assert app.contact.name == "Kudakwashe Tapfumaneyi"
+    assert app.contact.phone == "+48503499897"
+
+
 def test_recruitment_mapper_projects_call_outcome_on_application() -> None:
     lead = Lead(
         id="11111111-1111-1111-1111-111111111111",

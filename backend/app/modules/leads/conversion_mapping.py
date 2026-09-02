@@ -73,17 +73,34 @@ _SKIP_ANSWER_NAMES = frozenset(
         "leadgen_id",
         "external_id",
         "ad_id",
+        "ad_name",
         "adset_id",
+        "adset_name",
         "adgroup_id",
+        "adgroup_name",
         "form_id",
+        "form_name",
         "created_time",
         "campaign_id",
         "campaign_name",
         "page_id",
+        "page_name",
         "platform",
         "is_organic",
         "inbox_url",
         "retailer_item_id",
+    }
+)
+
+_CONTACT_IDENTITY_NAMES = frozenset(
+    {
+        "full_name",
+        "first_name",
+        "last_name",
+        "phone",
+        "phone_number",
+        "email",
+        "work_email",
     }
 )
 
@@ -171,10 +188,20 @@ def _value_from_normalized(normalized: Mapping[str, Any], target: str) -> Any:
 
 
 def _is_skippable_source(name: str) -> bool:
-    key = name.strip().lower()
+    key = name.strip().lower().replace(" ", "_").replace("-", "_")
     if not key:
         return True
-    return key in _SKIP_ANSWER_NAMES or key.startswith("utm")
+    if key in _SKIP_ANSWER_NAMES or key.startswith("utm"):
+        return True
+    return key.endswith("_url")
+
+
+def is_operator_questionnaire_field(name: str) -> bool:
+    """True for human form questions — not Meta ads, links, or contact identity."""
+    key = name.strip().lower().replace(" ", "_").replace("-", "_")
+    if not key or _is_skippable_source(name):
+        return False
+    return key not in _CONTACT_IDENTITY_NAMES
 
 
 def _value_from_field_answers(normalized: Mapping[str, Any], source: str) -> Any:
@@ -326,4 +353,5 @@ __all__ = [
     "apply_executable_intake_mapping",
     "attach_field_answer_labels",
     "compact_executable_rules",
+    "is_operator_questionnaire_field",
 ]

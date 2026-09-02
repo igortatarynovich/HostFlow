@@ -7,10 +7,6 @@ export function applicationFormAnswerRows(application: Application): FormAnswerR
     fieldAnswers: ext.meta_form_answers,
     additionalAnswers: ext.additional_answers,
     labels: ext.form_question_labels_v1,
-    contactFallback: {
-      full_name: application.contact.name,
-      phone: application.contact.phone ?? '',
-      email: application.contact.email ?? '',
-    },
+    questionnaireOnly: true,
   })
 }
