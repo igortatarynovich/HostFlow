@@ -32,6 +32,18 @@ describe('intakePresentationI18n', () => {
     expect(title).toBe('Офисный сотрудник')
   })
 
+  it('translates company driver hiring questionnaire title from English profile name', () => {
+    const title = intakePresentationProfileTitle(
+      t,
+      {
+        entity_profile_code: 'service_sales.driver_hiring',
+        profile_name: 'Company driver hiring questionnaire',
+      },
+      'pl',
+    )
+    expect(title).toBe('Ankieta firmy rekrutującej kierowców')
+  })
+
   it('resolves company driver-hiring field labels', () => {
     const label = intakePresentationFieldLabel(
       t,

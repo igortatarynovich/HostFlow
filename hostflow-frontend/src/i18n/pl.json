@@ -14063,8 +14063,8 @@
           "service_sales.targeted_advertising": "Reklama / pozyskiwanie klientów",
           "recruitment.candidate.driver_ce": "Kierowca C+E (wypełnia kandydat)",
           "recruitment.candidate.warehouse_worker": "Magazyn (wypełnia kandydat)",
-          "service_sales.driver_hiring": "Firma rekrutuje kierowców",
-          "service_sales.warehouse_hiring": "Firma rekrutuje pracowników magazynu / fizycznych"
+          "service_sales.driver_hiring": "Ankieta firmy rekrutującej kierowców",
+          "service_sales.warehouse_hiring": "Ankieta firmy rekrutującej pracowników magazynu"
         },
         "options": {
           "service_sales": {
@@ -14111,11 +14111,11 @@
               "cargo_types": {
                 "ftl": "FTL",
                 "ltl": "LTL",
-                "distribution": "Distribution",
-                "containers": "Containers",
+                "distribution": "Dystrybucja",
+                "containers": "Kontenery",
                 "adr": "ADR",
-                "car_transporter": "Car transporter",
-                "other": "Other"
+                "car_transporter": "Autowóz",
+                "other": "Inne"
               },
               "loading_unloading": {
                 "no": "Nie",
@@ -14199,7 +14199,7 @@
                 "umowa_o_prace": "Umowa o pracę",
                 "umowa_zlecenie": "Umowa zlecenie",
                 "b2b": "B2B",
-                "other": "Other"
+                "other": "Inna"
               },
               "medical_psychotest_payer": {
                 "employer": "Pracodawca",
@@ -14245,32 +14245,32 @@
                 "good": "Dobry"
               },
               "citizenships": {
-                "poland": "Poland",
-                "ukraine": "Ukraine",
-                "belarus": "Belarus",
-                "moldova": "Moldova",
-                "georgia": "Georgia",
+                "poland": "Polska",
+                "ukraine": "Ukraina",
+                "belarus": "Białoruś",
+                "moldova": "Mołdawia",
+                "georgia": "Gruzja",
                 "armenia": "Armenia",
-                "central_asia": "Central Asia",
-                "asia": "Asia",
-                "any_with_docs": "Any, if documents are in order",
-                "other": "Other"
+                "central_asia": "Azja Centralna",
+                "asia": "Azja",
+                "any_with_docs": "Wszyscy przy posiadaniu wymaganych dokumentów",
+                "other": "Inne"
               },
               "required_documents": {
                 "driving_licence": "Prawo jazdy",
                 "code_95": "Code 95",
                 "driver_card": "Karta kierowcy",
                 "residence_card": "Karta pobytu",
-                "work_visa": "Work visa",
+                "work_visa": "Wiza pracownicza",
                 "driver_certificate": "Świadectwo kierowcy",
-                "other": "Other"
+                "other": "Inne"
               },
               "stay_document_min_validity": {
-                "any": "Does not matter",
-                "3_months": "3+ months",
-                "6_months": "6+ months",
-                "8_months": "8+ months",
-                "12_months": "12+ months"
+                "any": "Nie ma znaczenia",
+                "3_months": "3+ mies.",
+                "6_months": "6+ mies.",
+                "8_months": "8+ mies.",
+                "12_months": "12+ mies."
               },
               "housing": {
                 "free": "Bezpłatne",
@@ -14278,34 +14278,34 @@
                 "no": "Nie"
               },
               "housing_between_trips": {
-                "yes": "Yes",
-                "no": "No",
-                "not_applicable": "Not applicable"
+                "yes": "Tak",
+                "no": "Nie",
+                "not_applicable": "Nie dotyczy"
               },
               "personal_car_parking": {
-                "yes": "Yes",
-                "no": "No"
+                "yes": "Tak",
+                "no": "Nie"
               },
               "selection_process": {
-                "document_check": "Document check",
-                "phone_interview": "Phone interview",
-                "video_interview": "Video interview",
-                "in_person": "In-person interview",
-                "test_drive": "Test drive",
-                "other": "Other"
+                "document_check": "Weryfikacja dokumentów",
+                "phone_interview": "Rozmowa telefoniczna",
+                "video_interview": "Rozmowa wideo",
+                "in_person": "Rozmowa osobista",
+                "test_drive": "Jazda próbna",
+                "other": "Inne"
               },
               "feedback_time": {
-                "same_day": "Same day",
-                "within_24h": "Within 24 hours",
-                "1_3_days": "1–3 days",
-                "over_3_days": "More than 3 days"
+                "same_day": "Tego samego dnia",
+                "within_24h": "Do 24 godzin",
+                "1_3_days": "1–3 dni",
+                "over_3_days": "Ponad 3 dni"
               },
               "start_after_approval": {
-                "immediately": "Immediately",
-                "within_week": "Within a week",
-                "1_2_weeks": "1–2 weeks",
-                "over_2_weeks": "More than 2 weeks",
-                "depends_on_docs": "Depends on documents"
+                "immediately": "Od razu",
+                "within_week": "W ciągu tygodnia",
+                "1_2_weeks": "1–2 tygodnie",
+                "over_2_weeks": "Ponad 2 tygodnie",
+                "depends_on_docs": "Zależy od dokumentów"
               },
               "hire_themselves": {
                 "yes": "Tak",
@@ -14316,26 +14316,26 @@
                 "no": "Nie"
               },
               "hiring_problems": {
-                "not_enough_candidates": "Not enough candidates",
-                "low_lead_quality": "Low lead quality",
-                "insufficient_experience": "Insufficient experience",
-                "document_issues": "Document issues",
-                "no_shows": "Candidates do not start work",
-                "high_turnover": "High turnover",
-                "slow_process": "Slow hiring process",
-                "other": "Other"
+                "not_enough_candidates": "Za mało kandydatów",
+                "low_lead_quality": "Niska jakość zgłoszeń",
+                "insufficient_experience": "Niewystarczające doświadczenie",
+                "document_issues": "Problemy z dokumentami",
+                "no_shows": "Kandydaci nie wychodzą do pracy",
+                "high_turnover": "Wysoka rotacja",
+                "slow_process": "Wolny proces rekrutacji",
+                "other": "Inne"
               },
               "refusal_reasons": {
-                "pay": "Pay",
-                "work_system": "Work system",
-                "routes": "Routes",
-                "vehicles": "Vehicles",
-                "housing": "Housing",
-                "travel_to_base": "Travel to base",
-                "documents": "Documents",
-                "other_offer": "They take another offer",
-                "unknown": "We don’t know",
-                "other": "Other"
+                "pay": "Wynagrodzenie",
+                "work_system": "System pracy",
+                "routes": "Trasy",
+                "vehicles": "Pojazdy",
+                "housing": "Zakwaterowanie",
+                "travel_to_base": "Dojazd do bazy",
+                "documents": "Dokumenty",
+                "other_offer": "Przyjmują inną ofertę",
+                "unknown": "Nie wiemy",
+                "other": "Inne"
               },
               "weekly_candidate_capacity": {
                 "1_5": "1–5",

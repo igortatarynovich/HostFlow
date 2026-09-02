@@ -23,6 +23,7 @@ import {
   type PresentationFieldValue,
 } from '../../utils/intakePresentationFieldOptions'
 import { PresentationFieldControl, presentationFieldHasValue } from './PresentationFieldControl'
+import { intakePresentationProfileTitle } from '../../utils/intakePresentationI18n'
 
 type Props = {
   intake: PublicIntakeHook
@@ -367,7 +368,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
             {t('public.intake.presentation.kicker', { defaultValue: 'Ankieta' })}
           </p>
           <h1 className="text-xl font-semibold text-slate-900">
-            {presentation.profile_name || presentation.entity_profile_code}
+            {intakePresentationProfileTitle(t, presentation, locale)}
           </h1>
         </div>
         <AutosaveIndicator saving={saving} />

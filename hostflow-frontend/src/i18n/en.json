@@ -14063,8 +14063,8 @@
           "service_sales.targeted_advertising": "Advertising / client acquisition",
           "recruitment.candidate.driver_ce": "Driver C+E (candidate fills this)",
           "recruitment.candidate.warehouse_worker": "Warehouse worker (candidate fills this)",
-          "service_sales.driver_hiring": "Company hiring drivers",
-          "service_sales.warehouse_hiring": "Company hiring warehouse / general labor"
+          "service_sales.driver_hiring": "Company driver hiring questionnaire",
+          "service_sales.warehouse_hiring": "Company warehouse hiring questionnaire"
         },
         "options": {
           "service_sales": {

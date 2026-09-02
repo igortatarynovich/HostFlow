@@ -14063,8 +14063,8 @@
           "service_sales.targeted_advertising": "Реклама / привлечение клиентов",
           "recruitment.candidate.driver_ce": "Водитель C+E (заполняет кандидат)",
           "recruitment.candidate.warehouse_worker": "Склад (заполняет кандидат)",
-          "service_sales.driver_hiring": "Компания набирает водителей",
-          "service_sales.warehouse_hiring": "Компания набирает склад / разнорабочих"
+          "service_sales.driver_hiring": "Анкета компании по найму водителей",
+          "service_sales.warehouse_hiring": "Анкета компании по найму складских работников"
         },
         "options": {
           "service_sales": {
