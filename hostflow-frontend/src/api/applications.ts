@@ -133,6 +133,8 @@ export async function listRecruitmentApplications(opts?: {
   /** `open` = pending only (search home counters); `all` = inbox including completed */
   scope?: 'open' | 'all'
   includeCounts?: boolean
+  callResult?: string
+  q?: string
 }): Promise<ApplicationListResponse> {
   const { data } = await api.get<ApplicationListResponse>('/recruitment/applications', {
     params: {
@@ -142,6 +144,8 @@ export async function listRecruitmentApplications(opts?: {
       tab: opts?.tab,
       scope: opts?.scope ?? 'all',
       include_counts: opts?.includeCounts ? true : undefined,
+      call_result: opts?.callResult || undefined,
+      q: opts?.q || undefined,
     },
   })
   return data

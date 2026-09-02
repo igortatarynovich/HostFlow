@@ -3300,11 +3300,15 @@
         "col_details": "Детали",
         "col_source": "Источник",
         "col_extra": "Доп.",
+        "col_call_result": "Результат звонка",
         "col_status": "Статус",
         "col_time": "Время",
         "empty_tab": "Нет записей в этой вкладке",
         "load_more": "Загрузить ещё ({loaded} из {total})",
-        "open_card": "Открыть карточку"
+        "open_card": "Открыть карточку",
+        "search_placeholder": "Имя или телефон",
+        "filter_call_result": "Результат звонка",
+        "filter_call_all": "Все результаты звонка"
       },
       "context_rail": {
         "outcome": "Итог",

@@ -3300,11 +3300,15 @@
         "col_details": "Szczegóły",
         "col_source": "Źródło",
         "col_extra": "Dod.",
+        "col_call_result": "Wynik rozmowy",
         "col_status": "Status",
         "col_time": "Czas",
         "empty_tab": "Brak rekordów w tej karcie",
         "load_more": "Wczytaj więcej ({loaded} z {total})",
-        "open_card": "Otwórz kartę"
+        "open_card": "Otwórz kartę",
+        "search_placeholder": "Imię lub telefon",
+        "filter_call_result": "Wynik rozmowy",
+        "filter_call_all": "Wszystkie wyniki rozmowy"
       },
       "context_rail": {
         "outcome": "Wynik",

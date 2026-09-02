@@ -323,7 +323,9 @@ CRM `Lead.stage` is a **compatibility projection** only (`new` → `contacted` o
 
 **First substantive action** (not opening the card) stamps `in_progress`: saved call result, operator note, operator RODO send / source-provided, request_info.
 
-**Call activity:** `POST /leads/{id}/call-result` records `call → outcome → note → actor → timestamp → next_contact_at`. History in `call_results_v1`. Convert carries call history and a source-lead link onto the candidate (`lead_continuity_v1`, `source_lead_id`). Original `field_answers` stay on the Lead.
+**Call activity:** `POST /leads/{id}/call-result` (and the Application facade `POST /recruitment/applications/{id}/call-result`) records `call → outcome → note → actor → timestamp → next_contact_at`. History in `call_results_v1`. Convert carries call history and a source-lead link onto the candidate (`lead_continuity_v1`, `source_lead_id`). Original `field_answers` stay on the Lead.
+
+**Application workspace list:** `GET /recruitment/applications` tab buckets (`new | in_progress | completed`) project the same intake lifecycle — not ingest `Lead.status`. Latest call outcome is a list column and a `call_result=` filter; it remains an activity, not a ticket status. `q=` searches name / phone / email.
 
 **Duplicate mark:** `StatusBadge` on identity and queue when `duplicate_review` / `duplicated` / `duplicate_match_v1`. Prior-candidate snapshot (`duplicate_prior_v1`: created, stage/outcome, reason) is shown via the existing `LeadDuplicateReviewPanel` (primitives: StatusBadge, StageTag, Button, FieldGrid) — not a local card.
 

@@ -10,6 +10,46 @@ export const APPLICATION_STATUS_BADGE: Record<ApplicationStatus, string> = {
   rejected: 'bg-rose-50 text-rose-700',
 }
 
+/** Call-outcome activity codes shown in the application table filter. Not ticket statuses. */
+export const APPLICATION_CALL_OUTCOME_CODES = [
+  'interested',
+  'not_interested',
+  'callback_requested',
+  'answered',
+  'no_answer',
+  'unavailable',
+  'wrong_number',
+] as const
+
+export function applicationCallOutcome(application: Application): string | null {
+  const raw = application.extensions?.call_result_v1
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const result = String((raw as { result?: unknown }).result || '').trim()
+  return result || null
+}
+
+export function applicationCallOutcomeLabel(code: string, t: TranslateFn): string {
+  const key = `app.recruitment_inquiry.call_result.results.${code}`
+  const translated = t(key)
+  return translated === key ? code : translated
+}
+
+export function applicationMatchesSearch(application: Application, q: string): boolean {
+  const needle = q.trim().toLowerCase()
+  if (!needle) return true
+  const haystack = [
+    application.title,
+    application.contact.name,
+    application.contact.phone,
+    application.contact.email,
+    application.source,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  return haystack.includes(needle)
+}
+
 export function applicationStatusLabel(status: string, t: TranslateFn): string {
   const key = `app.sales_inquiry.status.${status}`
   const translated = t(key)

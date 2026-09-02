@@ -541,7 +541,7 @@ async def recruitment_follow_up(
             "source": "recruitment_application",
         },
     )
-    await db.flush()
+    await db.commit()
     return await _reload_recruitment(db, tenant_id, application_id)
 
 
@@ -561,7 +561,8 @@ async def recruitment_assign(
     meta["assigned_manager_id"] = payload.assignee_id.strip()
     norm["meta"] = meta
     lead.normalized = norm
-    await db.flush()
+    flag_modified(lead, "normalized")
+    await db.commit()
     return await _reload_recruitment(db, tenant_id, application_id)
 
 
@@ -599,7 +600,7 @@ async def recruitment_log_call_result(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     flag_modified(lead, "normalized")
-    await db.flush()
+    await db.commit()
     return await _reload_recruitment(db, tenant_id, application_id)
 
 
@@ -629,5 +630,5 @@ async def recruitment_add_comment(
     norm["application_comments_v1"] = comments
     lead.normalized = norm
     flag_modified(lead, "normalized")
-    await db.flush()
+    await db.commit()
     return await _reload_recruitment(db, tenant_id, application_id)

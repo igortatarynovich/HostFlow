@@ -3373,11 +3373,15 @@
         "col_details": "Details",
         "col_source": "Source",
         "col_extra": "More",
+        "col_call_result": "Call result",
         "col_status": "Status",
         "col_time": "Time",
         "empty_tab": "No records in this tab",
         "load_more": "Load more ({loaded} of {total})",
-        "open_card": "Open card"
+        "open_card": "Open card",
+        "search_placeholder": "Search name or phone",
+        "filter_call_result": "Call result",
+        "filter_call_all": "All call results"
       },
       "context_rail": {
         "outcome": "Outcome",

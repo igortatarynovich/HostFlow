@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { IconArrowRight, IconFilter, IconInbox, IconPhone } from '@tabler/icons-react'
+import { IconArrowRight, IconInbox, IconPhone, IconSearch } from '@tabler/icons-react'
 import type { Application, ApplicationTab } from '../../api/types/application'
 import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
@@ -11,7 +11,11 @@ import {
   startSalesWorkSession,
 } from '../../services/salesWorkSession'
 import {
+  APPLICATION_CALL_OUTCOME_CODES,
   APPLICATION_STATUS_BADGE,
+  applicationCallOutcome,
+  applicationCallOutcomeLabel,
+  applicationMatchesSearch,
   applicationNeedsFirstContact,
   applicationStatusLabel,
   applicationTabBucket,
@@ -39,6 +43,9 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<ApplicationTab>('all')
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [callResultFilter, setCallResultFilter] = useState('')
   const [tabCounts, setTabCounts] = useState<Record<ApplicationTab, number>>({
     all: 0,
     new: 0,
@@ -54,6 +61,12 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
 
   const splitView = Boolean(selectedId)
   const serverTabs = Boolean(config.serverTabPagination)
+  const showCallOutcome = Boolean(config.showCallOutcome)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
 
   const loadList = useCallback(
     async (opts?: { tab?: ApplicationTab; offset?: number; append?: boolean }) => {
@@ -70,6 +83,8 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
           tab: serverTabs ? targetTab : undefined,
           scope: 'all',
           includeCounts: serverTabs && offset === 0,
+          callResult: showCallOutcome ? callResultFilter || undefined : undefined,
+          q: debouncedSearch || undefined,
         })
         const sorted = [...res.items].sort(sortApplicationsByCreatedDesc)
         setAllApplications((prev) => (append ? [...prev, ...sorted] : sorted))
@@ -92,7 +107,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
         else setLoading(false)
       }
     },
-    [config, serverTabs, t, tab],
+    [config, serverTabs, showCallOutcome, t, tab, callResultFilter, debouncedSearch],
   )
 
   useEffect(() => {
@@ -116,10 +131,19 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
   }, [allApplications, serverTabs, tabCounts])
 
   const filteredApplications = useMemo(() => {
-    if (serverTabs) return allApplications
-    if (tab === 'all') return allApplications
-    return allApplications.filter((app) => applicationTabBucket(app) === tab)
-  }, [allApplications, serverTabs, tab])
+    let rows = serverTabs
+      ? allApplications
+      : tab === 'all'
+        ? allApplications
+        : allApplications.filter((app) => applicationTabBucket(app) === tab)
+    if (!serverTabs && callResultFilter) {
+      rows = rows.filter((app) => applicationCallOutcome(app) === callResultFilter)
+    }
+    if (!serverTabs && debouncedSearch) {
+      rows = rows.filter((app) => applicationMatchesSearch(app, debouncedSearch))
+    }
+    return rows
+  }, [allApplications, callResultFilter, debouncedSearch, serverTabs, tab])
 
   const newToContactCount = serverTabs ? derivedTabCounts.new : allApplications.filter(applicationNeedsFirstContact).length
   const newToContact = useMemo(
@@ -169,10 +193,14 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
   const refreshApplication = useCallback(
     async (id: string) => {
       const updated = await config.getApplication(id)
-      setAllApplications((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
       setSelectedApplication((prev) => (prev?.id === updated.id ? updated : prev))
+      if (serverTabs) {
+        await loadList({ tab, offset: 0 })
+        return
+      }
+      setAllApplications((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
     },
-    [config],
+    [config, loadList, serverTabs, tab],
   )
 
   const startCallSession = async () => {
@@ -222,6 +250,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
     const badge = config.extensionBadge?.(app)
     const isSelected = app.id === selectedId
     const entityPath = config.primaryEntityPath?.(app)
+    const callOutcome = showCallOutcome ? applicationCallOutcome(app) : null
 
     return (
       <tr
@@ -263,6 +292,17 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
         </td>
         <td className="px-3 py-2 text-sm text-slate-600">{app.source || '—'}</td>
         <td className="px-3 py-2 text-sm text-slate-600">{badge || '—'}</td>
+        {showCallOutcome ? (
+          <td className="px-3 py-2">
+            {callOutcome ? (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                {applicationCallOutcomeLabel(callOutcome, t)}
+              </span>
+            ) : (
+              <span className="text-xs text-slate-400">—</span>
+            )}
+          </td>
+        ) : null}
         <td className="px-3 py-2">
           <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[status as keyof typeof APPLICATION_STATUS_BADGE]}`}>
             {applicationStatusLabel(status, t)}
@@ -321,13 +361,34 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600"
-          >
-            <IconFilter size={12} stroke={1.9} />
-            {t('app.platform.application_workspace.newest_first')}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="relative">
+              <IconSearch size={12} stroke={1.9} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t('app.platform.application_workspace.search_placeholder')}
+                className="w-44 rounded-md border border-slate-200 bg-white py-1 pl-6 pr-2 text-xs text-slate-700 placeholder:text-slate-400"
+                aria-label={t('app.platform.application_workspace.search_placeholder')}
+              />
+            </label>
+            {showCallOutcome ? (
+              <select
+                value={callResultFilter}
+                onChange={(event) => setCallResultFilter(event.target.value)}
+                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+                aria-label={t('app.platform.application_workspace.filter_call_result')}
+              >
+                <option value="">{t('app.platform.application_workspace.filter_call_all')}</option>
+                {APPLICATION_CALL_OUTCOME_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {applicationCallOutcomeLabel(code, t)}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -354,6 +415,9 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                   <th className="px-3 py-2">{t('app.platform.application_workspace.col_details')}</th>
                   <th className="px-3 py-2">{t('app.platform.application_workspace.col_source')}</th>
                   <th className="px-3 py-2">{t('app.platform.application_workspace.col_extra')}</th>
+                  {showCallOutcome ? (
+                    <th className="px-3 py-2">{t('app.platform.application_workspace.col_call_result')}</th>
+                  ) : null}
                   <th className="px-3 py-2">{t('app.platform.application_workspace.col_status')}</th>
                   <th className="px-3 py-2">{t('app.platform.application_workspace.col_time')}</th>
                 </tr>

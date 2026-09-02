@@ -54,6 +54,7 @@ export function RecruitmentApplicationWorkspace() {
       heroCallHint: t('app.recruitment_inquiry.workspace.hero_call_hint'),
       heroEmptyText: t('app.recruitment_inquiry.workspace.hero_empty'),
       listKindLabel: t('app.recruitment_inquiry.workspace.list_kind'),
+      showCallOutcome: true,
       extensionBadge: (app) => (app.extensions?.vacancy_title as string | undefined) || null,
       primaryEntityPath: (app) => {
         if (app.outcome_entity_type !== 'candidate') return undefined

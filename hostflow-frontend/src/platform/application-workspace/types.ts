@@ -18,6 +18,9 @@ export type ApplicationListOptions = {
   tab?: ApplicationTab
   scope?: 'open' | 'all'
   includeCounts?: boolean
+  /** Latest call-outcome activity (not ticket status). */
+  callResult?: string
+  q?: string
 }
 
 export type ApplicationWorkspaceConfig = {
@@ -37,6 +40,8 @@ export type ApplicationWorkspaceConfig = {
   heroEmptyText: string
   listKindLabel: string
   extensionBadge?: (application: Application) => string | null
+  /** Show latest call-outcome activity as a list column + filter. */
+  showCallOutcome?: boolean
   /** When set, list title and rail header link to Entity Workspace (e.g. client card). */
   primaryEntityPath?: (application: Application) => string | undefined
   primaryEntityLabel?: string
