@@ -286,6 +286,36 @@ def _application_comments(normalized: Dict[str, Any]) -> List[Dict[str, Any]]:
     return items
 
 
+def _field_data_from_payload(payload: Any) -> List[Dict[str, Any]]:
+    rec = _record(payload)
+    out: List[Dict[str, Any]] = []
+
+    def push(raw: Any) -> None:
+        if not isinstance(raw, list):
+            return
+        for item in raw:
+            if isinstance(item, dict):
+                out.append(item)
+
+    push(rec.get("field_data"))
+    entry = rec.get("entry")
+    first_entry = _record(entry[0]) if isinstance(entry, list) and entry else {}
+    changes = first_entry.get("changes")
+    first_change = _record(changes[0]) if isinstance(changes, list) and changes else {}
+    push(_record(first_change.get("value")).get("field_data"))
+    return out
+
+
+def _recruitment_form_answers(normalized: Dict[str, Any], payload: Any) -> tuple[list, list]:
+    field_answers = normalized.get("field_answers") if isinstance(normalized.get("field_answers"), list) else []
+    additional_answers = (
+        normalized.get("additional_answers") if isinstance(normalized.get("additional_answers"), list) else []
+    )
+    if not field_answers:
+        field_answers = _field_data_from_payload(payload)
+    return field_answers, additional_answers
+
+
 def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
     """LEGACY PROJECTION (Runtime Split R4 — deprecate for R6).
 
@@ -305,6 +335,9 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
     status = _recruitment_status(lead)
     candidate_id = _text(getattr(lead, "candidate_id", None)) or None
     vacancy_id = _text(getattr(lead, "vacancy_id", None)) or None
+    field_answers, additional_answers = _recruitment_form_answers(normalized, getattr(lead, "payload", None))
+    call_latest = normalized.get("call_result_v1") if isinstance(normalized.get("call_result_v1"), dict) else None
+    call_history = normalized.get("call_results_v1") if isinstance(normalized.get("call_results_v1"), list) else []
     meta = _record(normalized.get("meta"))
     assignee = (
         _text(meta.get("assigned_manager_id"))
@@ -333,6 +366,13 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
             "fit_status": _text(getattr(lead, "fit_status", None)) or None,
             "transport_lead_id": str(lead.id),
             "application_comments_v1": _application_comments(normalized),
+            "meta_form_answers": field_answers,
+            "additional_answers": additional_answers,
+            "form_question_labels_v1": normalized.get("form_question_labels_v1")
+            if isinstance(normalized.get("form_question_labels_v1"), dict)
+            else {},
+            "call_result_v1": call_latest,
+            "call_results_v1": call_history,
         },
         outcome_entity_id=candidate_id,
         outcome_entity_type="candidate" if candidate_id else None,

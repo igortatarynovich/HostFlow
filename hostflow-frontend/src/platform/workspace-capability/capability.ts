@@ -217,6 +217,15 @@ export const MODULE_CAPABILITY_DEFINITIONS: {
     allowed_hosts: BOTH_HOSTS,
     allowed_regions: ['rail', 'header'],
   },
+  'recruitment.intake': {
+    class: 'module_contribution',
+    capability_id: 'recruitment.intake',
+    owner: 'recruitment',
+    state_owner: 'recruitment',
+    contributor: 'recruitment',
+    allowed_hosts: BOTH_HOSTS,
+    allowed_regions: ['overview'],
+  },
   'hr.employment': {
     class: 'module_contribution',
     capability_id: 'hr.employment',

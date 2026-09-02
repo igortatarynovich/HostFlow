@@ -79,6 +79,10 @@ WORKSPACE_RENDERER_REGISTRY: dict[str, dict[str, str]] = {
         "component_id": "workspace.module.recruitment.assignee",
         "renderer_module": "modules/recruitment/contributions/assignee",
     },
+    "workspace.module.recruitment.intake": {
+        "component_id": "workspace.module.recruitment.intake",
+        "renderer_module": "modules/recruitment/contributions/intake",
+    },
     "workspace.module.hr.employment": {
         "component_id": "workspace.module.hr.employment",
         "renderer_module": "modules/hr/contributions/employment",

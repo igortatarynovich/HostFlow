@@ -19,6 +19,7 @@ from backend.app.modules.applications.mappers import (
 from backend.app.modules.applications.sales_resolve import resolve_sales_inquiry_and_lead
 from backend.app.modules.applications.schemas import (
     ApplicationAssignIn,
+    ApplicationCallResultIn,
     ApplicationCommentIn,
     ApplicationFollowUpIn,
     ApplicationIntakeDecisionIn,
@@ -569,6 +570,37 @@ async def _recruitment_lead_or_404(db: AsyncSession, tenant_id: str, application
     if not lead or (lead.lead_type == "client" and lead.lead_target_type == "client_lead"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
     return lead
+
+
+async def recruitment_log_call_result(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    application_id: str,
+    payload: ApplicationCallResultIn,
+    current_user: UserCtx,
+) -> ApplicationOut:
+    """Application facade for call outcome. Lead storage stays internal."""
+    from backend.app.modules.leads.service.call_result import log_lead_call_result
+
+    lead = await _recruitment_lead_or_404(db, tenant_id, application_id)
+    actor_id = str(current_user.sub or "").strip() or None
+    try:
+        await log_lead_call_result(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            result=str(payload.result),
+            note=payload.note,
+            actor_id=actor_id,
+            bump_stage=True,
+            next_contact_at=payload.next_contact_at,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    flag_modified(lead, "normalized")
+    await db.flush()
+    return await _reload_recruitment(db, tenant_id, application_id)
 
 
 async def recruitment_add_comment(

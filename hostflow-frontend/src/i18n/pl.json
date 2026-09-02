@@ -10725,7 +10725,34 @@
       "closed_title": "Zgłoszenie zamknięte",
       "rejected_body": "Zgłoszenie odrzucone.",
       "rejected_outcome_body": "Zgłoszenie odrzucone. Brak dalszych działań.",
-      "completed_body": "Obsługa zakończona."
+      "completed_body": "Obsługa zakończona.",
+      "form_answers": {
+        "title": "Odpowiedzi z formularza",
+        "empty": "Brak odpowiedzi z formularza"
+      },
+      "call_result": {
+        "title": "Wynik rozmowy",
+        "hint": "Zapisz wynik po telefonie. To aktywność, nie status zgłoszenia.",
+        "reached": "Odebrano",
+        "not_reached": "Nieodebrane",
+        "save": "Zapisz wynik rozmowy",
+        "saved": "Zapisano wynik rozmowy",
+        "save_failed": "Nie udało się zapisać wyniku rozmowy",
+        "latest": "Ostatni wynik: {result}",
+        "next_contact": "Kiedy oddzwonić",
+        "next_contact_required": "Wybierz datę i godzinę oddzwonienia",
+        "note": "Komentarz",
+        "note_placeholder": "Co powiedzieli, kiedy oddzwonić, warunki",
+        "results": {
+          "no_answer": "Nie odbiera",
+          "answered": "Odebrano",
+          "callback_requested": "Oddzwonić",
+          "interested": "Zainteresowany",
+          "not_interested": "Niezainteresowany",
+          "wrong_number": "Błędny numer",
+          "unavailable": "Niedostępny"
+        }
+      }
     }
   },
   "public": {

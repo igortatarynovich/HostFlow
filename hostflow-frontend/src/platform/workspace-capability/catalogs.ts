@@ -38,6 +38,7 @@ export const MODULE_CONTRIBUTION_IDS = [
   'recruitment.stage',
   'recruitment.vacancy',
   'recruitment.assignee',
+  'recruitment.intake',
   'hr.employment',
   'fleet.assignment',
   'fixture.optional_addon',

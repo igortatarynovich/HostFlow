@@ -188,6 +188,22 @@ class ApplicationCommentIn(BaseModel):
     note: str = Field(min_length=1, max_length=2000)
 
 
+class ApplicationCallResultIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    result: Literal[
+        "no_answer",
+        "answered",
+        "callback_requested",
+        "interested",
+        "not_interested",
+        "wrong_number",
+        "unavailable",
+    ]
+    note: Optional[str] = Field(default=None, max_length=2000)
+    next_contact_at: Optional[datetime] = None
+
+
 class ApplicationProcessResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

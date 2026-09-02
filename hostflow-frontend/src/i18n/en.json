@@ -10725,7 +10725,34 @@
       "closed_title": "Application closed",
       "rejected_body": "The application was rejected.",
       "rejected_outcome_body": "The application was rejected. There are no further actions.",
-      "completed_body": "Processing is complete."
+      "completed_body": "Processing is complete.",
+      "form_answers": {
+        "title": "Form answers",
+        "empty": "No form answers"
+      },
+      "call_result": {
+        "title": "Call outcome",
+        "hint": "Log the outcome after the call. This is activity, not an application status.",
+        "reached": "Reached",
+        "not_reached": "No answer",
+        "save": "Save call outcome",
+        "saved": "Call outcome saved",
+        "save_failed": "Could not save the call outcome",
+        "latest": "Latest outcome: {result}",
+        "next_contact": "Call back at",
+        "next_contact_required": "Pick a date and time to call back",
+        "note": "Note",
+        "note_placeholder": "What they said, when to call back, conditions",
+        "results": {
+          "no_answer": "No answer",
+          "answered": "Answered",
+          "callback_requested": "Call back",
+          "interested": "Interested",
+          "not_interested": "Not interested",
+          "wrong_number": "Wrong number",
+          "unavailable": "Unavailable"
+        }
+      }
     }
   },
   "public": {

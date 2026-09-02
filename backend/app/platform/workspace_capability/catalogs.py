@@ -38,6 +38,7 @@ MODULE_CONTRIBUTION_IDS: tuple[str, ...] = (
     "recruitment.stage",
     "recruitment.vacancy",
     "recruitment.assignee",
+    "recruitment.intake",
     "hr.employment",
     "fleet.assignment",
     "fixture.optional_addon",

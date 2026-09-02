@@ -29,6 +29,7 @@ from backend.app.models import Lead
 from backend.app.models.sales_inquiry import SalesInquiry
 from backend.app.modules.applications.schemas import (
     ApplicationAssignIn,
+    ApplicationCallResultIn,
     ApplicationCommentIn,
     ApplicationFollowUpIn,
     ApplicationIntakeDecisionIn,
@@ -378,6 +379,24 @@ async def recruitment_application_assign(
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations.recruitment_assign(
+        db,
+        tenant_id=str(tenant_id),
+        application_id=application_id,
+        payload=payload,
+        current_user=current_user,
+    )
+
+
+@recruitment_router.post("/{application_id}/call-result", response_model=ApplicationOut)
+async def recruitment_application_call_result(
+    application_id: str,
+    payload: ApplicationCallResultIn,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+) -> ApplicationOut:
+    db, tenant_id = db_tenant
+    return await mutations.recruitment_log_call_result(
         db,
         tenant_id=str(tenant_id),
         application_id=application_id,

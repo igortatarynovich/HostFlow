@@ -218,3 +218,27 @@ export async function assignRecruitmentApplication(
   )
   return data
 }
+
+export type ApplicationCallResultCode =
+  | 'no_answer'
+  | 'answered'
+  | 'callback_requested'
+  | 'interested'
+  | 'not_interested'
+  | 'wrong_number'
+  | 'unavailable'
+
+export async function logRecruitmentApplicationCallResult(
+  applicationId: string,
+  payload: {
+    result: ApplicationCallResultCode
+    note?: string | null
+    next_contact_at?: string | null
+  },
+): Promise<Application> {
+  const { data } = await api.post<Application>(
+    `/recruitment/applications/${encodeURIComponent(applicationId)}/call-result`,
+    payload,
+  )
+  return data
+}
