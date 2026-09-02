@@ -938,8 +938,6 @@ export function ServicesPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.services.title')}
-          subtitle={t('app.services.hero.subtitle')}
           primaryAction={
             <button
               type="button"

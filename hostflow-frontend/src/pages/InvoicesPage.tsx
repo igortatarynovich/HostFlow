@@ -427,8 +427,7 @@ export default function InvoicesPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.invoices.title', { defaultValue: 'Invoices' })}
-          secondaryActions={
+          primaryAction={
             <button className="btn-primary btn-sm" onClick={() => navigate(CRM_APP_PATHS.invoiceNew)}>
               {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
             </button>

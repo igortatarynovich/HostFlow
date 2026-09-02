@@ -82,10 +82,6 @@ export default function AutomationLogPage() {
             { label: t('app.automations.hub.title', { defaultValue: 'Automations' }), to: CRM_APP_PATHS.automations },
             { label: t('app.automation_log.title', { defaultValue: 'Automation log' }) },
           ]}
-          title={t('app.automation_log.title', { defaultValue: 'Automation log' })}
-          subtitle={t('app.automation_log.subtitle', {
-            defaultValue: 'Why did something happen? Shows automation-triggered actions (v1).',
-          })}
           kind="browse"
           secondaryActions={
             <button type="button" className="btn-secondary btn-sm" onClick={() => load()} disabled={loading}>

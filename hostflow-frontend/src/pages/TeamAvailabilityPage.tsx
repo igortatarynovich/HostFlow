@@ -113,10 +113,6 @@ export default function TeamAvailabilityPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.communications.ia.team_availability_title', { defaultValue: 'Team Availability' })}
-          subtitle={t('app.communications.ia.team_availability_subtitle', {
-            defaultValue: 'Supervisor/Admin view: manager schedules, occupancy, availability states, and queue readiness.',
-          })}
           kind="browse"
         />
       </PageShellHeader>

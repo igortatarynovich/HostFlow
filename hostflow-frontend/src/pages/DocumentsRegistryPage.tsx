@@ -453,9 +453,6 @@ export default function DocumentsRegistryPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={
-            registryMode ? t('admin.documents.registry.title') : t('admin.documents.registry.work.title')
-          }
           kind="action"
           primaryAction={
             registryMode ? (

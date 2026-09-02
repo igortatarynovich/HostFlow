@@ -501,8 +501,7 @@ export default function MarketingDiagnosticsPage() {
     <PageShell data-testid="marketing-diagnostics-page">
       <PageShellHeader>
         <PageHeader
-          title={t('app.nav.items.marketing_diagnostics')}
-          subtitle={t('app.marketing.diagnostics.subtitle')}
+          kind="browse"
         />
       </PageShellHeader>
 

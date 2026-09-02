@@ -287,23 +287,15 @@ export default function CommunicationsSlaIncidentsPage() {
       <PageShellHeader>
         <PageHeader
           kind="browse"
-          title={t('app.sla_incidents.title')}
           subtitle={
-            <>
-              <p>
-                {t('app.sla_incidents.subtitle', {
-                  defaultValue: 'Overdue communication dialogs that require a manager response.',
-                })}
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                <span className="badge bg-rose-100 px-3 py-1 font-medium text-rose-700">
-                  {t('app.sla_incidents.unread')}: {unreadCount}
-                </span>
-                <span className="badge bg-slate-100 px-3 py-1 font-medium text-slate-700">
-                  {t('app.sla_incidents.total')}: {items.length}
-                </span>
-              </div>
-            </>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="badge bg-rose-100 px-3 py-1 font-medium text-rose-700">
+                {t('app.sla_incidents.unread')}: {unreadCount}
+              </span>
+              <span className="badge bg-slate-100 px-3 py-1 font-medium text-slate-700">
+                {t('app.sla_incidents.total')}: {items.length}
+              </span>
+            </div>
           }
           secondaryActions={
             <>

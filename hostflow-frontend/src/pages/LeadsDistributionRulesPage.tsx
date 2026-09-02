@@ -177,7 +177,6 @@ export default function LeadsDistributionRulesPage() {
       <PageShell>
         <PageShellHeader>
           <PageHeader
-            title={t('app.leads.distribution.rules.title')}
             kind="browse"
           />
         </PageShellHeader>
@@ -192,7 +191,6 @@ export default function LeadsDistributionRulesPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.leads.distribution.rules.title')}
           kind="action"
           primaryAction={
             <button

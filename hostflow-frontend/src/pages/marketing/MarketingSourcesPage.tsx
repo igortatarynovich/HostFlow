@@ -102,9 +102,8 @@ export default function MarketingSourcesPage() {
     <PageShell data-testid="marketing-sources-page">
       <PageShellHeader>
         <PageHeader
-          title={t('app.marketing.sources.title')}
-          subtitle={t('app.marketing.sources.subtitle')}
-          actions={
+          kind="browse"
+          secondaryActions={
             <Link
               to={CRM_APP_PATHS.settingsIntegrationsMeta}
               className="btn-secondary btn-sm"

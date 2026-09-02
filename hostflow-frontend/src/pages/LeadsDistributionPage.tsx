@@ -65,8 +65,6 @@ export default function LeadsDistributionPage() {
       <PageShell>
         <PageShellHeader>
           <PageHeader
-            title={t('app.leads.distribution.title')}
-            subtitle={t('app.leads.distribution.subtitle')}
             kind="browse"
           />
         </PageShellHeader>
@@ -87,8 +85,6 @@ export default function LeadsDistributionPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.leads.distribution.title')}
-          subtitle={t('app.leads.distribution.subtitle')}
           kind="browse"
           secondaryActions={
             <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading}>

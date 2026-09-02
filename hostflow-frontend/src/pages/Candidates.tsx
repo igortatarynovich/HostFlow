@@ -2516,13 +2516,12 @@ export default function Candidates(){
           <PageShellHeader className="shrink-0 pb-1 pt-2">
             <PageHeader
               kind="browse"
-              title={
+              secondaryActions={
                 <span className="inline-flex items-center gap-1.5">
-                  {t('app.nav.items.candidates', { defaultValue: 'Candidates' })}
                   <ContextHelp term="candidate" />
+                  {workPanelToggle}
                 </span>
               }
-              secondaryActions={workPanelToggle}
             />
           </PageShellHeader>
 

@@ -124,10 +124,6 @@ export default function TimeOffRequestsPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.communications.ia.timeoff_title', { defaultValue: 'Time-off Requests' })}
-          subtitle={t('app.communications.ia.timeoff_subtitle', {
-            defaultValue: 'Employee requests (vacation / day off / sick leave) and manager approval workflow.',
-          })}
           kind="browse"
           secondaryActions={
             <button type="button" className="btn-secondary btn-sm" onClick={() => void loadAll()} disabled={loading}>

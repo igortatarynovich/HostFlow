@@ -239,8 +239,6 @@ export default function AutomationRulesPage() {
             { label: t('app.automations.hub.title', { defaultValue: 'Automations' }), to: CRM_APP_PATHS.automations },
             { label: t('app.automation_rules.title') },
           ]}
-          title={t('app.automation_rules.title')}
-          subtitle={t('app.automation_rules.subtitle')}
           kind="action"
           primaryAction={
             <button type="button" className="btn-primary btn-sm" onClick={() => void handleCreate()} disabled={loading}>

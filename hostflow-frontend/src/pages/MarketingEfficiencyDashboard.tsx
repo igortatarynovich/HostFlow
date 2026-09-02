@@ -357,8 +357,6 @@ export default function MarketingEfficiencyDashboard() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.dashboard.marketing.title')}
-          subtitle={t('app.dashboard.marketing.subtitle')}
           kind="browse"
           secondaryActions={
             <button

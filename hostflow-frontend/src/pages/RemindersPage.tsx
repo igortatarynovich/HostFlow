@@ -1638,25 +1638,10 @@ export default function RemindersPage() {
     return format(date, 'dd MMM yyyy, HH:mm', { locale: dateLocale })
   }
 
-  const tasksTabSubtitle =
-    activeTab === 'tasks'
-      ? t('app.reminders.subtitle', {
-          values: { total: taskCounts.total, unread: taskCounts.active, scope: t('app.reminders.scope_labels.direct') },
-        })
-      : t('app.reminders.subtitle', {
-          values: {
-            total: notificationCounts.total,
-            unread: notificationCounts.unread,
-            scope: t('app.reminders.scope_labels.all'),
-          },
-        })
-
   return (
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.tasks.hub_title')}
-          subtitle={tasksTabSubtitle}
           kind="browse"
           primaryAction={
             activeTab === 'tasks' ? (

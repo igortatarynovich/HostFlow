@@ -129,12 +129,6 @@ export default function AcquisitionActivityTimelinePage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.acquisition_activity.title', {
-            defaultValue: 'Acquisition activity',
-          })}
-          subtitle={t('app.acquisition_activity.subtitle', {
-            defaultValue: 'Read-only timeline for Campaign / Flight intake events.',
-          })}
           kind="browse"
           secondaryActions={
             <button

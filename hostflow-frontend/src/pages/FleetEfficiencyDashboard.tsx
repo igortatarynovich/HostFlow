@@ -54,8 +54,6 @@ export default function FleetEfficiencyDashboard() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.dashboard.fleet.title')}
-          subtitle={t('app.dashboard.fleet.subtitle')}
           kind="browse"
           secondaryActions={
             <div className="flex items-center gap-2">

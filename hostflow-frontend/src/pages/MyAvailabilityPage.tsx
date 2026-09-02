@@ -243,10 +243,6 @@ export default function MyAvailabilityPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.communications.ia.my_availability_title', { defaultValue: 'My Availability' })}
-          subtitle={t('app.communications.ia.my_availability_subtitle', {
-            defaultValue: 'Personal work schedule, availability status, breaks, and leave requests. Employee-facing self-service.',
-          })}
           kind="browse"
           secondaryActions={
             <button type="button" className="btn-secondary btn-sm" onClick={() => void loadMine()} disabled={loading}>

@@ -136,8 +136,6 @@ export default function HrEfficiencyDashboard() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.dashboard.hr.title')}
-          subtitle={t('app.dashboard.hr.subtitle')}
           kind="browse"
           secondaryActions={
             <button

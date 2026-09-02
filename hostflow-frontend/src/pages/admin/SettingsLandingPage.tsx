@@ -473,8 +473,6 @@ export default function SettingsLandingPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('admin.settings.title')}
-          subtitle={t('admin.settings.subtitle')}
           kind="browse"
         />
       </PageShellHeader>

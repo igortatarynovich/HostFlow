@@ -2313,7 +2313,6 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
       {!embedded ? (
         <PageShellHeader>
           <PageHeader
-            title={t('app.communications.ia.calendar_title')}
             kind="browse"
             secondaryActions={
               <button type="button" className="btn-secondary btn-sm" onClick={() => void load()}>

@@ -188,10 +188,6 @@ export default function OrganizationHubPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.organization.title', { defaultValue: 'Organization' })}
-          subtitle={t('app.organization.subtitle', {
-            defaultValue: 'Manage workspace subscription, modules, users and operating companies.',
-          })}
           kind="browse"
         />
       </PageShellHeader>

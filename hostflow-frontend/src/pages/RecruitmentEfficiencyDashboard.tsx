@@ -217,8 +217,6 @@ export default function RecruitmentEfficiencyDashboard() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.dashboard.efficiency.title')}
-          subtitle={t('app.dashboard.efficiency.subtitle')}
           kind="browse"
           secondaryActions={
             <button

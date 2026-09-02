@@ -94,8 +94,6 @@ export default function FinanceEfficiencyDashboard() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.dashboard.finance.title')}
-          subtitle={t('app.dashboard.finance.subtitle')}
           kind="browse"
           secondaryActions={
             <button

@@ -175,10 +175,6 @@ export default function CommunicationsPlannerPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.communications.ia.planner_title', { defaultValue: 'Planner' })}
-          subtitle={t('app.communications.ia.planner_subtitle', {
-            defaultValue: 'Operational planning for managers and tasks. Separate from email/messages inboxes.',
-          })}
           kind="browse"
           secondaryActions={
             <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading || busy}>
