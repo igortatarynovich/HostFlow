@@ -8844,7 +8844,7 @@
           "flag_stay": "pobyt >8 mies."
         },
         "call": {
-          "hint": "Log the outcome after the call. This is activity, not a lead stage.",
+          "hint": "Choose a result after the call — it saves immediately. This is activity, not a lead stage.",
           "reached": "Reached",
           "not_reached": "No answer",
           "next_contact": "Next contact",
@@ -12318,12 +12318,13 @@
       },
       "call_result": {
         "title": "Call outcome",
-        "hint": "Log the outcome after the call. This is activity, not an application status.",
+        "hint": "Choose a result after the call — it saves immediately. This is an activity, not the application status.",
         "reached": "Reached",
         "not_reached": "No answer",
         "save": "Save call outcome",
         "saved": "Call outcome saved",
         "save_failed": "Could not save the call outcome",
+        "pick_required": "Choose a call result",
         "latest": "Latest outcome: {result}",
         "next_contact": "Call back at",
         "next_contact_required": "Pick a date and time to call back",

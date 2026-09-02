@@ -8771,7 +8771,7 @@
           "flag_stay": "pobyt >8 mies."
         },
         "call": {
-          "hint": "Zapisz wynik po rozmowie. To aktywność, nie etap leada.",
+          "hint": "Wybierz wynik po rozmowie — zapisze się od razu. To aktywność, nie etap leada.",
           "reached": "Odebrano",
           "not_reached": "Nie odebrano",
           "next_contact": "Następny kontakt",
@@ -12318,12 +12318,13 @@
       },
       "call_result": {
         "title": "Wynik rozmowy",
-        "hint": "Zapisz wynik po telefonie. To aktywność, nie status zgłoszenia.",
+        "hint": "Wybierz wynik po telefonie — zapisze się od razu. To aktywność, nie status zgłoszenia.",
         "reached": "Odebrano",
         "not_reached": "Nieodebrane",
         "save": "Zapisz wynik rozmowy",
         "saved": "Zapisano wynik rozmowy",
         "save_failed": "Nie udało się zapisać wyniku rozmowy",
+        "pick_required": "Wybierz wynik rozmowy",
         "latest": "Ostatni wynik: {result}",
         "next_contact": "Kiedy oddzwonić",
         "next_contact_required": "Wybierz datę i godzinę oddzwonienia",
