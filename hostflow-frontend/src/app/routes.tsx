@@ -45,6 +45,7 @@ import {
   Dashboard,
   DeletionRequestsPage,
   DocumentTypesPage,
+  MergeDocumentTemplatesPage,
   DocumentsHubPage,
   EmailSettingsPage,
   FleetModulePage,
@@ -905,6 +906,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'settings-billing', path: seg(CRM.settingsBilling), Component: BillingWorkspacePage, permission: 'admin.users' },
   { key: 'settings-tenants', path: seg(CRM.settingsTenants), Component: TenantsPage, permission: 'admin.companyAcl' },
   { key: 'settings-docs', path: seg(CRM.settingsDocs), Component: DocumentTypesPage, permission: 'documents.manage' },
+  {
+    key: 'settings-merge-templates',
+    path: seg(CRM.settingsMergeTemplates),
+    Component: MergeDocumentTemplatesPage,
+    permission: ['documents.manage', 'settings.view'],
+  },
   { key: 'settings-legal', path: seg(CRM.settingsLegal), Component: LegalDocumentsPage, permission: 'admin.users' },
   { key: 'settings-funnels', path: seg(CRM.settingsFunnels), Component: FunnelsPage, permission: ['admin.users', 'users.manage'] },
   {
