@@ -384,6 +384,8 @@ CRM `Lead.stage` is a **compatibility projection** only (`new` → `contacted` o
 
 **Platform invariant:** tenant may configure **how** the obligation is fulfilled (controller identity, clause, sender, copy) but cannot disable **that** it is evaluated and fulfilled when applicable. Missing configuration uses the HostFlow default (body + mailbox), not “do nothing”. HostFlow is delivery infrastructure; the named controller is the operating firm (`OwnCompany`).
 
+**Technical invariant:** no lead may silently bypass evaluation. An unresolved or failed obligation (`review_required`, `delivery_required`, `delivery_failed`) stays explicitly actionable until resolved. Assessment evidence and delivery evidence are stored separately on `normalized.rodo`.
+
 **Tenant policy** (`Tenant.settings.lead_rodo_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings` — **preset / migration**):
 
 | `lead_rodo_send_mode` | Behaviour |
@@ -399,12 +401,13 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 
 | `status` / signal | Meaning |
 |-------------------|---------|
-| `sent` | Outbound notice sent (`sent_at`, `channel`, `recipient`, controller, notice version, `delivery_via`, optional `auto_trigger`, `ingest_source`). |
-| `source_provided` | Notice already given at collection (art. 13 / art. 13(4) / art. 14(5)(a) analogue) — **no extra outbound**. |
-| `exempt` | Lawful exception recorded (`exemption_code`) — no delivery. |
-| `pending_channel` | Fulfillment could not run — no usable channel (MVP: email). |
-| `failed` | Send error; platform retries before gated actions. |
-| *(none / unsatisfied)* | UI: `manual_required`; gates apply until evaluation produces a closed outcome. |
+| `sent` / `delivered` | Outbound notice sent; `delivery_evidence` has controller, recipient, timestamp, notice version/hash, template, sender, channel, attempts. |
+| `source_provided` / `compliant` | Notice already given at collection — **no extra outbound**; `assessment` is the proof. |
+| `exempt` | Lawful exception **with** `exemption_code` — no delivery. |
+| `delivery_required` | Engine requires fulfillment; auto-send pending or in flight. |
+| `review_required` | Engine cannot safely classify (unknown source / exemption without reason) — operator must act. |
+| `pending_channel` / `failed` / `delivery_failed` | Obligation exists; channel missing or SMTP exhausted (tenant then platform). Retry / alert. |
+| *(none / unsatisfied)* | Should not remain after ingest evaluation; if present, treat as open. |
 
 **Idempotency:** webhook replay for the same `tenant_id + source + external_id` does not send a second notice (`lead_rodo_sent_from_normalized`). Pipeline merges preserve `normalized.rodo` when other keys are rewritten (`normalized_merging_lead_rodo` in `update_lead`).
 
@@ -416,7 +419,7 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 - `POST /api/v1/leads/{id}/compliance/rodo/source-provided` — mark covered at source.
 - `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk re-send after Pipeline cutover (default `rodo.status=failed`; `dry_run` supported). CLI: `backend/scripts/retry_lead_rodo.py`.
 
-**UI:** Control Center — **RODO information obligation: Active — managed by HostFlow** (no disable toggle). **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / `source_provided` / `exempt`; Send RODO + “covered at source” buttons retained for retry. **Sales inquiry rail / client lead call-result** — same Send / source-provided unlock (ADR-033 slice C) before `call-result` / stage `contacted`.
+**UI:** Control Center — **RODO information obligation: Active — managed by HostFlow** (no disable toggle). **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / `source_provided` / `exempt` / `review_required`; Send RODO + “covered at source” buttons retained for retry. **Sales inquiry rail / client lead call-result** — same Send / source-provided unlock (ADR-033 slice C) before `call-result` / stage `contacted`.
 
 **Tests:** `backend/tests/api/test_lead_rodo_gate.py`, `backend/tests/api/test_lead_rodo_auto.py`.
 

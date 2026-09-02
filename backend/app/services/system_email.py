@@ -31,10 +31,13 @@ async def send_system_email(
     to: str,
     subject: str,
     body: str,
+    *,
+    allow_webhook_fallback: bool = True,
 ) -> bool:
     """
     Send email from platform (info@hostflow.cc).
-    Uses SYSTEM_SMTP_* env vars. Falls back to webhook if SMTP not configured.
+    Uses SYSTEM_SMTP_* env vars. Falls back to webhook if SMTP not configured
+    unless ``allow_webhook_fallback`` is False (GDPR notices must not hide SMTP failure).
     """
     to = (to or "").strip()
     if not to or "@" not in to:
@@ -60,7 +63,11 @@ async def send_system_email(
             )
             return True
         except Exception:
-            pass
+            if not allow_webhook_fallback:
+                return False
+
+    if not allow_webhook_fallback:
+        return False
 
     await outbound.notify(to=to, subject=subject, text=body)
     return True

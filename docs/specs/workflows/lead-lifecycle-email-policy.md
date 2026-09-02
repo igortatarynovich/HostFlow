@@ -69,16 +69,27 @@ JSONB column `vacancies.settings_json` key `lead_lifecycle_email_override_v1`: s
 
 After a new lead is recorded, HostFlow **evaluates** the information obligation. The tenant cannot disable this step. Evaluation is not “send art.14 on every `lead_created`”.
 
-For each lead the engine records: source → collection path (direct / indirect) → art. 13 or art. 14 → notice already provided? → lawful exemption? → delivery required? → controller → notice version.
+**Product invariant:** Tenant may configure how the RODO information obligation is fulfilled, but cannot disable its fulfillment. HostFlow provides a platform default whenever tenant-specific configuration is absent.
 
-| Outcome | Typical case | Delivery |
-|---------|--------------|----------|
-| `no_delivery_source_provided` | Public form / Meta flow already showed the notice | No extra email |
-| `no_delivery_already_notified` | Same controller already has proof of the current notice | Do not resend |
-| `no_delivery_exempt` | Recorded art. 14(5) exception | No email; audit reason |
-| `delivery_required` | Indirect source, or direct source without proof of notice | Automatic fulfillment |
+**Technical invariant:** No lead may silently bypass compliance evaluation. An unresolved or failed compliance obligation must remain explicitly actionable until resolved. The engine has no state “could not determine → did nothing”.
 
-Idempotency: the same obligation is not sent twice because of webhook replay.
+Canonical `compliance_state` values on `Lead.normalized.rodo`:
+
+| State | Meaning | Gate |
+|-------|---------|------|
+| `compliant` | Obligation already fulfilled; assessment proof exists (notice at source / already notified) | Closed |
+| `delivery_required` | Outbound fulfillment required | Open — auto-send |
+| `delivered` | Send completed; delivery evidence recorded | Closed |
+| `exempt` | Lawful exception **with** reason code | Closed |
+| `review_required` | Engine cannot safely classify (unknown source, exemption without reason) | Open — operator review |
+| `delivery_failed` | Obligation exists; tenant SMTP then platform SMTP exhausted, or no channel | Open — retry / alert |
+
+Two evidence objects (never mixed):
+
+- **`assessment`** — why art.13 / art.14 / exempt / already provided / review: source, collection path, reason_code, notice_at_source, controller, evaluated_at.
+- **`delivery_evidence`** — what was sent or attempted: controller, recipient, timestamp, notice version/hash, template, sender, channel, `attempts[]`, delivery status.
+
+Delivery path: tenant SMTP → on failure platform SMTP (`info@hostflow.cc`) → on failure `delivery_failed` with both attempts (webhook notify is **not** GDPR proof). Idempotency: the same obligation is not sent twice because of webhook replay.
 
 ---
 

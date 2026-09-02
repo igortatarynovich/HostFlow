@@ -485,7 +485,12 @@ export default function LeadIntakeDecisionRail({
                       })
                     : rodoStatus === 'failed'
                       ? t('app.leads.intake_workspace.decision_rail.rodo_failed')
-                      : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
+                      : rodoStatus === 'review_required'
+                        ? t('app.leads.intake_workspace.decision_rail.rodo_review_required', {
+                            defaultValue:
+                              'HostFlow could not safely determine the RODO obligation for this lead. Review the source and either send the notice or mark it covered at source.',
+                          })
+                        : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
               </p>
               {policyBlocked ? (
                 <p className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-900 ring-1 ring-rose-900/10">

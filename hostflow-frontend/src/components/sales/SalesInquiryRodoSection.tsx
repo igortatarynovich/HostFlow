@@ -159,10 +159,15 @@ export default function SalesInquiryRodoSection({ leadId, lead: leadProp, disabl
                   ? t('app.leads.intake_workspace.decision_rail.rodo_failed', {
                       defaultValue: 'Previous RODO send failed — retry or mark covered at source.',
                     })
-                  : t('app.leads.intake_workspace.decision_rail.rodo_required_hint', {
-                      defaultValue:
-                        'Send the art.14 GDPR/RODO notice, or confirm it was covered at source, before logging a call or moving to contacted.',
-                    })}
+                  : rodoStatus === 'review_required'
+                    ? t('app.leads.intake_workspace.decision_rail.rodo_review_required', {
+                        defaultValue:
+                          'HostFlow could not safely determine the RODO obligation for this lead. Review the source and either send the notice or mark it covered at source.',
+                      })
+                    : t('app.leads.intake_workspace.decision_rail.rodo_required_hint', {
+                        defaultValue:
+                          'Send the art.14 GDPR/RODO notice, or confirm it was covered at source, before logging a call or moving to contacted.',
+                      })}
           </p>
           {policyBlocked ? (
             <p className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-900 ring-1 ring-rose-900/10">

@@ -8813,6 +8813,7 @@
           "rodo_ok_hint": "RODO / art. 14 jest spełnione dla tego leada.",
           "rodo_pending_channel": "Brak e-maila lub kanału do wysłania RODO. Dodaj kontakt lub oznacz informację u źródła przed telefonem lub procesem.",
           "rodo_failed": "Wysyłka RODO nie powiodła się. Spróbuj ponownie przyciskiem poniżej lub oznacz informację u źródła.",
+          "rodo_review_required": "HostFlow nie mógł bezpiecznie ustalić obowiązku RODO dla tego leada. Sprawdź źródło i wyślij informację albo oznacz, że została przekazana u źródła.",
           "rodo_send_success": "Wysłano informację RODO.",
           "rodo_send_failed": "Nie udało się wysłać informacji RODO.",
           "rodo_source_marked": "Oznaczono jako pokryte u źródła.",

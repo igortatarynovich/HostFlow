@@ -66,10 +66,15 @@ async def _platform_compliance_email_transport(
     subject: str,
     body: str,
 ) -> None:
-    """Platform mailbox fallback (info@hostflow.cc)."""
+    """Platform mailbox fallback (info@hostflow.cc). SMTP only — webhook is not compliance proof."""
     from backend.app.services.system_email import send_system_email
 
-    ok = await send_system_email(to=to, subject=subject, body=body)
+    ok = await send_system_email(
+        to=to,
+        subject=subject,
+        body=body,
+        allow_webhook_fallback=False,
+    )
     if not ok:
         raise SendCommunicationError(
             "Platform compliance email failed",
@@ -85,18 +90,21 @@ async def deliver_gdpr_notice_email(
     subject: str,
     body: str,
     html_body: str | None = None,
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Send the information notice: tenant SMTP first, platform mailbox if missing/broken.
 
-    HostFlow is delivery infrastructure. The named controller remains the tenant firm.
+    Both SMTP paths exhausted → raise. HostFlow is delivery infrastructure only.
     """
     from backend.app.services.lead_lifecycle_email_policy import PLATFORM_RODO_FROM_EMAIL
     from backend.app.services.tenant_email import get_tenant_email_config
 
+    attempts: list[dict[str, Any]] = []
     cfg = await get_tenant_email_config(db, str(tenant_id))
+    tenant_from = ""
     if cfg is not None and str(getattr(cfg, "smtp_host", "") or "").strip() and str(
         getattr(cfg, "from_email", "") or ""
     ).strip():
+        tenant_from = str(cfg.from_email).strip()
         try:
             await _default_email_transport(
                 db,
@@ -106,14 +114,50 @@ async def deliver_gdpr_notice_email(
                 body=body,
                 html_body=html_body,
             )
-            return {"via": "tenant_smtp", "from_email": str(cfg.from_email).strip()}
-        except Exception:
+            attempts.append({"via": "tenant_smtp", "from_email": tenant_from, "ok": True})
+            return {
+                "via": "tenant_smtp",
+                "from_email": tenant_from,
+                "attempts": attempts,
+            }
+        except Exception as exc:
+            attempts.append(
+                {
+                    "via": "tenant_smtp",
+                    "from_email": tenant_from,
+                    "ok": False,
+                    "error": str(exc)[:500],
+                }
+            )
             logger.info(
                 "gdpr_notice_tenant_smtp_fallback",
                 extra={"tenant_id": str(tenant_id)},
             )
-    await _platform_compliance_email_transport(to=to, subject=subject, body=body)
-    return {"via": "platform_smtp", "from_email": PLATFORM_RODO_FROM_EMAIL}
+    try:
+        await _platform_compliance_email_transport(to=to, subject=subject, body=body)
+    except SendCommunicationError as exc:
+        attempts.append(
+            {
+                "via": "platform_smtp",
+                "from_email": PLATFORM_RODO_FROM_EMAIL,
+                "ok": False,
+                "error": str((exc.details or {}).get("reason") or exc.message)[:500],
+            }
+        )
+        logger.warning(
+            "gdpr_notice_delivery_exhausted",
+            extra={"tenant_id": str(tenant_id), "attempts": attempts},
+        )
+        raise SendCommunicationError(
+            "GDPR notice delivery exhausted",
+            details={"reason": "gdpr_notice_delivery_exhausted", "attempts": attempts},
+        ) from exc
+    attempts.append({"via": "platform_smtp", "from_email": PLATFORM_RODO_FROM_EMAIL, "ok": True})
+    return {
+        "via": "platform_smtp",
+        "from_email": PLATFORM_RODO_FROM_EMAIL,
+        "attempts": attempts,
+    }
 
 
 class PlatformCommunicationSender:
@@ -297,12 +341,15 @@ async def prepare_and_send_communication(
         skip_transport=skip_transport,
     )
     if gdpr_delivery.get("via") or gdpr_delivery.get("from_email"):
+        attempts = gdpr_delivery.get("attempts") or []
         result = replace(
             result,
             delivery_via=gdpr_delivery.get("via"),
             from_email=gdpr_delivery.get("from_email"),
+            delivery_attempts=tuple(attempts) if isinstance(attempts, list) else (),
         )
         if gdpr_delivery.get("from_email"):
             enriched_meta["from_email"] = gdpr_delivery["from_email"]
             enriched_meta["delivery_via"] = gdpr_delivery.get("via")
+            enriched_meta["delivery_attempts"] = list(attempts) if isinstance(attempts, list) else []
     return result

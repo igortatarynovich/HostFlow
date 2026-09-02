@@ -8886,6 +8886,7 @@
           "rodo_ok_hint": "RODO / art.14 is satisfied for this lead.",
           "rodo_pending_channel": "No email or channel to send RODO. Add contact details or mark notice covered at source before calling or processing.",
           "rodo_failed": "RODO send failed. Retry with the button below or mark notice covered at source.",
+          "rodo_review_required": "HostFlow could not safely determine the RODO obligation for this lead. Review the source and either send the notice or mark it covered at source.",
           "rodo_send_success": "RODO notice sent.",
           "rodo_send_failed": "Could not send RODO notice.",
           "rodo_source_marked": "Marked as covered at source.",

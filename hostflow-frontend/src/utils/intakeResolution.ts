@@ -58,6 +58,8 @@ export type LeadRodoNoticeStatus =
   | 'manual_required'
   | 'source_provided'
   | 'exempt'
+  | 'review_required'
+  | 'delivery_required'
 
 /** Mirrors backend ``lead_rodo_notice_status_from_normalized`` for lead rail UI. */
 export function leadRodoNoticeStatus(
@@ -72,6 +74,9 @@ export function leadRodoNoticeStatus(
     .toLowerCase()
   if (st === 'source_provided') return 'source_provided'
   if (st === 'exempt') return 'exempt'
+  if (st === 'review_required') return 'review_required'
+  if (st === 'delivery_required') return 'delivery_required'
+  if (st === 'delivery_failed') return 'failed'
   if (st === 'sent' || st === 'satisfied' || Boolean(String(block.sent_at || '').trim())) return 'sent'
   if (st === 'failed') return 'failed'
   if (st === 'pending_channel') return 'pending_channel'

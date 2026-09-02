@@ -80,6 +80,9 @@ async def apply_lead_rodo_on_ingest(
         )
         await db.flush()
         return
+    if evaluation.action == "review_required":
+        await db.flush()
+        return
     if evaluation.action in ("no_delivery_already_notified", "no_delivery_exempt"):
         await db.flush()
         return

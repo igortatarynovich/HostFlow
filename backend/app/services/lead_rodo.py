@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
 from typing import Any, Dict, Optional, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,7 +40,16 @@ def lead_normalized_rodo_block(normalized: Optional[Dict[str, Any]]) -> Dict[str
 
 # Negative delivery outcomes block gates even when ``sent_at`` remains for audit.
 LEAD_RODO_NEGATIVE_STATUSES: frozenset[str] = frozenset(
-    {"failed", "deferred", "undelivered", "pending_channel", "pending_policy"}
+    {
+        "failed",
+        "deferred",
+        "undelivered",
+        "pending_channel",
+        "pending_policy",
+        "review_required",
+        "delivery_required",
+        "delivery_failed",
+    }
 )
 
 LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING = "policy_template_missing"
@@ -65,13 +75,17 @@ def lead_rodo_satisfied_from_normalized(normalized: Optional[Dict[str, Any]]) ->
         return False
     if st in ("sent", "satisfied", "source_provided", "exempt"):
         return True
+    cs = str(block.get("compliance_state") or "").strip().lower()
+    if cs in ("delivered", "compliant", "exempt"):
+        return True
     return bool(str(block.get("sent_at") or "").strip())
 
 
 def lead_rodo_notice_status_from_normalized(normalized: Optional[Dict[str, Any]]) -> str:
     """
     UI / API contract:
-    ``sent`` | ``failed`` | ``deferred`` | ``pending_channel`` | ``manual_required`` | ``source_provided`` | ``exempt``.
+    ``sent`` | ``failed`` | ``deferred`` | ``pending_channel`` | ``manual_required``
+    | ``source_provided`` | ``exempt`` | ``review_required`` | ``delivery_required``.
     """
     block = lead_normalized_rodo_block(normalized if isinstance(normalized, dict) else {})
     st = str(block.get("status") or "").strip().lower()
@@ -79,6 +93,12 @@ def lead_rodo_notice_status_from_normalized(normalized: Optional[Dict[str, Any]]
         return "source_provided"
     if st == "exempt":
         return "exempt"
+    if st == "review_required":
+        return "review_required"
+    if st == "delivery_required":
+        return "delivery_required"
+    if st == "delivery_failed":
+        return "failed"
     if st == "deferred":
         return "deferred"
     if st in ("failed", "undelivered"):
@@ -95,10 +115,18 @@ def lead_rodo_notice_status_from_normalized(normalized: Optional[Dict[str, Any]]
 def mark_lead_rodo_pending_channel(lead: Lead, *, reason: str = "no_channel") -> None:
     from sqlalchemy.orm.attributes import flag_modified
 
+    now = datetime.now(timezone.utc).isoformat()
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
     block["status"] = "pending_channel"
     block["pending_reason"] = str(reason or "no_channel").strip()[:256]
+    block["compliance_state"] = "delivery_failed"
+    _merge_delivery_evidence(
+        block,
+        state="delivery_failed",
+        failure_reason=str(reason or "no_channel").strip()[:256],
+        recorded_at=now,
+    )
     norm["rodo"] = block
     lead.normalized = norm
     flag_modified(lead, "normalized")
@@ -130,13 +158,26 @@ def mark_lead_rodo_pending_policy(
     flag_modified(lead, "normalized")
 
 
-def mark_lead_rodo_failed(lead: Lead, *, reason: str) -> None:
+def mark_lead_rodo_failed(lead: Lead, *, reason: str, attempts: Optional[list] = None) -> None:
+    from sqlalchemy.orm.attributes import flag_modified
+
+    now = datetime.now(timezone.utc).isoformat()
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
     block["status"] = "failed"
     block["failure_reason"] = str(reason or "").strip()[:2000]
+    block["compliance_state"] = "delivery_failed"
+    extra: Dict[str, Any] = {
+        "state": "delivery_failed",
+        "failure_reason": str(reason or "").strip()[:2000],
+        "recorded_at": now,
+    }
+    if attempts:
+        extra["attempts"] = attempts
+    _merge_delivery_evidence(block, **extra)
     norm["rodo"] = block
     lead.normalized = norm
+    flag_modified(lead, "normalized")
 
 
 def mark_lead_rodo_undelivered(
@@ -166,6 +207,16 @@ def mark_lead_rodo_undelivered(
     block["failure_reason_code"] = code
     block["delivery_outcome"] = oc
     block["undelivered_at"] = now
+    block["compliance_state"] = "delivery_failed"
+    _merge_delivery_evidence(
+        block,
+        state="delivery_failed",
+        failure_reason=str(reason or "").strip()[:2000],
+        failure_reason_code=code,
+        delivery_outcome=oc,
+        recorded_at=now,
+        provider_event_id=str(provider_event_id).strip()[:255] if provider_event_id else None,
+    )
     if provider_event_id:
         block["delivery_feedback_event_id"] = str(provider_event_id).strip()[:255]
     norm["rodo"] = block
@@ -310,6 +361,20 @@ async def resolve_lead_controller_identity(
     return oc_id, name
 
 
+def _notice_content_hash(*, body: str, link: str) -> str:
+    return hashlib.sha256(f"{link}\n{body}".encode("utf-8")).hexdigest()
+
+
+def _merge_delivery_evidence(block: Dict[str, Any], **fields: Any) -> None:
+    prev = block.get("delivery_evidence")
+    evidence: Dict[str, Any] = dict(prev) if isinstance(prev, dict) else {}
+    for key, value in fields.items():
+        if value is None or value == "":
+            continue
+        evidence[str(key)] = value
+    block["delivery_evidence"] = evidence
+
+
 def _stamp_lead_rodo_sent(
     lead: Lead,
     *,
@@ -332,10 +397,39 @@ def _stamp_lead_rodo_sent(
     block["recipient"] = email
     block["rodo_version_id"] = rodo_version_id
     block["delivery"] = "communication_pipeline"
+    block["compliance_state"] = "delivered"
     if auto_trigger:
         block["auto_trigger"] = str(auto_trigger).strip()
     if ingest_source:
         block["ingest_source"] = str(ingest_source).strip()
+    extra_fields = dict(extra or {})
+    evidence_keys = (
+        "controller_name",
+        "controller_own_company_id",
+        "from_email",
+        "delivery_via",
+        "template_id",
+        "template_key",
+        "notice_hash",
+        "attempts",
+        "thread_id",
+        "application_id",
+        "sales_inquiry_id",
+    )
+    evidence: Dict[str, Any] = {
+        "state": "delivered",
+        "recipient": email,
+        "channel": channel,
+        "sent_at": now,
+        "notice_version_id": rodo_version_id,
+        "path": "communication_pipeline",
+    }
+    for key in evidence_keys:
+        val = extra_fields.get(key)
+        if val is None or val == "":
+            continue
+        evidence[key] = val
+    _merge_delivery_evidence(block, **evidence)
     if extra:
         for key, value in extra.items():
             if value is None or value == "":
@@ -346,16 +440,27 @@ def _stamp_lead_rodo_sent(
     flag_modified(lead, "normalized")
 
 
-def _delivery_fields_from_send_result(result: Any) -> Dict[str, str]:
+def _attempts_from_send_error(exc: Any) -> Optional[list]:
+    details = getattr(exc, "details", None)
+    if not isinstance(details, dict):
+        return None
+    raw = details.get("attempts")
+    return list(raw) if isinstance(raw, list) else None
+
+
+def _delivery_fields_from_send_result(result: Any) -> Dict[str, Any]:
     if result is None:
         return {}
-    out: Dict[str, str] = {}
+    out: Dict[str, Any] = {}
     via = getattr(result, "delivery_via", None)
     from_email = getattr(result, "from_email", None)
+    attempts = getattr(result, "delivery_attempts", None)
     if via:
         out["delivery_via"] = str(via)
     if from_email:
         out["from_email"] = str(from_email)
+    if attempts:
+        out["attempts"] = list(attempts)
     return out
 
 
@@ -751,7 +856,7 @@ async def _send_lead_rodo_via_sales_pipeline(
         send_result = await prepare_and_send_communication(db, command)
     except SendCommunicationError as exc:
         reason = exc.message or str(exc.details.get("reason") if exc.details else "") or "send_failed"
-        mark_lead_rodo_failed(lead, reason=reason)
+        mark_lead_rodo_failed(lead, reason=reason, attempts=_attempts_from_send_error(exc))
         await db.flush()
         await log_audit_event(
             db,
@@ -783,6 +888,8 @@ async def _send_lead_rodo_via_sales_pipeline(
             "thread_id": binding.thread_id,
             "controller_own_company_id": controller_own_company_id,
             "controller_name": controller_name,
+            "template_key": binding.template.template_id,
+            "notice_hash": _notice_content_hash(body=body, link=rodo_link),
             **delivery_fields,
         },
     )
@@ -953,7 +1060,7 @@ async def _send_lead_rodo_via_recruitment_pipeline(
             or str(exc.details.get("reason") if exc.details else "")
             or "send_failed"
         )
-        mark_lead_rodo_failed(lead, reason=reason)
+        mark_lead_rodo_failed(lead, reason=reason, attempts=_attempts_from_send_error(exc))
         await db.flush()
         await log_audit_event(
             db,
@@ -985,6 +1092,8 @@ async def _send_lead_rodo_via_recruitment_pipeline(
             "thread_id": binding.thread_id,
             "controller_own_company_id": controller_own_company_id,
             "controller_name": controller_name,
+            "template_key": binding.template.template_id,
+            "notice_hash": _notice_content_hash(body=body, link=rodo_link),
             **delivery_fields,
         },
     )
@@ -1070,6 +1179,7 @@ def mark_lead_rodo_source_provided(
     block: Dict[str, Any] = {**prev} if prev else {}
     now = datetime.now(timezone.utc).isoformat()
     block["status"] = "source_provided"
+    block["compliance_state"] = "compliant"
     block["source_provided_at"] = now
     if actor_id:
         block["source_provided_by"] = str(actor_id).strip()
