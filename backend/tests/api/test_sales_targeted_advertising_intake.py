@@ -297,20 +297,41 @@ async def test_constructor_b2b_form_questionnaire_invite_flow(
     lead = await _create_meta_client_lead(tenant_id)
     lead_id = str(lead.id)
 
+    form_id = str(created.get("form", {}).get("id") or created.get("id") or "")
     invite_resp = await client.post(
         f"/api/v1/leads/{lead_id}/questionnaire-invite",
         headers=manager_headers,
-        json={"mark_sent": True},
+        json={"mark_sent": True, **({"lead_form_id": form_id} if form_id else {})},
     )
     assert invite_resp.status_code == 200, invite_resp.text
     token = invite_resp.json()["token"]
     assert token
 
-    get_resp = await client.get(f"/api/v1/public/apply/{token}")
+    # Operator CRM headers must not hijack public apply (logged-in tester / leftover tenant).
+    foreign_headers = {"X-Tenant-Id": "00000000-0000-0000-0000-000000000000"}
+    get_resp = await client.get(f"/api/v1/public/apply/{token}", headers=foreign_headers)
     assert get_resp.status_code == 200, get_resp.text
     body = get_resp.json()
     assert body.get("form_presentation", {}).get("entity_profile_code") == TARGETED_ADVERTISING_PROFILE_CODE
     assert body.get("form_presentation", {}).get("presentation_code") == expected_presentation
+
+    put_resp = await client.put(
+        f"/api/v1/public/apply/{token}",
+        headers=foreign_headers,
+        json={"data": {"presentation_values": _sales_presentation_values(), "application_kind": "client"}},
+    )
+    assert put_resp.status_code == 200, put_resp.text
+
+    submit_resp = await client.post(
+        f"/api/v1/public/apply/{token}/submit",
+        headers=foreign_headers,
+        json={
+            "consents": {"general": True, "employer_share": True, "terms_acceptance": True},
+            "cookies_accepted": True,
+        },
+    )
+    assert submit_resp.status_code == 200, submit_resp.text
+    assert submit_resp.json().get("status") == "submitted"
 
     async with async_session_maker() as session:
         intake_profile = await session.scalar(
@@ -322,3 +343,6 @@ async def test_constructor_b2b_form_questionnaire_invite_flow(
         assert intake_profile is not None
         assert intake_profile.form_type == "sales_questionnaire"
         assert intake_profile.lead_target_type == "client_lead"
+        refreshed = await leads_crud.get_lead(session, tenant_id=tenant_id, lead_id=lead_id)
+        assert refreshed is not None
+        assert (refreshed.normalized or {}).get("sales_questionnaire_status") == "submitted"

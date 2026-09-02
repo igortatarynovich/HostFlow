@@ -200,5 +200,44 @@ async def test_c6_non_hostflow_returns_none_without_resolve() -> None:
     assert out is None
 
 
+@pytest.mark.asyncio
+async def test_c6_constructor_form_without_ledger_skips_execution() -> None:
+    """Marketing Forms create sets published_version=1 without a C6 ledger row."""
+    from backend.app.db.session import async_session_maker
+    from backend.app.models.tenant_lead_form import TenantLeadForm
+    from backend.tests.conftest import _init_data
+
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    form_id = str(uuid4())
+    async with async_session_maker() as session:
+        session.add(
+            TenantLeadForm(
+                id=form_id,
+                tenant_id=tenant_id,
+                title="Constructor B2B",
+                public_slug=f"ctor-{form_id[:8]}",
+                is_active=True,
+                lifecycle_status="active",
+                purpose="inquiry",
+                published_version=1,
+            )
+        )
+        await session.commit()
+
+    intake_state = {
+        "lead_form": {"id": form_id, "public_slug": f"ctor-{form_id[:8]}"},
+        "presentation_values_v1": {"service_sales.targeted_advertising.need_type": "x"},
+    }
+    async with async_session_maker() as session:
+        out = await maybe_execute_hostflow_form_public_submit(
+            session,
+            tenant_id=tenant_id,
+            intake_state=intake_state,
+            idempotency_key=f"ctor-{form_id}",
+        )
+    assert out is None
+
+
 def test_c6_gate_filename() -> None:
     assert Path(__file__).name == "test_forms_c6_optimization_gate.py"

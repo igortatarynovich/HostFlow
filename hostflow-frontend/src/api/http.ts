@@ -17,12 +17,30 @@ export const http = axios.create({
   timeout: 20000,
 })
 
+function isAnonymousPublicIntakePath(url?: string): boolean {
+  const path = String(url || '')
+  return (
+    path.includes('/public/apply/') ||
+    path.includes('/public/status/') ||
+    path.includes('/public/magic-link/')
+  )
+}
+
 http.interceptors.request.use((config) => {
   config.headers = config.headers ?? {}
 
   // Critical: let browser set correct boundary for FormData
   if (config.data instanceof FormData) {
     delete (config.headers as any)['Content-Type']
+  }
+
+  // Public apply/status must not inherit the operator CRM session: leftover
+  // X-Tenant-Id / Bearer can bind the wrong RLS tenant and 404 submit.
+  if (isAnonymousPublicIntakePath(config.url)) {
+    delete (config.headers as any)['Authorization']
+    delete (config.headers as any)['X-Tenant-Id']
+    config.withCredentials = false
+    return config
   }
 
   const token = getStoredAccessToken()

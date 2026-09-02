@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.forms_platform.adapter import resolve_publication
+from backend.app.forms_platform.errors import FormsNotFoundError, FormsVersionNotFoundError
 from backend.app.forms_platform.execution import persist_execution
 from backend.app.forms_platform.runtime import serve
 
@@ -64,19 +65,25 @@ async def maybe_execute_hostflow_form_public_submit(
 
     Returns None when the session is not a HostFlow Form publication submit
     (unbound / Meta / questionnaire stay outside this bridge).
-    Fail-closed on FormsAdapterError for bound HostFlow Forms.
+    Constructor Entity Profile forms have a TenantLeadForm pointer (published_version=1)
+    but no ``form_publication_versions`` ledger row — skip C6 and let Shared Intake
+    dispatch create the Sales inquiry. Fail-closed on other FormsAdapterError when a
+    frozen publication exists (inactive / archived / stale pin).
     """
     if not is_hostflow_form_public_submit(intake_state):
         return None
 
     form_id, public_slug = hostflow_form_keys_from_intake_state(intake_state)
-    publication = await resolve_publication(
-        db,
-        tenant_id=str(tenant_id),
-        form_id=form_id,
-        public_slug=public_slug if not form_id else None,
-        require_active=True,
-    )
+    try:
+        publication = await resolve_publication(
+            db,
+            tenant_id=str(tenant_id),
+            form_id=form_id,
+            public_slug=public_slug if not form_id else None,
+            require_active=True,
+        )
+    except (FormsVersionNotFoundError, FormsNotFoundError):
+        return None
     model = serve(publication)
     return await persist_execution(
         db,
