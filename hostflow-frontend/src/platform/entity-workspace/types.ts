@@ -247,7 +247,7 @@ export type ContextRailTaskItem = EntityContextRailTaskItem
 /** @deprecated */
 export type ContextRailEventItem = EntityContextRailEventItem
 
-export const DEFAULT_ENTITY_CONTEXT_RAIL_WIDTH_PX = 360
+export const DEFAULT_ENTITY_CONTEXT_RAIL_WIDTH_PX = 440
 
 /** @deprecated */
 export const DEFAULT_CONTEXT_RAIL_WIDTH_PX = DEFAULT_ENTITY_CONTEXT_RAIL_WIDTH_PX

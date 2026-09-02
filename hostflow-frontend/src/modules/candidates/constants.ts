@@ -5,8 +5,7 @@
 import { CRM_APP_DRILLDOWN_HREFS } from '../../app/crmAppPaths'
 
 /** Правый work-panel: ширина колонки грида и `max-width` aside (должны совпадать). */
-/** §2.13: slightly narrower rail so the table stays primary. */
-export const CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX = 380
+export const CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX = 440
 
 export const DOC_READINESS_META: Record<string, { labelKey: string; className: string }> = {
   pending: { labelKey: 'app.candidates.docs.readiness.pending', className: 'bg-gray-100 text-gray-600' },

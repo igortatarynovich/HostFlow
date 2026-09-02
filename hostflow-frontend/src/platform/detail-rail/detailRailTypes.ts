@@ -49,7 +49,7 @@ export function isDetailRailFixedBlock(blockId: DetailRailBlockId): boolean {
   return DETAIL_RAIL_FIXED_SET.has(blockId)
 }
 
-export const DEFAULT_DETAIL_RAIL_WIDTH_PX = 380
+export const DEFAULT_DETAIL_RAIL_WIDTH_PX = 440
 
 export type DetailRailHeaderModel = {
   title: string
