@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import type { Icon as TablerIcon } from '@tabler/icons-react'
 import {
@@ -485,6 +485,21 @@ export function Sidebar({
     return isActive
   }
 
+  const railRef = useRef<HTMLDivElement>(null)
+  const [railWidth, setRailWidth] = useState(0)
+
+  useLayoutEffect(() => {
+    const el = railRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      setRailWidth(el.offsetWidth)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   const handleNavigate = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       onClose()
@@ -625,17 +640,19 @@ export function Sidebar({
     <>
       <div
         className={clsx(
-          'relative z-[100] h-full w-0 shrink-0 overflow-hidden bg-brand-900 transition-[width] duration-300',
-          open && 'lg:w-max',
+          'relative z-[100] h-full w-0 shrink-0 bg-brand-900 transition-[width] duration-300 ease-out max-lg:!w-0',
+          open && railWidth === 0 && 'lg:w-max',
         )}
+        style={railWidth > 0 ? { width: open ? railWidth : 0 } : undefined}
         aria-hidden={!open}
       >
         <div
+          ref={railRef}
           className={clsx(
-            'flex h-full w-max max-w-sm flex-col bg-brand-900 px-3 text-white transition-transform duration-300',
-            open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+            'flex h-full w-max max-w-sm flex-col bg-brand-900 px-3 text-white transition-transform duration-300 ease-out',
+            open ? 'translate-x-0' : '-translate-x-full pointer-events-none',
             'fixed inset-y-0 left-0',
-            'lg:static lg:max-w-none',
+            'lg:max-w-none',
           )}
         >
           <div className="py-3">
