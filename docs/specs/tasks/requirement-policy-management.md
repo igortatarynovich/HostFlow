@@ -10,7 +10,8 @@
 > First Product from the [Release DAG](../gates/hostflow-v1-release-goal.md), scheduled after [#328](https://github.com/igortatarynovich/HostFlow/pull/328).  
 > Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin.  
 > E8-eval already evaluates D4 from R5 `merge(pack, tenant_delta)`. This program gives the operator **one** write of that authority (base, override, reason, result) and collapses parallel answerers.  
-> **Not** Mapping Authority. **Not** External Intake. **Not** Hiring E2E. **Not** min HR. **Not** CL8. **Not** a Hub packages table. **Not** Overlay rewrite. **Not** reopening E8-eval / R5.
+> **Not** Mapping Authority. **Not** External Intake. **Not** Hiring E2E. **Not** min HR. **Not** CL8. **Not** a Hub packages table. **Not** Overlay rewrite. **Not** reopening E8-eval / R5.  
+> **Not** intake qualification / Meta screening / `lead_criteria_v1`. Documents domain first; a later RPM domain may evaluate canonical facts for fit — that domain is not this program and is not scheduled here.
 
 ---
 
@@ -22,7 +23,7 @@ Nine live answerers still reply to “must this candidate provide type X for thi
 **Completion proof (named consumer):**  
 **Candidate Entity Workspace — D4 Documents surface** (`/app/candidates/:id` documents zone) **plus** one operator overlay that writes the **same** R5 merge D4 already reads. Operator sets base / override / reason; D4 result changes; remaining document-requirement consumers do not contradict. Proof is **not** Recruitment Application G4, not a new Hiring Product, not Mapping editors.
 
-**False close (reject):** Documents Admin separate from Rules Admin; minting a Hub packages table; treating Overlay rewrite as RPM; CL8; reopening E8-eval / R5; walking Hiring E2E without the overlay; starting Mapping / Intake / min HR “while we are here”; Foundation ✅.
+**False close (reject):** Documents Admin separate from Rules Admin; minting a Hub packages table; treating Overlay rewrite as RPM; CL8; reopening E8-eval / R5; walking Hiring E2E without the overlay; starting Mapping / Intake / min HR “while we are here”; Foundation ✅; folding intake qualification, Meta screening rules, or `lead_criteria_v1` into RPM-1 so document requirements also answer “does this lead fit?”; treating recruiter Result / Why / Facts as this program’s named consumer.
 
 ---
 
@@ -77,9 +78,22 @@ PASS when:
 2. The operator question and write authority above are the SoT.  
 3. The nine-row classification is unchanged except by a later RPM slice that **retires** a leftover — not by adding a tenth write.  
 4. No Documents Admin vs Rules Admin split; no Hub packages table; no Overlay rewrite; no CL8; E8-eval / R5 not reopened.  
-5. Mapping / Intake / Hiring E2E / min HR are not this slice.
+5. Mapping / Intake / Hiring E2E / min HR are not this slice.  
+6. Intake qualification / screening / `lead_criteria_v1` are not this slice and are not a tenth write on the table above.
 
 This amendment **opens** the brief. It does **not** mark the Authority Gate PASS. Feat remains locked.
+
+### Boundary — not this program (normative)
+
+RPM-1’s operator question stays **document type X required?** Overlay + screening pack stays **Not this write**. `lead_criteria_v1` (`fit` / `no_fit` / `needs_info` on vacancy extra) answers a **different** question — inbound qualification against facts — and is **not** a tenth RPM-1 answerer.
+
+Do not pull screening into RPM-1. That would make one Documents domain also own qualification, leave `lead_criteria_v1` as a parallel answerer, and create a new split instead of collapsing the nine.
+
+A later RPM **domain** (not a slice of this ladder, not scheduled here) may let the operator set acceptance conditions on **canonical facts** (required / preferred / advantage) once [Mapping Authority](mapping-authority.md) supplies those facts. Until then:
+
+- Evaluation of document requirements reads R5 merge + document facts, as E8-eval already does.
+- Evaluation must not read Meta / provider payload. Mapping uncertainty is not candidate failure — that rule is sealed on the Mapping brief; RPM-1 does not implement it.
+- Recruiter Result / Why / Facts / source evidence is the **target object** for intake after Mapping is consumed. It is **not** RPM-1 proof (D4 Documents + one overlay remains).
 
 ---
 
@@ -115,7 +129,7 @@ Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ sch
 **Depends on:** E8-eval Gate ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · DAG dependency-position [#328](https://github.com/igortatarynovich/HostFlow/pull/328)  
 **Active this amendment:** RPM-1 (brief; feat locked)  
 **Queued inside this program:** RPM-2 → RPM-3  
-**Does not:** schedule Mapping; mint RPM → Mapping as an acceptance edge; start Hiring E2E / Intake / min HR; invent CL8; mint a packages table; rewrite Overlay / CL7 / DR1 / E8-eval / R5; mark Foundation ✅
+**Does not:** schedule Mapping; mint RPM → Mapping as an acceptance edge; start Hiring E2E / Intake / min HR; invent CL8; mint a packages table; rewrite Overlay / CL7 / DR1 / E8-eval / R5; mark Foundation ✅; open intake qualification as a second RPM-1 question; fold `lead_criteria_v1` into the nine-row table
 
 ---
 
@@ -125,3 +139,4 @@ Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ sch
 - [Dependency-position review](../gates/v1-release-dag-dependency-position.md) — why RPM is first; Mapping startable but must not precede  
 - [E8-eval](documents-platform-e8-eval.md) — evaluation runtime this program operates  
 - [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) — Admin UI for policy was out of Slice 1; this program is that operator job for Documents  
+- [Mapping Authority](mapping-authority.md) — canonical facts this capability will later consume for qualification; not this write; not scheduled by this brief  
