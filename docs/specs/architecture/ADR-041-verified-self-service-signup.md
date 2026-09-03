@@ -1,7 +1,8 @@
 # ADR-041: Verified self-service signup (SignupIntent → Tenant trial)
 
-**Status:** Accepted (canon sealed; runtime not started)
+**Status:** Accepted — **Contract Seal DONE**; runtime **NOT STARTED**
 **Date:** 2026-09-03
+**Next executable work (unlock ≠ schedule):** security taxonomy / enforcement prerequisite, then persistence. Not Active Product; Product Track remains elsewhere until this slice is named.
 **Trusted base:** `integration/release-product-a-b`
 **Does not supersede:** [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md) · [`ADR-034`](ADR-034-self-service-public-funnels.md) · [`ADR-036`](ADR-036-four-trust-roles-rbac.md) · [`ADR-039`](ADR-039-tenant-data-lifecycle.md)
 **Related:** [`../plans-matrix.md`](../plans-matrix.md) · [`../journeys/self-service-success-path.md`](../journeys/self-service-success-path.md) · [`../own-company-model.md`](../own-company-model.md) · [`../modules/tenants.md`](../modules/tenants.md) · [`verified-self-service-signup.md`](../../security/threat-models/verified-self-service-signup.md) · [`hostflow-v1-release-goal.md`](../gates/hostflow-v1-release-goal.md)
@@ -25,6 +26,8 @@ That path has three architectural defects for a B2B SaaS:
 HostFlow already has the right *authorities* once a tenant exists: trial is a **tenant** entitlement (`TenantLicense.plan=trial`, `Tenant.status=trial`), invited users join an existing tenant, and expiry must not lock login ([`plans-matrix.md`](../plans-matrix.md) §6, `billing_restrictions`). What is missing is a pre-tenant identity object and a public contract that creates the tenant only after a verified email and a completed registration.
 
 This ADR seals that contract. It does not start runtime.
+
+**Contract Seal DONE (2026-09-03).** Threat model sealed. Runtime NOT STARTED. Boundary is not reopened for another design round. §12 records three **runtime gates** (trial calendar, idempotent complete, invite consume) — not a new design.
 
 ---
 
@@ -59,7 +62,7 @@ SignupIntent  ≠  User  ≠  Tenant  ≠  TenantLicense/trial  ≠  OwnCompany
 | **User** | Login identity (`users.email` globally unique) | Successful complete |
 | **Tenant** | Workspace / billing boundary (ADR-003) | Same commit as User |
 | **Membership** | Trust role `administrator` (ADR-036; `owner` is an alias, not a stored role) | Same commit |
-| **TenantLicense** | Entitlement SoT; `plan=trial`, `expires_at = date(now)+30` | Same commit; **this** is trial start |
+| **TenantLicense** | Entitlement SoT; `plan=trial`, `expires_at` = calendar `date(now_utc)+30` (`Date` column, not datetime) | Same commit; **this** is trial start |
 | **OwnCompany** | Operating company (not billing) | Same commit (name + country) |
 
 `Tenant.status=trial` is set in that same commit. It is a tenant access flag, **not** a SignupIntent state and **not** a User flag (`is_trial` is forbidden).
@@ -137,20 +140,18 @@ Country and company on complete **satisfy** ADR-034’s short company-identity f
 1. User (`email` verified, `password_hash`, `role=administrator`, `preferences={}`)
 2. Tenant (`status=trial`, workspace label)
 3. `user_memberships` role `administrator`
-4. `TenantLicense` `plan=trial`, `expires_at` from `now()` + 30 days, Team-equivalent trial caps already defined in plans-matrix / current trial license defaults
+4. `TenantLicense` `plan=trial`, `expires_at = date(now_utc) + 30 days` (RG-1), Team-equivalent trial caps already defined in plans-matrix / current trial license defaults
 5. First OwnCompany (name + country)
 
 Then, and only then:
 
-- `trial_started_at` conceptually = commit time (persisted as license `expires_at` and existing billing subscription fields; do not add a parallel trial table)
+- Trial start = that commit. Persist the clock only on existing TenantLicense / billing fields; do not add a parallel trial table or a datetime twin of `expires_at`
 - Intent → `ACCOUNT_CREATED`
-- App session issued; buyer lands in the product readiness UI (ADR-034), not an 8-step wizard
+- App session issued **only** under RG-2; buyer lands in the product readiness UI (ADR-034), not an 8-step wizard
 
 Failure of any insert rolls back **all**. Partial User-without-Tenant or Tenant-without-license is a defect.
 
-Complete is **idempotent** for the same verified intent: a second complete after `ACCOUNT_CREATED` returns the existing account (or a safe “already created, log in”) and must not mint a second tenant or a second trial.
-
-Concurrent completes take a row lock on the intent (or equivalent unique constraint) so only one commit wins.
+Concurrent completes take a row lock on the intent (or equivalent unique constraint) so only one commit wins. Idempotent retry after commit is RG-2, not “anyone with `intent_id` gets a JWT”.
 
 ### 6. Email collisions: existing User vs pending invite
 
@@ -160,10 +161,10 @@ Concurrent completes take a row lock on the intent (or equivalent unique constra
 |--------------------------------------------------|-------------------|
 | No User, no pending invite | Normal verification → complete → new tenant + trial |
 | User already exists | Enumeration-safe HTTP envelope. Mail is “you already have an account” / login or reset. **No** new Tenant, **no** new trial |
-| Pending `UserInvite` for that email | Enumeration-safe HTTP envelope. Mail is join/invite, not create-workspace. Complete **must not** create a tenant. Invite-accept remains the join path |
+| Applicable pending **UserInvite** (RG-3) | Enumeration-safe HTTP envelope. Mail is join/invite, not create-workspace. Complete **must not** create a tenant. Invite-accept remains the join path |
 | Both User and invite | Join/login path; never a second trial |
 
-Invite-accept **never** creates a Tenant or a `TenantLicense(plan=trial)`. Invited users consume the existing tenant entitlement.
+Invite-accept **never** creates a Tenant or a `TenantLicense(plan=trial)`. Invited users consume the existing tenant entitlement. Signup **consumes** Users invite authority (RG-3); it does not own a second invite model.
 
 ### 7. Enumeration and abuse (normative)
 
@@ -176,6 +177,8 @@ Invite-accept **never** creates a Tenant or a `TenantLicense(plan=trial)`. Invit
 ### 8. Cutover of `POST /api/v1/auth/register`
 
 Until runtime cutover, the current handler is the **legacy** Growth path and is known-inconsistent with this ADR.
+
+**`/register` retirement is part of the same cutover as the new public flow, not a later cleanup.** While the old endpoint can anonymously create Tenant + trial, the verification flow is **not** yet a security boundary (SI-13). Frontend cutover and register retirement ship together.
 
 After cutover:
 
@@ -219,28 +222,39 @@ These are defects if a runtime PR violates them:
 | Rule | Enforcement (runtime slice, not this PR) |
 |------|------------------------------------------|
 | No User/Tenant on intent/verify | Tests: intent/verify leave `users` / `tenants` / `tenant_licenses` unchanged |
-| Trial clock = complete commit | Tests: license `expires_at` unset until complete; then `now+30d` |
+| Trial clock = complete commit (RG-1) | Tests: license `expires_at` unset until complete; then **calendar** `date(now_utc)+30`, matching `Date` column — not a datetime `now+30d` twin |
 | Token hash / one-time / resend rotate | Tests: plaintext absent; replay 410/401; resend invalidates old |
 | Enumeration | Tests: unknown / existing / invited emails share envelope |
-| Invite does not trial | Tests: accept-invite creates no TenantLicense trial row |
-| Single public create path after cutover | Tests + guard: unauthenticated tenant+trial create only via complete |
+| Invite does not trial (RG-3) | Tests: complete refuses when Users invite authority reports applicable pending `UserInvite`; accept-invite creates no TenantLicense trial row; signup does not query other invite tables |
+| Single public create path after cutover | Tests + guard: unauthenticated tenant+trial create only via complete; `/register` retired in the **same** cutover |
 | Concurrent complete | Unique email + intent row lock; one tenant |
+| Idempotent complete (RG-2) | Retry with the **same valid registration session** after commit may return the created result; complete with `intent_id` and no valid registration session **must not** mint a JWT |
 | Atomicity | Transaction test: forced failure leaves zero of the five objects |
 | Role | Complete membership role is `administrator` |
 | Country | Country code from Platform Reference; no new dictionary table |
-| Security telemetry | Taxonomy PR, then `emit_security_event_v1` on intent/verify/complete/resend/deny |
+| Security telemetry | Taxonomy PR **before** persistence/API, then `emit_security_event_v1` on intent/verify/complete/resend/deny |
 
-Runtime order after this docs seal (normative sequence, not scheduled here):
+Runtime order after this docs seal (**normative sequence**, unlock ≠ schedule; not named Active Product here):
 
+0. Security taxonomy / enforcement prerequisite (`emit_security_event_v1` types; no raw `emit_security_event`)
 1. Persistence (SignupIntent)
-2. API contract + enforcement (rate limit, Turnstile, token hash)
-3. Atomic completion
-4. Mail delivery
-5. Frontend cutover (`/signup` email-first)
-6. Retirement of public `/auth/register`
-7. Tests listed above
+2. Public API + enforcement (rate limit, Turnstile, token hash, registration session)
+3. Atomic provision (complete)
+4. System mail
+5. Frontend cutover (`/signup` email-first) **and** public `/auth/register` retirement **in the same cutover**
+6. Adversarial / contract tests listed above
 
-Do not start (5) or (6) before (3). Do not leave (6) undone if (5) is the live Growth CTA.
+Do not start frontend cutover while `/register` still mints Tenant+trial. Do not treat register retirement as a follow-up cleanup PR after the new flow is live.
+
+### 12. Runtime gates (not a design reopening)
+
+These bind the runtime slice. They do not change §1–§10.
+
+**RG-1 — one trial-end semantics.** `TenantLicense.expires_at` is `Date`. Complete writes `date(now_utc) + 30`. Tests assert that calendar date. End-of-day / grace for side-effect gates stays the existing `billing_restrictions` reading of that date. If this column were datetime, the clock would be `starts_at/created_at + 30 days` — it is not; do not implement a second 30-day interpretation beside the date column.
+
+**RG-2 — idempotent complete is not a JWT oracle.** Happy path: `EMAIL_VERIFIED` + valid registration session → transaction → `ACCOUNT_CREATED`. After commit, a **network retry on the same valid registration context** may return the already-created result (and may include the Auth session because possession was already proved). A later or unauthenticated `complete` keyed only by `intent_id` (expired/missing/foreign registration session) must **not** mint a JWT; it may say “already created, log in”.
+
+**RG-3 — pending invite has one authority.** Signup asks Users invite authority one question: is there an **applicable pending** `UserInvite` for the normalized email (`revoked_at` and `accepted_at` null, not expired — same predicates the invite owner already uses). Signup **consumes** that answer. It must not search `lead_questionnaire_invite`, candidate `magic_links`, or any other invite-shaped table. If a dedicated read helper does not exist yet, add it on the Users invite owner in the runtime PR; do not inline a second predicate set inside signup.
 
 ---
 
@@ -307,4 +321,5 @@ This slice does **not** create a new domain. It specifies how existing domains a
 
 ## History
 
+- 2026-09-03: Contract Seal DONE. Runtime gates RG-1…RG-3 (calendar trial date; idempotent complete ≠ JWT oracle; consume `UserInvite` authority). Runtime queue: taxonomy → persistence → API → atomic provision → mail → frontend cutover **with** `/register` retirement → tests. Runtime NOT STARTED.
 - 2026-09-03: Accepted (canon sealed; runtime not started). SignupIntent pre-tenant; trial starts only on atomic complete; legacy `/auth/register` retired at cutover; candidate magic links, Billing checkout, and long onboarding out of slice.

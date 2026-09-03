@@ -4,7 +4,9 @@
 **Parent ADR:** [`docs/specs/architecture/ADR-041-verified-self-service-signup.md`](../../specs/architecture/ADR-041-verified-self-service-signup.md)
 **Related:** [`public-links.md`](./public-links.md) · [`candidate-portal.md`](./candidate-portal.md) (do **not** reuse) · [`rbac-trust-roles.md`](./rbac-trust-roles.md) · [`interactive-demo.md`](./interactive-demo.md) · [`security-events-governance.md`](../security-events-governance.md)
 
-Runtime of this surface is a **security-perimeter** change (unauthenticated routes, email tokens, cookies). **STOP** on Adapter/UI without this model, rate limits, Turnstile, hashed one-time tokens, and `emit_security_event_v1` taxonomy for intent / verify / complete / resend / deny. This file is the seal-time model; deepen it in the same PR that starts runtime.
+**Status:** Contract Seal DONE (ADR-041 Accepted); runtime **NOT STARTED**. Deepen this file in the same PR that starts runtime; do not reopen the signup boundary for a new design round.
+
+Runtime of this surface is a **security-perimeter** change (unauthenticated routes, email tokens, cookies). **STOP** on Adapter/UI without this model, rate limits, Turnstile, hashed one-time tokens, and `emit_security_event_v1` taxonomy for intent / verify / complete / resend / deny. Taxonomy PR is the **first** runtime step.
 
 Candidate `magic_links`, password-reset tokens, and invite tokens are **adjacent** surfaces. They must not share tables, cookies, or token namespaces with SignupIntent.
 
@@ -27,7 +29,7 @@ Candidate `magic_links`, password-reset tokens, and invite tokens are **adjacent
 - Existing User / pending invite vs new buyer (must not leak which)
 - Invite-accept (authenticated join) vs Growth complete (new tenant)
 - Superadmin provision vs Growth self-service
-- Legacy `POST /auth/register` until retired (bypass if left live)
+- Legacy `POST /auth/register` until retired **in the same cutover** as the new flow (bypass if left live)
 
 SignupIntent is **not** inside tenant RLS. Compromise of the platform DB exposes all open intents. Treat as platform-secret storage: hash tokens, minimise TTL, restrict superadmin read + audit.
 
@@ -60,13 +62,13 @@ SignupIntent is **not** inside tenant RLS. Compromise of the platform DB exposes
 
 **Abuse (SI-4, SI-5, SI-11).** Turnstile on intent and resend when enabled. Existing `auth:signup` rate limit applies to intent, resend, and complete. Password policy unchanged (min length already on register). Lock or slow down complete after N failures per intent.
 
-**Atomicity (SI-6, SI-7).** One open intent per normalized email (unique partial index or equivalent). Complete: `SELECT … FOR UPDATE` (or equivalent) on the intent row; unique `users.email`; single transaction for the five objects. Second complete is idempotent, not a second tenant.
+**Atomicity (SI-6, SI-7, RG-2).** One open intent per normalized email (unique partial index or equivalent). Complete: `SELECT … FOR UPDATE` (or equivalent) on the intent row; unique `users.email`; single transaction for the five objects. A **retry of the same valid registration session** after commit may return the created account. Complete keyed only by `intent_id` without that session **must not** mint a JWT.
 
-**Identity collisions (SI-8, SI-9).** Existing User → no Tenant create. Pending invite → invite mail / accept path only. Complete refuses `ACCOUNT_CREATED` unless the intent is `EMAIL_VERIFIED` and no User/invite-create conflict applies.
+**Identity collisions (SI-8, SI-9, RG-3).** Existing User → no Tenant create. Applicable pending invite = Users **`UserInvite` authority only** (revoked/accepted/expiry predicates the invite owner already uses). Signup consumes that read; it does not scan questionnaire invites, candidate `magic_links`, or other invite-shaped tables. Complete refuses `ACCOUNT_CREATED` when that authority says pending. Invite-accept remains the join path.
 
-**Session (SI-10).** Registration session is opaque, intent-bound, HttpOnly, Secure, SameSite, not a tenant JWT, not usable on `/api/v1` business routes. Complete is SameSite-protected; if cookie auth is used, require a custom header or equivalent CSRF defense. Successful complete **replaces** the registration cookie with the normal Auth session (do not keep both). Verify must not accept an attacker-supplied session id as “already verified”.
+**Session (SI-10, RG-2).** Registration session is opaque, intent-bound, HttpOnly, Secure, SameSite, not a tenant JWT, not usable on `/api/v1` business routes. Complete is SameSite-protected; if cookie auth is used, require a custom header or equivalent CSRF defense. Successful complete **replaces** the registration cookie with the normal Auth session (do not keep both). Verify must not accept an attacker-supplied session id as “already verified”. Idempotent complete is not a second way to mint JWT without proving that session.
 
-**Trial (SI-12, SI-13).** Trial starts only in the complete commit via `TenantLicense.plan=trial` + `Tenant.status=trial`. No trial on intent/verify. After cutover, unauthenticated Tenant+trial create exists only on complete; legacy `/register` is 410/removed; guard test. Invite-accept does not write a trial license. Domain-wide farming is residual (below).
+**Trial (SI-12, SI-13, RG-1).** Trial starts only in the complete commit via `TenantLicense.plan=trial` + `Tenant.status=trial`. `expires_at` is **calendar** `date(now_utc)+30` (`Date` column). No datetime twin; gates keep reading that date through existing `billing_restrictions`. No trial on intent/verify. Frontend cutover and legacy `/register` retirement are the **same** cutover; until then the verification flow is not a security boundary. Invite-accept does not write a trial license. Domain-wide farming is residual (below).
 
 **Birth role (SI-14).** Complete membership/user role is `administrator` only (ADR-036). Contract test.
 
@@ -86,17 +88,18 @@ SignupIntent is **not** inside tenant RLS. Compromise of the platform DB exposes
 
 - Intent / verify do not insert User, Tenant, or TenantLicense
 - Verify does not set license `expires_at` / trial clocks
-- Complete sets `plan=trial` and `expires_at = today+30` in the same commit
+- Complete sets `plan=trial` and calendar `expires_at = date(now_utc)+30` (`Date`), not a datetime `now+30d`
 - Replay token after verify or resend → deny
 - Resend invalidates the prior token
 - Unknown vs existing vs invited email: identical HTTP envelope
 - Existing User cannot complete a new tenant
-- Pending invite cannot complete a new tenant; accept-invite creates no trial license
+- Pending `UserInvite` (Users authority only) cannot complete a new tenant; accept-invite creates no trial license
 - Parallel complete: one tenant
 - Forced mid-transaction failure: zero leftover rows of the five objects
 - Registration session rejected on business APIs
-- Complete without session → deny
-- After cutover: `POST /auth/register` does not create a tenant (410 or absent)
+- Complete without session → deny (including after `ACCOUNT_CREATED`: no JWT)
+- Same registration session retry after commit may return the created result
+- After **same** cutover: `POST /auth/register` does not create a tenant (410 or absent)
 - Turnstile required when enabled
 - Rate limit on intent/resend/complete
 - Role at birth is `administrator`
