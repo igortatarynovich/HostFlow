@@ -5,8 +5,10 @@
 # - frontend is served from an immutable published tree, not the checkout dist/;
 # - env_file is an absolute path outside every build context (OL-2 / R-2).
 #
-# Usage (from repo root, after scripts/deploy/build-release-artefacts.sh):
-#   docker compose -f deploy/compose.release.yml up -d
+# Usage (from repo root, after load-release-artefacts.sh — RB-1):
+#   docker compose -p hostflow-release -f deploy/compose.release.yml up -d --no-build db redis
+#   alembic -c alembic.ini upgrade heads   # host-side, HOSTFLOW_DB_PORT (default 55435)
+#   docker compose -p hostflow-release -f deploy/compose.release.yml up -d --no-build
 
 name: hostflow-release
 
@@ -27,6 +29,9 @@ services:
       POSTGRES_USER: hostflow
       POSTGRES_PASSWORD: hostflow
       POSTGRES_DB: hostflow
+    ports:
+      # Host-side Alembic (RB-1 / RB-2). Never 5432 — that is the live stack.
+      - "127.0.0.1:${HOSTFLOW_DB_PORT:-55435}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

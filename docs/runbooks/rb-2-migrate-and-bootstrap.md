@@ -70,8 +70,9 @@ Expand-only migrations (including `202608310001_bootstrap_admin_schema`) do
 
 ### C. Optional compose walk
 
-`deploy/compose.release.yml` starts the same image and published frontend.
-Alembic remains a host-side step (`compose` starts uvicorn only).
+The artefact half is [RB-1](rb-1-deploy-release-build.md): load from the store,
+start `db`/`redis` only, host-side Alembic, then backend/caddy.
+`HOSTFLOW_DB_PORT` (default 55435) is published for that Alembic step.
 
 ---
 

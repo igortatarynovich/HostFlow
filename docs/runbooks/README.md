@@ -15,7 +15,7 @@
 
 | # | Runbook | Answers | Owner | Written by | Status |
 |---|---------|---------|-------|------------|--------|
-| **RB-1** | Deploy a release build | RR3 | igortatarynovich | [OL-2](../specs/tasks/operate-and-launch.md) | **MISSING** — only [FRONTEND_DEPLOY.md](../FRONTEND_DEPLOY.md) (frontend step) and [deploy/TROUBLESHOOTING.md](../../deploy/TROUBLESHOOTING.md) exist |
+| **RB-1** | Deploy a release build | RR3 | igortatarynovich | [OL-2](../specs/tasks/operate-and-launch.md) · [OL-2A](../specs/tasks/operate-launch-ol2-deploy-contract.md) | **DRAFT / NOT EXECUTED** — [rb-1-deploy-release-build.md](rb-1-deploy-release-build.md). Load retained artefacts, `compose.release.yml` project `hostflow-release`, host-side Alembic, then `/healthz` + `/build` + login. Author walks do not count |
 | **RB-2** | Apply migrations to a fresh and to an existing database | RR3, RC condition 4 | igortatarynovich | [OL-2](../specs/tasks/operate-and-launch.md) · [OL-2C](../specs/tasks/operate-launch-ol2c-ci-parity.md) | **DRAFT / NOT EXECUTED** — [rb-2-migrate-and-bootstrap.md](rb-2-migrate-and-bootstrap.md). Path is `release-proof.sh` (PG16, repo-root Alembic, `/healthz` + `/build` + login) then retain-by-digest. Author walks do not count |
 | **RB-3** | Roll back a release | RR3, RR7 | igortatarynovich | [OL-2](../specs/tasks/operate-and-launch.md) · [OL-2D](../specs/tasks/operate-launch-ol2d-predecessor.md) | **MISSING** — **DEFERRED_BY_INITIAL_BASELINE / NOT EXECUTED**. Expand-only rule: rollback of `202608310001_bootstrap_admin_schema` redeploys retained artefacts and **does not** `alembic downgrade` |
 | **RB-4** | Start / verify background processing (queue worker, scheduler) | RR3 | igortatarynovich | [OL-3](../specs/tasks/operate-and-launch.md) | **MISSING** — [job_queue.md](../specs/architecture/job_queue.md) describes the model, not the operation |
@@ -26,7 +26,7 @@
 | **RB-9** | Export and erase a tenant’s data | RR4, RR5, RS-11 | igortatarynovich — Security co-sign required by [ADR-039](../specs/architecture/ADR-039-tenant-data-lifecycle.md) and held by the same person, so the co-sign adds no second pair of eyes ([OL1-C1](../specs/gates/launch-ownership-gate.md)) | [OL-6](../specs/tasks/operate-and-launch.md) | **MISSING** — capability itself absent; contract in [ADR-039](../specs/architecture/ADR-039-tenant-data-lifecycle.md) |
 | **RB-10** | Incident response: diagnose → escalate → mitigate → roll back → communicate | RR7 | igortatarynovich | [OL-7](../specs/tasks/operate-and-launch.md) | **MISSING** for service incidents — security incidents are covered (see below) |
 
-Ten required procedures, ten missing. That count is the honest measure of operational readiness today.
+Ten required procedures. RB-1 and RB-2 are written and **NOT EXECUTED**. The other eight are still MISSING. That count is the honest measure of operational readiness today.
 
 ---
 
@@ -58,6 +58,7 @@ Service-incident response (RB-10) is **not** covered by the security incident ru
 
 ## History
 
+- 2026-08-31 (later, RB-1): Deploy-from-store procedure written — [rb-1-deploy-release-build.md](rb-1-deploy-release-build.md). Status **DRAFT / NOT EXECUTED**. Does not tag and does not cut over production.
 - 2026-08-31 (later, OL-2D): RB-3 still MISSING as a procedure. Predecessor is defined as a contract-satisfying deployable state; production is not one — [OL-2D](../specs/tasks/operate-launch-ol2d-predecessor.md).
 - 2026-08-31: **Required set sealed by the [Launch Ownership Gate](../specs/gates/launch-ownership-gate.md) (OL-1).** Owners changed from role names to the person who holds them, because the gate requires a named holder — a release question cannot be answered by a role that has no occupant. The set itself is unchanged and still ten of ten MISSING; OL-1 was required to make the gap owned and countable, not to close it. One honest loss: RB-9's Security co-sign is now visibly the same person as its owner.
 - 2026-08-28: Index introduced with the ten required v1 procedures, all MISSING, while briefing Operate & Launch as v1 blocker 6. Governance already targeted `docs/runbooks/` ([documentation-rules.md](../governance/documentation-rules.md) §2.1); this is the folder’s first file.
