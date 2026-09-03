@@ -62,12 +62,12 @@ def test_rpm2_brief_names_operator_gate() -> None:
     assert "tenant_requirement_overrides" in text or "second store" in text.lower()
     assert "RPM-3A" in text
     assert "Parallel Authority Retirement" in text or "parallel authority retirement" in text.lower()
-    assert "Active Product = RPM-3A" in text or "Active = RPM-3A" in text
+    assert "RPM-3B" in text
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "RPM-3A" in queue
-    assert "Parallel authority retirement" in queue or "parallel authority retirement" in queue.lower()
+    assert "RPM-3B" in queue
     agents = _AGENTS.read_text(encoding="utf-8")
-    assert "RPM-3A" in agents
+    assert "RPM-3A" in agents or "RPM-3B" in agents
 
 
 def test_rpm2_does_not_reopen_authority_or_merge() -> None:

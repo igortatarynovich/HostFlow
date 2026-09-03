@@ -90,7 +90,7 @@ Reject: Documents Admin separate from Rules Admin; Hub packages table; Overlay r
 ## Consequences
 
 - RPM-2 persists only this write authority (operator overlay with reason as sibling metadata).  
-- RPM-3A must retire parallel writers of the operator question: A `document_policies`, C leftover ruleset writes, J P3B `document_required` only.  
+- RPM-3A **PASS** retired parallel writers of the operator question: A `document_policies`, C leftover ruleset writes, J P3B `document_required` only.  
 - RPM-3B must make remaining classified consumers read the same merge or retire them as answerers.  
 - ADR-018 “Admin UI for policy editing” is this program, not a second product.
 
@@ -98,6 +98,7 @@ Reject: Documents Admin separate from Rules Admin; Hub packages table; Overlay r
 
 ## History
 
+- 2026-09-03: RPM-3A Parallel Authority Retirement Gate **PASS**. Writes of A / C / J `document_required` retired. Active Product → RPM-3B.
 - 2026-09-03: RPM-2 Operator Gate PASS [#342](https://github.com/igortatarynovich/HostFlow/pull/342). RPM-3A docs lock activates parallel-writer retirement (A / C / J `document_required`).
 - 2026-09-03: Screening / `lead_criteria_v1` named as a different question, not a tenth write.
 - 2026-09-02: Accepted as RPM-1 Authority contract. Nine-row classification frozen. Feat locked until RPM-2.

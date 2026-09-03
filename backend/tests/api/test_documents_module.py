@@ -201,7 +201,7 @@ async def test_documents_db_flow(
     assert export_csv.status_code == 200
     assert "text/csv" in export_csv.headers["Content-Type"]
 
-    # Ruleset retrieval and update
+    # Ruleset retrieval stays; admin writes are retired (RPM-3A).
     ruleset_resp = await client.get("/api/v1/db/ruleset", headers=manager_headers)
     assert ruleset_resp.status_code == 200
     ruleset = ruleset_resp.json()
@@ -217,25 +217,18 @@ async def test_documents_db_flow(
         headers=manager_headers,
         json=patch_payload,
     )
-    assert patch_resp.status_code == 200
-    new_ruleset = patch_resp.json()
-    assert new_ruleset["version"] >= ruleset["version"]
-    assert new_ruleset["ruleset"]["requiredTypes"] == ["national_id"]
-    assert new_ruleset["is_active"] is True
-    assert new_ruleset["signature"] and new_ruleset["signature"] != ruleset["signature"]
-    assert new_ruleset["origin_version_id"] is None
-    assert new_ruleset["rollback_comment"] is None
+    assert patch_resp.status_code == 410
+    assert patch_resp.json()["detail"]["code"] == "ruleset_authority_writes_retired"
 
-    # List versions should contain at least the latest
     versions_resp = await client.get(
         "/api/v1/db/ruleset/versions", headers=manager_headers
     )
     assert versions_resp.status_code == 200
     versions = versions_resp.json()
-    assert versions and versions[0]["version"] == new_ruleset["version"]
+    assert versions
     assert all("signature" in item for item in versions)
+    history_id = versions[0]["id"]
 
-    # Create draft ruleset version without activation
     draft_payload = {
         "ruleset": {
             "requiredTypes": ["national_id"],
@@ -249,52 +242,39 @@ async def test_documents_db_flow(
         headers=manager_headers,
         json=draft_payload,
     )
-    assert draft_resp.status_code == 200
-    draft_version = draft_resp.json()
-    assert draft_version["is_active"] is False
-    assert draft_version["version"] == new_ruleset["version"] + 1
+    assert draft_resp.status_code == 410
+    assert draft_resp.json()["detail"]["code"] == "ruleset_authority_writes_retired"
 
-    # Fetch single version
     get_version_resp = await client.get(
-        f"/api/v1/db/ruleset/versions/{draft_version['id']}",
+        f"/api/v1/db/ruleset/versions/{history_id}",
         headers=manager_headers,
     )
     assert get_version_resp.status_code == 200
     fetched_version = get_version_resp.json()
-    assert fetched_version["id"] == draft_version["id"]
-    assert fetched_version["ruleset"]["optionalTypes"] == ["code95"]
+    assert fetched_version["id"] == history_id
 
-    # Diff between versions should reflect optionalTypes addition
     diff_resp = await client.get(
-        f"/api/v1/db/ruleset/versions/{draft_version['id']}/diff",
+        f"/api/v1/db/ruleset/versions/{history_id}/diff",
         headers=manager_headers,
     )
     assert diff_resp.status_code == 200
     diff = diff_resp.json()
-    assert diff["version_id"] == draft_version["id"]
-    assert diff["diff"]["summary"]["changed"] >= 1
+    assert diff["version_id"] == history_id
 
-    # Activate the draft version
     activate_resp = await client.post(
-        f"/api/v1/db/ruleset/versions/{draft_version['id']}/activate",
+        f"/api/v1/db/ruleset/versions/{history_id}/activate",
         headers=manager_headers,
     )
-    assert activate_resp.status_code == 200
-    activated = activate_resp.json()
-    assert activated["is_active"] is True
-    assert activated["id"] == draft_version["id"]
+    assert activate_resp.status_code == 410
+    assert activate_resp.json()["detail"]["code"] == "ruleset_authority_writes_retired"
 
-    # Roll back to previous version
     rollback_resp = await client.post(
-        f"/api/v1/db/ruleset/versions/{new_ruleset['id']}/rollback",
+        f"/api/v1/db/ruleset/versions/{history_id}/rollback",
         headers=manager_headers,
         json={"comment": "restore previous ruleset"},
     )
-    assert rollback_resp.status_code == 200
-    rollback_version = rollback_resp.json()
-    assert rollback_version["is_active"] is True
-    assert rollback_version["origin_version_id"] == new_ruleset["id"]
-    assert rollback_version["rollback_comment"] == "restore previous ruleset"
+    assert rollback_resp.status_code == 410
+    assert rollback_resp.json()["detail"]["code"] == "ruleset_authority_writes_retired"
 
     # Checklist request should log usage entry
     checklist_resp = await client.get(

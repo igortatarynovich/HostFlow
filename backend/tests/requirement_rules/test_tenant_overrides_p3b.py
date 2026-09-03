@@ -42,7 +42,8 @@ def _profile_view_from_manifest() -> dict:
     }
 
 
-def test_p3b_relax_removes_non_canonical_document() -> None:
+def test_p3b_document_required_relax_is_inert() -> None:
+    baseline = build_requirement_rule_set(_profile_view_from_manifest(), context="readiness")
     rule_set = build_requirement_rule_set(
         _profile_view_from_manifest(),
         context="readiness",
@@ -55,13 +56,13 @@ def test_p3b_relax_removes_non_canonical_document() -> None:
             }
         ],
     )
-    doc_codes = {row["document_type_code"] for row in rule_set["rules"] if row["rule_type"] == RULE_TYPE_DOCUMENT_REQUIRED}
-    assert "code95" not in doc_codes
-    assert any(row["source"] == SOURCE_TENANT_OVERRIDE for row in rule_set["rule_sources_applied"])
-    assert "tenant_override" not in rule_set["excluded_sources"]
+    base_docs = {row["document_type_code"] for row in baseline["rules"] if row["rule_type"] == RULE_TYPE_DOCUMENT_REQUIRED}
+    docs = {row["document_type_code"] for row in rule_set["rules"] if row["rule_type"] == RULE_TYPE_DOCUMENT_REQUIRED}
+    assert docs == base_docs
+    assert not any(row["source"] == SOURCE_TENANT_OVERRIDE for row in rule_set["rule_sources_applied"])
 
 
-def test_p3b_add_appends_tenant_document() -> None:
+def test_p3b_document_required_add_is_inert() -> None:
     rule_set = build_requirement_rule_set(
         _profile_view_from_manifest(),
         context="readiness",
@@ -76,13 +77,16 @@ def test_p3b_add_appends_tenant_document() -> None:
             }
         ],
     )
-    doc_rules = [row for row in rule_set["rules"] if row["rule_type"] == RULE_TYPE_DOCUMENT_REQUIRED]
-    added = next(row for row in doc_rules if row["document_type_code"] == "client_specific_doc")
-    assert added["source"] == SOURCE_TENANT_OVERRIDE
-    assert added["level"] == LEVEL_WARNING
+    doc_codes = {row["document_type_code"] for row in rule_set["rules"] if row["rule_type"] == RULE_TYPE_DOCUMENT_REQUIRED}
+    assert "client_specific_doc" not in doc_codes
 
 
-def test_p3b_severity_downgrades_process_profile_document() -> None:
+def test_p3b_document_required_severity_is_inert() -> None:
+    baseline = build_requirement_rule_set(
+        _profile_view_from_manifest(),
+        context="transition",
+        stage_code="ready_for_handoff",
+    )
     rule_set = build_requirement_rule_set(
         _profile_view_from_manifest(),
         context="transition",
@@ -98,14 +102,17 @@ def test_p3b_severity_downgrades_process_profile_document() -> None:
             }
         ],
     )
+    base_medical = next(
+        row for row in baseline["rules"] if row.get("document_type_code") == "medical_certificate"
+    )
     medical = next(
         row for row in rule_set["rules"] if row.get("document_type_code") == "medical_certificate"
     )
-    assert medical["level"] == LEVEL_WARNING
+    assert medical["level"] == base_medical["level"]
     assert medical["source"] == SOURCE_PROCESS_PROFILE
 
 
-def test_p3b_merge_order_includes_all_layers() -> None:
+def test_p3b_merge_order_excludes_document_required_tenant_override() -> None:
     rule_set = build_requirement_rule_set(
         _profile_view_from_manifest(),
         context="transition",
@@ -123,7 +130,7 @@ def test_p3b_merge_order_includes_all_layers() -> None:
     assert sources[0] == SOURCE_ENTITY_PROFILE
     assert SOURCE_DOCUMENT_PACK in sources
     assert SOURCE_PROCESS_PROFILE in sources
-    assert SOURCE_TENANT_OVERRIDE in sources
+    assert SOURCE_TENANT_OVERRIDE not in sources
 
 
 def test_p3b_policy_rejects_canonical_field_relax() -> None:
@@ -156,7 +163,7 @@ def test_p3b_readiness_without_overrides_unchanged() -> None:
     assert "tenant_override" in baseline["excluded_sources"]
 
 
-def test_p3b_evaluator_applies_relax_blocker() -> None:
+def test_p3b_evaluator_document_required_relax_is_inert() -> None:
     baseline = evaluate_requirement_rules(
         _profile_view_from_manifest(),
         context="readiness",
@@ -179,8 +186,26 @@ def test_p3b_evaluator_applies_relax_blocker() -> None:
     )
     baseline_missing = {row.get("document_type_code") for row in baseline["blockers"] if row.get("document_type_code")}
     relaxed_missing = {row.get("document_type_code") for row in relaxed["blockers"] if row.get("document_type_code")}
-    assert "code95" in baseline_missing
-    assert "code95" not in relaxed_missing
+    assert relaxed_missing == baseline_missing
+
+
+def test_p3b_field_required_add_still_applies() -> None:
+    final, sources = apply_tenant_overrides(
+        [],
+        [
+            {
+                "override_kind": OVERRIDE_KIND_ADD,
+                "rule_type": RULE_TYPE_FIELD_REQUIRED,
+                "target_code": "recruitment.candidate.license_number",
+                "status": "active",
+            }
+        ],
+        canonical_field_targets=set(),
+        context="readiness",
+    )
+    assert len(final) == 1
+    assert final[0]["rule_type"] == RULE_TYPE_FIELD_REQUIRED
+    assert sources
 
 
 def test_p3b_stage_scoped_override_not_applied_without_stage() -> None:
