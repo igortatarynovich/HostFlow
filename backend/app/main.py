@@ -159,6 +159,7 @@ try:
     from backend.app.api.v1.platform import forms_publications as platform_forms_publications_router
     from backend.app.api.v1.platform import forms_builder as platform_forms_builder_router
     from backend.app.api.v1.platform import documents_public as platform_documents_public_router
+    from backend.app.api.v1.platform import document_policy_overlay as platform_document_policy_overlay_router
     from backend.app.api.v1.platform import requirement_rules as platform_requirement_rules_router
     from backend.app.api.v1.platform import tenant_requirement_overrides as platform_tenant_requirement_overrides_router
     from backend.app.api.v1.platform import notification_events as platform_notification_events_router
@@ -921,6 +922,7 @@ app.include_router(platform_entity_profiles_router.router, prefix="/api/v1", tag
 app.include_router(platform_forms_publications_router.router, prefix="/api/v1", tags=["forms-platform"])
 app.include_router(platform_forms_builder_router.router, prefix="/api/v1", tags=["forms-builder"])
 app.include_router(platform_documents_public_router.router, prefix="/api/v1", tags=["documents-platform"])
+app.include_router(platform_document_policy_overlay_router.router, prefix="/api/v1", tags=["document-policy-overlay"])
 app.include_router(platform_requirement_rules_router.router, prefix="/api/v1", tags=["requirement-rules"])
 app.include_router(platform_tenant_requirement_overrides_router.router, prefix="/api/v1", tags=["requirement-overrides"])
 app.include_router(platform_notification_events_router.router, prefix="/api/v1", tags=["notification-events"])

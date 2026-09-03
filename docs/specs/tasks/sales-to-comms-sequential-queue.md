@@ -30,7 +30,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **[RPM-2 Operator overlay](requirement-policy-management.md)** after RPM-1 Authority Gate **PASS** ([requirement-policy-authority.md](../architecture/requirement-policy-authority.md)). Feat not started this PR. Not Mapping. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
+| **Product** | **[RPM-2 Operator overlay](requirement-policy-management.md)** after RPM-1 Authority Gate **PASS** ([requirement-policy-authority.md](../architecture/requirement-policy-authority.md)). Feat started on `feat/requirement-policy-management-rpm2-operator-overlay`. Not Mapping. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
 | **Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` — [brief](platform-reference-identity-sot.md). No named Engineering successor this amendment. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background — **not** Active Engineering |
 | **Launch-ops** | **[Operate & Launch](operate-and-launch.md)** — v1 blocker 6 (brief this amendment; **not scheduled**, no Active Launch-ops slice yet). Write-set: `deploy/`, `docs/runbooks/`, infra defaults, tenant-lifecycle surfaces. Occupies the second-track slot left free by Engineering DONE. Not an SRE programme. Not Billing | Second track, small share of capacity |
 
@@ -46,7 +46,7 @@ Reaching the program horizon of this section is **not** a release. Release-ready
 
 | Role | Value |
 |------|--------|
-| **Active Product** | **[RPM-2 Operator overlay](requirement-policy-management.md)** after RPM-1 Authority Gate **PASS** ([requirement-policy-authority.md](../architecture/requirement-policy-authority.md) / `requirement_policy_authority.v1`). Feat not started in the RPM-1 PR (invariant 6). Unlock ≠ silent schedule of Mapping / Hiring. |
+| **Active Product** | **[RPM-2 Operator overlay](requirement-policy-management.md)** after RPM-1 Authority Gate **PASS** ([requirement-policy-authority.md](../architecture/requirement-policy-authority.md) / `requirement_policy_authority.v1`). Mapping / Hiring remain closed. |
 | **Queued Product successor** | **RPM-3** Consumer cutover — [brief](requirement-policy-management.md). Mapping remains startable **after** RPM program close (not auto-scheduled). The four remaining v1 blockers are **briefed but unscheduled** — see § v1 blocker programs beyond this horizon. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
 | **Active Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` (`ref-id-exit`). No named successor. |
 | **Queued Engineering after Exit** | none this amendment. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
@@ -128,7 +128,7 @@ DR1-runtime  also required  DR1-contract ∧ Reference R5   (PASS [#313](https:/
 | **P-RPM2** | [RPM-2](requirement-policy-management.md) Operator overlay | **Requirement Policy Operator Gate** — one job UI: base, override, reason, result; writes RPM-1 authority; Documents domain first | **Requirement Policy Authority Gate** | RPM-3 |
 | **P-RPM3** | [RPM-3](requirement-policy-management.md) Consumer cutover | **Requirement Policy Consumer Cutover Gate** — classified consumers read the same merge or are retired; D4 matches operator write | **Requirement Policy Operator Gate** | RPM program close. Hiring E2E unlocked, **not** scheduled |
 
-**Now:** Product **RPM-2** (operator overlay; feat not started this PR) after RPM-1 Authority Gate **PASS**. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping auto-start. **Not** OCR. Do not invent CL8. Do not mark Foundation ✅.
+**Now:** Product **RPM-2** (operator overlay; feat started) after RPM-1 Authority Gate **PASS**. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping auto-start. **Not** OCR. Do not invent CL8. Do not mark Foundation ✅.
 
 LI-1 is the **only** Lifecycle slice between CL1 and CL2. LI-2…LI-4 stay in [the Lifecycle brief](lifecycle-identity-l0-contract-seal.md) and do not stall Field Composition.
 
@@ -295,7 +295,7 @@ A reader who has only this section can answer every item **yes**:
 - **Lifecycle Identity** ← docs sealed; **LI-1 feat after CL1** (existence/identity guard only) — [brief](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md); LI-2+ do **not** block CL2+; Funnel ≠ existence SoT
 - **DR1-contract** ← **PASS** [#302](https://github.com/igortatarynovich/HostFlow/pull/302) — [brief](engine-document-request-dr1-contract.md). **DR1-runtime** ← **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313)
 - **Documents E8-eval** ← **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — [brief](documents-platform-e8-eval.md); required / optional / applicability from R5 merge. Not OCR. Not CL8. Not mass D3–D9 bind. Successor = RPM-1 (this amendment).
-- **Requirement Policy Management** ← **RPM-1 PASS** (Authority Gate; [requirement-policy-authority.md](../architecture/requirement-policy-authority.md)). Active **RPM-2** (operator overlay; feat not started this PR) — [brief](requirement-policy-management.md). RPM-3 queued. Mapping not auto-scheduled. Not Hiring E2E. Not CL8.
+- **Requirement Policy Management** ← **RPM-1 PASS** (Authority Gate; [requirement-policy-authority.md](../architecture/requirement-policy-authority.md)). Active **RPM-2** (operator overlay; feat started) — [brief](requirement-policy-management.md). RPM-3 queued. Mapping not auto-scheduled. Not Hiring E2E. Not CL8.
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -372,10 +372,10 @@ A reader who has only this section can answer every item **yes**:
 | **44** | **DR1-runtime** Engine generation | ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313) `e6978fe2` | after **DR1-contract Gate ∧ Reference R5 Gate ∧ Vacancy Overlay Gate**; Engine may create Hub outstanding asks; not CL8; not E8 |
 | **45** | **E8-bind** Canonical type bind | [brief](documents-platform-e8-bind.md) | after **DR1 Runtime Gate**; **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`; not E8-eval; not CL8; not mass D3–D9 bind |
 | **45b** | **E8-eval** Required-doc evaluation | [brief](documents-platform-e8-eval.md) | after **E8-bind Gate**; **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`; not OCR; not CL8; not mass D3–D9 bind |
-| **45c** | **RPM-1** Authority contract | [brief](requirement-policy-management.md) · [authority SoT](../architecture/requirement-policy-authority.md) | after E8-eval Gate ∧ DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328); **PASS**; RPM-2 Active (feat not started this PR); RPM-3 queued |
+| **45c** | **RPM-1** Authority contract | [brief](requirement-policy-management.md) · [authority SoT](../architecture/requirement-policy-authority.md) | after E8-eval Gate ∧ DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328); **PASS**; RPM-2 Active (feat started); RPM-3 queued |
 
 **C0–C2.3** ✅. **C2.4 frozen (Epic C residual R1).** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** **[RPM-2](requirement-policy-management.md)** (operator overlay; feat not started this PR) after RPM-1 Authority Gate **PASS**. E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping auto-start. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
+**Active (Product):** **[RPM-2](requirement-policy-management.md)** (operator overlay; feat started) after RPM-1 Authority Gate **PASS**. E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping auto-start. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
 **Active (Engineering):** **DONE** — Reference Program Exit Gate PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. No named successor. Legacy full-repo pytest does **not** become Active Engineering.
 
 ---
@@ -509,7 +509,7 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 ### CL1+ — Entity Field Composition remainder ← **CL0–CL7 / Overlay PASS**
 
-After CL0: **CL1 → LI-1 → DR1-contract → CL2…CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2**. CL1 observes live codes; it does **not** canonize country or document-type identity. **DR1-contract** is not a Field Composition slice. **DR1-runtime** is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-bind** is **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. **E8-eval** is **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **RPM-1** Authority Gate **PASS**. Product = **[RPM-2](requirement-policy-management.md)** (operator overlay; feat not started this PR). **CL7** is Engine evaluation, not Engine→Request. Vacancy Overlay leftover of the original CL0 chain is **PASS** — **not** CL8.
+After CL0: **CL1 → LI-1 → DR1-contract → CL2…CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2**. CL1 observes live codes; it does **not** canonize country or document-type identity. **DR1-contract** is not a Field Composition slice. **DR1-runtime** is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-bind** is **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. **E8-eval** is **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **RPM-1** Authority Gate **PASS**. Product = **[RPM-2](requirement-policy-management.md)** (operator overlay; feat started). **CL7** is Engine evaluation, not Engine→Request. Vacancy Overlay leftover of the original CL0 chain is **PASS** — **not** CL8.
 
 ### Lifecycle Identity — LI-1 after CL1 (docs sealed; feat locked until CL1 Gate)
 

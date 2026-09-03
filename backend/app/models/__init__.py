@@ -267,6 +267,9 @@ CommunicationCampaignRunItem = (
     _communication_campaign_module.CommunicationCampaignRunItem
 )  # type: ignore[attr-defined]
 DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
+TenantDocumentPolicyDelta = _load_model_module(
+    "tenant_document_policy_delta"
+).TenantDocumentPolicyDelta  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
 CandidateService = _load_model_module("service").CandidateService  # type: ignore[attr-defined]
@@ -453,6 +456,7 @@ __all__ = [
     "CommunicationCampaignRun",
     "CommunicationCampaignRunItem",
     "DocumentPolicy",
+    "TenantDocumentPolicyDelta",
     "Stage",
     "MagicLink",
     "Invoice",

@@ -101,6 +101,7 @@ jobs:
       dr1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1 == 'true' }}
       dr1_runtime: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1_runtime == 'true' }}
       rpm1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm1 == 'true' }}
+      rpm2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm2 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -272,6 +273,16 @@ jobs:
               - 'scripts/architecture/requirement_policy_authority_boundary_*'
               - 'docs/specs/tasks/requirement-policy-management.md'
               - 'docs/specs/architecture/requirement-policy-authority.md'
+            rpm2:
+              - 'backend/app/reference/document_policy_overlay_store.py'
+              - 'backend/app/api/v1/platform/document_policy_overlay.py'
+              - 'backend/app/api/v1/platform/documents_public.py'
+              - 'backend/app/models/tenant_document_policy_delta.py'
+              - 'backend/alembic/versions/202609030001_tenant_document_policy_delta.py'
+              - 'backend/tests/platform/test_requirement_policy_operator_gate.py'
+              - 'backend/tests/api/test_document_policy_overlay.py'
+              - 'docs/specs/tasks/requirement-policy-management.md'
+              - 'hostflow-frontend/src/pages/admin/RequirementPolicyOverlayPage.tsx'
 
   guards:
     name: guards
@@ -699,6 +710,37 @@ jobs:
         with:
           tests: tests/platform/test_requirement_policy_authority_gate.py
 
+  rpm2-operator-gate:
+    name: Requirement Policy Operator Gate
+    needs: changes
+    if: needs.changes.outputs.rpm2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RPM-2 Operator gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_requirement_policy_operator_gate.py') == ''
+        run: echo "RPM-2 Operator gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_requirement_policy_operator_gate.py') != ''
+        with:
+          skip-alembic: "0"
+          tests: >-
+            tests/platform/test_requirement_policy_operator_gate.py
+            tests/api/test_document_policy_overlay.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -740,6 +782,7 @@ jobs:
       - cl7-engine-eval-gate
       - overlay-contract-gate
       - rpm1-authority-gate
+      - rpm2-operator-gate
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:

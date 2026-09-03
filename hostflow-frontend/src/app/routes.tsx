@@ -52,6 +52,7 @@ import {
   FunnelsPage,
   HiringPipelineGatesSettingsPage,
   TransferPolicySettingsPage,
+  RequirementPolicyOverlayPage,
   HrComplianceDocumentsPage,
   HrDashboardPage,
   HrEmployeeDetailPage,
@@ -925,6 +926,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     path: seg(CRM.settingsTransferPolicy),
     Component: TransferPolicySettingsPage,
     permission: 'settings.view',
+  },
+  {
+    key: 'settings-requirement-policy',
+    path: seg(CRM.settingsRequirementPolicy),
+    Component: RequirementPolicyOverlayPage,
+    permission: 'admin.users',
   },
   {
     key: 'settings-risk-intel',

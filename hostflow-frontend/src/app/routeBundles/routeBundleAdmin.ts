@@ -18,6 +18,7 @@ export { default as CandidateProfilesPage } from '../../pages/admin/CandidatePro
 export { default as FunnelsPage } from '../../pages/admin/FunnelsPage'
 export { default as HiringPipelineGatesSettingsPage } from '../../pages/admin/HiringPipelineGatesSettingsPage'
 export { default as TransferPolicySettingsPage } from '../../pages/admin/TransferPolicySettingsPage'
+export { default as RequirementPolicyOverlayPage } from '../../pages/admin/RequirementPolicyOverlayPage'
 export { default as RiskIntelSettingsPage } from '../../pages/admin/RiskIntelSettingsPage'
 export { default as CustomFieldsPage } from '../../pages/admin/CustomFieldsPage'
 export { default as BillingWorkspacePage } from '../../pages/admin/BillingWorkspacePage'
