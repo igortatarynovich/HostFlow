@@ -774,10 +774,16 @@ async def create_candidate_full(
                 "candidate_id": c.id,
                 "first_name": c.first_name,
                 "last_name": c.last_name,
+                "candidate_name": " ".join(
+                    part
+                    for part in [c.first_name, c.last_name]
+                    if str(part or "").strip()
+                ).strip(),
                 "vacancy_id": c.vacancy_id,
                 "company_id": c.company_id,
                 "stage": c.stage,
                 "recruiter_id": c.recruiter_id,
+                "title": "app.notifications.event_types.candidate.created",
             },
             entity_type="candidate",
             entity_id=c.id,

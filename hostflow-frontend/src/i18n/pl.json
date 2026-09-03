@@ -2262,6 +2262,7 @@
       "intake_questionnaire_submitted_desc": "{contact} — {company}",
       "intake_client_lead_skipped_no_company_title": "Intake klienta: lead nie utworzony",
       "intake_client_lead_skipped_no_company_desc": "{name} wysłał(a) zapytanie klienta, ale nie udało się przypisać firmy. Ustaw firmę domyślną (Meta leads) lub powiąż ofertę/klienta.",
+      "unknown_event": "Powiadomienie",
       "reminder_popup": {
         "due_label": "Termin",
         "open_candidate": "Otwórz kandydata",
@@ -2281,13 +2282,61 @@
         "candidate_ready_for_handoff_auto": "Kandydat gotowy do przekazania",
         "document_expired": "Dokument wygasł",
         "document_expiring_soon": "Dokument wkrótce wygaśnie",
+        "company_intake_submitted": "Wysłano zgłoszenie firmy",
+        "company_intake_submitted_desc": "{name} wysłał(a) zgłoszenie firmy.",
+        "candidate_created": "Nowy kandydat",
+        "candidate_created_desc": "{name} został dodany do rekrutacji.",
+        "candidate_field_overridden": "Zaktualizowano pole kandydata",
+        "hr_compliance_risk_alert": "Ryzyko compliance HR",
+        "hr_compliance_risk_reminder": "Przypomnienie o dokumencie HR",
+        "hr_handoff_sla_alert": "Przekroczone SLA przekazania",
+        "hr_onboarding_task_reminder": "Zaległe zadanie onboardingu",
+        "hr_workforce_inactivity_alert": "Brak aktywności pracownika",
+        "hr_operational_risk_alert": "Ryzyko operacyjne HR",
+        "candidate": {
+          "created": "Nowy kandydat",
+          "created_desc": "{name} został dodany do rekrutacji.",
+          "duplicate_lead_intake": "Powtórny lead dla istniejącego kandydata",
+          "duplicate_lead_intake_desc": "Nowy lead pasuje do kandydata {name}.",
+          "intake_submitted": "Kandydat wysłał ankietę",
+          "intake_submitted_desc": "{name} wypełnił(a) ankietę.",
+          "new_assignment": "Przypisano Ci kandydata",
+          "stage_changed": "Zmieniono etap kandydata",
+          "stage_changed_desc": "{name}: {from_stage} → {to_stage}"
+        },
         "lead": {
           "new": {
             "telegram": "Nowy lead (Telegram)"
           },
           "status_changed": {
             "telegram": "Zmiana statusu leada (Telegram)"
+          },
+          "processed": "Lead przetworzony",
+          "processed_desc": "{name}",
+          "needs_routing": "Lead wymaga routingu",
+          "needs_routing_desc": "{name} nie udało się skierować automatycznie.",
+          "failed": "Błąd przetwarzania leada",
+          "failed_desc": "{name}",
+          "pipeline": {
+            "stage_changed": "Zmieniono etap leada",
+            "stage_changed_desc": "{from_stage} → {to_stage}"
+          },
+          "import": {
+            "completed": "Import leadów zakończony",
+            "completed_desc": "{filename}: zaimportowano {success} z {total} wierszy.",
+            "failed": "Import leadów nie powiódł się",
+            "failed_desc": "{filename}: import nie został ukończony."
           }
+        },
+        "document": {
+          "expiry": "Wygaśnięcie dokumentu",
+          "expiry_desc": "{document_name} dla {name}"
+        },
+        "documents": {
+          "deadline": "Termin dokumentu"
+        },
+        "mentions": {
+          "direct": "Wspomniano o Tobie"
         }
       }
     },

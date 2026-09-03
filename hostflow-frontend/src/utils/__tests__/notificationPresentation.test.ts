@@ -9,10 +9,17 @@ import {
 
 const STRINGS: Record<string, string> = {
   'app.notifications.communications_sla_overdue_title': 'SLA przekroczone',
+  'app.notifications.unknown_event': 'Powiadomienie',
   'app.notifications.event_types.candidate_docs_pending_upload': 'Oczekiwane dokumenty kandydata',
   'app.notifications.event_types.candidate_docs_pending_upload_desc':
     '{name}: postęp {ready}/{total}, brakuje jeszcze {missing} plików.',
   'app.notifications.event_types.reminder_due': 'Zadanie na termin',
+  'app.notifications.event_types.candidate.created': 'Nowy kandydat',
+  'app.notifications.event_types.candidate.created_desc': '{name} został dodany do rekrutacji.',
+  'app.notifications.event_types.candidate.duplicate_lead_intake':
+    'Powtórny lead dla istniejącego kandydata',
+  'app.notifications.event_types.candidate.duplicate_lead_intake_desc':
+    'Nowy lead pasuje do kandydata {name}.',
 }
 
 const t: TranslateFn = (key, options) => {
@@ -87,5 +94,42 @@ describe('notificationPresentation', () => {
     expect(notificationEventTypeLabel('candidate_docs_pending_upload', t)).toBe(
       'Oczekiwane dokumenty kandydata',
     )
+  })
+
+  it('translates dotted candidate event types instead of showing raw keys', () => {
+    expect(
+      notificationDisplayTitle(item({ event_type: 'candidate.created' }), t),
+    ).toBe('Nowy kandydat')
+    expect(
+      notificationDisplayTitle(item({ event_type: 'candidate.duplicate_lead_intake' }), t),
+    ).toBe('Powtórny lead dla istniejącego kandydata')
+    expect(notificationEventTypeLabel('candidate.created', t)).toBe('Nowy kandydat')
+  })
+
+  it('formats candidate.created and duplicate intake descriptions from payload', () => {
+    expect(
+      notificationDisplayDescription(
+        item({
+          event_type: 'candidate.created',
+          payload: { first_name: 'Jan', last_name: 'Kowalski' },
+        }),
+        t,
+      ),
+    ).toBe('Jan Kowalski został dodany do rekrutacji.')
+    expect(
+      notificationDisplayDescription(
+        item({
+          event_type: 'candidate.duplicate_lead_intake',
+          payload: { candidate_name: 'Anna Nowak' },
+        }),
+        t,
+      ),
+    ).toBe('Nowy lead pasuje do kandydata Anna Nowak.')
+    expect(
+      notificationDisplayDescription(
+        item({ event_type: 'candidate.duplicate_lead_intake', payload: {} }),
+        t,
+      ),
+    ).toBe('')
   })
 })

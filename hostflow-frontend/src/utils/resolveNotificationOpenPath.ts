@@ -115,6 +115,7 @@ export function resolveNotificationOpenPath(
     eventType === 'candidate_ready_for_handoff_auto' ||
     eventType === 'candidate.intake_submitted' ||
     eventType === 'candidate.created' ||
+    eventType === 'candidate.duplicate_lead_intake' ||
     eventType === 'candidate_field_overridden'
   ) {
     const cid = firstString(payload.candidate_id, entityType === 'candidate' ? entityId : '')

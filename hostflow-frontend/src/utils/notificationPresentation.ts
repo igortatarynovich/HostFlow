@@ -5,35 +5,101 @@ function humanizeEventType(eventType: string): string {
   return eventType
     .trim()
     .toLowerCase()
-    .replace(/_/g, ' ')
+    .replace(/[._]+/g, ' ')
     .replace(/\s+/g, ' ')
     .replace(/^\w/, (c) => c.toUpperCase())
 }
 
-function maybeTranslateKey(t: TranslateFn, value: string): string {
+function payloadScalar(payload: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = payload[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  }
+  return ''
+}
+
+function payloadPersonName(payload: Record<string, unknown>): string {
+  const explicit = payloadScalar(payload, [
+    'candidate_name',
+    'contact_name',
+    'company_name',
+    'outcome_entity_name',
+  ])
+  if (explicit) return explicit
+  const first = payloadScalar(payload, ['first_name'])
+  const last = payloadScalar(payload, ['last_name'])
+  return `${first} ${last}`.trim()
+}
+
+function payloadInterpolateValues(payload: Record<string, unknown>): Record<string, string | number> {
+  return {
+    name: payloadPersonName(payload) || '—',
+    source: payloadScalar(payload, ['source']) || '—',
+    company: payloadScalar(payload, ['company_name']) || '—',
+    filename: payloadScalar(payload, ['filename']) || '—',
+    success: payloadScalar(payload, ['success_rows', 'success']) || '—',
+    total: payloadScalar(payload, ['total_rows', 'total']) || '—',
+    from_stage: payloadScalar(payload, ['from_stage']) || '—',
+    to_stage: payloadScalar(payload, ['to_stage', 'stage']) || '—',
+    document_name: payloadScalar(payload, ['document_name', 'document_type']) || '—',
+    error: payloadScalar(payload, ['error']) || '—',
+  }
+}
+
+function maybeTranslateKey(
+  t: TranslateFn,
+  value: string,
+  values?: Record<string, string | number>,
+): string {
   const v = String(value || '').trim()
   if (!v) return ''
   if (/^(app|common)\./.test(v)) {
-    const localized = t(v, { defaultValue: '' })
+    const localized = t(v, { defaultValue: '', values })
     if (localized && localized !== v) return localized
   }
   return v
 }
 
+function eventTypeLookupKeys(eventType: string): string[] {
+  const trimmed = eventType.trim()
+  if (!trimmed) return []
+  const lower = trimmed.toLowerCase()
+  const underscored = lower.replace(/\./g, '_')
+  const keys = [lower, trimmed, underscored]
+  return [...new Set(keys.filter(Boolean))]
+}
+
 function lookupEventTypeLabel(t: TranslateFn, eventType: string): string {
   if (!eventType) return ''
-  const typeKey = `app.notifications.event_types.${eventType}`
-  const fromTypes = t(typeKey, { defaultValue: '' })
-  if (fromTypes && fromTypes !== typeKey) return fromTypes
-  const eventKey = `app.reminders.events.${eventType}`
-  const fromEvents = t(eventKey, { defaultValue: '' })
-  if (fromEvents && fromEvents !== eventKey) return fromEvents
+  for (const variant of eventTypeLookupKeys(eventType)) {
+    const typeKey = `app.notifications.event_types.${variant}`
+    const fromTypes = t(typeKey, { defaultValue: '' })
+    if (fromTypes && fromTypes !== typeKey) return fromTypes
+    const eventKey = `app.reminders.events.${variant}`
+    const fromEvents = t(eventKey, { defaultValue: '' })
+    if (fromEvents && fromEvents !== eventKey) return fromEvents
+  }
+  return ''
+}
+
+function lookupEventTypeDescription(t: TranslateFn, eventType: string): string {
+  if (!eventType) return ''
+  for (const variant of eventTypeLookupKeys(eventType)) {
+    const descKey = `app.notifications.event_types.${variant}_desc`
+    const fromTypes = t(descKey, { defaultValue: '' })
+    if (fromTypes && fromTypes !== descKey) return fromTypes
+  }
   return ''
 }
 
 export function notificationEventTypeLabel(eventType: string, t: TranslateFn): string {
   const et = String(eventType || '').trim()
-  return lookupEventTypeLabel(t, et.toLowerCase()) || lookupEventTypeLabel(t, et) || et
+  return (
+    lookupEventTypeLabel(t, et.toLowerCase()) ||
+    lookupEventTypeLabel(t, et) ||
+    t('app.notifications.unknown_event', { defaultValue: humanizeEventType(et || 'notification') })
+  )
 }
 
 export function notificationDisplayTitle(item: NotificationItem, t: TranslateFn): string {
@@ -71,12 +137,15 @@ export function notificationDisplayTitle(item: NotificationItem, t: TranslateFn)
   }
   const localized = lookupEventTypeLabel(t, eventType)
   if (localized) return localized
-  return humanizeEventType(eventType || 'notification')
+  return t('app.notifications.unknown_event', {
+    defaultValue: humanizeEventType(eventType || 'notification'),
+  })
 }
 
 export function notificationDisplayDescription(item: NotificationItem, t: TranslateFn): string {
   const payload = (item.payload || {}) as Record<string, unknown>
   const eventType = String(item.event_type || '').trim().toLowerCase()
+  const values = payloadInterpolateValues(payload)
   if (eventType === 'candidate_docs_pending_upload') {
     const name = String(payload.candidate_name || '').trim()
     const hasStructured =
@@ -115,7 +184,18 @@ export function notificationDisplayDescription(item: NotificationItem, t: Transl
       values: { contact, company },
     })
   }
+  const templated = lookupEventTypeDescription(t, eventType)
+  if (templated) {
+    const name = payloadPersonName(payload)
+    if (templated.includes('{name}') && !name) {
+      return ''
+    }
+    return t(`app.notifications.event_types.${eventType}_desc`, {
+      defaultValue: templated,
+      values,
+    })
+  }
   const raw = String(payload.description || payload.body || '').trim()
   if (!raw) return ''
-  return maybeTranslateKey(t, raw)
+  return maybeTranslateKey(t, raw, values)
 }

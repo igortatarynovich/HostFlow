@@ -733,12 +733,21 @@ async def record_exact_duplicate_lead_intake(
     origin["lead_duplicate_intakes_v1"] = intakes[-120:]
     candidate.origin = origin
 
+    candidate_name = " ".join(
+        part
+        for part in [getattr(candidate, "first_name", None), getattr(candidate, "last_name", None)]
+        if str(part or "").strip()
+    ).strip()
     payload = {
         "lead_id": str(lead.id),
         "candidate_id": str(candidate.id),
+        "first_name": getattr(candidate, "first_name", None),
+        "last_name": getattr(candidate, "last_name", None),
+        "candidate_name": candidate_name,
         "source": lead.source,
         "vacancy_id": lid,
         "match_reasons": list(match_reasons),
+        "title": "app.notifications.event_types.candidate.duplicate_lead_intake",
     }
     recruiter_id = getattr(candidate, "recruiter_id", None)
     audience_roles = [UserRole.administrator, UserRole.employee]

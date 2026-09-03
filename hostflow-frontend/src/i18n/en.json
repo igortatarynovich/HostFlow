@@ -2280,6 +2280,7 @@
       "intake_questionnaire_submitted_desc": "{contact} — {company}",
       "intake_client_lead_skipped_no_company_title": "Client intake: lead not created",
       "intake_client_lead_skipped_no_company_desc": "{name} sent a client inquiry, but no client company could be resolved. Set a default company (Meta leads) or link vacancy/client.",
+      "unknown_event": "Notification",
       "reminder_popup": {
         "due_label": "Due",
         "open_candidate": "Open candidate",
@@ -2299,13 +2300,61 @@
         "candidate_ready_for_handoff_auto": "Candidate ready for handoff",
         "document_expired": "Document expired",
         "document_expiring_soon": "Document expiring soon",
+        "company_intake_submitted": "Company intake submitted",
+        "company_intake_submitted_desc": "{name} submitted a company request.",
+        "candidate_created": "New candidate",
+        "candidate_created_desc": "{name} was added to recruitment.",
+        "candidate_field_overridden": "Candidate field updated",
+        "hr_compliance_risk_alert": "HR compliance risk",
+        "hr_compliance_risk_reminder": "HR document reminder",
+        "hr_handoff_sla_alert": "Handoff SLA overdue",
+        "hr_onboarding_task_reminder": "Onboarding task overdue",
+        "hr_workforce_inactivity_alert": "Workforce inactivity",
+        "hr_operational_risk_alert": "HR operational risk",
+        "candidate": {
+          "created": "New candidate",
+          "created_desc": "{name} was added to recruitment.",
+          "duplicate_lead_intake": "Duplicate lead for an existing candidate",
+          "duplicate_lead_intake_desc": "A new lead matches {name}.",
+          "intake_submitted": "Candidate submitted the intake form",
+          "intake_submitted_desc": "{name} completed the intake form.",
+          "new_assignment": "Candidate assigned to you",
+          "stage_changed": "Candidate stage changed",
+          "stage_changed_desc": "{name}: {from_stage} → {to_stage}"
+        },
         "lead": {
           "new": {
             "telegram": "New lead (Telegram)"
           },
           "status_changed": {
             "telegram": "Lead status changed (Telegram)"
+          },
+          "processed": "Lead processed",
+          "processed_desc": "{name}",
+          "needs_routing": "Lead needs routing",
+          "needs_routing_desc": "{name} could not be routed automatically.",
+          "failed": "Lead processing failed",
+          "failed_desc": "{name}",
+          "pipeline": {
+            "stage_changed": "Lead stage changed",
+            "stage_changed_desc": "{from_stage} → {to_stage}"
+          },
+          "import": {
+            "completed": "Lead import completed",
+            "completed_desc": "{filename}: {success} of {total} rows imported.",
+            "failed": "Lead import failed",
+            "failed_desc": "{filename}: import did not finish."
           }
+        },
+        "document": {
+          "expiry": "Document expiry",
+          "expiry_desc": "{document_name} for {name}"
+        },
+        "documents": {
+          "deadline": "Document deadline"
+        },
+        "mentions": {
+          "direct": "You were mentioned"
         }
       }
     },

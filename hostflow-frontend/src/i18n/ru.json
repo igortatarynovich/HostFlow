@@ -2262,6 +2262,7 @@
       "intake_questionnaire_submitted_desc": "{contact} — {company}",
       "intake_client_lead_skipped_no_company_title": "Клиентский intake: лид не создан",
       "intake_client_lead_skipped_no_company_desc": "{name} отправил(а) клиентский запрос, но компанию-клиента определить не удалось. Задайте компанию по умолчанию (Meta leads) или привяжите вакансию/клиента.",
+      "unknown_event": "Уведомление",
       "reminder_popup": {
         "due_label": "Срок",
         "open_candidate": "Открыть кандидата",
@@ -2281,13 +2282,61 @@
         "candidate_ready_for_handoff_auto": "Кандидат готов к передаче",
         "document_expired": "Документ истёк",
         "document_expiring_soon": "Документ скоро истечёт",
+        "company_intake_submitted": "Отправлена заявка компании",
+        "company_intake_submitted_desc": "{name} отправил(а) заявку компании.",
+        "candidate_created": "Новый кандидат",
+        "candidate_created_desc": "{name} добавлен в подбор.",
+        "candidate_field_overridden": "Поле кандидата обновлено",
+        "hr_compliance_risk_alert": "Риск комплаенса HR",
+        "hr_compliance_risk_reminder": "Напоминание о документе HR",
+        "hr_handoff_sla_alert": "Просрочен SLA передачи",
+        "hr_onboarding_task_reminder": "Просрочена задача онбординга",
+        "hr_workforce_inactivity_alert": "Неактивность сотрудника",
+        "hr_operational_risk_alert": "Операционный риск HR",
+        "candidate": {
+          "created": "Новый кандидат",
+          "created_desc": "{name} добавлен в подбор.",
+          "duplicate_lead_intake": "Повторный лид по существующему кандидату",
+          "duplicate_lead_intake_desc": "Новый лид совпадает с кандидатом {name}.",
+          "intake_submitted": "Кандидат отправил анкету",
+          "intake_submitted_desc": "{name} заполнил(а) анкету.",
+          "new_assignment": "Вам назначен кандидат",
+          "stage_changed": "Этап кандидата изменён",
+          "stage_changed_desc": "{name}: {from_stage} → {to_stage}"
+        },
         "lead": {
           "new": {
             "telegram": "Новый лид (Telegram)"
           },
           "status_changed": {
             "telegram": "Статус лида изменён (Telegram)"
+          },
+          "processed": "Лид обработан",
+          "processed_desc": "{name}",
+          "needs_routing": "Лид требует маршрутизации",
+          "needs_routing_desc": "{name} не удалось направить автоматически.",
+          "failed": "Ошибка обработки лида",
+          "failed_desc": "{name}",
+          "pipeline": {
+            "stage_changed": "Этап лида изменён",
+            "stage_changed_desc": "{from_stage} → {to_stage}"
+          },
+          "import": {
+            "completed": "Импорт лидов завершён",
+            "completed_desc": "{filename}: импортировано {success} из {total} строк.",
+            "failed": "Импорт лидов не удался",
+            "failed_desc": "{filename}: импорт не завершён."
           }
+        },
+        "document": {
+          "expiry": "Истечение документа",
+          "expiry_desc": "{document_name} у {name}"
+        },
+        "documents": {
+          "deadline": "Срок документа"
+        },
+        "mentions": {
+          "direct": "Вас упомянули"
         }
       }
     },
