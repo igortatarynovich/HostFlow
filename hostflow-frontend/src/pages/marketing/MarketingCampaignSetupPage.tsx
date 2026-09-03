@@ -8,6 +8,8 @@ import { CRM_APP_PATHS, marketingCampaignPath } from '../../app/crmAppPaths'
 import { listAdditionalServices } from '../../api/additionalServices'
 import { ensureClientAccountsFromCompanies, listClientAccounts, type ClientAccount } from '../../api/clientAccounts'
 import {
+  createClientCompany,
+  getOnboardingStatus,
   listOwnCompanies,
   ownCompanySettings,
   type OwnCompanyRecord,
@@ -46,6 +48,9 @@ export default function MarketingCampaignSetupPage() {
     return targetType === 'vacancy' && id ? id : ''
   })
   const [contextClientId, setContextClientId] = useState('')
+  const [hireForOwn, setHireForOwn] = useState(false)
+  const [newClientName, setNewClientName] = useState('')
+  const [creatingClient, setCreatingClient] = useState(false)
   const [ownCompanyId, setOwnCompanyId] = useState(() => ownCompanySettings.get() || '')
   const prefilledFromSearch =
     Boolean(targetId) && (searchParams.get('target_type') || '').trim() === 'vacancy'
@@ -57,6 +62,7 @@ export default function MarketingCampaignSetupPage() {
   const [optionsLoading, setOptionsLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
+  const [isEmployer, setIsEmployer] = useState(false)
 
   const preset: FlowPreset | null = useMemo(
     () => FLOW_PRESETS.find((p) => p.kind === flowKind) || null,
@@ -67,11 +73,12 @@ export default function MarketingCampaignSetupPage() {
     setOptionsLoading(true)
     setError(null)
     try {
-      const [companyRes, vacs, svcs, accounts] = await Promise.all([
+      const [companyRes, vacs, svcs, accounts, onboarding] = await Promise.all([
         listOwnCompanies().catch(() => ({ items: [] as OwnCompanyRecord[] })),
         listVacancies().catch(() => [] as Vacancy[]),
         listAdditionalServices().catch(() => [] as AdditionalService[]),
         ensureClientAccountsFromCompanies().catch(() => listClientAccounts({ limit: 200 })),
+        getOnboardingStatus().catch(() => null),
       ])
       const companyItems = Array.isArray(companyRes?.items) ? companyRes.items : []
       setCompanies(companyItems)
@@ -83,6 +90,12 @@ export default function MarketingCampaignSetupPage() {
       setVacancies(Array.isArray(vacs) ? vacs.filter((v) => !v.is_archived) : [])
       setServices(Array.isArray(svcs) ? svcs : [])
       setClients(Array.isArray(accounts) ? accounts : [])
+      const employer = onboarding?.business_type === 'employer'
+      setIsEmployer(employer)
+      if (employer) {
+        setHireForOwn(true)
+        setContextClientId('')
+      }
     } catch (err) {
       setError(
         getFriendlyErrorInfo(
@@ -108,26 +121,73 @@ export default function MarketingCampaignSetupPage() {
   }, [step, t])
 
   const selectedClient = clients.find((c) => c.id === contextClientId)
+  const hasClientContext = Boolean(contextClientId) || hireForOwn
+
+  useEffect(() => {
+    if (isEmployer || contextClientId || hireForOwn || !clients.length) return
+    const vac = vacancies.find((v) => v.id === targetId)
+    const companyId = String(vac?.company_id || '').trim()
+    if (!companyId) return
+    const match = clients.find((c) => String(c.primary_company_id || '') === companyId)
+    if (match) setContextClientId(match.id)
+  }, [clients, vacancies, targetId, contextClientId, hireForOwn, isEmployer])
 
   const vacanciesForClient = useMemo(() => {
-    if (!contextClientId) return [] as Vacancy[]
+    if (hireForOwn) return vacancies
+    if (!contextClientId) {
+      if (prefilledFromSearch && targetId) {
+        return vacancies.filter((v) => v.id === targetId)
+      }
+      return [] as Vacancy[]
+    }
     const primaryCompanyId = String(selectedClient?.primary_company_id || '').trim()
     if (!primaryCompanyId) return vacancies
     const matched = vacancies.filter((v) => String(v.company_id || '') === primaryCompanyId)
     return matched.length ? matched : vacancies
-  }, [contextClientId, selectedClient, vacancies])
+  }, [contextClientId, selectedClient, vacancies, hireForOwn, prefilledFromSearch, targetId])
 
   const canNext = useMemo(() => {
     if (step === 1) return name.trim().length >= 2 && Boolean(ownCompanyId)
     if (step === 2) return Boolean(flowKind)
-    if (step === 3) return Boolean(targetId && preset && contextClientId)
+    if (step === 3) return Boolean(targetId && preset && hasClientContext)
     return Boolean(
-      preset && targetId && ownCompanyId && contextClientId && name.trim().length >= 2,
+      preset && targetId && ownCompanyId && hasClientContext && name.trim().length >= 2,
     )
-  }, [step, name, ownCompanyId, flowKind, targetId, preset, contextClientId])
+  }, [step, name, ownCompanyId, flowKind, targetId, preset, hasClientContext])
+
+  async function handleCreateClientInline() {
+    const trimmed = newClientName.trim()
+    if (trimmed.length < 2) return
+    setCreatingClient(true)
+    setError(null)
+    try {
+      const created = await createClientCompany({
+        name: trimmed,
+        extra: { company_role: 'client', setup_source: 'campaign_setup' },
+      })
+      const companyId = String((created as { id?: string })?.id ?? '')
+      const accounts = await ensureClientAccountsFromCompanies()
+      setClients(Array.isArray(accounts) ? accounts : [])
+      const match =
+        accounts.find((a) => String(a.primary_company_id || '') === companyId) ||
+        accounts.find((a) => a.display_name.trim() === trimmed)
+      if (match) {
+        setContextClientId(match.id)
+        setHireForOwn(false)
+        setTargetId((prev) => (prefilledFromSearch ? prev : ''))
+      }
+      setNewClientName('')
+    } catch (err) {
+      setError(
+        getFriendlyErrorInfo(err, t('app.marketing.setup.errors.create_client'), t),
+      )
+    } finally {
+      setCreatingClient(false)
+    }
+  }
 
   async function handleCreate() {
-    if (!preset || !targetId || !ownCompanyId || !contextClientId) return
+    if (!preset || !targetId || !ownCompanyId || !hasClientContext) return
     setSubmitting(true)
     setError(null)
     try {
@@ -145,15 +205,17 @@ export default function MarketingCampaignSetupPage() {
           role: 'primary',
           sort_order: 0,
         },
-        {
+      ]
+      if (contextClientId) {
+        targets.push({
           target_type: 'client_account',
           target_id: contextClientId,
           // Registry requires an allowed intent for client_account; routing uses Primary only.
           route_intent: 'sales_inquiry',
           role: 'context',
           sort_order: 1,
-        },
-      ]
+        })
+      }
       const campaign = await createCampaign({
         name: name.trim(),
         description: description.trim() || undefined,
@@ -274,49 +336,77 @@ export default function MarketingCampaignSetupPage() {
 
         {step === 3 && preset ? (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
-              {t('app.marketing.setup.serves_client')}
-            </p>
-
-            <div>
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-800">{t('app.marketing.setup.client_required')}</span>
-                <select
-                  className="input w-full"
-                  value={contextClientId}
-                  onChange={(e) => {
-                    setContextClientId(e.target.value)
-                    setTargetId('')
-                  }}
-                  data-testid="marketing-setup-context-client"
-                >
-                  <option value="">{t('app.marketing.setup.pick_client')}</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.display_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {!clients.length ? (
-                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  {t('app.marketing.setup.no_client_account')}{' '}
-                  <Link to={CRM_APP_PATHS.clientNew} className="underline">
-                    {t('app.marketing.setup.create_client')}
-                  </Link>{' '}
-                  {t('app.marketing.setup.then_return')}
+            {isEmployer ? (
+              <p className="text-sm text-slate-600">
+                {t('app.marketing.setup.serves_own', {
+                  defaultValue: 'This campaign hires for your company. Pick the vacancy — no client is needed.',
+                })}
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600">
+                  {t('app.marketing.setup.serves_client')}
                 </p>
-              ) : (
-                <p className="mt-1 text-xs text-slate-500">
-                  {t('app.marketing.setup.client_context_hint')}{' '}
-                  <Link to={CRM_APP_PATHS.clientNew} className="underline">
-                    {t('app.marketing.setup.new_client')}
-                  </Link>
-                </p>
-              )}
-            </div>
 
-            {contextClientId ? (
+                <div>
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-medium text-slate-800">{t('app.marketing.setup.client_required')}</span>
+                    <select
+                      className="input w-full"
+                      value={hireForOwn ? '__own__' : contextClientId}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (value === '__own__') {
+                          setHireForOwn(true)
+                          setContextClientId('')
+                          setTargetId((prev) => (prefilledFromSearch ? prev : ''))
+                          return
+                        }
+                        setHireForOwn(false)
+                        setContextClientId(value)
+                        setTargetId((prev) => (prefilledFromSearch && value ? prev : ''))
+                      }}
+                      data-testid="marketing-setup-context-client"
+                    >
+                      <option value="">{t('app.marketing.setup.pick_client')}</option>
+                      <option value="__own__">{t('app.marketing.setup.hire_for_own')}</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.display_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-sm font-medium text-slate-800">
+                      {t('app.marketing.setup.create_client_inline')}
+                    </p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <input
+                        className="input flex-1"
+                        value={newClientName}
+                        onChange={(e) => setNewClientName(e.target.value)}
+                        placeholder={t('app.marketing.setup.client_name_placeholder')}
+                        data-testid="marketing-setup-new-client-name"
+                      />
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm shrink-0"
+                        disabled={creatingClient || newClientName.trim().length < 2}
+                        onClick={() => void handleCreateClientInline()}
+                        data-testid="marketing-setup-create-client"
+                      >
+                        {creatingClient
+                          ? t('common.saving')
+                          : t('app.marketing.setup.create_client')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {hasClientContext ? (
               <div className="border-t border-slate-200 pt-4 space-y-3">
                 <p className="text-sm font-medium text-slate-800">
                   {t('app.marketing.setup.subject', { values: { label: preset.destinationLabel } })}
@@ -328,7 +418,7 @@ export default function MarketingCampaignSetupPage() {
                   !vacanciesForClient.length ? (
                     <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                       {t('app.marketing.setup.no_vacancies')}{' '}
-                      <Link to={CRM_APP_PATHS.vacancyNew} className="underline">
+                      <Link to={CRM_APP_PATHS.setupVacancy} className="underline">
                         {t('app.marketing.setup.create_vacancy')}
                       </Link>{' '}
                       {t('app.marketing.setup.in_recruitment')}
@@ -402,7 +492,9 @@ export default function MarketingCampaignSetupPage() {
             <div>
               <div className="text-xs text-slate-500">{t('app.marketing.setup.review_client')}</div>
               <div className="font-medium text-slate-900">
-                {selectedClient?.display_name || contextClientId}
+                {hireForOwn
+                  ? t('app.marketing.setup.hire_for_own')
+                  : selectedClient?.display_name || contextClientId}
               </div>
               <div className="text-xs text-slate-500">{t('app.marketing.setup.review_context_role')}</div>
             </div>

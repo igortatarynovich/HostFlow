@@ -10725,7 +10725,7 @@
         "loading": "Przygotowujemy kolejny krok…",
         "badge": "Wynik",
         "title": "Zamykaj wakaty szybciej — zacznij tutaj",
-        "subtitle": "Jeden krok naraz — do pierwszego zgłoszenia i kontaktu z kandydatem.",
+        "subtitle": "Jeden krok naraz: klient → wakat → kampania → reklamy → pierwszy kontakt.",
         "progress": "Gotowe {done} z {total}",
         "list_aria": "Checklist Success Path",
         "optional": "opcjonalne",
@@ -10750,15 +10750,25 @@
             "hint": "Zaproś rekruterów, gdy będziesz gotowy — możesz później.",
             "cta": "Zaproś zespół"
           },
-          "meta": {
-            "label": "Podłącz reklamy Facebook / Meta",
-            "hint": "Aby zgłoszenia z reklam trafiały do HostFlow automatycznie.",
-            "cta": "Podłącz reklamy"
+          "client": {
+            "label": "Dodaj klienta, dla którego rekrutujesz",
+            "hint": "Wystarczy nazwa. Wakat będzie należeć do tego klienta. Pomiń tylko, gdy rekrutujesz do własnej firmy.",
+            "cta": "Dodaj klienta"
           },
           "vacancy": {
             "label": "Utwórz pierwszy wakat",
             "hint": "Otwórz rolę, na którą rekrutujesz — ok. 30 sekund.",
             "cta": "Utwórz wakat"
+          },
+          "campaign": {
+            "label": "Utwórz kampanię rekrutacyjną",
+            "hint": "Kampania używa już utworzonego klienta i wakatu. Źródło podłączysz potem.",
+            "cta": "Utwórz kampanię"
+          },
+          "meta": {
+            "label": "Podłącz reklamy Facebook / Meta",
+            "hint": "Aby zgłoszenia z reklam trafiały do HostFlow automatycznie.",
+            "cta": "Podłącz reklamy"
           },
           "lead": {
             "label": "Odbierz pierwszy lead",
@@ -11416,10 +11426,14 @@
         "owner_hint": "Kampania należy do tenanta i tej firmy. Klient/zamówienie to tylko kontekst, nie właściciel.",
         "flow_aria": "Typ przepływu",
         "serves_client": "Kampania obsługuje klienta. Primary Target to wakat albo usługa/zamówienie tego klienta; routing i KPI idą przez niego.",
-        "client_required": "Klient (wymagany)",
+        "serves_own": "Ta kampania rekrutuje do Twojej firmy. Wybierz wakat — klient nie jest potrzebny.",
+        "client_required": "Klient",
         "pick_client": "Wybierz klienta",
+        "hire_for_own": "Rekrutacja do własnej firmy (bez klienta)",
         "no_client_account": "Brak Client Account.",
         "create_client": "Utwórz klienta",
+        "create_client_inline": "Nowy klient — wystarczy nazwa",
+        "client_name_placeholder": "Np. North Logistics",
         "then_return": "w sprzedaży, potem wróć tutaj.",
         "client_context_hint": "Zapisane jako CampaignTarget(role=context, client_account). Statystyki klienta biorą się stąd.",
         "new_client": "Nowy klient",
@@ -11432,7 +11446,7 @@
         "no_services": "Brak usług.",
         "open_services": "Otwórz usługi",
         "service_aria": "Usługa",
-        "pick_client_first": "Najpierw wybierz klienta — potem wakat (hiring) albo usługę (B2B).",
+        "pick_client_first": "Najpierw wybierz klienta (albo rekrutację do własnej firmy) — potem wakat.",
         "review_campaign": "Kampania",
         "review_owner": "Firma-właściciel",
         "review_flow": "Przepływ",
@@ -11444,7 +11458,8 @@
         "create": "Utwórz kampanię",
         "errors": {
           "load_options": "Nie udało się wczytać katalogów",
-          "create": "Nie udało się utworzyć kampanii"
+          "create": "Nie udało się utworzyć kampanii",
+          "create_client": "Nie udało się utworzyć klienta"
         },
         "review_context_role": "CampaignTarget · role=context",
         "review_primary_target": "Primary Target · route_intent"

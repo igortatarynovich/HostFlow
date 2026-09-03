@@ -30,7 +30,7 @@ export function PipelineMainEmptyState() {
           label: t('app.candidates.pipeline.empty_cta_vacancy', {
             defaultValue: 'Create vacancy',
           }),
-          to: CRM_APP_PATHS.setupVacancy,
+          to: CRM_APP_PATHS.setupClient,
         }}
       />
     </div>

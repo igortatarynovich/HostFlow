@@ -4,15 +4,17 @@ import { getOnboardingStatus, type OnboardingStatus } from '../api/client'
 import { getSetupReadiness, type SetupReadinessSnapshot } from '../api/onboarding'
 import { getTeamOverview } from '../api/tenants'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { ACTIVATION_PATHS } from '../app/activationRoutes'
+import { ACTIVATION_PATHS, getFirstVacancySetupPath } from '../app/activationRoutes'
 
 const DEFER_META_KEY = 'hf-success-path-defer-meta-v1'
 
 export type SuccessPathItemId =
   | 'company'
   | 'invite'
-  | 'meta'
+  | 'client'
   | 'vacancy'
+  | 'campaign'
+  | 'meta'
   | 'lead'
   | 'contact'
 
@@ -58,6 +60,9 @@ function buildItems(
   teammatesInvited: boolean,
 ): SuccessPathItem[] {
   const steps = status?.steps
+  const businessType = status?.business_type ?? 'agency'
+  const isEmployer = businessType === 'employer'
+  const isServices = businessType === 'services'
   return [
     {
       id: 'company',
@@ -74,18 +79,35 @@ function buildItems(
       href: CRM_APP_PATHS.settingsUsers,
     },
     {
+      id: 'client',
+      done:
+        isEmployer ||
+        Boolean(steps?.first_client_created) ||
+        Boolean(steps?.first_vacancy_created),
+      optional: isEmployer,
+      deferred: false,
+      href: CRM_APP_PATHS.setupClient,
+    },
+    {
+      id: 'vacancy',
+      done: isServices || Boolean(steps?.first_vacancy_created),
+      optional: isServices,
+      deferred: false,
+      href: getFirstVacancySetupPath(status),
+    },
+    {
+      id: 'campaign',
+      done: isServices || Boolean(steps?.first_campaign_created),
+      optional: isServices,
+      deferred: false,
+      href: CRM_APP_PATHS.marketingNew,
+    },
+    {
       id: 'meta',
       done: gatePass(setup, 'G6') || metaDeferred,
       optional: true,
       deferred: metaDeferred && !gatePass(setup, 'G6'),
       href: CRM_APP_PATHS.settingsIntegrationsMeta,
-    },
-    {
-      id: 'vacancy',
-      done: Boolean(steps?.first_vacancy_created),
-      optional: false,
-      deferred: false,
-      href: CRM_APP_PATHS.setupVacancy,
     },
     {
       id: 'lead',
@@ -104,8 +126,17 @@ function buildItems(
   ]
 }
 
-/** Primary CTA order: company → vacancy → meta → lead → contact; invite last (optional). */
-const NEXT_ORDER: SuccessPathItemId[] = ['company', 'vacancy', 'meta', 'lead', 'contact', 'invite']
+/** Primary CTA: company → client → vacancy → campaign → meta → lead → contact. */
+const NEXT_ORDER: SuccessPathItemId[] = [
+  'company',
+  'client',
+  'vacancy',
+  'campaign',
+  'meta',
+  'lead',
+  'contact',
+  'invite',
+]
 
 function pickNext(items: SuccessPathItem[]): SuccessPathNextAction | null {
   const byId = new Map(items.map((item) => [item.id, item]))

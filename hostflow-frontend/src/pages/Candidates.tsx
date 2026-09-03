@@ -2886,7 +2886,7 @@ export default function Candidates(){
                             label: t('app.candidates.table.empty_cta_vacancy', {
                               defaultValue: 'Create vacancy',
                             }),
-                            to: CRM_APP_PATHS.setupVacancy,
+                            to: CRM_APP_PATHS.setupClient,
                           }
                     }
                   />

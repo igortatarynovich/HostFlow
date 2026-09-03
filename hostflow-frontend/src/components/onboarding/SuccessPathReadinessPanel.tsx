@@ -121,7 +121,7 @@ export function SuccessPathReadinessPanel({
             })
           : t('app.onboarding.success_path.subtitle', {
               defaultValue:
-                'One action at a time until applications land and you contact the first candidate.',
+                'One action at a time: client → vacancy → campaign → ads → first contact.',
             })}
       </p>
 

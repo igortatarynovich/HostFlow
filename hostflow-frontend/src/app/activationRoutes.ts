@@ -58,6 +58,7 @@ export type ActivationStatusLike = {
     first_lead_created?: boolean
     first_client_created: boolean
     first_vacancy_created: boolean
+    first_campaign_created?: boolean
     first_service_order_created: boolean
     next_action_created: boolean
   }
@@ -108,4 +109,28 @@ export function getRetentionStepKey(status: ActivationStatusLike | null | undefi
   if (status.business_type === 'services') return 'client'
   if (status.business_type === 'employer') return 'vacancy'
   return 'client'
+}
+
+/**
+ * First hiring setup entry: client (name) → vacancy → campaign.
+ * Employers skip the client company; services start from the client directory.
+ */
+export function getHiringSetupEntryPath(status: ActivationStatusLike | null | undefined): string {
+  const businessType = status?.business_type ?? 'agency'
+  const steps = status?.steps
+  if (businessType === 'services') return ACTIVATION_PATHS.clients
+  if (businessType !== 'employer' && !steps?.first_client_created && !steps?.first_vacancy_created) {
+    return CRM_APP_PATHS.setupClient
+  }
+  if (!steps?.first_vacancy_created) return CRM_APP_PATHS.setupVacancy
+  if (!steps?.first_campaign_created) return CRM_APP_PATHS.marketingNew
+  return CRM_APP_PATHS.marketing
+}
+
+/** Where “create first vacancy” should send the user so the vacancy already has a client (or own company). */
+export function getFirstVacancySetupPath(status: ActivationStatusLike | null | undefined): string {
+  const businessType = status?.business_type ?? 'agency'
+  if (businessType === 'employer') return CRM_APP_PATHS.setupVacancy
+  if (status?.steps?.first_client_created) return CRM_APP_PATHS.setupVacancy
+  return CRM_APP_PATHS.setupClient
 }

@@ -11,7 +11,7 @@
 
 Any new buyer reaches **first operational value without support**:
 
-company ready → Meta (or skip with clear reason) → first order/vacancy → inbound lead path understood → contact candidate.
+company ready → first client (name) → first vacancy on that client → campaign → Meta (or skip with clear reason) → inbound lead path understood → contact candidate.
 
 If this path works end-to-end, HostFlow is ready to scale acquisition.
 
@@ -44,8 +44,10 @@ Landing (/)
   → Verify email
   → Complete (name, password, company, country) — creates User + Tenant + trial + OwnCompany
   → Product home / setup hub with readiness checklist + next action
+  → Add first client (name only; skip only when hiring for own company)
+  → Create vacancy for that client
+  → Create campaign (client + vacancy already exist)
   → Connect Meta (CTA; deferrable)
-  → Create order (when Sales path applies) / Create vacancy (CTA from empty state)
   → Publish / open intake
   → Receive lead
   → Contact
@@ -66,14 +68,16 @@ Post-account HostFlow must **not** drop the user into an empty CRM with no next 
 
 - [ ] Company created  
 - [ ] Teammates invited (optional)  
+- [ ] First client created (name; skip only when hiring for own company)  
+- [ ] First vacancy created (belongs to that client or own company)  
+- [ ] First campaign created  
 - [ ] Meta connected (or deferred)  
-- [ ] First vacancy created  
 - [ ] First lead received  
 - [ ] First contact with candidate  
 
 ### Next-action rule
 
-Exactly **one primary CTA** on the readiness surface (“Create vacancy”, “Connect Meta”, …). Secondary links allowed; no competing heroes.
+Exactly **one primary CTA** on the readiness surface (“Add client”, “Create vacancy”, “Create campaign”, “Connect Meta”, …). Secondary links allowed; no competing heroes.
 
 ### Empty states
 
@@ -83,8 +87,8 @@ Canonical empty CTAs for the Success Path:
 
 | Screen | Empty message focus | Primary CTA |
 |--------|---------------------|-------------|
-| Vacancies | Create first vacancy (~30s) | Create vacancy |
-| Leads | Applications will land here | Create vacancy → then Connect ads |
+| Vacancies | Create first vacancy (~30s); agency path asks for a client name first | Add client → Create vacancy |
+| Leads | Applications will land here | Add client / vacancy → then Create campaign → Connect ads |
 | Candidates | Appear after qualifying a lead | Open leads |
 | Pipeline | Process a lead into a candidate | Open leads |
 | Follow-ups / tasks | Appear after first contact | Open leads |
@@ -94,10 +98,10 @@ Canonical empty CTAs for the Success Path:
 | Intent | Today | Target |
 |--------|-------|--------|
 | Company identity | ADR-041 complete (name + country); `/app/platform/setup` fallback | Keep as short form only; not a second gate when OwnCompany exists |
-| Module / first path | Launchpad | Clarify next step copy |
-| Recruitment setup | `/app/setup` hub | Become readiness home + checklist |
-| Meta | Integrations / setup | Checklist item + deep link CTA |
-| First vacancy | Setup vacancy / empty vacancies | Empty-state CTA |
+| First client | `/app/setup/client` (name; or own-company skip) | Checklist item before vacancy for agencies |
+| First vacancy | Setup vacancy / empty vacancies | Empty-state CTA after client exists |
+| First campaign | `/app/marketing/new` | After vacancy; client + vacancy already available |
+| Meta | Integrations / setup | Checklist item after campaign; deep link CTA |
 | Invite | Team settings | Checklist item + deep link |
 
 **Time box:** ≤ 10 minutes to “workspace ready” (company + first vacancy path visible). Optional steps may remain open as checklist debt.
@@ -139,8 +143,8 @@ Phase 5 **product tours** (if any) are short contextual tips — not a replaceme
 ## 6. How-it-works (marketing, ≤5 steps)
 
 1. Create company  
-2. Connect Meta  
-3. Create vacancy  
+2. Add client and vacancy  
+3. Create campaign  
 4. Receive applications  
 5. Process candidates  
 
@@ -162,7 +166,7 @@ Do not invent limits not present in plans-matrix / billing code.
 
 **Phase 1 (landing):** first viewport answers the four ADR-034 questions; how-it-works has five steps; pricing shows trial/limits clarity; all Growth CTAs → `/signup`.
 
-**Phase 2 (readiness UI):** new tenant completes ADR-041 (verified email + name/password/company/country), then sees a clear next action toward vacancy/Meta without a multi-step wizard; empty vacancies state CTAs to create vacancy; checklist debt remains visible if Meta/invite skipped.
+**Phase 2 (readiness UI):** new tenant completes ADR-041 (verified email + name/password/company/country), then sees a clear next action toward client → vacancy → campaign without a multi-step trap; empty vacancies state CTAs through client (name) then vacancy; campaign is created before Meta; checklist debt remains visible if Meta/invite skipped.
 
 **Phase 3 (FAQ):** `/faq` hub + `ContextHelp` on key product screens; CTAs stay on Growth funnel (`/signup`).
 

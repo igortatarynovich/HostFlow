@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.models import Company, Lead, OwnCompany, Reminder, ServiceOrder, Tenant, Vacancy
+from backend.app.models import Campaign, Company, Lead, OwnCompany, Reminder, ServiceOrder, Tenant, Vacancy
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.constants.spa_paths import LEADS
 from backend.app.services.onboarding_demo_seed import (
@@ -32,12 +32,12 @@ router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 WIZARD_STEP_KEYS = (
     "type",  # business type / company creation
-    "channel",  # connect first lead intake channel
     "client",  # create first client company (or skip for employer)
     "vacancy",  # create first vacancy (or skip for services)
+    "channel",  # connect first lead intake channel (after client + vacancy exist)
     "first_lead",  # final: see demo lead with NBA
 )
-WizardStepKey = Literal["type", "channel", "client", "vacancy", "first_lead"]
+WizardStepKey = Literal["type", "client", "vacancy", "channel", "first_lead"]
 LEAD_INTAKE_CHANNEL_KEYS = ("meta", "public_intake", "webhook", "manual", "skipped")
 
 
@@ -56,6 +56,7 @@ class OnboardingStatusOut(BaseModel):
     companies_count: int
     leads_count: int
     vacancies_count: int
+    campaigns_count: int = 0
     service_orders_count: int
     reminders_count: int
     clients_count: int
@@ -107,6 +108,9 @@ async def get_onboarding_status(
     vacancy_count_row = await db.execute(
         select(func.count()).select_from(Vacancy).where(Vacancy.tenant_id == tenant_id)
     )
+    campaign_count_row = await db.execute(
+        select(func.count()).select_from(Campaign).where(Campaign.tenant_id == tenant_id)
+    )
     service_order_count_row = await db.execute(
         select(func.count()).select_from(ServiceOrder).where(ServiceOrder.tenant_id == tenant_id)
     )
@@ -139,6 +143,7 @@ async def get_onboarding_status(
 
     leads_count = int(lead_count_row.scalar_one() or 0)
     vacancies_count = int(vacancy_count_row.scalar_one() or 0)
+    campaigns_count = int(campaign_count_row.scalar_one() or 0)
     service_orders_count = int(service_order_count_row.scalar_one() or 0)
     reminders_count = int(reminder_count_row.scalar_one() or 0)
 
@@ -186,6 +191,7 @@ async def get_onboarding_status(
         "company_created": operating_companies_count > 0,
         "first_lead_created": leads_count > 0,
         "first_vacancy_created": vacancies_count > 0,
+        "first_campaign_created": campaigns_count > 0,
         "first_service_order_created": service_orders_count > 0,
         "first_client_created": clients_count > 0,
         "next_action_created": reminders_count > 0,
@@ -212,6 +218,7 @@ async def get_onboarding_status(
         companies_count=operating_companies_count,
         leads_count=leads_count,
         vacancies_count=vacancies_count,
+        campaigns_count=campaigns_count,
         service_orders_count=service_orders_count,
         reminders_count=reminders_count,
         clients_count=clients_count,

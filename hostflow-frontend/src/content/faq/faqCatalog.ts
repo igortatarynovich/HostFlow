@@ -44,7 +44,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       {
         id: "first_value",
         q: { en: "What is the fastest path to first value?", ru: "Как быстрее всего получить первую ценность?", pl: "Jaka jest najszybsza droga do pierwszej wartości?" },
-        a: { en: "Create company → create a vacancy → connect Meta ads (or skip) → receive a lead → contact them. The Getting started checklist always shows the single next action.", ru: "Компания → вакансия → Meta (или позже) → заявка → контакт. Чек-лист «Старт» всегда показывает один следующий шаг.", pl: "Firma → wakat → Meta (lub później) → lead → kontakt. Checklista startu zawsze pokazuje jeden kolejny krok." },
+        a: { en: "Create company → add the client you hire for (a name is enough) → create a vacancy for that client → create a campaign → connect Meta ads (or skip) → receive a lead → contact them. The Getting started checklist always shows the single next action.", ru: "Компания → клиент (достаточно названия) → вакансия этого клиента → кампания → Meta (или позже) → заявка → контакт. Чек-лист «Старт» всегда показывает один следующий шаг.", pl: "Firma → klient (wystarczy nazwa) → wakat tego klienta → kampania → Meta (lub później) → lead → kontakt. Checklista startu zawsze pokazuje jeden kolejny krok." },
       },
       {
         id: "no_support",

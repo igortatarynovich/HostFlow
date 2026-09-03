@@ -19,9 +19,8 @@ import type { BillingSubscription } from '../api/billing'
 import { useSuccessPathReadiness } from '../hooks/useSuccessPathReadiness'
 import { SuccessPathReadinessPanel } from '../components/onboarding/SuccessPathReadinessPanel'
 import { CRM_APP_PATHS, recruitmentSearchPath } from '../app/crmAppPaths'
-import { getBusinessHomePath } from '../app/activationRoutes'
+import { getHiringSetupEntryPath } from '../app/activationRoutes'
 import { readLastLaunchSearchId } from '../services/launchSearchSession'
-import type { ActivationBusinessType } from '../app/activationRoutes'
 
 function trialDaysRemaining(trialEndsAt: string | null | undefined): number | null {
   if (!trialEndsAt) return null
@@ -170,23 +169,25 @@ export default function LaunchpadPage() {
   const recruitmentWorkspaceAvailable =
     (companyReady && hasActiveSearch) || Boolean(effectiveStatus && effectiveStatus.activation_required === false)
   const platformConfigured = Boolean(effectiveStatus && !effectiveStatus.onboarding_required)
-  const businessType = (effectiveStatus?.business_type ?? 'agency') as ActivationBusinessType
 
   const lastSearchId = readLastLaunchSearchId()
+  const hiringEntryPath = getHiringSetupEntryPath(effectiveStatus)
   const recruitmentOpenPath =
     lastSearchId && hasActiveSearch
       ? recruitmentSearchPath(lastSearchId)
       : hasActiveSearch
         ? CRM_APP_PATHS.marketing
-        : getBusinessHomePath(businessType)
+        : hiringEntryPath
   const recruitmentModulePath =
     recruitmentWorkspaceAvailable && hasActiveSearch
       ? recruitmentOpenPath
-      : CRM_APP_PATHS.marketingNew
+      : hiringEntryPath
   const recruitmentModuleActionLabel =
     recruitmentWorkspaceAvailable && hasActiveSearch
       ? t('app.launchpad.open_search')
-      : t('app.launchpad.create_campaign')
+      : hasActiveSearch
+        ? t('app.launchpad.create_campaign')
+        : t('app.launchpad.create_search')
 
   const trialDays = trialDaysRemaining(billing?.trial_ends_at)
   const showTrial = Boolean(billing?.gate?.trial_active || billing?.status === 'trialing' || trialDays !== null)
@@ -243,14 +244,16 @@ export default function LaunchpadPage() {
             to={
               lastSearchId && hasActiveSearch
                 ? recruitmentSearchPath(lastSearchId)
-                : CRM_APP_PATHS.marketingNew
+                : hiringEntryPath
             }
             data-testid="m1-launchpad-create-search"
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700 sm:mt-6 sm:w-auto sm:self-start sm:text-base"
           >
             {lastSearchId && hasActiveSearch
               ? t('app.launchpad.open_search')
-              : t('app.launchpad.create_search')}
+              : hasActiveSearch
+                ? t('app.launchpad.create_campaign')
+                : t('app.launchpad.create_search')}
             <IconArrowRight size={16} stroke={2} aria-hidden />
           </Link>
         </article>

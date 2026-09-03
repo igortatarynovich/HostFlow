@@ -1,7 +1,7 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../../i18n'
-import { createClientCompany, listOwnCompanies } from '../../api/client'
+import { createClientCompany, getOnboardingStatus, listOwnCompanies } from '../../api/client'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useCompanySetupCatalogs } from '../../hooks/useCompanySetupCatalogs'
 import { useCityOptions } from '../../hooks/useCityOptions'
@@ -28,6 +28,8 @@ export default function SetupFirstClientPage() {
   const [countryCode, setCountryCode] = useState('PL')
   const [city, setCity] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
+  const [employerBypass, setEmployerBypass] = useState(true)
   const { catalogs } = useCompanySetupCatalogs(locale)
   const { labels: cityOptions } = useCityOptions(countryCode, locale)
 
@@ -42,6 +44,35 @@ export default function SetupFirstClientPage() {
     },
     [navigate],
   )
+
+  const continueAsOwnCompany = useCallback(async () => {
+    const own = await listOwnCompanies()
+    const ownCompany = own.items?.[0]
+    if (!ownCompany?.id) {
+      throw new Error('own_company_missing')
+    }
+    goToVacancy(String(ownCompany.id), String(ownCompany.name ?? ''), 'own')
+  }, [goToVacancy])
+
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const status = await getOnboardingStatus()
+        if (!alive) return
+        if (status.business_type === 'employer') {
+          await continueAsOwnCompany()
+          return
+        }
+      } catch {
+        // Fall through to the agency audience question.
+      }
+      if (alive) setEmployerBypass(false)
+    })()
+    return () => {
+      alive = false
+    }
+  }, [continueAsOwnCompany])
 
   async function onAudienceContinue() {
     setError(null)
@@ -62,20 +93,7 @@ export default function SetupFirstClientPage() {
     }
     setLoading(true)
     try {
-      const own = await listOwnCompanies()
-      const ownCompany = own.items?.[0]
-      if (!ownCompany?.id) {
-        setError(
-          friendlyFormHintError(
-            t('app.onboarding.setup.client.errors.own_company_missing', {
-              defaultValue: 'Сначала настройте свою компанию.',
-            }),
-            t,
-          ),
-        )
-        return
-      }
-      goToVacancy(String(ownCompany.id), String(ownCompany.name ?? ''), 'own')
+      await continueAsOwnCompany()
     } catch (err) {
       setError(
         getFriendlyErrorInfo(
@@ -160,11 +178,13 @@ export default function SetupFirstClientPage() {
               defaultValue: 'Один ответ — и мы покажем только нужные поля. Без реестра клиентов и лишних настроек.',
             })
           : t('app.onboarding.setup.client.details_subtitle', {
-              defaultValue: 'Минимум данных, чтобы создать первую вакансию.',
+              defaultValue: 'Достаточно названия — остальное можно заполнить позже.',
             })
       }
     >
-      {step === 'audience' ? (
+      {employerBypass ? (
+        <p className="text-sm text-slate-500">{t('common.loading')}</p>
+      ) : step === 'audience' ? (
         <div className="space-y-4">
           <div className="grid gap-3" role="radiogroup">
             <button

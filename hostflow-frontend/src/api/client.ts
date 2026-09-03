@@ -982,6 +982,7 @@ export type OnboardingStatus = {
   companies_count: number
   leads_count: number
   vacancies_count: number
+  campaigns_count?: number
   service_orders_count: number
   reminders_count: number
   clients_count: number
@@ -990,6 +991,7 @@ export type OnboardingStatus = {
     company_created: boolean
     first_lead_created: boolean
     first_vacancy_created: boolean
+    first_campaign_created?: boolean
     first_service_order_created: boolean
     first_client_created: boolean
     next_action_created: boolean
@@ -1016,9 +1018,9 @@ export async function clearOnboardingDemoData(): Promise<OnboardingClearDemoResu
 // Phase 2 onboarding wizard (5-step «first value in 5 minutes»)
 export type OnboardingWizardStepKey =
   | 'type'
-  | 'channel'
   | 'client'
   | 'vacancy'
+  | 'channel'
   | 'first_lead';
 
 export type OnboardingWizardChannel =

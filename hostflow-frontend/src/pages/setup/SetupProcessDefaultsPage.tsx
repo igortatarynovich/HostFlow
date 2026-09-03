@@ -31,7 +31,10 @@ export default function SetupProcessDefaultsPage() {
     try {
       const result = await applySetupVacancyDefaults(vacancyId, companyId)
       setApplied({ funnelName: result.funnelName, profileName: result.profileName })
-      navigate(CRM_APP_PATHS.setupIntake, { replace: true })
+      const next = new URLSearchParams()
+      next.set('vacancyId', vacancyId)
+      next.set('companyId', companyId)
+      navigate(`${CRM_APP_PATHS.setupIntake}?${next.toString()}`, { replace: true })
     } catch (err) {
       setError(
         getFriendlyErrorInfo(

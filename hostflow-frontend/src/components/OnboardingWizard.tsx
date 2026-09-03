@@ -42,7 +42,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
           ? {
               id: 'vacancy',
               done: Boolean(status?.steps?.first_vacancy_created),
-              href: ACTIVATION_PATHS.vacancies,
+              href: CRM_APP_PATHS.setupVacancy,
               label: t('app.onboarding.first_value.step_vacancy'),
             }
           : businessType === 'services'
@@ -55,7 +55,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
             : {
                 id: 'first_client',
                 done: Boolean(status?.steps?.first_client_created),
-                href: ACTIVATION_PATHS.clients,
+                href: CRM_APP_PATHS.setupClient,
                 label: t('app.onboarding.first_value.step_client'),
               }
       return [
@@ -115,7 +115,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
                   <span className="text-slate-800">{`${index + 1}. ${step.label}`}</span>
                 </span>
                 <Link to={step.href} className="text-xs font-medium text-brand-700 hover:underline">
-                  {step.href === ACTIVATION_PATHS.clients
+                  {step.href === ACTIVATION_PATHS.clients || step.href === CRM_APP_PATHS.setupClient
                     ? openEntityLabel
                     : t('app.onboarding.first_value.open')}
                 </Link>

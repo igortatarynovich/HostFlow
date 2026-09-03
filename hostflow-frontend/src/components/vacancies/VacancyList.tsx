@@ -939,7 +939,7 @@ export default function VacancyList() {
                       label: t('app.vacancies.list.empty_cta', {
                         defaultValue: 'Create vacancy',
                       }),
-                      to: CRM_APP_PATHS.setupVacancy,
+                      to: CRM_APP_PATHS.setupClient,
                     }}
                     secondaryAction={{
                       label: t('app.vacancies.list.empty_cta_setup', {

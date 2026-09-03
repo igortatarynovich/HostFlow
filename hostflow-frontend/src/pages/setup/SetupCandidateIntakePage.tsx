@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { IconArrowRight, IconUserPlus } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS, marketingSetupWithVacancyTargetPath } from '../../app/crmAppPaths'
 import { SetupFlowChrome } from '../../components/setup/SetupFlowChrome'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { declareManualCandidateIntake } from '../../api/onboarding'
@@ -37,7 +37,7 @@ const INTAKE_CARDS: IntakeCard[] = [
     titleKey: 'app.onboarding.setup.intake.meta.title',
     titleDefault: 'Facebook / Instagram Ads',
     subtitleKey: 'app.onboarding.setup.intake.meta.subtitle',
-    subtitleDefault: 'Подключить Meta',
+    subtitleDefault: 'Создать кампанию и подключить Meta',
     enabled: true,
     testId: 'm1-setup-intake-meta',
   },
@@ -79,6 +79,8 @@ const INTAKE_CARDS: IntakeCard[] = [
 export default function SetupCandidateIntakePage() {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const vacancyId = (searchParams.get('vacancyId') || '').trim()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
 
@@ -108,7 +110,9 @@ export default function SetupCandidateIntakePage() {
   }
 
   function onSelectMeta() {
-    navigate(CRM_APP_PATHS.settingsIntegrationsMeta)
+    navigate(
+      vacancyId ? marketingSetupWithVacancyTargetPath(vacancyId) : CRM_APP_PATHS.marketingNew,
+    )
   }
 
   function onSelectCard(card: IntakeCard) {
@@ -131,7 +135,7 @@ export default function SetupCandidateIntakePage() {
       })}
       subtitle={t('app.onboarding.setup.intake.subtitle', {
         defaultValue:
-          'Выберите способ появления кандидатов в системе. Можно начать вручную — Meta подключите позже.',
+          'Сначала создайте кампанию на вакансию — источник (Meta) подключается уже на кампании. Можно начать вручную.',
       })}
     >
       <div className="space-y-4">

@@ -56,7 +56,7 @@ type StepDef = {
   optional: boolean
 }
 
-const STEP_ORDER: StepKey[] = ['type', 'channel', 'client', 'vacancy', 'first_lead']
+const STEP_ORDER: StepKey[] = ['type', 'client', 'vacancy', 'channel', 'first_lead']
 
 function nextStepFor(current: StepKey, businessType: OnboardingStatus['business_type']): StepKey {
   const idx = STEP_ORDER.indexOf(current)
@@ -86,7 +86,7 @@ export default function OnboardingWizardPage() {
   useSeoMeta({
     title: t('app.onboarding.wizard.seo_title', { defaultValue: 'Setup wizard — HostFlow' }),
     description: t('app.onboarding.wizard.seo_description', {
-      defaultValue: 'Five-minute setup wizard: business type, lead channel, first client, vacancy, and demo lead with NBA.',
+      defaultValue: 'Five-minute setup wizard: business type, first client, vacancy, lead channel, and demo lead with NBA.',
     }),
     canonicalPath: CRM_APP_PATHS.onboardingWizard,
   })
@@ -132,24 +132,24 @@ export default function OnboardingWizardPage() {
         optional: false,
       },
       {
-        key: 'channel',
-        num: 2,
-        title: t('app.onboarding.wizard.steps.channel.title', { defaultValue: 'Lead channel' }),
-        hint: t('app.onboarding.wizard.steps.channel.hint', { defaultValue: 'Connect at least one source so leads start arriving.' }),
-        optional: true,
-      },
-      {
         key: 'client',
-        num: 3,
+        num: 2,
         title: t('app.onboarding.wizard.steps.client.title', { defaultValue: 'First client' }),
-        hint: t('app.onboarding.wizard.steps.client.hint', { defaultValue: 'Add your first client (or skip if you only hire to your own company).' }),
+        hint: t('app.onboarding.wizard.steps.client.hint', { defaultValue: 'Add the client you hire for (or skip if you only hire to your own company).' }),
         optional: true,
       },
       {
         key: 'vacancy',
-        num: 4,
+        num: 3,
         title: t('app.onboarding.wizard.steps.vacancy.title', { defaultValue: 'First vacancy' }),
         hint: t('app.onboarding.wizard.steps.vacancy.hint', { defaultValue: 'Add a vacancy to route incoming candidates.' }),
+        optional: false,
+      },
+      {
+        key: 'channel',
+        num: 4,
+        title: t('app.onboarding.wizard.steps.channel.title', { defaultValue: 'Lead channel' }),
+        hint: t('app.onboarding.wizard.steps.channel.hint', { defaultValue: 'Connect a source after the vacancy exists so leads have somewhere to land.' }),
         optional: true,
       },
       {

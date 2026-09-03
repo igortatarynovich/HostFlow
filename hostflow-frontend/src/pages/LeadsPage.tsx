@@ -55,7 +55,7 @@ import LeadIntakeWorkspacePanel from '../components/leads/LeadIntakeWorkspacePan
 import LeadVacancyPickModal from '../components/leads/LeadVacancyPickModal'
 import { LeadQueueQuickRejectModal, LeadQueueQuickRequestInfoModal } from '../components/leads/LeadQueueIntakeQuickModals'
 import LostReasonForLostStageModal from '../components/leads/LostReasonForLostStageModal'
-import { ACTIVATION_PATHS } from '../app/activationRoutes'
+import { ACTIVATION_PATHS, getFirstVacancySetupPath } from '../app/activationRoutes'
 import { CRM_APP_DRILLDOWN_HREFS, CRM_APP_PATHS } from '../app/crmAppPaths'
 import { useSuccessPathReadiness } from '../hooks/useSuccessPathReadiness'
 import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
@@ -759,11 +759,13 @@ export default function LeadsPage() {
           label: t('app.leads.states.empty_cta_vacancy', {
             defaultValue: 'Create vacancy',
           }),
-          to: CRM_APP_PATHS.setupVacancy,
+          to: getFirstVacancySetupPath(onboardingStatus),
         }
       : {
-          label: t('app.leads.states.empty_cta_connect'),
-          to: CRM_APP_PATHS.settingsIntegrationsMeta,
+          label: t('app.leads.states.empty_cta_campaign', {
+            defaultValue: 'Create campaign',
+          }),
+          to: CRM_APP_PATHS.marketingNew,
         }
   const leadsEmptySecondary = isServicesTenant
     ? {

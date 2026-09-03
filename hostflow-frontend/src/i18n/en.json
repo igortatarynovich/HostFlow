@@ -10798,7 +10798,7 @@
         "loading": "Preparing your next step…",
         "badge": "Result",
         "title": "Close vacancies faster — start here",
-        "subtitle": "One action at a time until applications land and you contact the first candidate.",
+        "subtitle": "One action at a time: client → vacancy → campaign → ads → first contact.",
         "progress": "{done} of {total} done",
         "list_aria": "Success path checklist",
         "optional": "optional",
@@ -10823,15 +10823,25 @@
             "hint": "Invite recruiters when you are ready — you can do this later.",
             "cta": "Invite teammates"
           },
-          "meta": {
-            "label": "Connect Facebook / Meta ads",
-            "hint": "So applications from your ads arrive in HostFlow automatically.",
-            "cta": "Connect ads"
+          "client": {
+            "label": "Add the client you hire for",
+            "hint": "A name is enough. The vacancy will belong to this client. Skip only if you hire for your own company.",
+            "cta": "Add client"
           },
           "vacancy": {
             "label": "Create first vacancy",
             "hint": "Open the role you need to fill — about 30 seconds.",
             "cta": "Create vacancy"
+          },
+          "campaign": {
+            "label": "Create a hiring campaign",
+            "hint": "The campaign uses the client and vacancy you already created. Then you connect ads.",
+            "cta": "Create campaign"
+          },
+          "meta": {
+            "label": "Connect Facebook / Meta ads",
+            "hint": "So applications from your ads arrive in HostFlow automatically.",
+            "cta": "Connect ads"
           },
           "lead": {
             "label": "Receive first lead",
@@ -11416,10 +11426,14 @@
         "owner_hint": "The campaign belongs to the tenant and this company. Client/order is context only, not the owner.",
         "flow_aria": "Flow type",
         "serves_client": "The campaign serves a client. The primary target is a vacancy or service/order of that client; routing and KPI go through it.",
-        "client_required": "Client (required)",
+        "serves_own": "This campaign hires for your company. Pick the vacancy — no client is needed.",
+        "client_required": "Client",
         "pick_client": "Select a client",
+        "hire_for_own": "Hire for my company (no client)",
         "no_client_account": "No Client Account.",
-        "create_client": "Create a client",
+        "create_client": "Create client",
+        "create_client_inline": "New client — name is enough",
+        "client_name_placeholder": "e.g. North Logistics",
         "then_return": "in Sales, then return here.",
         "client_context_hint": "Saved as CampaignTarget(role=context, client_account). Client statistics come from here.",
         "new_client": "New client",
@@ -11432,7 +11446,7 @@
         "no_services": "No services.",
         "open_services": "Open services",
         "service_aria": "Service",
-        "pick_client_first": "Select a client first — then a vacancy (hiring) or a service (B2B).",
+        "pick_client_first": "Select a client (or hire for your own company) — then a vacancy.",
         "review_campaign": "Campaign",
         "review_owner": "Owner company",
         "review_flow": "Flow",
@@ -11444,7 +11458,8 @@
         "create": "Create campaign",
         "errors": {
           "load_options": "Failed to load catalogs",
-          "create": "Failed to create the campaign"
+          "create": "Failed to create the campaign",
+          "create_client": "Failed to create the client"
         },
         "review_context_role": "CampaignTarget · role=context",
         "review_primary_target": "Primary Target · route_intent"

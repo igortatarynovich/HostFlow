@@ -14,7 +14,7 @@ const DISMISS_KEY = 'hf:wizard-rail:dismissed-until'
 const VISIBLE_DAYS_AFTER_START = 7
 const DAY_MS = 24 * 60 * 60 * 1000
 
-const STEP_ORDER: OnboardingWizardStepKey[] = ['type', 'channel', 'client', 'vacancy', 'first_lead']
+const STEP_ORDER: OnboardingWizardStepKey[] = ['type', 'client', 'vacancy', 'channel', 'first_lead']
 
 function readDismissedUntil(): number {
   if (typeof window === 'undefined') return 0

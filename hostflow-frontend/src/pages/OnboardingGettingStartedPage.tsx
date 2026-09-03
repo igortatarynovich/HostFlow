@@ -64,7 +64,7 @@ export default function OnboardingGettingStartedPage() {
               done: Boolean(status?.steps?.first_vacancy_created),
               title: t('app.onboarding.getting_started.step_employer.title'),
               desc: t('app.onboarding.getting_started.step_employer.desc'),
-              href: ACTIVATION_PATHS.vacancies,
+              href: CRM_APP_PATHS.setupVacancy,
               permission: 'vacancies.view',
             }
           : businessType === 'services'
@@ -85,7 +85,7 @@ export default function OnboardingGettingStartedPage() {
                 desc: t('app.onboarding.getting_started.step_agency.desc_dynamic', {
                   values: { entity: entitySingular.toLowerCase() },
                 }),
-                href: ACTIVATION_PATHS.clients,
+                href: CRM_APP_PATHS.setupClient,
                 permission: 'companies.view',
               }
       const nextSteps: OnboardingStepCard[] = [
@@ -121,7 +121,7 @@ export default function OnboardingGettingStartedPage() {
           ...step,
           href: accessible ? step.href : ACTIVATION_PATHS.overview,
           openLabel: accessible
-            ? step.href === ACTIVATION_PATHS.clients
+            ? step.href === CRM_APP_PATHS.setupClient || step.href === ACTIVATION_PATHS.clients
               ? openEntityLabel
               : t('app.onboarding.getting_started.open')
             : t('app.onboarding.getting_started.open_fallback'),
@@ -136,7 +136,7 @@ export default function OnboardingGettingStartedPage() {
   const primaryLaunchAction = useMemo(() => {
     if (businessType === 'employer') {
       return {
-        href: ACTIVATION_PATHS.vacancies,
+        href: CRM_APP_PATHS.setupVacancy,
         title: t('app.onboarding.getting_started.primary_cta_employer.title'),
         desc: t('app.onboarding.getting_started.primary_cta_employer.desc'),
       }
@@ -149,7 +149,7 @@ export default function OnboardingGettingStartedPage() {
       }
     }
     return {
-      href: ACTIVATION_PATHS.clients,
+      href: CRM_APP_PATHS.setupClient,
       title: t('app.onboarding.getting_started.primary_cta_agency.title'),
       desc: t('app.onboarding.getting_started.primary_cta_agency.desc'),
     }

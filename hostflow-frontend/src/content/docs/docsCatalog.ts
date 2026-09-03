@@ -27,9 +27,9 @@ export const DOCS_ARTICLES: DocsArticle[] = [
     category: { en: 'Start here', ru: 'Старт', pl: 'Start' },
     title: { en: 'Getting started with HostFlow', ru: 'С чего начать в HostFlow', pl: 'Jak zacząć w HostFlow' },
     summary: {
-      en: 'Reach first hiring value in one sitting: company → vacancy → leads → contact.',
-      ru: 'Дойдите до первой ценности за один заход: компания → вакансия → заявки → контакт.',
-      pl: 'Do pierwszej wartości w jednym podejściu: firma → wakat → leady → kontakt.',
+      en: 'Reach first hiring value in one sitting: company → client → vacancy → campaign → leads → contact.',
+      ru: 'Дойдите до первой ценности за один заход: компания → клиент → вакансия → кампания → заявки → контакт.',
+      pl: 'Do pierwszej wartości w jednym podejściu: firma → klient → wakat → kampania → leady → kontakt.',
     },
     seoTitle: {
       en: 'Getting started | HostFlow Docs',
@@ -60,19 +60,19 @@ export const DOCS_ARTICLES: DocsArticle[] = [
         },
       },
       {
-        title: { en: 'Create a vacancy, then open intake', ru: 'Создайте вакансию и откройте intake', pl: 'Utwórz wakat i otwórz intake' },
+        title: { en: 'Add the client, then the vacancy', ru: 'Добавьте клиента, затем вакансию', pl: 'Dodaj klienta, potem wakat' },
         body: {
-          en: 'Empty vacancies point you to Create vacancy. Publish or open intake so applications have somewhere to land.',
-          ru: 'Пустой список вакансий ведёт к «Создать вакансию». Опубликуйте / откройте intake, чтобы заявкам было куда падать.',
-          pl: 'Pusta lista wakatów prowadzi do «Utwórz wakat». Opublikuj / otwórz intake, żeby zgłoszenia miały gdzie wylądować.',
+          en: 'For agencies, name the client you hire for first (a name is enough). Then create the vacancy so it already belongs to that client. Employers skip the client and hire for their own company.',
+          ru: 'Для агентства сначала укажите клиента, для которого нанимаете (достаточно названия). Затем создайте вакансию — она сразу принадлежит клиенту. Прямой работодатель пропускает клиента и нанимает в свою компанию.',
+          pl: 'Agencja najpierw podaje klienta, dla którego rekrutuje (wystarczy nazwa). Potem tworzy wakat — już przypisany do klienta. Pracodawca pomija klienta i rekrutuje do własnej firmy.',
         },
       },
       {
-        title: { en: 'Connect Meta or skip with debt', ru: 'Подключите Meta или отложите', pl: 'Podłącz Meta albo odłóż' },
+        title: { en: 'Create the campaign, then connect ads', ru: 'Создайте кампанию, затем подключите рекламу', pl: 'Utwórz kampanię, potem podłącz reklamy' },
         body: {
-          en: 'Meta is optional on day one. If you skip, the checklist keeps it visible as remaining work.',
-          ru: 'Meta в первый день необязательна. Если отложите — пункт останется в чеклисте как долг.',
-          pl: 'Meta pierwszego dnia jest opcjonalna. Jeśli odłożysz — pozycja zostanie na checkliście.',
+          en: 'The campaign uses the client and vacancy you already created. Connect Meta after that — or skip, and the checklist keeps it as remaining work.',
+          ru: 'Кампания использует уже созданных клиента и вакансию. Meta подключайте после этого — или отложите, пункт останется в чеклисте.',
+          pl: 'Kampania używa już utworzonego klienta i wakatu. Meta podłącz potem — albo odłóż, pozycja zostanie na checkliście.',
         },
       },
       {
@@ -217,9 +217,9 @@ export const DOCS_ARTICLES: DocsArticle[] = [
       {
         title: { en: 'Open Vacancies', ru: 'Откройте Вакансии', pl: 'Otwórz Wakaty' },
         body: {
-          en: 'From the empty state or readiness CTA, choose Create vacancy. Link it to the right company/client if needed.',
-          ru: 'Из empty state или readiness CTA выберите «Создать вакансию». При необходимости привяжите компанию/клиента.',
-          pl: 'Z empty state lub readiness CTA wybierz «Utwórz wakat». W razie potrzeby powiąż firmę/klienta.',
+          en: 'From the empty state or readiness CTA, add the client (name) first if you hire for someone else, then Create vacancy. Link the vacancy to that client.',
+          ru: 'Из empty state или readiness CTA сначала добавьте клиента (название), если нанимаете для кого-то, затем «Создать вакансию». Привяжите вакансию к этому клиенту.',
+          pl: 'Z empty state lub readiness CTA najpierw dodaj klienta (nazwa), jeśli rekrutujesz dla kogoś, potem «Utwórz wakat». Powiąż wakat z tym klientem.',
         },
       },
       {
