@@ -17,7 +17,7 @@ At inventory date the plan owns exactly this work:
 
 | Track | Owns |
 |-------|------|
-| Product | [RPM-1 → RPM-2 → RPM-3](../tasks/requirement-policy-management.md) |
+| Product | [RPM-1 → RPM-2 → RPM-3A → RPM-3B → RPM-3 close](../tasks/requirement-policy-management.md) |
 | Product (briefed, unscheduled) | [Mapping Authority](../tasks/mapping-authority.md) · [External Intake / Forms Publish](../tasks/external-intake-forms-publish.md) · [Hiring workflow E2E](../tasks/hiring-workflow-e2e.md) · [min HR handoff](../tasks/recruitment-hr-minimal-handoff.md) |
 | Launch-ops (briefed, unscheduled) | [Operate & Launch](../tasks/operate-and-launch.md) OL-1…OL-7 |
 | Background | [pytest baseline stabilisation](../tasks/stabilize-integration-pytest-baseline.md) |

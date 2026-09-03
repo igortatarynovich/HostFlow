@@ -36,6 +36,8 @@ _PAGE = (
     / "RequirementPolicyOverlayPage.tsx"
 )
 _CI = _REPO_ROOT / ".github" / "workflows" / "backend-ci.yml"
+_QUEUE = _REPO_ROOT / "docs" / "specs" / "tasks" / "sales-to-comms-sequential-queue.md"
+_AGENTS = _REPO_ROOT / "AGENTS.md"
 
 PROOF_DELTA = {
     "vacancy": {
@@ -58,6 +60,14 @@ def test_rpm2_brief_names_operator_gate() -> None:
     assert "Mapping Authority" in text or "mapping-authority.md" in text
     assert "lead_criteria_v1" in text
     assert "tenant_requirement_overrides" in text or "second store" in text.lower()
+    assert "RPM-3A" in text
+    assert "Parallel Authority Retirement" in text or "parallel authority retirement" in text.lower()
+    assert "Active Product = RPM-3A" in text or "Active = RPM-3A" in text
+    queue = _QUEUE.read_text(encoding="utf-8")
+    assert "RPM-3A" in queue
+    assert "Parallel authority retirement" in queue or "parallel authority retirement" in queue.lower()
+    agents = _AGENTS.read_text(encoding="utf-8")
+    assert "RPM-3A" in agents
 
 
 def test_rpm2_does_not_reopen_authority_or_merge() -> None:
