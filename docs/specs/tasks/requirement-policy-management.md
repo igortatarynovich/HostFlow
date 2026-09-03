@@ -103,9 +103,19 @@ A later RPM **domain** (not a slice of this ladder, not scheduled here) may let 
 
 ## RPM-2 — Operator overlay (Active successor; feat not started)
 
-One operator job. Settings that edit non-authority JSON is not ready. Four checks from the [Release Goal](../gates/hostflow-v1-release-goal.md) apply: runtime authority (sealed in RPM-1), operator surface (this slice), E2E consumption and release acceptance (proven on D4 here, cutover completed in RPM-3).
+One operator job. The UI does **not** mint a rules model. It edits the existing `tenant_delta` that `validate_tenant_overlay_delta` already accepts and that `merge_resolved_policy` already consumes. D4 already reads that merge via E8-eval.
 
-Out: a second editor; Zapier; Mapping UI; Hiring funnel builder.
+**Proof (one chain):**
+
+```text
+operator action → persisted tenant_delta → same R5 merge_resolved_policy → D4 effective requirement changes
+```
+
+Four checks from the [Release Goal](../gates/hostflow-v1-release-goal.md): runtime authority (sealed in RPM-1), operator surface (this slice), E2E consumption and release acceptance (proven on D4 here; remaining consumers in RPM-3).
+
+Writes: overlay delta only (`candidate.overrides` / `vacancy.additions` / `validity`) plus **reason**. Today no operator writer of persisted `tenant_delta` exists (`load_default_ruleset()` often passes `None`); that writer is this slice.
+
+Out: a second store; a second evaluator; a parallel rules JSON; a second editor; Zapier; Mapping UI; Mapping Authority; intake qualification / `lead_criteria_v1`; Result / Why / Facts; Hiring funnel builder; Documents Admin vs Rules Admin.
 
 ---
 

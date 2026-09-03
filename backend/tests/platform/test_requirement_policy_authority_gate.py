@@ -96,6 +96,11 @@ def test_rpm1_brief_authority_gate_pass() -> None:
     assert "lead_criteria_v1" in text
     assert "tenth write" in text.lower()
     assert "Mapping Authority" in text or "mapping-authority.md" in text
+    assert "operator action" in text
+    assert "tenant_delta" in text
+    assert "merge_resolved_policy" in text
+    assert "D4" in text
+    assert "Result / Why / Facts" in text or "Result / Why" in text
 
 
 def test_rpm1_adr018_points_at_authority() -> None:
