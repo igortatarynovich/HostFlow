@@ -257,6 +257,19 @@ export default function SettingsLandingPage() {
         requiresModules: ['documents'],
       },
       {
+        key: 'requirement_policy',
+        label: t('admin.settings.cards.requirement_policy.label', {
+          defaultValue: 'Requirement policy',
+        }),
+        description: t('admin.settings.cards.requirement_policy.description', {
+          defaultValue: 'One overlay of the platform document pack. Base, tenant_delta, reason, resolved_policy.',
+        }),
+        target: CRM_APP_PATHS.settingsRequirementPolicy,
+        requireTrustAdmin: true,
+        section: 'crm_setup',
+        requiresModules: ['documents'],
+      },
+      {
         key: 'merge_templates',
         label: t('admin.settings.cards.merge_templates.label'),
         description: t('admin.settings.cards.merge_templates.description'),

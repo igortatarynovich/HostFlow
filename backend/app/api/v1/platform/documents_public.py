@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
 from backend.app.services.document_hub_delivery_contract import (
     ADAPTER_ID,
     ALLOWED_ENTITY_LINK_RESOLVE,
@@ -125,12 +126,15 @@ async def resolve_documents_via_public_contract(
                 asks.append({"doc_type": code, "state": state})
     else:
         asks = project_outstanding_asks_via_contract(items)
+    tenant_delta = await load_persisted_tenant_delta(db, tenant_id)
     return DocumentsResolveOut(
         items=[DocumentHubViewOut.model_validate(row) for row in items],
         outstanding_asks=[OutstandingAskOut.model_validate(row) for row in asks],
         canonical_types=list_canonical_types_for_select_via_contract(),
         applicability=[
             ApplicabilityOut.model_validate(row)
-            for row in project_required_doc_applicability_via_contract()
+            for row in project_required_doc_applicability_via_contract(
+                tenant_delta=tenant_delta
+            )
         ],
     )

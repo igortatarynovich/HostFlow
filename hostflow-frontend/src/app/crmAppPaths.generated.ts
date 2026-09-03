@@ -145,7 +145,10 @@ export const CRM_APP_PATHS = {
   settingsRiskIntel: "/app/settings/risk-intel",
   settingsHiringPipelineGates: "/app/settings/hiring-pipeline-gates",
   settingsTransferPolicy: "/app/settings/transfer-policy",
+  /** Legacy leftover ruleset JSON editor (not the RPM-2 overlay writer). */
   settingsRuleset: "/app/settings/ruleset",
+  /** RPM-2 operator overlay: persist R5 tenant_delta. Not Documents Admin vs Rules Admin. */
+  settingsRequirementPolicy: "/app/settings/requirement-policy",
   settingsDocs: "/app/settings/docs",
   settingsMergeTemplates: "/app/settings/document-merge-templates",
   settingsTenants: "/app/settings/tenants",
