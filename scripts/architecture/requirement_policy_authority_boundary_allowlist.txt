@@ -1,0 +1,2 @@
+# Requirement Policy Authority — sole write producer for the operator question.
+requirement_policy_authority_write|backend/app/reference/document_policy_merge.py

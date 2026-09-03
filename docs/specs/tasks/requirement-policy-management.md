@@ -1,10 +1,10 @@
 # Requirement Policy Management
 
-**Status:** **IN PROGRESS** (brief; feat locked) — Active Product = **RPM-1**  
+**Status:** **RPM-1 PASS** — [Requirement Policy Authority Gate](../architecture/requirement-policy-authority.md) (`requirement_policy_authority.v1`). Active Product successor = **RPM-2** (operator overlay; feat not started this PR).  
 **Phase class:** platform  
-**Branch (docs):** `docs/queue-schedule-rpm`  
-**Branch (code):** none this amendment — feat locked until RPM-1 Gate; later slices `feat/requirement-policy-management-rpmN-…`  
-**Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) [#328](https://github.com/igortatarynovich/HostFlow/pull/328) · [Documents Platform E8-eval](documents-platform-e8-eval.md) ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Reference R5](platform-reference-identity-sot.md) · [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md)
+**Branch (docs):** `docs/queue-schedule-rpm` · `feat/requirement-policy-authority-rpm1`  
+**Branch (code):** none this slice — feat locked until RPM-2; later slices `feat/requirement-policy-management-rpmN-…`  
+**Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) [#328](https://github.com/igortatarynovich/HostFlow/pull/328) · [Documents Platform E8-eval](documents-platform-e8-eval.md) ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [Requirement Policy Authority](../architecture/requirement-policy-authority.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Reference R5](platform-reference-identity-sot.md) · [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md)
 **Estimate:** 3–5 slices — RPM-1 1 (docs), RPM-2 1–2, RPM-3 1–2 (1 slice = one docs PR + one feat PR; rolled up in the [queue release horizon](sales-to-comms-sequential-queue.md))
 
 > First Product from the [Release DAG](../gates/hostflow-v1-release-goal.md), scheduled after [#328](https://github.com/igortatarynovich/HostFlow/pull/328).  
@@ -29,7 +29,7 @@ Nine live answerers still reply to “must this candidate provide type X for thi
 
 ## Internal ladder (this program only)
 
-One Active Product slice at a time. This amendment activates **RPM-1**. RPM-2 / RPM-3 stay queued. Mapping is **not** on this ladder.
+One Active Product slice at a time. RPM-1 Authority Gate **PASS**. This PR names **RPM-2** as Active successor and does **not** start it. RPM-3 stays queued. Mapping is **not** on this ladder.
 
 ```text
 RPM-1 Authority contract
@@ -40,7 +40,7 @@ RPM-1 Authority contract
 
 | # | Slice | Machine id | Named gate | Depends on | Unlocks |
 |---|--------|------------|------------|------------|---------|
-| **RPM-1** | Authority contract | `rpm-authority` | **Requirement Policy Authority Gate** — one operator question; one write authority; nine answerers classified (write / consume / leftover / not-this-write). Docs; feat locked this amendment | E8-eval Gate ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328) | RPM-2 |
+| **RPM-1** | Authority contract | `rpm-authority` | **Requirement Policy Authority Gate** ✅ — one operator question; one write authority; nine answerers classified (write / consume / leftover / not-this-write). SoT: [requirement-policy-authority.md](../architecture/requirement-policy-authority.md) (`requirement_policy_authority.v1`). Docs + contract; feat locked | E8-eval Gate ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328) | RPM-2 |
 | **RPM-2** | Operator overlay | `rpm-operator` | **Requirement Policy Operator Gate** — one job UI: base rule, override, reason, result; writes the RPM-1 authority; Documents domain first | **Requirement Policy Authority Gate** | RPM-3 |
 | **RPM-3** | Consumer cutover | `rpm-cutover` | **Requirement Policy Consumer Cutover Gate** — classified consumers read the same merge (or are retired); D4 result matches operator write; stage/transfer do not contradict | **Requirement Policy Operator Gate** | RPM program close. Hiring E2E **unlocked, not scheduled** |
 
@@ -48,7 +48,9 @@ Unlock ≠ schedule. Closing RPM does **not** auto-start Mapping or Hiring.
 
 ---
 
-## RPM-1 — Authority contract (Active; feat locked)
+## RPM-1 — Authority contract (**PASS**)
+
+**SoT:** [requirement-policy-authority.md](../architecture/requirement-policy-authority.md) · machine id `requirement_policy_authority.v1`.
 
 **Operator question (one):** for this tenant / client / vacancy / profile / country, must this candidate provide document type X? Base rule, override, reason, result.
 
@@ -72,16 +74,18 @@ RPM-1 does **not** ship the operator UI and does **not** cut over consumers. It 
 
 ### Requirement Policy Authority Gate
 
+**Outcome:** **PASS**. Named CI: `backend/tests/platform/test_requirement_policy_authority_gate.py`. Boundary: `scripts/architecture/check_requirement_policy_authority_boundary.py`.
+
 PASS when:
 
 1. This brief is merged and the queue Active Product is RPM-1 (or a later RPM slice after this gate).  
-2. The operator question and write authority above are the SoT.  
-3. The nine-row classification is unchanged except by a later RPM slice that **retires** a leftover — not by adding a tenth write.  
+2. The operator question and write authority above are the SoT — [requirement-policy-authority.md](../architecture/requirement-policy-authority.md).  
+3. The nine-row classification is unchanged except by a later RPM slice that **retires** a leftover — not by adding a tenth write. Frozen in `requirement_policy_authority.v1`.  
 4. No Documents Admin vs Rules Admin split; no Hub packages table; no Overlay rewrite; no CL8; E8-eval / R5 not reopened.  
 5. Mapping / Intake / Hiring E2E / min HR are not this slice.  
 6. Intake qualification / screening / `lead_criteria_v1` are not this slice and are not a tenth write on the table above.
 
-This amendment **opens** the brief. It does **not** mark the Authority Gate PASS. Feat remains locked.
+This slice **closes** the Authority Gate. Feat remains locked until **RPM-2**. Do not start RPM-2 in this PR (queue invariant 6).
 
 ### Boundary — not this program (normative)
 
@@ -97,11 +101,21 @@ A later RPM **domain** (not a slice of this ladder, not scheduled here) may let 
 
 ---
 
-## RPM-2 — Operator overlay (queued)
+## RPM-2 — Operator overlay (Active successor; feat not started)
 
-One operator job. Settings that edit non-authority JSON is not ready. Four checks from the [Release Goal](../gates/hostflow-v1-release-goal.md) apply: runtime authority (sealed in RPM-1), operator surface (this slice), E2E consumption and release acceptance (proven on D4 here, cutover completed in RPM-3).
+One operator job. The UI does **not** mint a rules model. It edits the existing `tenant_delta` that `validate_tenant_overlay_delta` already accepts and that `merge_resolved_policy` already consumes. D4 already reads that merge via E8-eval.
 
-Out: a second editor; Zapier; Mapping UI; Hiring funnel builder.
+**Proof (one chain):**
+
+```text
+operator action → persisted tenant_delta → same R5 merge_resolved_policy → D4 effective requirement changes
+```
+
+Four checks from the [Release Goal](../gates/hostflow-v1-release-goal.md): runtime authority (sealed in RPM-1), operator surface (this slice), E2E consumption and release acceptance (proven on D4 here; remaining consumers in RPM-3).
+
+Writes: overlay delta only (`candidate.overrides` / `vacancy.additions` / `validity`) plus **reason**. Today no operator writer of persisted `tenant_delta` exists (`load_default_ruleset()` often passes `None`); that writer is this slice.
+
+Out: a second store; a second evaluator; a parallel rules JSON; a second editor; Zapier; Mapping UI; Mapping Authority; intake qualification / `lead_criteria_v1`; Result / Why / Facts; Hiring funnel builder; Documents Admin vs Rules Admin.
 
 ---
 
@@ -127,8 +141,9 @@ Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ sch
 ## Queue position
 
 **Depends on:** E8-eval Gate ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · DAG dependency-position [#328](https://github.com/igortatarynovich/HostFlow/pull/328)  
-**Active this amendment:** RPM-1 (brief; feat locked)  
-**Queued inside this program:** RPM-2 → RPM-3  
+**RPM-1:** **PASS** (Authority Gate).  
+**Active successor:** RPM-2 (operator overlay; feat not started this PR).  
+**Queued inside this program:** RPM-3 after RPM-2.  
 **Does not:** schedule Mapping; mint RPM → Mapping as an acceptance edge; start Hiring E2E / Intake / min HR; invent CL8; mint a packages table; rewrite Overlay / CL7 / DR1 / E8-eval / R5; mark Foundation ✅; open intake qualification as a second RPM-1 question; fold `lead_criteria_v1` into the nine-row table
 
 ---
@@ -138,5 +153,14 @@ Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ sch
 - [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) — v1 acceptance; four checks; Release DAG  
 - [Dependency-position review](../gates/v1-release-dag-dependency-position.md) — why RPM is first; Mapping startable but must not precede  
 - [E8-eval](documents-platform-e8-eval.md) — evaluation runtime this program operates  
+- [Requirement Policy Authority](../architecture/requirement-policy-authority.md) — operator question + write + nine-row classification (`requirement_policy_authority.v1`)
 - [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) — Admin UI for policy was out of Slice 1; this program is that operator job for Documents  
-- [Mapping Authority](mapping-authority.md) — canonical facts this capability will later consume for qualification; not this write; not scheduled by this brief  
+- [Mapping Authority](mapping-authority.md) — canonical facts this capability will later consume for qualification; not this write; not scheduled by this brief
+
+---
+
+## History
+
+- 2026-09-03: Screening / `lead_criteria_v1` confirmed **not** a tenth RPM-1 write (integration boundary + this gate).  
+- 2026-09-02: RPM-1 Authority Gate **PASS**. SoT = [requirement-policy-authority.md](../architecture/requirement-policy-authority.md). Named CI + boundary. Active successor = RPM-2 (feat not started).
+- 2026-08-27: Brief opened after DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Feat locked. Gate not PASS.
