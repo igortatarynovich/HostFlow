@@ -139,6 +139,19 @@ CAPTCHA provider / branding themes remain **Advanced** backlog — not Sprint 1 
 
 RBAC who may Collect is **ADR-036**, not a second role matrix in this Manifest.
 
+### User Report Intake
+
+**Normative:** [`ADR-040`](ADR-040-user-report-intake.md)
+
+| Section | Keys (illustrative) |
+|---------|---------------------|
+| Policies | Report retention; submit rate limits (later) |
+| Defaults | System-derived title template (later; optional) |
+| Feature Flags | In-app submit widget enablement (later) |
+
+**Not in this Manifest:** severity defaults (RB-10 / ops); Observability DSN; Notifications SMTP; GitHub App credentials.  
+Platform inbox RBAC = **ADR-036** (`superadmin` + elevated reason) — not a fifth trust role.
+
 ### AI
 
 | Section | Keys (illustrative) |
@@ -186,3 +199,4 @@ Configures ───────────────►  Validation Rules (+
 - **2026-07-18** — introduced with **P-05** ([`ADR-029`](ADR-029-settings-contract.md)); operational half of capability configuration model.
 - **2026-07-18** — Forms Sprint 1: concrete Manifest keys (builder default `false`; adapter contract ids).
 - **2026-08-23** — Observability + Shell Diagnostics outlines ([`ADR-038`](ADR-038-shell-observability-diagnostics.md)).
+- **2026-09-03** — User Report Intake outline ([`ADR-040`](ADR-040-user-report-intake.md)); no severity knobs.

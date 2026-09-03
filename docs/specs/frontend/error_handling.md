@@ -147,6 +147,10 @@ Sentry events from this boundary carry `boundary.scope = section` and (when prov
 
 At the root (`main.tsx`) we still mount exactly **one** `<AppErrorBoundary>`, which must render without any providers.
 
+### Contact support (channel)
+
+`AppErrorBoundary` and similar copy may say “contact support”. **Today there is no in-app channel.** Explicit human problem/feedback submission is owned by **User Report Intake** ([`ADR-040`](../architecture/ADR-040-user-report-intake.md)) — architecture sealed, **runtime not started**. When runtime lands, CTA wiring belongs there; crash-path must stay outside the full app provider tree, and telemetry correlation (`request_id` / Sentry) remains **best-effort** (absence must not block a valid report). Until then, do not invent a module-local ticket form or treat OL-7 email as a second product SoT.
+
 ---
 
 ## 7. Don't
