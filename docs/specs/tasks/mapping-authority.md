@@ -9,7 +9,8 @@
 
 > v1 blocker 2: **one operator-visible model from source answers to canonical entity fields.**
 > Not “build another mapping editor” — there are already three editors writing three stores.
-> **Not** Forms Publish (that is [External Intake](external-intake-forms-publish.md), which consumes this). **Not** Requirement Policy. **Not** CL8. **Not** OCR. **Not** a Zapier.
+> **Not** Forms Publish (that is [External Intake](external-intake-forms-publish.md), which consumes this). **Not** Requirement Policy. **Not** CL8. **Not** OCR. **Not** a Zapier product.
+> Zapier is a **UX reference** (schema + sample → pick destination). HostFlow adds what Zapier is not required to solve: typed Field Registry destinations, option maps, binding vs contract-health scales, versioning, drift, and evaluator isolation.
 > Opening this brief does **not** schedule it. The queue’s Active Product stays RPM-1.
 
 ---
@@ -22,7 +23,7 @@ An operator cannot answer “where does this incoming answer end up, and how do 
 **Completion proof (named consumer):**
 **RS-3 in the [acceptance suite](../journeys/release-readiness-acceptance-suite.md)** on the public intake path: an operator inspects how one named answer reached (or failed to reach) a canonical entity field, changes it in **one** surface, submits the public form again, and observes the new placement — without being asked which of several editors is authoritative. The consumer that must **not** fork: External Intake / Forms Publish acceptance (`publish → … → mapping → canonical entity`) must consume this authority instead of adding a fourth path.
 
-**False close (reject):** a fourth editor; renaming C-5 Marketing mapping workspace as “the authority” while Meta admin still writes independently; declaring the qualified-code vocabulary canonical while the runtime keeps writing legacy flat keys; proving the goal with a dry-run normalize preview instead of a real submission; folding Sales convert mapping or OCR extraction into this write to inflate scope.
+**False close (reject):** a fourth editor; renaming C-5 Marketing mapping workspace as “the authority” while Meta admin still writes independently; declaring the qualified-code vocabulary canonical while the runtime keeps writing legacy flat keys; proving the goal with a dry-run normalize preview instead of a real submission; folding Sales convert mapping or OCR extraction into this write to inflate scope; one status scale that mixes operator binding with contract health; treating mapping drift / unmapped-required as candidate `no_fit`; an evaluator that reads provider payload (Meta questions, raw option labels) instead of canonical facts.
 
 ---
 
@@ -88,7 +89,7 @@ MA-1 Authority contract
 
 | # | Slice | Machine id | Named gate (PASS =) | Depends on | Estimate |
 |---|-------|------------|---------------------|------------|----------|
-| **MA-1** | Authority contract | `map-authority` | **Mapping Authority Contract Gate** — one operator question; one write authority named; every mechanism in § Starting point classified write / consume / leftover / not-this-write; no fourth store permitted | RPM program close (queue amendment) | 1 slice (docs) |
+| **MA-1** | Authority contract | `map-authority` | **Mapping Authority Contract Gate** — one operator question; one write authority named; every mechanism in § Starting point classified; contract shape (option map, schema ≠ sample, binding vs health, version/drift, evaluator isolation, uncertainty ≠ failure) is SoT; no fourth store | RPM program close (queue amendment) | 1 slice (docs) |
 | **MA-2** | Resolution runtime | `map-resolve` | **Mapping Resolution Gate** — exactly one store answers “which rule applies to this source?”; the other two are read-through or migrated; precedence chain removed, not documented | MA-1 Gate | 1–2 slices |
 | **MA-3** | Operator surface | `map-operator` | **Mapping Operator Gate** — one editor writes the authority; remaining surfaces are views or retired; operator sees applied result and drift for a real submission | MA-2 Gate | 1 slice |
 | **MA-4** | Consumer cutover | `map-cutover` | **Mapping Consumer Cutover Gate** — canonical `qualified_code` is the only write vocabulary on the intake path; hardcoded extractors read the authority or are named leftovers with owner + expiry | MA-3 Gate | 1–2 slices |
@@ -97,19 +98,95 @@ MA-1 Authority contract
 
 ## MA-1 — Authority contract (queued)
 
-**Operator question (one):** for this source (Meta form, public form, import file, flight), which incoming answer writes which canonical entity field, and what happens when it does not match?
+**Operator question (one):** for this source (Meta form, public form, import file, flight), which incoming answer writes which canonical entity field — including which source **option** writes which canonical **option** when the destination is choice-typed — and what happens when the binding is unset or the contract cannot compute a fact?
 
 **Write authority (one):** to be sealed in this slice as a single store + resolver pair. The contract must state explicitly which of the three current stores survives and how the other two are read (never written).
 
-MA-1 ships no runtime and no UI. It forbids a second write authority for the same question.
+MA-1 ships no runtime and no UI. It forbids a second write authority for the same question. The shape below is **docs SoT for MA-1**; it does not unlock `feat/mapping-authority-maN-…`.
+
+### Contract shape (normative for MA-1)
+
+The mapping object is a **versioned contract** between an external intake schema and the Field Registry. It is not a convenience table of `source → target` strings.
+
+#### Destination and option map
+
+- Destination is a Field Registry `qualified_code` (legacy flat `target` is not the write vocabulary after MA-4).
+- Destination **type is inherited**. Mapping onto an existing HostFlow field must not let the operator change `select` / `boolean` / `date` into free text.
+- Creating a new field is a **Field Registry** write (Rule 1), not a Mapping-owned type picker that mints a local dictionary.
+- Field map is not enough for choice-typed destinations. The contract must also hold **source option → canonical option**. Example: `Более 8 месяцев` and `Powyżej 8 miesięcy` both become `document_validity = GT_8_MONTHS`. Evaluation and [Requirement Policy](requirement-policy-management.md) never see the provider label.
+- Today’s rules (`source` / `target` / `format`) have **no option map**. Hardcoded normalizer aliases (including locale-specific question text) are leftovers to classify in MA-1, not a substitute for option maps.
+
+#### Schema ≠ sample
+
+- **Schema** (provider questions and options, when the API exposes them) is the structure the operator maps. Mapping must be configurable with **no lead yet**.
+- **Sample** (test lead, latest lead, or equivalent) is evidence of a real payload. It helps the operator recognise the field; it is not the schema SoT.
+- Missing sample is shown as “no sample yet”. It does not block binding and does not imply Unmapped.
+- Today’s `last_sample_lead_id` / Graph questions are a starting point, not this contract.
+
+#### Two status scales (do not collapse)
+
+Operator decision and technical fitness are different questions. One scale must not describe both.
+
+| Scale | Applies to | Values | Meaning |
+|-------|------------|--------|---------|
+| **Source-field binding** | each inbound field | `Mapped` \| `Ignored` \| `Unmapped` | Operator decision: import into a canonical field, consciously drop, or not yet decided. A new provider field must not disappear. |
+| **Contract health** | the mapping contract (and the bindings it contains) | `Valid` \| `Needs review` \| `Invalid` | Technical fitness of the saved version vs current provider schema. Independent of whether a given submission has a value. |
+
+A field may be `Mapped` while the contract is `Needs review` (form drifted after a valid binding). Binding `Unmapped` is not the same as contract `Invalid`.
+
+`Ignored` is a decision. `Unmapped` is unfinished work. If an `Unmapped` or drifted `Mapped` field is required by a downstream policy, that must be **visible** on the mapping surface and must not silently skip.
+
+Existing diagnostics (`mapping_applied_v1` fingerprint) prove a rule was applied. They are **not** contract health SoT. C-4 / C-5 preview copy uses a single **Needs review** for “new field or sample changed.” That mixed signal is leftover UI vocabulary: new field → binding `Unmapped`; schema change against a saved version → contract `Needs review` / `Invalid`. Do not reuse the C-5 enum as both scales.
+
+#### Version, drift, contract validity ≠ missing value
+
+The contract is versioned. A later provider sync that adds a field, removes a field, or changes an option does not keep running as if nothing happened. Health becomes `Needs review` or `Invalid` — especially when the affected field feeds Requirement Policy or intake qualification.
+
+**Contract validity is not the presence of a value.** The evaluator must distinguish:
+
+| Situation | Meaning | Evaluation |
+|-----------|---------|------------|
+| Canonical fact is absent on the person / submission | Candidate did not provide it (or provided a mapped empty). Mapping contract is `Valid`. | Ordinary policy result: missing / `no_fit` when the requirement is mandatory and the fact is evaluable. |
+| Canonical fact cannot be computed | Binding `Unmapped`, contract `Needs review` / `Invalid`, option map missing, or schema drift on a required field. | **Only** `needs_info` / `review_required`. **Never** `no_fit`. |
+
+**Mapping uncertainty ≠ candidate failure.** Guessing Qualified / Not Qualified from unreviewed mapping is forbidden.
+
+#### Evaluator isolation
+
+```text
+Source field
+  → binding: Mapped | Ignored | Unmapped
+  → contract health: Valid | Needs review | Invalid
+  → canonical fact
+  → policy evaluation
+  → fit | no_fit | needs_info / review_required
+     (existing evaluation vocabulary — do not mint a fourth dictionary)
+  → Result / Why / Facts / Source evidence
+```
+
+- Evaluation **never** reads provider payload (Meta field names, question text, raw option labels).
+- Policy knows only canonical HostFlow fields. Provider, public form, CSV, and recruiter entry are Mapping’s problem, not the evaluator’s.
+- Recruiter primary object after this program is consumed: **Result**, then Why / Facts, then source answers as evidence — not the raw questionnaire. That recruiter screen is **not** this program’s named consumer (RS-3 remains placement proof). Intake qualification / `lead_criteria_v1` is **not** Mapping’s write and **not** [RPM-1](requirement-policy-management.md).
+
+#### Mapping Authority Contract Gate (docs; feat locked)
+
+PASS when:
+
+1. This brief is merged; Active Product is **not** switched to Mapping by this amendment.  
+2. The operator question and write authority above are the SoT.  
+3. The contract shape in this section is unchanged except by a later MA slice that **implements** it — not by dropping option maps, collapsing the two scales, or allowing evaluators to read provider payload.  
+4. No fourth store; no Zapier product; Sales convert / OCR / CL6 not absorbed.  
+5. RPM / Intake / Hiring E2E / min HR are not this slice.
+
+This amendment **records** the contract. It does **not** mark the Contract Gate PASS and does **not** open feat.
 
 ---
 
 ## MA-2 — Resolution runtime (queued)
 
-Collapse the fallback chain. Success is that a rule saved anywhere the operator can reach lands in the authority, and ingest consults exactly one resolver. Drift diagnostics (`mapping_applied_v1`) must keep working, since they are the only current evidence that a rule was applied.
+Collapse the fallback chain. Success is that a rule saved anywhere the operator can reach lands in the authority, and ingest consults exactly one resolver. Drift diagnostics (`mapping_applied_v1`) must keep working as **applied-rule evidence**; contract health / version from MA-1 is the SoT for Valid / Needs review / Invalid.
 
-Out: new mapping semantics, transformation DSL, Zapier-style conditions.
+Out: transformation DSL; Zapier-style conditions. Option maps, binding states, and contract health are **MA-1 contract**, executed here — not new MA-2 semantics.
 
 ---
 
@@ -117,13 +194,15 @@ Out: new mapping semantics, transformation DSL, Zapier-style conditions.
 
 One editor for the sealed authority; the other two surfaces become read-only views on it or are retired with redirects. Operator must be able to test against a real submission — the existing dry-run normalize is preview only and is **not** the acceptance proof.
 
+The editor shows **schema** (structure) and **sample** (optional example value), **binding** per source field, and **contract health** of the current version. Unmapped required fields and drift that breaks a policy-fed field are first-class, not buried in diagnostics.
+
 Out: themes, analytics, bulk rule import.
 
 ---
 
 ## MA-4 — Consumer cutover (queued)
 
-Retire the dual vocabulary on the intake path and make the hardcoded extractors consume the authority. Anything that cannot be cut over in this slice (OCR mapping, Telegram bootstrap) must be listed with owner and expiry — silent leftovers make the gate STOP.
+Retire the dual vocabulary on the intake path and make the hardcoded extractors consume the authority. Evaluators and intake consumers read **canonical facts only**; provider payload stays evidence under the contract, not an evaluation input. Anything that cannot be cut over in this slice (OCR mapping, Telegram bootstrap) must be listed with owner and expiry — silent leftovers make the gate STOP.
 
 Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of modules outside intake.
 
@@ -133,7 +212,7 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 
 | Field | Meaning |
 |-------|---------|
-| **Program outcome** | One authority answers source answer → canonical entity field; one editor writes it; intake consumers read it |
+| **Program outcome** | One authority answers source answer (+ option) → canonical entity field; one editor writes it; intake consumers and evaluators read canonical facts only; binding and contract health stay separate scales |
 | **Release delta** | Mapping Authority four-checks PASS. External Intake acceptance becomes provable (its acceptance edge is satisfied). Hiring E2E and min HR handoff remain **OPEN** unless separately closed. HostFlow v1 is not release-ready until the [Release Readiness Gate](../gates/release-readiness-gate.md) passes |
 
 ---
@@ -142,7 +221,7 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 
 **Depends on:** RPM program close **or** an explicit queue amendment that runs Mapping earlier (the [DAG](../gates/hostflow-v1-release-goal.md) does **not** make RPM a predecessor of Mapping — only the one-Active-Product invariant serializes them)
 **Unlocks:** [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance (known acceptance edge)
-**Does not:** schedule itself; absorb Forms Publish; reopen CL6 / C-5 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry)
+**Does not:** schedule itself; absorb Forms Publish; reopen CL6 / C-5 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`
 
 ---
 
@@ -154,3 +233,4 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 - [C-5 mapping workspace](acquisition-ui-cutover-c5-mapping-workspace.md) — the profile-rules surface that exists today
 - [Source diagnostics](acquisition-source-diagnostics.md) — mapping health / drift evidence to preserve
 - [CL6 Flight map](entity-field-composition-cl6-flight-map.md) — adjacent gated mapping runtime (consume, do not fork)
+- [Requirement Policy Management](requirement-policy-management.md) — consumes canonical facts; screening / `lead_criteria_v1` is not RPM-1 and not this write

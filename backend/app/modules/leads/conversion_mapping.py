@@ -1,8 +1,9 @@
 """Execute intake mapping onto Candidate fields at Lead → Candidate conversion.
 
 Rule: if an answer has an executable mapping to a Candidate destination, copy
-it at convert. Unmapped answers stay on the candidate as the original
-questionnaire (``extra.intake_answers_v1``). Conversion must not drop data.
+it at convert onto the matching candidate column / extra / personal field.
+Unmapped answers stay on the Lead (``normalized.field_answers``). They must
+not be copied onto the candidate card as a questionnaire dump.
 
 This is not a conversion-specific field whitelist. Destinations come from the
 intake field registry (qualified codes) plus compact ``mapping_applied_v1``
@@ -72,11 +73,34 @@ _SKIP_ANSWER_NAMES = frozenset(
         "leadgen_id",
         "external_id",
         "ad_id",
+        "ad_name",
         "adset_id",
+        "adset_name",
         "adgroup_id",
+        "adgroup_name",
         "form_id",
+        "form_name",
         "created_time",
         "campaign_id",
+        "campaign_name",
+        "page_id",
+        "page_name",
+        "platform",
+        "is_organic",
+        "inbox_url",
+        "retailer_item_id",
+    }
+)
+
+_CONTACT_IDENTITY_NAMES = frozenset(
+    {
+        "full_name",
+        "first_name",
+        "last_name",
+        "phone",
+        "phone_number",
+        "email",
+        "work_email",
     }
 )
 
@@ -163,6 +187,23 @@ def _value_from_normalized(normalized: Mapping[str, Any], target: str) -> Any:
     return _coerce_scalar(normalized.get(target))
 
 
+def _is_skippable_source(name: str) -> bool:
+    key = name.strip().lower().replace(" ", "_").replace("-", "_")
+    if not key:
+        return True
+    if key in _SKIP_ANSWER_NAMES or key.startswith("utm"):
+        return True
+    return key.endswith("_url")
+
+
+def is_operator_questionnaire_field(name: str) -> bool:
+    """True for human form questions — not Meta ads, links, or contact identity."""
+    key = name.strip().lower().replace(" ", "_").replace("-", "_")
+    if not key or _is_skippable_source(name):
+        return False
+    return key not in _CONTACT_IDENTITY_NAMES
+
+
 def _value_from_field_answers(normalized: Mapping[str, Any], source: str) -> Any:
     raw = normalized.get("field_answers")
     if not isinstance(raw, list):
@@ -243,6 +284,8 @@ def apply_executable_intake_mapping(normalized: Mapping[str, Any] | None) -> Con
 
     for rule in _executable_rules_from_normalized(n):
         source = str(rule.get("source") or "").strip()
+        if source and _is_skippable_source(source):
+            continue
         qualified = str(rule.get("qualified_field_code") or "").strip()
         target = str(rule.get("normalized_target") or rule.get("target") or "").strip()
         value = _value_from_normalized(n, target) if target else None
@@ -257,19 +300,6 @@ def apply_executable_intake_mapping(normalized: Mapping[str, Any] | None) -> Con
                 wrote = True
         if wrote and source:
             out.mapped_sources.append(source)
-
-    answers = n.get("field_answers")
-    if isinstance(answers, list):
-        kept: list[dict[str, Any]] = []
-        for item in answers:
-            if not isinstance(item, Mapping):
-                continue
-            name = str(item.get("name") or "").strip()
-            if not name or name.lower() in _SKIP_ANSWER_NAMES or name.lower().startswith("utm"):
-                continue
-            kept.append(dict(item))
-        if kept:
-            out.extra["intake_answers_v1"] = kept
 
     return out
 
@@ -323,4 +353,5 @@ __all__ = [
     "apply_executable_intake_mapping",
     "attach_field_answer_labels",
     "compact_executable_rules",
+    "is_operator_questionnaire_field",
 ]

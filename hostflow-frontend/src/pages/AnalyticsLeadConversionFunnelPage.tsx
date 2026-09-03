@@ -496,8 +496,6 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.analytics.lead_conversion.title')}
-          subtitle={t('app.analytics.lead_conversion.subtitle')}
           kind="browse"
           secondaryActions={
             <button type="button" className="btn-secondary btn-sm" onClick={refresh} disabled={loading}>

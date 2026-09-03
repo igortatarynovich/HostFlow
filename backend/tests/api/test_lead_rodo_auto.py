@@ -1,6 +1,7 @@
-"""Lead RODO auto-send on ingest (tenant setting lead_rodo_v1).
+"""Lead RODO: mandatory obligation evaluation on ingest (platform compliance policy).
 
-ADR-031: delivery via Communication Pipeline only (no Lead SMTP).
+ADR-031: delivery via Communication Pipeline. Mailbox is tenant SMTP when
+configured, otherwise platform `info@hostflow.cc`. Controller is OwnCompany.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from backend.app.core.settings import settings
 from backend.app.db.session import async_session_maker
 from backend.app.models.lead import Lead
 from backend.app.models.legal_document import LegalDocument
-from backend.app.services.lead_rodo import lead_rodo_notice_status_from_normalized, lead_rodo_sent_from_normalized
+from backend.app.services.lead_rodo import lead_rodo_notice_status_from_normalized
 from backend.app.services.lead_rodo_auto import apply_lead_rodo_on_ingest
 from backend.tests.api.test_leads_meta import (
     _ensure_company,
@@ -103,7 +104,7 @@ async def test_auto_on_lead_created_sends_rodo(client, manager_headers, tenant_i
     rodo = await _lead_rodo_block(tenant_id, lead_id)
     assert rodo.get("status") == "sent"
     assert rodo.get("delivery") == "communication_pipeline"
-    assert rodo.get("auto_trigger") == "lead_created"
+    assert rodo.get("auto_trigger") == "obligation_evaluation"
     assert len(sent) == 1
 
 
@@ -215,7 +216,7 @@ async def test_auto_on_lead_created_no_email_sets_pending_channel(
 
 
 @pytest.mark.anyio
-async def test_manual_mode_does_not_auto_send_on_ingest(client, manager_headers, tenant_id, monkeypatch):
+async def test_tenant_cannot_disable_auto_rodo_on_ingest(client, manager_headers, tenant_id, monkeypatch):
     sent: List[Any] = []
 
     async def _fake_prepare(*_args, **_kwargs):
@@ -262,12 +263,10 @@ async def test_manual_mode_does_not_auto_send_on_ingest(client, manager_headers,
     assert ingest.status_code == 200, ingest.text
     lead_id = ingest.json()["lead_id"]
 
-    async with async_session_maker() as session:
-        lead = await session.get(Lead, lead_id)
-        assert lead is not None
-        assert not lead_rodo_sent_from_normalized(lead.normalized)
-        assert lead_rodo_notice_status_from_normalized(lead.normalized) == "manual_required"
-    assert len(sent) == 0
+    rodo = await _lead_rodo_block(tenant_id, lead_id)
+    assert rodo.get("status") == "sent"
+    assert rodo.get("auto_trigger") == "obligation_evaluation"
+    assert len(sent) == 1
 
 
 @pytest.mark.anyio
@@ -314,6 +313,7 @@ async def test_ingest_rodo_notice_at_source_skips_outbound_send(tenant_id, monke
         rodo = norm.get("rodo") if isinstance(norm.get("rodo"), dict) else {}
 
     assert rodo.get("status") == "source_provided"
+    assert (rodo.get("obligation") or {}).get("action") == "no_delivery_source_provided"
     assert len(sent) == 0
 
 

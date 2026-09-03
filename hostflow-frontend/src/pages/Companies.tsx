@@ -3910,11 +3910,6 @@ export default function Companies(){
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={
-            isOperatingProfileRoute
-              ? t('app.companies.list.title')
-              : t('app.companies.list.clients_title', { defaultValue: 'Clients' })
-          }
           secondaryActions={
             isOperatingProfileRoute ? (
               <button className="btn-secondary btn-sm" onClick={handleCreateOperatingCompany}>

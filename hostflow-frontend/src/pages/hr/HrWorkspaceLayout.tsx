@@ -17,11 +17,6 @@ export default function HrWorkspaceLayout() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.nav.hr.workspace.title', { defaultValue: 'HR workspace' })}
-          subtitle={t('app.nav.hr.workspace.subtitle', {
-            defaultValue:
-              'Operational HR: dashboard, workforce employees, inbox, tasks, and compliance (workforce + HR APIs).',
-          })}
           kind="browse"
         />
         <nav

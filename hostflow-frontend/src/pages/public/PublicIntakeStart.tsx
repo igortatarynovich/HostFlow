@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { createPublicIntake, listPublicIntakeLeadForms } from '../../api/publicIntake'
+import { createPublicIntake } from '../../api/publicIntake'
 import { useI18n } from '../../i18n'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 import { PublicPageShell } from './components/PublicPageShell'
@@ -100,7 +100,6 @@ export default function PublicIntakeStart() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{ token: string; apply_url: string } | null>(null)
-  const [leadFormDisplay, setLeadFormDisplay] = useState<{ title?: string; slug?: string } | null>(null)
 
   const preferredContactOptions = useMemo(
     () =>
@@ -110,43 +109,6 @@ export default function PublicIntakeStart() {
       })),
     [t],
   )
-
-  useEffect(() => {
-    let cancelled = false
-    const id = leadFormForRequest.lead_form_id
-    const slug = leadFormForRequest.lead_form_slug
-    if (!id && !slug) {
-      setLeadFormDisplay(null)
-      return
-    }
-    void (async () => {
-      try {
-        const list = await listPublicIntakeLeadForms({
-          publicSlug: slug || undefined,
-          leadFormId: id || undefined,
-        })
-        if (cancelled) return
-        const match = list.find((f) => (id && f.id === id) || (slug && f.public_slug === slug))
-        if (match?.title?.trim()) {
-          setLeadFormDisplay({ title: match.title.trim() })
-        } else if (slug) {
-          setLeadFormDisplay({ slug })
-        } else if (id) {
-          setLeadFormDisplay({ slug: id })
-        } else {
-          setLeadFormDisplay(null)
-        }
-      } catch {
-        if (cancelled) return
-        if (slug) setLeadFormDisplay({ slug })
-        else if (id) setLeadFormDisplay({ slug: id })
-        else setLeadFormDisplay(null)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [leadFormForRequest])
 
   const canSubmit = useMemo(() => {
     const hasPhone = Boolean(form.phone_country_code && form.phone)
@@ -211,31 +173,10 @@ export default function PublicIntakeStart() {
           <h1 className="text-2xl font-semibold text-slate-900">
             {isClientInquiry ? t('public.start.header.title_client') : t('public.start.header.title')}
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            {isClientInquiry ? t('public.start.header.subtitle_client') : t('public.start.header.subtitle')}
-          </p>
+          {!isClientInquiry && (
+            <p className="mt-2 text-sm text-slate-600">{t('public.start.header.subtitle')}</p>
+          )}
         </div>
-
-        {isClientInquiry && (
-          <div
-            className="mb-6 rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-3 text-left text-sm text-slate-800"
-            role="status"
-          >
-            {t('public.start.client.banner')}
-          </div>
-        )}
-
-        {leadFormDisplay && (leadFormDisplay.title || leadFormDisplay.slug) && (
-          <div
-            className="mb-6 rounded-xl border border-slate-200 bg-brand-50/60 px-4 py-3 text-left text-sm text-slate-700"
-            role="status"
-          >
-            <span className="font-semibold text-brand-800">{t('public.start.lead_form.banner_title')}: </span>
-            {leadFormDisplay.title
-              ? t('public.start.lead_form.banner_named', { values: { title: leadFormDisplay.title } })
-              : t('public.start.lead_form.banner_slug_only', { values: { slug: leadFormDisplay.slug || '' } })}
-          </div>
-        )}
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           {isClientInquiry && (

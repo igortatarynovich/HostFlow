@@ -3813,7 +3813,9 @@ async def get_public_intake(
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     public_session = await _load_public_intake_session(db, tenant_id, token)
-    if public_session.kind == "questionnaire_invite" and public_session.invite is not None and public_session.lead is not None:
+    if public_session.kind == "questionnaire_invite":
+        if public_session.invite is None or public_session.lead is None:
+            raise HTTPException(status_code=404, detail="Invalid intake token")
         from backend.app.modules.leads.lead_questionnaire_invite import mark_invite_opened
 
         await mark_invite_opened(
@@ -4233,7 +4235,9 @@ async def update_public_intake(
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     public_session = await _load_public_intake_session(db, tenant_id, token)
-    if public_session.kind == "questionnaire_invite" and public_session.invite is not None and public_session.lead is not None:
+    if public_session.kind == "questionnaire_invite":
+        if public_session.invite is None or public_session.lead is None:
+            raise HTTPException(status_code=404, detail="Invalid intake token")
         from backend.app.entity_profile.public_intake_draft_session import (
             session_intake_state,
             write_session_intake_state,
@@ -4302,7 +4306,9 @@ async def submit_public_intake(
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     public_session = await _load_public_intake_session(db, tenant_id, token)
-    if public_session.kind == "questionnaire_invite" and public_session.invite is not None and public_session.lead is not None:
+    if public_session.kind == "questionnaire_invite":
+        if public_session.invite is None or public_session.lead is None:
+            raise HTTPException(status_code=404, detail="Invalid intake token")
         from backend.app.entity_profile.public_intake_draft_session import (
             session_intake_state,
             write_session_intake_state,

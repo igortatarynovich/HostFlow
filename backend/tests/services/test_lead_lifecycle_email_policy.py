@@ -83,8 +83,8 @@ def test_decide_client_overlay_wins_rodo_template() -> None:
         tenant=SAFE_DEFAULT_COMPANY_POLICY,
         own_company_id="oc1",
     )
-    assert d.send is False
-    assert d.send_mode == "manual"
+    assert d.send is True
+    assert d.send_mode == "auto_on_lead_created"
     assert d.template_ref == "client-rodo"
     assert d.source_layer == "client"
     assert d.block_code is None
@@ -106,7 +106,7 @@ def test_decide_without_client_uses_own_company() -> None:
     assert d.source_layer == "own_company"
 
 
-def test_decide_rodo_manual_no_auto_send_even_with_template() -> None:
+def test_decide_rodo_platform_floor_sends_even_when_stored_manual() -> None:
     own = {
         "rodo_send_mode": "manual",
         "rodo_template_ref": "rodo-tpl",
@@ -118,13 +118,15 @@ def test_decide_rodo_manual_no_auto_send_even_with_template() -> None:
         tenant=SAFE_DEFAULT_COMPANY_POLICY,
         own_company_id="oc1",
     )
-    assert d.send is False
-    assert d.send_mode == "manual"
+    assert d.send is True
+    assert d.send_mode == "auto_on_lead_created"
     assert d.template_ref == "rodo-tpl"
     assert d.block_code is None
 
 
-def test_decide_rodo_auto_without_template_blocks() -> None:
+def test_decide_rodo_without_template_uses_platform_body() -> None:
+    from backend.app.services.lead_lifecycle_email_policy import PLATFORM_RODO_TEMPLATE_REF
+
     own = {
         "rodo_send_mode": "auto_on_first_action",
         "rodo_template_ref": None,
@@ -136,8 +138,44 @@ def test_decide_rodo_auto_without_template_blocks() -> None:
         tenant=SAFE_DEFAULT_COMPANY_POLICY,
         own_company_id="oc1",
     )
-    assert d.send is False
-    assert d.block_code == "policy_template_missing"
+    assert d.send is True
+    assert d.send_mode == "auto_on_lead_created"
+    assert d.template_ref == PLATFORM_RODO_TEMPLATE_REF
+    assert d.source_layer == "platform"
+    assert d.block_code is None
+
+
+def test_decide_rodo_without_own_company_still_sends() -> None:
+    from backend.app.services.lead_lifecycle_email_policy import PLATFORM_RODO_TEMPLATE_REF
+
+    d = decide_from_layers(
+        purpose=PURPOSE_GDPR_NOTICE,
+        vacancy_ov={},
+        own_company={},
+        tenant=SAFE_DEFAULT_COMPANY_POLICY,
+        own_company_id=None,
+    )
+    assert d.send is True
+    assert d.send_mode == "auto_on_lead_created"
+    assert d.template_ref == PLATFORM_RODO_TEMPLATE_REF
+    assert d.source_layer == "platform"
+
+
+def test_decide_rodo_ignores_vacancy_disable() -> None:
+    own = {
+        "rodo_send_mode": "manual",
+        "rodo_template_ref": "firm-rodo",
+    }
+    d = decide_from_layers(
+        purpose=PURPOSE_GDPR_NOTICE,
+        vacancy_ov={"gdpr_notice": {"enabled": False}},
+        own_company=own,
+        tenant=SAFE_DEFAULT_COMPANY_POLICY,
+        own_company_id="oc1",
+    )
+    assert d.send is True
+    assert d.send_mode == "auto_on_lead_created"
+    assert d.template_ref == "firm-rodo"
 
 
 def test_decide_missing_own_company_blocks() -> None:
@@ -203,3 +241,12 @@ def test_tenant_preset_mapping_from_legacy_json() -> None:
     assert preset["ops_enabled"] is True
     assert preset["application_received"]["template_ref"] == "ar1"
     assert preset["moving_forward"]["enabled"] is True
+
+
+def test_stored_manual_rodo_mode_is_coerced_to_platform_auto() -> None:
+    from backend.app.services.lead_rodo_settings import _normalize_send_mode, lead_rodo_settings_from_tenant_dict
+
+    assert _normalize_send_mode("manual") == "auto_on_lead_created"
+    assert _normalize_send_mode("auto_on_first_action") == "auto_on_lead_created"
+    cfg = lead_rodo_settings_from_tenant_dict({"lead_rodo_v1": {"send_mode": "manual"}})
+    assert cfg.send_mode == "auto_on_lead_created"

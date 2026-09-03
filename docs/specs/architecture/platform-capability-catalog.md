@@ -68,7 +68,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | Kind | Capabilities |
 |------|----------------|
 | **Infrastructure** | Endpoint, Submission, Notifications, Activity, Search, Observability |
-| **Platform** | Forms, Documents, Automations, AI, Integrations / Marketplace, Acquisition / Campaigns, Process Engine, Shell Diagnostics |
+| **Platform** | Forms, Documents, Automations, AI, Integrations / Marketplace, Acquisition / Campaigns, Process Engine, Shell Diagnostics, User Report Intake |
 | **Business** | Recruitment, Sales, HR, Fleet, Services / Orders, Finance |
 
 ---
@@ -116,6 +116,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | Acquisition / Campaigns | Platform | Platform | Endpoint, Submission | [§](#acquisition--campaigns) |
 | Process Engine | Platform | Platform | — | [§](#process-engine) |
 | Shell Diagnostics | Platform | Platform | Observability | [§](#shell-diagnostics) |
+| User Report Intake | Platform | Always Available | — | [§](#user-report-intake) |
 | Recruitment | Business | Licensed | Forms, Documents, Notifications | [§](#recruitment) |
 | Sales | Business | Licensed | Forms, Documents, Notifications | [§](#sales) |
 | HR | Business | Licensed | Documents, Notifications | [§](#hr) |
@@ -125,7 +126,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 **Forms vs Submission:** Forms Owns form surface + consent pin; universal Submission / routing envelope — Shared Intake.  
 **Notifications vs Activity:** одна Operating Layer ([`ADR-012`](ADR-012-activity-notification-operating-layer.md)); два паспорта; не два ADR-004 модуля.  
-**Observability vs Shell Diagnostics:** Observability Owns telemetry store/search/redaction; Shell Diagnostics Owns operator access (Collect diagnostics). Emit остаётся у каждого сервиса. [`ADR-038`](ADR-038-shell-observability-diagnostics.md).
+**Observability vs Shell Diagnostics:** Observability Owns telemetry store/search/redaction; Shell Diagnostics Owns operator access (Collect diagnostics). Emit остаётся у каждого сервиса. [`ADR-038`](ADR-038-shell-observability-diagnostics.md).  
+**User Report Intake vs Observability / RB-10 / GitHub:** Intake Owns explicit human report lifecycle (when runtime exists). Telemetry ≠ report ≠ incident ≠ engineering work. Refs only; INV-UR-01. [`ADR-040`](ADR-040-user-report-intake.md).
 
 ---
 
@@ -463,9 +465,35 @@ Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes`
 
 ---
 
+### User Report Intake
+
+**Normative:** [`ADR-040`](ADR-040-user-report-intake.md) · ownership [`../../modules/user-report-intake/module_ownership_card.md`](../../modules/user-report-intake/module_ownership_card.md) · Application Shell host [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) §3.7
+
+**Purpose.** Единый platform intake явных пользовательских репортов (дефект / неверные данные / идея / вопрос). Не телеметрия, не service incident, не GitHub work, не Activity.
+
+| | |
+|--|--|
+| **Owns** | User Report object; lifecycle `status` (`received` \| `triaged` \| `waiting_on_reporter` \| `resolved` \| `closed`); platform `kind` set; orthogonal `telemetry_refs[]` / `incident_refs[]` / `work_refs[]`; architecture SoT for report lifecycle **when runtime exists** |
+| **Configures** | Retention of reports (later); rate-limit knobs (later). **Not** severity defaults (ops/RB-10). **Not** Observability DSN / SMTP |
+| **Exposes** | `user_report.public_contract.v1` submit / read / triage ops (**Experimental** until Public Contract; UI last) |
+| **Non-Goals** | Telemetry store; Collect diagnostics; Service Incident lifecycle / severity; GitHub work SoT; Activity / Task SoT; Communications threads; Forms Field Catalog; required title+body UX |
+| **Consumes** | Auth / tenant; Observability **optional** (best-effort correlation); Notifications **optional** (ack) |
+| **Requires** | — (authenticated in-app submit later needs Auth+tenant; crash/email paths must not hard-require Observability) |
+| **Optional** | Observability; Notifications; Shell Diagnostics (later deep-link / cite correlation) |
+| **License class** | Always Available |
+| **Lifecycle defaults** | Install+Enable with platform; **runtime not started** — Passport sealed without persistence/API |
+| **Events** | Publishes `user_report.submitted` / `triaged` / `closed` **after** runtime; linking refs does not imply status-change events (INV-UR-01); security telemetry on create / cross-tenant read / export at runtime |
+| **Forbidden** | `linked` as status; severity on public report contract; mandatory telemetry for valid report; auto-close from GitHub/incident without Intake policy; module-local ticket inbox / support dump; Communications/Activity/Forms as report SoT; minting incidents; owning entity existence/state/history; fifth trust role «support» |
+| **Data Ownership** | User Report rows and Intake-owned refs (not telemetry blobs, not incident records, not GitHub issues). Opaque entity refs are observational only |
+
+**Correlation:** `request_id` / `trace_id` / `sentry_event_id` / `route` / `build_sha` — reference-only, best-effort; absence does not invalidate a report.  
+**Content:** `body` required; `title` optional / system-derived.
+
+---
+
 ## Business capabilities
 
-**Общее Forbidden для Business:** Forms / Documents / Notifications / AI / Search / Automations / Endpoint stacks; Observability stores; Shell Diagnostics / Collect diagnostics; infrastructure **Configures** (SMTP, OCR Engine, LLM Provider, Meta App, …).
+**Общее Forbidden для Business:** Forms / Documents / Notifications / AI / Search / Automations / Endpoint stacks; Observability stores; Shell Diagnostics / Collect diagnostics; User Report Intake / module-local ticket inbox; infrastructure **Configures** (SMTP, OCR Engine, LLM Provider, Meta App, …).
 
 ### Recruitment
 
@@ -625,3 +653,4 @@ Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes`
 - **2026-07-18** — v4: License / Requires / Optional / Lifecycle defaults; **L0 CLOSED** ([`ADR-030`](ADR-030-l0-platform-architecture-closure.md)).
 - **2026-07-18** — v5 final: **Non-Goals** · Exposes stability · Invariants; L0 **FROZEN**.
 - **2026-08-23** — Observability (Infrastructure) + Shell Diagnostics (Platform); emit vs access; [`ADR-038`](ADR-038-shell-observability-diagnostics.md).
+- **2026-09-03** — User Report Intake (Platform); telemetry ≠ report ≠ incident ≠ work; refs ≠ status; INV-UR-01; runtime not started; [`ADR-040`](ADR-040-user-report-intake.md).

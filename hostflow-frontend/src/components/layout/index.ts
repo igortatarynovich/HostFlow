@@ -1,4 +1,4 @@
-export { PageShell, PageShellHeader } from './PageShell'
+export { PageShell, PageShellHeader, PageShellBody } from './PageShell'
 export { Toolbar } from './Toolbar'
 export { DataTable } from './DataTable'
 export {

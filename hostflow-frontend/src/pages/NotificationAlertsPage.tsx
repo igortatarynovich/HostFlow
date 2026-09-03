@@ -195,8 +195,6 @@ export default function NotificationAlertsPage() {
             { label: t('app.nav.items.tasks'), to: CRM_APP_PATHS.tasks },
             { label: t('app.notification_alerts.title') },
           ]}
-          title={t('app.notification_alerts.title')}
-          subtitle={t('app.notification_alerts.subtitle')}
           kind="action"
           primaryAction={
             <button

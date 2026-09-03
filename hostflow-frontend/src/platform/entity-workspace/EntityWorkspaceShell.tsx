@@ -84,7 +84,7 @@ export function EntityWorkspaceShell({
   })()
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-100" data-entity-workspace-shell="v2">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-slate-100" data-entity-workspace-shell="v2">
       <EntityWorkspaceHeaderZone
         header={header}
         resourceTypeLabel={resourceTypeLabel}
@@ -94,7 +94,7 @@ export function EntityWorkspaceShell({
 
       <EntityWorkspaceSummaryStrip summary={summary} />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <EntityWorkspaceNavTabs
             sections={enabledSections}
@@ -105,7 +105,7 @@ export function EntityWorkspaceShell({
           />
 
           <main
-            className="min-h-0 flex-1 overflow-y-auto bg-slate-100 p-3"
+            className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-slate-100 p-3"
             data-entity-workspace-zone="content"
           >
             <div className="mx-auto max-w-5xl">{activeContent}</div>

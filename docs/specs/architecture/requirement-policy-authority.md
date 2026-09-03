@@ -20,7 +20,7 @@ For this tenant / client / vacancy / profile / country, **must this candidate pr
 
 Answer shape: **base rule**, **override**, **reason**, **result**.
 
-No second question is this contract. Mapping, intake publish, hiring stage identity, and HR handoff are other programs.
+No second question is this contract. Mapping, intake publish, hiring stage identity, HR handoff, and **intake qualification** (`lead_criteria_v1` / Meta screening) are other programs. Qualification is not a tenth write of this question.
 
 ---
 
@@ -83,7 +83,7 @@ Roles are closed: `write_authority` · `not_this_write` · `leftover` · `consum
 
 ## False close
 
-Reject: Documents Admin separate from Rules Admin; Hub packages table; Overlay rewrite as RPM; CL8; reopening E8-eval / R5; walking Hiring E2E without the overlay; starting Mapping / Intake / min HR “while we are here”; Foundation ✅; a tenth write of this question.
+Reject: Documents Admin separate from Rules Admin; Hub packages table; Overlay rewrite as RPM; CL8; reopening E8-eval / R5; walking Hiring E2E without the overlay; starting Mapping / Intake / min HR “while we are here”; Foundation ✅; a tenth write of this question; folding intake qualification / `lead_criteria_v1` into this write.
 
 ---
 
@@ -97,4 +97,5 @@ Reject: Documents Admin separate from Rules Admin; Hub packages table; Overlay r
 
 ## History
 
+- 2026-09-03: Screening / `lead_criteria_v1` named as a different question, not a tenth write.
 - 2026-09-02: Accepted as RPM-1 Authority contract. Nine-row classification frozen. Feat locked until RPM-2.

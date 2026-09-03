@@ -128,8 +128,8 @@ class Settings(BaseSettings):
     system_smtp_port: Optional[int] = None
     system_smtp_user: Optional[str] = None
     system_smtp_password: Optional[str] = None
-    system_from_email: Optional[str] = None
-    system_from_name: Optional[str] = None
+    system_from_email: Optional[str] = "info@hostflow.cc"
+    system_from_name: Optional[str] = "HostFlow"
     frontend_url: Optional[str] = None  # e.g. https://app.hostflow.cc
     # Optional absolute API origin for inbound webhook URLs shown after rotate (e.g. https://api.hostflow.cc)
     public_api_base_url: Optional[str] = None

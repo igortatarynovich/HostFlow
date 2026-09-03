@@ -89,6 +89,32 @@ class PresentationFieldIn(BaseModel):
     widget_hint: Optional[str] = Field(default=None, max_length=64)
     presentation_rules: Optional[PresentationRulesIn] = None
 
+    @field_validator("presentation_rules", mode="before")
+    @classmethod
+    def _coerce_presentation_rules(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if not isinstance(value, dict):
+            return None
+        allowed_ops = {"eq", "neq", "truthy", "falsy", "in"}
+        out: dict[str, Any] = {}
+        for key in ("show_if", "hide_if", "required_if", "readonly_if"):
+            cond = value.get(key)
+            if not isinstance(cond, dict):
+                continue
+            source = str(cond.get("source_field") or cond.get("field") or "").strip()
+            if not source:
+                continue
+            operator = str(cond.get("operator") or "eq").strip().lower()
+            if operator not in allowed_ops:
+                operator = "eq"
+            out[key] = {
+                "source_field": source[:191],
+                "operator": operator,
+                "value": cond.get("value"),
+            }
+        return out or None
+
 
 class IntakeFormCreateIn(BaseModel):
     title: str = Field(..., min_length=1, max_length=256)

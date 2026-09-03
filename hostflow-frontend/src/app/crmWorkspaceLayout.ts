@@ -44,6 +44,10 @@ export function ownsCrmWorkspaceScroll(pathname: string): boolean {
   const path = pathOnly(pathname)
   if (isEdgeToEdgeTablePath(path)) return true
   return (
+    isPathOrChild(path, P.candidates) ||
+    isPathOrChild(path, P.leads) ||
+    isPathOrChild(path, P.agencyClients) ||
+    isPathOrChild(path, P.invoices) ||
     isPathOrChild(path, P.vacancies) ||
     isPathOrChild(path, P.hr) ||
     isExact(path, P.overview) ||

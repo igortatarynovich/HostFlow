@@ -742,7 +742,6 @@ export default function LeadsPage() {
   const businessType = onboardingStatus?.business_type ?? 'agency'
   const isServicesTenant = businessType === 'services'
   const isEmployerTenant = businessType === 'employer'
-  const leadWorkspaceTitle = isServicesTenant ? t('app.leads.title_services') : t('app.leads.title')
   const ownerColumnLabel = isServicesTenant ? t('app.leads.table.client') : t('app.leads.table.candidate')
   const companyColumnLabel = isEmployerTenant ? t('app.dashboard.terms.companies_singular') : entitySingular
   const vacancyColumnLabel = isServicesTenant ? t('app.leads.table.service_order') : t('app.leads.table.vacancy')
@@ -1717,14 +1716,9 @@ export default function LeadsPage() {
 
       <PageShellHeader>
         <PageHeader
-          title={
-            <span className="inline-flex items-center gap-1.5">
-              {leadWorkspaceTitle}
-              <ContextHelp term="lead" />
-            </span>
-          }
           secondaryActions={
             <>
+              <ContextHelp term="lead" />
               <Link to={CRM_APP_PATHS.leadsDistribution} className="btn-secondary btn-sm">
                 {t('app.leads.workspace.distribution_cta')}
               </Link>

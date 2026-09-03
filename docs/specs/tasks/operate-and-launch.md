@@ -206,7 +206,9 @@ Four operator verbs: create, load, export, erase. Notable starting facts: erasur
 
 ## OL-7 — Support & incident path (queued)
 
-Out: 24/7 rotation, paid support tiers, status-page product.
+Severity matrix, on-call / escalation, rollback window, and customer-communication ownership live in **RB-10** (incident procedure). Out: 24/7 rotation, paid support tiers, status-page product.
+
+**Relationship to User Report Intake ([ADR-040](../architecture/ADR-040-user-report-intake.md)):** OL-7 may consume User Report Intake as an evidence/input channel **when that capability exists**; incident lifecycle remains owned by RB-10 / Operate & Launch. ADR-040 does not mint or own incidents. OL-7 email / procedure intake **before** Intake runtime is **not** an implementation of ADR-040 and **must not** invent `reports` rows to “honor” Architecture SoT.
 
 ---
 

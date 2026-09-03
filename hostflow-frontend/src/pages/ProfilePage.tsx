@@ -675,8 +675,6 @@ export default function ProfilePage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.profile.title')}
-          subtitle={t('app.profile.subtitle')}
           kind="browse"
         />
       </PageShellHeader>

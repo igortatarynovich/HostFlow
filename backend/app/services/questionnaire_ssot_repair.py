@@ -304,8 +304,12 @@ async def form_has_tenant_presentation(
     public_slug = str(getattr(lead_form, "public_slug", None) or "").strip()
     if not public_slug:
         return False
+    profile_code = (
+        str(getattr(lead_form, "target_entity_profile_code", None) or "").strip()
+        or TARGETED_ADVERTISING_PROFILE_CODE
+    )
     tenant_code = build_tenant_form_presentation_code(
-        entity_profile_code=TARGETED_ADVERTISING_PROFILE_CODE,
+        entity_profile_code=profile_code,
         public_slug=public_slug,
     )
     row = await db.scalar(

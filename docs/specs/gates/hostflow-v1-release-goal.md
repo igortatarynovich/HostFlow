@@ -6,12 +6,12 @@
 **Trusted base:** `integration/release-product-a-b`  
 **Parents:** [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](goal-completion-gate.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md) · [Documents Platform E8-eval](../tasks/documents-platform-e8-eval.md)  
 **Close-out instruments:** [Release Readiness Gate](release-readiness-gate.md) (who declares v1 ready) · [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md) (how it is proven)  
-**Product Track:** **[RPM-1](../tasks/requirement-policy-management.md)** (brief; feat locked) — scheduled in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) after [#328](https://github.com/igortatarynovich/HostFlow/pull/328). This file does not invent slice order.
+**Product Track:** **[RPM-2](../tasks/requirement-policy-management.md)** (operator overlay; feat not started) after RPM-1 Authority Gate PASS — scheduled in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md). This file does not invent slice order.
 
 > This document is the **v1 in-scope vs later** SoT.  
 > The [sequential queue](../tasks/sales-to-comms-sequential-queue.md) remains the **slice schedule** SoT (one Active Product).  
 > Horizon letters in the [roadmap](../architecture/platform-completion-roadmap.md) (OCR, packages, Billing, AI) are **not** v1.  
-> First Product from § Release DAG is **Requirement Policy Management**, scheduled as [RPM-1](../tasks/requirement-policy-management.md) (brief; feat locked). This file does **not** lock a linear program order of the five blockers. Mapping remains startable after RPM program close — not auto-scheduled here.
+> First Product from § Release DAG is **Requirement Policy Management**. RPM-1 Authority Gate is **PASS**; Active Product is [RPM-2](../tasks/requirement-policy-management.md) (operator overlay; feat not started). This file does **not** lock a linear program order of the five blockers. Mapping remains startable after RPM program close — not auto-scheduled here.
 
 ---
 
@@ -52,7 +52,7 @@ A Settings page that edits non-authority JSON is **not** ready. All four must ho
 
 | # | Capability | v1 boundary (acceptance) |
 |---|------------|--------------------------|
-| **1** | **Requirement Policy Management** — [brief](../tasks/requirement-policy-management.md) (Active: RPM-1) | For this tenant / client / vacancy / profile / country: these requirements apply; base rule; override; reason; result. Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin product. |
+| **1** | **Requirement Policy Management** — [brief](../tasks/requirement-policy-management.md) (Active: RPM-2; RPM-1 Authority Gate PASS) | For this tenant / client / vacancy / profile / country: these requirements apply; base rule; override; reason; result. Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin product. |
 | **2** | **Mapping Authority** — [brief](../tasks/mapping-authority.md) (queued) | One operator-visible model from source answers to **canonical entity fields**. Not “build another mapping editor.” |
 | **3** | **External Intake / Forms Publish** — [brief](../tasks/external-intake-forms-publish.md) (queued) | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
 | **4** | **Hiring workflow E2E** — [brief](../tasks/hiring-workflow-e2e.md) (queued) | One candidate: `stage → requirements/docs → eligibility → transfer`. Acceptance over existing funnels, gates, policy authority, and transfer — **not** a new Hiring Product. |
@@ -61,7 +61,7 @@ A Settings page that edits non-authority JSON is **not** ready. All four must ho
 
 Blockers 1–5 are **capability** blockers: they make the product complete. Blocker 6 is an **operability** blocker: it makes the product sellable. Blocker 6 is not a capability node in the DAG and does not consume a Product slot — it runs as the parallel **Launch-ops** track, because a paying tenant cannot be served by features alone.
 
-Every blocker now has a brief with `Original Goal → Completion Proof`, an internal slice ladder with named gates, and an estimate. A brief is **not** a schedule: only the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) activates a slice, and the Active Product remains RPM-1.
+Every blocker now has a brief with `Original Goal → Completion Proof`, an internal slice ladder with named gates, and an estimate. A brief is **not** a schedule: only the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) activates a slice, and the Active Product is RPM-2 after RPM-1 Authority Gate PASS.
 
 ### Supporting (must work for the five; not separate programs)
 

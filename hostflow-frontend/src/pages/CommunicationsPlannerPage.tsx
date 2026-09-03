@@ -2,7 +2,6 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listManagers } from '../api/client'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
-import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import {
   createCommunicationPlannerEvent,
   getMyWorkingHours,
@@ -174,13 +173,8 @@ export default function CommunicationsPlannerPage() {
 
   return (
     <PageShell>
-      <WorkspaceTopNav active="calendar" />
       <PageShellHeader>
         <PageHeader
-          title={t('app.communications.ia.planner_title', { defaultValue: 'Planner' })}
-          subtitle={t('app.communications.ia.planner_subtitle', {
-            defaultValue: 'Operational planning for managers and tasks. Separate from email/messages inboxes.',
-          })}
           kind="browse"
           secondaryActions={
             <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading || busy}>

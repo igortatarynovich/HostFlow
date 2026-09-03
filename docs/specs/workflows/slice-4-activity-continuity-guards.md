@@ -164,7 +164,7 @@ Operational slice: **one guard**, **one contradiction resolved** — no jump int
 - Hook in `create_candidate_full(..., source_lead=...)` before UOS auto-activity
 - Candidate `extra.lead_continuity_v1` + `extra.source_lead_id`; lead note copied to `candidate.note` when empty
 - ActivityLog action `lead_to_candidate.context_carried`
-- FE: `CandidateLeadOriginPanel` on candidate card
+- FE: `CandidateLeadOriginPanel` — source-lead link only; questionnaire / lead stage / intake decision are **not** dumped on the candidate card
 - Tests: `backend/tests/modules/leads/test_lead_context_carry_guard.py`
 
 **Done when:** scenario 7 (§7) — lead note visible on candidate + link to source lead. ✅

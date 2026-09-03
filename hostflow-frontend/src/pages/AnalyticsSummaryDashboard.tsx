@@ -78,8 +78,6 @@ export default function AnalyticsSummaryDashboard() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.dashboard.summary.title')}
-          subtitle={t('app.dashboard.summary.subtitle')}
           kind="browse"
           secondaryActions={
             <button

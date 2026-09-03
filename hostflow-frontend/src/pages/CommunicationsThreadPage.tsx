@@ -1,6 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
-import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
 import CommunicationsThreadWorkArea from '../components/communications/CommunicationsThreadWorkArea'
@@ -19,7 +18,6 @@ export default function CommunicationsThreadPage() {
   if (loading) {
     return (
       <PageShell>
-        <WorkspaceTopNav active={null} />
         <div className="flex min-h-0 flex-1 items-center justify-center pb-4 text-sm text-slate-500">
           {t('common.loading')}
         </div>
@@ -36,7 +34,6 @@ export default function CommunicationsThreadPage() {
       } satisfies FriendlyErrorInfo)
     return (
       <PageShell>
-        <WorkspaceTopNav active={null} />
         <PageShellHeader>
           <PageHeader kind="browse" />
         </PageShellHeader>
@@ -67,7 +64,6 @@ export default function CommunicationsThreadPage() {
 
   return (
     <PageShell>
-      <WorkspaceTopNav active={null} />
       <PageShellHeader>
         <PageHeader kind="browse" breadcrumbCurrentLabel={thread.subject?.trim() || undefined} />
       </PageShellHeader>

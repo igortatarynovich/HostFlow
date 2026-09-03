@@ -50,6 +50,8 @@ async def test_build_lead_continuity_snapshot_includes_note_and_intake() -> None
     assert snap["intake_resolution_v1"]["status"] == "qualified"
     assert "lead_note" in snap["carried_fields"]
     assert "intake_resolution_v1" in snap["carried_fields"]
+    assert "intake_answers_v1" not in snap
+    assert "intake_answers_v1" not in snap["carried_fields"]
 
 
 @pytest.mark.anyio
@@ -84,6 +86,33 @@ async def test_build_lead_continuity_snapshot_includes_call_result() -> None:
     assert "call_result_v1" in snap["carried_fields"]
     assert len(snap["call_results_v1"]) == 2
     assert "call_results_v1" in snap["carried_fields"]
+
+
+@pytest.mark.anyio
+async def test_build_lead_continuity_snapshot_omits_questionnaire_dump() -> None:
+    lead = type(
+        "L",
+        (),
+        {
+            "id": "lead-answers",
+            "note": "",
+            "stage": "new",
+            "normalized": {
+                "field_answers": [
+                    {"name": "inbox_url", "values": ["https://business.facebook.com/latest/thread"]},
+                    {"name": "full_name", "values": ["Kudakwashe Tapfumaneyi"]},
+                    {
+                        "name": "какой у вас опыт работы водителем c+e в международных перевозках по ес?",
+                        "values": ["1–2_года"],
+                    },
+                ]
+            },
+        },
+    )()
+    snap = build_lead_continuity_snapshot(lead)
+    assert "intake_answers_v1" not in snap
+    assert "intake_answers_v1" not in snap["carried_fields"]
+    assert snap.get("carried_fields") == []
 
 
 @pytest.mark.anyio
@@ -143,6 +172,8 @@ async def test_conversion_carries_lead_note_to_candidate(
         assert extra.get("source_lead_id") == lead_id
         assert continuity.get("lead_note") == "Lead-side note: already spoke on WhatsApp"
         assert continuity.get("intake_resolution_v1", {}).get("status") == "qualified"
+        assert "intake_answers_v1" not in extra
+        assert "intake_answers_v1" not in continuity
         assert "[From lead]" in str(cand.note or "")
         assert "WhatsApp" in str(cand.note or "")
 
@@ -283,6 +314,8 @@ async def test_greenfield_lead_carries_source_link_only(
         assert extra.get("source_lead_id") == lead_id
         assert continuity.get("link_only") is True
         assert continuity.get("carried_fields") == []
+        assert "intake_answers_v1" not in extra
+        assert "intake_answers_v1" not in continuity
 
 
 @pytest.mark.anyio

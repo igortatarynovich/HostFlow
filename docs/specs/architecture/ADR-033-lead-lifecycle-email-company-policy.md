@@ -40,7 +40,7 @@ Normative triggers = RODO-gated actions only (Process, `request_info`, stage `co
 
 ## Consequences
 
-1. New own companies: ops off / RODO manual until configured (or preset applied).
+1. New own companies: ops off; **RODO evaluation is always on**. The engine decides whether outbound delivery is required. Missing firm template uses the HostFlow default body + `/legal/rodo.html`. Delivery uses tenant SMTP when configured, otherwise `info@hostflow.cc`. Tenants cannot disable fulfillment. HostFlow is not the named controller.
 2. Leads **without** `company_id` (typical early B2B / sales inquiry) still resolve firm RODO via `own_company_id`.
 3. Cutover: seed **own companies** from tenant preset; existing client-company `lead_lifecycle_email_v1` blocks remain valid as **overlays** (preserve prior per-client snapshots).
 4. Leads module consumes resolver; Communication owns templates/policy buckets ([ADR-028](ADR-028-configuration-ownership.md)).
@@ -58,3 +58,6 @@ Normative triggers = RODO-gated actions only (Process, `request_info`, stage `co
 
 - 2026-07-29: Accepted — Company-owned lifecycle email policy + sparse vacancy override; Control Center under Communications.
 - 2026-07-31: **Errata / product lock** — SoT = **OwnCompany** (firm); client company + vacancy = optional override; sales leads without `company_id` use firm policy. Resolver + own-company cutover = implementation slice A; Control Center IA + sales RODO rail = later slices.
+- 2026-09-02: **Errata / legal floor** — `gdpr_notice` is a platform obligation for every tenant: `auto_on_lead_created` from `info@hostflow.cc`; missing firm template uses the HostFlow default body + `/legal/rodo.html`; stored `manual` / vacancy disable cannot skip the notice. Ops purposes unchanged (fail-closed).
+- 2026-09-02: **Errata / compliance-by-design** — every lead gets a **mandatory obligation evaluation** (art. 13 vs art. 14, already provided, exemption). The tenant may configure controller identity, clause, sender, and copy, but cannot disable fulfillment. HostFlow mailbox is default **delivery infrastructure**, not the controller. Missing config uses the platform default rather than doing nothing.
+- 2026-09-02: **Errata / no silent bypass** — canonical states `compliant` / `delivery_required` / `delivered` / `exempt` / `review_required` / `delivery_failed`. Unknown collection path or exemption without reason is `review_required`, never a no-op. Tenant SMTP failure falls back to platform SMTP; both failing is `delivery_failed` with attempt evidence. Assessment evidence and delivery evidence are stored separately.

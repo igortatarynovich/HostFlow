@@ -34,7 +34,7 @@ export function DataTableWithDetailRail<TRow>({
       {filterRow ? <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-3 py-1">{filterRow}</div> : null}
       {bulkBar ? <div className="shrink-0">{bulkBar}</div> : null}
 
-      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {children({
             selectedRowId,

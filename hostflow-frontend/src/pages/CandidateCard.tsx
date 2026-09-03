@@ -88,7 +88,7 @@ import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageShell, PageShellHeader } from '../components/layout'
+import { PageShell, PageShellHeader, PageShellBody } from '../components/layout'
 import { PageHeader } from '../components/nav/PageHeader'
 import { useToast } from '../components/Toast'
 import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
@@ -4453,9 +4453,9 @@ export default function CandidateCard(){
         <PageShellHeader>
           <PageHeader breadcrumbCurrentLabel={t('common.loading')} kind="browse" />
         </PageShellHeader>
-        <div className="flex min-h-0 flex-1 items-center justify-center pb-4 text-slate-500">
-          {t('common.loading')}
-        </div>
+        <PageShellBody className="flex items-center justify-center">
+          <div className="pb-4 text-slate-500">{t('common.loading')}</div>
+        </PageShellBody>
       </PageShell>
     )
   }
@@ -4465,6 +4465,7 @@ export default function CandidateCard(){
       <PageShellHeader>
         <PageHeader breadcrumbItems={candidateBreadcrumbItems} kind="browse" />
       </PageShellHeader>
+      <PageShellBody>
       <CandidateHeader
         candidate={model}
         isNew={isNew}
@@ -4552,10 +4553,10 @@ export default function CandidateCard(){
         </div>
       ) : null}
 
-      <div className="card p-3">
-        <div className="space-y-4">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
-            <div className="space-y-4 lg:pr-6">
+      <div className="card min-w-0 p-3">
+        <div className="min-w-0 space-y-4">
+            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
+            <div className="min-w-0 space-y-4 lg:pr-6">
                   {registrySectionsBeforeStatus.map((sectionCode) => {
                     if (!registrySectionVisible(sectionCode)) return null
                     if (sectionCode === 'basic') {
@@ -4760,7 +4761,7 @@ export default function CandidateCard(){
           {/* Work panel (sticky): contact+RODO (gate stages) → next action → docs → notes → inbox → services → RODO if not above */}
           {!isNew && model?.id ? (
             <div
-              className="flex w-full min-w-0 flex-col gap-4 overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto"
+              className="flex w-full min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto"
               data-candidate-control-rail
             >
               {showContactAttemptsPriorityRail && !isMasked ? (
@@ -4842,7 +4843,6 @@ export default function CandidateCard(){
 
               <CandidateLeadOriginPanel
                 candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
-                candidateNote={model.note}
               />
 
               {showRequirementsSummaryCard ? (
@@ -4960,6 +4960,7 @@ export default function CandidateCard(){
           </div>
           </div>
       </div>
+      </PageShellBody>
 
       {!isNew && model?.id && handoffModalOpen ? (
         <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={() => setHandoffModalOpen(false)}>
@@ -5160,7 +5161,7 @@ export default function CandidateCard(){
       {!isMasked && docsDrawerOpen && model?.id ? (
         <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={closeDocsDrawer}>
           <div
-            className="fixed right-0 top-0 h-full w-full max-w-6xl overflow-hidden rounded-l-2xl bg-white shadow-xl"
+            className="fixed right-0 top-0 h-dvh max-h-dvh w-full max-w-6xl overflow-hidden bg-white shadow-xl sm:rounded-l-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-slate-200 p-3">

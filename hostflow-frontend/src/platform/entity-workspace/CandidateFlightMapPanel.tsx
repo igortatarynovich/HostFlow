@@ -1,3 +1,5 @@
+import { useI18n } from '../../i18n'
+
 /**
  * CL6 — D4 places Flight map Binding snapshot next to Q&A.
  *
@@ -9,6 +11,7 @@
 export const ENTITY_PROFILE_FLIGHT_MAP_V1 = 'entity_profile_flight_map.v1'
 
 export function CandidateFlightMapPanel() {
+  const { t } = useI18n()
   return (
     <section
       data-host-region="flight-map"
@@ -22,11 +25,8 @@ export function CandidateFlightMapPanel() {
       data-flight-entity-dest="false"
       className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
     >
-      <p className="font-medium text-slate-800">Mapped from Flight</p>
-      <p>
-        Binding snapshot. Dest = Profile member fields. Not extra. Not
-        Zapier. Not the Flight entity.
-      </p>
+      <p className="font-medium text-slate-800">{t('app.entity_workspace.flight_map.title')}</p>
+      <p>{t('app.entity_workspace.flight_map.body')}</p>
     </section>
   )
 }

@@ -159,7 +159,9 @@ async def test_questionnaire_invite_rejects_inactive_lead_form(
     await _seed_sales_profile(tenant_id)
     forms_resp = await client.get("/api/v1/leads/questionnaire-forms", headers=manager_headers)
     assert forms_resp.status_code == 200, forms_resp.text
-    form_id = forms_resp.json()[0]["id"]
+    rows = forms_resp.json()
+    assert rows
+    form_id = next((row["id"] for row in rows if not row.get("is_system_preset")), rows[0]["id"])
 
     async with async_session_maker() as session:
         form = await session.scalar(
@@ -220,3 +222,57 @@ async def test_list_questionnaire_forms_excludes_recruitment_profiles(
     assert list_resp.status_code == 200, list_resp.text
     listed_ids = {row["id"] for row in list_resp.json()}
     assert recruitment_form_id not in listed_ids
+
+
+@pytest.mark.asyncio
+async def test_list_and_send_driver_hiring_constructor_form(
+    client: AsyncClient,
+    tenant_id: str,
+    manager_headers: dict,
+) -> None:
+    from backend.app.entity_profile.constants import DRIVER_HIRING_PROFILE_CODE
+    from backend.tests.api.test_intake_forms_settings import _admin_headers
+
+    await _seed_sales_profile(tenant_id)
+    admin_headers = await _admin_headers(tenant_id)
+    slug = f"company_needs_drivers_{uuid4().hex[:6]}"
+    preset_resp = await client.get(
+        f"/api/v1/settings/intake-forms/entity-profiles/{DRIVER_HIRING_PROFILE_CODE}/presentation-preset",
+        headers=admin_headers,
+    )
+    assert preset_resp.status_code == 200, preset_resp.text
+    create_resp = await client.post(
+        "/api/v1/settings/intake-forms",
+        headers=admin_headers,
+        json={
+            "title": "Company needs drivers",
+            "public_slug": slug,
+            "entity_profile_code": DRIVER_HIRING_PROFILE_CODE,
+            "fields": preset_resp.json()["fields"],
+        },
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    created = create_resp.json()
+    form_id = created["form"]["id"]
+    assert created["form"]["public_slug"] == slug.replace("_", "-")
+    assert created["entity_profile"]["code"] == DRIVER_HIRING_PROFILE_CODE
+
+    list_resp = await client.get("/api/v1/leads/questionnaire-forms", headers=manager_headers)
+    assert list_resp.status_code == 200, list_resp.text
+    listed = list_resp.json()
+    match = next((row for row in listed if row["id"] == form_id), None)
+    assert match is not None
+    assert match["target_entity_profile_code"] == DRIVER_HIRING_PROFILE_CODE
+    assert listed[0]["id"] == form_id
+
+    lead = await _create_meta_client_lead(tenant_id)
+    invite_resp = await client.post(
+        f"/api/v1/leads/{lead.id}/questionnaire-invite",
+        headers=manager_headers,
+        json={"mark_sent": True, "lead_form_id": form_id},
+    )
+    assert invite_resp.status_code == 200, invite_resp.text
+    body = invite_resp.json()
+    assert body["lead_form_id"] == form_id
+    assert body["entity_profile_code"] == DRIVER_HIRING_PROFILE_CODE
+    assert body["status"] == "sent"

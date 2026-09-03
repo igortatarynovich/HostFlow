@@ -185,41 +185,39 @@ function UserDetailCard({
     setPasswordNote(null)
     try {
       await onResetPassword()
-      setPasswordNote(t('app.admin.users.actions.password_reset_link_sent', { defaultValue: 'Link do zresetowania hasła wysłany na adres e-mail użytkownika.' }))
+      setPasswordNote(t('app.admin.users.actions.password_reset_link_sent'))
     } catch (err) {
       console.error('[UserDetailCard] reset password failed', err)
-      setPasswordNote(t('app.admin.users.errors.password_reset_failed', { defaultValue: 'Failed to reset password' }))
+      setPasswordNote(t('app.admin.users.errors.password_reset_failed'))
     }
   }
 
   const handleChangePassword = async () => {
     if (!onChangePassword || !detail.user_id) return
-    const next = window.prompt(t('app.admin.users.actions.enter_new_password', { defaultValue: 'Enter new password' }))
+    const next = window.prompt(t('app.admin.users.actions.enter_new_password'))
     if (!next) return
     setPasswordNote(null)
     try {
       await onChangePassword(next)
-      setPasswordNote(t('app.admin.users.actions.password_change_success', { defaultValue: 'Password updated' }))
+      setPasswordNote(t('app.admin.users.actions.password_change_success'))
     } catch (err) {
       console.error('[UserDetailCard] change password failed', err)
-      setPasswordNote(t('app.admin.users.errors.password_change_failed', { defaultValue: 'Failed to change password' }))
+      setPasswordNote(t('app.admin.users.errors.password_change_failed'))
     }
   }
 
   const handleDeleteUser = async () => {
     if (!onDeleteUser || !detail.user_id) return
     const confirmed = window.confirm(
-      t('app.admin.users.actions.confirm_delete', {
-        defaultValue: 'Delete this user? Sessions will be revoked.',
-      }),
+      t('app.admin.users.actions.confirm_delete'),
     )
     if (!confirmed) return
     try {
       await onDeleteUser()
-      setPasswordNote(t('app.admin.users.actions.delete_success', { defaultValue: 'User deleted' }))
+      setPasswordNote(t('app.admin.users.actions.delete_success'))
     } catch (err) {
       console.error('[UserDetailCard] delete user failed', err)
-      setPasswordNote(t('app.admin.users.errors.delete_failed', { defaultValue: 'Failed to delete user' }))
+      setPasswordNote(t('app.admin.users.errors.delete_failed'))
     }
   }
 
@@ -372,12 +370,12 @@ function UserDetailCard({
                 </button>
                 {onResetPassword && (
                   <button type="button" className="btn-secondary" onClick={handleResetPassword}>
-                    {t('app.admin.users.table.actions.reset_password', { defaultValue: 'Reset password' })}
+                    {t('app.admin.users.table.actions.reset_password')}
                   </button>
                 )}
                 {onChangePassword && (
                   <button type="button" className="btn-secondary" onClick={handleChangePassword}>
-                    {t('app.admin.users.table.actions.change_password', { defaultValue: 'Change password' })}
+                    {t('app.admin.users.table.actions.change_password')}
                   </button>
                 )}
                 {onDeleteUser && (
@@ -1263,7 +1261,7 @@ export default function UsersPage() {
                         >
                           {revokingInviteId === user.invite_id
                             ? t('common.loading')
-                            : t('app.admin.users.table.actions.revoke_invite', { defaultValue: 'Revoke invite' })}
+                            : t('app.admin.users.table.actions.revoke_invite')}
                         </button>
                       </div>
                     )}

@@ -226,8 +226,8 @@ export function EntityWorkspaceContextRail({
   if (!visibleBlocks.length) {
     return (
       <aside
-        className="flex shrink-0 flex-col border-l border-slate-200 bg-white p-3 text-sm text-slate-500"
-        style={{ width: widthPx, minWidth: widthPx, maxWidth: widthPx }}
+        className="flex w-full shrink-0 flex-col border-t border-slate-200 bg-white p-3 text-sm text-slate-500 lg:w-[var(--hf-entity-rail-width)] lg:min-w-[var(--hf-entity-rail-width)] lg:max-w-[var(--hf-entity-rail-width)] lg:border-l lg:border-t-0"
+        style={{ ['--hf-entity-rail-width' as string]: `${widthPx}px` }}
         data-entity-workspace-zone="context-rail"
         data-entity-workspace-slot="context-rail"
       >
@@ -238,8 +238,8 @@ export function EntityWorkspaceContextRail({
 
   return (
     <aside
-      className="flex min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-slate-200 bg-white"
-      style={{ width: widthPx, minWidth: widthPx, maxWidth: widthPx }}
+      className="flex min-h-0 w-full shrink-0 flex-col overflow-y-auto overscroll-contain border-t border-slate-200 bg-white max-lg:max-h-[min(70dvh,32rem)] lg:w-[var(--hf-entity-rail-width)] lg:min-w-[var(--hf-entity-rail-width)] lg:max-w-[var(--hf-entity-rail-width)] lg:border-l lg:border-t-0"
+      style={{ ['--hf-entity-rail-width' as string]: `${widthPx}px` }}
       data-entity-workspace-zone="context-rail"
       data-entity-workspace-slot="context-rail"
     >

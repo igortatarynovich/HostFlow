@@ -37,7 +37,21 @@ OPS_PURPOSE_TO_KEY: dict[str, str] = {
     PURPOSE_MOVING_FORWARD: "moving_forward",
 }
 
-SourceLayer = Literal["vacancy", "client", "own_company", "tenant_preset", "none"]
+SourceLayer = Literal["vacancy", "client", "own_company", "tenant_preset", "platform", "none"]
+
+# Platform legal floor: evaluate the information obligation (art.13 / art.14).
+# Tenants cannot disable evaluation or fulfillment. Missing config uses platform defaults.
+PLATFORM_RODO_SEND_MODE = "auto_on_lead_created"
+PLATFORM_RODO_TEMPLATE_REF = "platform:hostflow_gdpr_notice_v1"
+PLATFORM_RODO_FROM_EMAIL = "info@hostflow.cc"
+PLATFORM_RODO_CLAUSE_VERSION_ID = "platform:rodo_clause_v1"
+PLATFORM_RODO_PUBLIC_PATH = "/legal/rodo.html"
+
+
+def is_platform_rodo_template_ref(raw: Optional[str]) -> bool:
+    return str(raw or "").strip() == PLATFORM_RODO_TEMPLATE_REF
+
+
 BlockCode = Optional[
     Literal[
         "disabled",
@@ -299,7 +313,7 @@ def decide_from_layers(
         own_company = company
     own_company = _as_dict(own_company)
     resolved_own_id = _trim(own_company_id) or _trim(company_id)
-    if not resolved_own_id:
+    if not resolved_own_id and purpose != PURPOSE_GDPR_NOTICE:
         return PolicyDecision(
             purpose=purpose,
             send=False,
@@ -324,57 +338,17 @@ def decide_from_layers(
     )
 
     if purpose == PURPOSE_GDPR_NOTICE:
-        if mode == "manual":
-            if not tmpl:
-                return PolicyDecision(
-                    purpose=purpose,
-                    send=False,
-                    template_ref=None,
-                    source_layer=layer,
-                    block_code="policy_template_missing",
-                    send_mode=mode,
-                    enabled=True,
-                    reason="RODO template_ref is missing; configure in Lead lifecycle email Control Center.",
-                )
-            return PolicyDecision(
-                purpose=purpose,
-                send=False,
-                template_ref=tmpl,
-                source_layer=layer,
-                block_code=None,
-                send_mode=mode,
-                enabled=True,
-                reason=None,
-            )
-        if not enabled:
-            return PolicyDecision(
-                purpose=purpose,
-                send=False,
-                template_ref=tmpl,
-                source_layer=layer,
-                block_code="disabled",
-                send_mode=mode,
-                enabled=False,
-                reason="RODO outbound disabled by vacancy override.",
-            )
-        if not tmpl:
-            return PolicyDecision(
-                purpose=purpose,
-                send=False,
-                template_ref=None,
-                source_layer=layer,
-                block_code="policy_template_missing",
-                send_mode=mode,
-                enabled=True,
-                reason="RODO auto-send enabled but template_ref is missing.",
-            )
+        effective_tmpl = tmpl or PLATFORM_RODO_TEMPLATE_REF
+        source: SourceLayer = layer if tmpl else "platform"
+        if source == "none":
+            source = "platform"
         return PolicyDecision(
             purpose=purpose,
             send=True,
-            template_ref=tmpl,
-            source_layer=layer,
+            template_ref=effective_tmpl,
+            source_layer=source,
             block_code=None,
-            send_mode=mode,
+            send_mode=PLATFORM_RODO_SEND_MODE,
             enabled=True,
             reason=None,
         )
@@ -418,7 +392,7 @@ OPS_EVENT_TO_PURPOSE: dict[str, str] = {
 
 SAFE_DEFAULT_COMPANY_POLICY: dict[str, Any] = {
     "version": 1,
-    "rodo_send_mode": "manual",
+    "rodo_send_mode": PLATFORM_RODO_SEND_MODE,
     "rodo_template_ref": None,
     "ops_enabled": False,
     "application_received": {"enabled": False, "template_ref": None},
@@ -560,6 +534,11 @@ __all__ = [
     "LIFECYCLE_PURPOSES",
     "OPS_EVENT_TO_PURPOSE",
     "OPS_PURPOSE_TO_KEY",
+    "PLATFORM_RODO_CLAUSE_VERSION_ID",
+    "PLATFORM_RODO_FROM_EMAIL",
+    "PLATFORM_RODO_PUBLIC_PATH",
+    "PLATFORM_RODO_SEND_MODE",
+    "PLATFORM_RODO_TEMPLATE_REF",
     "PURPOSE_GDPR_NOTICE",
     "PURPOSE_INTAKE_REJECTION",
     "PURPOSE_MOVING_FORWARD",
@@ -569,6 +548,7 @@ __all__ = [
     "compose_own_and_client_policy",
     "cutover_completed",
     "decide_from_layers",
+    "is_platform_rodo_template_ref",
     "mark_cutover_completed",
     "mark_own_company_cutover_completed",
     "own_company_cutover_completed",

@@ -95,7 +95,7 @@ Application rules: must align with [applications-operating-model.md](../architec
 | Topic | Specification |
 |--------|----------------|
 | **Notice at source** | e.g. `rodo_notice_at_source`, public form consents → `source_provided`, **no duplicate outbound** |
-| **Auto-send on ingest** | Per tenant `lead_rodo_send_mode`; eligible sources per [§8.0.1](lead-intake-resolution-and-activity-continuity.md) |
+| **Auto-send on ingest** | Platform-mandatory evaluation (art. 13/14); fulfill when required. Tenant SMTP or `info@hostflow.cc` fallback (see [§8.0.1](lead-intake-resolution-and-activity-continuity.md)) |
 | **Channel missing** | `pending_channel`; gated actions blocked until manual send or source-provided |
 | **Replay idempotency** | Same `external_id` must not trigger second outbound notice |
 | **Gated actions** | process · request_info · contacted (and auto-on-first-action mode) |

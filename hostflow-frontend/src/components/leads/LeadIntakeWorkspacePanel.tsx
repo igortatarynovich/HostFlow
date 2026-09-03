@@ -214,7 +214,7 @@ export default function LeadIntakeWorkspacePanel({
   }
 
   return (
-    <div className="flex h-full min-h-[320px] flex-col lg:max-h-[calc(100vh-8rem)]">
+    <div className="flex h-full min-h-[320px] flex-col lg:max-h-[calc(100dvh-8rem)]">
       <div className="shrink-0 border-b border-slate-100 px-4 py-2">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{t('app.leads.intake_workspace.title')}</p>

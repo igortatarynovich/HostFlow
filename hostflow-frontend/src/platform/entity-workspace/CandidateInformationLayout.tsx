@@ -1,3 +1,5 @@
+import { useI18n } from '../../i18n'
+
 /**
  * CL3 — D4 Information zone places Entity Profile card layout.
  *
@@ -10,6 +12,7 @@ export const ENTITY_PROFILE_LAYOUT_V1 = 'entity_profile_layout.v1'
 export const PAGE_TYPE_CANDIDATE_CARD = 'candidate.card'
 
 export function CandidateInformationLayout() {
+  const { t } = useI18n()
   return (
     <section
       data-host-region="information"
@@ -17,11 +20,8 @@ export function CandidateInformationLayout() {
       data-page-type={PAGE_TYPE_CANDIDATE_CARD}
       className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
     >
-      <p className="font-medium text-slate-800">Information</p>
-      <p>
-        Card layout from Entity Profile membership. Not an intake form. CL4
-        builder compiles card here.
-      </p>
+      <p className="font-medium text-slate-800">{t('app.entity_workspace.information.title')}</p>
+      <p>{t('app.entity_workspace.information.body')}</p>
     </section>
   )
 }

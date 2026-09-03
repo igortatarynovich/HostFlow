@@ -177,7 +177,7 @@ export function HrEmployeeRail({
 
   return (
     <div
-      className="flex w-full min-w-0 flex-col gap-4 overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto"
+      className="flex w-full min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto"
       data-hr-employee-control-rail
     >
       <CandidateNextActionPanel

@@ -49,7 +49,7 @@ function normalizedRecord(lead: Lead | null): Record<string, unknown> {
   return n && typeof n === 'object' && !Array.isArray(n) ? (n as Record<string, unknown>) : {}
 }
 
-/** Mirrors backend ``lead_rodo_satisfied`` — art.14 closed at lead (sent / satisfied / source_provided / legacy sent_at). */
+/** Mirrors backend ``lead_rodo_satisfied`` — obligation closed (sent / satisfied / source_provided / exempt). */
 export type LeadRodoNoticeStatus =
   | 'sent'
   | 'failed'
@@ -57,6 +57,9 @@ export type LeadRodoNoticeStatus =
   | 'pending_policy'
   | 'manual_required'
   | 'source_provided'
+  | 'exempt'
+  | 'review_required'
+  | 'delivery_required'
 
 /** Mirrors backend ``lead_rodo_notice_status_from_normalized`` for lead rail UI. */
 export function leadRodoNoticeStatus(
@@ -70,6 +73,10 @@ export function leadRodoNoticeStatus(
     .trim()
     .toLowerCase()
   if (st === 'source_provided') return 'source_provided'
+  if (st === 'exempt') return 'exempt'
+  if (st === 'review_required') return 'review_required'
+  if (st === 'delivery_required') return 'delivery_required'
+  if (st === 'delivery_failed') return 'failed'
   if (st === 'sent' || st === 'satisfied' || Boolean(String(block.sent_at || '').trim())) return 'sent'
   if (st === 'failed') return 'failed'
   if (st === 'pending_channel') return 'pending_channel'
@@ -166,7 +173,7 @@ export function leadRodoSatisfied(lead: Pick<Lead, 'normalized' | 'candidate_id'
   const st = String(block.status || '')
     .trim()
     .toLowerCase()
-  if (st === 'sent' || st === 'satisfied' || st === 'source_provided') return true
+  if (st === 'sent' || st === 'satisfied' || st === 'source_provided' || st === 'exempt') return true
   return Boolean(String(block.sent_at || '').trim())
 }
 

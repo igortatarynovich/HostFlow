@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useI18n } from '../../i18n'
+import { useI18n, type TranslateFn } from '../../i18n'
 import {
   getWorkforceEmployeeOperationalProfile,
   getWorkforceHrReview,
@@ -60,6 +60,7 @@ function parseOptionalJsonObject(
   raw: string,
   label: string,
   notify: ReturnType<typeof useToast>['notify'],
+  t: TranslateFn,
 ): Record<string, unknown> | null | undefined {
   const s = raw.trim()
   if (!s) return null
@@ -68,13 +69,13 @@ function parseOptionalJsonObject(
     if (v && typeof v === 'object' && !Array.isArray(v)) return v as Record<string, unknown>
     notify({
       variant: 'error',
-      title: `${label}: JSON must be an object`,
+      title: t('app.hr.employee_detail.json_must_be_object', { values: { label } }),
     })
     return undefined
   } catch {
     notify({
       variant: 'error',
-      title: `${label}: invalid JSON`,
+      title: t('app.hr.employee_detail.invalid_json', { values: { label } }),
     })
     return undefined
   }
@@ -259,7 +260,7 @@ export default function HrEmployeeDetailPage() {
 
   return (
     <PageShell
-      className="hr-employee-workspace w-full min-w-0 overflow-visible"
+      className="hr-employee-workspace w-full min-w-0"
       data-entity-workspace-consumer={isCutover ? HR_EMPLOYEE_COMPOSITION_CONSUMER_ID : undefined}
     >
       <div className="w-full min-w-0">
@@ -519,7 +520,7 @@ function PayrollSection({
     <Section defaultOpen={defaultOpen} title={t('app.hr.employee_detail.section_payroll', { defaultValue: 'Payroll profile' })}>
       <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Pay type
+          {t('app.hr.employee_detail.payroll_pay_type')}
           <select
             className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
@@ -534,7 +535,7 @@ function PayrollSection({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Base rate
+          {t('app.hr.employee_detail.payroll_base_rate')}
           <input
             className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
@@ -544,7 +545,7 @@ function PayrollSection({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Currency
+          {t('app.hr.employee_detail.payroll_currency')}
           <input
             className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
@@ -553,7 +554,7 @@ function PayrollSection({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Payroll status
+          {t('app.hr.employee_detail.payroll_status')}
           <select
             className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
@@ -568,7 +569,7 @@ function PayrollSection({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
-          Bank account
+          {t('app.hr.employee_detail.payroll_bank_account')}
           <input
             className="border border-slate-200 rounded px-2 py-2 text-sm font-mono"
             disabled={!manage}
@@ -577,7 +578,7 @@ function PayrollSection({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600 sm:col-span-2">
-          Tax status
+          {t('app.hr.employee_detail.payroll_tax_status')}
           <input
             className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
@@ -657,16 +658,16 @@ function PayrollSection({
           className="mt-3 px-3 py-2 rounded text-sm font-medium bg-slate-900 text-white disabled:opacity-50"
           onClick={() => {
             const pitLabel = t('app.hr.employee_detail.payroll_pit_json', { defaultValue: 'PIT declarations' })
-            const pit = parseOptionalJsonObject(pit_json, pitLabel, notify)
+            const pit = parseOptionalJsonObject(pit_json, pitLabel, notify, t)
             if (pit === undefined) return
             const alwLabel = t('app.hr.employee_detail.payroll_allowances_json', { defaultValue: 'Allowances' })
-            const alw = parseOptionalJsonObject(allowances_json, alwLabel, notify)
+            const alw = parseOptionalJsonObject(allowances_json, alwLabel, notify, t)
             if (alw === undefined) return
             const dedLabel = t('app.hr.employee_detail.payroll_deductions_json', { defaultValue: 'Deductions' })
-            const ded = parseOptionalJsonObject(deductions_json, dedLabel, notify)
+            const ded = parseOptionalJsonObject(deductions_json, dedLabel, notify, t)
             if (ded === undefined) return
             const extLabel = t('app.hr.employee_detail.payroll_external_refs_json', { defaultValue: 'External refs' })
-            const ext = parseOptionalJsonObject(external_refs_json, extLabel, notify)
+            const ext = parseOptionalJsonObject(external_refs_json, extLabel, notify, t)
             if (ext === undefined) return
             onSave({
               pay_type,
@@ -729,7 +730,7 @@ function ZusSection({
     <Section defaultOpen={defaultOpen} title={t('app.hr.employee_detail.section_zus', { defaultValue: 'ZUS' })}>
       <div className="grid gap-3 sm:grid-cols-2 max-w-2xl">
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Registration status
+          {t('app.hr.employee_detail.zus_registration_status')}
           <select
             className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
@@ -744,7 +745,7 @@ function ZusSection({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Submitted at
+          {t('app.hr.employee_detail.zus_submitted_at')}
           <input
             type="date"
             className="border border-slate-200 rounded px-2 py-2 text-sm"
@@ -754,23 +755,23 @@ function ZusSection({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Employment basis
+          {t('app.hr.employee_detail.zus_employment_basis')}
           <input
             className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={employment_basis}
             onChange={(e) => setBasis(e.target.value)}
-            placeholder="umowa o pracę / zlecenie / B2B"
+            placeholder={t('app.hr.employee_detail.zus_employment_basis_placeholder')}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-slate-600">
-          Responsible party
+          {t('app.hr.employee_detail.zus_responsible_party')}
           <input
             className="border border-slate-200 rounded px-2 py-2 text-sm"
             disabled={!manage}
             value={responsible_party}
             onChange={(e) => setParty(e.target.value)}
-            placeholder="hr / accounting / external"
+            placeholder={t('app.hr.employee_detail.zus_responsible_party_placeholder')}
           />
         </label>
       </div>

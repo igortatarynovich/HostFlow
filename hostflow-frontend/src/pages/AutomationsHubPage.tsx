@@ -134,10 +134,6 @@ export default function AutomationsHubPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.automations.hub.title', { defaultValue: 'Automations' })}
-          subtitle={t('app.automations.hub.subtitle', {
-            defaultValue: 'Rules, logs, and lead routing — one place to start; details open on their own screens.',
-          })}
           kind="browse"
         />
       </PageShellHeader>

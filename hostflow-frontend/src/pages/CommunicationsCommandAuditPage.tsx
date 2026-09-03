@@ -96,10 +96,6 @@ export default function CommunicationsCommandAuditPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.nav.items.command_audit', { defaultValue: 'Command audit' })}
-          subtitle={t('app.communications.command_audit.subtitle', {
-            defaultValue: 'Execution log for workspace command templates.',
-          })}
           kind="browse"
           secondaryActions={
             <button type="button" className="btn-secondary btn-sm" onClick={() => void load(0)} disabled={loading}>

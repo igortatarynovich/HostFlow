@@ -133,10 +133,6 @@ export default function MyCompanyPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.my_company.title', { defaultValue: 'My Company' })}
-          subtitle={t('app.my_company.subtitle', {
-            defaultValue: 'Operating company profile: legal data, bank details, branding and contacts.',
-          })}
           kind={company ? 'action' : 'browse'}
           primaryAction={
             company ? (

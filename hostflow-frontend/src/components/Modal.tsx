@@ -40,7 +40,7 @@ export function Modal({
       <div className="absolute inset-0 grid place-items-center p-2 sm:p-4">
         <div
           className={
-            `card modal-surface relative w-full ${SIZE_CLASS[size]} max-h-[calc(100vh-1rem)] overflow-y-auto p-4 pt-12 sm:max-h-[calc(100vh-2rem)] sm:p-5 sm:pt-12` +
+            `card modal-surface relative w-full ${SIZE_CLASS[size]} max-h-[calc(100dvh-1rem)] overflow-y-auto p-4 pt-12 sm:max-h-[calc(100dvh-2rem)] sm:p-5 sm:pt-12` +
             (surfaceClassName ? ` ${surfaceClassName}` : '')
           }
         >

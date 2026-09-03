@@ -17,8 +17,10 @@ from backend.app.modules.applications.mappers import (
 from backend.app.modules.applications.listing import (
     count_recruitment_inbox,
     list_recruitment_inbox_leads,
+    normalize_recruitment_call_result,
     normalize_recruitment_inbox_scope,
     normalize_recruitment_inbox_tab,
+    normalize_recruitment_search,
     recruitment_inbox_tab_counts,
 )
 from backend.app.modules.applications.sales_resolve import (
@@ -225,6 +227,11 @@ async def list_recruitment_applications(
         description="Inbox scope: all (open + completed + rejected) or open (pending only)",
     ),
     tab: str | None = Query(None, description="Inbox tab bucket: all, new, in_progress, completed"),
+    call_result: str | None = Query(
+        None,
+        description="Latest call-outcome activity (not ticket status): no_answer, interested, …",
+    ),
+    q: str | None = Query(None, description="Search name / phone / email"),
     include_counts: bool = Query(False, description="Include per-tab totals for badge counts"),
     limit: int = Query(200, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -236,6 +243,11 @@ async def list_recruitment_applications(
     inbox_scope = normalize_recruitment_inbox_scope(scope)
     inbox_tab = normalize_recruitment_inbox_tab(tab)
     vacancy_filter = str(vacancy_id or "").strip() or None
+    try:
+        call_filter = normalize_recruitment_call_result(call_result)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    search = normalize_recruitment_search(q)
     lead_rows = await list_recruitment_inbox_leads(
         db,
         tenant_id=str(tenant_id),
@@ -243,6 +255,8 @@ async def list_recruitment_applications(
         tab=inbox_tab,
         scope=inbox_scope,
         vacancy_id=vacancy_filter,
+        call_result=call_filter,
+        q=search,
         limit=limit,
         offset=offset,
         order_updated_at=(inbox_tab == "completed"),
@@ -255,6 +269,8 @@ async def list_recruitment_applications(
         tab=inbox_tab,
         scope=inbox_scope,
         vacancy_id=vacancy_filter,
+        call_result=call_filter,
+        q=search,
     )
     counts = None
     if include_counts and offset == 0 and inbox_scope == "all":
@@ -263,6 +279,8 @@ async def list_recruitment_applications(
             tenant_id=str(tenant_id),
             own_company_id=own_company_id,
             vacancy_id=vacancy_filter,
+            call_result=call_filter,
+            q=search,
         )
     return ApplicationListResponse(items=items, total=total, counts=counts)
 

@@ -5,6 +5,10 @@
  * Canon: ADR-023 Stage 1 — Module Surface Separation.
  * Domain ownership ≠ nav convenience: Employee → HR; Invoice → Finance.
  * Do not reintroduce a mixed Pipeline / CRM / Leads bucket.
+ *
+ * Agency primary rail shows production-ready surfaces only. Empty buckets are
+ * intentional: ownership stays documented here; items go to
+ * `APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS` until the module ships.
  */
 import { APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS } from './appShellNav'
 
@@ -20,7 +24,8 @@ export const SIDEBAR_CLIENT_FLAT_ORDER = [
 ] as const
 
 export const SIDEBAR_AGENCY_DASHBOARD_ORDER = ['overview'] as const
-export const SIDEBAR_AGENCY_WORK_HUB_ORDER = ['work-hub'] as const
+/** Work hub stays on the client tenant rail; not an agency primary surface. */
+export const SIDEBAR_AGENCY_WORK_HUB_ORDER = [] as const
 /** Horizontal Communications — not nested under Recruitment or Sales. */
 export const SIDEBAR_AGENCY_INBOX_ORDER = ['inbox'] as const
 
@@ -31,29 +36,24 @@ export const SIDEBAR_AGENCY_RECRUITMENT_ORDER = [
   'vacancies',
 ] as const
 
-/** HR / Workforce owns Employee Workspace after handoff. */
-export const SIDEBAR_AGENCY_HR_ORDER = ['hr-workspace'] as const
+/** HR / Workforce — hidden until production-ready. */
+export const SIDEBAR_AGENCY_HR_ORDER = [] as const
 
 /**
- * Marketing / Growth — Campaign + Flight operator surface (+ Activity Timeline).
+ * Marketing / Growth — Campaign + Flight operator hub.
+ * Nested Sources / Forms / Diagnostics / Activity stay off the rail (deep links remain).
  * Top-level rail section; must not nest under Sales (Acquisition UI Cutover C-1).
  */
-export const SIDEBAR_AGENCY_MARKETING_ORDER = [
-  'marketing',
-  'marketing-sources',
-  'marketing-forms',
-  'marketing-diagnostics',
-  'acquisition-activity',
-] as const
+export const SIDEBAR_AGENCY_MARKETING_ORDER = ['marketing'] as const
 
 /** Sales owns Inquiry + ClientAccount — not Invoice/Payment model; not Growth/Campaigns. */
 export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'clients'] as const
 
-/** Services owns catalog + service order lifecycle. */
-export const SIDEBAR_AGENCY_SERVICES_ORDER = ['service-orders', 'services'] as const
+/** Services — hidden until production-ready. */
+export const SIDEBAR_AGENCY_SERVICES_ORDER = [] as const
 
-/** Finance owns Invoice (and later Payments / receivables). */
-export const SIDEBAR_AGENCY_FINANCE_ORDER = ['invoices'] as const
+/** Finance — hidden until production-ready. */
+export const SIDEBAR_AGENCY_FINANCE_ORDER = [] as const
 
 /** @deprecated Prefer module-specific orders (ADR-023 amended). */
 export const SIDEBAR_AGENCY_PIPELINE_ORDER = [
@@ -61,15 +61,16 @@ export const SIDEBAR_AGENCY_PIPELINE_ORDER = [
   ...SIDEBAR_AGENCY_SALES_ORDER,
 ] as const
 
-export const SIDEBAR_AGENCY_TASKS_ORDER = ['tasks', 'notification-alerts', 'calendar'] as const
+export const SIDEBAR_AGENCY_TASKS_ORDER = [] as const
 export const SIDEBAR_AGENCY_PROCESSING_ORDER = [] as const
-export const SIDEBAR_AGENCY_TEAM_ORDER = ['team-availability', 'my-availability', 'time-off'] as const
-/** Document Hub — platform horizontal (ADR-009). */
-export const SIDEBAR_AGENCY_DOCUMENTS_ORDER = ['documents'] as const
-export const SIDEBAR_AGENCY_AUTOMATIONS_ORDER = ['automations'] as const
-export const SIDEBAR_AGENCY_INTEGRATIONS_ORDER = ['settings-integrations'] as const
+export const SIDEBAR_AGENCY_TEAM_ORDER = [] as const
+/** Document Hub — hidden until production-ready; documents stay on the candidate card. */
+export const SIDEBAR_AGENCY_DOCUMENTS_ORDER = [] as const
+export const SIDEBAR_AGENCY_AUTOMATIONS_ORDER = [] as const
+/** Integrations entry is Settings (`/app/settings`); client rail keeps a direct link. */
+export const SIDEBAR_AGENCY_INTEGRATIONS_ORDER = [] as const
 export const SIDEBAR_AGENCY_ANALYTICS_ORDER = [] as const
-export const SIDEBAR_AGENCY_ORGANIZATION_ORDER = ['organization'] as const
+export const SIDEBAR_AGENCY_ORGANIZATION_ORDER = [] as const
 export const SIDEBAR_AGENCY_SETTINGS_HUB_ORDER = ['settings'] as const
 export const SIDEBAR_AGENCY_PROFILE_ORDER = ['profile'] as const
 

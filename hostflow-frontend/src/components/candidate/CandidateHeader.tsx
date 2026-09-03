@@ -109,7 +109,7 @@ function CandidateHeader({
   return (
     <>
       {/* Header */}
-      <div className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-md">
+      <div className="min-w-0 rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-md">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
             {!hideBackLink && backPath ? (
@@ -294,7 +294,7 @@ function CandidateHeader({
             )}
           </div>
         </div>
-        {focusContent ? <div className="mt-3">{focusContent}</div> : null}
+        {focusContent ? <div className="mt-3 min-w-0">{focusContent}</div> : null}
       </div>
 
       {/* Status Messages */}

@@ -16,6 +16,27 @@ function metaLead(overrides: Partial<Lead> & Record<string, unknown> = {}): Lead
 }
 
 describe('leadIntakeFormAnswerRows', () => {
+  it('hides Meta ads attribution from operator Q&A', () => {
+    const rows = leadIntakeFormAnswerRows(
+      metaLead({
+        normalized: {
+          field_answers: [
+            { name: 'full_name', values: ['Jan Kowalski'] },
+            { name: 'ad name', values: ['Truck Image 110'] },
+            { name: 'adset name', values: ['Meta Forms'] },
+            { name: 'campaign name', values: ['Leads RU C/CE Driver 110/day'] },
+            { name: 'form name', values: ['Metafora TSL C/CE 110'] },
+            { name: 'is organic', values: ['false'] },
+            { name: 'platform', values: ['fb'] },
+            { name: 'Jaką masz kategorię?', values: ['C+E'] },
+          ],
+        },
+      }),
+    )
+    expect(rows.map((r) => r.label)).toEqual(['Full name', 'Jaką masz kategorię?'])
+    expect(rows.map((r) => r.value)).toEqual(['Jan Kowalski', 'C+E'])
+  })
+
   it('returns named values and skips utm / ids', () => {
     const rows = leadIntakeFormAnswerRows(
       metaLead({
@@ -32,6 +53,29 @@ describe('leadIntakeFormAnswerRows', () => {
     )
     expect(rows.map((r) => r.label)).toEqual(['Full name', 'Do you have Code95?'])
     expect(rows[1]?.value).toBe('Yes')
+  })
+
+  it('hides Messenger inbox_url from operator Q&A', () => {
+    const rows = leadIntakeFormAnswerRows(
+      metaLead({
+        normalized: {
+          field_answers: [
+            { name: 'full_name', values: ['Jan Kowalski'] },
+            {
+              name: 'inbox_url',
+              values: ['https://business.facebook.com/latest/28393661780251008?nav_ref=thread_view_by_psid'],
+            },
+            { name: 'у вас есть действующее водительское удостоверение категории c+e?', values: ['да'] },
+          ],
+        },
+      }),
+    )
+    expect(rows.map((r) => r.name)).toEqual([
+      'full_name',
+      'у вас есть действующее водительское удостоверение категории c+e?',
+    ])
+    expect(rows[1]?.label).toBe('У вас есть действующее водительское удостоверение категории c+e?')
+    expect(rows[1]?.value).toBe('Да')
   })
 
   it('returns empty when field_answers missing', () => {
@@ -97,8 +141,8 @@ describe('leadIntakeFormAnswerRows', () => {
         },
       }),
     )
-    expect(rows[0]?.label).toBe('какая категория водительских прав у вас открыта?')
-    expect(rows[0]?.value).toBe('категории c и c+e')
+    expect(rows[0]?.label).toBe('Какая категория водительских прав у вас открыта?')
+    expect(rows[0]?.value).toBe('Категории c и c+e')
   })
 
   it('prefers stored question labels over field codes', () => {

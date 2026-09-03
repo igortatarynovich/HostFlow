@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { APP_ROUTES, NAV_ITEMS } from '../routes'
 import { CRM_APP_PATHS, crmAppRouteSegment } from '../crmAppPaths'
+import { APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS } from '../../nav/appShellNav'
 import {
   SIDEBAR_AGENCY_AUTOMATIONS_ORDER,
   SIDEBAR_AGENCY_MARKETING_ORDER,
@@ -26,14 +27,9 @@ describe('marketing sources route registration (C-3)', () => {
     expect(CRM_APP_PATHS.marketingSources).toBe('/app/marketing/sources')
   })
 
-  it('appears on Marketing rail (not Sales / Recruitment / Automations / hub)', () => {
-    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toEqual([
-      'marketing',
-      'marketing-sources',
-      'marketing-forms',
-      'marketing-diagnostics',
-      'acquisition-activity',
-    ])
+  it('stays off the primary rail (Marketing hub deep link, not Sales / Recruitment / Automations / hub)', () => {
+    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toEqual(['marketing'])
+    expect(APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS).toContain('marketing-sources')
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).not.toContain('marketing-sources')
     expect([...SIDEBAR_AGENCY_RECRUITMENT_ORDER]).not.toContain('marketing-sources')
     expect([...SIDEBAR_AGENCY_AUTOMATIONS_ORDER]).not.toContain('marketing-sources')

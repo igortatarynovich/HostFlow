@@ -11,6 +11,7 @@ import {
   settingsLeadFormBuilderPath,
   settingsLeadFormDetailPath,
 } from '../crmAppPaths'
+import { APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS } from '../../nav/appShellNav'
 import { SIDEBAR_AGENCY_MARKETING_ORDER } from '../../nav/sidebarRailBuckets'
 import { isNavKeyAllowedOnHost, NAV_KEY_TO_DEPLOY_HOST } from '../../platform/deployHosts'
 import { settingsChromeTabHref } from '../../nav/settingsChromeNav'
@@ -19,8 +20,9 @@ const ROOT = path.resolve(__dirname, '../../..')
 const seg = crmAppRouteSegment
 
 describe('C-6 Marketing Forms IA', () => {
-  it('registers Forms inventory on Marketing rail (not the Form Builder)', () => {
-    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toContain('marketing-forms')
+  it('registers Forms inventory under Marketing (hub deep link, not the Form Builder)', () => {
+    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).not.toContain('marketing-forms')
+    expect(APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS).toContain('marketing-forms')
     const nav = NAV_ITEMS.find((item) => item.key === 'marketing-forms')
     expect(nav?.path).toBe(CRM_APP_PATHS.marketingForms)
 

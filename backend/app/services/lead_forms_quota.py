@@ -60,6 +60,7 @@ async def count_active_tenant_lead_forms(db: AsyncSession, tenant_id: str) -> in
         .select_from(TenantLeadForm)
         .where(TenantLeadForm.tenant_id == tenant_id)
         .where(TenantLeadForm.is_active.is_(True))
+        .where(TenantLeadForm.is_system_preset.is_(False))
     )
     return int((await db.execute(stmt)).scalar_one() or 0)
 
@@ -110,7 +111,8 @@ def normalize_and_validate_public_slug(raw: str | None) -> str | None:
     """Return normalized slug or None to clear; raises ValueError if non-empty but invalid."""
     if raw is None:
         return None
-    s = raw.strip().lower()
+    s = raw.strip().lower().replace("_", "-")
+    s = re.sub(r"[^a-z0-9-]+", "-", s).strip("-")
     if not s:
         return None
     if len(s) < _PUBLIC_SLUG_MIN_LEN or len(s) > _PUBLIC_SLUG_MAX_LEN:

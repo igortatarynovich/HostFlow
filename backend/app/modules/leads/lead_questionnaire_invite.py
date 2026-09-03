@@ -266,14 +266,19 @@ def _initial_intake_state(
     phone = _trim(normalized.get("phone")) or _trim(payload.get("phone"))
 
     presentation_values: dict[str, Any] = {}
+    profile_code = (
+        str(getattr(lead_form, "target_entity_profile_code", None) or "").strip()
+        or TARGETED_ADVERTISING_PROFILE_CODE
+    )
+    prefix = f"{profile_code}."
     if full_name:
-        presentation_values[f"{SALES_QUESTIONNAIRE_PREFIX}contact_full_name"] = full_name
+        presentation_values[f"{prefix}contact_full_name"] = full_name
     if company_name:
-        presentation_values[f"{SALES_QUESTIONNAIRE_PREFIX}contact_company_name"] = company_name
+        presentation_values[f"{prefix}contact_company_name"] = company_name
     if email:
-        presentation_values[f"{SALES_QUESTIONNAIRE_PREFIX}contact_email"] = email
+        presentation_values[f"{prefix}contact_email"] = email
     if phone:
-        presentation_values[f"{SALES_QUESTIONNAIRE_PREFIX}contact_phone"] = phone
+        presentation_values[f"{prefix}contact_phone"] = phone
 
     return {
         "contacts": {
@@ -394,7 +399,8 @@ async def attach_questionnaire_invite_to_lead(
     token = _generate_token()
     intake_state = _initial_intake_state(lead=lead, lead_form=lead_form)
     entity_profile_code = (
-        str(getattr(intake_profile, "entity_profile_code", None) or "").strip()
+        str(getattr(lead_form, "target_entity_profile_code", None) or "").strip()
+        or str(getattr(intake_profile, "entity_profile_code", None) or "").strip()
         or TARGETED_ADVERTISING_PROFILE_CODE
     )
     public_slug = str(getattr(lead_form, "public_slug", None) or "").strip()
@@ -405,6 +411,7 @@ async def attach_questionnaire_invite_to_lead(
             public_slug=public_slug,
         ) if public_slug else "")
     )
+    questionnaire_kind = entity_profile_code.rsplit(".", 1)[-1] if "." in entity_profile_code else "sales"
     invite = LeadQuestionnaireInvite(
         tenant_id=str(tenant_id),
         lead_id=str(lead.id),
@@ -419,7 +426,7 @@ async def attach_questionnaire_invite_to_lead(
         meta={
             "intake_state": intake_state,
             "intake_source_profile_id": str(intake_profile.id),
-            "questionnaire_kind": "targeted_advertising",
+            "questionnaire_kind": questionnaire_kind,
             **({"form_locale": resolved_locale} if resolved_locale else {}),
         },
     )

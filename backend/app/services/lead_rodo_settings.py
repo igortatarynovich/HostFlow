@@ -24,7 +24,7 @@ class LeadRodoSettings:
     def __init__(
         self,
         *,
-        send_mode: LeadRodoSendMode = "manual",
+        send_mode: LeadRodoSendMode = "auto_on_lead_created",
         channels: tuple[str, ...] = DEFAULT_LEAD_RODO_CHANNELS,
         template_id: Optional[str] = None,
         message_template_id: Optional[str] = None,
@@ -41,15 +41,9 @@ class LeadRodoSettings:
         return self.send_mode == "auto_on_first_action"
 
 
-def _normalize_send_mode(raw: Any) -> LeadRodoSendMode:
-    s = str(raw or "manual").strip().lower()
-    if s in LEAD_RODO_SEND_MODES:
-        return s  # type: ignore[return-value]
-    if s in ("auto", "auto_lead_created", "auto_on_created"):
-        return "auto_on_lead_created"
-    if s in ("auto_first_action", "auto_on_action"):
-        return "auto_on_first_action"
-    return "manual"
+def _normalize_send_mode(_raw: Any) -> LeadRodoSendMode:
+    """Art.14 is a platform legal floor: always auto-send on lead created."""
+    return "auto_on_lead_created"
 
 
 def _normalize_channels(raw: Any) -> tuple[str, ...]:

@@ -42,44 +42,28 @@ export default function CommunicationsSettingsPage() {
       title: t('admin.settings.cards.communications_templates.label'),
       description: t('admin.settings.cards.communications_templates.description'),
       to: P.settingsCommunicationsTemplates,
-      cta: t('admin.communications_settings.open_templates', {
-        defaultValue: 'Open templates',
-      }),
+      cta: t('admin.communications_settings.open_templates'),
     },
     {
       key: 'automation',
       title: t('admin.settings.cards.communications_automation.label'),
       description: t('admin.settings.cards.communications_automation.description'),
       to: P.settingsCommunicationsAutomation,
-      cta: t('admin.communications_settings.open_automation', {
-        defaultValue: 'Open automation',
-      }),
+      cta: t('admin.communications_settings.open_automation'),
     },
     {
       key: 'lead-lifecycle-email',
-      title: t('admin.settings.cards.lead_lifecycle_email.label', {
-        defaultValue: 'Lead lifecycle email',
-      }),
-      description: t('admin.settings.cards.lead_lifecycle_email.description', {
-        defaultValue: 'RODO and ops emails per company, with vacancy overrides and effective preview.',
-      }),
+      title: t('admin.settings.cards.lead_lifecycle_email.label'),
+      description: t('admin.settings.cards.lead_lifecycle_email.description'),
       to: P.settingsCommunicationsLeadLifecycleEmail,
-      cta: t('admin.communications_settings.open_lead_lifecycle_email', {
-        defaultValue: 'Open Control Center',
-      }),
+      cta: t('admin.communications_settings.open_lead_lifecycle_email'),
     },
     {
       key: 'campaigns',
-      title: t('admin.settings.cards.communications_campaigns.label', {
-        defaultValue: 'Campaigns',
-      }),
-      description: t('admin.settings.cards.communications_campaigns.description', {
-        defaultValue: 'Audience + plan → Intent per recipient (operator tools).',
-      }),
+      title: t('admin.settings.cards.communications_campaigns.label'),
+      description: t('admin.settings.cards.communications_campaigns.description'),
       to: P.settingsCommunicationsCampaigns,
-      cta: t('admin.communications_settings.open_campaigns', {
-        defaultValue: 'Open campaigns',
-      }),
+      cta: t('admin.communications_settings.open_campaigns'),
     },
   ]
 

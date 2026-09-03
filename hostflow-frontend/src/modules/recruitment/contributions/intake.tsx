@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { logRecruitmentApplicationCallResult } from '../../../api/applications'
 import type { Application } from '../../../api/types/application'
 import { Button } from '../../../components/ui/Button'
@@ -55,9 +55,9 @@ function ApplicationAnswers({ application }: { application: Application }) {
         <div className="mt-3 rounded-xl bg-white px-4 py-3 ring-1 ring-slate-900/[0.06]">
           <FieldGrid cols={1}>
             {rows.map((row) => (
-              <div key={row.name}>
-                <div className="text-sm text-slate-500">{row.label}</div>
-                <div className="mt-0.5 text-base font-medium text-slate-900">{row.value}</div>
+              <div key={row.name} className="min-w-0">
+                <div className="text-sm leading-snug text-slate-500">{row.label}</div>
+                <div className="mt-0.5 break-words text-base font-medium text-slate-900">{row.value}</div>
               </div>
             ))}
           </FieldGrid>
@@ -81,12 +81,13 @@ function ApplicationCallLog({
   const history = applicationCallResultHistory(application)
   const resultLabel = (code: string) => t(`app.recruitment_inquiry.call_result.results.${code}`, { defaultValue: code })
 
-  const [callResult, setCallResult] = useState<ApplicationCallResultCode>(
-    (latest?.result as ApplicationCallResultCode) || 'no_answer',
+  const [callResult, setCallResult] = useState<ApplicationCallResultCode | null>(
+    (latest?.result as ApplicationCallResultCode) || null,
   )
   const [callNote, setCallNote] = useState('')
   const [nextContact, setNextContact] = useState(toDatetimeLocalValue(latest?.next_contact_at))
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
   const needsCallbackTime = callResult === 'callback_requested'
 
   const latestLine = latest
@@ -95,18 +96,24 @@ function ApplicationCallLog({
       : resultLabel(String(latest.result))
     : null
 
-  const save = async () => {
-    if (saving) return
-    if (needsCallbackTime && !fromDatetimeLocalValue(nextContact)) {
-      notify({ title: t('app.recruitment_inquiry.call_result.next_contact_required'), variant: 'error' })
+  const persist = async (
+    result: ApplicationCallResultCode,
+    note = callNote,
+    next = nextContact,
+  ) => {
+    if (savingRef.current) return
+    if (result === 'callback_requested' && !fromDatetimeLocalValue(next)) {
+      setCallResult(result)
       return
     }
+    savingRef.current = true
     setSaving(true)
+    setCallResult(result)
     try {
       await logRecruitmentApplicationCallResult(application.id, {
-        result: callResult,
-        note: callNote.trim() || null,
-        next_contact_at: fromDatetimeLocalValue(nextContact),
+        result,
+        note: note.trim() || null,
+        next_contact_at: fromDatetimeLocalValue(next),
       })
       setCallNote('')
       notify({ title: t('app.recruitment_inquiry.call_result.saved'), variant: 'success' })
@@ -118,8 +125,21 @@ function ApplicationCallLog({
       const info = getFriendlyErrorInfo(err, t('app.recruitment_inquiry.call_result.save_failed'), t)
       notify({ title: info.title, variant: 'error' })
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
+  }
+
+  const save = async () => {
+    if (!callResult) {
+      notify({ title: t('app.recruitment_inquiry.call_result.pick_required'), variant: 'error' })
+      return
+    }
+    if (needsCallbackTime && !fromDatetimeLocalValue(nextContact)) {
+      notify({ title: t('app.recruitment_inquiry.call_result.next_contact_required'), variant: 'error' })
+      return
+    }
+    await persist(callResult)
   }
 
   const renderGroup = (titleKey: string, codes: readonly ApplicationCallResultCode[]) => (
@@ -133,7 +153,7 @@ function ApplicationCallLog({
               key={code}
               type="button"
               disabled={saving}
-              onClick={() => setCallResult(code)}
+              onClick={() => void persist(code)}
               className={clsx(
                 'rounded-lg px-2.5 py-1.5 text-xs font-semibold ring-1 transition-colors disabled:opacity-50',
                 active ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50',
@@ -170,7 +190,13 @@ function ApplicationCallLog({
             className="input w-full rounded-xl border-0 bg-slate-500/[0.06] px-3 py-2 text-sm ring-1 ring-slate-900/[0.06]"
             value={nextContact}
             disabled={saving}
-            onChange={(event) => setNextContact(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value
+              setNextContact(value)
+              if (callResult === 'callback_requested' && fromDatetimeLocalValue(value)) {
+                void persist('callback_requested', callNote, value)
+              }
+            }}
           />
         </label>
       ) : null}
@@ -183,6 +209,10 @@ function ApplicationCallLog({
           maxLength={2000}
           placeholder={t('app.recruitment_inquiry.call_result.note_placeholder')}
           onChange={(event) => setCallNote(event.target.value)}
+          onBlur={() => {
+            if (!callResult || !callNote.trim()) return
+            void persist(callResult)
+          }}
         />
       </label>
       <Button variant="secondary" disabled={saving} onClick={() => void save()} className="w-full">

@@ -75,7 +75,7 @@ export default function CandidateStageJourneyPanel({
   return (
     <section
       className={clsx(
-        'rounded-2xl border p-3',
+        'min-w-0 rounded-2xl border p-3',
         isHero ? 'border-white/20 bg-white/10' : 'border-slate-200 bg-white',
         compact && 'p-2',
       )}
@@ -133,7 +133,7 @@ export default function CandidateStageJourneyPanel({
         <div className={clsx('mt-3', compact && 'mt-2')}>
           <div
             className={clsx(
-              'relative overflow-x-auto rounded-xl border px-3 py-3',
+              'relative min-w-0 overflow-x-auto rounded-xl border px-3 py-3',
               isHero ? 'border-white/20 bg-white/5' : 'border-slate-200 bg-white',
               compact && 'px-2 py-2',
             )}

@@ -32,6 +32,40 @@ describe('intakeFormPresentationDraft', () => {
     expect(fieldsToPayload(rows)[0].label_override).toBeUndefined()
   })
 
+  it('drops presentation rules whose source question is not selected', () => {
+    const rows = mergeCatalogWithPreset(
+      [],
+      [
+        {
+          qualified_code: 'service_sales.driver_hiring.driver_categories',
+          intake_level: 'required',
+          sort_order: 10,
+        },
+        {
+          qualified_code: 'service_sales.driver_hiring.driver_categories_other',
+          intake_level: 'optional',
+          sort_order: 20,
+          presentation_rules: {
+            show_if: {
+              source_field: 'service_sales.driver_hiring.driver_categories',
+              operator: 'eq',
+              value: 'other',
+            },
+          },
+        },
+      ],
+    )
+    const withoutParent = rows.map((row) =>
+      row.qualified_code.endsWith('driver_categories') && !row.qualified_code.endsWith('other')
+        ? { ...row, selected: false }
+        : row,
+    )
+    const payload = fieldsToPayload(withoutParent)
+    expect(payload).toHaveLength(1)
+    expect(payload[0].qualified_code).toContain('driver_categories_other')
+    expect(payload[0].presentation_rules).toBeUndefined()
+  })
+
   it('keeps preset selection after catalog fields arrive', () => {
     const preset = [
       {

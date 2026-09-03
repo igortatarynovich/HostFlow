@@ -40,22 +40,49 @@ function intakeLevel(value: string | undefined | null): PresentationFieldDraft['
 }
 
 export function fieldsToPayload(rows: PresentationFieldDraft[]): PresentationFieldInput[] {
-  return rows
+  const selected = rows
     .filter((row) => row.selected)
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((row, index) => {
-      const rawLabel = row.label_override.trim()
-      const payload: PresentationFieldInput = {
-        qualified_code: row.qualified_code,
-        label_override: !rawLabel || looksLikeI18nKey(rawLabel) ? undefined : rawLabel,
-        intake_level: row.intake_level,
-        sort_order: (index + 1) * 10,
-      }
-      if (row.presentation_rules && Object.keys(row.presentation_rules).length > 0) {
-        payload.presentation_rules = row.presentation_rules
-      }
-      return payload
-    })
+  const selectedCodes = new Set(selected.map((row) => row.qualified_code))
+  return selected.map((row, index) => {
+    const rawLabel = row.label_override.trim()
+    const payload: PresentationFieldInput = {
+      qualified_code: row.qualified_code,
+      intake_level: row.intake_level,
+      sort_order: (index + 1) * 10,
+    }
+    if (rawLabel && !looksLikeI18nKey(rawLabel)) {
+      payload.label_override = rawLabel.slice(0, 255)
+    }
+    const rules = sanitizePresentationRules(row.presentation_rules, row.qualified_code, selectedCodes)
+    if (rules) payload.presentation_rules = rules
+    return payload
+  })
+}
+
+function sanitizePresentationRules(
+  rules: PresentationRules | undefined,
+  targetCode: string,
+  selectedCodes: Set<string>,
+): PresentationFieldInput['presentation_rules'] | undefined {
+  if (!rules) return undefined
+  const keys = ['show_if', 'hide_if', 'required_if', 'readonly_if'] as const
+  const out: NonNullable<PresentationFieldInput['presentation_rules']> = {}
+  for (const key of keys) {
+    const condition = rules[key]
+    const source = String(condition?.source_field || '').trim()
+    if (!source || source === targetCode || !selectedCodes.has(source)) continue
+    const operator = condition?.operator
+    out[key] = {
+      source_field: source,
+      operator:
+        operator === 'eq' || operator === 'neq' || operator === 'truthy' || operator === 'falsy' || operator === 'in'
+          ? operator
+          : 'eq',
+      value: condition?.value,
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined
 }
 
 export function mergeCatalogWithPreset(

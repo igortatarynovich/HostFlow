@@ -6,7 +6,7 @@ import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useToast } from '../../components/Toast'
-import { CRM_APP_PATHS, settingsLeadFormBuilderPath, settingsLeadFormDetailPath } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS, marketingFormDetailPath, settingsLeadFormBuilderPath, settingsLeadFormDetailPath } from '../../app/crmAppPaths'
 import {
   createIntakeForm,
   listIntakeFormEntityProfiles,
@@ -149,7 +149,7 @@ export default function LeadFormsSettingsPage() {
       return
     }
     const slug =
-      createSlug.trim() ||
+      slugifyFormTitle(createSlug) ||
       slugifyFormTitle(createTitle) ||
       slugifyFormTitle(createProfileCode.replace(/\./g, '-'))
     if (slug.length < 2) {
@@ -180,15 +180,23 @@ export default function LeadFormsSettingsPage() {
       setCreateSlug('')
       setCreateFields([])
       await load()
-      navigate(settingsLeadFormDetailPath(created.form.id))
-    } catch (err: unknown) {
-      setPageError(
-        getFriendlyErrorInfo(
-          err,
-          t('admin.intake_forms.errors.create', { defaultValue: 'Failed to create form' }),
-          t,
-        ),
+      navigate(
+        isMarketingInventory
+          ? marketingFormDetailPath(created.form.id)
+          : settingsLeadFormDetailPath(created.form.id),
       )
+    } catch (err: unknown) {
+      const info = getFriendlyErrorInfo(
+        err,
+        t('admin.intake_forms.errors.create', { defaultValue: 'Failed to create form' }),
+        t,
+      )
+      setPageError(info)
+      notify({
+        title: info.title,
+        description: info.detail,
+        variant: 'error',
+      })
     } finally {
       setCreating(false)
     }
@@ -698,7 +706,11 @@ export default function LeadFormsSettingsPage() {
                       </button>
                     )}
                     <Link
-                      to={settingsLeadFormDetailPath(row.id)}
+                      to={
+                        isMarketingInventory
+                          ? marketingFormDetailPath(row.id)
+                          : settingsLeadFormDetailPath(row.id)
+                      }
                       className="btn-secondary btn-sm inline-flex items-center gap-1"
                     >
                       {t('admin.lead_forms.configure', { defaultValue: 'Configure questions & routing' })}

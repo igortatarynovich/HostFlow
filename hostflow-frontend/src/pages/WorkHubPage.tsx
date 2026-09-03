@@ -574,8 +574,6 @@ export default function WorkHubPage() {
     <PageShell className="bg-slate-50">
       <PageShellHeader>
         <PageHeader
-          title={t('app.work.hub.operational_title', { defaultValue: 'Work' })}
-          subtitle={t('app.work.hub.page_kicker', { defaultValue: 'Everything that needs attention right now' })}
           kind="browse"
           secondaryActions={
             <button type="button" className="btn-secondary btn-sm" onClick={() => reload()}>

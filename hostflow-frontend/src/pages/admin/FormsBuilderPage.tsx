@@ -44,7 +44,8 @@ function emptyComposition(draftId: string): FormComposition {
 
 function labelFor(item: { label_key?: string | null; component_id: string }, t: (k: string, o?: object) => string) {
   if (item.label_key) {
-    return t(item.label_key, { defaultValue: item.component_id })
+    const translated = t(item.label_key)
+    if (translated && translated !== item.label_key) return translated
   }
   return item.component_id
 }
@@ -464,7 +465,10 @@ export default function FormsBuilderPage() {
                   {(descriptor?.config_fields || []).map((field) => {
                     const value = selected.config[field.key]
                     const label = field.label_key
-                      ? t(field.label_key, { defaultValue: field.key })
+                      ? (() => {
+                          const translated = t(field.label_key)
+                          return translated && translated !== field.label_key ? translated : field.key
+                        })()
                       : field.key
                     if (field.value_type === 'boolean') {
                       return (

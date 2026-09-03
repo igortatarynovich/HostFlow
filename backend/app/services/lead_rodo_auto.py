@@ -10,63 +10,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.lead import Lead
 from backend.app.services.lead_lifecycle_email_policy import (
     PURPOSE_GDPR_NOTICE,
+    is_platform_rodo_template_ref,
     resolve_lifecycle_email_policy_for_lead,
 )
 from backend.app.services.lead_rodo import (
-    LEAD_RODO_REASON_POLICY_MISCONFIGURED,
-    LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
     lead_rodo_sent_from_normalized,
     lead_rodo_satisfied,
-    mark_lead_rodo_pending_policy,
     mark_lead_rodo_source_provided,
+    resolve_lead_controller_identity,
     send_lead_rodo_email,
+)
+from backend.app.services.lead_rodo_obligation import (
+    evaluate_lead_rodo_obligation,
+    notice_provided_at_source,
+    stamp_obligation_evaluation,
 )
 from backend.app.services.lead_rodo_settings import DEFAULT_LEAD_RODO_CHANNELS
 
 logger = logging.getLogger(__name__)
 
-# MVP: auto-on-created applies to these ingest sources (Meta, generic webhook, import, Telegram).
-_AUTO_ON_CREATED_SOURCES = frozenset(
-    {
-        "meta",
-        "csv_import",
-        "webhook",
-        "import",
-        "telegram_bot",
-        "telegram_intake_completion",
-        "lead_form",
-        "public_form",
-        "public-intake",
-    }
-)
-
 
 def normalized_rodo_notice_at_source(normalized: Optional[Dict[str, Any]]) -> bool:
-    """Public form / intake already included art.14 — do not send duplicate outbound notice."""
-    if not isinstance(normalized, dict):
-        return False
-    flag = normalized.get("rodo_notice_at_source")
-    if flag is True:
-        return True
-    if isinstance(flag, str) and flag.strip().lower() in ("true", "1", "yes", "on"):
-        return True
-    nested = normalized.get("consents")
-    if isinstance(nested, dict):
-        rodo = nested.get("rodo") or nested.get("gdpr")
-        if rodo is True:
-            return True
-        if isinstance(rodo, str) and rodo.strip().lower() in ("true", "1", "yes", "accepted"):
-            return True
-    return False
-
-
-def _source_eligible_for_auto_on_created(source: str) -> bool:
-    s = str(source or "").strip().lower()
-    if not s:
-        return False
-    if s in _AUTO_ON_CREATED_SOURCES:
-        return True
-    return s.startswith("telegram")
+    """Public form / intake already included the information notice — no extra outbound."""
+    return notice_provided_at_source(normalized)
 
 
 async def apply_lead_rodo_on_ingest(
@@ -79,8 +45,9 @@ async def apply_lead_rodo_on_ingest(
     is_new_lead: bool,
 ) -> None:
     """
-    After a new ``Lead`` row is persisted: stamp source-provided or run auto-send per policy.
-    Idempotent for webhook replay (existing lead / already sent).
+    After a new ``Lead`` row is persisted: evaluate the information obligation
+    (art.13 vs art.14) and fulfill it when delivery is required. Idempotent for
+    webhook replay. Tenants cannot skip evaluation.
 
     ADR-031 PR-2: when Recruitment §2.4 holds and auto RODO would fire, ensure early
     Candidate shell + Application **before** send (Lead.candidate_id stays unset).
@@ -92,18 +59,37 @@ async def apply_lead_rodo_on_ingest(
         return
 
     norm = dict(normalized or {}) if isinstance(normalized, dict) else {}
-    if normalized_rodo_notice_at_source(norm):
-        mark_lead_rodo_source_provided(lead, actor_id=None, note="rodo_notice_at_source on ingest")
+    existing = lead.normalized if isinstance(lead.normalized, dict) else {}
+    merged = {**norm, **({"rodo": existing["rodo"]} if isinstance(existing.get("rodo"), dict) else {})}
+    evaluation = evaluate_lead_rodo_obligation(source=source, normalized=merged)
+    controller_id, controller_name = await resolve_lead_controller_identity(db, lead)
+    stamp_obligation_evaluation(
+        lead,
+        evaluation,
+        controller_own_company_id=controller_id,
+        controller_name=controller_name,
+    )
+
+    if evaluation.action == "no_delivery_source_provided":
+        mark_lead_rodo_source_provided(lead, actor_id=None, note="notice provided at collection")
+        stamp_obligation_evaluation(
+            lead,
+            evaluation,
+            controller_own_company_id=controller_id,
+            controller_name=controller_name,
+        )
+        await db.flush()
+        return
+    if evaluation.action == "review_required":
+        await db.flush()
+        return
+    if evaluation.action in ("no_delivery_already_notified", "no_delivery_exempt"):
         await db.flush()
         return
 
     decision = await resolve_lifecycle_email_policy_for_lead(
         db, tenant_id=tenant_id, lead=lead, purpose=PURPOSE_GDPR_NOTICE
     )
-    if decision.send_mode != "auto_on_lead_created":
-        return
-    if not _source_eligible_for_auto_on_created(source):
-        return
 
     await _maybe_ensure_recruitment_result_before_outbound(
         db,
@@ -117,7 +103,7 @@ async def apply_lead_rodo_on_ingest(
         tenant_id=tenant_id,
         lead=lead,
         decision=decision,
-        trigger="lead_created",
+        trigger="obligation_evaluation",
         ingest_source=source,
     )
 
@@ -128,14 +114,34 @@ async def maybe_auto_send_before_gated_action(
     tenant_id: str,
     lead: Lead,
 ) -> None:
-    """When mode is auto_on_first_action, attempt outbound RODO before blocking the action."""
+    """Retry fulfillment before a gated action if delivery is still required."""
     if lead_rodo_satisfied(lead):
+        return
+    evaluation = evaluate_lead_rodo_obligation(
+        source=str(getattr(lead, "source", "") or ""),
+        normalized=lead.normalized if isinstance(lead.normalized, dict) else None,
+    )
+    controller_id, controller_name = await resolve_lead_controller_identity(db, lead)
+    stamp_obligation_evaluation(
+        lead,
+        evaluation,
+        controller_own_company_id=controller_id,
+        controller_name=controller_name,
+    )
+    if evaluation.action != "delivery_required":
+        if evaluation.action == "no_delivery_source_provided":
+            mark_lead_rodo_source_provided(lead, actor_id=None, note="notice provided at collection")
+            stamp_obligation_evaluation(
+                lead,
+                evaluation,
+                controller_own_company_id=controller_id,
+                controller_name=controller_name,
+            )
+        await db.flush()
         return
     decision = await resolve_lifecycle_email_policy_for_lead(
         db, tenant_id=tenant_id, lead=lead, purpose=PURPOSE_GDPR_NOTICE
     )
-    if decision.send_mode != "auto_on_first_action":
-        return
     await _maybe_ensure_recruitment_result_before_outbound(
         db,
         tenant_id=tenant_id,
@@ -211,32 +217,7 @@ async def _auto_send_once(
     if lead_rodo_sent_from_normalized(norm) or lead_rodo_satisfied(lead):
         return
 
-    if decision.block_code == "disabled":
-        return
-
-    if decision.block_code in (
-        LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
-        LEAD_RODO_REASON_POLICY_MISCONFIGURED,
-        "policy_template_missing",
-        "policy_misconfigured",
-    ):
-        mark_lead_rodo_pending_policy(
-            lead,
-            reason=decision.reason or "RODO lifecycle email policy blocked send.",
-            reason_code=str(decision.block_code or LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING),
-        )
-        await db.flush()
-        return
-
-    if not decision.send or not decision.template_ref:
-        if decision.send_mode in ("auto_on_lead_created", "auto_on_first_action") and not decision.template_ref:
-            mark_lead_rodo_pending_policy(
-                lead,
-                reason=decision.reason or "RODO auto-send enabled but template_ref is missing.",
-                reason_code=LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
-            )
-            await db.flush()
-        return
+    template_ref = None if is_platform_rodo_template_ref(decision.template_ref) else decision.template_ref
 
     ok, msg = await send_lead_rodo_email(
         db,
@@ -245,7 +226,7 @@ async def _auto_send_once(
         actor_id=None,
         channels=DEFAULT_LEAD_RODO_CHANNELS,
         template_id=None,
-        message_template_id=decision.template_ref,
+        message_template_id=template_ref,
         auto_trigger=trigger,
         ingest_source=ingest_source,
     )

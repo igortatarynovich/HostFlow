@@ -14,8 +14,6 @@ import { HiringPipelineGatesProvider } from '../contexts/HiringPipelineGatesCont
 import type { NavItem } from './routes'
 import { Sidebar } from '../components/nav/Sidebar'
 import { Topbar } from '../components/nav/Topbar'
-import WorkContextTabs from '../components/nav/WorkContextTabs'
-import { SettingsChrome } from '../components/nav/SettingsChrome'
 import { LicenseExpiredBanner } from '../components/LicenseExpiredBanner'
 import { ImpersonationBanner } from '../components/ImpersonationBanner'
 import { TrialStatusBanner } from '../components/TrialStatusBanner'
@@ -196,7 +194,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
       <TenantInfoProvider tenant={tenant}>
         <TeamOverviewNavProvider tenantId={currentTenantId}>
         <HiringPipelineGatesProvider tenantId={currentTenantId}>
-        <div className="flex h-screen bg-slate-50 text-slate-900">
+        <div className="hf-app-viewport bg-slate-50 text-slate-900">
           <Sidebar
             tenant={tenant}
             businessType={onboardingStatus?.business_type ?? 'agency'}
@@ -206,7 +204,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
             pendingHandoffsCount={pendingHandoffsCount}
           />
 
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <ImpersonationBanner visible={me?.session_kind === 'impersonation'} />
             <LicenseExpiredBanner visible={licenseExpired && !isSuperAdmin} validUntil={validUntil} />
             <TrialStatusBanner
@@ -236,44 +234,35 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
             <main
               className={
                 ownsWorkspaceScroll
-                  ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
-                  : 'min-h-0 flex-1 overflow-y-auto'
+                  ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
+                  : 'min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-auto'
               }
             >
               <div
                 className={
                   isCrmWorkspace
                     ? clsx(
-                        'flex min-h-0 w-full flex-1 flex-col',
+                        'flex min-h-0 min-w-0 w-full flex-1 flex-col',
                         isSettingsArea
                           ? 'px-4 pb-10 pt-1 sm:px-6 lg:px-8'
                           : 'px-0 py-0',
                         ownsWorkspaceScroll && 'overflow-hidden',
                       )
                     : ownsWorkspaceScroll
-                      ? 'flex min-h-0 w-full flex-1 flex-col overflow-hidden px-6 py-6 lg:px-10'
-                      : 'w-full px-6 py-6 lg:px-10'
+                      ? 'flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden px-6 py-6 lg:px-10'
+                      : 'w-full min-w-0 px-6 py-6 lg:px-10'
                 }
               >
-                {isCrmWorkspace && !isSettingsArea && !isOnboardingPage && (
-                  <WorkContextTabs businessType={onboardingStatus?.business_type ?? 'agency'} />
-                )}
-                {isSettingsArea && location.pathname !== CRM_APP_PATHS.settings && (
-                  <SettingsChrome
-                    pathname={location.pathname}
-                    search={location.search}
-                  />
-                )}
                 <div
                   className={clsx(
-                    'app-ui min-h-0',
+                    'app-ui min-h-0 min-w-0',
                     isSettingsArea && 'settings-surface',
                     (isCrmWorkspace || isSetupFlowPage) && 'crm-workspace-fill',
                     isCrmWorkspace &&
                       !isSettingsArea &&
                       !isEdgeToEdgeTable &&
                       'crm-page-inset',
-                    ownsWorkspaceScroll && 'flex min-h-0 flex-1 flex-col overflow-hidden',
+                    ownsWorkspaceScroll && 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
                   )}
                 >
                   <Outlet />

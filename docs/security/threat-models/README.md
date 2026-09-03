@@ -24,5 +24,6 @@
 | [rbac-trust-roles.md](./rbac-trust-roles.md) | ADR-036 four trust roles: ceilings, matrix PATCH, `access_context`, legacy job-title/portal aliases, inventory lint |
 | [forms-platform.md](./forms-platform.md) | Forms Platform C2–C5: frozen identity; Builder Draft only; Runtime Model; Execution via Shared Intake; no draft-as-publication; no second submit engine |
 | [documents-platform.md](./documents-platform.md) | Documents Platform E3–E6 resolve: authenticated Hub metadata + Document Link + Hub expiry; `candidate_id` column dropped; tenant bind; closed entity/relation types (`workforce_employee` / `reused_for_hr` and `candidate` / `primary`); no file bytes / signed URL / second Adapter / Hub reminder table |
+| [user-report-intake.md](./user-report-intake.md) | User Report Intake (ADR-040): free text / later attachments; tenant vs elevated inbox; correlation best-effort; no severity SoT; INV-UR-01; runtime STOP without this model |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).

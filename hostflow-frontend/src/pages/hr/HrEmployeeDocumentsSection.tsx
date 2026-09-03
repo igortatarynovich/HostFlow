@@ -154,17 +154,17 @@ export function HrEmployeeDocumentsSection({
   const expiring = expiringQueue ?? []
   const actionForRow = (row: WorkforceEmployeeDocumentRow): string => {
     const st = String(row.document.verification_status || row.document.status || '').toLowerCase()
-    if (st.includes('reject') || st.includes('correction')) return 'Fix / re-upload'
-    if (st.includes('pending') || st.includes('review')) return 'Verify'
-    if (row.daysLeft != null && row.daysLeft < 0) return 'Renew'
-    if (row.daysLeft != null && row.daysLeft <= 30) return 'Prepare renewal'
-    return 'No action'
+    if (st.includes('reject') || st.includes('correction')) return t('app.hr.employee_operational.action_fix_reupload')
+    if (st.includes('pending') || st.includes('review')) return t('app.hr.employee_operational.action_verify')
+    if (row.daysLeft != null && row.daysLeft < 0) return t('app.hr.employee_operational.action_renew')
+    if (row.daysLeft != null && row.daysLeft <= 30) return t('app.hr.employee_operational.action_prepare_renewal')
+    return t('app.hr.employee_operational.action_none')
   }
   const verifiedForRow = (row: WorkforceEmployeeDocumentRow): string => {
     const st = String(row.document.verification_status || row.document.status || '').toLowerCase()
-    if (st.includes('verified') || st.includes('approved')) return 'Yes'
-    if (st.includes('reject') || st.includes('correction')) return 'No'
-    return 'In review'
+    if (st.includes('verified') || st.includes('approved')) return t('common.yes')
+    if (st.includes('reject') || st.includes('correction')) return t('common.no')
+    return t('app.hr.employee_operational.verified_in_review')
   }
 
   const defs: ExpectedDocDef[] = Array.isArray(expectedDocs)
@@ -188,16 +188,16 @@ export function HrEmployeeDocumentsSection({
     const isMissing = !src
     const daysLeft = src?.daysLeft ?? null
     const expiresAt = src?.document.expires_at || src?.document.expire_date || null
-    const verified = src ? verifiedForRow(src) : 'No'
+    const verified = src ? verifiedForRow(src) : t('common.no')
     const status = isMissing
-      ? 'Missing'
+      ? t('app.hr.employee_operational.status_missing')
       : daysLeft != null && daysLeft < 0
-      ? 'Expired'
+      ? t('app.hr.employee_operational.status_expired')
       : daysLeft != null && daysLeft <= 30
-      ? 'Expiring soon'
-      : 'Available'
+      ? t('app.hr.employee_operational.status_expiring_soon')
+      : t('app.hr.employee_operational.status_available')
     const nextAction = isMissing
-      ? def.defaultNextAction || 'Request upload'
+      ? def.defaultNextAction || t('app.hr.employee_operational.request_upload')
       : actionForRow(src)
     const nextDueDate =
       isMissing ? null : daysLeft != null && daysLeft <= 30 ? expiresAt : null
@@ -269,7 +269,9 @@ export function HrEmployeeDocumentsSection({
               {expiring.slice(0, 12).map((r, i) => (
                 <li key={i}>
                   {(r.document_type as string) || (r.doc_type as string) || '—'}
-                  {r.days_left != null ? ` (${r.days_left}d)` : ''}
+                      {r.days_left != null
+                        ? ` (${t('app.hr.employee_operational.days_left_short', { values: { days: String(r.days_left) } })})`
+                        : ''}
                 </li>
               ))}
             </ul>
@@ -292,7 +294,7 @@ export function HrEmployeeDocumentsSection({
                     const reviewDoc = hrReview ? findReviewDocumentForEmployeeDoc(hrReview, r.document) : null
                     return (
                     <div key={r.document.id} className="rounded border border-slate-200 bg-slate-50 p-3">
-                      <div className="text-sm font-semibold text-slate-900">{r.document.title || r.document.doc_type || 'Document'}</div>
+                      <div className="text-sm font-semibold text-slate-900">{r.document.title || r.document.doc_type || t('app.hr.employee_operational.document_fallback')}</div>
                       {linkedDocumentIds.has(String(r.document.id)) ? (
                         <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-brand-700">
                           {t('app.hr.employee_operational.reused_from_recruitment', {
@@ -300,11 +302,15 @@ export function HrEmployeeDocumentsSection({
                           })}
                         </div>
                       ) : null}
-                      <div className="mt-1 text-xs text-slate-600">Type: {r.document.doc_type || '—'}</div>
-                      <div className="text-xs text-slate-600">
-                        Expiry: {r.document.expires_at || r.document.expire_date || '—'}
+                      <div className="mt-1 text-xs text-slate-600">
+                        {t('app.hr.employee_detail.doc_col_type')}: {r.document.doc_type || t('common.labels.not_available')}
                       </div>
-                      <div className="text-xs text-slate-600">Status: {r.document.verification_status || r.document.status || '—'}</div>
+                      <div className="text-xs text-slate-600">
+                        {t('app.hr.employee_detail.doc_col_expires')}: {r.document.expires_at || r.document.expire_date || t('common.labels.not_available')}
+                      </div>
+                      <div className="text-xs text-slate-600">
+                        {t('app.hr.employee_detail.doc_col_status')}: {r.document.verification_status || r.document.status || t('common.labels.not_available')}
+                      </div>
                       <div className="mt-2">
                         {r.downloadUrl && (r.downloadUrl.startsWith('http://') || r.downloadUrl.startsWith('https://')) ? (
                           <a href={r.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-700 hover:underline">
@@ -313,7 +319,7 @@ export function HrEmployeeDocumentsSection({
                         ) : r.downloadUrl ? (
                           <HrDocumentOpenButton openUrl={r.downloadUrl} />
                         ) : (
-                          <span className="text-xs text-slate-400">No file</span>
+                          <span className="text-xs text-slate-400">{t('app.hr.employee_operational.no_file')}</span>
                         )}
                       </div>
                       {reviewDoc ? (
@@ -330,29 +336,29 @@ export function HrEmployeeDocumentsSection({
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">No uploaded documents yet.</p>
+                <p className="text-sm text-slate-500">{t('app.hr.employee_operational.no_uploaded_yet')}</p>
               )}
             </div>
             <details className="rounded border border-slate-200 bg-white">
               <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-slate-700">
-                {t('app.hr.employee_operational.linked_documents', { defaultValue: 'Canonical HR documents matrix' })} (secondary)
+                {t('app.hr.employee_operational.linked_documents')} {t('app.hr.employee_operational.matrix_secondary')}
               </summary>
               <div className="overflow-x-auto p-3">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-600">
-                  <th className="py-1.5 pr-2 font-medium">Document</th>
-                  <th className="py-1.5 pr-2 font-medium">Group</th>
-                  <th className="py-1.5 pr-2 font-medium">Status</th>
-                  <th className="py-1.5 pr-2 font-medium">Expires</th>
-                  <th className="py-1.5 pr-2 font-medium">Verified</th>
-                  <th className="py-1.5 pr-2 font-medium">Owner</th>
-                  <th className="py-1.5 pr-2 font-medium">Next action</th>
-                  <th className="py-1.5 pr-2 font-medium">Next due date</th>
+                  <th className="py-1.5 pr-2 font-medium">{t('app.hr.employee_operational.legal_col_document')}</th>
+                  <th className="py-1.5 pr-2 font-medium">{t('app.hr.employee_operational.col_group')}</th>
+                  <th className="py-1.5 pr-2 font-medium">{t('common.labels.status')}</th>
+                  <th className="py-1.5 pr-2 font-medium">{t('app.hr.employee_detail.doc_col_expires')}</th>
+                  <th className="py-1.5 pr-2 font-medium">{t('app.hr.employee_operational.col_verified')}</th>
+                  <th className="py-1.5 pr-2 font-medium">{t('app.hr.employee_operational.col_owner')}</th>
+                  <th className="py-1.5 pr-2 font-medium">{t('app.hr.employee_operational.col_next_action')}</th>
+                  <th className="py-1.5 pr-2 font-medium">{t('app.hr.employee_operational.col_next_due')}</th>
                   <th className="py-1.5 pr-2 font-medium">
-                    {t('app.hr.employee_detail.doc_col_file', { defaultValue: 'File' })}
+                    {t('app.hr.employee_detail.doc_col_file')}
                   </th>
-                  <th className="py-1.5 font-medium">Task</th>
+                  <th className="py-1.5 font-medium">{t('app.hr.employee_operational.col_task')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -385,18 +391,18 @@ export function HrEmployeeDocumentsSection({
                     <td className="py-1.5 pl-2">
                       {manage ? (
                         <details>
-                          <summary className="cursor-pointer text-xs text-brand-700">Edit task</summary>
+                          <summary className="cursor-pointer text-xs text-brand-700">{t('app.hr.employee_operational.edit_task')}</summary>
                           <div className="mt-2 space-y-2 min-w-64">
                             <input
                               className="w-full border border-slate-200 rounded px-2 py-1 text-xs"
                               defaultValue={r.ownerOverride}
-                              placeholder="Owner"
+                              placeholder={t('app.hr.employee_operational.ph_owner')}
                               id={`owner-${r.key}`}
                             />
                             <input
                               className="w-full border border-slate-200 rounded px-2 py-1 text-xs"
                               defaultValue={r.nextAction}
-                              placeholder="Next action"
+                              placeholder={t('app.hr.employee_operational.ph_next_action')}
                               id={`action-${r.key}`}
                             />
                             <input
@@ -408,13 +414,13 @@ export function HrEmployeeDocumentsSection({
                             <input
                               className="w-full border border-slate-200 rounded px-2 py-1 text-xs"
                               defaultValue={r.statusOverride}
-                              placeholder="Status"
+                              placeholder={t('app.hr.employee_operational.ph_status')}
                               id={`status-${r.key}`}
                             />
                             <textarea
                               className="w-full border border-slate-200 rounded px-2 py-1 text-xs"
                               defaultValue={r.commentOverride}
-                              placeholder="Comment"
+                              placeholder={t('app.hr.employee_operational.ph_comment')}
                               id={`comment-${r.key}`}
                             />
                             <button
@@ -441,7 +447,7 @@ export function HrEmployeeDocumentsSection({
                                 }
                               }}
                             >
-                              Save
+                              {t('common.actions.save')}
                             </button>
                           </div>
                         </details>

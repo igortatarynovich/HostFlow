@@ -1,8 +1,9 @@
-"""RODO / art.14 on Lead (primary); candidate receives audit copy on conversion only."""
+"""RODO information obligation on Lead (evaluate + fulfill); candidate receives audit copy on conversion only."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
 from typing import Any, Dict, Optional, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,11 @@ from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.core.config import settings
 from backend.app.models.lead import Lead
 from backend.app.services.audit import log_audit_event
+from backend.app.services.lead_lifecycle_email_policy import (
+    PLATFORM_RODO_CLAUSE_VERSION_ID,
+    PLATFORM_RODO_PUBLIC_PATH,
+    is_platform_rodo_template_ref,
+)
 from backend.app.services.legal_documents import get_active_legal_document
 from backend.app.services.message_hub import resolve_lead_email_message
 
@@ -34,7 +40,16 @@ def lead_normalized_rodo_block(normalized: Optional[Dict[str, Any]]) -> Dict[str
 
 # Negative delivery outcomes block gates even when ``sent_at`` remains for audit.
 LEAD_RODO_NEGATIVE_STATUSES: frozenset[str] = frozenset(
-    {"failed", "deferred", "undelivered", "pending_channel", "pending_policy"}
+    {
+        "failed",
+        "deferred",
+        "undelivered",
+        "pending_channel",
+        "pending_policy",
+        "review_required",
+        "delivery_required",
+        "delivery_failed",
+    }
 )
 
 LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING = "policy_template_missing"
@@ -48,17 +63,20 @@ LEAD_RODO_REASON_DELIVERY_FAILED = "delivery_failed"
 
 
 def lead_rodo_satisfied_from_normalized(normalized: Optional[Dict[str, Any]]) -> bool:
-    """Art.14 satisfied when notice was accepted outbound, source-provided, or explicitly satisfied.
+    """Information obligation closed: sent, source-provided, exempt, or explicitly satisfied.
 
     SMTP ``sent`` counts until a delivery problem is recorded (``failed`` / ``deferred`` /
     ``undelivered``). Temporary deferral also blocks — obligation is not fulfilled until
-    delivery succeeds or source-provided is marked.
+    delivery succeeds, source-provided is marked, or a lawful exemption is recorded.
     """
     block = lead_normalized_rodo_block(normalized if isinstance(normalized, dict) else {})
     st = str(block.get("status") or "").strip().lower()
     if st in LEAD_RODO_NEGATIVE_STATUSES:
         return False
-    if st in ("sent", "satisfied", "source_provided"):
+    if st in ("sent", "satisfied", "source_provided", "exempt"):
+        return True
+    cs = str(block.get("compliance_state") or "").strip().lower()
+    if cs in ("delivered", "compliant", "exempt"):
         return True
     return bool(str(block.get("sent_at") or "").strip())
 
@@ -66,12 +84,21 @@ def lead_rodo_satisfied_from_normalized(normalized: Optional[Dict[str, Any]]) ->
 def lead_rodo_notice_status_from_normalized(normalized: Optional[Dict[str, Any]]) -> str:
     """
     UI / API contract:
-    ``sent`` | ``failed`` | ``deferred`` | ``pending_channel`` | ``manual_required`` | ``source_provided``.
+    ``sent`` | ``failed`` | ``deferred`` | ``pending_channel`` | ``manual_required``
+    | ``source_provided`` | ``exempt`` | ``review_required`` | ``delivery_required``.
     """
     block = lead_normalized_rodo_block(normalized if isinstance(normalized, dict) else {})
     st = str(block.get("status") or "").strip().lower()
     if st == "source_provided":
         return "source_provided"
+    if st == "exempt":
+        return "exempt"
+    if st == "review_required":
+        return "review_required"
+    if st == "delivery_required":
+        return "delivery_required"
+    if st == "delivery_failed":
+        return "failed"
     if st == "deferred":
         return "deferred"
     if st in ("failed", "undelivered"):
@@ -86,12 +113,23 @@ def lead_rodo_notice_status_from_normalized(normalized: Optional[Dict[str, Any]]
 
 
 def mark_lead_rodo_pending_channel(lead: Lead, *, reason: str = "no_channel") -> None:
+    from sqlalchemy.orm.attributes import flag_modified
+
+    now = datetime.now(timezone.utc).isoformat()
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
     block["status"] = "pending_channel"
     block["pending_reason"] = str(reason or "no_channel").strip()[:256]
+    block["compliance_state"] = "delivery_failed"
+    _merge_delivery_evidence(
+        block,
+        state="delivery_failed",
+        failure_reason=str(reason or "no_channel").strip()[:256],
+        recorded_at=now,
+    )
     norm["rodo"] = block
     lead.normalized = norm
+    flag_modified(lead, "normalized")
 
 
 def mark_lead_rodo_pending_policy(
@@ -120,13 +158,26 @@ def mark_lead_rodo_pending_policy(
     flag_modified(lead, "normalized")
 
 
-def mark_lead_rodo_failed(lead: Lead, *, reason: str) -> None:
+def mark_lead_rodo_failed(lead: Lead, *, reason: str, attempts: Optional[list] = None) -> None:
+    from sqlalchemy.orm.attributes import flag_modified
+
+    now = datetime.now(timezone.utc).isoformat()
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
     block["status"] = "failed"
     block["failure_reason"] = str(reason or "").strip()[:2000]
+    block["compliance_state"] = "delivery_failed"
+    extra: Dict[str, Any] = {
+        "state": "delivery_failed",
+        "failure_reason": str(reason or "").strip()[:2000],
+        "recorded_at": now,
+    }
+    if attempts:
+        extra["attempts"] = attempts
+    _merge_delivery_evidence(block, **extra)
     norm["rodo"] = block
     lead.normalized = norm
+    flag_modified(lead, "normalized")
 
 
 def mark_lead_rodo_undelivered(
@@ -156,6 +207,16 @@ def mark_lead_rodo_undelivered(
     block["failure_reason_code"] = code
     block["delivery_outcome"] = oc
     block["undelivered_at"] = now
+    block["compliance_state"] = "delivery_failed"
+    _merge_delivery_evidence(
+        block,
+        state="delivery_failed",
+        failure_reason=str(reason or "").strip()[:2000],
+        failure_reason_code=code,
+        delivery_outcome=oc,
+        recorded_at=now,
+        provider_event_id=str(provider_event_id).strip()[:255] if provider_event_id else None,
+    )
     if provider_event_id:
         block["delivery_feedback_event_id"] = str(provider_event_id).strip()[:255]
     norm["rodo"] = block
@@ -243,37 +304,164 @@ def lead_rodo_sent_from_normalized(normalized: Optional[Dict[str, Any]]) -> bool
     return bool(str(block.get("sent_at") or "").strip())
 
 
-def _rodo_email_body(first_name: str, link: str) -> str:
+def _rodo_email_body(first_name: str, link: str, controller_name: str) -> str:
+    firm = (controller_name or "").strip() or "the data controller"
     return f"""Dear {first_name},
 
-Please find below the information on the processing of your personal data (GDPR/RODO):
+{firm} is the controller of your personal data. This message fulfills the GDPR/RODO information obligation.
+
+Please find below the information on the processing of your personal data:
 
 {link}
 
 Best regards,
-HostFlow Team
+{firm}
 
 ---
 
 Dzień dobry {first_name},
 
-W załączeniu przekazujemy informację dotyczącą przetwarzania Twoich danych osobowych (RODO):
+Administratorem Twoich danych osobowych jest {firm}. Ta wiadomość realizuje obowiązek informacyjny RODO.
+
+W załączeniu przekazujemy informację dotyczącą przetwarzania Twoich danych osobowych:
 
 {link}
 
 Pozdrawiamy,
-Zespół HostFlow
+{firm}
 
 ---
 
 Здравствуйте, {first_name},
 
-Направляем информацию об обработке ваших персональных данных (GDPR/RODO):
+Администратором (контролёром) ваших персональных данных является {firm}. Это сообщение исполняет информационную обязанность GDPR/RODO.
+
+Направляем информацию об обработке ваших персональных данных:
 
 {link}
 
 С уважением,
-Команда HostFlow"""
+{firm}"""
+
+
+async def resolve_lead_controller_identity(
+    db: AsyncSession,
+    lead: Lead,
+) -> tuple[Optional[str], str]:
+    """OwnCompany is the named controller; HostFlow is delivery infrastructure only."""
+    from backend.app.models.own_company import OwnCompany
+
+    oc_id = str(getattr(lead, "own_company_id", None) or "").strip() or None
+    if not oc_id:
+        return None, ""
+    row = await db.get(OwnCompany, oc_id)
+    if row is None:
+        return oc_id, ""
+    name = str(getattr(row, "legal_name", None) or getattr(row, "name", None) or "").strip()
+    return oc_id, name
+
+
+def _notice_content_hash(*, body: str, link: str) -> str:
+    return hashlib.sha256(f"{link}\n{body}".encode("utf-8")).hexdigest()
+
+
+def _merge_delivery_evidence(block: Dict[str, Any], **fields: Any) -> None:
+    prev = block.get("delivery_evidence")
+    evidence: Dict[str, Any] = dict(prev) if isinstance(prev, dict) else {}
+    for key, value in fields.items():
+        if value is None or value == "":
+            continue
+        evidence[str(key)] = value
+    block["delivery_evidence"] = evidence
+
+
+def _stamp_lead_rodo_sent(
+    lead: Lead,
+    *,
+    email: str,
+    channel: str,
+    rodo_version_id: str,
+    auto_trigger: Optional[str],
+    ingest_source: Optional[str],
+    extra: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Merge a successful send onto the existing evaluation block (keep obligation / controller)."""
+    from sqlalchemy.orm.attributes import flag_modified
+
+    now = datetime.now(timezone.utc).isoformat()
+    norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
+    block["status"] = "sent"
+    block["sent_at"] = now
+    block["channel"] = channel
+    block["recipient"] = email
+    block["rodo_version_id"] = rodo_version_id
+    block["delivery"] = "communication_pipeline"
+    block["compliance_state"] = "delivered"
+    if auto_trigger:
+        block["auto_trigger"] = str(auto_trigger).strip()
+    if ingest_source:
+        block["ingest_source"] = str(ingest_source).strip()
+    extra_fields = dict(extra or {})
+    evidence_keys = (
+        "controller_name",
+        "controller_own_company_id",
+        "from_email",
+        "delivery_via",
+        "template_id",
+        "template_key",
+        "notice_hash",
+        "attempts",
+        "thread_id",
+        "application_id",
+        "sales_inquiry_id",
+    )
+    evidence: Dict[str, Any] = {
+        "state": "delivered",
+        "recipient": email,
+        "channel": channel,
+        "sent_at": now,
+        "notice_version_id": rodo_version_id,
+        "path": "communication_pipeline",
+    }
+    for key in evidence_keys:
+        val = extra_fields.get(key)
+        if val is None or val == "":
+            continue
+        evidence[key] = val
+    _merge_delivery_evidence(block, **evidence)
+    if extra:
+        for key, value in extra.items():
+            if value is None or value == "":
+                continue
+            block[str(key)] = value
+    norm["rodo"] = block
+    lead.normalized = norm
+    flag_modified(lead, "normalized")
+
+
+def _attempts_from_send_error(exc: Any) -> Optional[list]:
+    details = getattr(exc, "details", None)
+    if not isinstance(details, dict):
+        return None
+    raw = details.get("attempts")
+    return list(raw) if isinstance(raw, list) else None
+
+
+def _delivery_fields_from_send_result(result: Any) -> Dict[str, Any]:
+    if result is None:
+        return {}
+    out: Dict[str, Any] = {}
+    via = getattr(result, "delivery_via", None)
+    from_email = getattr(result, "from_email", None)
+    attempts = getattr(result, "delivery_attempts", None)
+    if via:
+        out["delivery_via"] = str(via)
+    if from_email:
+        out["from_email"] = str(from_email)
+    if attempts:
+        out["attempts"] = list(attempts)
+    return out
 
 
 def _resolve_lead_email_for_channel(
@@ -287,6 +475,11 @@ def _resolve_lead_email_for_channel(
             if email:
                 return email, "email"
     return None, None
+
+
+def _platform_rodo_content_url() -> str:
+    base = (settings.frontend_url or "https://hostflow.cc").strip().rstrip("/")
+    return f"{base}{PLATFORM_RODO_PUBLIC_PATH}"
 
 
 async def send_lead_rodo_email(
@@ -329,6 +522,9 @@ async def send_lead_rodo_email(
     if lead_rodo_sent_from_normalized(norm):
         return False, "RODO already sent for this lead"
 
+    if is_platform_rodo_template_ref(message_template_id):
+        message_template_id = None
+
     # ADR-031 PR-2: Recruitment opaque result before outbound (SMTP still until PR-3).
     from backend.app.modules.recruitment.services.application_result_service import (
         ApplicationTransportConflictError,
@@ -370,58 +566,40 @@ async def send_lead_rodo_email(
         ).scalar_one_or_none()
         if override is not None:
             rodo_doc = override
-    if not rodo_doc:
-        await log_audit_event(
-            db,
-            tenant_id=tenant_id,
-            event_type=AuditEventType.rodo_sent_failed,
-            entity_type=AuditEntityType.lead,
-            entity_id=str(lead.id),
-            actor_id=actor_id,
-            payload={"reason": "No active RODO document configured"},
-        )
-        return False, "No active RODO document configured"
-
-    link = (rodo_doc.content_url or "").strip()
-    if not link:
-        base = (settings.frontend_url or "").strip().rstrip("/")
-        link = f"{base}/legal/rodo.html" if base else "/legal/rodo.html"
+    if rodo_doc:
+        link = (rodo_doc.content_url or "").strip()
+        rodo_version_id = str(rodo_doc.version_id)
+        if not link:
+            link = _platform_rodo_content_url()
+    else:
+        link = _platform_rodo_content_url()
+        rodo_version_id = PLATFORM_RODO_CLAUSE_VERSION_ID
 
     first_name = (str(norm.get("first_name") or norm.get("full_name") or "Lead")).strip() or "Lead"
-    body = _rodo_email_body(first_name, link)
+    controller_id, controller_name = await resolve_lead_controller_identity(db, lead)
+    body = _rodo_email_body(first_name, link, controller_name)
     resolved = await resolve_lead_email_message(
         db,
         tenant_id=tenant_id,
         template_id=message_template_id,
-        fallback_subject="RODO / GDPR — Personal data processing information | HostFlow",
+        fallback_subject="RODO / GDPR — Personal data processing information",
         fallback_body=body,
         first_name=first_name,
         rodo_link=link,
+        controller_name=controller_name or None,
     )
-    # ADR-033: when a template_ref is required, never silently fall back to HostFlow marketing copy.
+    # Tenant template is optional. Broken refs fall back to the platform art.14 body.
     if message_template_id and not resolved.template_id:
-        mark_lead_rodo_pending_policy(
-            lead,
-            reason="RODO template_ref is set but could not be resolved.",
-            reason_code=LEAD_RODO_REASON_POLICY_MISCONFIGURED,
-        )
-        await db.flush()
-        await log_audit_event(
+        resolved = await resolve_lead_email_message(
             db,
             tenant_id=tenant_id,
-            event_type=AuditEventType.rodo_sent_failed,
-            entity_type=AuditEntityType.lead,
-            entity_id=str(lead.id),
-            actor_id=actor_id,
-            payload={
-                "reason": "policy_misconfigured",
-                "notice_status": "pending_policy",
-                "template_ref": message_template_id,
-                "auto_trigger": auto_trigger,
-                "ingest_source": ingest_source,
-            },
+            template_id=None,
+            fallback_subject="RODO / GDPR — Personal data processing information",
+            fallback_body=body,
+            first_name=first_name,
+            rodo_link=link,
+            controller_name=controller_name or None,
         )
-        return False, "RODO template could not be resolved"
     subject = resolved.subject
     body = resolved.body
 
@@ -448,10 +626,12 @@ async def send_lead_rodo_email(
                 subject=subject,
                 body=body,
                 rodo_link=link,
-                rodo_version_id=str(rodo_doc.version_id),
+                rodo_version_id=rodo_version_id,
                 auto_trigger=auto_trigger,
                 ingest_source=ingest_source,
                 first_name=first_name,
+                controller_own_company_id=controller_id,
+                controller_name=controller_name,
             )
             return ok, msg
         except SalesCompliancePipelineError as exc:
@@ -489,10 +669,12 @@ async def send_lead_rodo_email(
                 subject=subject,
                 body=body,
                 rodo_link=link,
-                rodo_version_id=str(rodo_doc.version_id),
+                rodo_version_id=rodo_version_id,
                 auto_trigger=auto_trigger,
                 ingest_source=ingest_source,
                 first_name=first_name,
+                controller_own_company_id=controller_id,
+                controller_name=controller_name,
             )
             return ok, msg
         except RecruitmentCompliancePipelineError as exc:
@@ -552,6 +734,8 @@ async def _send_lead_rodo_via_sales_pipeline(
     auto_trigger: Optional[str],
     ingest_source: Optional[str],
     first_name: str,
+    controller_own_company_id: Optional[str] = None,
+    controller_name: Optional[str] = None,
 ) -> Tuple[bool, str]:
     """ADR-031 Sales path: binder → authorize → prepare_and_send (no direct SMTP)."""
     from backend.app.communications.command import (
@@ -652,7 +836,11 @@ async def _send_lead_rodo_via_sales_pipeline(
                 variable_name="rodo_link",
             ),
         ),
-        render_variables={"first_name": first_name, "rodo_link": rodo_link},
+        render_variables={
+            "first_name": first_name,
+            "rodo_link": rodo_link,
+            "controller_name": controller_name or "",
+        },
         policy_decision=auth.to_dict(),
         idempotency_key=f"lead_rodo:{lead.id}:{rodo_version_id}"[:128],
         meta={
@@ -660,13 +848,15 @@ async def _send_lead_rodo_via_sales_pipeline(
             "lead_id": str(lead.id),
             "auto_trigger": auto_trigger,
             "ingest_source": ingest_source,
+            "controller_own_company_id": controller_own_company_id,
+            "controller_name": controller_name,
         },
     )
     try:
-        await prepare_and_send_communication(db, command)
+        send_result = await prepare_and_send_communication(db, command)
     except SendCommunicationError as exc:
         reason = exc.message or str(exc.details.get("reason") if exc.details else "") or "send_failed"
-        mark_lead_rodo_failed(lead, reason=reason)
+        mark_lead_rodo_failed(lead, reason=reason, attempts=_attempts_from_send_error(exc))
         await db.flush()
         await log_audit_event(
             db,
@@ -685,24 +875,24 @@ async def _send_lead_rodo_via_sales_pipeline(
         )
         return False, f"Failed to send email: {reason}"
 
-    now = datetime.now(timezone.utc).isoformat()
-    norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
-    rodo_block: Dict[str, Any] = {
-        "status": "sent",
-        "sent_at": now,
-        "channel": channel,
-        "recipient": email,
-        "rodo_version_id": rodo_version_id,
-        "delivery": "communication_pipeline",
-        "sales_inquiry_id": binding.sales_inquiry_id,
-        "thread_id": binding.thread_id,
-    }
-    if auto_trigger:
-        rodo_block["auto_trigger"] = str(auto_trigger).strip()
-    if ingest_source:
-        rodo_block["ingest_source"] = str(ingest_source).strip()
-    norm["rodo"] = rodo_block
-    lead.normalized = norm
+    delivery_fields = _delivery_fields_from_send_result(send_result)
+    _stamp_lead_rodo_sent(
+        lead,
+        email=email,
+        channel=channel,
+        rodo_version_id=rodo_version_id,
+        auto_trigger=auto_trigger,
+        ingest_source=ingest_source,
+        extra={
+            "sales_inquiry_id": binding.sales_inquiry_id,
+            "thread_id": binding.thread_id,
+            "controller_own_company_id": controller_own_company_id,
+            "controller_name": controller_name,
+            "template_key": binding.template.template_id,
+            "notice_hash": _notice_content_hash(body=body, link=rodo_link),
+            **delivery_fields,
+        },
+    )
     await db.flush()
 
     await log_audit_event(
@@ -719,6 +909,10 @@ async def _send_lead_rodo_via_sales_pipeline(
             "ingest_source": ingest_source,
             "delivery": "communication_pipeline",
             "sales_inquiry_id": binding.sales_inquiry_id,
+            "controller_own_company_id": controller_own_company_id,
+            "controller_name": controller_name,
+            "rodo_version_id": rodo_version_id,
+            **delivery_fields,
         },
     )
     return True, "RODO email sent for lead"
@@ -738,6 +932,8 @@ async def _send_lead_rodo_via_recruitment_pipeline(
     auto_trigger: Optional[str],
     ingest_source: Optional[str],
     first_name: str,
+    controller_own_company_id: Optional[str] = None,
+    controller_name: Optional[str] = None,
 ) -> Tuple[bool, str]:
     """ADR-031 Recruitment path: binder → authorize → prepare_and_send (no direct SMTP)."""
     from backend.app.communications.command import (
@@ -839,7 +1035,11 @@ async def _send_lead_rodo_via_recruitment_pipeline(
                 variable_name="rodo_link",
             ),
         ),
-        render_variables={"first_name": first_name, "rodo_link": rodo_link},
+        render_variables={
+            "first_name": first_name,
+            "rodo_link": rodo_link,
+            "controller_name": controller_name or "",
+        },
         policy_decision=auth.to_dict(),
         idempotency_key=f"lead_rodo:{lead.id}:{rodo_version_id}"[:128],
         meta={
@@ -848,17 +1048,19 @@ async def _send_lead_rodo_via_recruitment_pipeline(
             "application_id": binding.application_id,
             "auto_trigger": auto_trigger,
             "ingest_source": ingest_source,
+            "controller_own_company_id": controller_own_company_id,
+            "controller_name": controller_name,
         },
     )
     try:
-        await prepare_and_send_communication(db, command)
+        send_result = await prepare_and_send_communication(db, command)
     except SendCommunicationError as exc:
         reason = (
             exc.message
             or str(exc.details.get("reason") if exc.details else "")
             or "send_failed"
         )
-        mark_lead_rodo_failed(lead, reason=reason)
+        mark_lead_rodo_failed(lead, reason=reason, attempts=_attempts_from_send_error(exc))
         await db.flush()
         await log_audit_event(
             db,
@@ -877,26 +1079,24 @@ async def _send_lead_rodo_via_recruitment_pipeline(
         )
         return False, f"Failed to send email: {reason}"
 
-    now = datetime.now(timezone.utc).isoformat()
-    norm_out: Dict[str, Any] = (
-        dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    delivery_fields = _delivery_fields_from_send_result(send_result)
+    _stamp_lead_rodo_sent(
+        lead,
+        email=email,
+        channel=channel,
+        rodo_version_id=rodo_version_id,
+        auto_trigger=auto_trigger,
+        ingest_source=ingest_source,
+        extra={
+            "application_id": binding.application_id,
+            "thread_id": binding.thread_id,
+            "controller_own_company_id": controller_own_company_id,
+            "controller_name": controller_name,
+            "template_key": binding.template.template_id,
+            "notice_hash": _notice_content_hash(body=body, link=rodo_link),
+            **delivery_fields,
+        },
     )
-    rodo_block_out: Dict[str, Any] = {
-        "status": "sent",
-        "sent_at": now,
-        "channel": channel,
-        "recipient": email,
-        "rodo_version_id": rodo_version_id,
-        "delivery": "communication_pipeline",
-        "application_id": binding.application_id,
-        "thread_id": binding.thread_id,
-    }
-    if auto_trigger:
-        rodo_block_out["auto_trigger"] = str(auto_trigger).strip()
-    if ingest_source:
-        rodo_block_out["ingest_source"] = str(ingest_source).strip()
-    norm_out["rodo"] = rodo_block_out
-    lead.normalized = norm_out
     await db.flush()
 
     if not auto_trigger:
@@ -923,6 +1123,10 @@ async def _send_lead_rodo_via_recruitment_pipeline(
             "ingest_source": ingest_source,
             "delivery": "communication_pipeline",
             "application_id": binding.application_id,
+            "controller_own_company_id": controller_own_company_id,
+            "controller_name": controller_name,
+            "rodo_version_id": rodo_version_id,
+            **delivery_fields,
         },
     )
     return True, "RODO email sent for lead"
@@ -943,6 +1147,13 @@ def rodo_lead_audit_for_candidate_extra(lead_normalized: Optional[Dict[str, Any]
             "via": "source_provided",
             "source_provided_at": block.get("source_provided_at"),
             "source_provided_by": block.get("source_provided_by"),
+        }
+    if st == "exempt":
+        return {
+            **base,
+            "via": "exempt",
+            "exemption_code": block.get("exemption_code"),
+            "article": block.get("article"),
         }
     if st == "satisfied":
         return {**base, "via": "satisfied"}
@@ -968,6 +1179,7 @@ def mark_lead_rodo_source_provided(
     block: Dict[str, Any] = {**prev} if prev else {}
     now = datetime.now(timezone.utc).isoformat()
     block["status"] = "source_provided"
+    block["compliance_state"] = "compliant"
     block["source_provided_at"] = now
     if actor_id:
         block["source_provided_by"] = str(actor_id).strip()
@@ -1012,6 +1224,7 @@ __all__ = [
     "lead_rodo_satisfied",
     "lead_rodo_satisfied_from_normalized",
     "lead_rodo_sent_from_normalized",
+    "resolve_lead_controller_identity",
     "mark_lead_rodo_source_provided",
     "rodo_lead_audit_for_candidate_extra",
     "send_lead_rodo_email",

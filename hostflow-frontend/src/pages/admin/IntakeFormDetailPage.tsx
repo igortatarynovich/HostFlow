@@ -8,6 +8,7 @@ import {
   IconPlayerPlay,
 } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
+import { intakePresentationFieldLabel } from '../../utils/intakePresentationI18n'
 import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
@@ -40,7 +41,7 @@ import { isCompanyInquiryProfile, isFormLocale, publicIntakeUrlForSlug } from '.
 export default function IntakeFormDetailPage() {
   const { formId = '' } = useParams<{ formId: string }>()
   const location = useLocation()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { role } = usePermissions()
   const { notify } = useToast()
   const canMutate = role === 'administrator'
@@ -398,7 +399,7 @@ export default function IntakeFormDetailPage() {
                     initialFields={presentationDraft}
                     onEntityProfileChange={setEntityProfileCode}
                     onChange={setPresentationFields}
-                    displayLocale={publicLang}
+                    displayLocale={locale}
                   />
                 </div>
                 <div className="mt-4">
@@ -443,7 +444,9 @@ export default function IntakeFormDetailPage() {
                     <tbody>
                       {sortedFields.map((field) => (
                         <tr key={field.qualified_code} className="border-b border-slate-50">
-                          <td className="px-2 py-2 font-medium text-slate-900">{field.label}</td>
+                          <td className="px-2 py-2 font-medium text-slate-900">
+                            {intakePresentationFieldLabel(t, field, locale)}
+                          </td>
                           <td className="px-2 py-2 font-mono text-xs text-slate-600">{field.qualified_code}</td>
                           <td className="px-2 py-2 text-slate-700">{field.intake_level}</td>
                           <td className="px-2 py-2 text-slate-700">{field.widget_hint || field.field_type || '—'}</td>

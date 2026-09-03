@@ -1056,9 +1056,7 @@ export default function MetaLeadsAdminPage() {
       setNewTemplateSubject('')
       setNewTemplateBody('')
       setNotice(
-        t('admin.meta_leads.templates.saved_notice', {
-          defaultValue: 'Template saved.',
-        }),
+        t('admin.meta_leads.templates.saved_notice'),
       )
     } catch (err: any) {
       if (!planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.save'))) {
@@ -1157,7 +1155,7 @@ export default function MetaLeadsAdminPage() {
     if (!parsed) return
     if (!intakeRouteOwnCompanyId.trim()) {
       setError({
-        title: t('admin.meta_leads.errors.intake_route_own_company', { defaultValue: 'Select a company profile' }),
+        title: t('admin.meta_leads.errors.intake_route_own_company'),
       })
       return
     }
@@ -1172,13 +1170,13 @@ export default function MetaLeadsAdminPage() {
       })
       setIntakeRouteConfigured(true)
       setNotice(
-        t('admin.meta_leads.notices.intake_route_saved', { defaultValue: 'Intake route saved for this form.' }),
+        t('admin.meta_leads.notices.intake_route_saved'),
       )
       await loadMetaFormsList()
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] save intake route failed', err)
       setError(
-        getFriendlyErrorInfo(err, t('admin.meta_leads.errors.intake_route_save', { defaultValue: 'Could not save intake route' }), t),
+        getFriendlyErrorInfo(err, t('admin.meta_leads.errors.intake_route_save'), t),
       )
     } finally {
       setIntakeRouteSaving(false)
@@ -2431,9 +2429,7 @@ export default function MetaLeadsAdminPage() {
                     <tr key={entry.id} className={entry.status === 'disabled' ? 'bg-slate-50 text-slate-500' : undefined}>
                       <td className="px-3 py-2 text-slate-900">{entry.label}</td>
                       <td className="px-3 py-2 text-slate-600">
-                        {t(`admin.meta_leads.credentials.statuses.${entry.status}`, {
-                          defaultValue: entry.status,
-                        })}
+                        {t(`admin.meta_leads.credentials.statuses.${entry.status}`)}
                       </td>
                       <td className="px-3 py-2 font-mono text-xs text-slate-700">{entry.page_id ?? '—'}</td>
                       <td className="px-3 py-2 font-mono text-xs text-slate-700">{entry.ad_account_id ?? '—'}</td>
@@ -2544,64 +2540,55 @@ export default function MetaLeadsAdminPage() {
               </span>
               <div className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
                 <p className="font-medium">
-                  {t('admin.meta_leads.settings.lifecycle_email_moved_title', {
-                    defaultValue: 'Lead lifecycle email moved to Communications Control Center',
-                  })}
+                  {t('admin.meta_leads.settings.lifecycle_email_moved_title')}
                 </p>
                 <p className="mt-1 text-xs text-sky-900/80">
-                  {t('admin.meta_leads.settings.lifecycle_email_moved_body', {
-                    defaultValue:
-                      'RODO send mode, ops emails, and templates are configured per company under Settings → Communications. Meta Integrations is deep-link only for this policy.',
-                  })}
+                  {t('admin.meta_leads.settings.lifecycle_email_moved_body')}
                 </p>
                 <Link
                   className="mt-2 inline-flex text-sm font-medium text-brand-700 underline-offset-2 hover:underline"
                   to={CRM_APP_PATHS.settingsCommunicationsLeadLifecycleEmail}
                 >
-                  {t('admin.meta_leads.settings.open_lifecycle_email_control_center', {
-                    defaultValue: 'Open Lead lifecycle email Control Center',
-                  })}
+                  {t('admin.meta_leads.settings.open_lifecycle_email_control_center')}
                 </Link>
               </div>
             </label>
             <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/80 p-4 md:col-span-2">
               <div className="mt-0 rounded-lg border border-slate-200 bg-white p-3">
                 <p className="text-sm font-semibold text-slate-900">
-                  {t('admin.meta_leads.settings.template_hub_title', { defaultValue: 'Lead Email Template Hub' })}
+                  {t('admin.meta_leads.settings.template_hub_title')}
                 </p>
                 <p className="mt-1 text-xs text-slate-600">
-                  {t('admin.meta_leads.settings.template_hub_hint', {
-                    defaultValue: 'Create shared templates once and bind them in the Lead lifecycle email Control Center.',
-                  })}
+                  {t('admin.meta_leads.settings.template_hub_hint')}
                 </p>
                 <Link
                   className="mt-2 inline-flex text-xs font-medium text-brand-700 hover:underline"
                   to={CRM_APP_PATHS.settingsMessageTemplates}
                 >
-                  {t('admin.meta_leads.settings.open_template_hub', { defaultValue: 'Open full template hub' })}
+                  {t('admin.meta_leads.settings.open_template_hub')}
                 </Link>
                 <div className="mt-2 grid gap-2 md:grid-cols-3">
                   <input
                     className="input"
                     value={newTemplateName}
                     onChange={(event) => setNewTemplateName(event.target.value)}
-                    placeholder={t('admin.meta_leads.settings.template_name', { defaultValue: 'Template name' })}
+                    placeholder={t('admin.meta_leads.settings.template_name')}
                   />
                   <input
                     className="input md:col-span-2"
                     value={newTemplateSubject}
                     onChange={(event) => setNewTemplateSubject(event.target.value)}
-                    placeholder={t('admin.meta_leads.settings.email_template_subject', { defaultValue: 'Email subject' })}
+                    placeholder={t('admin.meta_leads.settings.email_template_subject')}
                   />
                   <textarea
                     className="input md:col-span-3 min-h-[88px]"
                     value={newTemplateBody}
                     onChange={(event) => setNewTemplateBody(event.target.value)}
-                    placeholder={t('admin.meta_leads.settings.email_template_body', { defaultValue: 'Email body' })}
+                    placeholder={t('admin.meta_leads.settings.email_template_body')}
                   />
                 </div>
                 <button type="button" className="btn-secondary mt-2" onClick={() => void handleCreateLeadMessageTemplate()}>
-                  {t('admin.meta_leads.settings.template_create', { defaultValue: 'Create template' })}
+                  {t('admin.meta_leads.settings.template_create')}
                 </button>
                 <div className="mt-3 space-y-2">
                   {messageTemplates.map((tpl) => (
@@ -2617,7 +2604,7 @@ export default function MetaLeadsAdminPage() {
                           onBlur={() => void handleUpdateLeadMessageTemplate(tpl.id, { name: tpl.name })}
                         />
                         <button type="button" className="btn-danger btn-xs" onClick={() => void handleDeleteLeadMessageTemplate(tpl.id)}>
-                          {t('common.actions.delete', { defaultValue: 'Delete' })}
+                          {t('common.actions.delete')}
                         </button>
                       </div>
                     </div>
@@ -2999,9 +2986,7 @@ export default function MetaLeadsAdminPage() {
                   <tr key={entry.id} className={entry.status === 'disabled' ? 'bg-slate-50 text-slate-500' : undefined}>
                     <td className="px-4 py-2 text-slate-900">{entry.label}</td>
                     <td className="px-4 py-2 text-slate-600">
-                      {t(`admin.meta_leads.credentials.statuses.${entry.status}`, {
-                        defaultValue: entry.status,
-                      })}
+                      {t(`admin.meta_leads.credentials.statuses.${entry.status}`)}
                     </td>
                     <td className="px-4 py-2 font-mono text-xs text-slate-700">{entry.ad_account_id ?? '—'}</td>
                     <td className="px-4 py-2 font-mono text-xs text-slate-700">{entry.page_id ?? '—'}</td>
@@ -3207,7 +3192,7 @@ export default function MetaLeadsAdminPage() {
             </label>
             {selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
               <label className="mt-3 flex max-w-md flex-col gap-1 text-xs font-medium text-slate-700">
-                {t('admin.meta_leads.detail.fields.form_name_label', { defaultValue: 'Form label (optional)' })}
+                {t('admin.meta_leads.detail.fields.form_name_label')}
                 <input
                   type="text"
                   className="input text-sm"
@@ -3220,32 +3205,26 @@ export default function MetaLeadsAdminPage() {
             {selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
               <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
                 <h3 className="text-sm font-semibold text-slate-900">
-                  {t('admin.meta_leads.intake_route.title', { defaultValue: 'Intake route' })}
+                  {t('admin.meta_leads.intake_route.title')}
                 </h3>
                 <p className="mt-1 text-xs text-slate-600">
-                  {t('admin.meta_leads.intake_route.body', {
-                    defaultValue:
-                      'Bind this Meta form to a company profile and lead target. Ingest uses this before creating candidates or clients.',
-                  })}
+                  {t('admin.meta_leads.intake_route.body')}
                 </p>
                 {!intakeRouteConfigured && (
                   <p className="mt-2 text-xs text-amber-800">
-                    {t('admin.meta_leads.intake_route.fallback_warning', {
-                      defaultValue:
-                        'No route configured — ingest falls back to tenant business type (may create wrong entity type).',
-                    })}
+                    {t('admin.meta_leads.intake_route.fallback_warning')}
                   </p>
                 )}
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
-                    {t('admin.meta_leads.intake_route.own_company', { defaultValue: 'Company profile' })}
+                    {t('admin.meta_leads.intake_route.own_company')}
                     <select
                       className="input text-sm"
                       value={intakeRouteOwnCompanyId}
                       onChange={(e) => setIntakeRouteOwnCompanyId(e.target.value)}
                     >
                       <option value="">
-                        {t('admin.meta_leads.intake_route.own_company_placeholder', { defaultValue: 'Select profile…' })}
+                        {t('admin.meta_leads.intake_route.own_company_placeholder')}
                       </option>
                       {ownCompanyOptions.map((oc) => (
                         <option key={oc.id} value={oc.id}>
@@ -3255,25 +3234,23 @@ export default function MetaLeadsAdminPage() {
                     </select>
                   </label>
                   <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
-                    {t('admin.meta_leads.intake_route.lead_target', { defaultValue: 'Lead target type' })}
+                    {t('admin.meta_leads.intake_route.lead_target')}
                     <select
                       className="input text-sm"
                       value={intakeRouteTarget}
                       onChange={(e) => setIntakeRouteTarget(e.target.value as LeadTargetType)}
                     >
                       <option value="candidate">
-                        {t('admin.meta_leads.intake_route.targets.candidate', { defaultValue: 'Candidate (driver)' })}
+                        {t('admin.meta_leads.intake_route.targets.candidate')}
                       </option>
                       <option value="client_lead">
-                        {t('admin.meta_leads.intake_route.targets.client_lead', { defaultValue: 'Client lead (B2B)' })}
+                        {t('admin.meta_leads.intake_route.targets.client_lead')}
                       </option>
                       <option value="service_order_lead">
-                        {t('admin.meta_leads.intake_route.targets.service_order_lead', {
-                          defaultValue: 'Service order lead',
-                        })}
+                        {t('admin.meta_leads.intake_route.targets.service_order_lead')}
                       </option>
                       <option value="partner_lead">
-                        {t('admin.meta_leads.intake_route.targets.partner_lead', { defaultValue: 'Partner lead' })}
+                        {t('admin.meta_leads.intake_route.targets.partner_lead')}
                       </option>
                     </select>
                   </label>
@@ -3284,7 +3261,7 @@ export default function MetaLeadsAdminPage() {
                     checked={intakeRouteActive}
                     onChange={(e) => setIntakeRouteActive(e.target.checked)}
                   />
-                  {t('admin.meta_leads.intake_route.active', { defaultValue: 'Route active' })}
+                  {t('admin.meta_leads.intake_route.active')}
                 </label>
                 <button
                   type="button"
@@ -3294,7 +3271,7 @@ export default function MetaLeadsAdminPage() {
                 >
                   {intakeRouteSaving
                     ? t('common.saving')
-                    : t('admin.meta_leads.intake_route.save', { defaultValue: 'Save intake route' })}
+                    : t('admin.meta_leads.intake_route.save')}
                 </button>
               </div>
             )}

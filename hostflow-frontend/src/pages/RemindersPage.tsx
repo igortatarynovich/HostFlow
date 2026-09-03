@@ -35,7 +35,6 @@ import { useAuth } from '../store/useAuth'
 import { canUseTeamAssigneeScope as teamAssigneeScopeAllowed } from '../auth/trustRoles'
 import { useI18n } from '../i18n'
 import { activateClickOnSpaceEnter, runActionOnSpaceEnter } from '../utils/a11yClick'
-import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import ReminderExplainabilityPopover from '../components/explainability/ReminderExplainabilityPopover'
@@ -1639,26 +1638,10 @@ export default function RemindersPage() {
     return format(date, 'dd MMM yyyy, HH:mm', { locale: dateLocale })
   }
 
-  const tasksTabSubtitle =
-    activeTab === 'tasks'
-      ? t('app.reminders.subtitle', {
-          values: { total: taskCounts.total, unread: taskCounts.active, scope: t('app.reminders.scope_labels.direct') },
-        })
-      : t('app.reminders.subtitle', {
-          values: {
-            total: notificationCounts.total,
-            unread: notificationCounts.unread,
-            scope: t('app.reminders.scope_labels.all'),
-          },
-        })
-
   return (
     <PageShell>
-      <WorkspaceTopNav active="tasks" />
       <PageShellHeader>
         <PageHeader
-          title={t('app.tasks.hub_title')}
-          subtitle={tasksTabSubtitle}
           kind="browse"
           primaryAction={
             activeTab === 'tasks' ? (

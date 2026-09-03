@@ -323,11 +323,13 @@ CRM `Lead.stage` is a **compatibility projection** only (`new` → `contacted` o
 
 **First substantive action** (not opening the card) stamps `in_progress`: saved call result, operator note, operator RODO send / source-provided, request_info.
 
-**Call activity:** `POST /leads/{id}/call-result` records `call → outcome → note → actor → timestamp → next_contact_at`. History in `call_results_v1`. Convert carries history + original `field_answers` onto the candidate (`lead_continuity_v1` / `intake_answers_v1`).
+**Call activity:** `POST /leads/{id}/call-result` (and the Application facade `POST /recruitment/applications/{id}/call-result`) records `call → outcome → note → actor → timestamp → next_contact_at`. History in `call_results_v1`. Convert carries call history and a source-lead link onto the candidate (`lead_continuity_v1`, `source_lead_id`). Original `field_answers` stay on the Lead.
+
+**Application workspace list:** `GET /recruitment/applications` tab buckets (`new | in_progress | completed`) project the same intake lifecycle — not ingest `Lead.status`. Latest call outcome is a list column and a `call_result=` filter; it remains an activity, not a ticket status. `q=` searches name / phone / email.
 
 **Duplicate mark:** `StatusBadge` on identity and queue when `duplicate_review` / `duplicated` / `duplicate_match_v1`. Prior-candidate snapshot (`duplicate_prior_v1`: created, stage/outcome, reason) is shown via the existing `LeadDuplicateReviewPanel` (primitives: StatusBadge, StageTag, Button, FieldGrid) — not a local card.
 
-**Conversion mapping:** if an answer has an executable mapping to a Candidate destination (field-registry qualified code or `mapping_applied_v1.executable_rules`), the value is written at convert. Unmapped answers remain as the original questionnaire. No conversion-specific extra whitelist.
+**Conversion mapping:** if an answer has an executable mapping to a Candidate destination (field-registry qualified code or `mapping_applied_v1.executable_rules`), the value is written at convert onto the matching candidate field. Unmapped answers remain on the Lead questionnaire. They must not appear on the candidate card as a dump (including technical Meta fields such as `inbox_url`). No conversion-specific extra whitelist.
 
 **Out of this cut:** pipeline builder, SLA engine, scoring, AI, candidate documents, candidate stages, task sequences, comms automations.
 
@@ -372,21 +374,24 @@ CRM `Lead.stage` is a **compatibility projection** only (`new` → `contacted` o
 
 **Explicitly not Slice 2:** full Lead workspace mega-cleanup (table slice **6**); cross-product **Activities** spine; lifecycle / AI expansion.
 
-### 8.0.1 Lead-stage RODO (art. 14) — intake contract (signed off, 2026-05)
+### 8.0.1 Lead-stage RODO (information obligation) — intake contract (signed off, 2026-05; errata 2026-09-02)
 
-**Boundary:** RODO / GDPR art. 14 notice is satisfied **on the Lead** before gated intake actions. After conversion, candidate-level compliance may apply separately; lead audit is copied read-only into `Candidate.extra['rodo_lead_audit']` — not re-sent by default.
+**Boundary:** GDPR/RODO information obligation is **evaluated on the Lead** before gated intake actions. After conversion, candidate-level compliance may apply separately; lead audit is copied read-only into `Candidate.extra['rodo_lead_audit']` — not re-sent by default.
 
 **Delivery (ADR-031):** compliance **gates and audit** stay on Lead (`normalized.rodo`). When outbound email is required, **send** must use Communication Pipeline with opaque result (`sales_inquiry` \| `application`) via module binders — not business-module SMTP. Permanent path: [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) · [task](../tasks/compliance-outbound-pipeline-early-result.md). Legacy `lead_rodo` SMTP is migration debt (C0.1b allowlist) until removed.
 
 **Company policy (ADR-033, target SoT):** operational RODO/ops email policy resolves via [lead-lifecycle-email-policy.md](lead-lifecycle-email-policy.md) — Vacancy override → Company `lead_lifecycle_email_v1` → tenant preset. Control Center: **Настройки → Коммуникации → Lead lifecycle email**. Tenant JSON below remains preset/cutover adapter.
 
+**Platform invariant:** tenant may configure **how** the obligation is fulfilled (controller identity, clause, sender, copy) but cannot disable **that** it is evaluated and fulfilled when applicable. Missing configuration uses the HostFlow default (body + mailbox), not “do nothing”. HostFlow is delivery infrastructure; the named controller is the operating firm (`OwnCompany`).
+
+**Technical invariant:** no lead may silently bypass evaluation. An unresolved or failed obligation (`review_required`, `delivery_required`, `delivery_failed`) stays explicitly actionable until resolved. Assessment evidence and delivery evidence are stored separately on `normalized.rodo`.
+
 **Tenant policy** (`Tenant.settings.lead_rodo_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings` — **preset / migration**):
 
 | `lead_rodo_send_mode` | Behaviour |
 |-------------------------|-----------|
-| `manual` (default) | Recruiter sends from intake rail / API; no outbound on ingest. |
-| `auto_on_lead_created` | After **new** lead row + custom-field sync: auto-send for eligible ingest sources when email channel exists (MVP: Meta, generic webhook, `csv_import`, import, Telegram*, public form). |
-| `auto_on_first_action` | Outbound attempt immediately before first gated action (process, request_info, stage `contacted`, `communication_call`). |
+| `auto_on_lead_created` (**platform floor**) | After **new** lead row: **evaluate** the information obligation. Deliver only when the engine requires it. Tenant SMTP if configured, else `info@hostflow.cc`. |
+| `manual` / `auto_on_first_action` (legacy stored) | Coerced to `auto_on_lead_created` at persist and ignored at resolve. Cannot skip evaluation. |
 
 **Policy SoT (ADR-033):** firm **OwnCompany** `lead_lifecycle_email_v1`; optional client + vacancy override — [lead-lifecycle-email-policy.md](lead-lifecycle-email-policy.md).
 
@@ -396,11 +401,13 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 
 | `status` / signal | Meaning |
 |-------------------|---------|
-| `sent` | Outbound art. 14 email sent (`sent_at`, `channel`, `recipient`, optional `auto_trigger`, `ingest_source`). |
-| `source_provided` | Notice already covered at source (e.g. `normalized.rodo_notice_at_source` or public intake consents) — **no duplicate outbound**. |
-| `pending_channel` | Auto/manual send could not run — no usable channel (MVP: email). |
-| `failed` | Send error; manual retry allowed. |
-| *(none / unsatisfied)* | UI: `manual_required`; gates apply. |
+| `sent` / `delivered` | Outbound notice sent; `delivery_evidence` has controller, recipient, timestamp, notice version/hash, template, sender, channel, attempts. |
+| `source_provided` / `compliant` | Notice already given at collection — **no extra outbound**; `assessment` is the proof. |
+| `exempt` | Lawful exception **with** `exemption_code` — no delivery. |
+| `delivery_required` | Engine requires fulfillment; auto-send pending or in flight. |
+| `review_required` | Engine cannot safely classify (unknown source / exemption without reason) — operator must act. |
+| `pending_channel` / `failed` / `delivery_failed` | Obligation exists; channel missing or SMTP exhausted (tenant then platform). Retry / alert. |
+| *(none / unsatisfied)* | Should not remain after ingest evaluation; if present, treat as open. |
 
 **Idempotency:** webhook replay for the same `tenant_id + source + external_id` does not send a second notice (`lead_rodo_sent_from_normalized`). Pipeline merges preserve `normalized.rodo` when other keys are rewritten (`normalized_merging_lead_rodo` in `update_lead`).
 
@@ -412,7 +419,7 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 - `POST /api/v1/leads/{id}/compliance/rodo/source-provided` — mark covered at source.
 - `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk re-send after Pipeline cutover (default `rodo.status=failed`; `dry_run` supported). CLI: `backend/scripts/retry_lead_rodo.py`.
 
-**UI:** Meta Leads settings — mode select; **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / manual hint; Send RODO + “covered at source” buttons retained for retry. **Sales inquiry rail / client lead call-result** — same Send / source-provided unlock (ADR-033 slice C) before `call-result` / stage `contacted`.
+**UI:** Control Center — **RODO information obligation: Active — managed by HostFlow** (no disable toggle). **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / `source_provided` / `exempt` / `review_required`; Send RODO + “covered at source” buttons retained for retry. **Sales inquiry rail / client lead call-result** — same Send / source-provided unlock (ADR-033 slice C) before `call-result` / stage `contacted`.
 
 **Tests:** `backend/tests/api/test_lead_rodo_gate.py`, `backend/tests/api/test_lead_rodo_auto.py`.
 
@@ -449,7 +456,7 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 
 **Manual staging smoke** (add to deploy checklist):
 
-8. Meta lead + email + `auto_on_lead_created` → RODO sent, rail `sent`, Process allowed after vacancy confirm.
+8. Meta lead + email, notice not proven at source → obligation `delivery_required`, RODO sent, rail `sent`, Process allowed after vacancy confirm. Meta/form with `rodo_notice_at_source` → `source_provided`, no extra email.
 9. Lead without email → `pending_channel`, Process / request_info / contacted blocked; manual send or source-provided unblocks.
 10. Meta webhook replay → single send, no duplicate audit spam.
 11. Public form / ingest with `rodo_notice_at_source` → `source_provided`, no duplicate send.

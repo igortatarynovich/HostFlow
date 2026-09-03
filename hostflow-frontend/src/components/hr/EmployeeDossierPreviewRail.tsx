@@ -98,7 +98,7 @@ export function EmployeeDossierPreviewRail({ doc, onClose, className }: Props) {
 
   return (
     <aside className={className ?? 'hidden min-h-[420px] xl:block'}>
-      <div className="sticky top-4 flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="sticky top-4 flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

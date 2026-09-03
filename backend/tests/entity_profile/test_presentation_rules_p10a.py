@@ -118,6 +118,28 @@ def test_p10a_validate_source_outside_subset() -> None:
     assert exc.value.code == "presentation_rule_source_outside_subset"
 
 
+def test_p10a_drop_invalid_rules_keeps_saveable_subset() -> None:
+    from backend.app.entity_profile.presentation_rules import drop_invalid_presentation_rules
+
+    overrides = {
+        "service_sales.driver_hiring.driver_categories_other": {
+            "intake_level": "optional",
+            "presentation_rules": {
+                "show_if": {
+                    "source_field": "service_sales.driver_hiring.driver_categories",
+                    "operator": "eq",
+                    "value": "other",
+                }
+            },
+        }
+    }
+    cleaned = drop_invalid_presentation_rules(
+        overrides,
+        ["service_sales.driver_hiring.driver_categories_other"],
+    )
+    assert "presentation_rules" not in cleaned["service_sales.driver_hiring.driver_categories_other"]
+
+
 def test_p10a_missing_required_respects_visibility() -> None:
     presentation = {
         "fields": [

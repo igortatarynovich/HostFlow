@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { IconPhone } from '@tabler/icons-react'
 
 import { logLeadCallResult, type LeadCallResultCode } from '../../api/client'
@@ -64,12 +64,13 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
   const phone = lead.normalized && typeof lead.normalized === 'object' ? (lead.normalized as Record<string, unknown>).phone : null
   const canTel = hasCallablePhone(phone)
 
-  const [callResult, setCallResult] = useState<LeadCallResultCode>(
-    (latest?.result as LeadCallResultCode) || 'no_answer',
+  const [callResult, setCallResult] = useState<LeadCallResultCode | null>(
+    (latest?.result as LeadCallResultCode) || null,
   )
   const [callNote, setCallNote] = useState('')
   const [nextContact, setNextContact] = useState(toDatetimeLocalValue(latest?.next_contact_at))
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   const needsCallbackTime = callResult === 'callback_requested'
   const resultLabel = (code: string) => t(`app.leads.detail.call_result.results.${code}`, { defaultValue: code })
@@ -80,23 +81,20 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
       : resultLabel(String(latest.result))
     : null
 
-  const handleSave = async () => {
-    if (saving) return
-    if (needsCallbackTime && !fromDatetimeLocalValue(nextContact)) {
-      notify({
-        title: t('app.leads.intake_workspace.call.next_contact_required', {
-          defaultValue: 'Pick a date and time to call back.',
-        }),
-        variant: 'error',
-      })
+  const persist = async (result: LeadCallResultCode, note = callNote, next = nextContact) => {
+    if (savingRef.current) return
+    if (result === 'callback_requested' && !fromDatetimeLocalValue(next)) {
+      setCallResult(result)
       return
     }
+    savingRef.current = true
     setSaving(true)
+    setCallResult(result)
     try {
       const updated = (await logLeadCallResult(lead.id, {
-        result: callResult,
-        note: callNote.trim() || null,
-        next_contact_at: fromDatetimeLocalValue(nextContact),
+        result,
+        note: note.trim() || null,
+        next_contact_at: fromDatetimeLocalValue(next),
       })) as Lead
       onLeadUpdated(updated)
       setCallNote('')
@@ -111,8 +109,23 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
       const info = getFriendlyErrorInfo(err, t('app.leads.detail.call_result.save_failed'), t)
       notify({ title: info.title, variant: 'error' })
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
+  }
+
+  const handleSave = async () => {
+    if (!callResult) return
+    if (needsCallbackTime && !fromDatetimeLocalValue(nextContact)) {
+      notify({
+        title: t('app.leads.intake_workspace.call.next_contact_required', {
+          defaultValue: 'Pick a date and time to call back.',
+        }),
+        variant: 'error',
+      })
+      return
+    }
+    await persist(callResult)
   }
 
   const renderGroup = (titleKey: string, codes: LeadCallResultCode[]) => (
@@ -128,7 +141,7 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
               key={code}
               type="button"
               disabled={saving}
-              onClick={() => setCallResult(code)}
+              onClick={() => void persist(code)}
               className={clsx(
                 'rounded-lg px-2.5 py-1.5 text-xs font-semibold ring-1 transition-colors disabled:opacity-50',
                 active
@@ -200,7 +213,13 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
             className="input w-full rounded-xl border-0 bg-slate-500/[0.06] px-3 py-2 text-sm ring-1 ring-slate-900/[0.06]"
             value={nextContact}
             disabled={saving}
-            onChange={(e) => setNextContact(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value
+              setNextContact(value)
+              if (callResult === 'callback_requested' && fromDatetimeLocalValue(value)) {
+                void persist('callback_requested', callNote, value)
+              }
+            }}
           />
         </label>
       ) : null}
@@ -214,6 +233,10 @@ export default function LeadIntakeCallStep({ lead, onLeadUpdated, showTelButton 
           maxLength={2000}
           placeholder={t('app.leads.detail.call_result.fields.note_placeholder')}
           onChange={(e) => setCallNote(e.target.value)}
+          onBlur={() => {
+            if (!callResult || !callNote.trim()) return
+            void persist(callResult)
+          }}
         />
       </label>
 

@@ -788,7 +788,6 @@ export default function CommunicationsInboxHubPage() {
     <PageShell className="bg-slate-50">
       <PageShellHeader>
         <PageHeader
-          title={t('app.communications_inbox_hub.title')}
           kind="browse"
           secondaryActions={
             <button

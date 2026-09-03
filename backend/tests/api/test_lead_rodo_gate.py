@@ -21,14 +21,16 @@ from backend.tests.api.test_leads_meta import (
 
 
 @pytest.fixture(autouse=True)
-async def _lead_rodo_manual_mode_for_gate_tests(client, manager_headers):
-    """Gate tests assume outbound RODO is not sent on Meta ingest (manual tenant mode)."""
-    res = await client.patch(
-        "/api/v1/settings/leads/settings",
-        headers=manager_headers,
-        json={"lead_rodo_send_mode": "manual"},
+async def _skip_ingest_auto_rodo_for_gate_tests(monkeypatch):
+    """Gate tests assert the block when art.14 is still unsatisfied; skip ingest auto-send."""
+
+    async def _noop(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "backend.app.services.lead_rodo_auto.apply_lead_rodo_on_ingest",
+        _noop,
     )
-    assert res.status_code == 200, res.text
 
 
 async def _seed_active_rodo_clause(db, tenant_id: str) -> None:
@@ -67,7 +69,7 @@ async def test_process_without_rodo_returns_lead_rodo_required(client, manager_h
     )
     payload = _meta_payload(
         vacancy_id,
-        email=f"rodo-gate-{u}@example.com",
+        email="",
         phone=f"+48199{u[:9]}",
         lead_id=f"lg-rodo-{u}",
         ad_id=str(ad_numeric),
@@ -108,7 +110,7 @@ async def test_request_info_without_rodo_returns_lead_rodo_required(client, mana
     )
     payload = _meta_payload(
         vacancy_id,
-        email=f"ri-rodo-{u}@example.com",
+        email="",
         phone=f"+48198{u[:9]}",
         lead_id=f"lg-ri-{u}",
         ad_id=str(ad_numeric),
@@ -325,7 +327,7 @@ async def test_confirm_vacancy_without_rodo_ok(client, manager_headers, tenant_i
     )
     payload = _meta_payload(
         vacancy_id,
-        email=f"st-rodo-{u}@example.com",
+        email="",
         phone=f"+48194{u[:9]}",
         lead_id=f"lg-st-{u}",
         ad_id=str(ad_numeric),

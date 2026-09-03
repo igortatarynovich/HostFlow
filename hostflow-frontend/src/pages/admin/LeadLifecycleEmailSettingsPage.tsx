@@ -45,7 +45,7 @@ const OPS_KEYS = ['application_received', 'rejection', 'moving_forward'] as cons
 function emptyPolicy(): LeadLifecycleEmailPolicy {
   return {
     version: 1,
-    rodo_send_mode: 'manual',
+    rodo_send_mode: 'auto_on_lead_created',
     rodo_template_ref: null,
     ops_enabled: false,
     application_received: { enabled: false, template_ref: null },
@@ -129,9 +129,7 @@ export default function LeadLifecycleEmailSettingsPage() {
   const [composerDraft, setComposerDraft] = useState<LifecycleMessageDraft>({ name: '', subject: '', body: '' })
 
   const activeTemplates = useMemo(() => templates.filter((tpl) => tpl.is_active), [templates])
-  const autoSendOn = policy.rodo_send_mode !== 'manual'
-  const rodoNeedsMessage = autoSendOn && !policy.rodo_template_ref
-  const rodoActive = autoSendOn && Boolean(policy.rodo_template_ref)
+  const rodoActive = Boolean(policy.rodo_template_ref)
   const selectedRodoName = templateName(templates, policy.rodo_template_ref)
   const ownCompanyName = ownCompanies.find((c) => c.id === ownCompanyId)?.name || ''
 
@@ -331,7 +329,7 @@ export default function LeadLifecycleEmailSettingsPage() {
         return {
           ...current,
           rodo_template_ref: templateId,
-          rodo_send_mode: current.rodo_send_mode === 'manual' ? 'auto_on_lead_created' : current.rodo_send_mode,
+          rodo_send_mode: 'auto_on_lead_created',
         }
       }
       return withOpsMaster({
@@ -367,27 +365,6 @@ export default function LeadLifecycleEmailSettingsPage() {
       setComposerBusy(false)
     }
   }, [applyMessageToPolicy, composerDraft, composerEditId, composerPurpose, persistFirmPolicy, policy, t])
-
-  const toggleAutoSend = useCallback(
-    (checked: boolean) => {
-      if (checked && !policy.rodo_template_ref) {
-        setPolicy((p) => ({ ...p, rodo_send_mode: 'auto_on_lead_created' }))
-        openComposer('rodo')
-        return
-      }
-      const next: LeadLifecycleEmailPolicy = {
-        ...policy,
-        rodo_send_mode: checked
-          ? policy.rodo_send_mode === 'auto_on_first_action'
-            ? 'auto_on_first_action'
-            : 'auto_on_lead_created'
-          : 'manual',
-      }
-      setPolicy(next)
-      void persistFirmPolicy(next)
-    },
-    [openComposer, persistFirmPolicy, policy],
-  )
 
   const selectRodoMessage = useCallback(
     (id: string | null) => {
@@ -507,38 +484,21 @@ export default function LeadLifecycleEmailSettingsPage() {
         <div className="space-y-4">
           <section
             className={
-              rodoNeedsMessage
-                ? 'rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950'
-                : rodoActive
-                  ? 'rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950'
-                  : 'rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800'
+              rodoActive
+                ? 'rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950'
+                : 'rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950'
             }
           >
             <p className="font-semibold">
-              {rodoNeedsMessage
-                ? t('admin.lead_lifecycle_email.status.needs_setup')
-                : rodoActive
-                  ? t('admin.lead_lifecycle_email.status.active')
-                  : t('admin.lead_lifecycle_email.status.manual')}
+              {t('admin.lead_lifecycle_email.status.platform_required')}
             </p>
             <p className="mt-1 text-sm">
-              {rodoNeedsMessage
-                ? t('admin.lead_lifecycle_email.status.needs_setup_detail')
-                : rodoActive
-                  ? t('admin.lead_lifecycle_email.status.active_detail', {
-                      values: { name: selectedRodoName || t('admin.lead_lifecycle_email.rodo.message') },
-                    })
-                  : t('admin.lead_lifecycle_email.status.manual_detail')}
+              {rodoActive
+                ? t('admin.lead_lifecycle_email.status.active_detail', {
+                    values: { name: selectedRodoName || t('admin.lead_lifecycle_email.rodo.message') },
+                  })
+                : t('admin.lead_lifecycle_email.status.platform_required_detail')}
             </p>
-            {rodoNeedsMessage ? (
-              <button
-                type="button"
-                className="btn-primary mt-3"
-                onClick={() => openComposer('rodo')}
-              >
-                {t('admin.lead_lifecycle_email.rodo.create_message')}
-              </button>
-            ) : null}
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -561,13 +521,13 @@ export default function LeadLifecycleEmailSettingsPage() {
               )}
             </div>
 
-            <div className="mt-4">
-              <Checkbox
-                checked={autoSendOn}
-                onChange={toggleAutoSend}
-                disabled={saveBusy}
-                label={t('admin.lead_lifecycle_email.rodo.auto_send')}
-              />
+            <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-sm font-medium text-slate-900">
+                {t('admin.lead_lifecycle_email.rodo.obligation_status')}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                {t('admin.lead_lifecycle_email.rodo.obligation_status_hint')}
+              </p>
             </div>
 
             {activeTemplates.length === 0 ? (
@@ -717,22 +677,7 @@ export default function LeadLifecycleEmailSettingsPage() {
                 </div>
               ) : null}
 
-              <Checkbox
-                checked={policy.rodo_send_mode === 'auto_on_first_action'}
-                onChange={(checked) => {
-                  const next: LeadLifecycleEmailPolicy = {
-                    ...policy,
-                    rodo_send_mode: checked
-                      ? 'auto_on_first_action'
-                      : policy.rodo_template_ref
-                        ? 'auto_on_lead_created'
-                        : 'manual',
-                  }
-                  setPolicy(next)
-                  void persistFirmPolicy(next)
-                }}
-                label={t('admin.lead_lifecycle_email.advanced.send_first_action')}
-              />
+              <p className="text-sm text-slate-600">{t('admin.lead_lifecycle_email.advanced.platform_rodo_note')}</p>
 
               <div>
                 <button

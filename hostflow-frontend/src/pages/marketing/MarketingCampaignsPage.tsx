@@ -117,8 +117,6 @@ export default function MarketingCampaignsPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.marketing.title')}
-          subtitle={t('app.marketing.subtitle')}
           kind="browse"
           primaryAction={
             <Link to={CRM_APP_PATHS.marketingNew} className="btn-primary btn-sm">

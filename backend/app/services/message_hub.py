@@ -27,6 +27,7 @@ def render_message_text(
     *,
     first_name: Optional[str] = None,
     rodo_link: Optional[str] = None,
+    controller_name: Optional[str] = None,
 ) -> str:
     """Render known placeholders in a safe, backward-compatible way."""
     out = str(text or "")
@@ -34,6 +35,8 @@ def render_message_text(
         out = out.replace("{first_name}", str(first_name))
     if rodo_link is not None:
         out = out.replace("{rodo_link}", str(rodo_link))
+    if controller_name is not None:
+        out = out.replace("{controller_name}", str(controller_name))
     return out
 
 
@@ -46,6 +49,7 @@ async def resolve_lead_email_message(
     fallback_body: str,
     first_name: Optional[str] = None,
     rodo_link: Optional[str] = None,
+    controller_name: Optional[str] = None,
 ) -> ResolvedMessage:
     """Resolve template (if active) and render placeholders, else fallback."""
     subject = str(fallback_subject or "")
@@ -61,8 +65,18 @@ async def resolve_lead_email_message(
         used_template_id = tpl.id
 
     return ResolvedMessage(
-        subject=render_message_text(subject, first_name=first_name, rodo_link=rodo_link),
-        body=render_message_text(body, first_name=first_name, rodo_link=rodo_link),
+        subject=render_message_text(
+            subject,
+            first_name=first_name,
+            rodo_link=rodo_link,
+            controller_name=controller_name,
+        ),
+        body=render_message_text(
+            body,
+            first_name=first_name,
+            rodo_link=rodo_link,
+            controller_name=controller_name,
+        ),
         template_id=used_template_id,
     )
 

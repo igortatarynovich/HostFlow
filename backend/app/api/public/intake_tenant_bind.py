@@ -1,6 +1,8 @@
 """Resolve tenant for public intake without relying on X-Tenant-Id (lead-form slug/id, intake/status/magic tokens).
 
 PostgreSQL: SECURITY DEFINER SQL functions (migration) bypass RLS for token→tenant lookup.
+``hf_intake_token_tenant`` covers candidate apply tokens, questionnaire invite
+tokens, and lead-first public-intake draft tokens.
 SQLite / tests: ORM fallback (no RLS).
 """
 
@@ -41,6 +43,24 @@ async def _orm_intake_token_tenant_id(db: AsyncSession, token: str) -> Optional[
     return str(tid) if tid else None
 
 
+async def _reset_unbound_rls_tenant_setting(db: AsyncSession) -> None:
+    """Drop pooled leftover ``app.tenant_id`` before token→tenant lookup.
+
+    ``set_config(..., is_local=false)`` survives checkout on the connection.
+    A leftover tenant plus RLS can hide ``lead_questionnaire_invites`` / ``leads``
+    from the ORM fallback even when the SECURITY DEFINER helper misses the token.
+    """
+    if _dialect_name(db) != "postgresql":
+        return
+    try:
+        await db.execute(text("SELECT set_config('app.tenant_id', '', false)"))
+    except Exception:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+
 async def _pg_hf_intake_token_tenant_id(db: AsyncSession, token: str) -> Optional[str]:
     try:
         r = await db.execute(text("SELECT public.hf_intake_token_tenant(:t) AS tid").bindparams(t=token))
@@ -54,6 +74,7 @@ async def _pg_hf_intake_token_tenant_id(db: AsyncSession, token: str) -> Optiona
 
 
 async def resolve_intake_token_tenant_id(db: AsyncSession, token: str) -> Optional[str]:
+    await _reset_unbound_rls_tenant_setting(db)
     if _dialect_name(db) == "postgresql":
         tid = await _pg_hf_intake_token_tenant_id(db, token)
         if tid:

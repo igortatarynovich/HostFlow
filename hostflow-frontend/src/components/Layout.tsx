@@ -43,7 +43,7 @@ export function Layout({ me, onLogout, children }:{
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-slate-50">
+    <div className="hf-app-viewport w-screen bg-slate-50">
       <aside
         className={clsx(
           'fixed top-0 left-0 z-20 h-full transform bg-brand-900 text-white shadow-xl transition-transform duration-300 ease-in-out',

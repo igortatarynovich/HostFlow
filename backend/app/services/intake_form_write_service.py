@@ -5,6 +5,7 @@ Creates TenantLeadForm + IntakeSourceProfile + bindings + tenant presentation.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Any, Optional
 from uuid import uuid4
@@ -18,6 +19,7 @@ from backend.app.entity_profile.constants import ENTITY_LEAD, SERVICE_SALES_MODU
 from backend.app.entity_profile.presentation_write import (
     PresentationWriteError,
     build_tenant_form_presentation_code,
+    merge_client_fields_with_platform_preset,
     upsert_tenant_intake_presentation,
     validate_presentation_fields_for_profile,
 )
@@ -46,10 +48,20 @@ from backend.app.intake_platform.form_definition import (
 from backend.app.services.plan_feature_gates import count_tenant_lead_sources, ensure_lead_source_limit
 
 
+_INTAKE_SOURCE_CODE_MAX_LEN = 64
+_INTAKE_SOURCE_CODE_PREFIX = "public-form-"
+
+
 def _public_form_profile_code(public_slug: str) -> str:
     slug = str(public_slug or "").strip().lower()
     safe = re.sub(r"[^a-z0-9-]+", "-", slug).strip("-") or "form"
-    return f"public-form-{safe}"
+    prefix = _INTAKE_SOURCE_CODE_PREFIX
+    max_len = _INTAKE_SOURCE_CODE_MAX_LEN - len(prefix)
+    if len(safe) <= max_len:
+        return f"{prefix}{safe}"
+    digest = hashlib.sha1(safe.encode("utf-8")).hexdigest()[:8]
+    keep = max(8, max_len - 9)
+    return f"{prefix}{safe[:keep].rstrip('-')}-{digest}"
 
 
 async def _intake_routing_for_entity_profile(
@@ -223,6 +235,37 @@ async def _deactivate_lead_form_id_bindings(
         row.is_active = False
 
 
+async def _load_reusable_intake_source(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+    public_slug: str,
+    profile_code: str,
+) -> Optional[IntakeSourceProfile]:
+    bound = await _load_intake_source_for_form(
+        db,
+        tenant_id=str(tenant_id),
+        form_id=str(form_id),
+        public_slug=public_slug,
+    )
+    if bound is not None:
+        return bound
+    by_code = await intake_crud.get_profile_by_code(
+        db,
+        tenant_id=str(tenant_id),
+        code=profile_code,
+    )
+    if by_code is not None:
+        return by_code
+    return await db.scalar(
+        select(IntakeSourceProfile).where(
+            IntakeSourceProfile.tenant_id == str(tenant_id),
+            IntakeSourceProfile.public_slug == public_slug,
+        )
+    )
+
+
 async def _ensure_intake_source_for_form(
     db: AsyncSession,
     *,
@@ -237,13 +280,14 @@ async def _ensure_intake_source_for_form(
     if not public_slug:
         raise HTTPException(status_code=422, detail="public_slug is required before binding intake source")
 
-    existing = await _load_intake_source_for_form(
+    profile_code = _public_form_profile_code(public_slug)
+    existing = await _load_reusable_intake_source(
         db,
         tenant_id=str(tenant_id),
         form_id=str(lead_form.id),
         public_slug=public_slug,
+        profile_code=profile_code,
     )
-    profile_code = _public_form_profile_code(public_slug)
     presentation_code = build_tenant_form_presentation_code(
         entity_profile_code=entity_profile_code,
         public_slug=public_slug,
@@ -353,6 +397,20 @@ async def create_public_intake_form(
 
     form_id = str(uuid4())
     await ensure_public_slug_unique_for_tenant(db, str(tenant_id), slug=slug, exclude_form_id=form_id)
+
+    preset_fields: list[dict[str, Any]] = []
+    try:
+        preset_payload = await load_entity_profile_presentation_preset(
+            db,
+            tenant_id=str(tenant_id),
+            entity_profile_code=entity_profile_code,
+        )
+        raw_preset = preset_payload.get("fields") or []
+        if isinstance(raw_preset, list):
+            preset_fields = [row for row in raw_preset if isinstance(row, dict)]
+    except HTTPException:
+        preset_fields = []
+    fields = merge_client_fields_with_platform_preset(fields, preset_fields)
 
     try:
         field_subset, presentation_overrides, profile_view = await validate_presentation_fields_for_profile(

@@ -834,8 +834,6 @@ export default function DoProcesowaniaPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.handoff.do_procesowania')}
-          subtitle={t('app.handoff.do_procesowania_subtitle')}
           kind="browse"
         />
       </PageShellHeader>
