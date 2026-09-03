@@ -56,8 +56,9 @@ flowchart LR
 | **Company Type** | Preset для onboarding/workflows/dashboards; один type на company. |
 | **Module** | Продуктовый блок ADR-004 + shared capabilities (отдельно лицензируются). |
 | **Module Access** | Эффективное «модуль включён»: f(tenant modules, company.enabled_modules, plan). |
-| **User** | Учётная запись; членство в tenant. |
-| **Role** | Продуктовая роль (administrator, hr_officer, …) — **не** «HR Poltrakt» как отдельный тип. |
+| **User** | Учётная запись; членство в tenant. Появляется на Growth-пути только после ADR-041 **complete**, не на verify. |
+| **SignupIntent** | Pre-tenant черновик регистрации (нет `tenant_id`); не User и не Tenant ([`ADR-041`](ADR-041-verified-self-service-signup.md)). |
+| **Role** | Trust-роль ADR-036 (`administrator` / `employee` / `viewer` / `superadmin`). Стартовая self-service роль — `administrator`, не `owner`. |
 | **Permission** | Атомарное право на действие в контексте. |
 | **Scope** | Где применимо: **company_id** + **module_key** + опционально entity / ACL row. |
 | **Company Relationship** | Долговременная связь agency–client, carrier agreement и т.д. |
@@ -87,6 +88,7 @@ flowchart LR
 | System Module Registry | Канон списка модулей/ключей |
 | Countries, Languages | Справочники |
 | System permission vocabulary | Имена прав (код-уровень) |
+| **SignupIntent** | Pre-tenant identity draft ([`ADR-041`](ADR-041-verified-self-service-signup.md)); **нет** `tenant_id`; не RLS-tenant row |
 
 ### 3.2 TENANT SCOPED
 
@@ -234,4 +236,5 @@ flowchart LR
 
 - **v1 (2026-05):** первая каноническая карта: flow Platform Core → Cross-company, GLOBAL/TENANT/COMPANY/MODULE scopes, bounded contexts, ownership matrix, module interaction rules, запреты.
 - **v1.1 (2026-05):** §6.4 порядок внедрения в код; старт P1b (enforcement recruitment на candidate API).
+- **2026-09-03:** [`ADR-041`](ADR-041-verified-self-service-signup.md) — SignupIntent is GLOBAL; User/Tenant/trial appear only at complete; OwnCompany ≠ Tenant.
 - **2026-08-23:** [`ADR-037`](ADR-037-lifecycle-identity-canon.md) — lifecycle identity; stage existence is not `funnel_stages` / Candidate.stage HR lane.

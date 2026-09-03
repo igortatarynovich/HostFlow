@@ -57,6 +57,7 @@ UI **не** определяет архитектуру.
 | Epic P (3D) | Закрытие Acquisition V1 vertical |
 | **Lifecycle Identity (ADR-037)** | Stage existence vs Funnel vs PE vs Handoff — [`ADR-037`](ADR-037-lifecycle-identity-canon.md); runtime queued after CL0 |
 | **Shell Observability (ADR-038)** | Emit vs access; Observability vs Shell Diagnostics / Collect diagnostics — [`ADR-038`](ADR-038-shell-observability-diagnostics.md); runtime not started |
+| **Verified signup (ADR-041)** | SignupIntent pre-tenant; trial on TenantLicense at complete — [`ADR-041`](ADR-041-verified-self-service-signup.md); runtime not started |
 
 ## История
 
@@ -85,3 +86,4 @@ UI **не** определяет архитектуру.
 - 2026-07-19: Intake Canonical Input Matrix ACTIVE / READY (docs-only; before routing runtime).
 - 2026-07-19: Matrix ACCEPTED / FROZEN; Intake Runtime Split V1 READY; Flights / Intake Routing runtime UNLOCKED.
 - 2026-08-23: ADR-038 Shell Observability / Collect diagnostics — canon sealed; runtime not started.
+- 2026-09-03: ADR-041 verified self-service signup — canon sealed; runtime not started ([`ADR-041-verified-self-service-signup.md`](ADR-041-verified-self-service-signup.md)).

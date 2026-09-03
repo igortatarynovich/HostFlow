@@ -21,6 +21,7 @@
 - [ ] Нет новой логики «`if role == ...`» без использования общего guard / permission service.
 - [ ] Скрытые поля (internal notes, payroll, CLASS 3) не попадают в ответы для client/candidate/viewer без явного allowlist.
 - [ ] Если меняются trust roles / matrix / invites: соблюдён инвариант **ADR-036** (4 trust-роли; ceilings; `access_context` ⊥ role); job titles = presets; см. `threat-models/rbac-trust-roles.md`.
+- [ ] Если меняется self-service signup / `/auth/register` / verification-link: соблюдён **ADR-041** (SignupIntent без `tenant_id`; trial только на complete; invite не создаёт tenant; после cutover нет второго публичного register); см. `threat-models/verified-self-service-signup.md`.
 
 ### 3. Handoff и cross-tenant
 
@@ -54,6 +55,7 @@
 
 - [ ] Новые публичные endpoint-ы: rate limit / abuse considerations.
 - [ ] Cookies/headers не ослабляют `SameSite`/`HttpOnly`/`Secure` без причины.
+- [ ] Growth signup (intent / verify / complete / resend): см. [`threat-models/verified-self-service-signup.md`](threat-models/verified-self-service-signup.md) (enumeration-safe envelope; hashed one-time token; registration session ≠ app JWT; Turnstile; no trial on verify; legacy `/register` not a bypass after cutover).
 
 ### 9. Заголовки и конфигурация edge
 
@@ -75,6 +77,7 @@
 - [ ] Communication Campaign Orchestrator (C2.3): см. [`threat-models/communication-campaign-orchestrator.md`](threat-models/communication-campaign-orchestrator.md) (Intent-only, tenant scope, no provider/Thread, distinct from Acquisition campaigns).
 - [ ] Forms Platform (C2 identity + C3 Builder + C4 Runtime + C5 Execution + C6 Optimization): см. [`threat-models/forms-platform.md`](threat-models/forms-platform.md) (frozen publication identity; FormDefinition ↔ Draft only; Runtime Model read-only; Execution validates Runtime Model only; production apply-submit resolve→serve→execute; Shared Intake write path; no Builder↔Runtime/Execution import; tenant resolve; submit pin; fail-closed backfill).
 - [ ] Documents Platform (E3–E5 public resolve): см. [`threat-models/documents-platform.md`](threat-models/documents-platform.md) (authenticated Hub metadata + Document Link; tenant bind; closed entity/relation types; no file bytes / second Adapter; `candidate_id` column dropped).
+- [ ] Verified self-service signup (ADR-041): см. [`threat-models/verified-self-service-signup.md`](threat-models/verified-self-service-signup.md) (SignupIntent pre-tenant; token hash; enumeration; concurrent complete; invite vs new tenant; registration session; cutover of `/auth/register`).
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Status:** L2 operating canon (journey + activation)  
 **Owner:** product + frontend  
-**Architecture:** [ADR-034](../architecture/ADR-034-self-service-public-funnels.md)  
+**Architecture:** [ADR-034](../architecture/ADR-034-self-service-public-funnels.md) · signup contract [ADR-041](../architecture/ADR-041-verified-self-service-signup.md)  
 **Plans SoT:** [`plans-matrix.md`](../plans-matrix.md)
 
 ---
@@ -30,7 +30,7 @@ If this path works end-to-end, HostFlow is ready to scale acquisition.
 | Allow skip with visible checklist debt | Block the app until every optional step is done |
 | Full CRM for a standalone employer (`type=company` without inbound `TenantLink`) | Treat self-serve signup as Citronex-style client-view (masked candidates, truncated menu) |
 
-**Allowed narrow form:** `/app/platform/setup` (or equivalent) collects company name / country / activity once — then the user lands in the real CRM with a readiness panel, not another wizard.
+**Allowed narrow form:** ADR-041 **complete** collects company name / country once (with name + password). `/app/platform/setup` remains a **fallback** if OwnCompany is missing — then the user lands in the real CRM with a readiness panel, not another wizard.
 
 **Not user-facing:** Recruitment technical gates G0–G8 (`SetupStatusPanel` / setup-readiness API) stay as **operator/health internals**. They must not appear on the buyer Success Path screens.
 
@@ -40,8 +40,9 @@ If this path works end-to-end, HostFlow is ready to scale acquisition.
 
 ```text
 Landing (/)
-  → Signup (/signup)
-  → Company identity (short form — mandatory once)
+  → Signup email (/signup) [ADR-041 intent]
+  → Verify email
+  → Complete (name, password, company, country) — creates User + Tenant + trial + OwnCompany
   → Product home / setup hub with readiness checklist + next action
   → Connect Meta (CTA; deferrable)
   → Create order (when Sales path applies) / Create vacancy (CTA from empty state)
@@ -92,7 +93,7 @@ Canonical empty CTAs for the Success Path:
 
 | Intent | Today | Target |
 |--------|-------|--------|
-| Company identity | `/app/platform/setup` | Keep as short form only |
+| Company identity | ADR-041 complete (name + country); `/app/platform/setup` fallback | Keep as short form only; not a second gate when OwnCompany exists |
 | Module / first path | Launchpad | Clarify next step copy |
 | Recruitment setup | `/app/setup` hub | Become readiness home + checklist |
 | Meta | Integrations / setup | Checklist item + deep link CTA |
@@ -161,7 +162,7 @@ Do not invent limits not present in plans-matrix / billing code.
 
 **Phase 1 (landing):** first viewport answers the four ADR-034 questions; how-it-works has five steps; pricing shows trial/limits clarity; all Growth CTAs → `/signup`.
 
-**Phase 2 (readiness UI):** new tenant completes company identity, then sees a clear next action toward vacancy/Meta without a multi-step wizard; empty vacancies state CTAs to create vacancy; checklist debt remains visible if Meta/invite skipped.
+**Phase 2 (readiness UI):** new tenant completes ADR-041 (verified email + name/password/company/country), then sees a clear next action toward vacancy/Meta without a multi-step wizard; empty vacancies state CTAs to create vacancy; checklist debt remains visible if Meta/invite skipped.
 
 **Phase 3 (FAQ):** `/faq` hub + `ContextHelp` on key product screens; CTAs stay on Growth funnel (`/signup`).
 

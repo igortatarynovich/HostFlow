@@ -208,7 +208,7 @@ Backfill-script (`backend/scripts/backfill_own_companies_from_operating.py`):
 
 ## 5. Контракты и инварианты (после миграции)
 
-1. **Каждый tenant имеет ≥1 OwnCompany** — `Tenant`-без-OwnCompany считается невалидным состоянием (тест: signup → POST /own-companies/ обязателен).
+1. **Каждый tenant имеет ≥1 OwnCompany** — `Tenant`-без-OwnCompany считается невалидным состоянием. На Growth-пути первую OwnCompany создаёт атомарный [`ADR-041`](architecture/ADR-041-verified-self-service-signup.md) complete (имя + страна). `POST /own-companies/` остаётся для дополнительных компаний и как fallback, пока legacy `/register` не отрезан.
 2. **`OwnCompany.is_archived=true` исключает row из `count_operating_companies`** и из UI-списков (но не из истории leads/vacancies — там soft-link).
 3. **CRM operating-row, если существует, всегда отзеркален из OwnCompany** (Stage A). Расхождение имён — баг.
 4. **Quota `max_companies` гейтит OwnCompany create**, не CRM operating create.

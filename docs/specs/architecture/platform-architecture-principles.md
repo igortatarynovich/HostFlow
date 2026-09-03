@@ -166,7 +166,7 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 | 3a | **Field Registry & Card Configuration** | Канон полей, layouts, requirements ([`field-registry-card-configuration.md`](../platform/field-registry-card-configuration.md)). |
 | 3b | **Entity Profile Definition Registry** | Композиция canonical fields в типы бизнес-объектов; слой между Field Registry и Intake/Process ([`entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md)). |
 | 4 | **Integrations / Marketplace** | Core integrations + apps ([`ADR-006`](ADR-006-marketplace-and-integration-platform.md)). |
-| 5 | **Users / Roles / Permissions** | RBAC, матрица, scope по company и модулю. |
+| 5 | **Users / Roles / Permissions** | RBAC, матрица, scope по company и модулю. Growth signup — [`ADR-041`](ADR-041-verified-self-service-signup.md). |
 | 5 | **Companies** | Операционная граница, party, ACL. |
 | 6 | **Settings** | Три уровня: Tenant → Company → Company Module Settings ([`ADR-005`](ADR-005-three-level-settings-hierarchy.md)). |
 | 7 | **Automations** | Правила, триггеры, сценарии между сущностями. |

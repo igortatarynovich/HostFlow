@@ -28,7 +28,7 @@ Two consequences make this an architecture decision rather than a backlog item. 
 
 | Verb | Meaning | Owner |
 |------|---------|-------|
-| **Provision** | Create tenant + license + first administrator + the minimum configuration needed to be usable | Platform (exists today) |
+| **Provision** | Create tenant + license + first administrator + the minimum configuration needed to be usable | Platform (exists today). **Self-service Growth provision** (verified email before User/Tenant; trial clock on complete) is specified by [`ADR-041`](ADR-041-verified-self-service-signup.md); operator `POST /platform/tenants` remains this verb without SignupIntent |
 | **Import** | Load a customer’s pre-existing data into a tenant through a product surface | Platform orchestration; per-entity participants |
 | **Export** | Produce a complete, machine-readable copy — for a **tenant** and for a **data subject** | Platform orchestration; per-entity participants |
 | **Erase** | Destroy data irreversibly — for a **tenant** and for a **data subject** | Platform orchestration; per-entity participants |
@@ -110,5 +110,6 @@ No customer-facing artifact (FAQ, legal document, DPA, sales material) may promi
 
 ## History
 
+- 2026-09-03: Self-service Growth provision contract sealed in [`ADR-041`](ADR-041-verified-self-service-signup.md) (SignupIntent; trial starts only on complete). Does not schedule that runtime and does not change import / export / erase / retain.
 - 2026-08-31: **Accepted** by the [Launch Ownership Gate](../gates/launch-ownership-gate.md) (OL-1). Nothing in the decision changed between Proposed and Accepted; what changed is that the consumer program is now open, so OL-6 has a contract to implement against instead of each module inventing its own tenant export and its own delete. The customer-facing anonymisation claim noted below remains unimplemented and is owned by OL-6, not by this acceptance.
 - 2026-08-28: Proposed. Opened while briefing [Operate & Launch](../tasks/operate-and-launch.md) (v1 blocker 6) after an inventory found tenant export, subject erasure, tenant offboarding and retention without an owner, and a customer-facing anonymisation claim with no implementation.

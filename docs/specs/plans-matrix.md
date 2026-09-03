@@ -5,6 +5,7 @@
 **Связи:**
 
 - SSOT: `docs/SSOT.md` §2.16 (тарифные пакеты), §2.17 (биллинг-операционка), §2.18 (Stripe-инвентарь).
+- Self-service trial clock: [`ADR-041`](architecture/ADR-041-verified-self-service-signup.md) (starts at complete, not verify).
 - Backend константы: `backend/app/api/v1/settings/billing/_helpers/plans.py` (`PLAN_CODES`, `PLAN_LICENSE_LIMITS`, `_available_plans`), `backend/app/services/plan_feature_gates.py`, `backend/app/services/lead_quota.py`, `backend/app/services/portal_candidate_usage.py`, `backend/app/services/tenant_quota.py`, `backend/app/services/billing_restrictions.py`.
 - Frontend: `hostflow-frontend/src/hooks/useTeamTierFeatures.ts`, `useLicenseStatus.ts`, `contexts/PlanLimitModalContext.tsx`.
 
@@ -12,7 +13,7 @@
 
 - **Внутренний код плана** (`plan_code`): `starter`, `team`, `pro`, `enterprise` (TODO 2.1.C). Используется в `TenantLicense.plan`, в Stripe metadata, в проверках кода.
 - **Маркетинговое имя:** `Solo`, `Team`, `Business`, `Enterprise`. Только в UI и лендинге.
-- **Trial:** мета-статус `subscription.status='trial'` или `TenantLicense.plan='trial'`. Фичи — уровень Team (включая Meta OAuth); объём — SSOT trial-капы (50 лидов / 20 conversion / 2 portal shares / 5 automation runs), не Solo paywall.
+- **Trial:** мета-статус `subscription.status='trial'` или `TenantLicense.plan='trial'`. Фичи — уровень Team (включая Meta OAuth); объём — SSOT trial-капы (50 лидов / 20 conversion / 2 portal shares / 5 automation runs), не Solo paywall. Часы trial на self-service стартуют **только** на ADR-041 complete (создание Tenant + license), не на verification-link и не на `SignupIntent`.
 
 ---
 
@@ -103,7 +104,7 @@
 
 | Состояние | Что можно | Что нельзя | Where enforced |
 |-----------|-----------|------------|----------------|
-| **Trial** (`subscription.status='trial'` или `plan='trial'`, 30 дней) | Функционал уровня Team с trial-капами по SSOT; полный продукт, не client-handoff view. Meta OAuth / Facebook Login включены. | — | `plan_feature_gates.tenant_allows_team_tier_features`, `lead_quota` (trial 50), `billing_restrictions` |
+| **Trial** (`subscription.status='trial'` или `plan='trial'`, 30 дней; старт = tenant provision / ADR-041 complete) | Функционал уровня Team с trial-капами по SSOT; полный продукт, не client-handoff view. Meta OAuth / Facebook Login включены. | — | `plan_feature_gates.tenant_allows_team_tier_features`, `lead_quota` (trial 50), `billing_restrictions` |
 | **Active** | По текущему `plan_code` | — | — |
 | **Past_due** (Stripe) | Чтение, экспорт, оплата; завершение текущих задач; закрытие существующих кандидатов (2.1.G v1) | Прочие side-effect write (создание лидов, исходящие comms, automation, non-terminal candidate edits) | `billing_restrictions.ensure_billing_*_allowed` + action-level allowlist |
 | **Canceled / Expired** | Только просмотр истории + оплата | Любые мутации, любые исходящие | `billing_restrictions` + `useLicenseStatus` баннер |

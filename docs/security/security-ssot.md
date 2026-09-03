@@ -85,6 +85,8 @@ HTTP-запросы часто безопасны, а **фоновые джоб�
 
 Interactive Growth demo (per-tenant sample pack, no shared guest tenant in Wave-1): [`threat-models/interactive-demo.md`](threat-models/interactive-demo.md).
 
+Verified Growth signup (SignupIntent → verify → complete; trial on TenantLicense only after complete): [`threat-models/verified-self-service-signup.md`](threat-models/verified-self-service-signup.md) · [`ADR-041`](../specs/architecture/ADR-041-verified-self-service-signup.md). Candidate magic-links remain [`threat-models/candidate-portal.md`](threat-models/candidate-portal.md).
+
 Forms Platform C2+C3 (frozen publication Contract Identity; Builder FormDefinition ↔ Draft only, no Adapter publish): [`threat-models/forms-platform.md`](threat-models/forms-platform.md). Public intake tokens remain [`threat-models/public-links.md`](threat-models/public-links.md).
 
 Documents Platform E3–E5 (authenticated Hub metadata resolve via Document Link, not file download; `candidate_id` column dropped): [`threat-models/documents-platform.md`](threat-models/documents-platform.md). Uploads / MIME / storage ACL remain [`threat-models/document-uploads.md`](threat-models/document-uploads.md).

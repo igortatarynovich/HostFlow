@@ -54,10 +54,10 @@ Copy sells **result** (e.g. close vacancies faster via Meta / WhatsApp / forms �
 
 ## Consequences
 
-1. All Growth CTAs converge on `/signup` → platform setup → guided first value.
+1. All Growth CTAs converge on `/signup` → verified complete ([`ADR-041`](ADR-041-verified-self-service-signup.md)) → guided first value. `/signup` remains the funnel entry; it is email-first after ADR-041 cutover, not a one-shot User+Tenant form.
 2. Candidate UX never competes with Growth homepage messaging.
 3. FAQ hub, docs, academy, demo tenant, and SEO factory extend Growth under this ADR — they do not invent new funnels.
-4. Activation expands existing platform setup + setup hub / launchpad as a **readiness interface**; it does not create a second public landing or a forced multi-step wizard for optional steps (Meta, invite, vacancy).
+4. Activation expands existing platform setup + setup hub / launchpad as a **readiness interface**; it does not create a second public landing or a forced multi-step wizard for optional steps (Meta, invite, vacancy). Company name + country required for the first OwnCompany are collected on ADR-041 **complete**; `/app/platform/setup` is not a second mandatory identity gate when OwnCompany already exists.
 
 ## Alternatives considered
 
@@ -69,6 +69,7 @@ Copy sells **result** (e.g. close vacancies faster via Meta / WhatsApp / forms �
 ## Cross-references
 
 - Journey / phased delivery: [`self-service-success-path.md`](../journeys/self-service-success-path.md)
+- Verified signup / trial clock: [ADR-041](ADR-041-verified-self-service-signup.md)
 - Public intake: [ADR-013](ADR-013-public-intake-strategy.md)
 - Plans SoT for pricing honesty: [`plans-matrix.md`](../plans-matrix.md)
 - Visual / IA notes: [`pipedesign.md`](../../pipedesign.md)
@@ -77,6 +78,7 @@ Copy sells **result** (e.g. close vacancies faster via Meta / WhatsApp / forms �
 
 ## History
 
+- 2026-09-03: Growth `/signup` identity + trial clock owned by [`ADR-041`](ADR-041-verified-self-service-signup.md) (email verify before User/Tenant; company+country on complete; `/app/platform/setup` fallback only). This ADR still owns funnel count and Success Path IA.
 - 2026-07-30: Accepted — three public funnels; Growth Success Path as product layer; legacy entry cleanup normative.
 - 2026-07-30: Clarified activation UX — **guided readiness UI**, not 8-step Setup Wizard ([`self-service-success-path.md`](../journeys/self-service-success-path.md)).
 - 2026-07-30: Phase 4 Wave-2 SEO factory — catalog + `SeoCatalogPage` (8 industry/role/integration pages); Wave-1 hand pages remain.

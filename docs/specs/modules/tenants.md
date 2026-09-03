@@ -162,6 +162,7 @@
 
 ## Business-Type Routing Rule
 
+- Self-service Growth provision (verified email → complete) is [`ADR-041`](../architecture/ADR-041-verified-self-service-signup.md). Trial is `Tenant.status=trial` + `TenantLicense.plan=trial` created at complete, not at email verify. Invite-accept does not mint a tenant or a trial.
 - `tenants.settings.business_type` должен влиять на default workspace routing после signup и company bootstrap.
 - После обязательного шага `/app/onboarding/company` tenant получает business-aware first working route:
   - `agency` -> recruiting-first workspace (`/app/candidates` или `/app/vacancies`)
