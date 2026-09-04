@@ -47,7 +47,10 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
       'utf8',
     )
     expect(src).toContain('putMarketingSourceMapping')
+    expect(src).toContain('postMarketingSourceMappingSampleLatest')
+    expect(src).toContain('postMarketingSourceMappingSampleCaptureNext')
     expect(src).not.toContain('postMarketingSourceRoutingPreview')
+    expect(src).not.toContain('postMarketingSourceSampleFromPayload')
     expect(src).not.toContain('putMetaLeadFormMapping')
     expect(src).not.toContain('putIntakeFormMapping')
   })

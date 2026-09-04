@@ -7,7 +7,7 @@
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (one owner of this write), **INV-01** (one SoT for the operator question), **INV-16** (contract before a second editor). Does not rewrite L0. Does not mint a fourth mapping store or a Field Registry fork.
 
-> This file is the **SoT** for MA-3 product surface: one editor, many entry points, schema-first, human-language health.  
+> This file is the **SoT** for MA-3 product surface: one editor, many entry points, human-language health. Schema remains SoT; sample is not. For Meta, the primary operator setup is Form → test/latest lead → Mapping.  
 > UX contract **Accepted** on [#350](https://github.com/igortatarynovich/HostFlow/pull/350). Feat `feat/mapping-authority-ma3-operator-gate` is **open**. Mapping Operator Gate stays **not PASS** until the close path below is proven. A page that exists is not that proof. MA-4 / External Intake / Forms Publish / Hiring are not this feat.  
 > Binding / option map / evaluator isolation remain [MA-1](mapping-authority-contract.md). One resolver remains [MA-2](mapping-authority-resolution.md).
 
@@ -78,12 +78,29 @@ The operator object is **the source**, not a table of mapping rules and not “M
 
 The operator thinks: “Here is my Meta form. What will HostFlow do with its questions?”
 
+**Schema ≠ sample stays [MA-1](mapping-authority-contract.md).** Schema is the structure SoT. Sample is never the structure SoT. Mapping remains configurable with no lead yet (no-sample is not a dead end).
+
+**Meta operator setup (primary path):** Form → test or latest lead → Mapping. Schema still lists every question so an incomplete sample cannot hide a field.
+
+```text
+Connect Meta → select Page / Form
+  → load form schema (Graph questions)
+  → request or use a test / latest lead
+  → show schema + sample values in one workspace
+  → map fields / options → Ready
+  → canonical projection
+  → another test / real lead → applied evidence
+```
+
+Zapier’s Facebook Lead Ads setup is the UX reference for that Meta path ([sample lead via Facebook testing tool](https://help.zapier.com/hc/en-us/articles/8496061345805-Use-the-Facebook-Lead-Ads-testing-tool-to-create-sample-leads)): Page + Form → test record (`fields` + values) → map. Zapier can show generic placeholders when a new form has no submissions; it recommends a sample lead for real mapping. HostFlow must not copy Zapier’s “test record is the schema.” HostFlow uses **schema + sample together**: eight questions on the form and seven filled in the sample still show the eighth row.
+
 Flow:
 
 1. Pick a source (Meta form, HostFlow Form, import source, …).
-2. HostFlow shows **schema** — real questions and options. Sample / latest lead may sit beside a row as an example (`Последний пример: «Более 8 месяцев»`). Sample is never the structure SoT.
-3. Each question has a simple destination: HostFlow field + status (`Mapped` / `Ignored` / `Unmapped`).
-4. Choice destinations open **option map in-row**. Type is inherited from Field Registry; the operator cannot change it here.
+2. For **Meta**, HostFlow asks for a test or latest application so the operator sees real answers (`Получим пример заявки, чтобы настроить поля`). Schema still loads even if that example is missing.
+3. The workspace shows **source question · example answer · HostFlow field**. Sample sits beside the row (`Последний пример: «Более 8 месяцев»`). Canonical option codes (`GT_8_MONTHS`) are not operator vocabulary.
+4. Each question has a simple destination: HostFlow field + status (`Mapped` / `Ignored` / `Unmapped`).
+5. Choice destinations open **option map in-row**. Type is inherited from Field Registry; the operator cannot change it here.
 
 **Ignored** is always an explicit operator decision. Absence of a destination is `Unmapped`, never implicit Ignore. A new provider question must not appear as unused.
 
@@ -157,19 +174,24 @@ A feat that only surfaces “new field” has not shipped this taxonomy.
 
 ## Product criterion (Mapping Operator Gate)
 
-A person who was never trained on Mapping connects a source, sees its schema, understands where each answer will land, brings the mapping to **ready**, and can explain what the next submission will write — **without** switching between several Settings / admin screens.
+A person who was never trained on Mapping connects a Meta source, sees its questions **with example answers**, understands where each answer will land, brings the mapping to **ready**, and can explain what the next submission will write — **without** switching between several Settings / admin screens.
 
 This untrained-operator criterion is the **acceptance statement** of MA-3. An editor that exists is not enough.
 
-**Close path (must be proven on a real source):**
+**Close path (must be proven on a real Meta source):**
 
 ```text
-source → schema → explicit bindings/options → Ready → projection → real submission → applied evidence
+Connect Meta → select Page/Form → load form schema
+  → request/use test or latest lead → show schema + sample values
+  → map fields/options → Ready → canonical projection
+  → another test/real lead → applied evidence
 ```
 
 plus retirement of write access on leftover mapping surfaces.
 
 Until that path is proven, Mapping Operator Gate is **not PASS** — even if parts of the UI already work.
+
+The shorter line `source → schema → bindings → Ready → projection → submission → applied evidence` is still the architecture. For Meta, “schema” in that line is not “map with no example.” The operator’s primary path includes a test or latest lead as the way to see answers. Schema still guarantees completeness and drift.
 
 “Next submission will write …” is a **projection** produced from the saved Mapping contract + Field Registry metadata. It must use the same resolver/transform contract as ingestion and must not become a separate preview evaluator.
 
@@ -190,7 +212,10 @@ UX contract is **Accepted**. Mapping Operator Gate is **not PASS**. Do not fit t
 This feat must close:
 
 ```text
-source → schema → explicit bindings/options → Ready → projection → real submission → applied evidence
+Connect Meta → select Page/Form → load form schema
+  → request/use test or latest lead → show schema + sample values
+  → map fields/options → Ready → canonical projection
+  → another test/real lead → applied evidence
 ```
 
 and leftover mapping surfaces must cease to be writers.
@@ -200,10 +225,28 @@ Until then, at least these remain open:
 - projection must not use a raw-text fallback;
 - incomplete option map must not produce Ready;
 - Meta Settings and other leftover surfaces must cease to be writers;
-- schema-first mapping must work without a sample;
+- schema-first mapping must still work without a sample (architecture / no-sample semantics); that is not the primary Meta operator setup;
 - preview must use the same resolution/transform contract as ingestion, not a private evaluator.
 
-Schema + no sample + no binding → “Needs a check — 1 question to set” is required no-sample semantics. It is not Operator Gate PASS.
+Schema + no sample + no binding → “Needs a check — 1 question to set” is required no-sample semantics. It is not Operator Gate PASS. For Meta, Operator Gate PASS uses the test/latest-lead close path above.
+
+### Meta test-lead capability (capability check — not Gate PASS)
+
+HostFlow **cannot** mint a Facebook test lead inside the product (no Graph POST to the Lead Ads testing tool). Zapier cannot either: the operator fills the form in [Facebook’s testing tool](https://developers.facebook.com/tools/lead-ads-testing/), then the integration **pulls** the record.
+
+HostFlow **can** already:
+
+| Need | What exists |
+|-------|-------------|
+| Form schema | Graph `GET /{form_id}?fields=questions` (`fetch_leadgen_form`) |
+| Latest Graph lead `field_data` | `GET /{form_id}/leads?fields=id,created_time,field_data,ad_id,form_id` (`fetch_leadgen_form_latest_lead`) |
+| Specific lead `field_data` | Graph `GET /{leadgen_id}?fields=field_data,ad_id,form_id` (webhook enrichment + preview) |
+| Wait for the next webhook lead | Mapping workspace capture-next (C-4 leftover still exists) |
+| Stored HostFlow sample | latest Lead / `last_sample_lead_id` |
+
+`field_data` is Meta’s `[{ "name": "<key>", "values": ["…"] }]`. Graph `questions` carry `key` / `label` (and options when present). Preview already **merges** questions + latest `field_data`, so a missing sample value does not delete a schema question.
+
+Mapping workspace uses this as evidence: Get latest example pulls Graph `field_data` or the latest HostFlow lead; Wait for next application arms capture-next. HostFlow still cannot mint a Facebook test lead. C-4 Test lead remains a leftover diagnostic, not a second mapping authority. This is not Operator Gate PASS.
 
 MA-4 vocabulary cutover, External Intake, Forms Publish, and Hiring E2E are **not** this feat.
 
@@ -270,12 +313,12 @@ MA-3 does not take on missing profile bootstrap for import or forms. That is a l
 
 Minimum workspace:
 
-1. **Source identity** — name, provider, schema identity/version or deterministic schema fingerprint, depending on provider capability. Not “mapping rules admin”.
+1. **Source identity** — form name, provider, schema identity/version or deterministic schema fingerprint, and sample evidence in the same workspace (`N questions · example received …`). Not “mapping rules admin”. Not a C-4 transplant.
 2. **Human summary** — Ready projection, or “N questions to set”, or a specific drift sentence from the taxonomy above.
-3. **Question rows** — source question · HostFlow field (human label) · binding. Sample value optional, secondary. Removed fields stay as historical rows until review.
+3. **Question rows** — source question · example answer (when a test/latest lead exists) · HostFlow field (human label) · binding. Sample is never schema SoT. 8 schema questions + 7 filled sample values remain 8 rows. Removed fields stay as historical rows until review.
 4. **In-row option map** when destination is choice-typed. Incomplete option decisions keep the choice binding not Ready.
 5. **Projection** after save (same resolver/transform contract as ingestion, not a second evaluator); **applied evidence** after a real submission (RS-3 stays the program proof).
-6. **No-sample state** — full schema still listed; copy is “no example answers yet”.
+6. **No-sample state** — full schema still listed; copy is “no example yet”. Actions in this workspace: Get latest example / Wait for next application. For Meta this is a pause to get a test/latest lead, not a dead end and not a licence to treat placeholders as schema. C-4 Test lead is leftover diagnostic, not a second mapping authority.
 7. Entry CTAs from Connect, form, diagnostics, and “1 field is not configured” — all `open` the same editor.
 
 C-5, Meta Field mapping, and Intake form mapping must **cease to be editors**. They may only deep-link/redirect into this workspace or expose narrowly scoped read-only diagnostics where separately owned.
@@ -319,6 +362,9 @@ Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin st
 
 ## History
 
+- 2026-09-04: Mapping workspace shows test/latest-lead evidence in the same scenario (form name · N questions · example received; Get latest example / Wait for next application). Schema remains SoT; sample does not add/drop rows. C-4 is leftover diagnostic, not a second mapping authority. Mapping Operator Gate **not PASS**. Close-path proof remains: map → Ready → projection → second submission → applied evidence. Not MA-4 / External Intake / Forms Publish / Hiring.
+- 2026-09-04: Meta operator setup corrected: Schema remains SoT; sample remains non-authoritative; Meta primary path is Form → test/latest lead → Mapping (schema for completeness/drift). Close path includes test/latest lead + a second lead for applied evidence. HostFlow cannot mint a Facebook test lead; it can pull Graph `questions` + `field_data` and arm capture-next. Mapping Operator Gate **not PASS**. Not MA-1/MA-2 rewrite. Not MA-4 / External Intake / Forms Publish / Hiring.
+- 2026-09-04: Mapping workspace shows source schema identity (native id when the provider has one, otherwise a deterministic schema fingerprint). This is not `mapping_applied_v1` applied-stale and not mapping readiness. Mapping Operator Gate **not PASS**. Close-path proof remains. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-04: Sources / Diagnostics / Test lead open the Mapping workspace with a human CTA from the same assessment (`1 field is not configured` / Check Mapping / Open Mapping). Connect bind already lands in that workspace. Mapping Operator Gate **not PASS**. Not schema identity / close-path proof. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-04: Sources / Diagnostics / Test lead read the canonical mapping assessment (questions to set, named drift, or Ready). Leftover `ready` / `broken` mapping chips are gone; connection / last-error / routing waiting stay operational health, not mapping readiness. Mapping Operator Gate **not PASS**. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-04: Meta form mapping PUT and tenant `field_mapping` PATCH return 410; leftover Meta stores stay read-through. Legacy SPA write clients removed. Intake leftover PUT returns 410. Intake leftover preview over pasted `mapping_rules` is rejected (second algorithm); preview over the saved contract remains a read-only diagnostic. Routing preview is off the operator workspace. Mapping Operator Gate **not PASS**. Leftover writers are not retired as a product claim. Not MA-4 / External Intake / Forms Publish / Hiring.

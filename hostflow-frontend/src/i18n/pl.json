@@ -11637,14 +11637,16 @@
       },
       "mapping": {
         "title": "Mapowanie źródła",
-        "title_named": "Mapping — {name}",
-        "subtitle": "Co HostFlow zrobi z pytaniami tego formularza? Najpierw schema — sample tylko jako przykład.",
+        "title_named": "Formularz: {name}",
+        "subtitle": "Pytania formularza pozostają kompletne, nawet gdy w przykładzie brakuje części odpowiedzi.",
         "errors": {
           "load": "Nie udało się wczytać mapowania źródła",
           "action": "Nie udało się wykonać działania"
         },
         "actions": {
           "test_lead": "Testowy lead",
+          "get_latest": "Pobierz ostatni przykład",
+          "wait_next": "Czekaj na następne zgłoszenie",
           "back": "← Źródła",
           "save": "Zapisz mapowanie",
           "preview_routing": "Uruchom podgląd routingu"
@@ -11655,9 +11657,14 @@
         },
         "sample": {
           "present": "Ostatnie odpowiedzi są przykładami — to nie struktura formularza.",
-          "none": "Nie ma jeszcze przykładowych odpowiedzi. Mapowanie i tak jest możliwe.",
+          "none": "Nie ma jeszcze przykładu w Meta ani w HostFlow. Mapowanie i tak jest możliwe.",
           "none_short": "Brak przykładu",
-          "latest": "Ostatni przykład: {value}"
+          "latest": "przykład: {value}",
+          "headline_received": "{count} pytań · przykład zgłoszenia otrzymano {when}",
+          "headline_none": "{count} pytań · brak przykładu",
+          "waiting": "Czekamy na następne zgłoszenie do {when}",
+          "updated": "Przykład zaktualizowany.",
+          "wait_armed": "HostFlow użyje następnego pasującego zgłoszenia jako przykładu."
         },
         "binding": {
           "mapped": "Mapped",
@@ -11708,7 +11715,11 @@
           "provider": "Dostawca",
           "health": "Mapowanie",
           "destination": "Przeznaczenie",
+          "schema": "Schemat",
           "rules_source": "Źródło reguł"
+        },
+        "schema": {
+          "none": "Brak schematu"
         },
         "table": {
           "provider_field": "Pytanie źródła",

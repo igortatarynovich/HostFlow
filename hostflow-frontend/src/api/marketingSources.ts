@@ -137,6 +137,26 @@ export type MappingDestination = {
   options: Array<{ value: string; label: string }>
 }
 
+export type MappingSchemaIdentity = {
+  kind: string
+  native_id?: string | null
+  fingerprint?: string | null
+  schema_source?: string
+  question_count?: number
+  human: string
+}
+
+export type MappingSampleEvidence = {
+  present: boolean
+  source: string
+  captured_at?: string | null
+  lead_id?: string | null
+  capture_next_until?: string | null
+  question_count?: number
+  filled_count?: number
+  error?: string | null
+}
+
 export type MappingWorkspaceSummary = {
   headline: string
   configured_count: number
@@ -204,6 +224,8 @@ export type MarketingSourceMapping = {
   has_schema?: boolean
   has_sample?: boolean
   schema_fields?: MappingWorkspaceRow[]
+  schema_identity?: MappingSchemaIdentity
+  sample_evidence?: MappingSampleEvidence
   summary?: MappingWorkspaceSummary
   contract_health?: string | null
   destinations?: MappingDestination[]
@@ -278,6 +300,24 @@ export async function getMarketingSourceMapping(
 ): Promise<MarketingSourceMapping> {
   const { data } = await http.get<MarketingSourceMapping>(
     `/platform/marketing/sources/${encodeURIComponent(sourceId)}/mapping`,
+  )
+  return data
+}
+
+export async function postMarketingSourceMappingSampleLatest(
+  sourceId: string,
+): Promise<MarketingSourceMapping> {
+  const { data } = await http.post<MarketingSourceMapping>(
+    `/platform/marketing/sources/${encodeURIComponent(sourceId)}/mapping/sample/latest`,
+  )
+  return data
+}
+
+export async function postMarketingSourceMappingSampleCaptureNext(
+  sourceId: string,
+): Promise<MarketingSourceMapping> {
+  const { data } = await http.post<MarketingSourceMapping>(
+    `/platform/marketing/sources/${encodeURIComponent(sourceId)}/mapping/sample/capture-next`,
   )
   return data
 }

@@ -39,6 +39,7 @@ MAX_PASTE_BYTES = 200_000
 SAMPLE_SOURCE_LEAD = "lead"
 SAMPLE_SOURCE_PASTE = "paste"
 SAMPLE_SOURCE_CAPTURE_NEXT = "capture_next"
+SAMPLE_SOURCE_GRAPH = "graph"
 SAMPLE_SOURCE_NONE = "none"
 
 _EMAIL_RE = re.compile(r"(email|e-mail|mail)", re.I)
@@ -370,24 +371,108 @@ def _sample_response(
     }
 
 
-async def get_source_sample(
+def _previous_field_names(discovery: dict[str, Any]) -> set[str]:
+    return {str(x).lower() for x in (discovery.get("previous_field_names") or []) if str(x).strip()}
+
+
+def _field_names_from_payload(payload: dict[str, Any]) -> set[str]:
+    return {
+        str(f.get("source") or "").lower()
+        for f in extract_source_fields_from_sample(payload)
+        if str(f.get("source") or "").strip()
+    }
+
+
+def persist_sample_on_profile(
+    profile: IntakeSourceProfile,
+    *,
+    payload: dict[str, Any],
+    sample_source: str,
+    lead_id: Optional[str],
+    captured_at: Optional[str],
+    keep_capture_window: bool = True,
+) -> None:
+    discovery = get_discovery_state(profile)
+    previous = _previous_field_names(discovery)
+    next_state: dict[str, Any] = {
+        "sample_payload": dict(payload),
+        "sample_source": sample_source,
+        "sample_lead_id": lead_id,
+        "sample_captured_at": captured_at or _now().isoformat(),
+        "previous_field_names": sorted(previous | _field_names_from_payload(payload)),
+    }
+    if keep_capture_window:
+        until = discovery.get("capture_next_until")
+        armed = discovery.get("capture_next_armed_at")
+        if until:
+            next_state["capture_next_until"] = until
+        if armed:
+            next_state["capture_next_armed_at"] = armed
+    set_discovery_state(profile, next_state)
+
+
+async def _try_graph_latest_payload(
     db: AsyncSession,
     *,
     tenant_id: str,
-    source_id: str,
-) -> dict[str, Any]:
-    profile = await load_source_profile(db, tenant_id=tenant_id, source_id=source_id)
-    bindings = await _bindings_for_profile(db, tenant_id=tenant_id, profile_id=str(profile.id))
-    meta_form_id = resolve_meta_form_id(profile, bindings)
-    mapping_rules = await _mapping_rules_for_source(
-        db, tenant_id=tenant_id, profile=profile, meta_form_id=meta_form_id
+    bindings: list[IntakeSourceBinding],
+    meta_form_id: Optional[str],
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    """Pull Graph latest ``field_data``. Never mints a Facebook test lead."""
+    form_id = str(meta_form_id or "").strip()
+    if not form_id:
+        return None, None
+    from backend.app.acquisition.campaign_source_cards import parse_meta_page_id
+    from backend.app.modules.leads.admin_service import get_page_access_token
+    from backend.app.modules.leads.meta_marketing_graph import fetch_leadgen_form_latest_lead
+
+    page_id: Optional[str] = None
+    for binding in bindings:
+        page_id = parse_meta_page_id(getattr(binding, "external_key_secondary", "") or "")
+        if page_id:
+            break
+    if not page_id:
+        return None, "no_page_token"
+    token = await get_page_access_token(db, tenant_id, page_id)
+    if not token:
+        return None, "no_page_token"
+    try:
+        latest = await fetch_leadgen_form_latest_lead(form_id, token)
+    except Exception as exc:
+        return None, f"graph_error:{exc}"[:180]
+    if not isinstance(latest, dict):
+        return None, "no_graph_lead"
+    field_data = latest.get("field_data")
+    if not isinstance(field_data, list):
+        field_data = []
+    return (
+        {
+            "id": latest.get("id"),
+            "form_id": latest.get("form_id") or form_id,
+            "created_time": latest.get("created_time"),
+            "field_data": field_data,
+        },
+        None,
     )
+
+
+async def resolve_sample_for_profile(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    profile: IntakeSourceProfile,
+    meta_form_id: Optional[str],
+    mapping_rules: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Discovery, then latest HostFlow lead. Graph pull is an explicit refresh."""
     discovery = get_discovery_state(profile)
-    previous = {str(x).lower() for x in (discovery.get("previous_field_names") or []) if str(x).strip()}
+    previous = _previous_field_names(discovery)
 
     capture_until = _parse_iso(discovery.get("capture_next_until"))
     if capture_until is not None and capture_until > _now():
-        armed_at = _parse_iso(discovery.get("capture_next_armed_at")) or (capture_until - CAPTURE_NEXT_TTL)
+        armed_at = _parse_iso(discovery.get("capture_next_armed_at")) or (
+            capture_until - CAPTURE_NEXT_TTL
+        )
         lead = await _latest_lead_for_source(
             db,
             tenant_id=tenant_id,
@@ -396,23 +481,18 @@ async def get_source_sample(
             created_after=armed_at,
         )
         if lead is not None and isinstance(lead.payload, dict):
-            discovery = {
-                "sample_payload": dict(lead.payload),
-                "sample_source": SAMPLE_SOURCE_CAPTURE_NEXT,
-                "sample_lead_id": str(lead.id),
-                "sample_captured_at": _now().isoformat(),
-                "previous_field_names": sorted(
-                    {
-                        str(f.get("source") or "").lower()
-                        for f in extract_source_fields_from_sample(dict(lead.payload))
-                        if str(f.get("source") or "").strip()
-                    }
-                    | previous
-                ),
-            }
-            set_discovery_state(profile, discovery)
+            persist_sample_on_profile(
+                profile,
+                payload=dict(lead.payload),
+                sample_source=SAMPLE_SOURCE_CAPTURE_NEXT,
+                lead_id=str(lead.id),
+                captured_at=_now().isoformat(),
+                keep_capture_window=False,
+            )
             await db.commit()
             await db.refresh(profile)
+            discovery = get_discovery_state(profile)
+            previous = _previous_field_names(discovery)
 
     stored_payload = discovery.get("sample_payload")
     if isinstance(stored_payload, dict) and stored_payload:
@@ -423,7 +503,7 @@ async def get_source_sample(
             mapping_rules=mapping_rules,
             lead_id=str(discovery["sample_lead_id"]) if discovery.get("sample_lead_id") else None,
             captured_at=str(discovery.get("sample_captured_at") or "") or None,
-            capture_next_until=None,
+            capture_next_until=str(discovery.get("capture_next_until") or "") or None,
             previous_field_names=previous,
         )
 
@@ -455,6 +535,75 @@ async def get_source_sample(
         capture_next_until=str(discovery.get("capture_next_until") or "") or None,
         previous_field_names=previous,
     )
+
+
+async def get_source_sample(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    source_id: str,
+) -> dict[str, Any]:
+    profile = await load_source_profile(db, tenant_id=tenant_id, source_id=source_id)
+    bindings = await _bindings_for_profile(db, tenant_id=tenant_id, profile_id=str(profile.id))
+    meta_form_id = resolve_meta_form_id(profile, bindings)
+    mapping_rules = await _mapping_rules_for_source(
+        db, tenant_id=tenant_id, profile=profile, meta_form_id=meta_form_id
+    )
+    return await resolve_sample_for_profile(
+        db,
+        tenant_id=tenant_id,
+        profile=profile,
+        meta_form_id=meta_form_id,
+        mapping_rules=mapping_rules,
+    )
+
+
+async def persist_latest_sample(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    source_id: str,
+) -> dict[str, Any]:
+    """Store Graph latest ``field_data`` or the latest HostFlow lead as mapping evidence."""
+    profile = await load_source_profile(db, tenant_id=tenant_id, source_id=source_id)
+    bindings = await _bindings_for_profile(db, tenant_id=tenant_id, profile_id=str(profile.id))
+    meta_form_id = resolve_meta_form_id(profile, bindings)
+    graph_payload, graph_error = await _try_graph_latest_payload(
+        db, tenant_id=tenant_id, bindings=bindings, meta_form_id=meta_form_id
+    )
+    if graph_payload:
+        captured = str(graph_payload.get("created_time") or "").strip() or _now().isoformat()
+        lead_id = str(graph_payload.get("id") or "").strip() or None
+        persist_sample_on_profile(
+            profile,
+            payload=graph_payload,
+            sample_source=SAMPLE_SOURCE_GRAPH,
+            lead_id=lead_id,
+            captured_at=captured,
+        )
+        await db.commit()
+        await db.refresh(profile)
+        return {"persisted": True, "source": SAMPLE_SOURCE_GRAPH, "error": None}
+
+    lead = await _latest_lead_for_source(
+        db,
+        tenant_id=tenant_id,
+        profile_id=str(profile.id),
+        meta_form_id=meta_form_id,
+    )
+    if lead is not None and isinstance(lead.payload, dict) and lead.payload:
+        persist_sample_on_profile(
+            profile,
+            payload=dict(lead.payload),
+            sample_source=SAMPLE_SOURCE_LEAD,
+            lead_id=str(lead.id),
+            captured_at=lead.created_at.isoformat() if lead.created_at else _now().isoformat(),
+        )
+        await db.commit()
+        await db.refresh(profile)
+        return {"persisted": True, "source": SAMPLE_SOURCE_LEAD, "error": graph_error}
+
+    return {"persisted": False, "source": SAMPLE_SOURCE_NONE, "error": graph_error or "no_sample"}
 
 
 async def store_sample_from_payload(
@@ -591,7 +740,9 @@ __all__ = [
     "get_source_sample",
     "mask_payload_for_ui",
     "mask_sample_value",
+    "persist_latest_sample",
     "preview_source_sample",
+    "resolve_sample_for_profile",
     "set_discovery_state",
     "store_sample_from_payload",
 ]

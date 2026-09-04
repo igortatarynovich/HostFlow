@@ -6,14 +6,15 @@ Does not absorb Sales convert, OCR, or CL6.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+import hashlib
+import json
+from typing import Any, Mapping, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.sources_sample import (
     _publication_config,
-    build_discovered_fields,
-    get_discovery_state,
+    resolve_sample_for_profile,
 )
 from backend.app.field_registry.resolver import list_canonical_fields_for_scope
 
@@ -87,6 +88,67 @@ def coerce_schema_fields(raw: Any) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def fingerprint_schema_fields(fields: Sequence[Mapping[str, Any]] | None) -> str:
+    """Deterministic schema fingerprint — questions, types, options. Not mapping rules."""
+    cleaned: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in fields or []:
+        if not isinstance(raw, Mapping):
+            continue
+        source = str(raw.get("source") or "").strip().lower()
+        if not source or source in seen:
+            continue
+        seen.add(source)
+        options = sorted(
+            {str(opt).strip().lower() for opt in (raw.get("options") or []) if str(opt).strip()}
+        )
+        field_type = str(raw.get("field_type") or raw.get("type") or "").strip().lower()
+        cleaned.append({"source": source, "field_type": field_type, "options": options})
+    cleaned.sort(key=lambda row: str(row["source"]))
+    blob = json.dumps(cleaned, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
+
+
+def build_schema_identity(
+    *,
+    schema_fields: list[dict[str, Any]],
+    schema_source: str,
+    profile: Any,
+    meta_form_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Source schema identity for the operator workspace. Not applied-stale rules."""
+    fingerprint = fingerprint_schema_fields(schema_fields) if schema_fields else None
+    native_id = str(meta_form_id or "").strip() or None
+    kind = "none"
+    if native_id:
+        kind = "meta_form"
+    else:
+        presentation = str(getattr(profile, "presentation_code", None) or "").strip()
+        slug = str(getattr(profile, "public_slug", None) or "").strip()
+        if presentation:
+            native_id = presentation
+            kind = "presentation"
+        elif slug:
+            native_id = slug
+            kind = "form"
+        elif schema_source and schema_source != "none":
+            kind = schema_source
+    if fingerprint and native_id:
+        human = f"{native_id} · {fingerprint}"
+    elif fingerprint:
+        human = fingerprint
+    else:
+        human = "No schema yet"
+    return {
+        "kind": kind,
+        "native_id": native_id,
+        "fingerprint": fingerprint,
+        "schema_source": schema_source,
+        "question_count": len(schema_fields),
+        "human": human,
+    }
 
 
 def _rule_index(rules: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -269,20 +331,35 @@ def _human_summary(
     }
 
 
-def _sample_examples(
+def _sample_by_source(sample: dict[str, Any]) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for raw in sample.get("fields") or []:
+        if not isinstance(raw, dict):
+            continue
+        source = str(raw.get("source") or "").strip().lower()
+        value = str(raw.get("sample_value_masked") or "").strip()
+        if source and value:
+            out[source] = value
+    return out
+
+
+def _sample_evidence(
     *,
-    profile: Any,
-    mapping_rules: list[dict[str, Any]],
-) -> dict[str, str]:
-    discovery = get_discovery_state(profile)
-    payload = discovery.get("sample_payload")
-    if not isinstance(payload, dict) or not payload:
-        return {}
-    fields = build_discovered_fields(raw_payload=payload, mapping_rules=mapping_rules)
+    sample: dict[str, Any],
+    rows: list[dict[str, Any]],
+    error: Optional[str] = None,
+) -> dict[str, Any]:
+    question_count = sum(1 for row in rows if row.get("in_schema"))
+    filled_count = sum(1 for row in rows if str(row.get("sample_example") or "").strip())
     return {
-        f.source.lower(): f.sample_value_masked
-        for f in fields
-        if f.sample_value_masked
+        "present": bool(sample.get("has_sample")),
+        "source": str(sample.get("sample_source") or "none") or "none",
+        "captured_at": sample.get("captured_at"),
+        "lead_id": sample.get("lead_id"),
+        "capture_next_until": sample.get("capture_next_until"),
+        "question_count": question_count,
+        "filled_count": filled_count,
+        "error": error,
     }
 
 
@@ -641,6 +718,7 @@ async def workspace_envelope(
     tenant_id: str,
     profile: Any,
     mapping_rules: list[dict[str, Any]],
+    meta_form_id: Optional[str] = None,
 ) -> dict[str, Any]:
     schema_fields, schema_source, has_schema = await _schema_for_profile(
         db,
@@ -649,7 +727,14 @@ async def workspace_envelope(
         mapping_rules=mapping_rules,
     )
     destinations = await _destinations_for_tenant(db, tenant_id=tenant_id)
-    sample_by_source = _sample_examples(profile=profile, mapping_rules=mapping_rules)
+    sample = await resolve_sample_for_profile(
+        db,
+        tenant_id=str(tenant_id),
+        profile=profile,
+        meta_form_id=meta_form_id,
+        mapping_rules=mapping_rules,
+    )
+    sample_by_source = _sample_by_source(sample)
     rows, summary = build_workspace_rows(
         schema_fields=schema_fields,
         mapping_rules=mapping_rules,
@@ -660,12 +745,19 @@ async def workspace_envelope(
     return {
         "schema_source": schema_source,
         "has_schema": has_schema,
-        "has_sample": bool(sample_by_source),
+        "has_sample": bool(sample.get("has_sample")),
         "schema_fields": rows,
         "summary": summary,
         "contract_health": summary.get("contract_health"),
         "destinations": destinations,
         "projection": build_projection(rows),
+        "schema_identity": build_schema_identity(
+            schema_fields=schema_fields,
+            schema_source=schema_source,
+            profile=profile,
+            meta_form_id=meta_form_id,
+        ),
+        "sample_evidence": _sample_evidence(sample=sample, rows=rows),
     }
 
 
@@ -684,6 +776,8 @@ __all__ = [
     "coerce_schema_fields",
     "set_schema_snapshot",
     "get_schema_snapshot",
+    "fingerprint_schema_fields",
+    "build_schema_identity",
     "assess_mapping",
     "mapping_assessment_for_profile",
     "build_workspace_rows",

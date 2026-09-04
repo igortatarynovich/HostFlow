@@ -27,7 +27,9 @@ from backend.app.acquisition.sources_read import compute_destination
 from backend.app.acquisition.sources_sample import (
     _bindings_for_profile,
     _mapping_rules_for_source,
+    arm_capture_next,
     load_source_profile,
+    persist_latest_sample,
     preview_source_sample,
     resolve_meta_form_id,
 )
@@ -118,6 +120,7 @@ async def get_source_mapping(
         tenant_id=tenant_id,
         profile=profile,
         mapping_rules=effective,
+        meta_form_id=meta_form_id,
     )
     summary = workspace.get("summary") if isinstance(workspace.get("summary"), dict) else {}
     contract_health = str(summary.get("contract_health") or "needs_review")
@@ -147,6 +150,32 @@ async def get_source_mapping(
         **workspace,
         "applied_evidence": applied,
     }
+
+
+async def refresh_source_mapping_sample(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    source_id: str,
+) -> dict[str, Any]:
+    """Pull latest Graph/HostFlow example into the mapping workspace. Does not mint a Meta lead."""
+    meta = await persist_latest_sample(db, tenant_id=tenant_id, source_id=source_id)
+    envelope = await get_source_mapping(db, tenant_id=tenant_id, source_id=source_id)
+    evidence = dict(envelope.get("sample_evidence") or {})
+    if meta.get("error"):
+        evidence["error"] = meta.get("error")
+        envelope["sample_evidence"] = evidence
+    return envelope
+
+
+async def arm_source_mapping_capture_next(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    source_id: str,
+) -> dict[str, Any]:
+    await arm_capture_next(db, tenant_id=tenant_id, source_id=source_id)
+    return await get_source_mapping(db, tenant_id=tenant_id, source_id=source_id)
 
 
 async def _applied_evidence_for_source(

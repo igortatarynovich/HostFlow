@@ -1,18 +1,18 @@
 /**
  * MA-3 Mapping workspace — one editor over IntakeSourceProfile.mapping_rules.
- * Schema-first. Sample is an optional example. C-5 route reused.
+ * Schema-first. Sample is evidence in this scenario, not a second authority.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import {
-  CRM_APP_PATHS,
-  marketingSourceTestLeadPath,
-} from '../../app/crmAppPaths'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
   getMarketingSourceMapping,
   listMarketingSources,
+  postMarketingSourceMappingSampleCaptureNext,
+  postMarketingSourceMappingSampleLatest,
   putMarketingSourceMapping,
   type MappingDestination,
+  type MappingSampleEvidence,
   type MappingWorkspaceRow,
   type MarketingSourceMapping,
   type MarketingSourceMappingRule,
@@ -116,8 +116,46 @@ function destinationFor(
   })
 }
 
+const DATE_LOCALES: Record<string, string> = {
+  en: 'en-GB',
+  ru: 'ru-RU',
+  pl: 'pl-PL',
+}
+
+function formatEvidenceWhen(iso: string | null | undefined, locale: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  try {
+    return new Intl.DateTimeFormat(DATE_LOCALES[locale] || locale, {
+      day: 'numeric',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(d)
+  } catch {
+    return iso
+  }
+}
+
+function sampleHeadline(
+  evidence: MappingSampleEvidence | undefined,
+  questionCount: number,
+  t: (key: string, options?: { values?: Record<string, string | number> }) => string,
+  locale: string,
+): string {
+  const count = evidence?.question_count ?? questionCount
+  const when = formatEvidenceWhen(evidence?.captured_at, locale)
+  if (evidence?.present && when) {
+    return t('app.marketing.mapping.sample.headline_received', {
+      values: { count, when },
+    })
+  }
+  return t('app.marketing.mapping.sample.headline_none', { values: { count } })
+}
+
 export default function MarketingSourceMappingPage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { sourceId = '' } = useParams<{ sourceId: string }>()
 
   const [source, setSource] = useState<MarketingSourceSummary | null>(null)
@@ -163,6 +201,15 @@ export default function MarketingSourceMappingPage() {
       : t('app.marketing.mapping.title')
   }, [mapping?.display_name, source?.display_name, t])
 
+  const headerSubtitle = useMemo(() => {
+    if (!mapping) return t('app.marketing.mapping.subtitle')
+    const questionCount =
+      mapping.sample_evidence?.question_count ??
+      mapping.schema_identity?.question_count ??
+      (mapping.schema_fields || []).filter((row) => row.in_schema).length
+    return sampleHeadline(mapping.sample_evidence, questionCount, t, locale)
+  }, [mapping, t, locale])
+
   async function runAction(fn: () => Promise<void>) {
     setBusy(true)
     setError(null)
@@ -198,16 +245,45 @@ export default function MarketingSourceMappingPage() {
       <PageShellHeader>
         <PageHeader
           title={title}
-          subtitle={t('app.marketing.mapping.subtitle')}
+          subtitle={headerSubtitle}
           actions={
             <div className="flex flex-wrap gap-2">
-              <Link
-                to={marketingSourceTestLeadPath(sourceId)}
+              <button
+                type="button"
                 className="btn-secondary btn-sm"
-                data-testid="marketing-mapping-to-test-lead"
+                disabled={busy || !sourceId}
+                data-testid="marketing-mapping-sample-latest"
+                onClick={() =>
+                  void runAction(async () => {
+                    const saved = await postMarketingSourceMappingSampleLatest(sourceId)
+                    setMapping(saved)
+                    setDrafts(rowsFromWorkspace(saved))
+                    setActionMessage(
+                      saved.has_sample
+                        ? t('app.marketing.mapping.sample.updated')
+                        : t('app.marketing.mapping.sample.none'),
+                    )
+                  })
+                }
               >
-                {t('app.marketing.mapping.actions.test_lead')}
-              </Link>
+                {t('app.marketing.mapping.actions.get_latest')}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={busy || !sourceId}
+                data-testid="marketing-mapping-sample-wait"
+                onClick={() =>
+                  void runAction(async () => {
+                    const saved = await postMarketingSourceMappingSampleCaptureNext(sourceId)
+                    setMapping(saved)
+                    setDrafts(rowsFromWorkspace(saved))
+                    setActionMessage(t('app.marketing.mapping.sample.wait_armed'))
+                  })
+                }
+              >
+                {t('app.marketing.mapping.actions.wait_next')}
+              </button>
               <Link
                 to={CRM_APP_PATHS.marketingSources}
                 className="btn-secondary btn-sm"
@@ -247,11 +323,18 @@ export default function MarketingSourceMappingPage() {
             <p className="text-base font-semibold text-slate-900" data-testid="marketing-mapping-summary-human">
               {mapping.summary?.human || t('app.marketing.mapping.summary.fallback')}
             </p>
-            <p className="mt-1 text-sm text-slate-600">
-              {mapping.has_sample
-                ? t('app.marketing.mapping.sample.present')
-                : t('app.marketing.mapping.sample.none')}
+            <p className="mt-1 text-sm text-slate-600" data-testid="marketing-mapping-sample-note">
+              {t('app.marketing.mapping.subtitle')}
             </p>
+            {mapping.sample_evidence?.capture_next_until ? (
+              <p className="mt-2 text-sm text-slate-700" data-testid="marketing-mapping-sample-waiting">
+                {t('app.marketing.mapping.sample.waiting', {
+                  values: {
+                    when: formatEvidenceWhen(mapping.sample_evidence.capture_next_until, locale),
+                  },
+                })}
+              </p>
+            ) : null}
           </section>
 
           <section
@@ -276,8 +359,10 @@ export default function MarketingSourceMappingPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-slate-500">{t('app.marketing.mapping.fields.rules_source')}</dt>
-                <dd data-testid="marketing-mapping-rules-source">{mapping.rules_source}</dd>
+                <dt className="text-slate-500">{t('app.marketing.mapping.fields.schema')}</dt>
+                <dd className="font-mono text-xs text-slate-800" data-testid="marketing-mapping-schema-identity">
+                  {mapping.schema_identity?.human || t('app.marketing.mapping.schema.none')}
+                </dd>
               </div>
             </dl>
           </section>
@@ -377,7 +462,7 @@ export default function MarketingSourceMappingPage() {
                               </p>
                             ) : null}
                           </td>
-                          <td className="px-3 py-2 align-top text-slate-600">
+                          <td className="px-3 py-2 align-top text-slate-600" data-testid={`marketing-mapping-sample-${row.source}`}>
                             {row.sample_example
                               ? t('app.marketing.mapping.sample.latest', {
                                   values: { value: row.sample_example },

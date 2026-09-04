@@ -11637,14 +11637,16 @@
       },
       "mapping": {
         "title": "Source mapping",
-        "title_named": "Mapping — {name}",
-        "subtitle": "What will HostFlow do with this form’s questions? Schema first — a sample is only an example.",
+        "title_named": "Form: {name}",
+        "subtitle": "The form’s questions stay complete even if an example is missing some answers.",
         "errors": {
           "load": "Failed to load mapping for the source",
           "action": "Failed to run the action"
         },
         "actions": {
           "test_lead": "Test lead",
+          "get_latest": "Get latest example",
+          "wait_next": "Wait for next application",
           "back": "← Sources",
           "save": "Save mapping",
           "preview_routing": "Run routing preview"
@@ -11655,9 +11657,14 @@
         },
         "sample": {
           "present": "Latest answers are shown as examples — they are not the form structure.",
-          "none": "No example answers yet. Mapping is still possible.",
+          "none": "No example on Meta or in HostFlow yet. Mapping is still possible.",
           "none_short": "No example yet",
-          "latest": "Latest example: {value}"
+          "latest": "example: {value}",
+          "headline_received": "{count} questions · example received {when}",
+          "headline_none": "{count} questions · no example yet",
+          "waiting": "Waiting for the next application until {when}",
+          "updated": "Example updated.",
+          "wait_armed": "HostFlow will use the next matching application as the example."
         },
         "binding": {
           "mapped": "Mapped",
@@ -11708,7 +11715,11 @@
           "provider": "Provider",
           "health": "Mapping",
           "destination": "Destination",
+          "schema": "Schema",
           "rules_source": "Rules source"
+        },
+        "schema": {
+          "none": "No schema yet"
         },
         "table": {
           "provider_field": "Source question",

@@ -10,9 +10,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.sources_mapping import (
+    arm_source_mapping_capture_next,
     get_source_mapping,
     preview_source_routing,
     put_source_mapping,
+    refresh_source_mapping_sample,
 )
 from backend.app.acquisition.sources_read import list_marketing_source_summaries
 from backend.app.acquisition.sources_sample import (
@@ -146,6 +148,8 @@ class SourceMappingOut(BaseModel):
     has_schema: bool = False
     has_sample: bool = False
     schema_fields: list[dict[str, Any]] = Field(default_factory=list)
+    schema_identity: dict[str, Any] = Field(default_factory=dict)
+    sample_evidence: dict[str, Any] = Field(default_factory=dict)
     summary: dict[str, Any] = Field(default_factory=dict)
     contract_health: Optional[str] = None
     destinations: list[dict[str, Any]] = Field(default_factory=list)
@@ -267,6 +271,38 @@ async def get_marketing_source_mapping(
 ) -> SourceMappingOut:
     db, tenant_id = db_tenant
     result = await get_source_mapping(db, tenant_id=str(tenant_id), source_id=str(source_id))
+    return SourceMappingOut.model_validate(result)
+
+
+@router.post(
+    "/{source_id}/mapping/sample/latest",
+    response_model=SourceMappingOut,
+    dependencies=_WRITE,
+)
+async def post_marketing_source_mapping_sample_latest(
+    source_id: str,
+    db_tenant: tuple[AsyncSession, str] = Depends(get_db_with_tenant),
+) -> SourceMappingOut:
+    db, tenant_id = db_tenant
+    result = await refresh_source_mapping_sample(
+        db, tenant_id=str(tenant_id), source_id=str(source_id)
+    )
+    return SourceMappingOut.model_validate(result)
+
+
+@router.post(
+    "/{source_id}/mapping/sample/capture-next",
+    response_model=SourceMappingOut,
+    dependencies=_WRITE,
+)
+async def post_marketing_source_mapping_sample_capture_next(
+    source_id: str,
+    db_tenant: tuple[AsyncSession, str] = Depends(get_db_with_tenant),
+) -> SourceMappingOut:
+    db, tenant_id = db_tenant
+    result = await arm_source_mapping_capture_next(
+        db, tenant_id=str(tenant_id), source_id=str(source_id)
+    )
     return SourceMappingOut.model_validate(result)
 
 

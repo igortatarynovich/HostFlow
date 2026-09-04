@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+from datetime import datetime, timezone
 from typing import Any, Dict
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -108,6 +110,7 @@ async def _make_meta_source(
     form_id: str,
     mapping_rules: list[dict[str, Any]] | None = None,
     page_id: str | None = None,
+    name: str | None = None,
 ) -> IntakeSourceProfile:
     await _ensure_tenant(db, tenant_id)
     oc = await _own_company_id(db, tenant_id)
@@ -116,7 +119,7 @@ async def _make_meta_source(
         id=str(uuid4()),
         tenant_id=tenant_id,
         code=f"c5-src-{uuid4().hex[:8]}",
-        name="C5 Meta Source",
+        name=str(name or "C5 Meta Source"),
         provider="meta",
         channel="paid",
         own_company_id=oc,
@@ -314,6 +317,8 @@ async def test_mapping_close_path_ready_projection_then_real_ingest_applied_evid
     workspace = saved.json()
     assert workspace["has_schema"] is True
     assert workspace["summary"]["headline"] == "all_set"
+    assert workspace["schema_identity"]["fingerprint"]
+    assert form_id in (workspace["schema_identity"]["human"] or "")
     assert workspace["summary"]["contract_health"] == "valid"
     assert workspace["applied_evidence"]["present"] is False
     projection_text = " ".join(item["sentence"] for item in workspace["projection"])
@@ -517,6 +522,55 @@ async def test_mapping_workspace_schema_without_sample(
     assert again["has_sample"] is False
     assert len(again["schema_fields"]) == 3
     assert again["schema_fields"][0]["option_map"]["Более 8 месяцев"] == "GT_8_MONTHS"
+    identity = again["schema_identity"]
+    assert identity["fingerprint"]
+    assert identity["fingerprint"] == body["schema_identity"]["fingerprint"]
+    assert identity["native_id"] == form_id
+    assert identity["kind"] == "meta_form"
+    assert identity["human"]
+
+
+def test_schema_fingerprint_is_order_insensitive_and_ignores_labels() -> None:
+    from backend.app.acquisition.mapping_workspace import fingerprint_schema_fields
+
+    first = fingerprint_schema_fields(
+        [
+            {"source": "email", "label": "Email", "options": [], "field_type": "text"},
+            {"source": "licence", "label": "Licence", "options": ["C", "CE"], "field_type": "choice"},
+        ]
+    )
+    second = fingerprint_schema_fields(
+        [
+            {"source": "licence", "label": "Which licence", "options": ["CE", "C"], "field_type": "choice"},
+            {"source": "email", "label": "E-mail", "options": [], "field_type": "text"},
+        ]
+    )
+    assert first == second
+    assert len(first) == 16
+
+
+def test_schema_fingerprint_changes_when_options_change() -> None:
+    from backend.app.acquisition.mapping_workspace import fingerprint_schema_fields
+
+    before = fingerprint_schema_fields(
+        [{"source": "licence", "options": ["C"], "field_type": "choice"}]
+    )
+    after = fingerprint_schema_fields(
+        [{"source": "licence", "options": ["C", "CE"], "field_type": "choice"}]
+    )
+    assert before != after
+
+
+def test_schema_identity_without_fields_is_not_ready_claim() -> None:
+    from backend.app.acquisition.mapping_workspace import build_schema_identity
+
+    identity = build_schema_identity(
+        schema_fields=[],
+        schema_source="none",
+        profile=type("P", (), {"presentation_code": None, "public_slug": None})(),
+    )
+    assert identity["fingerprint"] is None
+    assert identity["human"] == "No schema yet"
 
 
 def test_workspace_rows_do_not_require_sample() -> None:
@@ -799,3 +853,214 @@ def test_option_removed_and_field_added_are_named() -> None:
     assert by_source["new_q"]["drift"] == "field_added"
     assert "new question" in summary["human"].lower() or "form changed" in summary["human"].lower()
     assert summary["headline"] in {"option_drift", "option_removed"}
+
+
+_SCHEMA_EIGHT = [
+    {"source": "licence_category", "label": "Категория прав", "options": ["C+E"]},
+    {"source": "code_95", "label": "Code 95", "options": ["Да", "Нет"]},
+    {"source": "document_validity", "label": "Срок документов", "options": ["Более 8 месяцев"]},
+    {"source": "eu_experience", "label": "Стаж в ЕС"},
+    {"source": "favourite_color", "label": "Любимый цвет"},
+    {"source": "full_name", "label": "Имя"},
+    {"source": "email", "label": "Email"},
+    {"source": "phone_number", "label": "Телефон"},
+]
+
+
+def test_incomplete_sample_does_not_drop_schema_rows() -> None:
+    from backend.app.acquisition.mapping_workspace import build_workspace_rows
+
+    rows, _summary = build_workspace_rows(
+        schema_fields=_SCHEMA_EIGHT,
+        mapping_rules=[],
+        sample_by_source={
+            "licence_category": "C+E",
+            "code_95": "Да",
+            "document_validity": "Более 8 месяцев",
+            "eu_experience": "2",
+            "favourite_color": "blue",
+            "full_name": "A***",
+            "email": "a***@example.com",
+        },
+        destinations=[],
+        has_schema=True,
+    )
+    assert [r["source"] for r in rows] == [f["source"] for f in _SCHEMA_EIGHT]
+    assert sum(1 for r in rows if r["sample_example"]) == 7
+    assert rows[-1]["source"] == "phone_number"
+    assert rows[-1]["sample_example"] is None
+
+
+def _seven_field_payload(form_id: str) -> dict[str, Any]:
+    return {
+        "form_id": form_id,
+        "field_data": [
+            {"name": "licence_category", "values": ["C+E"]},
+            {"name": "code_95", "values": ["Да"]},
+            {"name": "document_validity", "values": ["Более 8 месяцев"]},
+            {"name": "eu_experience", "values": ["2"]},
+            {"name": "favourite_color", "values": ["blue"]},
+            {"name": "full_name", "values": ["Anna Kowalska"]},
+            {"name": "email", "values": ["anna@example.com"]},
+        ],
+    }
+
+
+@pytest.mark.anyio
+async def test_mapping_get_uses_hostflow_lead_examples_without_dropping_schema(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-ma3-sample-{uuid4().hex[:8]}"
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db,
+            tenant_id=DEFAULT_TENANT_ID,
+            form_id=form_id,
+            mapping_rules=[],
+            name="Kierowcy C+E",
+        )
+        source_id = str(profile.id)
+        db.add(
+            Lead(
+                id=str(uuid4()),
+                tenant_id=DEFAULT_TENANT_ID,
+                source="meta",
+                status="new",
+                payload=_seven_field_payload(form_id),
+                normalized={
+                    "form_id": form_id,
+                    "acquisition_routing_v1": {"intake_source_profile_id": source_id},
+                },
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+        await db.commit()
+
+    headers = _headers(manager_headers)
+    put = await client.put(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+        json={"schema_snapshot": {"fields": _SCHEMA_EIGHT}, "mapping_rules": []},
+    )
+    assert put.status_code == 200, put.text
+
+    got = await client.get(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+    )
+    assert got.status_code == 200, got.text
+    body = got.json()
+    assert body["display_name"] == "Kierowcy C+E"
+    assert body["has_schema"] is True
+    assert body["has_sample"] is True
+    assert len(body["schema_fields"]) == 8
+    by_source = {row["source"]: row for row in body["schema_fields"]}
+    assert by_source["licence_category"]["sample_example"]
+    assert by_source["phone_number"]["sample_example"] is None
+    evidence = body["sample_evidence"]
+    assert evidence["present"] is True
+    assert evidence["source"] == "lead"
+    assert evidence["question_count"] == 8
+    assert evidence["filled_count"] == 7
+    assert evidence["captured_at"]
+
+
+@pytest.mark.anyio
+async def test_mapping_latest_and_capture_next_return_workspace(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-ma3-latest-{uuid4().hex[:8]}"
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db, tenant_id=DEFAULT_TENANT_ID, form_id=form_id, mapping_rules=[]
+        )
+        source_id = str(profile.id)
+        db.add(
+            Lead(
+                id=str(uuid4()),
+                tenant_id=DEFAULT_TENANT_ID,
+                source="meta",
+                status="new",
+                payload=_seven_field_payload(form_id),
+                normalized={
+                    "form_id": form_id,
+                    "acquisition_routing_v1": {"intake_source_profile_id": source_id},
+                },
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+        await db.commit()
+
+    headers = _headers(manager_headers)
+    put = await client.put(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+        json={"schema_snapshot": {"fields": _SCHEMA_EIGHT}, "mapping_rules": []},
+    )
+    assert put.status_code == 200, put.text
+
+    latest = await client.post(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping/sample/latest",
+        headers=headers,
+    )
+    assert latest.status_code == 200, latest.text
+    body = latest.json()
+    assert body["source_id"] == source_id
+    assert len(body["schema_fields"]) == 8
+    assert body["sample_evidence"]["present"] is True
+    assert body["sample_evidence"]["source"] in {"lead", "graph"}
+    assert body["sample_evidence"]["filled_count"] == 7
+
+    wait = await client.post(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping/sample/capture-next",
+        headers=headers,
+    )
+    assert wait.status_code == 200, wait.text
+    waiting = wait.json()
+    assert waiting["sample_evidence"]["capture_next_until"]
+    assert len(waiting["schema_fields"]) == 8
+    assert waiting["has_sample"] is True
+
+
+@pytest.mark.anyio
+async def test_mapping_latest_uses_graph_field_data_as_evidence(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-ma3-graph-{uuid4().hex[:8]}"
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db, tenant_id=DEFAULT_TENANT_ID, form_id=form_id, mapping_rules=[]
+        )
+        await db.commit()
+        source_id = str(profile.id)
+
+    headers = _headers(manager_headers)
+    put = await client.put(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+        json={"schema_snapshot": {"fields": _SCHEMA_EIGHT}, "mapping_rules": []},
+    )
+    assert put.status_code == 200, put.text
+
+    graph_payload = {
+        "id": "leadgen-graph-1",
+        "form_id": form_id,
+        "created_time": "2026-09-04T21:18:00+00:00",
+        "field_data": _seven_field_payload(form_id)["field_data"],
+    }
+    with patch(
+        "backend.app.acquisition.sources_sample._try_graph_latest_payload",
+        new=AsyncMock(return_value=(graph_payload, None)),
+    ):
+        latest = await client.post(
+            f"/api/v1/platform/marketing/sources/{source_id}/mapping/sample/latest",
+            headers=headers,
+        )
+    assert latest.status_code == 200, latest.text
+    body = latest.json()
+    assert body["sample_evidence"]["source"] == "graph"
+    assert body["sample_evidence"]["lead_id"] == "leadgen-graph-1"
+    assert len(body["schema_fields"]) == 8
+    by_source = {row["source"]: row for row in body["schema_fields"]}
+    assert by_source["licence_category"]["sample_example"]
+    assert by_source["phone_number"]["sample_example"] is None
