@@ -25,7 +25,6 @@ import {
 import {
   executeWorkspaceCommand,
   listCommunicationThreads,
-  reconcileCommunicationThreadUnread,
   type CommunicationThread,
 } from '../../api/communications'
 import { useToast } from '../Toast'
@@ -39,8 +38,9 @@ import {
 } from '../../utils/notificationPresentation'
 import { useI18n } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
-import { usePendingHandoffsCount } from '../../hooks/usePendingHandoffsCount'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
+import { isTransientRequestError } from '../../utils/errorHandling'
+import { nextPollDelayMs, shouldDeferPollWake } from '../../utils/pollBackoff'
 import { communicationsThreadPath, CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { isPlatformSuperadminRole } from '../../utils/platformSuperadmin'
 import { Modal } from '../Modal'
@@ -58,6 +58,8 @@ type TopbarProps = {
   onLogout: () => void
   onToggleSidebar: () => void
   compact?: boolean
+  /** From AppShell's single usePendingHandoffsCount — do not poll again here. */
+  pendingHandoffsCount?: number
 }
 
 const SEARCH_SHORTCUT_HINT = '\u2318K'
@@ -174,7 +176,14 @@ function formatThreadUnreadBadge(n: number): string {
 // + [Open Notification Center] + [Clear all]. Filtering / sorting / SLA-focus / severity /
 // bulk actions live on the Notification Center page, not in this transient overlay.
 
-export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false }: TopbarProps) {
+export function Topbar({
+  me,
+  tenant,
+  onLogout,
+  onToggleSidebar,
+  compact = false,
+  pendingHandoffsCount = 0,
+}: TopbarProps) {
   const navigate = useNavigate()
   const { can, isClientTenant } = usePermissions()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
@@ -200,7 +209,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const shownNotificationIdsRef = useRef<Set<string>>(new Set())
   const lastUnreadNotificationsRef = useRef<NotificationItem[]>([])
   const menuRef = useRef<HTMLDivElement | null>(null)
-  const pendingHandoffsCount = usePendingHandoffsCount()
   const pendingHandoffsRef = useRef(pendingHandoffsCount)
   pendingHandoffsRef.current = pendingHandoffsCount
   const canSearchTeamReminders = useMemo(() => {
@@ -210,9 +218,11 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     () => canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email'),
     [canUseCommunicationsFeature],
   )
-  const [commPollKey, setCommPollKey] = useState(0)
   const [reminderDuePopup, setReminderDuePopup] = useState<NotificationItem | null>(null)
   const commsForbiddenRef = useRef(false)
+  const pollFailuresRef = useRef(0)
+  const pollInFlightRef = useRef(false)
+  const wakeBellPollRef = useRef<() => void>(() => {})
 
   // Severity / SLA / requires-action ranking used to sort drawer rows; that policy now lives
   // on the Notification Center page (ADR-012). Drawer renders newest-first only — see
@@ -313,7 +323,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   useEffect(() => {
     const onVis = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        setCommPollKey((k) => k + 1)
+        wakeBellPollRef.current()
       }
     }
     document.addEventListener('visibilitychange', onVis)
@@ -321,7 +331,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   }, [])
 
   useEffect(() => {
-    const onCommUnreadSync = () => setCommPollKey((k) => k + 1)
+    const onCommUnreadSync = () => wakeBellPollRef.current()
     window.addEventListener('hf:communications-unread-sync', onCommUnreadSync)
     return () => window.removeEventListener('hf:communications-unread-sync', onCommUnreadSync)
   }, [])
@@ -331,27 +341,37 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     let cancelled = false
     let timeout: number
 
+    const schedule = () => {
+      if (cancelled) return
+      window.clearTimeout(timeout)
+      timeout = window.setTimeout(() => void fetchCount(), nextPollDelayMs(pollFailuresRef.current))
+    }
+
     const fetchCount = async () => {
+      if (cancelled) return
+      if (pollInFlightRef.current) {
+        window.clearTimeout(timeout)
+        timeout = window.setTimeout(() => void fetchCount(), 1_000)
+        return
+      }
+      pollInFlightRef.current = true
       try {
         const canPollComms = canInboxDeepLink && !commsForbiddenRef.current
-        if (canPollComms) {
-          try {
-            await reconcileCommunicationThreadUnread({ limit: 5000 })
-          } catch (err) {
-            if (isHttpForbidden(err)) commsForbiddenRef.current = true
-          }
-        }
         const [notifData, commData] = await Promise.all([
           listNotifications({ includeRead: false, limit: 100, scope: 'direct' }) as Promise<NotificationListResponse>,
-          canPollComms && !commsForbiddenRef.current
+          canPollComms
             ? listCommunicationThreads({ limit: 500 }).catch((err) => {
-                if (isHttpForbidden(err)) commsForbiddenRef.current = true
-                return { items: [], total: 0 }
+                if (isHttpForbidden(err)) {
+                  commsForbiddenRef.current = true
+                  return { items: [], total: 0 }
+                }
+                throw err
               })
             : Promise.resolve({ items: [], total: 0 }),
         ])
         const data = notifData
         if (!cancelled) {
+          pollFailuresRef.current = 0
           const items = Array.isArray(data?.items) ? data.items : []
           lastUnreadNotificationsRef.current = items
           setBellAttentionCount(computeBellAttentionCount(items, pendingHandoffsRef.current))
@@ -391,21 +411,32 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
           }
         }
       } catch (err) {
-        if (!cancelled) console.warn('[Topbar] reminders count failed', err)
-      } finally {
         if (!cancelled) {
-          timeout = window.setTimeout(fetchCount, 60_000)
+          pollFailuresRef.current += 1
+          if (!isTransientRequestError(err)) {
+            console.warn('[Topbar] reminders count failed', err)
+          }
         }
+      } finally {
+        pollInFlightRef.current = false
+        schedule()
       }
     }
 
-    fetchCount()
+    wakeBellPollRef.current = () => {
+      if (shouldDeferPollWake(pollFailuresRef.current, pollInFlightRef.current)) return
+      window.clearTimeout(timeout)
+      void fetchCount()
+    }
+
+    void fetchCount()
 
     return () => {
       cancelled = true
       window.clearTimeout(timeout)
+      wakeBellPollRef.current = () => {}
     }
-  }, [can, canInboxDeepLink, canUseCommunicationsFeature, commPollKey, notify, t])
+  }, [can, canInboxDeepLink, canUseCommunicationsFeature, notify, t])
 
   useEffect(() => {
     setBellAttentionCount(
@@ -523,7 +554,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       setNotifItems((prev) => prev.filter((i) => String(i.id) !== id))
       lastUnreadNotificationsRef.current = lastUnreadNotificationsRef.current.filter((i) => String(i.id) !== id)
       setBellAttentionCount(computeBellAttentionCount(lastUnreadNotificationsRef.current, pendingHandoffsCount))
-      setCommPollKey((k) => k + 1)
+      wakeBellPollRef.current()
     } catch {
       // ignore
     }
@@ -539,7 +570,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
         (i) => !idSet.has(String(i.id)),
       )
       setBellAttentionCount(computeBellAttentionCount(lastUnreadNotificationsRef.current, pendingHandoffsCount))
-      setCommPollKey((k) => k + 1)
+      wakeBellPollRef.current()
     } catch {
       // ignore
     }
@@ -549,7 +580,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     try {
       await executeWorkspaceCommand(threadId, 'MarkThreadRead')
       setPanelThreads((prev) => prev.filter((t) => t.id !== threadId))
-      setCommPollKey((k) => k + 1)
+      wakeBellPollRef.current()
     } catch {
       // ignore
     }
@@ -567,7 +598,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       lastUnreadNotificationsRef.current = []
       setBellAttentionCount(computeBellAttentionCount([], pendingHandoffsCount))
       setBellBadgeCount(0)
-      setCommPollKey((k) => k + 1)
+      wakeBellPollRef.current()
     } catch {
       // ignore
     }
