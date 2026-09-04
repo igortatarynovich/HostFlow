@@ -98,6 +98,36 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     expect(src).not.toContain('marketing-source-test-lead-')
   })
 
+  it('leftover Test lead is a diagnostic fold into Mapping, not a second sample flow', () => {
+    const src = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingSourceTestLeadPage.tsx'),
+      'utf8',
+    )
+    expect(src).toContain('marketing-test-lead-workspace')
+    expect(src).toContain('mappingWorkspaceCta')
+    expect(src).not.toContain('postMarketingSourceCaptureNext')
+    expect(src).not.toContain('postMarketingSourceSampleFromPayload')
+    expect(src).not.toContain('postMarketingSourceSamplePreview')
+  })
+
+  it('Leads inbox and webhook mapping CTAs open Sources, not leftover Meta field mapping', () => {
+    const leads = readFileSync(path.join(ROOT, 'src/pages/LeadsPage.tsx'), 'utf8')
+    const problem = readFileSync(
+      path.join(ROOT, 'src/components/leads/LeadMetaProblemPanel.tsx'),
+      'utf8',
+    )
+    const webhook = readFileSync(
+      path.join(ROOT, 'src/pages/admin/IntegrationsWebhookPage.tsx'),
+      'utf8',
+    )
+    expect(leads).toContain('CRM_APP_PATHS.marketingSources')
+    expect(leads).not.toContain("settingsIntegrationsMeta}?tab=mapping")
+    expect(problem).toContain('CRM_APP_PATHS.marketingSources')
+    expect(problem).not.toContain("settingsIntegrationsMeta}?tab=mapping")
+    expect(webhook).toContain('CRM_APP_PATHS.marketingSources')
+    expect(webhook).toContain('admin.integrations_webhook.mapping_cta')
+  })
+
   it('Connect bind opens Mapping workspace when a source exists', () => {
     const src = readFileSync(
       path.join(ROOT, 'src/pages/marketing/MarketingConnectSourcePage.tsx'),

@@ -15,25 +15,25 @@ describe('C-4 Test lead UI shell', () => {
     expect(marketingSourceTestLeadPath('src-1')).toBe('/app/marketing/sources/src-1/test-lead')
   })
 
-  it('page wires sample / capture-next / preview clients and discovery table', () => {
+  it('page is a leftover diagnostic fold into Mapping, not a second sample/mapping flow', () => {
     const src = readFileSync(
       path.join(ROOT, 'src/pages/marketing/MarketingSourceTestLeadPage.tsx'),
       'utf8',
     )
     expect(src).toContain('getMarketingSourceSample')
-    expect(src).toContain('postMarketingSourceCaptureNext')
-    expect(src).toContain('postMarketingSourceSampleFromPayload')
-    expect(src).toContain('postMarketingSourceSamplePreview')
-    expect(src).toContain('marketing-test-lead-fields-table')
+    expect(src).toContain('marketing-test-lead-workspace')
     expect(src).toContain('marketing-test-lead-continue-mapping')
-    expect(src).toContain('marketing-test-lead-mode-a')
-    expect(src).toContain('marketing-test-lead-mode-b')
-    expect(src).toContain('marketing-test-lead-mode-c')
     expect(src).toContain('mappingAssessmentCopy')
     expect(src).toContain('mappingWorkspaceCta')
+    expect(src).not.toContain('postMarketingSourceCaptureNext')
+    expect(src).not.toContain('postMarketingSourceSampleFromPayload')
+    expect(src).not.toContain('postMarketingSourceSamplePreview')
+    expect(src).not.toContain('marketing-test-lead-fields-table')
+    expect(src).not.toContain('marketing-test-lead-mode-a')
+    expect(src).not.toContain('marketing-test-lead-mode-b')
+    expect(src).not.toContain('marketing-test-lead-mode-c')
     expect(src).not.toContain("app.marketing.sources.health.ready")
     expect(src).not.toContain("app.marketing.sources.health.broken")
-    // C-5 boundary: no mapping_rules persist from this page
     expect(src).not.toContain('putIntakeFormMapping')
     expect(src).not.toContain('mapping_rules:')
   })

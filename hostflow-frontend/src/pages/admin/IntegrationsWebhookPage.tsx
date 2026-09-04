@@ -27,7 +27,7 @@ function isTeamTierPlan(plan: string | null | undefined): boolean {
 }
 
 /**
- * §2.11: generic JSON inbound webhook (Team+). Same field_mapping as Meta — configure on Meta leads admin.
+ * §2.11: generic JSON inbound webhook (Team+). Mapping is edited in Mapping workspace.
  */
 export default function IntegrationsWebhookPage() {
   const { t } = useI18n()
@@ -242,7 +242,7 @@ export default function IntegrationsWebhookPage() {
             </summary>
             <p className="mt-3">{t('admin.integrations_webhook.mapping_hint')}</p>
             <p className="mt-3">
-              <Link to={CRM_APP_PATHS.settingsIntegrationsMeta} className="font-medium text-brand-600 hover:underline">
+              <Link to={CRM_APP_PATHS.marketingSources} className="font-medium text-brand-600 hover:underline">
                 {t('admin.integrations_webhook.mapping_cta')}
               </Link>
             </p>

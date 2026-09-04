@@ -11738,7 +11738,11 @@
       "test_lead": {
         "title": "Test lead & field discovery",
         "title_named": "Test lead — {name}",
-        "subtitle": "Get a sample submission, review fields (masked), and dry-run normalize — without creating a Candidate / Application.",
+        "subtitle": "Example and mapping are set in Mapping. This page does not set mapping.",
+        "workspace": {
+          "body": "Get the latest example, wait for the next application, and map fields in Mapping. This page is a diagnostic, not a second editor.",
+          "open": "Open Mapping"
+        },
         "errors": {
           "load": "Failed to load the sample for the source",
           "action": "Failed to run the action"

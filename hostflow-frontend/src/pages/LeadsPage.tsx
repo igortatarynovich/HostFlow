@@ -2298,7 +2298,7 @@ export default function LeadsPage() {
                     const metaErrorCode = (lead.error ?? '').trim()
                     const leadSuggestion = rowMetaProblem ? getLeadErrorSuggestion(lead.error, t) : null
                     const openCredentialsHref = `${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=credentials`
-                    const openMappingHref = `${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=mapping`
+                    const openMappingHref = CRM_APP_PATHS.marketingSources
                     const openSettingsHref = `${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=settings`
 
                     return (

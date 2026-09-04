@@ -11738,7 +11738,11 @@
       "test_lead": {
         "title": "Testowy lead i odkrywanie pól",
         "title_named": "Testowy lead — {name}",
-        "subtitle": "Pobierz sample submission, przejrzyj pola (z maskowaniem) i wykonaj dry-run normalize — bez tworzenia Candidate / Application.",
+        "subtitle": "Przykład i pola ustawia się w Mapping. Ta strona nie ustawia mapowania.",
+        "workspace": {
+          "body": "Ostatni przykład, oczekiwanie na następne zgłoszenie i mapowanie pól — w Mapping. Ta strona to diagnostyka, nie drugi edytor.",
+          "open": "Otwórz Mapping"
+        },
         "errors": {
           "load": "Nie udało się wczytać sample źródła",
           "action": "Nie udało się wykonać działania"

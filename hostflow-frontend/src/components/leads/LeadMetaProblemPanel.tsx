@@ -147,7 +147,7 @@ export default function LeadMetaProblemPanel({ lead, onRefreshed }: Props) {
   if (!show) return null
 
   const openCredentialsHref = `${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=credentials`
-  const openMappingHref = `${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=mapping`
+  const openMappingHref = CRM_APP_PATHS.marketingSources
   const openSettingsHref = `${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=settings`
 
   return (
