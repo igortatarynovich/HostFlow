@@ -99,6 +99,7 @@ Reject: Documents Admin separate from Rules Admin; Hub packages table; Overlay r
 
 ## History
 
+- 2026-09-04: Mapping Authority Contract Gate **PASS**. Active Product → MA-2 (brief; feat locked).
 - 2026-09-04: RPM program close. Consumer Cutover Gate **PASS** (`918274d1`; remaining live readers load persisted `tenant_delta`). Active Product → MA-1 (brief; feat locked).
 - 2026-09-03: RPM-3B Consumer Parity Gate **PASS**. Surviving consumers read the same R5 required-set. Active Product → Consumer Cutover Gate.
 - 2026-09-03: RPM-3A Parallel Authority Retirement Gate **PASS**. Writes of A / C / J `document_required` retired. Active Product → RPM-3B.

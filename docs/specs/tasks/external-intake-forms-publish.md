@@ -1,6 +1,6 @@
 # External Intake / Forms Publish
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [MA-1](mapping-authority.md)
+**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [MA-2](mapping-authority.md)
 **Phase class:** platform
 **Branch (docs):** `docs/v1-blocker-briefs`
 **Branch (code):** none — later slices `feat/forms-publish-fpN-…`
@@ -12,7 +12,7 @@
 > **Not** P4 Themes. **Not** P5 Analytics. **Not** FormTemplate SoT migration. **Not** a second submit engine. **Not** Mapping Authority (consumed, not rebuilt).
 >
 > **Amended 2026-08-28 (U-2 decision):** accepting [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) *is* in FP-1 scope. v1 does not ship intake acceptance over a `Proposed` contract whose backend already runs.
-> Opening this brief does **not** schedule it. Mapping MA-1 is Active Product; Intake stays behind Mapping close. The queue’s Active Product is [MA-1](mapping-authority.md).
+> Opening this brief does **not** schedule it. Mapping MA-1 Contract Gate is PASS; Active Product is MA-2 (feat locked). Intake stays behind Mapping close. The queue’s Active Product is [MA-2](mapping-authority.md).
 
 ---
 

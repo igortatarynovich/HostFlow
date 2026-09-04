@@ -158,7 +158,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 ### Submission
 
-**Normative:** ADR-021 / ADR-022 / [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)
+**Normative:** ADR-021 / ADR-022 / [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`mapping-authority-contract.md`](mapping-authority-contract.md)
 
 **Purpose.** Универсальная intake-запись и routing envelope до Decision / Business Entity.
 
@@ -654,3 +654,4 @@ Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes`
 - **2026-07-18** — v5 final: **Non-Goals** · Exposes stability · Invariants; L0 **FROZEN**.
 - **2026-08-23** — Observability (Infrastructure) + Shell Diagnostics (Platform); emit vs access; [`ADR-038`](ADR-038-shell-observability-diagnostics.md).
 - **2026-09-03** — User Report Intake (Platform); telemetry ≠ report ≠ incident ≠ work; refs ≠ status; INV-UR-01; runtime not started; [`ADR-040`](ADR-040-user-report-intake.md).
+- **2026-09-04** — Submission Normative pointer to [`mapping-authority-contract.md`](mapping-authority-contract.md) (`mapping_authority.v1` / MA-1). Does not change Catalog shape.

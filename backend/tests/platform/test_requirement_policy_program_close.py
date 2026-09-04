@@ -1,6 +1,7 @@
 """Requirement Policy program close / Mapping Authority schedule.
 
-RPM program DONE. Active Product = MA-1 (brief; feat locked).
+RPM program DONE. Mapping Authority Contract Gate PASS.
+Current Active Product = MA-2 (brief; feat locked).
 Does not open Mapping feat. External Intake / Hiring / min HR remain queued.
 """
 
@@ -42,18 +43,21 @@ def test_rpm_program_done_records_outcome_and_delta() -> None:
 
 def test_rpm_close_names_ma1_active_feat_locked() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
-    assert "**Active Product** | **[MA-1](mapping-authority.md)**" in queue
-    assert "Active (Product):** **[MA-1](mapping-authority.md)**" in queue
+    assert "Active Product → **[MA-1](mapping-authority.md)**" in queue
+    assert "**Active Product** | **[MA-2](mapping-authority.md)**" in queue
+    assert "Active (Product):** **[MA-2](mapping-authority.md)**" in queue
     assert "feat locked this PR" in queue
     assert "Active (Product):** **Consumer Cutover Gate" not in queue
     mapping = _MAPPING.read_text(encoding="utf-8")
     assert "**ACTIVE**" in mapping
     assert "MA-1" in mapping
+    assert "MA-2" in mapping
     assert "feat locked" in mapping.lower()
-    assert "Contract Gate not PASS" in mapping or "does **not** mark the Contract Gate PASS" in mapping
+    assert "Mapping Authority Contract Gate" in mapping
+    assert "**PASS**" in mapping
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "mapping-authority.md" in agents
-    assert "MA-1" in agents
+    assert "MA-2" in agents
 
 
 def test_rpm_close_leaves_intake_hiring_hr_queued() -> None:
@@ -63,7 +67,7 @@ def test_rpm_close_leaves_intake_hiring_hr_queued() -> None:
     for text in (hiring, intake, hr):
         assert "**QUEUED**" in text
         assert "not scheduled" in text.lower()
-        assert "MA-1" in text
+        assert "MA-2" in text
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "unlocked, **not** scheduled" in queue or "unlocked, not scheduled" in queue.lower()
     assert "External Intake" in queue
