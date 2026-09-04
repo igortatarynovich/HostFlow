@@ -1,9 +1,9 @@
 # Requirement Policy Management
 
-**Status:** **RPM-1 PASS** · **RPM-2 PASS** · **RPM-3A PASS** — [Requirement Policy Parallel Authority Retirement Gate](#rpm-3a--parallel-authority-retirement-pass). **Active Product = RPM-3B** Consumer parity (feat locked).  
+**Status:** **RPM-1 PASS** · **RPM-2 PASS** · **RPM-3A PASS** · **RPM-3B PASS** — [Requirement Policy Consumer Parity Gate](#rpm-3b--consumer-parity-pass). **Active Product = Consumer Cutover Gate** (feat locked).  
 **Phase class:** platform  
 **Branch (docs):** `feat/requirement-policy-management-rpm3`  
-**Branch (code):** `feat/requirement-policy-management-rpm3` (RPM-3A). RPM-2 ✅ [#342](https://github.com/igortatarynovich/HostFlow/pull/342) / `5196ee64`. RPM-3B feat locked.  
+**Branch (code):** `feat/requirement-policy-management-rpm3` (RPM-3B). RPM-2 ✅ [#342](https://github.com/igortatarynovich/HostFlow/pull/342) / `5196ee64`. Consumer Cutover Gate feat locked.  
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) [#328](https://github.com/igortatarynovich/HostFlow/pull/328) · [Documents Platform E8-eval](documents-platform-e8-eval.md) ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [Requirement Policy Authority](../architecture/requirement-policy-authority.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Reference R5](platform-reference-identity-sot.md) · [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md)
 **Estimate:** 4–6 slices — RPM-1 1 (docs), RPM-2 1–2, RPM-3A 1, RPM-3B 1–2 (1 slice = one docs PR + one feat PR; rolled up in the [queue release horizon](sales-to-comms-sequential-queue.md))
 
@@ -29,7 +29,7 @@ Nine live answerers still reply to “must this candidate provide document type 
 
 ## Internal ladder (this program only)
 
-One Active Product slice at a time. RPM-1 Authority Gate **PASS**. RPM-2 Operator Gate **PASS**. RPM-3A Parallel Authority Retirement Gate **PASS**. **Active = RPM-3B**. Mapping is **not** on this ladder.
+One Active Product slice at a time. RPM-1 Authority Gate **PASS**. RPM-2 Operator Gate **PASS**. RPM-3A Parallel Authority Retirement Gate **PASS**. RPM-3B Consumer Parity Gate **PASS**. **Active = Consumer Cutover Gate**. Mapping is **not** on this ladder.
 
 ```text
 RPM-1 Authority contract
@@ -45,7 +45,7 @@ RPM-1 Authority contract
 | **RPM-1** | Authority contract | `rpm-authority` | **Requirement Policy Authority Gate** ✅ — one operator question; one write authority; nine answerers classified (write / consume / leftover / not-this-write). SoT: [requirement-policy-authority.md](../architecture/requirement-policy-authority.md) (`requirement_policy_authority.v1`). Docs + contract | E8-eval Gate ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328) | RPM-2 |
 | **RPM-2** | Operator overlay | `rpm-operator` | **Requirement Policy Operator Gate** ✅ — one job UI: base rule, override, reason, result; writes the RPM-1 authority; Documents domain first | **Requirement Policy Authority Gate** | RPM-3A |
 | **RPM-3A** | Parallel authority retirement | `rpm-cutover-writers` | **Requirement Policy Parallel Authority Retirement Gate** ✅ — A `document_policies`, C leftover ruleset writes, J P3B `document_required` only | **Requirement Policy Operator Gate** | RPM-3B |
-| **RPM-3B** | Consumer parity | `rpm-cutover-consumers` | **Requirement Policy Consumer Parity Gate** — remaining consumers’ **policy answer** matches R5 required-set (base / require X / remove X); Overlay confirm; R5 remains sole write | **Requirement Policy Parallel Authority Retirement Gate** | Consumer Cutover Gate |
+| **RPM-3B** | Consumer parity | `rpm-cutover-consumers` | **Requirement Policy Consumer Parity Gate** ✅ — remaining consumers’ **policy answer** matches R5 required-set (base / require X / remove X); Overlay confirm; R5 remains sole write | **Requirement Policy Parallel Authority Retirement Gate** | Consumer Cutover Gate |
 | **RPM-3 close** | Consumer cutover close | `rpm-cutover` | **Requirement Policy Consumer Cutover Gate** — 3A ∧ 3B PASS; no live independent “need X?” answerer; D4 result matches operator write; stage/transfer do not contradict | RPM-3A Gate ∧ RPM-3B Gate | RPM program close. Hiring E2E **unlocked, not scheduled** |
 
 Unlock ≠ schedule. Closing RPM does **not** auto-start Mapping or Hiring.
@@ -139,7 +139,7 @@ Out: a second store; a second evaluator; a parallel rules JSON; a second editor;
 
 ---
 
-## RPM-3 — Consumer cutover (ladder; **Active = RPM-3B**)
+## RPM-3 — Consumer cutover (ladder; **Active = Consumer Cutover Gate**)
 
 **Entry:** RPM-1 Authority Gate PASS · RPM-2 Operator Gate PASS.  
 **SoT rows:** the frozen nine-row table in [requirement-policy-authority.md](../architecture/requirement-policy-authority.md). Do not add a tenth write.  
@@ -190,19 +190,38 @@ X = fixed canonical code (e.g. `adr_certificate` / `passport`).
 
 **Runtime:** 410 on `document-policies` writes; 410 on ruleset create/activate/rollback/PATCH (GET history kept); P3B create rejects `document_required` and `apply_tenant_overrides` filters it out.
 
-**Residual (does not reopen 3A):** frozen `document_ruleset_versions.json_data` may still be *read* by legacy hiring/owner_summary paths until **RPM-3B** stops using it as required-set SoT. 3A closed the admin write path.
+**Residual (does not reopen 3A):** frozen `document_ruleset_versions.json_data` may still exist as historical storage. RPM-3B **PASS** stopped using it as required-set SoT.
 
-### RPM-3B — Consumer parity (**Active**; feat locked)
+### RPM-3B — Consumer parity (**PASS**)
 
-**Rows:** B · D · E · F · G; confirm H · I.  
+**Rows:** B · D · E · F · G; confirm H · I; residual A/C reads.  
 **Depends on:** RPM-3A Gate PASS.  
-**Named gate:** Requirement Policy Consumer Parity Gate.  
-**This PR does not start RPM-3B.**  
-**PASS when:** each consume/retire-as-answerer/contract row meets the matrix proof; policy-answer parity where required; Overlay confirm; no new write.
+**Named gate:** Requirement Policy Consumer Parity Gate (`requirement_policy_consumer_parity.v1`).  
+**Named CI:** `backend/tests/platform/test_requirement_policy_consumer_parity_gate.py`.
 
-### Requirement Policy Consumer Cutover Gate
+**Outcome:** **PASS**.
 
-**Depends on:** RPM-3A Gate ∧ RPM-3B Gate. Closes the RPM-3 program ladder. Hiring E2E unlocked, **not** scheduled.
+Proof chain: same pack + same `tenant_delta` → R5 resolved policy → each surviving consumer → identical required-set membership under **base-only** / **require X** / **remove X** (`adr_certificate` / `passport`).
+
+| Row | Classification | Policy answer |
+|-----|----------------|---------------|
+| A remaining reads | **consume** | Applicability resolver stamps `required` from R5; DocumentPolicy `document_type_id` rows no longer answer “need X?” |
+| B Hiring | **consume** | owner_summary required-set is R5 even when leftover ruleset JSON is passed; FE stage gates do not invent types |
+| C leftover ruleset reads | **consume** | `json_data` is not required-set SoT |
+| D `document_applicability_policy` | **leftover-out-of-scope** | visa / attestation / permit-type booleans are not the operator question; packs no longer use this as required-set |
+| E Transfer | **consume** | candidate-required ≡ R5; pack extras labelled `transfer_operation_documents` |
+| F Hub packs | **consume** | grouping ∩ R5; never invent X |
+| G Engine | **consume** | `document_required` input from R5 (`source_ref = r5_merge_pack_tenant_delta`) |
+| H Overlay | **already-parity** | still rejects R5 fork keys |
+| I R5 merge + overlay store | **already-parity** | sole write; no second merge |
+| `requirement_checker` GateCode path | **leftover-out-of-scope** | requirement_code gates, not document-type X |
+| `documents.py` ETA legacy codes | **leftover-out-of-scope** | `visa_D` / `prawo_jazdy` SLA helper, not canonical operator-question SoT |
+
+**Does not:** restore retired writers; rewrite Overlay; mix a new evaluator/merge; touch `field_required`; open Mapping; close the RPM program (that is the Consumer Cutover Gate).
+
+### Requirement Policy Consumer Cutover Gate (**Active**; feat locked)
+
+**Depends on:** RPM-3A Gate ∧ RPM-3B Gate. Closes the RPM-3 program ladder. Hiring E2E unlocked, **not** scheduled. This PR does not start the cutover close.
 
 Out: Hiring E2E as a walk of `stage → eligibility → transfer` (that is the next DAG node after RPM **program** close). Out: Mapping Authority. Out: reopening RPM-2. Out: retiring all of P3B. Out: forcing Overlay into R5. Out: treating Hub catalog as policy.
 
@@ -224,9 +243,9 @@ Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ sch
 **Depends on:** E8-eval Gate ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · DAG dependency-position [#328](https://github.com/igortatarynovich/HostFlow/pull/328)  
 **RPM-1:** **PASS** (Authority Gate).  
 **RPM-2:** **PASS** (Operator Gate; `tenant_document_policy_deltas`; GET `resolved_policy`; D4 loads persisted delta) [#342](https://github.com/igortatarynovich/HostFlow/pull/342) / `5196ee64`.  
-**Active:** **RPM-3B** (consumer parity; feat locked).  
-**Queued inside this program:** Consumer Cutover Gate after 3B Gate PASS → program close.  
-**Does not:** schedule Mapping; mint RPM → Mapping as an acceptance edge; start Hiring E2E / Intake / min HR; invent CL8; mint a packages table; rewrite Overlay / CL7 / DR1 / E8-eval / R5; mark Foundation ✅; open intake qualification as a second RPM-1 question; fold `lead_criteria_v1` into the nine-row table; retire all of P3B; start RPM-3B consumer parity in this 3A feat
+**Active:** **Consumer Cutover Gate** (feat locked).  
+**Queued inside this program:** RPM program close after Consumer Cutover Gate PASS. Hiring E2E unlocked, **not** scheduled.  
+**Does not:** schedule Mapping; mint RPM → Mapping as an acceptance edge; start Hiring E2E / Intake / min HR; invent CL8; mint a packages table; rewrite Overlay / CL7 / DR1 / E8-eval / R5; mark Foundation ✅; open intake qualification as a second RPM-1 question; fold `lead_criteria_v1` into the nine-row table; retire all of P3B; close the RPM program in this 3B feat
 
 ---
 
@@ -243,7 +262,7 @@ Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ sch
 
 ## History
 
-- 2026-09-03: **RPM-3A Parallel Authority Retirement feat PASS.** 410 on `document_policies` and leftover ruleset writes; P3B `document_required` inert; `field_required` kept. Active Product → **RPM-3B** (feat locked). Mapping / Hiring E2E not auto-scheduled. Not CL8. Foundation stays 🔄.
+- 2026-09-03: **RPM-3B Consumer Parity feat PASS.** Surviving consumers read the same R5 required-set (base / require X / remove X). Active Product → **Consumer Cutover Gate** (feat locked). Mapping / Hiring E2E not auto-scheduled. Not CL8. Foundation stays 🔄.
 - 2026-09-03: **RPM-3A docs lock.** Internal ladder RPM-3A → RPM-3B → Consumer Cutover Gate (one Active slice). Cutover matrix accepted with corrections (E split candidate vs transfer; F retire as answerer/catalog; G Engine contract + R5 document-required input; J cut `document_required` only). Policy-answer parity normative. Active = **RPM-3A**. Feat locked. Mapping / Hiring E2E not auto-scheduled. Not CL8. Foundation stays 🔄.
 - 2026-09-03: RPM-2 Operator Gate **PASS** [#342](https://github.com/igortatarynovich/HostFlow/pull/342) / `5196ee64` — persist R5 `tenant_delta` in `tenant_document_policy_deltas`; GET `resolved_policy` from existing merge; D4 resolve consumes the row. reason is a sibling column.  
 - 2026-09-03: Screening / `lead_criteria_v1` confirmed **not** a tenth RPM-1 write (integration boundary + this gate).  

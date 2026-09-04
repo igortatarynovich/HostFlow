@@ -88,32 +88,28 @@ def build_document_required_rules(
     pack_code: str,
     entity_profile_code: str,
     context: str,
+    tenant_delta: dict[str, Any] | None = None,
+    owner_context: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     ctx = str(context or "readiness").strip().lower()
     if ctx not in DOCUMENT_EVALUATION_CONTEXTS:
         return []
-    pack = get_document_pack_manifest(pack_code)
-    if pack is None:
-        return []
+    from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
+
     rules: list[dict[str, Any]] = []
-    for item in pack.get("required_documents") or []:
-        if not isinstance(item, dict):
-            continue
-        doc_code = str(item.get("document_type_code") or "").strip()
-        if not doc_code:
-            continue
+    for doc_code in sorted(r5_required_set(owner_context, tenant_delta)):
         rules.append(
             {
                 "rule_type": RULE_TYPE_DOCUMENT_REQUIRED,
                 "source": SOURCE_DOCUMENT_PACK,
-                "source_ref": pack_code,
+                "source_ref": "r5_merge_pack_tenant_delta",
                 "target": doc_code,
                 "document_type_code": doc_code,
                 "pack_code": pack_code,
-                "level": str(item.get("level") or "blocking").strip().lower(),
-                "verification": str(item.get("verification") or "optional").strip().lower(),
+                "level": "blocking",
+                "verification": "optional",
                 "context": ctx,
-                "reason_code": str(item.get("reason_code") or f"document_pack_required:{doc_code}"),
+                "reason_code": f"r5_document_required:{doc_code}",
                 "entity_profile_code": entity_profile_code,
             }
         )
@@ -193,8 +189,10 @@ def build_requirement_rule_set(
     stage_code: str | None = None,
     transition_code: str | None = None,
     tenant_overrides: list[dict[str, Any]] | None = None,
+    tenant_delta: dict[str, Any] | None = None,
+    owner_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Compile rules: Entity Profile → Document Pack → Process Profile → Tenant Overrides."""
+    """Compile rules: Entity Profile → R5 document-required → Process Profile → Tenant Overrides."""
     profile_meta = profile_view.get("profile") if isinstance(profile_view.get("profile"), dict) else profile_view
     entity_profile_code = str(
         profile_view.get("profile_code")
@@ -215,6 +213,8 @@ def build_requirement_rule_set(
         pack_code=pack_code,
         entity_profile_code=entity_profile_code,
         context=ctx,
+        tenant_delta=tenant_delta,
+        owner_context=owner_context,
     )
     slot_rules = build_document_slot_required_rules(
         pack_code=pack_code,
@@ -250,6 +250,13 @@ def build_requirement_rule_set(
             }
             | {str(r.get("slot_code") or "") for r in slot_rules},
         )
+        r5_codes = {str(r.get("document_type_code") or "").strip().lower() for r in document_rules}
+        process_rules = [
+            rule
+            for rule in process_rules
+            if str(rule.get("rule_type") or "") != RULE_TYPE_DOCUMENT_REQUIRED
+            or str(rule.get("document_type_code") or "").strip().lower() in r5_codes
+        ]
 
     merged_rules = merge_requirement_rules(field_rules, document_rules, slot_rules, process_rules)
 

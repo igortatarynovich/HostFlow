@@ -188,6 +188,22 @@ async def expected_docs_for_employee(
         if cur is None or incoming > cur:
             policy_level_by_doc[did] = incoming
 
+    from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+    from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
+
+    tenant_delta = await load_persisted_tenant_delta(db, tid)
+    r5 = r5_required_set(
+        {
+            "citizenship": citizenship,
+            "work_country": work_country,
+            "position_category": position_category,
+            "client_id": company_id,
+            "vacancy_id": vacancy_id,
+            "stage": "hr",
+        },
+        tenant_delta,
+    )
+
     out: list[dict[str, Any]] = []
     for did, dt in dt_by_id.items():
         code = _norm(dt.code)
@@ -205,7 +221,7 @@ async def expected_docs_for_employee(
         )
         rule = policy_level_by_doc.get(did, "")
         required_level = rule.split(":", 1)[1] if ":" in rule else "required"
-        blocks = required_level in ("required", "blocking")
+        blocks = code in r5
         renewal_days = int(expiry_rules.get("renewal_window_days") or 30)
         requires_expiry = bool(expiry_rules.get("expiry_required") or expiry_rules.get("has_expiry"))
         default_action = "Request upload" if blocks else "Verify"

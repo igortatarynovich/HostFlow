@@ -101,14 +101,18 @@ def evaluate_requirement_rules(
     transition_code: str | None = None,
     tenant_overrides: list[dict[str, Any]] | None = None,
     candidate_evidence_by_requirement: Optional[dict[str, dict[str, Any]]] = None,
+    tenant_delta: Optional[dict[str, Any]] = None,
+    owner_context: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
-    """Evaluate Entity Profile + Document Pack + Process Profile + Tenant Overrides."""
+    """Evaluate Entity Profile + R5 document-required + Process Profile + Tenant Overrides."""
     rule_set = build_requirement_rule_set(
         profile_view,
         context=context,
         stage_code=stage_code,
         transition_code=transition_code,
         tenant_overrides=tenant_overrides,
+        tenant_delta=tenant_delta,
+        owner_context=owner_context,
     )
     payload = dict(normalized_payload or {})
     doc_list = enrich_documents_via_contract(list(documents or []))

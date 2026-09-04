@@ -9,16 +9,11 @@ from ...services.document_expiry_engine import (
     evaluate_document_expiry,
     owner_expiry_aggregate_to_dict,
 )
-from ...services.document_ruleset import load_default_ruleset
+from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
 from .pack_projection import project_document_packs
 from .reminder_candidate_projection import project_reminder_candidates_from_packs
 from .reminder_work_queue_projection import project_reminder_work_queue, resolve_owner_identity
 from .rules_engine import compute_candidate_checklist, expiring_threshold_for, expiry_required_for
-
-_DEFAULT_RULESET = load_default_ruleset()
-_DEFAULT_CANDIDATE_DEFAULTS = (
-    (_DEFAULT_RULESET.get("candidate") or {}).get("defaults") or {}
-)
 
 READY_STATUSES: Set[str] = {
     DocumentStatus.approved.value,
@@ -126,27 +121,21 @@ def _classify_required_type(statuses: Dict[str, int]) -> Tuple[str, str]:
 
 def _apply_default_checklist(checklist: Dict[str, Any], ruleset: Dict[str, Any]) -> Dict[str, Any]:
     defaults = (ruleset.get("candidate") or {}).get("defaults") or {}
-    fallback = _DEFAULT_CANDIDATE_DEFAULTS
     if not checklist.get("requiredTypes"):
-        checklist["requiredTypes"] = list(
-            defaults.get("requiredTypes")
-            or fallback.get("requiredTypes")
-            or []
-        )
+        checklist["requiredTypes"] = list(defaults.get("requiredTypes") or [])
     if not checklist.get("optionalTypes"):
-        checklist["optionalTypes"] = list(
-            defaults.get("optionalTypes")
-            or fallback.get("optionalTypes")
-            or []
-        )
+        checklist["optionalTypes"] = list(defaults.get("optionalTypes") or [])
     return checklist
 
 
 def compute_owner_summary(
     ctx: Dict[str, Any], ruleset: Dict[str, Any], docs: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
+    delta = ctx.get("tenant_delta") if isinstance(ctx.get("tenant_delta"), dict) else None
+    r5_required = sorted(r5_required_set(ctx, delta))
     checklist = _apply_default_checklist(compute_candidate_checklist(ctx, ruleset), ruleset)
-    required = [_normalize_type_code(item) for item in (checklist.get("requiredTypes", []) or [])]
+    checklist["requiredTypes"] = r5_required
+    required = [_normalize_type_code(item) for item in r5_required]
     required = [item for item in required if item]
 
     # индекс статусов по типам

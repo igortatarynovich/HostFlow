@@ -102,14 +102,10 @@ def test_p3b_document_required_severity_is_inert() -> None:
             }
         ],
     )
-    base_medical = next(
-        row for row in baseline["rules"] if row.get("document_type_code") == "medical_certificate"
-    )
-    medical = next(
-        row for row in rule_set["rules"] if row.get("document_type_code") == "medical_certificate"
-    )
-    assert medical["level"] == base_medical["level"]
-    assert medical["source"] == SOURCE_PROCESS_PROFILE
+    base_codes = {row.get("document_type_code") for row in baseline["rules"]}
+    over_codes = {row.get("document_type_code") for row in rule_set["rules"]}
+    assert "medical_certificate" not in base_codes
+    assert "medical_certificate" not in over_codes
 
 
 def test_p3b_merge_order_excludes_document_required_tenant_override() -> None:

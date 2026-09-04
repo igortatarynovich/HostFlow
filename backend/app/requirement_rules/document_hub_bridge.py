@@ -69,7 +69,13 @@ def apply_hub_requirements_to_checklist(
         for row in hub_section.get("required_documents") or []
         if isinstance(row, dict) and row.get("document_type_code")
     ]
-    merged["requiredTypes"] = required_codes
+    existing = [
+        str(code).strip()
+        for code in (checklist.get("requiredTypes") or [])
+        if str(code).strip()
+    ]
+    # RPM-3B: Hub orchestration must not replace the R5 required-set.
+    merged["requiredTypes"] = existing or required_codes
     merged["source_layer"] = hub_section.get("source_layer") or SOURCE_LAYER
     merged["source_layers"] = list(hub_section.get("source_layers") or [SOURCE_LAYER, RUNTIME_SOURCE_LAYER])
 

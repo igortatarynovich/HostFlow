@@ -136,14 +136,9 @@ def test_rpm3a_brief_and_queue() -> None:
     assert "RPM-3A" in brief and ("PASS" in brief or "✅" in brief)
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "RPM-3B" in queue
-    assert (
-        "Active Product** | **[RPM-3B" in queue
-        or "Active (Product):** **[RPM-3B" in queue
-        or "Active Product = RPM-3B" in brief
-        or "Active = RPM-3B" in brief
-    )
+    assert "Consumer Cutover Gate" in queue or "RPM-3B" in brief
     agents = _AGENTS.read_text(encoding="utf-8")
-    assert "RPM-3B" in agents
+    assert "RPM-3B" in agents or "Consumer Cutover" in agents
 
 
 def test_rpm3a_named_ci_gate() -> None:
