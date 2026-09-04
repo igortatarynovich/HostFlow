@@ -10,7 +10,8 @@
 > This file is the **SoT** for the operator question and the single write of mapping definition.  
 > Field Registry remains destination identity (`qualified_code` + type). Entity Profile remains which codes belong to a role.  
 > ADR-021 remains the intake resolution model. This contract names **who may write** source→canonical placement.  
-> Machine copy: `mapping_authority.v1` in `backend/app/reference/mapping_authority.py`.
+> Machine copy: `mapping_authority.v1` in `backend/app/reference/mapping_authority.py`.  
+> Resolver (MA-2): [`mapping-authority-resolution.md`](mapping-authority-resolution.md) · `resolve_mapping_authority`.
 
 ---
 
@@ -29,15 +30,15 @@ No second question is this contract. Requirement Policy, External Intake publish
 | May write | Must not write |
 |-----------|----------------|
 | `intake_source_profiles.mapping_rules` as the surviving store | A fourth mapping store |
-| MA-2 resolver over **that** store (not started this gate) | `meta_lead_form_mappings.mapping_rules` as a second authority |
+| MA-2 resolver over **that** store (`resolve_mapping_authority`) | `meta_lead_form_mappings.mapping_rules` as a second authority |
 | | `meta_lead_settings.field_mapping` as a second authority |
 | | A Mapping-owned type picker that mints a local dictionary (Rule 1 — Field Registry owns type) |
 | | Provider payload as an evaluation input |
 
 Producer of the current surviving-store write path: `backend/app/entity_profile/mapping_write.py` (`validate_intake_mapping_rules_write`).  
-Today ingest still consults a silent precedence chain. MA-1 **classifies** that chain as leftover. MA-2 removes it so ingest consults exactly one resolver. This contract forbids a second **write** of the same question. It does not collapse the fallback chain (MA-2) and does not ship the one editor (MA-3).
+Ingest consults exactly one resolver: `backend/app/entity_profile/mapping_resolve.py` (`resolve_mapping_authority`). This contract forbids a second **write** of the same question. It does not ship the one editor (MA-3).
 
-The other two stores are **read-through until MA-2**. They must not gain new authority writes.
+The other two stores are **read-through / migrated** ([mapping-authority-resolution.md](mapping-authority-resolution.md)). They must not gain new authority writes.
 
 ---
 
@@ -109,7 +110,7 @@ A later MA slice may **retire** a leftover. It may not add a thirteenth write of
 | 1 | `intake_source_profiles.mapping_rules` | **Write authority** | `backend/app/models/intake_routing.py` · `backend/app/entity_profile/mapping_write.py` |
 | 2 | `meta_lead_form_mappings.mapping_rules` | **Leftover** | `backend/app/models/lead.py` · `backend/app/modules/leads/field_mapping_resolve.py` |
 | 3 | `meta_lead_settings.field_mapping` | **Leftover** | `backend/app/models/lead.py` |
-| 4 | Silent precedence chain (profile → Meta form → tenant default) | **Leftover** | `backend/app/entity_profile/ingest_runtime.py` · `backend/app/modules/leads/field_mapping_resolve.py` |
+| 4 | Silent precedence chain (retired) → one resolver | **Consume** | `backend/app/entity_profile/mapping_resolve.py` |
 | 5 | Meta Leads admin UI | **Leftover** | `hostflow-frontend/src/pages/admin/MetaLeadsAdminPage.tsx` |
 | 6 | C-5 Marketing mapping workspace + Intake form mapping editor | **Consume or fold** into the MA-3 one editor | `hostflow-frontend/src/pages/marketing/MarketingSourceMappingPage.tsx` · `hostflow-frontend/src/components/admin/IntakeFormMappingEditor.tsx` |
 | 7 | `mapping_applied_v1` diagnostics fingerprint | **Consume** (applied-rule evidence, not health SoT) | `backend/app/acquisition/mapping_applied_stamp.py` |
@@ -129,7 +130,7 @@ Roles are closed: `write_authority` · `not_this_write` · `leftover` · `consum
 |---|--------|
 | 1 | **Owner:** Mapping Authority (this contract) writes source→canonical placement. Field Registry owns destination identity and type. Entity Profile owns role membership. Acquisition C-5 is a current editor over the surviving store, not a second authority. |
 | 2 | Not a new capability. Collapses three stores answering the same question. Does not mint a fourth editor or a Zapier product. |
-| 3 | No new adapter this gate. MA-2 is the one resolver. Evaluation stays on canonical facts. |
+| 3 | One resolver: `resolve_mapping_authority` (MA-2). Evaluation stays on canonical facts. |
 | 4 | CL6 stays CL6. Sales convert stays Sales. OCR stays later. Forms answers stay Forms (no domain mapping). No Field Registry fork. |
 | 5 | Settings that edit tenant `field_mapping` or per-form Meta rules are leftover writers, not a second overlay product. |
 | 6 | SoT for the operator question = this file + `mapping_authority.v1`. Parallel leftover writers are classified, not blessed. |
@@ -144,13 +145,13 @@ Roles are closed: `write_authority` · `not_this_write` · `leftover` · `consum
 
 ## False close
 
-Reject: a fourth store; renaming C-5 as “the authority” while Meta admin still writes independently; declaring `qualified_code` canonical while this contract blesses legacy `target` as the write vocabulary; collapsing binding and contract health into one scale; treating mapping drift / Unmapped required as candidate `no_fit`; an evaluator that reads provider payload; absorbing Sales convert, OCR, or CL6; opening Mapping feat / MA-2 runtime in this PR; starting External Intake / Hiring E2E / min HR; Foundation ✅; a thirteenth write of this question.
+Reject: a fourth store; renaming C-5 as “the authority” while Meta admin still writes independently; declaring `qualified_code` canonical while this contract blesses legacy `target` as the write vocabulary; collapsing binding and contract health into one scale; treating mapping drift / Unmapped required as candidate `no_fit`; an evaluator that reads provider payload; absorbing Sales convert, OCR, or CL6; opening MA-3 editor in the Resolution Gate PR; starting External Intake / Hiring E2E / min HR; Foundation ✅; a thirteenth write of this question.
 
 ---
 
 ## Consequences
 
-- MA-2 resolves only this write authority (one store, one resolver). The other two stores are read-through or migrated; the precedence chain is removed, not documented.  
+- MA-2 resolves only this write authority (one store, one resolver). The other two stores are read-through or migrated; the precedence chain is removed. See [mapping-authority-resolution.md](mapping-authority-resolution.md).  
 - MA-3 ships one editor over this authority. Remaining surfaces become views or are retired.  
 - MA-4 makes `qualified_code` the only write vocabulary on the intake path.  
 - RPM / evaluators consume canonical facts only. Mapping uncertainty is never `no_fit`.
@@ -159,4 +160,5 @@ Reject: a fourth store; renaming C-5 as “the authority” while Meta admin sti
 
 ## History
 
+- 2026-09-04: MA-2 Resolution Gate **PASS**. Row 4 retired into the one resolver. Active Product → MA-3 (brief; feat locked).
 - 2026-09-04: Accepted as MA-1 Authority contract. Twelve-row classification frozen. Feat locked until a later MA-2 branch. Active Product → MA-2 (brief; feat locked).

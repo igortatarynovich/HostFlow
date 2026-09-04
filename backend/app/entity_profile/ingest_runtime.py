@@ -15,7 +15,7 @@ from backend.app.entity_profile.mapping_validation import (
     allowed_qualified_codes_from_profile_view,
     validate_mapping_rules_for_profile,
 )
-from backend.app.modules.leads.field_mapping_resolve import resolve_field_mapping_for_ingest
+from backend.app.entity_profile.mapping_resolve import resolve_mapping_authority
 from backend.app.modules.leads.intake_route import IntakeRouteContext, resolve_intake_route_for_ingest
 from backend.app.modules.leads.normalizer import extract_meta_lead_form_context
 
@@ -142,32 +142,17 @@ async def prepare_meta_ingest_runtime(
         vacancy_id=vacancy_id,
     )
 
-    raw_rules = await resolve_field_mapping_for_ingest(
+    resolved = await resolve_mapping_authority(
         db,
         tenant_id=str(tenant_id),
+        intake_source_profile_id=intake_route.intake_source_profile_id,
         payload=raw_payload,
         source=src,
         settings_row=settings_row,
     )
-    rules_source = "meta_form_or_tenant"
-    profile_updated_at: Optional[str] = None
-    if intake_route.intake_source_profile_id:
-        from backend.app.modules.intake_routing import crud as intake_crud
-
-        isp = await intake_crud.get_profile_by_id(
-            db,
-            tenant_id=str(tenant_id),
-            profile_id=str(intake_route.intake_source_profile_id),
-        )
-        if isp is not None:
-            updated = getattr(isp, "updated_at", None)
-            if updated is not None and hasattr(updated, "isoformat"):
-                profile_updated_at = updated.isoformat()
-            source_rules = isp.mapping_rules if isinstance(getattr(isp, "mapping_rules", None), list) else []
-            source_rules = [dict(r) for r in source_rules if isinstance(r, dict)]
-            if source_rules:
-                raw_rules = source_rules
-                rules_source = "profile"
+    raw_rules = list(resolved.rules)
+    rules_source = resolved.rules_source
+    profile_updated_at: Optional[str] = resolved.profile_updated_at
 
     allowed = allowed_qualified_codes_from_profile_view(profile_view)
     validation = validate_mapping_rules_for_profile(

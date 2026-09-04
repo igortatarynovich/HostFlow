@@ -30,7 +30,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **[MA-2](mapping-authority.md)** after Mapping Authority Contract Gate **PASS**. Brief; feat locked this PR. Not Mapping feat. Not External Intake. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
+| **Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. Brief; feat locked this PR. Not Mapping feat. Not External Intake. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
 | **Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` — [brief](platform-reference-identity-sot.md). No named Engineering successor this amendment. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background — **not** Active Engineering |
 | **Launch-ops** | **[Operate & Launch](operate-and-launch.md)** — v1 blocker 6 (brief this amendment; **not scheduled**, no Active Launch-ops slice yet). Write-set: `deploy/`, `docs/runbooks/`, infra defaults, tenant-lifecycle surfaces. Occupies the second-track slot left free by Engineering DONE. Not an SRE programme. Not Billing | Second track, small share of capacity |
 
@@ -46,20 +46,20 @@ Reaching the program horizon of this section is **not** a release. Release-ready
 
 | Role | Value |
 |------|--------|
-| **Active Product** | **[MA-2](mapping-authority.md)** after Mapping Authority Contract Gate **PASS**. Brief; feat locked this PR. External Intake / Hiring / min HR remain queued. |
-| **Queued Product successor** | **MA-3** Operator surface after Mapping Resolution Gate PASS — [brief](mapping-authority.md). Do not start MA-2 feat in this PR. External Intake / Hiring E2E / min HR remain **queued**. Hiring is unlocked by RPM close, **not** scheduled. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
+| **Active Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. Brief; feat locked this PR. External Intake / Hiring / min HR remain queued. |
+| **Queued Product successor** | **MA-4** Consumer cutover after Mapping Operator Gate PASS — [brief](mapping-authority.md). Do not start MA-3 feat in this PR. External Intake / Hiring E2E / min HR remain **queued**. Hiring is unlocked by RPM close, **not** scheduled. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
 | **Active Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` (`ref-id-exit`). No named successor. |
 | **Queued Engineering after Exit** | none this amendment. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
 | **Active Launch-ops** | **[OL-1](operate-and-launch.md) DONE** — [Launch Ownership Gate](../gates/launch-ownership-gate.md) `PASS_WITH_CONSTRAINTS` 2026-08-31. Production target for v1: **one dedicated host, one compose stack**. RR3 / RR4 / RR7 owner: **igortatarynovich** for all three, recorded as a named residual (OL1-C1), not as a solved question |
 | **Queued Launch-ops** | **OL-2** Deploy, migrate & rollback — named successor, **starts in its own PR** (invariant 6), then OL-3…OL-7 — [brief](operate-and-launch.md). The migration blocker is **withdrawn** — measured 2026-08-31, `alembic upgrade heads` applies to a fresh DB in one command ([§ Correction](operate-and-launch.md)). CI has been proving the same on every push (`backend-ci.yml` job `alembic`, green). OL-2 still owns what replaced it: the **written** deploy/migrate procedure RC condition 4 asks for, a fresh instance that starts with no admin user, and a rollback whose first release is a **baseline**, not a predecessor ([OL-2D](operate-launch-ol2d-predecessor.md)) |
-| **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **RPM program = DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). **MA-1 Contract Gate = PASS**. **Product = MA-2** (not a Phase E leftover) |
+| **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **RPM program = DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). **MA-1 Contract Gate = PASS**. **Mapping Resolution Gate = PASS**. **Product = MA-3** (not a Phase E leftover) |
 | **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1) |
 
 Historical markers (A2 active, Meta Intake next, Phase E active = E7 feat) live only in §8 History. They are **not** current execution instructions.
 
 ### Invariants (mandatory)
 
-1. **One Active Product slice**, **or Product DONE with no named successor until amendment**. This amendment names **MA-2** after MA-1 Contract Gate PASS. Unlock ≠ silent schedule of Intake / Hiring. Do not open Mapping feat in this PR.  
+1. **One Active Product slice**, **or Product DONE with no named successor until amendment**. This amendment names **MA-3** after Mapping Resolution Gate PASS. Unlock ≠ silent schedule of Intake / Hiring. Do not open MA-3 editor in this PR.  
 2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor**. After Exit PASS with no successor, Engineering is DONE — do not promote pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) to Active Engineering.  
 3. **Two named tracks maximum.** A track exists only when this section names it with an owner and a write-set; unlocked work never creates a stream by itself. Engineering is **DONE with no successor**, so this amendment assigns the second slot to **Launch-ops** ([Operate & Launch](operate-and-launch.md), v1 blocker 6). Reviving Engineering would require closing or parking Launch-ops first — never three concurrent tracks.  
 4. **Unlock ≠ schedule.** A satisfied unlock condition does **not** auto-start the slice. Only the owning track’s queue may activate it.  
@@ -131,9 +131,9 @@ DR1-runtime  also required  DR1-contract ∧ Reference R5   (PASS [#313](https:/
 | **P-RPM3** | [RPM-3](requirement-policy-management.md) Consumer cutover close | **Requirement Policy Consumer Cutover Gate** ✅ `918274d1` — 3A ∧ 3B PASS; classified consumers read the same merge or are retired; D4 matches operator write | RPM-3A Gate ∧ RPM-3B Gate | RPM program close ✅ |
 | **P-RPM-X** | [RPM](requirement-policy-management.md) program close | **RPM program DONE** — outcome + release delta; four-checks PASS (Documents domain) | Consumer Cutover Gate | MA-1 (this amendment). Hiring E2E unlocked, **not** scheduled |
 | **P-MA1** | [MA-1](mapping-authority.md) Authority contract | **Mapping Authority Contract Gate** ✅ — one operator question; one write; twelve answerers classified; contract shape SoT; no fourth store. SoT: [mapping-authority-contract.md](../architecture/mapping-authority-contract.md). Feat locked. Not Mapping feat. Not Hiring E2E. Not CL8 | RPM program DONE | MA-2 |
-| **P-MA2** | [MA-2](mapping-authority.md) Resolution runtime | **Mapping Resolution Gate** — exactly one store answers “which rule applies?”; precedence chain removed. Brief; feat locked. Gate not PASS | Mapping Authority Contract Gate | MA-3 |
+| **P-MA2** | [MA-2](mapping-authority.md) Resolution runtime | **Mapping Resolution Gate** ✅ — exactly one store answers “which rule applies?”; leftover stores read-through or migrated; precedence chain removed. SoT: [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md) | Mapping Authority Contract Gate | MA-3 |
 
-**Now:** Product **MA-2** (brief; feat locked this PR) after Mapping Authority Contract Gate **PASS**. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping feat. **Not** External Intake. **Not** Hiring E2E. **Not** OCR. Do not invent CL8. Do not mark Foundation ✅.
+**Now:** Product **MA-3** (brief; feat locked this PR) after Mapping Resolution Gate **PASS**. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping feat. **Not** External Intake. **Not** Hiring E2E. **Not** OCR. Do not invent CL8. Do not mark Foundation ✅.
 
 LI-1 is the **only** Lifecycle slice between CL1 and CL2. LI-2…LI-4 stay in [the Lifecycle brief](lifecycle-identity-l0-contract-seal.md) and do not stall Field Composition.
 
@@ -144,7 +144,7 @@ LI-1 is the **only** Lifecycle slice between CL1 and CL2. LI-2…LI-4 stay in [t
 | **E8-bind** | **Reference R3 Gate ∧ Reference R4 Gate ∧ DR1 Runtime Gate** | Product Track; **DONE** — Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` after DR1 Runtime Gate PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313) | remaining consumers bind to **canonical** document types; display/select canonical types; identity migration. **Not** required/optional, applicability, candidate evaluation, packages, OCR↔requirement matching |
 | **E8-eval** | **Reference R5 Gate ∧ E8-bind Gate** | Product Track; **DONE** — Gate PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` after E8-bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` and queue amendment [#323](https://github.com/igortatarynovich/HostFlow/pull/323). Unlock was not auto-start | required/optional; applicability; candidate requirement evaluation from R5 merge. Consume existing packs as policy input. **Not** OCR product; **not** a packages Hub table |
 
-E8-eval brief + feat **closed**. RPM program **DONE**. Unlock does not schedule OCR / CL8 / Foundation. Mapping feat stays locked this amendment.
+E8-eval brief + feat **closed**. RPM program **DONE**. Mapping Resolution Gate **PASS**. Unlock does not schedule OCR / CL8 / Foundation. MA-3 editor stays locked this amendment.
 
 ### Join graph (checkable)
 
@@ -154,20 +154,20 @@ Engineering:
             → (r2 ∧ r4) → ref-id-r5 → ref-id-exit
 
 Product:
-  CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → CL5 → CL6 → CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2 → RPM-3A → RPM-3B → rpm-cutover → RPM program close → MA-1 → MA-2
+  CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → CL5 → CL6 → CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2 → RPM-3A → RPM-3B → rpm-cutover → RPM program close → MA-1 → MA-2 → MA-3
   DR1-runtime also: DR1-contract ∧ ref-id-r5 (PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313))
 
 Documents:
   r3 ∧ r4 ∧ DR1-runtime → E8-bind   PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`
   r5 ∧ E8-bind → E8-eval   PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`
-  E8-eval ∧ DAG review [#328] → RPM-1 → … → RPM program close → MA-1 → MA-2   (this amendment)
+  E8-eval ∧ DAG review [#328] → RPM-1 → … → RPM program close → MA-1 → MA-2 → MA-3   (this amendment)
 ```
 
 Program horizon of this amendment: **MA-4** (Mapping Authority program close). RPM program is **DONE**. Hiring E2E is unlocked, **not** scheduled. External Intake stays behind Mapping. Do not invent CL8. Do not auto-start OCR. Do not mark Foundation ✅.
 
 ### v1 blocker programs beyond this horizon (briefed, not scheduled)
 
-Mapping Authority is **no longer in this table** — MA-2 is Active Product (brief; feat locked). A brief is **not** a schedule for the rows below: they exist so the release distance is countable. Activation still requires a queue amendment, one Active Product slice at a time.
+Mapping Authority is **no longer in this table** — MA-3 is Active Product (brief; feat locked). A brief is **not** a schedule for the rows below: they exist so the release distance is countable. Activation still requires a queue amendment, one Active Product slice at a time.
 
 | Program | Brief | Internal slices | Estimate | Startable after |
 |---------|-------|-----------------|----------|-----------------|
@@ -205,6 +205,8 @@ Computed from 2026-09-04 over **33–48** serialized-equivalent slices, adding a
 
 **What can move these dates.** § D4 of the [unowned work register](../gates/v1-unowned-work-register.md) is empty, so nothing blocks gate entry today, but a new U-row may be opened at any time and would; RC condition 4 is half-satisfied rather than blocked — the fresh-database migration failure was measured false on 2026-08-31 and CI already proves the migration half on every push ([§ Correction](operate-and-launch.md)), so what OL-2 still owes is the documented procedure and a first-admin path; and the acceptance windows assume a non-developer operator is available, which is a staffing input, not an engineering one. A date quoted without this section behind it is not a release date.
 
+**Mapping Resolution Gate PASS 2026-09-04.** Mapping remaining path is MA-3…MA-4. Serialized-equivalent stays **33–48** (no RC recut this amendment). Active Product → **MA-3** (brief; feat locked).
+
 **MA-1 Contract Gate PASS 2026-09-04.** Mapping remaining path is MA-2…MA-4. Serialized-equivalent stays **33–48** (no RC recut this amendment). Active Product → **MA-2** (brief; feat locked).
 
 **Moved −3–5 slices on 2026-09-04 after RPM program close.** RPM 3–5 remaining slices leave the Product critical path. Mapping 4–6 remains. Serialized-equivalent **33–48**. RC band 2026-10-07 … 2026-10-22 under S2. Active Product → **MA-1** (brief; feat locked).
@@ -237,7 +239,7 @@ Computed from 2026-09-04 over **33–48** serialized-equivalent slices, adding a
 
 A reader who has only this section can answer every item **yes**:
 
-1. Exactly one **Active Product** slice, **or Product DONE with no named successor until amendment** (now: MA-2; brief; feat locked this PR).  
+1. Exactly one **Active Product** slice, **or Product DONE with no named successor until amendment** (now: MA-3; brief; feat locked this PR).  
 2. Exactly one **Active Engineering** slice, **or** the named fan-out `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor** — never a third concurrent Engineering slice. Pytest is not Active Engineering.  
 3. Every queued slice has a named predecessor.  
 4. Every slice has an owner track. Unlocked work is not a third track.  
@@ -304,7 +306,7 @@ A reader who has only this section can answer every item **yes**:
 - **DR1-contract** ← **PASS** [#302](https://github.com/igortatarynovich/HostFlow/pull/302) — [brief](engine-document-request-dr1-contract.md). **DR1-runtime** ← **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313)
 - **Documents E8-eval** ← **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — [brief](documents-platform-e8-eval.md); required / optional / applicability from R5 merge. Not OCR. Not CL8. Not mass D3–D9 bind. Successor = RPM program **DONE**.
 - **Requirement Policy Management** ← **DONE** — RPM-1…3B PASS · Consumer Cutover Gate **PASS** `918274d1` · program close this amendment — [brief](requirement-policy-management.md). Hiring E2E unlocked, **not** scheduled. Not CL8.
-- **Mapping Authority** ← **Active = MA-2** (brief; feat locked this PR) — [brief](mapping-authority.md). MA-1 Contract Gate **PASS**. Feat not opened. External Intake / Hiring / min HR remain queued.
+- **Mapping Authority** ← **Active = MA-3** (brief; feat locked this PR) — [brief](mapping-authority.md). Mapping Resolution Gate **PASS**. MA-1 Contract Gate **PASS**. MA-3 editor not opened. External Intake / Hiring / min HR remain queued.
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -388,10 +390,11 @@ A reader who has only this section can answer every item **yes**:
 | **45g** | **RPM-3** Consumer cutover close | [brief](requirement-policy-management.md) | after RPM-3A ∧ RPM-3B; **PASS** `918274d1` |
 | **45h** | **RPM program close** | [brief](requirement-policy-management.md) | **DONE** this amendment — outcome + release delta |
 | **46** | **MA-1** Authority contract | [brief](mapping-authority.md) · [authority SoT](../architecture/mapping-authority-contract.md) | after RPM program close; **PASS** |
-| **46a** | **MA-2** Resolution runtime | [brief](mapping-authority.md) | after MA-1 Contract Gate; **Active** (brief; feat locked); Resolution Gate not PASS |
+| **46a** | **MA-2** Resolution runtime | [brief](mapping-authority.md) · [resolution SoT](../architecture/mapping-authority-resolution.md) | after MA-1 Contract Gate; **PASS** |
+| **46b** | **MA-3** Operator surface | [brief](mapping-authority.md) | after Mapping Resolution Gate; **Active** (brief; feat locked); Operator Gate not PASS |
 
 **C0–C2.3** ✅. **C2.4 frozen (Epic C residual R1).** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** **[MA-2](mapping-authority.md)** (brief; feat locked this PR) after Mapping Authority Contract Gate **PASS**. E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping feat. **Not** External Intake. **Not** Hiring E2E. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
+**Active (Product):** **[MA-3](mapping-authority.md)** (brief; feat locked this PR) after Mapping Resolution Gate **PASS**. E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping feat. **Not** External Intake. **Not** Hiring E2E. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
 **Active (Engineering):** **DONE** — Reference Program Exit Gate PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. No named successor. Legacy full-repo pytest does **not** become Active Engineering.
 
 ---
@@ -525,7 +528,7 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 ### CL1+ — Entity Field Composition remainder ← **CL0–CL7 / Overlay PASS**
 
-After CL0: **CL1 → LI-1 → DR1-contract → CL2…CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2 → RPM-3A → RPM-3B → Consumer Cutover Gate → RPM program close → MA-1**. CL1 observes live codes; it does **not** canonize country or document-type identity. **DR1-contract** is not a Field Composition slice. **DR1-runtime** is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-bind** is **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. **E8-eval** is **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **RPM program DONE**. **MA-1 Contract Gate PASS**. Product = **[MA-2](mapping-authority.md)** (brief; feat locked this PR). **CL7** is Engine evaluation, not Engine→Request. Vacancy Overlay leftover of the original CL0 chain is **PASS** — **not** CL8.
+After CL0: **CL1 → LI-1 → DR1-contract → CL2…CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2 → RPM-3A → RPM-3B → Consumer Cutover Gate → RPM program close → MA-1**. CL1 observes live codes; it does **not** canonize country or document-type identity. **DR1-contract** is not a Field Composition slice. **DR1-runtime** is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-bind** is **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. **E8-eval** is **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **RPM program DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. Product = **[MA-3](mapping-authority.md)** (brief; feat locked this PR). **CL7** is Engine evaluation, not Engine→Request. Vacancy Overlay leftover of the original CL0 chain is **PASS** — **not** CL8.
 
 ### Lifecycle Identity — LI-1 after CL1 (docs sealed; feat locked until CL1 Gate)
 
@@ -610,8 +613,8 @@ Next branch only after:
 **Do not** give one named slice two independent unlock conditions — split it.  
 **Do not** run a third concurrent Engineering slice. Fan-out is only `{Reference R2, Reference R3}` after Reference R1 Gate; then collapse.  
 **Do not** activate Reference R5 while Reference R2 is still open.  
-**Do not** park later Product on Engineering DONE. Product is **MA-2** after MA-1 Contract Gate PASS (brief; feat locked this PR).  
-**Do not** auto-start External Intake / Hiring E2E / min HR because Mapping is Active. Hiring is unlocked by RPM close — unlock ≠ schedule. Do not open Mapping feat in this PR.  
+**Do not** park later Product on Engineering DONE. Product is **MA-3** after Mapping Resolution Gate PASS (brief; feat locked this PR).  
+**Do not** auto-start External Intake / Hiring E2E / min HR because Mapping is Active. Hiring is unlocked by RPM close — unlock ≠ schedule. Do not open MA-3 editor in this PR.  
 **Do not** auto-start OCR / packages product / CL8 / ADR-019 automation plane / tenant extension marketplace / Billing product / AI. v1 blockers live in the [Release Goal](../gates/hostflow-v1-release-goal.md); unlock ≠ schedule.  
 **Do not** start full Lifecycle / Funnel UI cutover as LI-1.  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
@@ -622,12 +625,13 @@ Next branch only after:
 **Do** require `**Phase class:** platform` + [Original Goal → Completion Proof](../gates/goal-completion-gate.md) on every new platform phase brief (problem to permanently remove + named consumer — not a deliverables list).  
 **Do** apply [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) for in-scope vs later; every program close writes **program outcome** and **release delta**.  
 **Do** route any “are we ready to launch?” claim to the [Release Readiness Gate](../gates/release-readiness-gate.md) — an empty queue, a closed program, or a green named gate is **not** release-ready.  
-**Do** amend this queue when switching Product Active (this revision: live = **MA-2**; brief; feat locked this PR; MA-1 Contract Gate PASS).
+**Do** amend this queue when switching Product Active (this revision: live = **MA-3**; brief; feat locked this PR; Mapping Resolution Gate PASS).
 
 ---
 
 ## 8. History
 
+- 2026-09-04: **Mapping Resolution Gate PASS.** One resolver (`resolve_mapping_authority`) over `intake_source_profiles.mapping_rules`. Leftover Meta stores read-through / migrated. Precedence chain removed. SoT: [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md). Active Product → **MA-3** (operator surface; not started this PR). External Intake / Hiring E2E / min HR remain queued. Not CL8. Foundation stays 🔄.
 - 2026-09-04: **MA-1 Contract Gate PASS.** Operator question + one write (`intake_source_profiles.mapping_rules`) + twelve-row classification sealed in [mapping-authority-contract.md](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`). Named CI + boundary guard. Feat still locked. Active Product → **MA-2** (resolution runtime; not started this PR). External Intake / Hiring E2E / min HR remain queued. Not CL8. Foundation stays 🔄.
 - 2026-09-04: **RPM program close.** Consumer Cutover Gate **PASS** (`918274d1`). Program outcome + release delta recorded. RPM four-checks PASS (Documents domain). Active Product → **[MA-1](mapping-authority.md)** (brief; feat locked this PR). Mapping feat not opened. External Intake / Hiring E2E / min HR remain queued. Hiring unlocked, not scheduled. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-03: **RPM-3B Consumer Parity feat PASS.** Surviving consumers read the same R5 required-set (base / require X / remove X). Active Product → **Consumer Cutover Gate** (feat locked this PR). Mapping / Hiring E2E not auto-scheduled. Not CL8. Foundation stays 🔄.

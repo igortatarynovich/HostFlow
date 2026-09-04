@@ -115,16 +115,14 @@ def test_ma1_queue_names_successor_not_runtime() -> None:
     text = _QUEUE.read_text(encoding="utf-8")
     assert "Mapping Authority Contract Gate" in text
     assert "mapping-authority-contract.md" in text
-    assert "**Active Product** | **[MA-2](mapping-authority.md)**" in text
-    assert "Active (Product):** **[MA-2](mapping-authority.md)**" in text
+    assert "Mapping Resolution Gate" in text
     assert "feat locked this PR" in text
     assert "Active (Product):** **[MA-1](mapping-authority.md)**" not in text
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "mapping-authority.md" in agents
-    assert "MA-2" in agents
     assert "mapping-authority-contract.md" in agents or "mapping_authority" in agents.lower()
     lowered = text.lower()
-    assert "not mapping feat" in lowered or "not** mapping feat" in lowered or "feat locked" in lowered
+    assert "feat locked" in lowered
     assert "CL8" in text
 
 
@@ -133,7 +131,7 @@ def test_ma1_leaves_intake_hiring_hr_queued() -> None:
         text = path.read_text(encoding="utf-8")
         assert "**QUEUED**" in text
         assert "not scheduled" in text.lower()
-        assert "MA-2" in text
+        assert "mapping-authority.md" in text
 
 
 def test_ma1_adr021_points_at_authority() -> None:

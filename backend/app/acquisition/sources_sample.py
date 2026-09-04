@@ -234,22 +234,18 @@ async def _mapping_rules_for_source(
     profile: IntakeSourceProfile,
     meta_form_id: Optional[str],
 ) -> list[dict[str, Any]]:
-    profile_rules = _coerce_rules(getattr(profile, "mapping_rules", None))
-    if profile_rules:
-        return profile_rules
-    if not meta_form_id:
-        return []
-    row = (
-        await db.execute(
-            select(MetaLeadFormMapping).where(
-                MetaLeadFormMapping.tenant_id == str(tenant_id),
-                MetaLeadFormMapping.form_id == str(meta_form_id),
-            )
-        )
-    ).scalar_one_or_none()
-    if row is None:
-        return []
-    return _coerce_rules(row.mapping_rules)
+    from backend.app.entity_profile.mapping_resolve import resolve_mapping_authority
+
+    resolved = await resolve_mapping_authority(
+        db,
+        tenant_id=str(tenant_id),
+        intake_source_profile_id=str(profile.id),
+        form_id=meta_form_id,
+        source=str(getattr(profile, "provider", None) or "meta"),
+    )
+    if resolved.migrated:
+        await db.refresh(profile)
+    return list(resolved.rules)
 
 
 async def _latest_lead_for_source(

@@ -1,7 +1,8 @@
 """Marketing Source mapping façade (Acquisition UI Cutover C-5).
 
 Persists ``IntakeSourceProfile.mapping_rules`` — no new mapping engine.
-Read falls back to Meta form mapping for display when profile rules are empty.
+Empty authority is filled from leftover Meta form / tenant mapping (MA-2
+read-through), then ingest reads only the authority.
 """
 
 from __future__ import annotations
@@ -102,7 +103,7 @@ async def get_source_mapping(
         "meta_form_id": meta_form_id,
         "mapping_rules": effective,
         "profile_mapping_rules": profile_rules,
-        "rules_source": "profile" if profile_rules else ("meta_form" if effective else "none"),
+        "rules_source": "profile" if profile_rules or effective else "none",
         "mapping_rules_count": len(effective),
         "mapping_health": health,
         "destination": dest,

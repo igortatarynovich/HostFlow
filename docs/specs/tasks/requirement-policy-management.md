@@ -1,6 +1,6 @@
 # Requirement Policy Management
 
-**Status:** **DONE** — RPM-1…RPM-3B PASS · Consumer Cutover Gate **PASS** (`918274d1`) · RPM program **DONE** (outcome + release delta). Active Product = [MA-2](mapping-authority.md) after MA-1 Contract Gate **PASS** (brief; feat locked).  
+**Status:** **DONE** — RPM-1…RPM-3B PASS · Consumer Cutover Gate **PASS** (`918274d1`) · RPM program **DONE** (outcome + release delta). Active Product = [MA-3](mapping-authority.md) after Mapping Resolution Gate **PASS** (brief; feat locked).  
 **Phase class:** platform  
 **Branch (docs):** `docs/rpm-program-close-mapping-authority`  
 **Branch (code):** none this amendment — Mapping feat locked. Cutover feat `feat/requirement-policy-consumer-cutover-gate` ✅ `918274d1`. RPM-2 ✅ [#342](https://github.com/igortatarynovich/HostFlow/pull/342) / `5196ee64`.  
@@ -263,7 +263,7 @@ Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ sch
 **RPM-2:** **PASS** (Operator Gate; `tenant_document_policy_deltas`; GET `resolved_policy`; D4 loads persisted delta) [#342](https://github.com/igortatarynovich/HostFlow/pull/342) / `5196ee64`.  
 **RPM-3A / RPM-3B / Consumer Cutover:** **PASS** (`918274d1`).  
 **Program:** **DONE** (outcome + release delta this amendment).  
-**Active Product after close:** named [MA-1](mapping-authority.md). Subsequent MA-1 Contract Gate **PASS** moved Active Product to [MA-2](mapping-authority.md) (brief; feat locked).  
+**Active Product after close:** named [MA-1](mapping-authority.md). Subsequent MA-1 Contract Gate **PASS** moved Active Product to [MA-2](mapping-authority.md). Mapping Resolution Gate **PASS** moved Active Product to [MA-3](mapping-authority.md) (brief; feat locked).  
 **Hiring E2E:** unlocked, **not** scheduled. External Intake / min HR remain queued.  
 **Does not:** open Mapping feat; start Hiring E2E / Intake / min HR; invent CL8; mint a packages table; rewrite Overlay / CL7 / DR1 / E8-eval / R5; mark Foundation ✅; open intake qualification as a second RPM-1 question; fold `lead_criteria_v1` into the nine-row table; retire all of P3B; declare HostFlow v1 release-ready
 

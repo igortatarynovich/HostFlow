@@ -107,6 +107,7 @@ jobs:
       rpm_cutover: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm_cutover == 'true' }}
       rpm_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm_close == 'true' }}
       ma1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma1 == 'true' }}
+      ma2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma2 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -349,6 +350,15 @@ jobs:
               - 'scripts/architecture/check_mapping_authority_boundary.py'
               - 'scripts/architecture/mapping_authority_boundary_*'
               - 'docs/specs/tasks/mapping-authority.md'
+              - 'docs/specs/architecture/mapping-authority-contract.md'
+            ma2:
+              - 'backend/app/entity_profile/mapping_resolve.py'
+              - 'backend/app/entity_profile/ingest_runtime.py'
+              - 'backend/app/modules/leads/field_mapping_resolve.py'
+              - 'backend/tests/platform/test_mapping_authority_resolution_gate.py'
+              - 'backend/tests/entity_profile/test_mapping_resolve.py'
+              - 'docs/specs/tasks/mapping-authority.md'
+              - 'docs/specs/architecture/mapping-authority-resolution.md'
               - 'docs/specs/architecture/mapping-authority-contract.md'
 
   guards:
@@ -885,6 +895,37 @@ jobs:
         with:
           tests: tests/platform/test_mapping_authority_contract_gate.py
 
+  ma2-resolution-gate:
+    name: Mapping Resolution Gate
+    needs: changes
+    if: needs.changes.outputs.ma2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Mapping Resolution gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_mapping_authority_resolution_gate.py') == ''
+        run: echo "Mapping Resolution gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_mapping_authority_resolution_gate.py') != ''
+        with:
+          skip-alembic: "0"
+          tests: >-
+            tests/platform/test_mapping_authority_resolution_gate.py
+            tests/entity_profile/test_mapping_resolve.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -932,6 +973,7 @@ jobs:
       - rpm-cutover-gate
       - rpm-close-gate
       - ma1-contract-gate
+      - ma2-resolution-gate
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:

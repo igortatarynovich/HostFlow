@@ -1,2 +1,2 @@
-# Mapping Authority — surviving-store write lineage (MA-1). Resolver is MA-2.
+# Mapping Authority — surviving-store write lineage (MA-1). Resolver: mapping_resolve.py (MA-2).
 mapping_authority_write|backend/app/entity_profile/mapping_write.py

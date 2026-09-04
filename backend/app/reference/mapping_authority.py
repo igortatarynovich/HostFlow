@@ -1,13 +1,14 @@
-"""Mapping Authority — frozen write classification (MA-1).
+"""Mapping Authority — frozen write classification (MA-1) + resolver (MA-2).
 
 Contract id: ``mapping_authority.v1``.
 
 One operator question. One write. Twelve answerers. A later MA slice may
 retire a leftover; it must not add a thirteenth write of the same question.
 
-Not the resolver (MA-2). Not the operator editor (MA-3). Not consumer
-cutover (MA-4). Not a fourth store. Not Zapier. Not Sales convert. Not
-OCR. Not CL6. Not Hiring E2E. Not External Intake publish.
+MA-2: one resolver over the write authority. Not the operator editor
+(MA-3). Not consumer cutover (MA-4). Not a fourth store. Not Zapier.
+Not Sales convert. Not OCR. Not CL6. Not Hiring E2E. Not External Intake
+publish.
 """
 
 from __future__ import annotations
@@ -28,6 +29,9 @@ OPERATOR_QUESTION: Final[str] = (
 WRITE_AUTHORITY: Final[str] = "intake_source_profile_mapping_rules"
 WRITE_PRODUCER_REL: Final[str] = "backend/app/entity_profile/mapping_write.py"
 WRITE_API: Final[str] = "validate_intake_mapping_rules_write"
+RESOLVER_REL: Final[str] = "backend/app/entity_profile/mapping_resolve.py"
+RESOLVER_API: Final[str] = "resolve_mapping_authority"
+RULES_SOURCE_AUTHORITY: Final[str] = "authority"
 DESTINATION_VOCABULARY: Final[str] = "qualified_code"
 
 BINDING_STATES: Final[tuple[str, ...]] = ("mapped", "ignored", "unmapped")
@@ -87,11 +91,8 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
     ),
     Answerer(
         code="silent_precedence_chain",
-        role="leftover",
-        paths=(
-            "backend/app/entity_profile/ingest_runtime.py",
-            "backend/app/modules/leads/field_mapping_resolve.py",
-        ),
+        role="consume",
+        paths=("backend/app/entity_profile/mapping_resolve.py",),
     ),
     Answerer(
         code="meta_leads_admin_ui",
