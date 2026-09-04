@@ -12845,47 +12845,146 @@
       },
       "use_case_trucking_recruitment": {
         "seo": {
-          "title": "CRM for Trucking Recruitment Teams",
-          "description": "Manage driver recruitment, onboarding documents, and team coordination in one CRM workflow for trucking operations."
+          "title": "Driver Recruitment for Transport Companies | HostFlow",
+          "description": "Manage driver candidates, licence and document context, ownership and recruitment pipelines in one system built for transport operations."
         },
         "hero": {
-          "badge": "Use-case",
-          "title": "CRM for Trucking Recruitment",
-          "subtitle": "Build a repeatable driver hiring process from lead to onboarding with document control and ownership clarity."
+          "badge": "Transport recruitment",
+          "title": "Driver recruitment is not generic recruitment.",
+          "subtitle": "Your software should know the difference.",
+          "lead": "HostFlow brings driver candidates, recruitment workflows and documents into one system built around transport operations."
         },
-        "challenges": {
-          "title": "Operational challenges",
+        "cta": {
+          "start_trial": "Start free trial",
+          "explore_demo": "Explore the demo"
+        },
+        "why": {
+          "title": "Why generic ATS tools break on driver hiring",
+          "lead": "A driver is more than a CV.",
+          "body": "Licence categories, Code 95, tachograph cards, medical documents, work eligibility and document expiry can determine whether a candidate can move forward. HostFlow keeps that information inside the recruitment process instead of spreading it across spreadsheets, chats and separate document folders.",
           "items": {
-            "1": "High candidate volume with multi-step qualification.",
-            "2": "Document readiness directly affects deployment timing.",
-            "3": "Recruiters and operations need shared status context."
+            "0": "Generic applicant profiles do not capture what makes a driver eligible to work.",
+            "1": "Document checks happen outside the hiring pipeline, so gaps appear too late.",
+            "2": "Ownership is unclear when recruiters, coordinators and managers use different tools.",
+            "3": "Managers ask for status because spreadsheets and chats never show the current process."
+          },
+          "closing": "Driver recruitment needs operational context — not another contact database."
+        },
+        "driver_data": {
+          "title": "Driver-specific information that belongs in the process",
+          "lead": "HostFlow already works with the kinds of information transport teams use when assessing driver candidates.",
+          "items": {
+            "0": {
+              "title": "Licence categories",
+              "body": "Keep C / CE and related licence context with the candidate record, not in a side spreadsheet."
+            },
+            "1": {
+              "title": "Code 95",
+              "body": "Track Code 95 as part of the candidate document set that recruiters and managers can see."
+            },
+            "2": {
+              "title": "Tachograph card",
+              "body": "Store tachograph-card documents alongside the recruitment process instead of in personal folders."
+            },
+            "3": {
+              "title": "Medical documents",
+              "body": "Collect and review medical certificates with clear status inside HostFlow."
+            },
+            "4": {
+              "title": "Identity and work documents",
+              "body": "Keep identity, residence and other hiring documents attached to the same candidate process."
+            },
+            "5": {
+              "title": "Expiry visibility",
+              "body": "Monitor expiry status so recruiters can see when documents are expiring or expired."
+            }
+          },
+          "note": "These are the kinds of driver documents HostFlow can track today. Requirement sets that change automatically by company, role or country are still being productised — this page does not claim that operator policy overlay is finished."
+        },
+        "workflow": {
+          "title": "From incoming candidate to a controlled recruitment process",
+          "lead": "A practical driver hiring workflow without inventing a finished dispatch or employee handoff product.",
+          "steps": {
+            "0": {
+              "title": "Capture",
+              "body": "Bring incoming driver candidates into HostFlow and keep recruitment activity in one place."
+            },
+            "1": {
+              "title": "Assign",
+              "body": "Give each candidate an owner so follow-up does not disappear across chats and spreadsheets."
+            },
+            "2": {
+              "title": "Qualify",
+              "body": "Review candidate information and document context that affect whether the process can move forward."
+            },
+            "3": {
+              "title": "Pipeline",
+              "body": "Move candidates through configurable recruitment stages with a clear view of where each process stands."
+            },
+            "4": {
+              "title": "Documents",
+              "body": "Track document status and expiry next to the recruitment process, not beside it."
+            }
           }
         },
-        "flow": {
-          "title": "Recommended flow in HostFlow",
+        "documents": {
+          "title": "Document control inside recruitment",
+          "lead": "Know what is missing before the process stalls.",
+          "statuses": {
+            "0": "Missing",
+            "1": "Received",
+            "2": "Approved",
+            "3": "Expired"
+          },
+          "body": "HostFlow tracks candidate document status and expiry monitoring inside the recruitment workspace. That helps teams see what still blocks progress — without claiming automatic dispatch readiness or completed hire-to-employee automation."
+        },
+        "team": {
+          "title": "Team operations with clear ownership",
+          "body": "Recruiters need to know who owns each driver candidate and what stage the process is in. HostFlow keeps ownership and pipeline state visible for the team working the vacancy.",
+          "distribution": "On Team plans and above, HostFlow can automatically distribute incoming leads between recruiters."
+        },
+        "boundary": {
+          "title": "What this page does not pretend",
+          "lead": "HostFlow is useful for driver recruitment today. It should not over-sell unfinished release edges.",
           "items": {
-            "1": "Capture and qualify incoming driver leads.",
-            "2": "Move candidates through standardized stage checkpoints.",
-            "3": "Track mandatory file statuses before dispatch.",
-            "4": "Use reminders to prevent missed follow-ups."
+            "0": "It does not claim finished requirement-by-role policy as a sellable capability yet.",
+            "1": "It does not claim hire-to-employee handoff as a complete product path.",
+            "2": "It does not claim full onboarding or dispatch automation as an end-to-end guarantee.",
+            "3": "It does not present WhatsApp or forms as plug-and-play channels that work the same on every plan without configuration."
           }
+        },
+        "platform": {
+          "title": "Recruitment today. Broader transport operations as platform direction.",
+          "body": "HostFlow starts with Recruitment because that is where transport companies feel the leakage first: candidates, ownership, documents and follow-up.",
+          "closing": "Additional operational areas can connect to the same platform as the product develops — without forcing you to start another disconnected system."
         },
         "faq": {
-          "q1": {
-            "q": "Is this relevant for driver CE hiring?",
-            "a": "Yes. The workflow is designed for trucking recruitment with document-heavy onboarding."
-          },
-          "q2": {
-            "q": "Can operations and recruiters collaborate in one workspace?",
-            "a": "Yes. Shared pipeline, reminders, and document states keep all roles aligned."
-          },
-          "q3": {
-            "q": "Can we start with a small team first?",
-            "a": "You can launch quickly and scale roles and permissions as volume grows."
+          "items": {
+            "0": {
+              "q": "Is this relevant for C / CE driver hiring?",
+              "a": "Yes. HostFlow is built around recruitment workflows where licence categories, Code 95, tachograph cards, medical documents and related files matter inside the hiring process."
+            },
+            "1": {
+              "q": "Can HostFlow track driver document expiry?",
+              "a": "Yes. Candidate documents can be tracked with statuses such as missing, received, approved or expired, including expiry monitoring inside HostFlow."
+            },
+            "2": {
+              "q": "Can leads be distributed automatically across recruiters?",
+              "a": "Yes. Automatic lead distribution is available on Team plans and above."
+            },
+            "3": {
+              "q": "Is HostFlow only a recruitment CRM?",
+              "a": "HostFlow includes recruitment capabilities that overlap with ATS and CRM products, but Recruitment is the first module of a modular platform intended for transport companies."
+            }
           }
         },
+        "final_cta": {
+          "title": "Run driver recruitment in one structured system.",
+          "body": "Start with candidates, ownership, pipelines and documents — without rebuilding the process across spreadsheets, chats and disconnected tools."
+        },
         "related": {
-          "title": "Related guides"
+          "title": "Related",
+          "home": "HostFlow homepage"
         }
       },
       "feature_candidate_pipeline": {
