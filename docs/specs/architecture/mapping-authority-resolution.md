@@ -3,7 +3,7 @@
 **Status:** **Accepted** (L2 contract — Mapping Resolution Gate)  
 **Date:** 2026-09-04  
 **Trusted base:** `integration/release-product-a-b` @ `8b961598`  
-**Related:** [`mapping-authority-contract.md`](mapping-authority-contract.md) (`mapping_authority.v1`) · [`../tasks/mapping-authority.md`](../tasks/mapping-authority.md) · [`ADR-021`](ADR-021-unified-intake-resolution-model.md)
+**Related:** [`mapping-authority-contract.md`](mapping-authority-contract.md) (`mapping_authority.v1`) · [`mapping-authority-operator.md`](mapping-authority-operator.md) · [`../tasks/mapping-authority.md`](../tasks/mapping-authority.md) · [`ADR-021`](ADR-021-unified-intake-resolution-model.md)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (one owner of this write), **INV-01** (one SoT for which rule applies), **INV-16** (contract before a second resolver). Does not rewrite L0. Does not mint a fourth mapping store.
 
@@ -62,7 +62,7 @@ Reject: documenting the old chain as “still how ingest works”; a second reso
 
 ## Consequences
 
-- MA-3 ships one editor over this authority. Remaining surfaces become views or are retired.  
+- MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Remaining surfaces become views or are retired. Feat stays locked until that slice.  
 - MA-4 makes `qualified_code` the only write vocabulary on the intake path.  
 - RPM / evaluators still consume canonical facts only.
 
