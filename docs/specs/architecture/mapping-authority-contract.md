@@ -3,7 +3,7 @@
 **Status:** **Accepted** (L2 contract — Mapping Authority Contract Gate)  
 **Date:** 2026-09-04  
 **Trusted base:** `integration/release-product-a-b`  
-**Related:** [`ADR-021`](ADR-021-unified-intake-resolution-model.md) · [`../tasks/mapping-authority.md`](../tasks/mapping-authority.md) · [`../platform/field-registry-card-configuration.md`](../platform/field-registry-card-configuration.md) · [`../platform/entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md) · [`../tasks/entity-field-composition-cl6-flight-map.md`](../tasks/entity-field-composition-cl6-flight-map.md) · [`../tasks/acquisition-ui-cutover-c5-mapping-workspace.md`](../tasks/acquisition-ui-cutover-c5-mapping-workspace.md) · [`../gates/v1-release-dag-dependency-position.md`](../gates/v1-release-dag-dependency-position.md)
+**Related:** [`ADR-021`](ADR-021-unified-intake-resolution-model.md) · [`../tasks/mapping-authority.md`](../tasks/mapping-authority.md) · [`mapping-authority-resolution.md`](mapping-authority-resolution.md) · [`mapping-authority-operator.md`](mapping-authority-operator.md) · [`../platform/field-registry-card-configuration.md`](../platform/field-registry-card-configuration.md) · [`../platform/entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md) · [`../tasks/entity-field-composition-cl6-flight-map.md`](../tasks/entity-field-composition-cl6-flight-map.md) · [`../tasks/acquisition-ui-cutover-c5-mapping-workspace.md`](../tasks/acquisition-ui-cutover-c5-mapping-workspace.md) · [`../gates/v1-release-dag-dependency-position.md`](../gates/v1-release-dag-dependency-position.md)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (one owner of this write), **INV-01** (one SoT for the operator question), **INV-16** (contract before a second editor). Does not rewrite L0. Does not mint a fourth mapping store or a Field Registry fork.
 
@@ -11,7 +11,8 @@
 > Field Registry remains destination identity (`qualified_code` + type). Entity Profile remains which codes belong to a role.  
 > ADR-021 remains the intake resolution model. This contract names **who may write** source→canonical placement.  
 > Machine copy: `mapping_authority.v1` in `backend/app/reference/mapping_authority.py`.  
-> Resolver (MA-2): [`mapping-authority-resolution.md`](mapping-authority-resolution.md) · `resolve_mapping_authority`.
+> Resolver (MA-2): [`mapping-authority-resolution.md`](mapping-authority-resolution.md) · `resolve_mapping_authority`.  
+> Operator surface (MA-3): [`mapping-authority-operator.md`](mapping-authority-operator.md) — UX contract; feat locked.
 
 ---
 
@@ -152,7 +153,7 @@ Reject: a fourth store; renaming C-5 as “the authority” while Meta admin sti
 ## Consequences
 
 - MA-2 resolves only this write authority (one store, one resolver). The other two stores are read-through or migrated; the precedence chain is removed. See [mapping-authority-resolution.md](mapping-authority-resolution.md).  
-- MA-3 ships one editor over this authority. Remaining surfaces become views or are retired.  
+- MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Remaining surfaces become views or are retired.  
 - MA-4 makes `qualified_code` the only write vocabulary on the intake path.  
 - RPM / evaluators consume canonical facts only. Mapping uncertainty is never `no_fit`.
 
