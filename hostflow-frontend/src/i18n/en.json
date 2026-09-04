@@ -3074,7 +3074,7 @@
       "sign_in": "Sign in",
       "submit": "Create account",
       "subtitle": "Start with a trial and invite your team later.",
-      "title": "Create your CRM workspace"
+      "title": "Create your HostFlow workspace"
     },
     "login": {
       "title": "Sign in to HostFlow",
@@ -12757,12 +12757,12 @@
       "comparison_hostflow_vs_spreadsheets": {
         "seo": {
           "title": "HostFlow vs Spreadsheets for Recruitment",
-          "description": "Compare HostFlow CRM with spreadsheet-based recruitment operations across speed, visibility, and onboarding control."
+          "description": "Compare HostFlow with spreadsheet-based recruitment operations across speed, visibility, and onboarding control."
         },
         "hero": {
           "badge": "Comparison",
           "title": "HostFlow vs Spreadsheets for Recruitment Ops",
-          "subtitle": "A practical comparison for teams deciding whether to keep manual spreadsheets or switch to an operational CRM."
+          "subtitle": "A practical comparison for teams deciding whether to keep manual spreadsheets or switch to a recruitment operations system."
         },
         "overview": {
           "title": "Side-by-side overview",
@@ -12795,7 +12795,7 @@
             "a": "They can for very low volume, but coordination overhead grows quickly when pipeline and documents scale."
           },
           "q2": {
-            "q": "What is the biggest operational gain from CRM migration?",
+            "q": "What is the biggest operational gain from moving off spreadsheets?",
             "a": "Single-source workflow ownership and reminders, which removes hidden blockers from manual tracking."
           },
           "q3": {
@@ -12810,7 +12810,7 @@
       "comparison_recruitment_crm_vs_ats": {
         "seo": {
           "title": "Recruitment CRM vs ATS Comparison",
-          "description": "Understand when a recruitment CRM outperforms ATS-only setup for operational pipeline, documents, and team coordination."
+          "description": "Understand when an operational recruitment system outperforms ATS-only setup for pipeline, documents, and team coordination."
         },
         "hero": {
           "badge": "Comparison",
@@ -12836,7 +12836,7 @@
           },
           "q3": {
             "q": "What if we start without ATS integration?",
-            "a": "You can start with CRM-first workflow and add integrations later when process baseline is stable."
+            "a": "You can start with HostFlow recruitment operations and add other systems later when the process baseline is stable."
           }
         },
         "related": {
@@ -12989,12 +12989,12 @@
       },
       "feature_candidate_pipeline": {
         "seo": {
-          "title": "Candidate Pipeline CRM for Recruitment",
-          "description": "Run candidate stages, ownership, and next actions in one recruitment pipeline CRM built for fast operations."
+          "title": "Candidate Pipeline for Recruitment",
+          "description": "Run candidate stages, ownership, and next actions in one recruitment pipeline built for fast operations."
         },
         "hero": {
           "badge": "Feature",
-          "title": "Candidate Pipeline CRM for Recruitment Teams",
+          "title": "Candidate Pipeline for Recruitment Teams",
           "subtitle": "Keep every candidate moving with clear stages, owners, and next actions so your pipeline does not stall."
         },
         "problem": {
@@ -13072,7 +13072,7 @@
       "use_case_high_volume_onboarding": {
         "seo": {
           "title": "High-Volume Candidate Onboarding Workflow",
-          "description": "Run high-volume candidate onboarding with clear stages, reminders, and document readiness in one CRM flow."
+          "description": "Run high-volume candidate onboarding with clear stages, reminders, and document readiness in one recruitment workflow."
         },
         "hero": {
           "badge": "Use-case",

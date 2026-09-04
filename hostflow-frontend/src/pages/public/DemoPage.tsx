@@ -61,7 +61,7 @@ const STEPS = [
   {
     id: 'explore',
     titleKey: 'public.demo.steps.explore.title',
-    titleDefault: 'Click through the CRM',
+    titleDefault: 'Click through HostFlow',
     bodyKey: 'public.demo.steps.explore.body',
     bodyDefault: 'Explore vacancies, leads, candidates, and documents with synthetic data.',
   },

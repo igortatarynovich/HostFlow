@@ -27,7 +27,7 @@ export default function SignupPage() {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
   useSeoMeta({
-    title: t('app.seo.signup.title', { defaultValue: 'Create CRM Workspace' }),
+    title: t('app.seo.signup.title', { defaultValue: 'Create HostFlow Workspace' }),
     description: t('app.seo.signup.description', {
       defaultValue: 'Create your HostFlow account, start trial, and launch your recruiting workflow quickly.',
     }),
@@ -154,7 +154,7 @@ export default function SignupPage() {
         <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-[0_20px_50px_-36px_rgba(15,23,42,0.35)]">
           <PublicBrandingLogo showWordmark />
           <h1 className="mt-6 text-2xl font-semibold text-slate-900">
-            {t('app.signup.title', { defaultValue: 'Create your CRM workspace' })}
+            {t('app.signup.title', { defaultValue: 'Create your HostFlow workspace' })}
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             {t('app.signup.subtitle', { defaultValue: 'Start with a trial and invite your team later.' })}

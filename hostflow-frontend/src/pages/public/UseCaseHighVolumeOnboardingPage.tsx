@@ -27,7 +27,7 @@ export default function UseCaseHighVolumeOnboardingPage() {
     title: t('public.marketing.use_case_high_volume_onboarding.seo.title', { defaultValue: 'High-Volume Candidate Onboarding Workflow' }),
     description: t(
       'public.marketing.use_case_high_volume_onboarding.seo.description',
-      { defaultValue: 'Run high-volume candidate onboarding with clear stages, reminders, and document readiness in one CRM flow.' },
+      { defaultValue: 'Run high-volume candidate onboarding with clear stages, reminders, and document readiness in one recruitment workflow.' },
     ),
     canonicalPath: '/use-cases/high-volume-onboarding',
     structuredData: {

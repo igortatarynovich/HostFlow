@@ -14,7 +14,7 @@ export default function ComparisonHostflowVsSpreadsheetsPage() {
       a: t('public.marketing.comparison_hostflow_vs_spreadsheets.faq.q1.a', { defaultValue: 'They can for very low volume, but coordination overhead grows quickly when pipeline and documents scale.' }),
     },
     {
-      q: t('public.marketing.comparison_hostflow_vs_spreadsheets.faq.q2.q', { defaultValue: 'What is the biggest operational gain from CRM migration?' }),
+      q: t('public.marketing.comparison_hostflow_vs_spreadsheets.faq.q2.q', { defaultValue: 'What is the biggest operational gain from moving off spreadsheets?' }),
       a: t('public.marketing.comparison_hostflow_vs_spreadsheets.faq.q2.a', { defaultValue: 'Single-source workflow ownership and reminders, which removes hidden blockers from manual tracking.' }),
     },
     {
@@ -27,7 +27,7 @@ export default function ComparisonHostflowVsSpreadsheetsPage() {
     title: t('public.marketing.comparison_hostflow_vs_spreadsheets.seo.title', { defaultValue: 'HostFlow vs Spreadsheets for Recruitment' }),
     description: t(
       'public.marketing.comparison_hostflow_vs_spreadsheets.seo.description',
-      { defaultValue: 'Compare HostFlow CRM with spreadsheet-based recruitment operations across speed, visibility, and onboarding control.' },
+      { defaultValue: 'Compare HostFlow with spreadsheet-based recruitment operations across speed, visibility, and onboarding control.' },
     ),
     canonicalPath: '/comparison/hostflow-vs-spreadsheets',
     structuredData: {
@@ -50,7 +50,7 @@ export default function ComparisonHostflowVsSpreadsheetsPage() {
             {t('public.marketing.comparison_hostflow_vs_spreadsheets.hero.title', { defaultValue: 'HostFlow vs Spreadsheets for Recruitment Ops' })}
           </h1>
           <p className="mt-3 text-sm text-slate-600">
-            {t('public.marketing.comparison_hostflow_vs_spreadsheets.hero.subtitle', { defaultValue: 'A practical comparison for teams deciding whether to keep manual spreadsheets or switch to an operational CRM.' })}
+            {t('public.marketing.comparison_hostflow_vs_spreadsheets.hero.subtitle', { defaultValue: 'A practical comparison for teams deciding whether to keep manual spreadsheets or switch to a recruitment operations system.' })}
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link to="/signup" className="btn-primary" onClick={() => trackCta('primary_signup', '/signup')}>

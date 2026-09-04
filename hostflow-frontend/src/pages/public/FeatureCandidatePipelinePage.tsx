@@ -24,10 +24,10 @@ export default function FeatureCandidatePipelinePage() {
   ]
 
   useSeoMeta({
-    title: t('public.marketing.feature_candidate_pipeline.seo.title', { defaultValue: 'Candidate Pipeline CRM for Recruitment' }),
+    title: t('public.marketing.feature_candidate_pipeline.seo.title', { defaultValue: 'Candidate Pipeline for Recruitment' }),
     description: t(
       'public.marketing.feature_candidate_pipeline.seo.description',
-      { defaultValue: 'Run candidate stages, ownership, and next actions in one recruitment pipeline CRM built for fast operations.' },
+      { defaultValue: 'Run candidate stages, ownership, and next actions in one recruitment pipeline built for fast operations.' },
     ),
     canonicalPath: '/features/candidate-pipeline',
     structuredData: {
@@ -47,7 +47,7 @@ export default function FeatureCandidatePipelinePage() {
         <section className="card p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.marketing.feature_candidate_pipeline.hero.badge', { defaultValue: 'Feature' })}</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">
-            {t('public.marketing.feature_candidate_pipeline.hero.title', { defaultValue: 'Candidate Pipeline CRM for Recruitment Teams' })}
+            {t('public.marketing.feature_candidate_pipeline.hero.title', { defaultValue: 'Candidate Pipeline for Recruitment Teams' })}
           </h1>
           <p className="mt-3 text-sm text-slate-600">
             {t('public.marketing.feature_candidate_pipeline.hero.subtitle', { defaultValue: 'Keep every candidate moving with clear stages, owners, and next actions so your pipeline does not stall.' })}

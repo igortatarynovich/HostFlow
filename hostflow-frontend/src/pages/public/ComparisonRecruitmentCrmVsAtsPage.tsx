@@ -19,7 +19,7 @@ export default function ComparisonRecruitmentCrmVsAtsPage() {
     },
     {
       q: t('public.marketing.comparison_recruitment_crm_vs_ats.faq.q3.q', { defaultValue: 'What if we start without ATS integration?' }),
-      a: t('public.marketing.comparison_recruitment_crm_vs_ats.faq.q3.a', { defaultValue: 'You can start with CRM-first workflow and add integrations later when process baseline is stable.' }),
+      a: t('public.marketing.comparison_recruitment_crm_vs_ats.faq.q3.a', { defaultValue: 'You can start with HostFlow recruitment operations and add other systems later when the process baseline is stable.' }),
     },
   ]
 
@@ -27,7 +27,7 @@ export default function ComparisonRecruitmentCrmVsAtsPage() {
     title: t('public.marketing.comparison_recruitment_crm_vs_ats.seo.title', { defaultValue: 'Recruitment CRM vs ATS Comparison' }),
     description: t(
       'public.marketing.comparison_recruitment_crm_vs_ats.seo.description',
-      { defaultValue: 'Understand when a recruitment CRM outperforms ATS-only setup for operational pipeline, documents, and team coordination.' },
+      { defaultValue: 'Understand when an operational recruitment system outperforms ATS-only setup for pipeline, documents, and team coordination.' },
     ),
     canonicalPath: '/comparison/recruitment-crm-vs-ats',
     structuredData: {

@@ -281,7 +281,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       {
         id: "has_api",
         q: { en: "Is there an API?", ru: "Есть ли API?", pl: "Czy jest API?" },
-        a: { en: "Yes — HostFlow exposes authenticated REST APIs under /api/v1 for CRM operations. Access requires a tenant token and proper roles.", ru: "Да — REST API под /api/v1 для CRM. Нужен токен tenant и роли.", pl: "Tak — REST API pod /api/v1 dla CRM. Potrzebny token tenanta i role." },
+        a: { en: "Yes — HostFlow exposes authenticated REST APIs under /api/v1 for recruitment and workspace operations. Access requires a tenant token and proper roles.", ru: "Да — REST API под /api/v1 для recruitment и workspace operations. Нужен токен tenant и роли.", pl: "Tak — REST API pod /api/v1 dla recruitment i workspace operations. Potrzebny token tenanta i role." },
       },
       {
         id: "webhooks",

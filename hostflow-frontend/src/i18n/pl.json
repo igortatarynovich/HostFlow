@@ -3001,7 +3001,7 @@
       "sign_in": "Zaloguj się",
       "submit": "Utwórz konto",
       "subtitle": "Zacznij od okresu próbnego — zespół zaprosisz później.",
-      "title": "Utwórz przestrzeń CRM"
+      "title": "Utwórz przestrzeń HostFlow"
     },
     "login": {
       "title": "Zaloguj się do HostFlow",
@@ -12757,12 +12757,12 @@
       "comparison_hostflow_vs_spreadsheets": {
         "seo": {
           "title": "HostFlow vs arkusze kalkulacyjne w rekrutacji",
-          "description": "Porównanie CRM HostFlow i pracy rekrutacyjnej na arkuszach pod kątem szybkości, widoczności i kontroli onboardingu."
+          "description": "Porównanie HostFlow i pracy rekrutacyjnej na arkuszach pod kątem szybkości, widoczności i kontroli onboardingu."
         },
         "hero": {
           "badge": "Porównanie",
           "title": "HostFlow vs arkusze w operacjach rekrutacyjnych",
-          "subtitle": "Praktyczne porównanie dla zespołów, które wybierają między ręcznymi arkuszami a operacyjnym CRM."
+          "subtitle": "Praktyczne porównanie dla zespołów, które wybierają między ręcznymi arkuszami a systemem recruitment operations."
         },
         "overview": {
           "title": "Porównanie obok siebie",
@@ -12795,7 +12795,7 @@
             "a": "Tak, przy bardzo małym wolumenie. Przy wzroście pipeline i dokumentów koszt koordynacji szybko rośnie."
           },
           "q2": {
-            "q": "Jaka jest największa korzyść operacyjna po migracji do CRM?",
+            "q": "Jaka jest największa korzyść operacyjna po odejściu od arkuszy?",
             "a": "Jedno źródło odpowiedzialności za workflow i przypomnienia, które usuwa ukryte blokery ręcznego śledzenia."
           },
           "q3": {
@@ -12810,7 +12810,7 @@
       "comparison_recruitment_crm_vs_ats": {
         "seo": {
           "title": "Porównanie Recruitment CRM vs ATS",
-          "description": "Sprawdź, kiedy recruitment CRM przewyższa konfigurację ATS-only dla operacyjnego pipeline, dokumentów i koordynacji zespołu."
+          "description": "Sprawdź, kiedy operacyjny system rekrutacji przewyższa konfigurację ATS-only dla pipeline, dokumentów i koordynacji zespołu."
         },
         "hero": {
           "badge": "Porównanie",
@@ -12836,7 +12836,7 @@
           },
           "q3": {
             "q": "Co jeśli zaczniemy bez integracji ATS?",
-            "a": "Możesz zacząć od workflow CRM-first i dodać integracje później, gdy baseline procesu będzie stabilny."
+            "a": "Możesz zacząć od recruitment operations HostFlow i dodać inne systemy później, gdy baseline procesu będzie stabilny."
           }
         },
         "related": {
@@ -12989,12 +12989,12 @@
       },
       "feature_candidate_pipeline": {
         "seo": {
-          "title": "CRM pipeline kandydatów dla rekrutacji",
-          "description": "Prowadź etapy kandydatów, właścicieli i następne działania w jednym pipeline CRM dla szybkich operacji."
+          "title": "Pipeline kandydatów dla rekrutacji",
+          "description": "Prowadź etapy kandydatów, właścicieli i następne działania w jednym pipeline rekrutacyjnym dla szybkich operacji."
         },
         "hero": {
           "badge": "Funkcja",
-          "title": "CRM pipeline kandydatów dla zespołów rekrutacyjnych",
+          "title": "Pipeline kandydatów dla zespołów rekrutacyjnych",
           "subtitle": "Utrzymuj ruch kandydatów dzięki jasnym etapom, właścicielom i kolejnym działaniom."
         },
         "problem": {
@@ -13072,7 +13072,7 @@
       "use_case_high_volume_onboarding": {
         "seo": {
           "title": "Workflow onboardingu kandydatów o dużym wolumenie",
-          "description": "Prowadź masowy onboarding kandydatów z jasnymi etapami, przypomnieniami i gotowością dokumentów w jednym flow CRM."
+          "description": "Prowadź masowy onboarding kandydatów z jasnymi etapami, przypomnieniami i gotowością dokumentów w jednym workflow rekrutacyjnym."
         },
         "hero": {
           "badge": "Use-case",
