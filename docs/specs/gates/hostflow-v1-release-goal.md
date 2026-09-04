@@ -6,12 +6,12 @@
 **Trusted base:** `integration/release-product-a-b`  
 **Parents:** [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](goal-completion-gate.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md) · [Documents Platform E8-eval](../tasks/documents-platform-e8-eval.md)  
 **Close-out instruments:** [Release Readiness Gate](release-readiness-gate.md) (who declares v1 ready) · [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md) (how it is proven)  
-**Product Track:** **[Consumer Cutover Gate](../tasks/requirement-policy-management.md)** (feat locked) after RPM-3B Gate PASS — scheduled in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md). This file does not invent slice order.
+**Product Track:** **[MA-1](../tasks/mapping-authority.md)** (brief; feat locked) after RPM program DONE — scheduled in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md). This file does not invent slice order.
 
 > This document is the **v1 in-scope vs later** SoT.  
 > The [sequential queue](../tasks/sales-to-comms-sequential-queue.md) remains the **slice schedule** SoT (one Active Product).  
 > Horizon letters in the [roadmap](../architecture/platform-completion-roadmap.md) (OCR, packages, Billing, AI) are **not** v1.  
-> First Product from § Release DAG is **Requirement Policy Management**. RPM-1 Authority Gate is **PASS**; RPM-2 Operator Gate is **PASS**; RPM-3A Parallel Authority Retirement Gate is **PASS**; RPM-3B Consumer Parity Gate is **PASS**; Active Product is [Consumer Cutover Gate](../tasks/requirement-policy-management.md) (feat locked). This file does **not** lock a linear program order of the five blockers. Mapping remains startable after RPM program close — not auto-scheduled here.
+> First Product from § Release DAG was **Requirement Policy Management**. RPM program is **DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). Active Product is [MA-1](../tasks/mapping-authority.md) (brief; feat locked). This file does **not** lock a linear program order of the five blockers. External Intake / Hiring E2E / min HR remain queued — not auto-scheduled here.
 
 ---
 
@@ -52,8 +52,8 @@ A Settings page that edits non-authority JSON is **not** ready. All four must ho
 
 | # | Capability | v1 boundary (acceptance) |
 |---|------------|--------------------------|
-| **1** | **Requirement Policy Management** — [brief](../tasks/requirement-policy-management.md) (Active: Consumer Cutover Gate; RPM-1 Authority Gate PASS; RPM-2 Operator Gate PASS; RPM-3A Parallel Authority Retirement Gate PASS; RPM-3B Consumer Parity Gate PASS) | For this tenant / client / vacancy / profile / country: these requirements apply; base rule; override; reason; result. Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin product. |
-| **2** | **Mapping Authority** — [brief](../tasks/mapping-authority.md) (queued) | One operator-visible model from source answers to **canonical entity fields**. Not “build another mapping editor.” |
+| **1** | **Requirement Policy Management** — [brief](../tasks/requirement-policy-management.md) (**DONE**; Consumer Cutover Gate PASS `918274d1`; program close recorded) | For this tenant / client / vacancy / profile / country: these requirements apply; base rule; override; reason; result. Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin product. |
+| **2** | **Mapping Authority** — [brief](../tasks/mapping-authority.md) (Active: MA-1; brief; feat locked) | One operator-visible model from source answers to **canonical entity fields**. Not “build another mapping editor.” |
 | **3** | **External Intake / Forms Publish** — [brief](../tasks/external-intake-forms-publish.md) (queued) | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
 | **4** | **Hiring workflow E2E** — [brief](../tasks/hiring-workflow-e2e.md) (queued) | One candidate: `stage → requirements/docs → eligibility → transfer`. Acceptance over existing funnels, gates, policy authority, and transfer — **not** a new Hiring Product. |
 | **5** | **Minimal Recruitment → HR handoff** — [brief](../tasks/recruitment-hr-minimal-handoff.md) (queued) | Hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy. Full HR operations (Kadry, payroll, extended lifecycle) are later. |
@@ -61,7 +61,7 @@ A Settings page that edits non-authority JSON is **not** ready. All four must ho
 
 Blockers 1–5 are **capability** blockers: they make the product complete. Blocker 6 is an **operability** blocker: it makes the product sellable. Blocker 6 is not a capability node in the DAG and does not consume a Product slot — it runs as the parallel **Launch-ops** track, because a paying tenant cannot be served by features alone.
 
-Every blocker now has a brief with `Original Goal → Completion Proof`, an internal slice ladder with named gates, and an estimate. A brief is **not** a schedule: only the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) activates a slice, and the Active Product is Consumer Cutover Gate after RPM-3B Gate PASS.
+Every blocker now has a brief with `Original Goal → Completion Proof`, an internal slice ladder with named gates, and an estimate. A brief is **not** a schedule: only the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) activates a slice, and the Active Product is MA-1 after RPM program DONE.
 
 ### Supporting (must work for the five; not separate programs)
 
@@ -167,20 +167,27 @@ A program may not close with only “horizon reached.” Both lines are mandator
 | Field | Value |
 |-------|--------|
 | **Program outcome** | D4 evaluates document requirements through canonical R5 `merge(pack, tenant_delta)` |
-| **Release delta** | Requirement **evaluation** is partially satisfied. Requirement Policy Management remains **OPEN**. Mapping Authority, External Intake, Hiring E2E, and min HR handoff remain **OPEN**. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄. |
+| **Release delta** | Requirement **evaluation** is partially satisfied. Requirement Policy Management remained **OPEN** at that close. Mapping Authority, External Intake, Hiring E2E, and min HR handoff remain **OPEN**. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄. |
+
+### Requirement Policy Management (this close)
+
+| Field | Value |
+|-------|--------|
+| **Program outcome** | Operator manages document-requirement policy through one authority (R5 `merge(pack, tenant_delta)` + overlay). Classified consumers do not contradict. Parallel writers of “need X?” are retired. D4 matches the operator write. |
+| **Release delta** | Requirement Policy Management four-checks **PASS** (Documents domain; RS-4 named). Mapping Authority, External Intake, Hiring E2E, and min HR remain **OPEN**. Hiring E2E is **unlocked, not scheduled**. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄. |
 
 ---
 
 ## Current four-check snapshot (not acceptance)
 
-Recorded at Goal seal. Not a PASS.
+Recorded at RPM program close (2026-09-04). RS-4 is named; the [Release Readiness Gate](release-readiness-gate.md) has not run it.
 
 | Capability | Authority | Operator surface | E2E consumption | Acceptance |
 |------------|-----------|------------------|-----------------|------------|
-| Requirement Policy Management | **sealed** (RPM-1: one write = R5 merge; [requirement-policy-authority.md](../architecture/requirement-policy-authority.md)) | **sealed** (RPM-2 overlay; `tenant_document_policy_deltas`) | partial (D4; remaining consumers RPM-3) | OPEN |
+| Requirement Policy Management | **PASS** (sole write = R5 merge; parallel writers retired; [requirement-policy-authority.md](../architecture/requirement-policy-authority.md)) | **PASS** (overlay; `tenant_document_policy_deltas`) | **PASS** (D4 + classified consumers; Consumer Cutover `918274d1`) | **PASS** (Documents domain; RS-4 named). v1 not release-ready |
 | Mapping Authority | no (three contracts) | partial (C-5 / intake editors) | partial | OPEN |
 | External Intake / Forms Publish | partial (Foundation serve→execute) | no (P3 locked) | partial | OPEN |
-| Hiring workflow E2E | partial (funnels / gates / transfer) | partial | not proven vs policy authority | OPEN |
+| Hiring workflow E2E | partial (funnels / gates / transfer; policy authority now exists) | partial | not proven vs policy authority | OPEN |
 | Minimal HR handoff | partial (E3/E4 Document Link) | partial | partial | OPEN |
 | Operate & Launch (blocker 6, added 2026-08-28) | no (no deploy / rollback / backup procedure — RB-1…RB-10 all MISSING, now owned and countable via [OL-1](launch-ownership-gate.md)) | partial (tenant create only; no delete, no export, no bulk import; contract accepted in [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md), capability absent) | no (in-process queue + local disk are the defaults) | OPEN |
 
@@ -188,18 +195,20 @@ Recorded at Goal seal. Not a PASS.
 
 ## What this document does not do
 
-- Does not schedule Mapping, External Intake, Hiring E2E, min HR, or Operate & Launch (RPM is scheduled in the sequential queue, not by this file; the Launch-ops track is opened by a queue amendment)  
+- Does not schedule External Intake, Hiring E2E, or min HR (MA-1 is scheduled in the sequential queue, not by this file; the Launch-ops track is opened by a queue amendment)  
+- Does not open Mapping feat or mark Mapping Authority Contract Gate PASS  
 - Does not lock a linear program / slice order (that is the sequential queue)  
-- Does not reopen E8-eval, Overlay, CL7, DR1-runtime, or E8-bind  
+- Does not reopen E8-eval, Overlay, CL7, DR1-runtime, E8-bind, or RPM  
 - Does not mark Documents Foundation ✅  
 - Does not mint Catalog events, Hub request/reminder/packages tables, or CL8  
 - Does not unfreeze C2.4  
+- Does not declare HostFlow v1 release-ready  
 
 ---
 
 ## Refs
 
-- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [Consumer Cutover Gate](../tasks/requirement-policy-management.md) after RPM-3B Gate PASS  
+- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [MA-1](../tasks/mapping-authority.md) after RPM program DONE  
 - [Requirement Policy Authority](../architecture/requirement-policy-authority.md) — operator question + write  
 - [Dependency-position review](v1-release-dag-dependency-position.md) — why RPM is first  
 - [Release Readiness Gate](release-readiness-gate.md) — entry conditions, seven questions, Release Candidate, derived RC date  

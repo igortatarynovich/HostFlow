@@ -92,14 +92,14 @@ Reject: Documents Admin separate from Rules Admin; Hub packages table; Overlay r
 - RPM-2 persists only this write authority (operator overlay with reason as sibling metadata).  
 - RPM-3A **PASS** retired parallel writers of the operator question: A `document_policies`, C leftover ruleset writes, J P3B `document_required` only.  
 - RPM-3B **PASS** made remaining classified consumers read the same merge or retired them as answerers.  
-- The Consumer Cutover Gate **PASS** closed the RPM-3 program ladder after 3A ∧ 3B. RPM program close remains queued and is not this feat.  
+- The Consumer Cutover Gate **PASS** (`918274d1`) closed the RPM-3 program ladder after 3A ∧ 3B. RPM program is **DONE**.  
 - ADR-018 “Admin UI for policy editing” is this program, not a second product.
 
 ---
 
 ## History
 
-- 2026-09-04: Consumer Cutover Gate **PASS**. Remaining live readers load persisted `tenant_delta`. Program close not started.
+- 2026-09-04: RPM program close. Consumer Cutover Gate **PASS** (`918274d1`; remaining live readers load persisted `tenant_delta`). Active Product → MA-1 (brief; feat locked).
 - 2026-09-03: RPM-3B Consumer Parity Gate **PASS**. Surviving consumers read the same R5 required-set. Active Product → Consumer Cutover Gate.
 - 2026-09-03: RPM-3A Parallel Authority Retirement Gate **PASS**. Writes of A / C / J `document_required` retired. Active Product → RPM-3B.
 - 2026-09-03: RPM-2 Operator Gate PASS [#342](https://github.com/igortatarynovich/HostFlow/pull/342). RPM-3A docs lock activates parallel-writer retirement (A / C / J `document_required`).

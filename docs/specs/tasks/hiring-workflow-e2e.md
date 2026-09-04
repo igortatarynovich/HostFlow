@@ -1,6 +1,6 @@
 # Hiring workflow E2E
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product stays [RPM-1](requirement-policy-management.md)
+**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [MA-1](mapping-authority.md)
 **Phase class:** platform
 **Branch (docs):** `docs/v1-blocker-briefs`
 **Branch (code):** none — later slices `feat/hiring-e2e-heN-…`
@@ -10,7 +10,7 @@
 > v1 blocker 4: **one candidate walks `stage → requirements/docs → eligibility → transfer`.**
 > Acceptance **over existing** funnels, gates, policy authority and transfer — explicitly **not a new Hiring Product**, not a funnel builder, not a workflow engine.
 > **Not** Requirement Policy Management (consumed). **Not** min HR handoff (that is [the next node](recruitment-hr-minimal-handoff.md)). **Not** LI-2+ Lifecycle cutover. **Not** CL8.
-> Opening this brief does **not** schedule it. The queue’s Active Product stays RPM-1.
+> Opening this brief does **not** schedule it. RPM program close **unlocks** Hiring (policy-authority edge). Unlock ≠ schedule. The queue’s Active Product is [MA-1](mapping-authority.md).
 
 ---
 
@@ -106,9 +106,9 @@ The proof is a walk, not a suite. If a step still needs a developer, the gate is
 
 ## Queue position
 
-**Depends on:** RPM program close (known acceptance edge: Hiring acceptance walks against policy authority) + queue amendment
-**Unlocks:** [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) acceptance
-**Does not:** schedule itself; start LI-2+; rebuild funnels; unfreeze C2.4; create a hiring automation plane
+**Depends on:** RPM program close ✅ (known acceptance edge: Hiring acceptance walks against policy authority) + a later queue amendment  
+**Unlocks:** [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) acceptance  
+**Does not:** schedule itself this amendment; start LI-2+; rebuild funnels; unfreeze C2.4; create a hiring automation plane
 
 ---
 

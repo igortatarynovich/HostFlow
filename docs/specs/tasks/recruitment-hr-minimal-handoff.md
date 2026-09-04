@@ -1,6 +1,6 @@
 # Minimal Recruitment → HR handoff
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product stays [RPM-1](requirement-policy-management.md)
+**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [MA-1](mapping-authority.md)
 **Phase class:** platform
 **Branch (docs):** `docs/v1-blocker-briefs`
 **Branch (code):** none — later slices `feat/min-hr-handoff-hhN-…`
@@ -10,7 +10,7 @@
 > v1 blocker 5: **hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy.**
 > Full HR operations (Kadry, payroll, extended lifecycle) stay **later**.
 > **Not** Hiring E2E (that is [the predecessor](hiring-workflow-e2e.md)). **Not** a Documents phase. **Not** an HR product build-out. **Not** D10.
-> Opening this brief does **not** schedule it. The queue’s Active Product stays RPM-1.
+> Opening this brief does **not** schedule it. Hiring remains queued after RPM close. The queue’s Active Product is [MA-1](mapping-authority.md).
 
 ---
 

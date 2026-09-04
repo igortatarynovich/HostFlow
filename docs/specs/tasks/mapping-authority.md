@@ -1,9 +1,9 @@
 # Mapping Authority
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product stays [RPM-1](requirement-policy-management.md)
+**Status:** **ACTIVE** — Active Product = **MA-1** (brief; feat locked). Mapping Authority Contract Gate not PASS. Feat not opened this PR.  
 **Phase class:** platform
-**Branch (docs):** `docs/v1-blocker-briefs`
-**Branch (code):** none — later slices `feat/mapping-authority-maN-…`
+**Branch (docs):** `docs/rpm-program-close-mapping-authority` (schedule). Original brief: `docs/v1-blocker-briefs`
+**Branch (code):** none — feat locked. Later slices `feat/mapping-authority-maN-…`
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 2) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-3](../journeys/release-readiness-acceptance-suite.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [ADR-021](../architecture/ADR-021-unified-intake-resolution-model.md) · [Entity Profile Definition Registry](../platform/entity-profile-definition-registry.md) · [Field Registry](../platform/field-registry-card-configuration.md) · [CL6 Flight map](entity-field-composition-cl6-flight-map.md) · [C-5 mapping workspace](acquisition-ui-cutover-c5-mapping-workspace.md)
 **Estimate:** 4–6 slices (1 slice = one docs PR + one feat PR)
 
@@ -11,7 +11,7 @@
 > Not “build another mapping editor” — there are already three editors writing three stores.
 > **Not** Forms Publish (that is [External Intake](external-intake-forms-publish.md), which consumes this). **Not** Requirement Policy. **Not** CL8. **Not** OCR. **Not** a Zapier product.
 > Zapier is a **UX reference** (schema + sample → pick destination). HostFlow adds what Zapier is not required to solve: typed Field Registry destinations, option maps, binding vs contract-health scales, versioning, drift, and evaluator isolation.
-> Opening this brief does **not** schedule it. The queue’s Active Product stays RPM-1.
+> Opening this brief did **not** schedule it. The [RPM program close](requirement-policy-management.md) queue amendment names **MA-1** Active Product. Feat remains locked. Contract Gate is **not** PASS. External Intake / Hiring E2E / min HR remain queued.
 
 ---
 
@@ -77,7 +77,7 @@ Four parallel ways answers become entity-shaped data: Forms answers (`forms.norm
 
 ## Internal ladder (this program only)
 
-One Active Product slice at a time. Nothing here starts while RPM holds the Product Track.
+One Active Product slice at a time. RPM program is **DONE**. **MA-1 is Active Product** (brief; feat locked). This amendment does **not** open `feat/mapping-authority-maN-…`.
 
 ```text
 MA-1 Authority contract
@@ -172,13 +172,13 @@ Source field
 
 PASS when:
 
-1. This brief is merged; Active Product is **not** switched to Mapping by this amendment.  
+1. This brief is merged and the queue Active Product is **MA-1** (or a later MA slice after this gate).  
 2. The operator question and write authority above are the SoT.  
 3. The contract shape in this section is unchanged except by a later MA slice that **implements** it — not by dropping option maps, collapsing the two scales, or allowing evaluators to read provider payload.  
 4. No fourth store; no Zapier product; Sales convert / OCR / CL6 not absorbed.  
 5. RPM / Intake / Hiring E2E / min HR are not this slice.
 
-This amendment **records** the contract. It does **not** mark the Contract Gate PASS and does **not** open feat.
+This queue amendment **names** MA-1 Active Product after RPM program close. It does **not** mark the Contract Gate PASS and does **not** open feat.
 
 ---
 
@@ -219,9 +219,9 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 
 ## Queue position
 
-**Depends on:** RPM program close **or** an explicit queue amendment that runs Mapping earlier (the [DAG](../gates/hostflow-v1-release-goal.md) does **not** make RPM a predecessor of Mapping — only the one-Active-Product invariant serializes them)
-**Unlocks:** [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance (known acceptance edge)
-**Does not:** schedule itself; absorb Forms Publish; reopen CL6 / C-5 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`
+**Depends on:** [RPM program close](requirement-policy-management.md) (this amendment). The [DAG](../gates/hostflow-v1-release-goal.md) does **not** make RPM a predecessor of Mapping — one-Active-Product serialized them; this close names Mapping next.  
+**Unlocks:** [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance (known acceptance edge) — **not** scheduled here  
+**Does not:** mark Contract Gate PASS; open feat; absorb Forms Publish; reopen CL6 / C-5 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR
 
 ---
 

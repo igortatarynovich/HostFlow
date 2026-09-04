@@ -181,16 +181,7 @@ def test_rpm3b_brief_and_queue() -> None:
     assert "Mapping" in brief
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "Consumer Cutover Gate" in queue
-    assert (
-        "Active Product** | **[RPM-3" not in queue
-        or "Consumer Cutover" in queue
-    )
-    assert (
-        "Active (Product):** **Consumer Cutover Gate" in queue
-        or "Active Product = Consumer Cutover Gate" in brief
-        or "Active = Consumer Cutover Gate" in brief
-        or "Active:** **Consumer Cutover Gate" in brief
-    )
+    assert "RPM-3B" in brief and ("PASS" in brief or "✅" in brief)
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "Consumer Cutover" in agents or "RPM-3B" in agents
     arch = _ARCH.read_text(encoding="utf-8")

@@ -105,6 +105,7 @@ jobs:
       rpm3a: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm3a == 'true' }}
       rpm3b: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm3b == 'true' }}
       rpm_cutover: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm_cutover == 'true' }}
+      rpm_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm_close == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -331,6 +332,16 @@ jobs:
               - 'backend/app/modules/documents/router.py'
               - 'docs/specs/tasks/requirement-policy-management.md'
               - 'docs/specs/architecture/requirement-policy-authority.md'
+            rpm_close:
+              - 'backend/tests/platform/test_requirement_policy_program_close.py'
+              - 'docs/specs/tasks/requirement-policy-management.md'
+              - 'docs/specs/tasks/mapping-authority.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
 
   guards:
     name: guards
@@ -836,6 +847,21 @@ jobs:
         with:
           tests: tests/platform/test_requirement_policy_consumer_cutover_gate.py
 
+  rpm-close-gate:
+    name: Requirement Policy Program Close
+    needs: changes
+    if: needs.changes.outputs.rpm_close == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RPM program close gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_requirement_policy_program_close.py') == ''
+        run: echo "RPM program close gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_requirement_policy_program_close.py') != ''
+        with:
+          tests: tests/platform/test_requirement_policy_program_close.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -881,6 +907,7 @@ jobs:
       - rpm3a-parallel-retirement-gate
       - rpm3b-consumer-parity-gate
       - rpm-cutover-gate
+      - rpm-close-gate
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:
