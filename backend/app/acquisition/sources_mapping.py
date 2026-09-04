@@ -20,6 +20,11 @@ from backend.app.acquisition.sources_sample import (
     preview_source_sample,
     resolve_meta_form_id,
 )
+from backend.app.acquisition.mapping_workspace import (
+    coerce_schema_fields,
+    set_schema_snapshot,
+    workspace_envelope,
+)
 from backend.app.field_registry.intake_mapping import enrich_mapping_rules_for_storage
 
 
@@ -48,6 +53,15 @@ def _coerce_rule(raw: Any) -> Optional[dict[str, Any]]:
         out["action"] = action
     if "overwrite" in raw:
         out["overwrite"] = bool(raw.get("overwrite"))
+    option_map = raw.get("option_map")
+    if isinstance(option_map, dict):
+        cleaned = {
+            str(k).strip(): str(v).strip()
+            for k, v in option_map.items()
+            if str(k).strip() and str(v).strip()
+        }
+        if cleaned:
+            out["option_map"] = cleaned
     return out
 
 
@@ -96,6 +110,12 @@ async def get_source_mapping(
         mapping_rules_count=len(effective),
         last_error_code=None,
     )
+    workspace = await workspace_envelope(
+        db,
+        tenant_id=tenant_id,
+        profile=profile,
+        mapping_rules=effective,
+    )
     return {
         "source_id": str(profile.id),
         "provider": str(profile.provider or ""),
@@ -109,6 +129,7 @@ async def get_source_mapping(
         "destination": dest,
         "destination_label": dest_label,
         "route_intent": str(getattr(profile, "route_intent", None) or "") or None,
+        **workspace,
     }
 
 
@@ -118,10 +139,14 @@ async def put_source_mapping(
     tenant_id: str,
     source_id: str,
     mapping_rules: list[Any],
+    schema_snapshot: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     profile = await load_source_profile(db, tenant_id=tenant_id, source_id=source_id)
     accepted = normalize_rules_for_write(list(mapping_rules or []))
     profile.mapping_rules = accepted
+    if schema_snapshot is not None:
+        fields = coerce_schema_fields(schema_snapshot)
+        set_schema_snapshot(profile, {"fields": fields})
     await db.commit()
     await db.refresh(profile)
     return await get_source_mapping(db, tenant_id=tenant_id, source_id=str(profile.id))

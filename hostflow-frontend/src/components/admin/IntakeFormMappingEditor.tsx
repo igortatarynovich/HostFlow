@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 import { intakePresentationFieldLabel } from '../../utils/intakePresentationI18n'
 import { useToast } from '../../components/Toast'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS, marketingSourceMappingPath } from '../../app/crmAppPaths'
 import {
   getEntityProfileFields,
   getIntakeFormMapping,
@@ -77,6 +77,7 @@ export function IntakeFormMappingEditor({ formId, entityProfileCode, disabled = 
   const { notify } = useToast()
   const [loading, setLoading] = useState(true)
   const [provider, setProvider] = useState('')
+  const [workspaceSourceId, setWorkspaceSourceId] = useState<string | null>(null)
   const [profileFields, setProfileFields] = useState<EntityProfileFieldOption[]>([])
   const [rows, setRows] = useState<MappingRowDraft[]>([])
   const [sampleJson, setSampleJson] = useState(DEFAULT_SAMPLE)
@@ -97,6 +98,7 @@ export function IntakeFormMappingEditor({ formId, entityProfileCode, disabled = 
         getEntityProfileFields(entityProfileCode),
       ])
       setProvider(ctx.provider)
+      setWorkspaceSourceId(ctx.intake_source_profile_id)
       setProfileFields(fieldsPayload.fields)
       setRows(rulesToRows(ctx.mapping_rules || []))
     } catch {
@@ -224,6 +226,24 @@ export function IntakeFormMappingEditor({ formId, entityProfileCode, disabled = 
 
   if (loading) {
     return <p className="text-sm text-slate-500">{t('common.loading')}</p>
+  }
+
+  if (workspaceSourceId) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm" data-testid="intake-form-mapping-workspace">
+        <p className="text-slate-700">
+          {t('admin.intake_forms.mapping_workspace.body', {
+            defaultValue: 'Edit mapping for this form in the Mapping workspace — one editor for every intake source.',
+          })}
+        </p>
+        <Link
+          className="btn-primary btn-sm mt-3 inline-flex"
+          to={marketingSourceMappingPath(workspaceSourceId)}
+        >
+          {t('admin.intake_forms.mapping_workspace.open', { defaultValue: 'Open mapping' })}
+        </Link>
+      </div>
+    )
   }
 
   return (

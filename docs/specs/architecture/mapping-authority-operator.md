@@ -1,6 +1,6 @@
 # Mapping Authority Operator Surface
 
-**Status:** **Accepted** (L2 UX contract — Mapping Operator Gate not PASS; feat locked)  
+**Status:** **Accepted** (L2 UX contract — Mapping Operator Gate not PASS; feat open)  
 **Date:** 2026-09-04  
 **Trusted base:** `integration/release-product-a-b` @ `3a4297b0` ([#348](https://github.com/igortatarynovich/HostFlow/pull/348))  
 **Related:** [`mapping-authority-contract.md`](mapping-authority-contract.md) (`mapping_authority.v1`) · [`mapping-authority-resolution.md`](mapping-authority-resolution.md) (`resolve_mapping_authority`) · [`../tasks/mapping-authority.md`](../tasks/mapping-authority.md) · [`ADR-021`](ADR-021-unified-intake-resolution-model.md)
@@ -8,7 +8,7 @@
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (one owner of this write), **INV-01** (one SoT for the operator question), **INV-16** (contract before a second editor). Does not rewrite L0. Does not mint a fourth mapping store or a Field Registry fork.
 
 > This file is the **SoT** for MA-3 product surface: one editor, many entry points, schema-first, human-language health.  
-> It does **not** open `feat/mapping-authority-ma3-…`. Mapping Operator Gate stays **not PASS** until that feat ships the editor against this contract.  
+> Feat `feat/mapping-authority-ma3-operator-surface` implements the editor. Mapping Operator Gate stays **not PASS** until the untrained-operator criterion holds on a real source.  
 > Binding / option map / evaluator isolation remain [MA-1](mapping-authority-contract.md). One resolver remains [MA-2](mapping-authority-resolution.md).
 
 ---
@@ -216,7 +216,7 @@ Out: themes, analytics, bulk rule import, Zapier-style conditions, a type picker
 
 ## False close
 
-Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin still writes independently; opening `feat/mapping-authority-ma3-…` in this docs PR; treating sample as schema SoT; blocking mapping until a lead exists; generic “Needs review” as the only drift copy; showing `qualified_code` / JSON / storage paths as the working UI; letting the operator change Field Registry type; absorbing Sales convert / OCR / CL6; collapsing binding and contract health into one scale; treating mapping uncertainty as candidate `no_fit`; starting External Intake / Hiring E2E / min HR; Foundation ✅.
+Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin still writes independently; treating sample as schema SoT; blocking mapping until a lead exists; generic “Needs review” as the only drift copy; showing `qualified_code` / JSON / storage paths as the working UI; letting the operator change Field Registry type; absorbing Sales convert / OCR / CL6; collapsing binding and contract health into one scale; treating mapping uncertainty as candidate `no_fit`; starting External Intake / Hiring E2E / min HR; Foundation ✅; MA-4 vocabulary cutover in this feat.
 
 ---
 
@@ -230,4 +230,5 @@ Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin st
 
 ## History
 
+- 2026-09-04: Feat `feat/mapping-authority-ma3-operator-surface` opened. Mapping Operator Gate not PASS.
 - 2026-09-04: UX contract accepted from measurement after [#348](https://github.com/igortatarynovich/HostFlow/pull/348). Feat locked. Mapping Operator Gate not PASS.

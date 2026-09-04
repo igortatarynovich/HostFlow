@@ -108,6 +108,7 @@ jobs:
       rpm_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm_close == 'true' }}
       ma1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma1 == 'true' }}
       ma2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma2 == 'true' }}
+      ma3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma3 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -360,6 +361,14 @@ jobs:
               - 'docs/specs/tasks/mapping-authority.md'
               - 'docs/specs/architecture/mapping-authority-resolution.md'
               - 'docs/specs/architecture/mapping-authority-contract.md'
+            ma3:
+              - 'backend/app/acquisition/mapping_workspace.py'
+              - 'backend/app/acquisition/sources_mapping.py'
+              - 'backend/app/api/v1/platform/marketing_sources.py'
+              - 'backend/tests/api/test_acquisition_c5_source_mapping.py'
+              - 'hostflow-frontend/src/pages/marketing/MarketingSourceMappingPage.tsx'
+              - 'docs/specs/architecture/mapping-authority-operator.md'
+              - 'docs/specs/tasks/mapping-authority.md'
 
   guards:
     name: guards
@@ -926,6 +935,31 @@ jobs:
             tests/platform/test_mapping_authority_resolution_gate.py
             tests/entity_profile/test_mapping_resolve.py
 
+  ma3-operator-surface:
+    name: Mapping Operator Surface
+    needs: changes
+    if: needs.changes.outputs.ma3 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/backend-pytest
+        with:
+          skip-alembic: "0"
+          tests: tests/api/test_acquisition_c5_source_mapping.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -974,6 +1008,7 @@ jobs:
       - rpm-close-gate
       - ma1-contract-gate
       - ma2-resolution-gate
+      - ma3-operator-surface
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:

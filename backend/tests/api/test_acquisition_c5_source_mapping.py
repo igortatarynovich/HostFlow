@@ -241,3 +241,90 @@ def test_build_source_paths_mapping_is_marketing_native() -> None:
     assert mapping == f"{MARKETING_SOURCES}/src-1/mapping"
     assert test_lead == f"{MARKETING_SOURCES}/src-1/test-lead"
     assert settings == SETTINGS_INTEGRATIONS_META
+
+
+@pytest.mark.anyio
+async def test_mapping_workspace_schema_without_sample(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-ma3-{uuid4().hex[:8]}"
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db,
+            tenant_id=DEFAULT_TENANT_ID,
+            form_id=form_id,
+            mapping_rules=[],
+        )
+        await db.commit()
+        source_id = str(profile.id)
+
+    headers = _headers(manager_headers)
+    put = await client.put(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+        json={
+            "schema_snapshot": {
+                "fields": [
+                    {
+                        "source": "document_validity",
+                        "label": "Срок действия документов",
+                        "options": ["Менее 3 месяцев", "Более 8 месяцев"],
+                    },
+                    {"source": "favourite_color", "label": "Любимый цвет"},
+                    {"source": "eu_experience", "label": "Стаж в ЕС"},
+                ]
+            },
+            "mapping_rules": [
+                {
+                    "source": "document_validity",
+                    "target": "document_validity",
+                    "option_map": {"Более 8 месяцев": "GT_8_MONTHS"},
+                },
+                {"source": "favourite_color", "action": "ignore"},
+            ],
+        },
+    )
+    assert put.status_code == 200, put.text
+    body = put.json()
+    assert body["has_schema"] is True
+    assert body["has_sample"] is False
+    sources = [row["source"] for row in body["schema_fields"]]
+    assert sources == ["document_validity", "favourite_color", "eu_experience"]
+    by_source = {row["source"]: row for row in body["schema_fields"]}
+    assert by_source["document_validity"]["binding"] == "mapped"
+    assert by_source["favourite_color"]["binding"] == "ignored"
+    assert by_source["eu_experience"]["binding"] == "unmapped"
+    assert by_source["eu_experience"]["drift"] == "new_question"
+    assert body["summary"]["headline"] == "needs_check"
+    assert body["summary"]["unmapped_count"] == 1
+    assert body["projection"]
+    assert "document_validity" in body["projection"][0]["sentence"]
+
+    got = await client.get(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+    )
+    assert got.status_code == 200, got.text
+    again = got.json()
+    assert again["has_sample"] is False
+    assert len(again["schema_fields"]) == 3
+    assert again["schema_fields"][0]["option_map"]["Более 8 месяцев"] == "GT_8_MONTHS"
+
+
+def test_workspace_rows_do_not_require_sample() -> None:
+    from backend.app.acquisition.mapping_workspace import build_workspace_rows
+
+    rows, summary = build_workspace_rows(
+        schema_fields=[
+            {"source": "q1", "label": "Question 1", "options": []},
+            {"source": "q2", "label": "Question 2", "options": []},
+        ],
+        mapping_rules=[],
+        sample_by_source={},
+        destinations=[],
+        has_schema=True,
+    )
+    assert [r["source"] for r in rows] == ["q1", "q2"]
+    assert all(r["binding"] == "unmapped" for r in rows)
+    assert summary["headline"] == "needs_check"
+    assert summary["total_count"] == 2

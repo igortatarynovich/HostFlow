@@ -1,9 +1,9 @@
 # Mapping Authority
 
-**Status:** **ACTIVE** — MA-1 Contract Gate **PASS**. Mapping Resolution Gate **PASS**. Active Product = **MA-3** (UX contract sealed; feat locked). MA-3 editor not opened this PR.  
+**Status:** **ACTIVE** — MA-1 Contract Gate **PASS**. Mapping Resolution Gate **PASS**. Active Product = **MA-3** (UX contract sealed; feat `feat/mapping-authority-ma3-operator-surface` open; Operator Gate not PASS).  
 **Phase class:** platform
-**Branch (docs):** `docs/mapping-authority-ma3-operator-brief`
-**Branch (code):** not opened. Later slice `feat/mapping-authority-ma3-…` only after this UX contract.
+**Branch (docs):** `docs/mapping-authority-ma3-operator-brief`  
+**Branch (code):** `feat/mapping-authority-ma3-operator-surface`. Mapping Operator Gate not PASS.
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 2) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-3](../journeys/release-readiness-acceptance-suite.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [ADR-021](../architecture/ADR-021-unified-intake-resolution-model.md) · [Entity Profile Definition Registry](../platform/entity-profile-definition-registry.md) · [Field Registry](../platform/field-registry-card-configuration.md) · [CL6 Flight map](entity-field-composition-cl6-flight-map.md) · [C-5 mapping workspace](acquisition-ui-cutover-c5-mapping-workspace.md)
 **Estimate:** 4–6 slices (1 slice = one docs PR + one feat PR)
 
@@ -77,7 +77,7 @@ Four parallel ways answers become entity-shaped data: Forms answers (`forms.norm
 
 ## Internal ladder (this program only)
 
-One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **MA-3 is Active Product** (UX contract sealed; feat locked). This amendment does **not** open `feat/mapping-authority-ma3-…`.
+One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **MA-3 is Active Product** (UX contract sealed; feat `feat/mapping-authority-ma3-operator-surface` open; Operator Gate not PASS).
 
 ```text
 MA-1 Authority contract
@@ -210,7 +210,7 @@ This slice **closes** the Resolution Gate. Feat remains locked until **MA-3**. D
 
 ---
 
-## MA-3 — Operator surface (UX contract sealed; feat locked)
+## MA-3 — Operator surface (UX contract sealed; feat open; Operator Gate not PASS)
 
 **SoT:** [mapping-authority-operator.md](../architecture/mapping-authority-operator.md).
 
@@ -226,7 +226,7 @@ Out: themes, analytics, bulk rule import, a fourth editor, Zapier-style conditio
 
 #### Mapping Operator Gate
 
-**Outcome:** not PASS (feat locked). SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md).
+**Outcome:** not PASS (feat open). SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md).
 
 PASS when:
 
@@ -236,7 +236,7 @@ PASS when:
 4. Schema ≠ sample; no-sample is not a dead end; drift names the change (new question / missing option / changed options); save shows a canonical-fact projection; a real submission shows applied evidence (RS-3 remains program proof).  
 5. RPM / Intake / Hiring E2E / min HR / MA-4 vocabulary cutover are not this slice.
 
-This amendment **seals the UX contract**. It does **not** open `feat/mapping-authority-ma3-…`. Do not start the editor in this PR (queue invariant 6).
+This amendment **seals the UX contract**. Feat `feat/mapping-authority-ma3-operator-surface` implements the one editor. Mapping Operator Gate stays **not PASS** until the untrained-operator criterion is true on a real source.
 
 ---
 
@@ -260,8 +260,8 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 ## Queue position
 
 **Depends on:** [RPM program close](requirement-policy-management.md). The [DAG](../gates/hostflow-v1-release-goal.md) does **not** make RPM a predecessor of Mapping — one-Active-Product serialized them.  
-**Unlocks:** MA-3 Operator surface **feat** after this UX contract (feat still locked this PR); [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance remains a later edge — **not** scheduled here  
-**Does not:** open `feat/mapping-authority-ma3-…`; absorb Forms Publish; reopen CL6 / C-5 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR
+**Unlocks:** Mapping Operator Gate after this feat (not PASS yet); [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance remains a later edge — **not** scheduled here  
+**Does not:** mark Mapping Operator Gate PASS; absorb Forms Publish; reopen CL6 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR; MA-4 vocabulary cutover
 
 ---
 
@@ -282,6 +282,7 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 
 ## History
 
+- 2026-09-04: Feat `feat/mapping-authority-ma3-operator-surface` opened — schema-first workspace over C-5 route; Operator Gate not PASS; no MA-4.
 - 2026-09-04: MA-3 UX contract sealed. SoT = [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). Mapping Operator Gate not PASS. Feat still locked. External Intake / Hiring E2E / min HR remain queued.
 - 2026-09-04: Mapping Resolution Gate **PASS**. SoT = [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md) (`resolve_mapping_authority`). One store at ingest. Leftover Meta stores read-through / migrated. Active Product → **MA-3** (brief; feat locked). External Intake / Hiring E2E / min HR remain queued. Not CL8. Foundation stays 🔄.
 - 2026-09-04: Mapping Authority Contract Gate **PASS**. SoT = [mapping-authority-contract.md](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`). Named CI + boundary. Active Product → **MA-2** (brief; feat locked). Mapping feat not opened. External Intake / Hiring E2E / min HR remain queued. Not CL8. Foundation stays 🔄.
