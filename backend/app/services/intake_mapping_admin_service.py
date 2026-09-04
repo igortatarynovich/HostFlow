@@ -3,39 +3,23 @@
 from __future__ import annotations
 
 import json
-from typing import Any, NoReturn, Optional
-from uuid import uuid4
+from typing import Any, Optional
 
 from fastapi import HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.constants.spa_paths import MARKETING_SOURCES
+from backend.app.acquisition.mapping_leftover_writers import (
+    mapping_workspace_path,
+    raise_intake_form_mapping_evaluator_retired,
+    raise_intake_form_mapping_writes_retired,
+)
 from backend.app.entity_profile.ingest_runtime import IngestEnvelope, stamp_ingest_envelope_v1
-from backend.app.entity_profile.mapping_write import MappingWriteError, validate_intake_mapping_rules_write
-from backend.app.entity_profile.public_intake_draft_session import create_or_reuse_public_intake_lead_draft
+from backend.app.entity_profile.mapping_resolve import resolve_mapping_authority
+from backend.app.entity_profile.mapping_validation import MappingValidationResult
 from backend.app.models.intake_routing import IntakeSourceProfile
 from backend.app.modules.intake_routing import crud as intake_crud
 from backend.app.modules.leads.normalizer import coerce_generic_json_to_meta_normalizer_payload, normalize_meta_payload
 from backend.app.services.intake_form_admin_context import _load_lead_form
-from backend.app.services.lead_forms_quota import lead_form_meta_for_intake_state
-from backend.app.services.source_labels import normalize_candidate_source
-
-INTAKE_FORM_MAPPING_WRITES_RETIRED = "intake_form_mapping_writes_retired"
-
-
-def raise_intake_form_mapping_writes_retired(*, mapping_path: str) -> NoReturn:
-    raise HTTPException(
-        status_code=410,
-        detail={
-            "code": INTAKE_FORM_MAPPING_WRITES_RETIRED,
-            "message": (
-                "Intake form mapping is edited in the Mapping workspace. "
-                "This leftover PUT is no longer a writer."
-            ),
-            "mapping_path": mapping_path,
-        },
-    )
 
 
 def _coerce_rules(raw: Any) -> list[dict[str, Any]]:
@@ -44,17 +28,6 @@ def _coerce_rules(raw: Any) -> list[dict[str, Any]]:
     if isinstance(raw, list):
         return [dict(item) for item in raw if isinstance(item, dict)]
     return []
-
-
-def _http_from_mapping_error(exc: MappingWriteError) -> HTTPException:
-    return HTTPException(
-        status_code=422,
-        detail={
-            "code": exc.code,
-            "message": exc.message,
-            **({"details": exc.details} if exc.details else {}),
-        },
-    )
 
 
 async def _intake_source_for_form(
@@ -75,6 +48,23 @@ async def _intake_source_for_form(
     if not profile_id:
         return None
     return await intake_crud.get_profile_by_id(db, tenant_id=str(tenant_id), profile_id=str(profile_id))
+
+
+async def _mapping_path_for_form(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+) -> str:
+    lead_form = await _load_lead_form(db, tenant_id=str(tenant_id), form_id=str(form_id))
+    public_slug = str(getattr(lead_form, "public_slug", None) or "").strip() or None
+    intake_source = await _intake_source_for_form(
+        db,
+        tenant_id=str(tenant_id),
+        form_id=str(form_id),
+        public_slug=public_slug,
+    )
+    return mapping_workspace_path(str(intake_source.id) if intake_source is not None else None)
 
 
 def extract_source_fields_from_sample(raw_payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -170,19 +160,7 @@ async def save_intake_form_mapping(
     mapping_rules: list[dict[str, Any]],
 ) -> dict[str, Any]:
     del mapping_rules
-    lead_form = await _load_lead_form(db, tenant_id=str(tenant_id), form_id=str(form_id))
-    public_slug = str(getattr(lead_form, "public_slug", None) or "").strip() or None
-    intake_source = await _intake_source_for_form(
-        db,
-        tenant_id=str(tenant_id),
-        form_id=str(form_id),
-        public_slug=public_slug,
-    )
-    mapping_path = (
-        f"{MARKETING_SOURCES}/{intake_source.id}/mapping"
-        if intake_source is not None
-        else MARKETING_SOURCES
-    )
+    mapping_path = await _mapping_path_for_form(db, tenant_id=tenant_id, form_id=form_id)
     raise_intake_form_mapping_writes_retired(mapping_path=mapping_path)
 
 
@@ -194,6 +172,20 @@ async def preview_intake_form_mapping(
     raw_payload: dict[str, Any],
     mapping_rules: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
+    mapping_path = await _mapping_path_for_form(db, tenant_id=tenant_id, form_id=form_id)
+    if mapping_rules is not None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "intake_form_mapping_preview_uses_saved_contract",
+                "message": (
+                    "Intake mapping preview is a read-only diagnostic over the saved "
+                    "Mapping contract. Do not pass mapping_rules; that is a second algorithm."
+                ),
+                "mapping_path": mapping_path,
+            },
+        )
+
     lead_form = await _load_lead_form(db, tenant_id=str(tenant_id), form_id=str(form_id))
     public_slug = str(getattr(lead_form, "public_slug", None) or "").strip() or None
     intake_source = await _intake_source_for_form(
@@ -205,36 +197,27 @@ async def preview_intake_form_mapping(
     if intake_source is None:
         raise HTTPException(status_code=422, detail="Intake source profile is not bound to this form")
 
-    entity_profile_code = str(getattr(intake_source, "entity_profile_code", None) or "").strip()
-    if not entity_profile_code:
-        raise HTTPException(status_code=422, detail="Intake source must have entity_profile_code")
-
-    rules = mapping_rules if mapping_rules is not None else _coerce_rules(getattr(intake_source, "mapping_rules", None))
-    try:
-        accepted, validation = await validate_intake_mapping_rules_write(
-            db,
-            tenant_id=str(tenant_id),
-            entity_profile_code=entity_profile_code,
-            rules=rules,
-            reject_on_any_invalid=False,
-        )
-    except MappingWriteError as exc:
-        raise _http_from_mapping_error(exc) from exc
-
+    resolved = await resolve_mapping_authority(
+        db,
+        tenant_id=str(tenant_id),
+        intake_source_profile_id=str(intake_source.id),
+        payload=raw_payload,
+    )
+    accepted = list(resolved.rules)
+    validation = MappingValidationResult(accepted_rules=accepted)
     wrapped = coerce_generic_json_to_meta_normalizer_payload(raw_payload)
     normalized = normalize_meta_payload(wrapped, field_mapping=accepted)
-    normalized["raw_payload_v1"] = dict(raw_payload)
     envelope = IngestEnvelope(
         raw_payload=dict(raw_payload),
         normalized_payload=dict(normalized),
-        entity_profile_code=entity_profile_code,
+        entity_profile_code=str(getattr(intake_source, "entity_profile_code", None) or "").strip() or None,
         route_intent=str(getattr(intake_source, "route_intent", None) or "candidate_application"),
         mapping_result=validation.to_dict(),
         intake_source_profile_id=str(intake_source.id),
+        mapping_rules_source=resolved.rules_source,
         bridge_source="intake_source_mapping_preview",
     )
     stamp_ingest_envelope_v1(normalized, envelope)
-
     return {
         "source_fields": extract_source_fields_from_sample(raw_payload),
         "normalized_payload": normalized,
@@ -252,43 +235,6 @@ async def test_intake_form_mapping_ingest(
     raw_payload: dict[str, Any],
     mapping_rules: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
-    preview = await preview_intake_form_mapping(
-        db,
-        tenant_id=str(tenant_id),
-        form_id=str(form_id),
-        raw_payload=raw_payload,
-        mapping_rules=mapping_rules,
-    )
-    if not preview.get("accepted_rules"):
-        raise HTTPException(status_code=422, detail="No accepted mapping rules — cannot create test lead")
-
-    lead_form = await _load_lead_form(db, tenant_id=str(tenant_id), form_id=str(form_id))
-    normalized = dict(preview["normalized_payload"])
-    contacts = {
-        "email": str(normalized.get("email") or f"mapping-test-{uuid4().hex[:8]}@example.com"),
-        "phone": str(normalized.get("phone") or ""),
-        "phone_country_code": str(normalized.get("phone_country_code") or "") or None,
-    }
-    lf_meta = lead_form_meta_for_intake_state(lead_form)
-    lead, token, expires_at = await create_or_reuse_public_intake_lead_draft(
-        db,
-        tenant_id=str(tenant_id),
-        contacts={k: v for k, v in contacts.items() if v},
-        intake_source=normalize_candidate_source("mapping_test"),
-        vacancy_id=None,
-        application_kind="candidate",
-        lead_form_meta=lf_meta,
-        client_company=None,
-    )
-    lead.normalized = {**normalized, **(lead.normalized if isinstance(lead.normalized, dict) else {})}
-    await db.commit()
-    return {
-        "lead_id": str(lead.id),
-        "candidate_id": None,
-        "token": token,
-        "expires_at": expires_at,
-        "normalized_payload": normalized,
-        "ingest_envelope_v1": preview["ingest_envelope_v1"],
-        "mapping_validation": preview["mapping_validation"],
-        "message": "Mapping test created a Lead draft with canonical normalized payload; no Candidate INSERT.",
-    }
+    del raw_payload, mapping_rules
+    mapping_path = await _mapping_path_for_form(db, tenant_id=tenant_id, form_id=form_id)
+    raise_intake_form_mapping_evaluator_retired(mapping_path=mapping_path)

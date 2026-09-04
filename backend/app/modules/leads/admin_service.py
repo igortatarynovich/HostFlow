@@ -26,7 +26,6 @@ from backend.app.services.plan_feature_gates import (
     ensure_lead_source_limit,
     ensure_leads_generic_inbound_webhook_allowed,
     ensure_meta_lead_credential_create_allowed,
-    ensure_meta_lead_field_mapping_rows_allowed,
     ensure_meta_leads_oauth_allowed,
     lead_meta_credentials_cap,
     lead_meta_field_mapping_rules_cap,
@@ -617,16 +616,11 @@ async def update_settings(
         token = updates["webhook_verify_token"]
         updates["webhook_verify_token"] = token.strip() or None if token is not None else None
     if "field_mapping" in updates:
-        mapping_rules = updates["field_mapping"]
-        if mapping_rules is None:
-            updates["field_mapping"] = []
-        elif isinstance(mapping_rules, list):
-            updates["field_mapping"] = mapping_rules
-        else:
-            updates["field_mapping"] = []
-        await ensure_meta_lead_field_mapping_rows_allowed(
-            db, tenant_id, len(updates["field_mapping"])
+        from backend.app.acquisition.mapping_leftover_writers import (
+            raise_meta_mapping_writes_retired,
         )
+
+        raise_meta_mapping_writes_retired()
     await crud.update_meta_settings(db, entry, **updates)
     if fit_ordered is not None:
         await _persist_lead_fit_ordered_vacancy_ids(db, tenant_id, fit_ordered)
@@ -1715,31 +1709,15 @@ async def upsert_meta_lead_form_mapping(
     *,
     user_sub: Optional[str] = None,
 ) -> MetaLeadFormMappingOut:
+    from backend.app.acquisition.mapping_leftover_writers import (
+        raise_meta_mapping_writes_retired,
+    )
+
+    _ = (db, tenant_id, payload, user_sub)
     fid = str(form_id or "").strip()
     if not fid:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="form_id is required")
-    rules = payload.mapping_rules or []
-    await ensure_meta_lead_field_mapping_rows_allowed(db, tenant_id, len(rules))
-    src = (payload.source or "meta").strip().lower() or "meta"
-    pid = str(payload.page_id or "").strip() or None
-    dumped = [r.model_dump() for r in rules]
-    await crud.upsert_meta_form_mapping(
-        db,
-        tenant_id=tenant_id,
-        form_id=fid,
-        page_id=pid,
-        source=src,
-        mapping_rules=dumped,
-        form_name=payload.form_name,
-        last_sample_lead_id=str(payload.last_sample_lead_id).strip() if payload.last_sample_lead_id else None,
-        updated_by=user_sub,
-    )
-    from backend.app.entity_profile.mapping_resolve import write_through_authority_for_meta_form
-
-    await write_through_authority_for_meta_form(
-        db, tenant_id=tenant_id, form_id=fid, page_id=pid, rules=dumped
-    )
-    return await get_meta_lead_form_mapping(db, tenant_id, fid, page_id=pid, source=src)
+    raise_meta_mapping_writes_retired()
 
 
 async def _validate_own_company_for_tenant(

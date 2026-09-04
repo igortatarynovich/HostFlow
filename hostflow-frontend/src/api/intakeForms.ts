@@ -232,56 +232,7 @@ export type IntakeFormMappingContext = {
   validation?: Record<string, unknown> | null
 }
 
-export type IntakeFormMappingPreviewResult = {
-  source_fields: Array<{ source: string; sample_value: string }>
-  normalized_payload: Record<string, unknown>
-  ingest_envelope_v1: Record<string, unknown>
-  mapping_validation: Record<string, unknown>
-  accepted_rules: MappingRuleInput[]
-}
-
-export type IntakeFormMappingTestResult = {
-  lead_id: string
-  candidate_id: string | null
-  token: string
-  expires_at: string
-  normalized_payload: Record<string, unknown>
-  ingest_envelope_v1: Record<string, unknown>
-  mapping_validation: Record<string, unknown>
-  message: string
-}
-
 export async function getIntakeFormMapping(formId: string): Promise<IntakeFormMappingContext> {
   const { data } = await api.get<IntakeFormMappingContext>(`/settings/intake-forms/${formId}/mapping`)
-  return data
-}
-
-export async function putIntakeFormMapping(
-  formId: string,
-  payload: { mapping_rules: MappingRuleInput[] },
-): Promise<IntakeFormMappingContext> {
-  const { data } = await api.put<IntakeFormMappingContext>(`/settings/intake-forms/${formId}/mapping`, payload)
-  return data
-}
-
-export async function previewIntakeFormMapping(
-  formId: string,
-  payload: { sample_payload: Record<string, unknown>; mapping_rules?: MappingRuleInput[] },
-): Promise<IntakeFormMappingPreviewResult> {
-  const { data } = await api.post<IntakeFormMappingPreviewResult>(
-    `/settings/intake-forms/${formId}/mapping/preview`,
-    payload,
-  )
-  return data
-}
-
-export async function testIntakeFormMappingIngest(
-  formId: string,
-  payload: { sample_payload: Record<string, unknown>; mapping_rules?: MappingRuleInput[] },
-): Promise<IntakeFormMappingTestResult> {
-  const { data } = await api.post<IntakeFormMappingTestResult>(
-    `/settings/intake-forms/${formId}/mapping/test-ingest`,
-    payload,
-  )
   return data
 }

@@ -19,24 +19,24 @@ describe('C-5 Mapping workspace UI shell', () => {
     expect(marketingSourceMappingPath('src-1')).toBe('/app/marketing/sources/src-1/mapping')
   })
 
-  it('page wires get/put mapping + routing preview', () => {
+  it('page wires get/put mapping, projection, and applied evidence', () => {
     const src = readFileSync(
       path.join(ROOT, 'src/pages/marketing/MarketingSourceMappingPage.tsx'),
       'utf8',
     )
     expect(src).toContain('getMarketingSourceMapping')
     expect(src).toContain('putMarketingSourceMapping')
-    expect(src).toContain('postMarketingSourceRoutingPreview')
     expect(src).toContain('marketing-mapping-rules-table')
     expect(src).toContain('marketing-mapping-save')
-    expect(src).toContain('marketing-mapping-routing-run')
     expect(src).toContain('marketing-mapping-summary')
-    expect(src).toContain('creates_entities')
+    expect(src).toContain('marketing-mapping-projection')
     expect(src).toContain('marketing-mapping-applied')
     expect(src).toContain('applied_evidence')
     expect(src).toContain('marketing-mapping-drift-')
     expect(src).toContain('app.marketing.mapping.drift.')
     expect(src).not.toContain('>{row.destination_code}<')
+    expect(src).not.toContain('postMarketingSourceRoutingPreview')
+    expect(src).not.toContain('marketing-mapping-routing-run')
   })
 
   it('Sources list Mapping CTA still uses server mapping_path', () => {

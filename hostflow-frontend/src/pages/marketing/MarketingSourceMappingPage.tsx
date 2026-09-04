@@ -11,13 +11,11 @@ import {
 import {
   getMarketingSourceMapping,
   listMarketingSources,
-  postMarketingSourceRoutingPreview,
   putMarketingSourceMapping,
   type MappingDestination,
   type MappingWorkspaceRow,
   type MarketingSourceMapping,
   type MarketingSourceMappingRule,
-  type MarketingSourceRoutingPreview,
   type MarketingSourceSummary,
 } from '../../api/marketingSources'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
@@ -125,7 +123,6 @@ export default function MarketingSourceMappingPage() {
   const [source, setSource] = useState<MarketingSourceSummary | null>(null)
   const [mapping, setMapping] = useState<MarketingSourceMapping | null>(null)
   const [drafts, setDrafts] = useState<DraftRow[]>([])
-  const [routing, setRouting] = useState<MarketingSourceRoutingPreview | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
@@ -143,7 +140,6 @@ export default function MarketingSourceMappingPage() {
       setSource(rows.find((row) => row.source_id === sourceId) ?? null)
       setMapping(mappingRow)
       setDrafts(rowsFromWorkspace(mappingRow))
-      setRouting(null)
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(err, t('app.marketing.mapping.errors.load'), t),
@@ -372,7 +368,7 @@ export default function MarketingSourceMappingPage() {
                                 })}
                               </p>
                             ) : null}
-                            {driftLabel ? (
+                            {row.in_schema && driftLabel ? (
                               <p
                                 className="mt-1 text-xs text-amber-800"
                                 data-testid={`marketing-mapping-drift-${row.source}`}
@@ -536,63 +532,6 @@ export default function MarketingSourceMappingPage() {
             ) : (
               <p className="text-sm text-slate-500" data-testid="marketing-mapping-applied-empty">
                 {t('app.marketing.mapping.applied.none')}
-              </p>
-            )}
-          </section>
-
-          <section
-            className="rounded-lg border border-slate-200 bg-white p-4"
-            data-testid="marketing-mapping-routing"
-          >
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-base font-semibold text-slate-900">
-                {t('app.marketing.mapping.routing.title')}
-              </h2>
-              <button
-                type="button"
-                className="btn-secondary btn-sm"
-                disabled={busy}
-                data-testid="marketing-mapping-routing-run"
-                onClick={() =>
-                  void runAction(async () => {
-                    const preview = await postMarketingSourceRoutingPreview(sourceId)
-                    setRouting(preview)
-                  })
-                }
-              >
-                {t('app.marketing.mapping.actions.preview_routing')}
-              </button>
-            </div>
-
-            {routing ? (
-              <div className="space-y-2 text-sm" data-testid="marketing-mapping-routing-result">
-                <p data-testid="marketing-mapping-routing-destination">
-                  <span className="text-slate-500">{t('app.marketing.mapping.routing.destination')}: </span>
-                  {routing.destination_label || routing.destination || '—'}
-                </p>
-                <p data-testid="marketing-mapping-routing-needs-review">
-                  <span className="text-slate-500">{t('app.marketing.mapping.routing.needs_review')}: </span>
-                  {routing.needs_review ? t('common.yes') : t('common.no')}
-                </p>
-                <p data-testid="marketing-mapping-routing-creates">
-                  <span className="text-slate-500">{t('app.marketing.mapping.routing.creates')}: </span>
-                  {routing.creates_entities ? t('common.yes') : t('common.no')}
-                </p>
-                <p data-testid="marketing-mapping-routing-unmapped">
-                  <span className="text-slate-500">{t('app.marketing.mapping.routing.unmapped')}: </span>
-                  {routing.unmapped_fields.length ? routing.unmapped_fields.join(', ') : '—'}
-                </p>
-                <p data-testid="marketing-mapping-routing-ignored">
-                  <span className="text-slate-500">{t('app.marketing.mapping.routing.ignored')}: </span>
-                  {routing.ignored_fields.length ? routing.ignored_fields.join(', ') : '—'}
-                </p>
-                <p className="text-slate-600" data-testid="marketing-mapping-routing-note">
-                  {routing.note}
-                </p>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500" data-testid="marketing-mapping-routing-empty">
-                {t('app.marketing.mapping.routing.empty')}
               </p>
             )}
           </section>

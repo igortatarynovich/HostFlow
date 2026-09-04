@@ -17,6 +17,26 @@ from backend.tests.api.test_intake_forms_settings import _admin_headers
 pytestmark = pytest.mark.anyio
 
 
+def test_intake_form_mapping_put_code_is_leftover_writer() -> None:
+    from fastapi import HTTPException
+
+    from backend.app.acquisition.mapping_leftover_writers import (
+        INTAKE_FORM_MAPPING_WRITES_RETIRED,
+        raise_intake_form_mapping_writes_retired,
+    )
+
+    try:
+        raise_intake_form_mapping_writes_retired(
+            mapping_path="/app/marketing/sources/src-1/mapping",
+        )
+    except HTTPException as exc:
+        assert exc.status_code == 410
+        assert exc.detail["code"] == INTAKE_FORM_MAPPING_WRITES_RETIRED
+        assert exc.detail["mapping_path"] == "/app/marketing/sources/src-1/mapping"
+    else:
+        raise AssertionError("expected leftover writer 410")
+
+
 @pytest.fixture(autouse=True)
 def _bypass_lead_source_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _noop(*args, **kwargs):  # noqa: ANN002, ANN003
@@ -66,6 +86,30 @@ async def test_p9_get_mapping_context(client: AsyncClient, tenant_id: str) -> No
 
 
 @pytest.mark.asyncio
+async def test_p9_intake_mapping_put_is_leftover_writer(client: AsyncClient, tenant_id: str) -> None:
+    form_id = await _seed_driver_ce(tenant_id)
+    headers = await _admin_headers(tenant_id)
+    put = await client.put(
+        f"/api/v1/settings/intake-forms/{form_id}/mapping",
+        headers=headers,
+        json={
+            "mapping_rules": [
+                {
+                    "source": "first_name",
+                    "qualified_field_code": "recruitment.candidate.first_name",
+                    "format": "string",
+                }
+            ]
+        },
+    )
+    assert put.status_code == 410, put.text
+    detail = put.json().get("detail")
+    assert isinstance(detail, dict)
+    assert detail.get("code") == "intake_form_mapping_writes_retired"
+    assert "/app/marketing/sources/" in str(detail.get("mapping_path") or "")
+
+
+@pytest.mark.asyncio
 async def test_p9_save_valid_mapping_and_preview(client: AsyncClient, tenant_id: str) -> None:
     form_id = await _seed_driver_ce(tenant_id)
     headers = await _admin_headers(tenant_id)
@@ -86,8 +130,7 @@ async def test_p9_save_valid_mapping_and_preview(client: AsyncClient, tenant_id:
         headers=headers,
         json={"mapping_rules": rules},
     )
-    assert put.status_code == 200, put.text
-    assert len(put.json()["mapping_rules"]) == 2
+    assert put.status_code == 410, put.text
 
     sample = {
         "first_name": "Anna",
@@ -97,14 +140,23 @@ async def test_p9_save_valid_mapping_and_preview(client: AsyncClient, tenant_id:
     preview = await client.post(
         f"/api/v1/settings/intake-forms/{form_id}/mapping/preview",
         headers=headers,
+        json={"sample_payload": sample, "mapping_rules": rules},
+    )
+    assert preview.status_code == 422, preview.text
+    detail = preview.json().get("detail")
+    assert isinstance(detail, dict)
+    assert detail.get("code") == "intake_form_mapping_preview_uses_saved_contract"
+    assert "/app/marketing/sources" in str(detail.get("mapping_path") or "")
+
+    saved_preview = await client.post(
+        f"/api/v1/settings/intake-forms/{form_id}/mapping/preview",
+        headers=headers,
         json={"sample_payload": sample},
     )
-    assert preview.status_code == 200, preview.text
-    body = preview.json()
-    assert body["normalized_payload"].get("first_name") == "Anna"
-    assert body["mapping_validation"]["accepted_count"] == 2
-    assert body["ingest_envelope_v1"]["entity_profile_code"] == DRIVER_CE_PROFILE_CODE
-    assert "raw_payload_v1" in body["normalized_payload"]
+    assert saved_preview.status_code == 200, saved_preview.text
+    body = saved_preview.json()
+    assert "normalized_payload" in body
+    assert body["ingest_envelope_v1"]["mapping_rules_source"]
 
 
 @pytest.mark.asyncio
@@ -123,10 +175,10 @@ async def test_p9_rejects_mapping_target_outside_profile(client: AsyncClient, te
             ]
         },
     )
-    assert resp.status_code == 422, resp.text
+    assert resp.status_code == 410, resp.text
     detail = resp.json().get("detail")
     assert isinstance(detail, dict)
-    assert detail.get("code") in {"mapping_target_not_in_profile", "mapping_entity_type_mismatch"}
+    assert detail.get("code") == "intake_form_mapping_writes_retired"
 
 
 @pytest.mark.asyncio
@@ -143,23 +195,23 @@ async def test_p9_test_ingest_creates_lead_draft(client: AsyncClient, tenant_id:
             "qualified_field_code": "recruitment.candidate.contacts.phone",
         },
     ]
-    await client.put(
+    put = await client.put(
         f"/api/v1/settings/intake-forms/{form_id}/mapping",
         headers=headers,
         json={"mapping_rules": rules},
     )
+    assert put.status_code == 410, put.text
     sample = {"full_name": "Jan", "mobile": "+48987654321"}
     resp = await client.post(
         f"/api/v1/settings/intake-forms/{form_id}/mapping/test-ingest",
         headers=headers,
-        json={"sample_payload": sample},
+        json={"sample_payload": sample, "mapping_rules": rules},
     )
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
-    assert body["lead_id"]
-    assert not body.get("candidate_id")
-    assert body["normalized_payload"].get("first_name") == "Jan"
-    assert body["ingest_envelope_v1"]["mapping_result"]["accepted_count"] >= 1
+    assert resp.status_code == 410, resp.text
+    detail = resp.json().get("detail")
+    assert isinstance(detail, dict)
+    assert detail.get("code") == "intake_form_mapping_evaluator_retired"
+    assert "/app/marketing/sources" in str(detail.get("mapping_path") or "")
 
 
 @pytest.mark.asyncio
@@ -170,15 +222,7 @@ async def test_p9_provider_agnostic_source_fields(client: AsyncClient, tenant_id
     preview = await client.post(
         f"/api/v1/settings/intake-forms/{form_id}/mapping/preview",
         headers=headers,
-        json={
-            "sample_payload": sample,
-            "mapping_rules": [
-                {
-                    "source": "custom_phone",
-                    "qualified_field_code": "recruitment.candidate.contacts.phone",
-                }
-            ],
-        },
+        json={"sample_payload": sample},
     )
     assert preview.status_code == 200, preview.text
     names = {row["source"] for row in preview.json()["source_fields"]}

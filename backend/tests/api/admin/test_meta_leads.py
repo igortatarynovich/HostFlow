@@ -865,12 +865,16 @@ async def test_meta_lead_form_mapping_crud(client, manager_headers, tenant_id):
             ],
         },
     )
-    assert put_resp.status_code == 200, put_resp.text
-    saved = put_resp.json()
-    assert saved["inherits_tenant_fallback"] is False
-    assert any(r["target"] == "phone" for r in saved["mapping_rules"])
+    assert put_resp.status_code == 410, put_resp.text
+    detail = put_resp.json().get("detail")
+    assert isinstance(detail, dict)
+    assert detail.get("code") == "meta_lead_mapping_writes_retired"
+    assert "/app/marketing/sources" in str(detail.get("mapping_path") or "")
 
-    list_after = await client.get("/api/v1/settings/leads/meta/forms", headers=manager_headers)
-    assert list_after.status_code == 200
-    items = list_after.json().get("items") or []
-    assert any(i.get("form_id") == form_id and i.get("has_form_mapping") for i in items)
+    still_empty = await client.get(
+        f"/api/v1/settings/leads/meta/forms/{form_id}/mapping",
+        headers=manager_headers,
+        params={"page_id": page_id, "source": "meta"},
+    )
+    assert still_empty.status_code == 200, still_empty.text
+    assert still_empty.json()["inherits_tenant_fallback"] is True

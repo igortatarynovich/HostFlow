@@ -40,4 +40,24 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     expect(src).toContain('marketingSourceMappingPath')
     expect(src).toContain('meta-field-mapping-workspace')
   })
+
+  it('Mapping workspace is the editor and does not host leftover routing preview', () => {
+    const src = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingSourceMappingPage.tsx'),
+      'utf8',
+    )
+    expect(src).toContain('putMarketingSourceMapping')
+    expect(src).not.toContain('postMarketingSourceRoutingPreview')
+    expect(src).not.toContain('putMetaLeadFormMapping')
+    expect(src).not.toContain('putIntakeFormMapping')
+  })
+
+  it('legacy mapping write clients are gone, not 410 wrappers', () => {
+    const intakeApi = readFileSync(path.join(ROOT, 'src/api/intakeForms.ts'), 'utf8')
+    const metaApi = readFileSync(path.join(ROOT, 'src/api/metaLeads.ts'), 'utf8')
+    expect(intakeApi).not.toContain('putIntakeFormMapping')
+    expect(intakeApi).not.toContain('previewIntakeFormMapping')
+    expect(intakeApi).not.toContain('testIntakeFormMappingIngest')
+    expect(metaApi).not.toContain('putMetaLeadFormMapping')
+  })
 })

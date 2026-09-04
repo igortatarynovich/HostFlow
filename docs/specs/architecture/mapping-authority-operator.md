@@ -319,6 +319,7 @@ Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin st
 
 ## History
 
+- 2026-09-04: Meta form mapping PUT and tenant `field_mapping` PATCH return 410; leftover Meta stores stay read-through. Legacy SPA write clients removed. Intake leftover PUT returns 410. Intake leftover preview over pasted `mapping_rules` is rejected (second algorithm); preview over the saved contract remains a read-only diagnostic. Routing preview is off the operator workspace. Mapping Operator Gate **not PASS**. Leftover writers are not retired as a product claim. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-04: Feat `feat/mapping-authority-ma3-operator-gate` opened from `4073f3a7` ([#350](https://github.com/igortatarynovich/HostFlow/pull/350)). Close path = source → schema → explicit bindings/options → Ready → projection → real submission → applied evidence, plus leftover writer retirement. Mapping Operator Gate **not PASS**. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-04: **PASS_WITH_SMALL_CORRECTIONS** — split configuration-time schema from submission-time answers; Ready as projection; complete option-map / unknown-option semantics; drift taxonomy + historical removed fields; explicit Ignore; Shared Intake / ingestion as the one runtime caller; leftover screens cease to be editors. Mapping Operator Gate not PASS.
 - 2026-09-04: Feat `feat/mapping-authority-ma3-operator-surface` opened. Mapping Operator Gate not PASS.

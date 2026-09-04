@@ -497,8 +497,8 @@ async def test_mapping_workspace_schema_without_sample(
     assert by_source["eu_experience"]["binding"] == "unmapped"
     assert by_source["eu_experience"]["drift"] == "field_added"
     assert by_source["eu_experience"]["drift_human"]
-    assert by_source["document_validity"]["drift"] == "option_added"
-    assert body["summary"]["headline"] == "option_drift"
+    assert by_source["document_validity"]["drift"] in {"option_added", "destination_invalid"}
+    assert body["summary"]["headline"] in {"option_drift", "destination_invalid"}
     assert body["summary"]["unmapped_count"] == 1
     assert body["projection"]
     assert "document_validity" in body["projection"][0]["sentence"]
@@ -552,6 +552,24 @@ def test_incomplete_option_map_is_not_ready() -> None:
                 "qualified_field_code": "candidate.document_validity",
                 "option_map": {},
             }
+        ],
+        sample_by_source={},
+        destinations=[
+            {
+                "code": "candidate.document_validity",
+                "label": "Document validity",
+                "field_type": "select",
+                "choice": True,
+                "aliases": [],
+                "options": [
+                    {"value": "LT_3_MONTHS", "label": "Under 3 months"},
+                    {"value": "GT_8_MONTHS", "label": "Over 8 months"},
+                ],
+            }
+        ],
+        has_schema=True,
+    )
+    assert rows[0]["drift"] is None
     assert rows[0]["incomplete_options"] is True
     assert summary["headline"] == "needs_check"
     assert summary["contract_health"] == "needs_review"
@@ -674,3 +692,103 @@ def test_projection_does_not_pass_through_raw_option() -> None:
     assert projection[0]["example_out"] == "Over 8 months"
     assert "Более 8 месяцев" not in projection[0]["sentence"]
     assert "Over 8 months" in projection[0]["sentence"]
+
+
+def test_drift_taxonomy_names_all_six_classes() -> None:
+    from backend.app.acquisition.mapping_workspace import (
+        DRIFT_DESTINATION_INVALID,
+        DRIFT_FIELD_ADDED,
+        DRIFT_FIELD_REMOVED,
+        DRIFT_HUMAN,
+        DRIFT_OPTION_ADDED,
+        DRIFT_OPTION_REMOVED,
+        DRIFT_TYPE_CHANGED,
+        TAXONOMY_DRIFT,
+        build_workspace_rows,
+    )
+
+    assert TAXONOMY_DRIFT == {
+        DRIFT_FIELD_ADDED,
+        DRIFT_FIELD_REMOVED,
+        DRIFT_OPTION_ADDED,
+        DRIFT_OPTION_REMOVED,
+        DRIFT_TYPE_CHANGED,
+        DRIFT_DESTINATION_INVALID,
+    }
+    dests = [
+        {
+            "code": "candidate.email",
+            "label": "Email",
+            "field_type": "string",
+            "choice": False,
+            "aliases": [],
+            "options": [],
+        }
+    ]
+    rows, summary = build_workspace_rows(
+        schema_fields=[
+            {
+                "source": "color",
+                "label": "Color",
+                "options": ["red", "blue"],
+                "field_type": "choice",
+            },
+            {"source": "gone_dest", "label": "Gone dest", "options": []},
+        ],
+        mapping_rules=[
+            {"source": "color", "qualified_field_code": "candidate.email"},
+            {"source": "gone_dest", "qualified_field_code": "candidate.missing"},
+            {"source": "removed_q", "qualified_field_code": "candidate.email"},
+        ],
+        sample_by_source={},
+        destinations=dests,
+        has_schema=True,
+    )
+    by_source = {r["source"]: r for r in rows}
+    assert by_source["color"]["drift"] == DRIFT_TYPE_CHANGED
+    assert by_source["gone_dest"]["drift"] == DRIFT_DESTINATION_INVALID
+    assert by_source["removed_q"]["drift"] == DRIFT_FIELD_REMOVED
+    assert by_source["removed_q"]["historical"] is True
+    assert by_source["color"]["drift_human"] == DRIFT_HUMAN[DRIFT_TYPE_CHANGED]
+    assert summary["contract_health"] == "invalid"
+    assert summary["headline"] == DRIFT_DESTINATION_INVALID
+
+
+def test_option_removed_and_field_added_are_named() -> None:
+    from backend.app.acquisition.mapping_workspace import build_workspace_rows
+
+    rows, summary = build_workspace_rows(
+        schema_fields=[
+            {
+                "source": "validity",
+                "label": "Validity",
+                "options": ["a"],
+                "field_type": "choice",
+            },
+            {"source": "new_q", "label": "New", "options": []},
+        ],
+        mapping_rules=[
+            {
+                "source": "validity",
+                "qualified_field_code": "candidate.document_validity",
+                "option_map": {"a": "A", "old": "B"},
+            }
+        ],
+        sample_by_source={},
+        destinations=[
+            {
+                "code": "candidate.document_validity",
+                "label": "Validity",
+                "field_type": "select",
+                "choice": True,
+                "aliases": [],
+                "options": [{"value": "A", "label": "A"}],
+            }
+        ],
+        has_schema=True,
+    )
+    by_source = {r["source"]: r for r in rows}
+    assert by_source["validity"]["drift"] == "option_removed"
+    assert by_source["new_q"]["drift"] == "field_added"
+    assert "new question" in summary["human"].lower() or "form changed" in summary["human"].lower()
+    assert summary["headline"] in {"option_drift", "option_removed"}

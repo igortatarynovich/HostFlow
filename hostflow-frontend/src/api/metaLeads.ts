@@ -15,7 +15,6 @@ import type {
   MetaLeadSelfServeOnboarding,
   MetaLeadFormListResponse,
   MetaLeadFormMapping,
-  MetaLeadFormMappingUpdate,
   MetaFormRoute,
   MetaFormRouteUpdate,
   LeadTargetType,
@@ -253,17 +252,6 @@ export async function getMetaLeadFormMapping(
   const { data } = await api.get<MetaLeadFormMapping>(`${BASE}/meta/forms/${encodeURIComponent(formId)}/mapping`, {
     params: Object.keys(params).length ? params : undefined,
   })
-  return data
-}
-
-export async function putMetaLeadFormMapping(
-  formId: string,
-  payload: MetaLeadFormMappingUpdate,
-): Promise<MetaLeadFormMapping> {
-  const { data } = await api.put<MetaLeadFormMapping>(
-    `${BASE}/meta/forms/${encodeURIComponent(formId)}/mapping`,
-    payload,
-  )
   return data
 }
 
