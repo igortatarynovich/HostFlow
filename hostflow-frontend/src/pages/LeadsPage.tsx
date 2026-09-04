@@ -54,6 +54,7 @@ import LeadLostReasonReadonly from '../components/leads/LeadLostReasonReadonly'
 import LeadIntakeWorkspacePanel from '../components/leads/LeadIntakeWorkspacePanel'
 import LeadVacancyPickModal from '../components/leads/LeadVacancyPickModal'
 import { LeadQueueQuickRejectModal, LeadQueueQuickRequestInfoModal } from '../components/leads/LeadQueueIntakeQuickModals'
+import LeadRodoObligationsQueue from '../components/leads/LeadRodoObligationsQueue'
 import LostReasonForLostStageModal from '../components/leads/LostReasonForLostStageModal'
 import { ACTIVATION_PATHS, getFirstVacancySetupPath } from '../app/activationRoutes'
 import { CRM_APP_DRILLDOWN_HREFS, CRM_APP_PATHS } from '../app/crmAppPaths'
@@ -122,6 +123,7 @@ const LEADS_HREF_QUEUE_NEW = `${CRM_APP_PATHS.leads}?status=new`
 const LEADS_HREF_QUEUE_IN_PROGRESS = `${CRM_APP_PATHS.leads}?status=processed&stage=contacted`
 const LEADS_HREF_QUEUE_WAITING = `${CRM_APP_PATHS.leads}?status=processed&next_action=scheduled`
 const LEADS_HREF_QUEUE_OVERDUE = `${CRM_APP_PATHS.leads}?status=processed&next_action=overdue`
+const LEADS_HREF_COMPLIANCE_OPS = `${CRM_APP_PATHS.leads}?compliance_open=1`
 
 const INTAKE_QUEUE_CHIP_VALUES = ['', ...INTAKE_QUEUE_FILTERS] as const
 type IntakeLaneFilter = '' | IntakeQueueFilter
@@ -225,6 +227,7 @@ export default function LeadsPage() {
   const { entitySingular } = useBusinessTerminology()
   const location = useLocation()
   const navigate = useNavigate()
+  const complianceOpen = new URLSearchParams(location.search || '').get('compliance_open') === '1'
   const [status, setStatus] = useState<'' | LeadStatus>('')
   const [stage, setStage] = useState<'' | LeadStage>('')
   /** GET /leads created_before_hours — stale new leads (Work hub deep link). */
@@ -1794,7 +1797,7 @@ export default function LeadsPage() {
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {t('app.leads.workspace.block_queue', { defaultValue: 'Lead queue' })}
           </div>
-          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-5">
             <Link
               to={LEADS_HREF_QUEUE_NEW}
               className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
@@ -1821,6 +1824,13 @@ export default function LeadsPage() {
               className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
             >
               {t('app.leads.workspace.queue_overdue', { defaultValue: 'Overdue' })}
+              <IconArrowRight size={16} className="text-slate-400" aria-hidden />
+            </Link>
+            <Link
+              to={LEADS_HREF_COMPLIANCE_OPS}
+              className="flex items-center justify-between rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition hover:bg-amber-50"
+            >
+              {t('app.leads.workspace.queue_compliance', { defaultValue: 'RODO obligations' })}
               <IconArrowRight size={16} className="text-slate-400" aria-hidden />
             </Link>
           </div>
@@ -1868,6 +1878,27 @@ export default function LeadsPage() {
                     </button>
                   )
                 })}
+                <button
+                  type="button"
+                  className={
+                    complianceOpen
+                      ? 'rounded-full bg-amber-900 px-3 py-1.5 text-xs font-semibold text-white'
+                      : 'rounded-full bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-200'
+                  }
+                  aria-pressed={complianceOpen}
+                  onClick={() => {
+                    const sp = new URLSearchParams(location.search || '')
+                    if (complianceOpen) sp.delete('compliance_open')
+                    else sp.set('compliance_open', '1')
+                    const next = sp.toString()
+                    navigate(
+                      { pathname: CRM_APP_PATHS.leads, search: next ? `?${next}` : '' },
+                      { replace: true },
+                    )
+                  }}
+                >
+                  {t('app.leads.workspace.queue_compliance', { defaultValue: 'RODO obligations' })}
+                </button>
               </div>
             ) : null}
             <select
@@ -2013,6 +2044,12 @@ export default function LeadsPage() {
             </>
           ) : null}
       </Toolbar>
+
+      {complianceOpen ? (
+        <div className="mx-4">
+          <LeadRodoObligationsQueue />
+        </div>
+      ) : null}
 
       {filterBannerVisible && (
         <div className="mx-4 mb-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">

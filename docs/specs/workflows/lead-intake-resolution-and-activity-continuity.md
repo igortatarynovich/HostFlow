@@ -417,9 +417,12 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 
 - `POST /api/v1/leads/{id}/compliance/rodo/send` — manual / retry (always available when auto is on).
 - `POST /api/v1/leads/{id}/compliance/rodo/source-provided` — mark covered at source.
-- `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk re-send after Pipeline cutover (default `rodo.status=failed`; `dry_run` supported). CLI: `backend/scripts/retry_lead_rodo.py`.
+- `POST /api/v1/leads/{id}/compliance/rodo/retry` — fulfillment retry for `delivery_failed` / `delivery_required` only (`review_required` is not retried).
+- `POST /api/v1/leads/{id}/compliance/rodo/exempt` — lawful exemption code + actor.
+- `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk re-send (default canonical `delivery_failed`; `dry_run` supported). CLI: `backend/scripts/retry_lead_rodo.py`.
+- `GET /api/v1/leads/compliance/rodo/queue` — open queue + aging / SLA / SMTP-exhaustion flags. Canon: [compliance-obligations-ops.md](compliance-obligations-ops.md).
 
-**UI:** Control Center — **RODO information obligation: Active — managed by HostFlow** (no disable toggle). **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / `source_provided` / `exempt` / `review_required`; Send RODO + “covered at source” buttons retained for retry. **Sales inquiry rail / client lead call-result** — same Send / source-provided unlock (ADR-033 slice C) before `call-result` / stage `contacted`.
+**UI:** Control Center — **RODO information obligation: Active — managed by HostFlow** (no disable toggle). **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / `source_provided` / `exempt` / `review_required`; Send RODO + “covered at source” buttons retained for retry. **Leads workspace** — open-obligation queue (`?compliance_open=1`). **Sales inquiry rail / client lead call-result** — same Send / source-provided unlock (ADR-033 slice C) before `call-result` / stage `contacted`.
 
 **Tests:** `backend/tests/api/test_lead_rodo_gate.py`, `backend/tests/api/test_lead_rodo_auto.py`.
 

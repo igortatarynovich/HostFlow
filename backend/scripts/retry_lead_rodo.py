@@ -89,7 +89,7 @@ def main() -> None:
         "--status",
         action="append",
         dest="statuses",
-        help="failed | pending_channel | manual_required | unsatisfied (default: failed)",
+        help="delivery_failed | delivery_required (legacy failed | pending_channel map to delivery_failed). Default: delivery_failed. review_required is rejected.",
     )
     parser.add_argument("--limit", type=int, default=50, help="Max leads (1..200)")
     parser.add_argument("--include-terminal", action="store_true", help="Include processed/rejected/…")

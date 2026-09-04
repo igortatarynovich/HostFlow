@@ -25,6 +25,8 @@ class AuditEventType(str, Enum):
     # RODO
     rodo_sent = "rodo_sent"
     rodo_sent_failed = "rodo_sent_failed"
+    rodo_delivery_escalated = "rodo_delivery_escalated"
+    rodo_exempted = "rodo_exempted"
     # Lead operational communication (non-RODO)
     lead_communication_application_received_sent = "lead.communication.application_received_sent"
     lead_communication_rejection_sent = "lead.communication.rejection_sent"

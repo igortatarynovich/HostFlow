@@ -67,7 +67,7 @@ def _notification_uos_group(event_type: str, payload: dict[str, Any]) -> str:
     et = str(event_type or "").strip().lower()
     source = str(payload.get("source") or "").lower()
 
-    if et in ("communications_sla_overdue", "communications_thread_escalated"):
+    if et in ("communications_sla_overdue", "communications_thread_escalated", "lead_rodo_delivery_escalated"):
         return "sla"
     # Lead nudges are actionable work items, not comms SLA breaches — keep below "critical" tier
     # so quiet hours and drawer grouping behave like tasks.

@@ -130,9 +130,12 @@ UI: identity bar + answers table + `LeadIntakeCallStep` на intake workspace; �
 
 - `POST /api/v1/leads/{id}/compliance/rodo/send`
 - `POST /api/v1/leads/{id}/compliance/rodo/source-provided`
-- `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk art.14 re-send (Pipeline; default failed; dry_run)
+- `POST /api/v1/leads/{id}/compliance/rodo/retry` — fulfillment retry (`delivery_failed` / `delivery_required` only)
+- `POST /api/v1/leads/{id}/compliance/rodo/exempt` — lawful exemption code + actor (not mark-resolved)
+- `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk re-send (default canonical `delivery_failed`; legacy `failed` maps here; `dry_run`)
+- `GET /api/v1/leads/compliance/rodo/queue` — open-obligation projection (aging / SLA / escalation). Canon: [compliance-obligations-ops.md](../workflows/compliance-obligations-ops.md)
 
-Состояние: `Lead.normalized.rodo` (`sent`, `source_provided`, `exempt`, `pending_channel`, `failed`). Ingest hook после создания лида — `apply_lead_rodo_on_ingest` (обязательная оценка + fulfillment при необходимости). Канон: [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8.0.1.
+Состояние: `Lead.normalized.rodo` (`compliance_state` + legacy `status`). Ingest hook после создания лида — `apply_lead_rodo_on_ingest` (обязательная оценка + fulfillment при необходимости). Канон: [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8.0.1.
 
 ### Формат ответа
 ```json

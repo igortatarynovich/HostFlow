@@ -24,6 +24,7 @@ from backend.app.modules.leads import (
     admin_service,
     lead_custom_fields,
     next_action_api as _next_action_api,
+    compliance_ops_api as _compliance_ops_api,
     next_action_enforcement,
     pipeline_hooks,
     service,
@@ -89,6 +90,7 @@ router = APIRouter(prefix="/leads", tags=["leads"])
 # the implementation lives next to the lead module instead of bloating this
 # already-large file. See backend/app/modules/leads/next_action_api.py.
 router.include_router(_next_action_api.router)
+router.include_router(_compliance_ops_api.router)
 
 
 def _record_or_empty(value: Any) -> Dict[str, Any]:
@@ -657,7 +659,7 @@ async def bulk_retry_lead_rodo_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> BulkLeadRodoRetryResponse:
-    """Re-send art.14 RODO for leads stuck after Communication Pipeline cutover (ADR-031)."""
+    """Re-send art.14 RODO for retryable open compliance states (default delivery_failed)."""
     from backend.app.services.lead_rodo_bulk_retry import bulk_retry_lead_rodo
 
     db, tenant_uuid = db_tenant
@@ -685,6 +687,8 @@ async def bulk_retry_lead_rodo_endpoint(
                 rodo_status_before=i.rodo_status_before,
                 rodo_status_after=i.rodo_status_after,
                 message=i.message,
+                compliance_state_before=i.compliance_state_before,
+                compliance_state_after=i.compliance_state_after,
             )
             for i in result.items
         ],

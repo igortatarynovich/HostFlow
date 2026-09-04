@@ -10,6 +10,7 @@ from backend.app.models.user_notification import UserNotification
 def test_resolve_sla_events_critical() -> None:
     assert resolve_notification_priority("communications_sla_overdue", {}) == "critical"
     assert resolve_notification_priority("communications_thread_escalated", {}) == "critical"
+    assert resolve_notification_priority("lead_rodo_delivery_escalated", {}) == "critical"
 
 
 def test_resolve_lead_nudges_are_normal_not_sla_critical() -> None:

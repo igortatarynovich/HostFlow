@@ -106,6 +106,12 @@ export function resolveNotificationOpenPath(
     return CRM_APP_DRILLDOWN_HREFS.leadsFailed
   }
 
+  if (eventType === 'lead_rodo_delivery_escalated') {
+    const leadId = firstString(payload.lead_id, entityType === 'lead' ? entityId : '')
+    if (leadId) return `${CRM_APP_PATHS.leads}/${encodeURIComponent(leadId)}`
+    return `${CRM_APP_PATHS.leads}?compliance_open=1`
+  }
+
   if (eventType === 'lead.import.completed' || eventType === 'lead.import.failed') {
     return CRM_APP_PATHS.settingsIntegrationsMeta
   }

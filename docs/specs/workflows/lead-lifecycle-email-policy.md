@@ -202,8 +202,15 @@ All sends go through `prepare_and_send_communication` with opaque module result 
 
 ---
 
-## 11. References
+## 11. Open-obligation ops projection
+
+Queue, retry, SMTP-exhaustion alert, SLA/aging, and operator actions are a **read projection** of open `compliance_state` — not a second machine. Canon: [compliance-obligations-ops.md](compliance-obligations-ops.md). This document still owns the six states and the transition table.
+
+---
+
+## 12. References
 
 - [leads module](../modules/leads.md)
 - [workflows index](index.md)
+- [compliance obligations ops](compliance-obligations-ops.md)
 - [ADR-028 configuration ownership](../architecture/ADR-028-configuration-ownership.md)
