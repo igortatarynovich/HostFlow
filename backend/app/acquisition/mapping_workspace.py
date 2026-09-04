@@ -18,6 +18,7 @@ from backend.app.acquisition.sources_sample import (
 from backend.app.field_registry.resolver import list_canonical_fields_for_scope
 
 SCHEMA_CONFIG_KEY = "mapping_schema_v1"
+OPTION_IGNORE_VALUE = "__ignore__"
 CHOICE_TYPES = frozenset(
     {"select", "enum", "choice", "boolean", "reference", "multiselect", "multi_select"}
 )
@@ -314,18 +315,21 @@ def build_workspace_rows(
         dest = dest_by_key.get(dest_code.lower()) if dest_code else None
         dest_type = str((dest or {}).get("field_type") or "")
         dest_label = str((dest or {}).get("label") or dest_code)
-        choice = bool((dest or {}).get("choice")) or _is_choice_type(dest_type)
+        dest_options = list((dest or {}).get("options") or [])
+        choice = bool((dest or {}).get("choice")) or _is_choice_type(dest_type) or bool(options)
         drift: Optional[str] = None
         if in_schema and binding == "unmapped":
             drift = "new_question"
         elif not in_schema and has_schema:
             drift = "missing_from_form"
-        elif choice and binding == "mapped" and options:
-            mapped_opts = {k.lower() for k in option_map}
+        elif dest_code and destinations and dest is None:
+            drift = "destination_invalid"
+        elif binding == "mapped" and options:
+            decided_opts = {k.lower() for k in option_map}
             schema_opts = {o.lower() for o in options}
-            if schema_opts - mapped_opts:
+            if schema_opts - decided_opts:
                 drift = "changed_options"
-            elif mapped_opts - schema_opts:
+            elif decided_opts - schema_opts:
                 drift = "missing_option"
         rows.append(
             {
@@ -339,6 +343,7 @@ def build_workspace_rows(
                 "destination_type": dest_type or None,
                 "choice": choice,
                 "option_map": option_map,
+                "destination_options": dest_options,
                 "in_schema": in_schema,
                 "drift": drift,
             }
@@ -363,7 +368,9 @@ def build_workspace_rows(
     unmapped = sum(1 for r in rows if r["binding"] == "unmapped")
     new_questions = sum(1 for r in rows if r.get("drift") == "new_question")
     option_drift = sum(
-        1 for r in rows if r.get("drift") in {"changed_options", "missing_option"}
+        1
+        for r in rows
+        if r.get("drift") in {"changed_options", "missing_option", "destination_invalid"}
     )
     summary = _human_summary(
         total=len(rows),
@@ -377,6 +384,32 @@ def build_workspace_rows(
     return rows, summary
 
 
+def _canonical_example_out(
+    *,
+    example_in: str,
+    option_map: dict[str, str],
+    dest_options: list[dict[str, str]],
+    choice: bool,
+) -> str:
+    """Return a canonical example, never a raw provider label for choice fields."""
+    mapped = ""
+    if example_in and option_map:
+        mapped = str(option_map.get(example_in) or "")
+        if not mapped:
+            for key, val in option_map.items():
+                if str(key).lower() == example_in.lower():
+                    mapped = str(val)
+                    break
+    if mapped and mapped != OPTION_IGNORE_VALUE:
+        for opt in dest_options:
+            if str(opt.get("value") or "").strip().lower() == mapped.lower():
+                return str(opt.get("label") or mapped).strip() or mapped
+        return mapped
+    if choice:
+        return ""
+    return example_in
+
+
 def build_projection(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for row in rows:
@@ -386,27 +419,25 @@ def build_projection(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not dest_label:
             continue
         example_in = str(row.get("sample_example") or "").strip()
-        if not example_in:
-            options = list(row.get("options") or [])
-            example_in = str(options[0]).strip() if options else ""
         option_map = row.get("option_map") if isinstance(row.get("option_map"), dict) else {}
-        example_out = ""
-        if example_in and option_map:
-            example_out = str(option_map.get(example_in) or "")
-            if not example_out:
-                for key, val in option_map.items():
-                    if str(key).lower() == example_in.lower():
-                        example_out = str(val)
-                        break
-        if not example_out:
-            example_out = example_in or dest_label
-        sentence = f"The next application will write {dest_label} = {example_out}"
+        dest_options = list(row.get("destination_options") or [])
+        choice = bool(row.get("choice")) or bool(row.get("options"))
+        example_out = _canonical_example_out(
+            example_in=example_in,
+            option_map=option_map,
+            dest_options=dest_options,
+            choice=choice,
+        )
+        if example_out:
+            sentence = f"The next application will write {dest_label} = {example_out}"
+        else:
+            sentence = f"The next application will write {dest_label}"
         out.append(
             {
                 "source": row.get("source"),
                 "destination_label": dest_label,
                 "example_in": example_in or None,
-                "example_out": example_out,
+                "example_out": example_out or None,
                 "sentence": sentence,
             }
         )
@@ -456,6 +487,7 @@ async def workspace_envelope(
 
 __all__ = [
     "SCHEMA_CONFIG_KEY",
+    "OPTION_IGNORE_VALUE",
     "workspace_envelope",
     "coerce_schema_fields",
     "set_schema_snapshot",

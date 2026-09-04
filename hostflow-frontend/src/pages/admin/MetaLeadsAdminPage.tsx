@@ -33,6 +33,7 @@ import {
 } from '../../api/metaLeads'
 import type { UnmappedAdGroup } from '../../api/metaLeads'
 import { listCompanies, listLeads, listOwnCompanies, listVacancies } from '../../api/client'
+import { listMarketingSources, type MarketingSourceSummary } from '../../api/marketingSources'
 import { createCustomFieldDefinition, listCustomFieldDefinitions } from '../../api/custom_fields'
 import { listAdminUsers } from '../../api/users'
 import { isRecruitmentAssigneeRole } from '../../auth/trustRoles'
@@ -71,7 +72,7 @@ import {
   resolveMappingLegacyTarget,
   isQualifiedFieldCode,
 } from '../../utils/intakeMappingUtils'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS, marketingSourceMappingPath } from '../../app/crmAppPaths'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useAuth } from '../../store/auth'
 import {
@@ -427,6 +428,7 @@ export default function MetaLeadsAdminPage() {
   const [mappingInheritsTenant, setMappingInheritsTenant] = useState(true)
   const [tenantFallbackRulesCount, setTenantFallbackRulesCount] = useState(0)
   const [formMappingLoading, setFormMappingLoading] = useState(false)
+  const [workspaceSources, setWorkspaceSources] = useState<MarketingSourceSummary[]>([])
   const [formNameDraft, setFormNameDraft] = useState('')
   const [ownCompanyOptions, setOwnCompanyOptions] = useState<Array<{ id: string; name: string }>>([])
   const [intakeRouteOwnCompanyId, setIntakeRouteOwnCompanyId] = useState('')
@@ -765,6 +767,23 @@ export default function MetaLeadsAdminPage() {
       } catch (err) {
         console.error('[MetaLeadsAdmin] list LEAD custom field definitions failed', err)
         if (!cancelled) setLeadCustomFieldKeys([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tab])
+
+  useEffect(() => {
+    if (tab !== 'field_mapping') return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await listMarketingSources()
+        if (!cancelled) setWorkspaceSources(rows)
+      } catch (err) {
+        console.error('[MetaLeadsAdmin] list marketing sources failed', err)
+        if (!cancelled) setWorkspaceSources([])
       }
     })()
     return () => {
@@ -1683,6 +1702,17 @@ export default function MetaLeadsAdminPage() {
     }
     return n
   }, [fieldMappingRows])
+
+  const workspaceSource = useMemo(() => {
+    const parsed = parseMetaFormSelectionKey(selectedFormKey)
+    if (!parsed) return null
+    const needle = `meta-form-${parsed.form_id}`.toLowerCase()
+    return (
+      workspaceSources.find((s) => (s.code || '').toLowerCase() === needle) ||
+      workspaceSources.find((s) => (s.code || '').includes(parsed.form_id)) ||
+      null
+    )
+  }, [selectedFormKey, workspaceSources])
 
   const metaSelfServeDocsPanel = selfServe ? (
     <div className="border-t border-slate-100 px-4 pb-4 pt-3">
@@ -3281,392 +3311,29 @@ export default function MetaLeadsAdminPage() {
               </p>
             )}
           </div>
-          <div className="rounded border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900">
-              {t('admin.meta_leads.field_mapping.graph_fetch_title')}
-            </h3>
-            <p className="mt-1 text-xs text-slate-600">{t('admin.meta_leads.field_mapping.graph_fetch_body')}</p>
-            {incomingLoading && (
-              <p className="mt-2 text-xs text-slate-500">{t('common.loading')}</p>
-            )}
-            <div className="mt-3 flex flex-wrap items-end gap-3">
-              <label className="flex min-w-[220px] flex-col gap-1 text-xs font-medium text-slate-700">
-                {t('admin.meta_leads.field_mapping.graph_pick_lead')}
-                <select
-                  className="input text-xs"
-                  value={graphHostflowLeadPick}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setGraphHostflowLeadPick(v)
-                    if (!v) return
-                    const opt = graphLeadSelectOptions.find((o) => o.id === v)
-                    if (!opt) return
-                    const pj = opt.payloadJson ?? ''
-                    if (pj) {
-                      const pids = extractPageIdsFromMetaPayloadPreview(pj)
-                      if (pids.length === 1) setGraphPageInput(pids[0])
-                    }
-                    const ext = opt.externalId?.trim()
-                    if (ext) {
-                      setGraphLeadgenInput(ext)
-                      return
-                    }
-                    try {
-                      const root = JSON.parse(pj) as Record<string, unknown>
-                      const entry = (Array.isArray(root.entry) ? root.entry[0] : null) as Record<string, unknown> | null
-                      const changes = entry && Array.isArray(entry.changes) ? (entry.changes[0] as Record<string, unknown>) : null
-                      const value = (changes?.value ?? root) as Record<string, unknown>
-                      const lid = value?.leadgen_id ?? value?.id
-                      if (lid != null && String(lid).trim()) setGraphLeadgenInput(String(lid).trim())
-                    } catch {
-                      // ignore
-                    }
-                  }}
-                >
-                  <option value="">{t('admin.meta_leads.field_mapping.graph_pick_lead_placeholder')}</option>
-                  {graphLeadSelectOptions.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex min-w-[160px] flex-col gap-1 text-xs font-medium text-slate-700">
-                {t('admin.meta_leads.field_mapping.graph_leadgen_id')}
-                <input
-                  type="text"
-                  className="input text-xs"
-                  value={graphLeadgenInput}
-                  onChange={(e) => setGraphLeadgenInput(e.target.value)}
-                  placeholder={t('admin.meta_leads.field_mapping.graph_leadgen_placeholder')}
-                />
-              </label>
-              <label className="flex min-w-[160px] flex-col gap-1 text-xs font-medium text-slate-700">
-                {t('admin.meta_leads.field_mapping.graph_page_id')}
-                <input
-                  type="text"
-                  className="input text-xs"
-                  value={graphPageInput}
-                  onChange={(e) => setGraphPageInput(e.target.value)}
-                  placeholder={t('admin.meta_leads.field_mapping.graph_page_placeholder')}
-                />
-              </label>
-              <button
-                type="button"
-                className="btn-primary btn-sm disabled:opacity-50"
-                disabled={
-                  graphFetchLoading ||
-                  (!graphHostflowLeadPick.trim() &&
-                    !(graphLeadgenInput.trim() && graphPageInput.trim()) &&
-                    parseMetaFormSelectionKey(selectedFormKey)?.source !== 'meta')
-                }
-                onClick={() => void handleFetchGraphFields()}
-              >
-                {graphFetchLoading ? t('common.loading') : t('admin.meta_leads.field_mapping.graph_fetch_cta')}
-              </button>
-            </div>
-            <p className="mt-2 text-xs text-slate-500">{t('admin.meta_leads.field_mapping.graph_fetch_footer')}</p>
-          </div>
-
-          <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
+          <div
+            className="rounded border border-slate-200 bg-white p-4 shadow-sm"
+            data-testid="meta-field-mapping-workspace"
+          >
             <h2 className="text-lg font-semibold text-slate-900">
-              {t('admin.meta_leads.field_mapping.form_fields.title')}
+              {t('admin.meta_leads.field_mapping.workspace_title')}
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              {t('admin.meta_leads.field_mapping.form_fields.subtitle')}
+              {t('admin.meta_leads.field_mapping.workspace_body')}
             </p>
-            {metaFormFieldRows.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-500">
-                {t('admin.meta_leads.field_mapping.form_fields.empty')}
-              </p>
-            ) : (
-              <div className="mt-4 overflow-x-auto rounded border border-slate-200">
-                <table className="min-w-full divide-y divide-slate-200 text-sm">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600">
-                        {t('admin.meta_leads.field_mapping.form_fields.col_field')}
-                      </th>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600">
-                        {t('admin.meta_leads.field_mapping.form_fields.col_sample')}
-                      </th>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600">
-                        {t('admin.meta_leads.field_mapping.form_fields.col_status')}
-                      </th>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600">
-                        {t('admin.meta_leads.field_mapping.form_fields.col_target')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {metaFormFieldRows.map((row) => (
-                      <tr key={row.name}>
-                        <td className="px-3 py-2 align-top font-medium text-slate-900">{row.displayName}</td>
-                        <td className="px-3 py-2 align-top text-slate-700">
-                          {row.sampleValue ? (
-                            <span className="break-words">{row.sampleValue}</span>
-                          ) : (
-                            <span className="text-slate-400 italic">
-                              {t('admin.meta_leads.field_mapping.form_fields.no_sample')}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 align-top">
-                          {row.mapped ? (
-                            <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200">
-                              {t('admin.meta_leads.field_mapping.form_fields.status_mapped')}
-                            </span>
-                          ) : (
-                            <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900 ring-1 ring-amber-200">
-                              {t('admin.meta_leads.field_mapping.form_fields.status_unmapped')}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 align-top text-slate-700">
-                          {row.mapped && row.target ? (
-                            <span className="font-mono text-xs text-slate-800">{row.target}</span>
-                          ) : (
-                            <span className="text-slate-500">
-                              {t('admin.meta_leads.field_mapping.form_fields.pick_target')}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          <datalist id="meta-mapping-source-suggestions">
-            {suggestedMetaFieldKeys.map((key) => (
-              <option key={key} value={key} />
-            ))}
-          </datalist>
-          <datalist id="meta-mapping-target-presets">
-            {mappingTargetSuggestions.map((key) => (
-              <option key={key} value={key} />
-            ))}
-          </datalist>
-          {unknownKeysForLeadField.length > 0 && (
-            <div className="rounded border border-blue-100 bg-blue-50/90 p-4 text-sm text-slate-800 shadow-sm">
-              <h3 className="font-semibold text-blue-950">
-                {t('admin.meta_leads.field_mapping.unknown_fields_title')}
-              </h3>
-              <p className="mt-1 text-xs text-blue-900/90">
-                {t('admin.meta_leads.field_mapping.unknown_fields_subtitle')}
-              </p>
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {unknownKeysForLeadField.map((k) => (
-                  <li
-                    key={k}
-                    className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-2 py-1 text-xs shadow-sm"
-                  >
-                    <code className="font-mono text-blue-950">{k}</code>
-                    <button
-                      type="button"
-                      className="btn-primary btn-xs disabled:opacity-50"
-                      disabled={creatingLeadFieldKey === k}
-                      onClick={() => void createLeadFieldFromIncomingKey(k)}
-                    >
-                      {creatingLeadFieldKey === k
-                        ? t('common.loading')
-                        : t('admin.meta_leads.field_mapping.add_lead_field_cta')}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-xs text-slate-600">
-                <Link to={CRM_APP_PATHS.settingsCustomFields} className="font-medium text-brand-600 hover:underline">
-                  {t('admin.meta_leads.field_mapping.manage_custom_fields_link')}
-                </Link>
-                <span className="mx-1">·</span>
-                {t('admin.meta_leads.field_mapping.save_mapping_reminder')}
-              </p>
-            </div>
-          )}
-          <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">
-              {t('admin.meta_leads.field_mapping.rules_title')}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">{t('admin.meta_leads.field_mapping.rules_subtitle')}</p>
-            {mappingRulesLimit != null && (
-              <p className="mt-2 text-xs text-slate-600">
-                {t('admin.meta_leads.field_mapping.plan_limit_status', {
-                  values: { count: fieldMappingRows.length, limit: mappingRulesLimit },
-                })}
-              </p>
-            )}
-            <p className="mt-2 text-xs text-slate-500">{t('admin.meta_leads.field_mapping.rules_hint')}</p>
-            <div className="mt-4 overflow-x-auto rounded border border-slate-200">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium text-slate-600">
-                      {t('admin.meta_leads.field_mapping.col_source')}
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-600">
-                      {t('admin.meta_leads.field_mapping.col_target')}
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-600">
-                      {t('admin.meta_leads.field_mapping.col_format')}
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-600">
-                      {t('admin.meta_leads.field_mapping.col_overwrite')}
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-600">{t('common.labels.actions')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {fieldMappingRows.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-3 py-6 text-center text-slate-500">
-                        {t('admin.meta_leads.field_mapping.empty')}
-                      </td>
-                    </tr>
-                  )}
-                  {fieldMappingRows.map((row) => (
-                    <tr key={row.id}>
-                      <td className="px-3 py-2 align-top">
-                        <input
-                          type="text"
-                          className="input w-full min-w-[140px] text-xs"
-                          list="meta-mapping-source-suggestions"
-                          value={row.sourceText}
-                          onChange={(event) => {
-                            const v = event.target.value
-                            setFieldMappingRows((prev) =>
-                              prev.map((r) => (r.id === row.id ? { ...r, sourceText: v } : r)),
-                            )
-                          }}
-                          placeholder={t('admin.meta_leads.field_mapping.source_placeholder')}
-                          aria-label={t('admin.meta_leads.field_mapping.col_source')}
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <input
-                          type="text"
-                          className="input w-full min-w-[180px] text-xs font-mono"
-                          list="meta-mapping-target-presets"
-                          value={row.qualifiedFieldCode || row.target}
-                          onChange={(event) => {
-                            const v = event.target.value.trim()
-                            const qualified = isQualifiedFieldCode(v)
-                              ? v
-                              : qualifiedCodeFromLegacyTarget(v)
-                            const legacy = qualified
-                              ? legacyTargetFromQualified(qualified)
-                              : v
-                            setFieldMappingRows((prev) =>
-                              prev.map((r) =>
-                                r.id === row.id
-                                  ? {
-                                      ...r,
-                                      qualifiedFieldCode: qualified,
-                                      target: legacy,
-                                    }
-                                  : r,
-                              ),
-                            )
-                          }}
-                          placeholder="recruitment.candidate.contacts.email"
-                          aria-label={t('admin.meta_leads.field_mapping.col_target')}
-                        />
-                        {row.qualifiedFieldCode && row.target && row.qualifiedFieldCode !== row.target ? (
-                          <p className="mt-1 text-[10px] text-slate-500">
-                            legacy: <code>{row.target}</code>
-                          </p>
-                        ) : null}
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <select
-                          className="input w-full min-w-[120px] text-xs"
-                          value={row.format}
-                          onChange={(event) => {
-                            const v = event.target.value as MetaFieldMappingFormat
-                            setFieldMappingRows((prev) =>
-                              prev.map((r) => (r.id === row.id ? { ...r, format: v } : r)),
-                            )
-                          }}
-                          aria-label={t('admin.meta_leads.field_mapping.col_format')}
-                        >
-                          {META_MAPPING_FORMATS.map((fmt) => (
-                            <option key={fmt} value={fmt}>
-                              {fmt}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
-                          <input
-                            type="checkbox"
-                            checked={row.overwrite}
-                            onChange={(event) => {
-                              const v = event.target.checked
-                              setFieldMappingRows((prev) =>
-                                prev.map((r) => (r.id === row.id ? { ...r, overwrite: v } : r)),
-                              )
-                            }}
-                          />
-                          {t('admin.meta_leads.field_mapping.overwrite_yes')}
-                        </label>
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <button
-                          type="button"
-                          className="btn-danger btn-xs"
-                          onClick={() =>
-                            setFieldMappingRows((prev) => prev.filter((r) => r.id !== row.id))
-                          }
-                        >
-                          {t('common.actions.delete')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className="btn-secondary btn-sm disabled:opacity-50"
-                disabled={mappingRowsAtCap}
-                title={
-                  mappingRowsAtCap
-                    ? t('common.errors.plan_meta_field_mapping_limit', { limit: mappingRulesLimit ?? 25 })
-                    : undefined
-                }
-                onClick={() =>
-                  setFieldMappingRows((prev) => [
-                    ...prev,
-                    {
-                      id: newMappingRowId(),
-                      sourceText: '',
-                      target: '',
-                      format: 'string',
-                      overwrite: true,
-                    },
-                  ])
-                }
-              >
-                {t('admin.meta_leads.field_mapping.add_row')}
-              </button>
-              {suggestedMetaFieldKeys.length > 0 && (
-                <span className="text-xs text-slate-500">
-                  {t('admin.meta_leads.field_mapping.suggestions_ready', {
-                    values: { count: suggestedMetaFieldKeys.length },
-                  })}
-                </span>
-              )}
-            </div>
-            <button type="button" onClick={() => void handleSaveFieldMapping()} className="btn-primary mt-4">
-              {selectedFormKey === META_FORM_TENANT_DEFAULT_KEY
-                ? t('admin.meta_leads.field_mapping.save_tenant')
-                : t('admin.meta_leads.field_mapping.save_form')}
-            </button>
+            <Link
+              className="btn-primary btn-sm mt-3 inline-flex"
+              to={
+                workspaceSource
+                  ? marketingSourceMappingPath(workspaceSource.source_id)
+                  : CRM_APP_PATHS.marketingSources
+              }
+              data-testid="meta-field-mapping-workspace-open"
+            >
+              {workspaceSource
+                ? t('admin.meta_leads.field_mapping.workspace_open')
+                : t('admin.meta_leads.field_mapping.workspace_pick_source')}
+            </Link>
           </div>
         </section>
       )}

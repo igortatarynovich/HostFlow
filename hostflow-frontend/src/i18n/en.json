@@ -11668,7 +11668,9 @@
           "none": "Not used yet"
         },
         "option_map": {
-          "hostflow": "HostFlow value"
+          "hostflow": "HostFlow value",
+          "unset": "Not decided",
+          "ignore": "Ignore this answer"
         },
         "projection": {
           "title": "What the next application will write"
@@ -16363,7 +16365,7 @@
         "signature_status": "Status: {status}",
         "save": "Save settings",
         "field_mapping_card_title": "Form field mapping",
-        "field_mapping_card_body": "{count} mapping rule(s) configured. Use the Field mapping tab to edit rows (source keys match Meta form field names, lowercased).",
+        "field_mapping_card_body": "{count} mapping rule(s) configured. Open Mapping to edit where answers land.",
         "open_field_mapping": "Open field mapping",
         "lead_fit_order_title": "Fallback vacancy order (no ad / vacancy_id map)",
         "lead_fit_order_hint": "When a lead has no ad mapping and no vacancy_id in the payload, the pipeline tries these vacancies in order until one passes fit (or has no criteria). Same as Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids.",
@@ -16379,6 +16381,10 @@
         "rules_title": "Mapping rules",
         "rules_subtitle": "Link each Meta form question to where the answer is stored. Use comma-separated names when one question has several aliases.",
         "rules_hint": "Source = question name from the form (see table above). Target = internal field id until candidate labels are added (PR-3).",
+        "workspace_title": "Edit mapping in one workspace",
+        "workspace_body": "Where this form's answers land is edited in Mapping — not here. Intake routing below stays on this tab.",
+        "workspace_open": "Open mapping",
+        "workspace_pick_source": "Open Sources to pick a form",
         "form_fields": {
           "title": "Form fields",
           "subtitle": "Fields seen on your lead form with a sample answer. Check mapping status before saving rules below.",

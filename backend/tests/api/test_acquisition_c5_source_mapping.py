@@ -295,10 +295,13 @@ async def test_mapping_workspace_schema_without_sample(
     assert by_source["favourite_color"]["binding"] == "ignored"
     assert by_source["eu_experience"]["binding"] == "unmapped"
     assert by_source["eu_experience"]["drift"] == "new_question"
-    assert body["summary"]["headline"] == "needs_check"
+    assert by_source["document_validity"]["drift"] in {"changed_options", "destination_invalid"}
+    assert body["summary"]["headline"] == "option_drift"
     assert body["summary"]["unmapped_count"] == 1
     assert body["projection"]
     assert "document_validity" in body["projection"][0]["sentence"]
+    assert "Менее 3 месяцев" not in body["projection"][0]["sentence"]
+    assert "Более 8 месяцев" not in body["projection"][0]["sentence"]
 
     got = await client.get(
         f"/api/v1/platform/marketing/sources/{source_id}/mapping",
@@ -328,3 +331,122 @@ def test_workspace_rows_do_not_require_sample() -> None:
     assert all(r["binding"] == "unmapped" for r in rows)
     assert summary["headline"] == "needs_check"
     assert summary["total_count"] == 2
+
+
+def test_incomplete_option_map_is_not_ready() -> None:
+    from backend.app.acquisition.mapping_workspace import build_workspace_rows
+
+    rows, summary = build_workspace_rows(
+        schema_fields=[
+            {
+                "source": "document_validity",
+                "label": "Document validity",
+                "options": ["Under 3 months", "Over 8 months"],
+            }
+        ],
+        mapping_rules=[
+            {
+                "source": "document_validity",
+                "qualified_field_code": "candidate.document_validity",
+                "option_map": {"Over 8 months": "GT_8_MONTHS"},
+            }
+        ],
+        sample_by_source={},
+        destinations=[
+            {
+                "code": "candidate.document_validity",
+                "label": "Document validity",
+                "field_type": "select",
+                "choice": True,
+                "aliases": [],
+                "options": [
+                    {"value": "LT_3_MONTHS", "label": "Under 3 months"},
+                    {"value": "GT_8_MONTHS", "label": "Over 8 months"},
+                ],
+            }
+        ],
+        has_schema=True,
+    )
+    assert rows[0]["drift"] == "changed_options"
+    assert summary["headline"] == "option_drift"
+    assert summary["contract_health"] == "needs_review"
+
+
+def test_complete_option_decisions_are_ready() -> None:
+    from backend.app.acquisition.mapping_workspace import (
+        OPTION_IGNORE_VALUE,
+        build_workspace_rows,
+    )
+
+    rows, summary = build_workspace_rows(
+        schema_fields=[
+            {
+                "source": "document_validity",
+                "label": "Document validity",
+                "options": ["Under 3 months", "Over 8 months"],
+            }
+        ],
+        mapping_rules=[
+            {
+                "source": "document_validity",
+                "qualified_field_code": "candidate.document_validity",
+                "option_map": {
+                    "Under 3 months": OPTION_IGNORE_VALUE,
+                    "Over 8 months": "GT_8_MONTHS",
+                },
+            }
+        ],
+        sample_by_source={},
+        destinations=[
+            {
+                "code": "candidate.document_validity",
+                "label": "Document validity",
+                "field_type": "select",
+                "choice": True,
+                "aliases": [],
+                "options": [{"value": "GT_8_MONTHS", "label": "Over 8 months"}],
+            }
+        ],
+        has_schema=True,
+    )
+    assert rows[0]["drift"] is None
+    assert summary["headline"] == "all_set"
+    assert summary["contract_health"] == "valid"
+
+
+def test_projection_does_not_pass_through_raw_option() -> None:
+    from backend.app.acquisition.mapping_workspace import build_projection, build_workspace_rows
+
+    rows, _summary = build_workspace_rows(
+        schema_fields=[
+            {
+                "source": "document_validity",
+                "label": "Document validity",
+                "options": ["Более 8 месяцев"],
+            }
+        ],
+        mapping_rules=[
+            {
+                "source": "document_validity",
+                "qualified_field_code": "candidate.document_validity",
+                "option_map": {"Более 8 месяцев": "GT_8_MONTHS"},
+            }
+        ],
+        sample_by_source={"document_validity": "Более 8 месяцев"},
+        destinations=[
+            {
+                "code": "candidate.document_validity",
+                "label": "Document validity",
+                "field_type": "select",
+                "choice": True,
+                "aliases": [],
+                "options": [{"value": "GT_8_MONTHS", "label": "Over 8 months"}],
+            }
+        ],
+        has_schema=True,
+    )
+    projection = build_projection(rows)
+    assert projection
+    assert projection[0]["example_out"] == "Over 8 months"
+    assert "Более 8 месяцев" not in projection[0]["sentence"]
+    assert "Over 8 months" in projection[0]["sentence"]

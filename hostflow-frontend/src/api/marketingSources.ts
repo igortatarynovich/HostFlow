@@ -96,6 +96,7 @@ export type MappingWorkspaceRow = {
   option_map: Record<string, string>
   in_schema: boolean
   drift: string | null
+  destination_options?: Array<{ value: string; label: string }>
 }
 
 export type MappingDestination = {
@@ -124,7 +125,7 @@ export type MappingProjection = {
   source: string
   destination_label: string
   example_in: string | null
-  example_out: string
+  example_out: string | null
   sentence: string
 }
 

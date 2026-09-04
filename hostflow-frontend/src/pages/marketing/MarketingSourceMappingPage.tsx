@@ -26,6 +26,8 @@ import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 
+const OPTION_IGNORE_VALUE = '__ignore__'
+
 type DraftRow = {
   source: string
   label: string
@@ -382,22 +384,50 @@ export default function MarketingSourceMappingPage() {
                             </select>
                             {row.choice && row.binding === 'mapped' ? (
                               <div className="mt-2 space-y-1" data-testid={`marketing-mapping-options-${row.source}`}>
-                                {(row.options.length ? row.options : Object.keys(row.option_map)).map((opt) => (
+                                {(row.options.length ? row.options : Object.keys(row.option_map)).map((opt) => {
+                                  const destOptions = dest?.options || []
+                                  return (
                                   <label key={opt} className="flex items-center gap-2 text-xs text-slate-700">
                                     <span className="min-w-[8rem]">{opt}</span>
-                                    <input
-                                      className="flex-1 rounded border border-slate-300 px-2 py-0.5"
-                                      value={row.option_map[opt] || ''}
-                                      disabled={busy}
-                                      placeholder={t('app.marketing.mapping.option_map.hostflow')}
-                                      onChange={(e) =>
-                                        updateDraft(index, {
-                                          option_map: { ...row.option_map, [opt]: e.target.value },
-                                        })
-                                      }
-                                    />
+                                    {destOptions.length ? (
+                                      <select
+                                        className="flex-1 rounded border border-slate-300 px-2 py-0.5"
+                                        value={row.option_map[opt] || ''}
+                                        disabled={busy}
+                                        onChange={(e) =>
+                                          updateDraft(index, {
+                                            option_map: { ...row.option_map, [opt]: e.target.value },
+                                          })
+                                        }
+                                      >
+                                        <option value="">
+                                          {t('app.marketing.mapping.option_map.unset')}
+                                        </option>
+                                        <option value={OPTION_IGNORE_VALUE}>
+                                          {t('app.marketing.mapping.option_map.ignore')}
+                                        </option>
+                                        {destOptions.map((item) => (
+                                          <option key={item.value} value={item.value}>
+                                            {item.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    ) : (
+                                      <input
+                                        className="flex-1 rounded border border-slate-300 px-2 py-0.5"
+                                        value={row.option_map[opt] || ''}
+                                        disabled={busy}
+                                        placeholder={t('app.marketing.mapping.option_map.hostflow')}
+                                        onChange={(e) =>
+                                          updateDraft(index, {
+                                            option_map: { ...row.option_map, [opt]: e.target.value },
+                                          })
+                                        }
+                                      />
+                                    )}
                                   </label>
-                                ))}
+                                  )
+                                })}
                               </div>
                             ) : null}
                           </td>

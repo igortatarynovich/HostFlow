@@ -11668,7 +11668,9 @@
           "none": "Na razie nie używać"
         },
         "option_map": {
-          "hostflow": "Wartość HostFlow"
+          "hostflow": "Wartość HostFlow",
+          "unset": "Nie zdecydowano",
+          "ignore": "Ignoruj tę odpowiedź"
         },
         "projection": {
           "title": "Co zapisze następny wniosek"
@@ -16379,6 +16381,10 @@
         "rules_title": "Reguły mapowania",
         "rules_subtitle": "Powiąż pytanie z formularza Meta z miejscem zapisu odpowiedzi. Wiele nazw źródła — po przecinku.",
         "rules_hint": "Źródło = nazwa pola z tabeli powyżej. Cel = wewnętrzny identyfikator pola (później etykiety kandydata).",
+        "workspace_title": "Mapowanie w jednym workspace",
+        "workspace_body": "Gdzie trafiają odpowiedzi z tego formularza edytuje się w Mapping — nie tutaj. Routing intake zostaje na tej zakładce.",
+        "workspace_open": "Otwórz mapping",
+        "workspace_pick_source": "Otwórz Źródła, aby wybrać formularz",
         "form_fields": {
           "title": "Pola formularza",
           "subtitle": "Pola z formularza leadów z przykładową wartością. Sprawdź status przed zapisaniem reguł poniżej.",
