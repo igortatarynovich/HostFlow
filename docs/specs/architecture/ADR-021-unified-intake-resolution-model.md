@@ -7,7 +7,7 @@
 **Authors:** Product + Platform architecture  
 **Supersedes / clarifies:** partial product behaviour documented across [ADR-013](ADR-013-public-intake-strategy.md), [ui-constitution-v1.md](ui-constitution-v1.md), [applications-operating-model.md](applications-operating-model.md), [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md)
 
-**Related (not replaced):** [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) (Sales-to-Engagement commercial model), [ADR-007](ADR-007-forms-platform-capability.md) (Forms Platform), [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) (Form Purpose + Submission Policy — Intake Platform entry contract; **still Proposed** — see process note below), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Decision Layer / Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md)
+**Related (not replaced):** [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) (Sales-to-Engagement commercial model), [ADR-007](ADR-007-forms-platform-capability.md) (Forms Platform), [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) (Form Purpose + Submission Policy — Intake Platform entry contract; **still Proposed** — see process note below), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Decision Layer / Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md), [mapping-authority-contract.md](mapping-authority-contract.md) (who may write source→canonical placement; `mapping_authority.v1` / MA-1)
 
 **Review artifact:** [ADR-021-review-checklist.md](ADR-021-review-checklist.md)
 
@@ -509,3 +509,4 @@ Phase 1 uses Lead-backed facade if it exposes §3–§9 contracts at the API/pro
 | [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) | Decision Layer, Outcome Executor |
 | [lead-intake-conversion-flow-audit.md](../workflows/lead-intake-conversion-flow-audit.md) | Gap evidence |
 | [ingestion-contract-template.md](../workflows/ingestion-contract-template.md) | Per-channel contracts |
+| [mapping-authority-contract.md](mapping-authority-contract.md) | Mapping write authority (`mapping_authority.v1` / MA-1); does not replace this ADR |

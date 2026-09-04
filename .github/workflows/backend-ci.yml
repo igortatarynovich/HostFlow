@@ -106,6 +106,7 @@ jobs:
       rpm3b: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm3b == 'true' }}
       rpm_cutover: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm_cutover == 'true' }}
       rpm_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm_close == 'true' }}
+      ma1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma1 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -342,6 +343,13 @@ jobs:
               - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
               - 'docs/specs/gates/hostflow-v1-release-goal.md'
               - 'AGENTS.md'
+            ma1:
+              - 'backend/app/reference/mapping_authority.py'
+              - 'backend/tests/platform/test_mapping_authority_contract_gate.py'
+              - 'scripts/architecture/check_mapping_authority_boundary.py'
+              - 'scripts/architecture/mapping_authority_boundary_*'
+              - 'docs/specs/tasks/mapping-authority.md'
+              - 'docs/specs/architecture/mapping-authority-contract.md'
 
   guards:
     name: guards
@@ -862,6 +870,21 @@ jobs:
         with:
           tests: tests/platform/test_requirement_policy_program_close.py
 
+  ma1-contract-gate:
+    name: Mapping Authority Contract Gate
+    needs: changes
+    if: needs.changes.outputs.ma1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Mapping Authority Contract gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_mapping_authority_contract_gate.py') == ''
+        run: echo "Mapping Authority Contract gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_mapping_authority_contract_gate.py') != ''
+        with:
+          tests: tests/platform/test_mapping_authority_contract_gate.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -908,6 +931,7 @@ jobs:
       - rpm3b-consumer-parity-gate
       - rpm-cutover-gate
       - rpm-close-gate
+      - ma1-contract-gate
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:
