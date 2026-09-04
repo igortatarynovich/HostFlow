@@ -1,9 +1,9 @@
 # Requirement Policy Management
 
-**Status:** **RPM-1 PASS** · **RPM-2 PASS** · **RPM-3A PASS** · **RPM-3B PASS** · **Consumer Cutover Gate PASS**. **Queued = RPM program close** (not started).  
+**Status:** **DONE** — RPM-1…RPM-3B PASS · Consumer Cutover Gate **PASS** (`918274d1`) · RPM program **DONE** (outcome + release delta this amendment). Active Product = [MA-1](mapping-authority.md) (brief; feat locked).  
 **Phase class:** platform  
-**Branch (docs):** `feat/requirement-policy-consumer-cutover-gate`  
-**Branch (code):** `feat/requirement-policy-consumer-cutover-gate`. RPM-3B ✅. Consumer Cutover Gate **PASS**. Sequential queue amendment and program close are not this PR.  
+**Branch (docs):** `docs/rpm-program-close-mapping-authority`  
+**Branch (code):** none this amendment — Mapping feat locked. Cutover feat `feat/requirement-policy-consumer-cutover-gate` ✅ `918274d1`. RPM-2 ✅ [#342](https://github.com/igortatarynovich/HostFlow/pull/342) / `5196ee64`.  
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) [#328](https://github.com/igortatarynovich/HostFlow/pull/328) · [Documents Platform E8-eval](documents-platform-e8-eval.md) ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [Requirement Policy Authority](../architecture/requirement-policy-authority.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Reference R5](platform-reference-identity-sot.md) · [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md)
 **Estimate:** 4–6 slices — RPM-1 1 (docs), RPM-2 1–2, RPM-3A 1, RPM-3B 1–2 (1 slice = one docs PR + one feat PR; rolled up in the [queue release horizon](sales-to-comms-sequential-queue.md))
 
@@ -29,7 +29,7 @@ Nine live answerers still reply to “must this candidate provide document type 
 
 ## Internal ladder (this program only)
 
-One Active Product slice at a time. RPM-1 Authority Gate **PASS**. RPM-2 Operator Gate **PASS**. RPM-3A Parallel Authority Retirement Gate **PASS**. RPM-3B Consumer Parity Gate **PASS**. **Consumer Cutover Gate PASS**. Mapping is **not** on this ladder.
+One Active Product slice at a time. RPM-1 Authority Gate **PASS**. RPM-2 Operator Gate **PASS**. RPM-3A Parallel Authority Retirement Gate **PASS**. RPM-3B Consumer Parity Gate **PASS**. Consumer Cutover Gate **PASS** (`918274d1`). **RPM program = DONE**. Mapping is **not** on this ladder.
 
 ```text
 RPM-1 Authority contract
@@ -46,9 +46,9 @@ RPM-1 Authority contract
 | **RPM-2** | Operator overlay | `rpm-operator` | **Requirement Policy Operator Gate** ✅ — one job UI: base rule, override, reason, result; writes the RPM-1 authority; Documents domain first | **Requirement Policy Authority Gate** | RPM-3A |
 | **RPM-3A** | Parallel authority retirement | `rpm-cutover-writers` | **Requirement Policy Parallel Authority Retirement Gate** ✅ — A `document_policies`, C leftover ruleset writes, J P3B `document_required` only | **Requirement Policy Operator Gate** | RPM-3B |
 | **RPM-3B** | Consumer parity | `rpm-cutover-consumers` | **Requirement Policy Consumer Parity Gate** ✅ — remaining consumers’ **policy answer** matches R5 required-set (base / require X / remove X); Overlay confirm; R5 remains sole write | **Requirement Policy Parallel Authority Retirement Gate** | Consumer Cutover Gate |
-| **RPM-3 close** | Consumer cutover close | `rpm-cutover` | **Requirement Policy Consumer Cutover Gate** ✅ — 3A ∧ 3B PASS; no live independent “need X?” answerer; D4 result matches operator write; stage/transfer do not contradict | RPM-3A Gate ∧ RPM-3B Gate | RPM program close. Hiring E2E **unlocked, not scheduled** |
+| **RPM-3 close** | Consumer cutover close | `rpm-cutover` | **Requirement Policy Consumer Cutover Gate** ✅ `918274d1` — 3A ∧ 3B PASS; no live independent “need X?” answerer; D4 result matches operator write; stage/transfer do not contradict | RPM-3A Gate ∧ RPM-3B Gate | RPM program close ✅ |
 
-Unlock ≠ schedule. Closing RPM does **not** auto-start Mapping or Hiring.
+Unlock ≠ schedule. Closing RPM does **not** auto-start Mapping feat or Hiring. The queue amendment that records this close names [MA-1](mapping-authority.md) Active Product (brief; feat locked).
 
 ---
 
@@ -217,16 +217,16 @@ Proof chain: same pack + same `tenant_delta` → R5 resolved policy → each sur
 | `requirement_checker` GateCode path | **leftover-out-of-scope** | requirement_code gates, not document-type X |
 | `documents.py` ETA legacy codes | **leftover-out-of-scope** | `visa_D` / `prawo_jazdy` SLA helper, not canonical operator-question SoT |
 
-**Does not:** restore retired writers; rewrite Overlay; mix a new evaluator/merge; touch `field_required`; open Mapping; close the RPM program (that remains queued after the Consumer Cutover Gate).
+**Does not:** restore retired writers; rewrite Overlay; mix a new evaluator/merge; touch `field_required`; open Mapping; close the RPM program (that was the queued successor after this gate).
 
 ### Requirement Policy Consumer Cutover Gate (**PASS**)
 
-**Depends on:** RPM-3A Gate ∧ RPM-3B Gate. Closes the RPM-3 program ladder. Hiring E2E unlocked, **not** scheduled. Sequential queue amendment and RPM program close are **not this PR**.
+**Depends on:** RPM-3A Gate ∧ RPM-3B Gate. Closed the RPM-3 program ladder. Hiring E2E unlocked, **not** scheduled.
 
 **Named gate:** `requirement_policy_consumer_cutover.v1`.  
 **Named CI:** `backend/tests/platform/test_requirement_policy_consumer_cutover_gate.py`.
 
-**Outcome:** **PASS**.
+**Outcome:** **PASS** (`918274d1` on `integration/release-product-a-b`).
 
 PASS when:
 
@@ -235,22 +235,24 @@ PASS when:
 3. D4 applicability required-set ≡ operator overlay write under base / require X / remove X.  
 4. Stage/transfer do not contradict that set. Outstanding-ask fallback consumes the same delta.  
 5. Named leftovers stay leftover-out-of-scope: requirement_checker GateCode, documents.py ETA `visa_D` / `prawo_jazdy`, D visa/attestation booleans.  
-6. Mapping / Hiring E2E / Overlay rewrite / Hub packages / retiring all of P3B / RPM program close are not this slice.
+6. Mapping / Hiring E2E / Overlay rewrite / Hub packages / retiring all of P3B / sequential-queue amendment were not the cutover feat.
 
 **Runtime:** remaining live required-set readers call `load_persisted_tenant_delta` and seal checklist `requiredTypes` from R5.
 
-Out: Hiring E2E as a walk of `stage → eligibility → transfer` (that is the next DAG node after RPM **program** close). Out: Mapping Authority. Out: reopening RPM-2. Out: retiring all of P3B. Out: forcing Overlay into R5. Out: treating Hub catalog as policy. Out: amending the sequential queue in this PR.
+Out: Hiring E2E as a walk of `stage → eligibility → transfer` (unlocked by program close, **not** scheduled). Out: Mapping feat in the close amendment. Out: reopening RPM-2. Out: retiring all of P3B. Out: forcing Overlay into R5. Out: treating Hub catalog as policy.
 
 ---
 
 ## Program close = two results
 
-| Field | Meaning |
-|-------|---------|
-| **Program outcome** | Operator manages document-requirement policy through one authority; classified consumers do not contradict |
-| **Release delta** | Requirement Policy Management four-checks PASS (Documents domain). Mapping, External Intake, Hiring E2E, min HR remain **OPEN**. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄 |
+Recorded this amendment. Reaching this horizon is **not** a release.
 
-Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ schedule.
+| Field | Value |
+|-------|---------|
+| **Program outcome** | Operator manages document-requirement policy through one authority (R5 `merge(pack, tenant_delta)` + overlay). Classified consumers do not contradict. Parallel writers of “need X?” are retired. D4 matches the operator write. |
+| **Release delta** | Requirement Policy Management four-checks **PASS** (Documents domain; RS-4 named). Mapping Authority, External Intake, Hiring E2E, and min HR remain **OPEN**. Hiring E2E is **unlocked, not scheduled**. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄 |
+
+Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ schedule. Next Active Product is chosen from the remaining Release DAG by the [queue](sales-to-comms-sequential-queue.md), not by minting an RPM → Mapping acceptance edge.
 
 ---
 
@@ -259,9 +261,11 @@ Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ sch
 **Depends on:** E8-eval Gate ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · DAG dependency-position [#328](https://github.com/igortatarynovich/HostFlow/pull/328)  
 **RPM-1:** **PASS** (Authority Gate).  
 **RPM-2:** **PASS** (Operator Gate; `tenant_document_policy_deltas`; GET `resolved_policy`; D4 loads persisted delta) [#342](https://github.com/igortatarynovich/HostFlow/pull/342) / `5196ee64`.  
-**Active:** **Consumer Cutover Gate** (this feat **PASS**). Sequential queue amendment is not this PR.  
-**Queued inside this program:** RPM program close after Consumer Cutover Gate PASS (**not started**; not this PR). Hiring E2E unlocked, **not** scheduled.  
-**Does not:** schedule Mapping; mint RPM → Mapping as an acceptance edge; start Hiring E2E / Intake / min HR; invent CL8; mint a packages table; rewrite Overlay / CL7 / DR1 / E8-eval / R5; mark Foundation ✅; open intake qualification as a second RPM-1 question; fold `lead_criteria_v1` into the nine-row table; retire all of P3B; amend the sequential queue; close the RPM program in this PR
+**RPM-3A / RPM-3B / Consumer Cutover:** **PASS** (`918274d1`).  
+**Program:** **DONE** (outcome + release delta this amendment).  
+**Active Product after close:** [MA-1](mapping-authority.md) (brief; feat locked) — named by the queue, not by minting an RPM → Mapping acceptance edge.  
+**Hiring E2E:** unlocked, **not** scheduled. External Intake / min HR remain queued.  
+**Does not:** open Mapping feat; start Hiring E2E / Intake / min HR; invent CL8; mint a packages table; rewrite Overlay / CL7 / DR1 / E8-eval / R5; mark Foundation ✅; open intake qualification as a second RPM-1 question; fold `lead_criteria_v1` into the nine-row table; retire all of P3B; declare HostFlow v1 release-ready
 
 ---
 
@@ -278,7 +282,8 @@ Hiring E2E is **unlocked** by this close (known acceptance edge). Unlock ≠ sch
 
 ## History
 
-- 2026-09-04: **Consumer Cutover Gate PASS.** Remaining live required-set readers load persisted `tenant_delta`. D4 matches operator write. Sequential queue / program close not this PR. Mapping / Hiring E2E not auto-scheduled. Not CL8. Foundation stays 🔄.
+- 2026-09-04: **RPM program close.** Consumer Cutover Gate **PASS** (`918274d1`). Program outcome + release delta recorded. RPM four-checks PASS (Documents domain). Active Product → **[MA-1](mapping-authority.md)** (brief; feat locked). Mapping feat not opened. External Intake / Hiring E2E / min HR remain queued. Hiring unlocked, not scheduled. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-04: **Consumer Cutover Gate PASS.** Remaining live required-set readers load persisted `tenant_delta`. D4 matches operator write. Sequential queue / program close not that feat. Mapping / Hiring E2E not auto-scheduled. Not CL8. Foundation stays 🔄.
 - 2026-09-03: **RPM-3B Consumer Parity feat PASS.** Surviving consumers read the same R5 required-set (base / require X / remove X). Active Product → **Consumer Cutover Gate** (feat locked). Mapping / Hiring E2E not auto-scheduled. Not CL8. Foundation stays 🔄.
 - 2026-09-03: **RPM-3A docs lock.** Internal ladder RPM-3A → RPM-3B → Consumer Cutover Gate (one Active slice). Cutover matrix accepted with corrections (E split candidate vs transfer; F retire as answerer/catalog; G Engine contract + R5 document-required input; J cut `document_required` only). Policy-answer parity normative. Active = **RPM-3A**. Feat locked. Mapping / Hiring E2E not auto-scheduled. Not CL8. Foundation stays 🔄.
 - 2026-09-03: RPM-2 Operator Gate **PASS** [#342](https://github.com/igortatarynovich/HostFlow/pull/342) / `5196ee64` — persist R5 `tenant_delta` in `tenant_document_policy_deltas`; GET `resolved_policy` from existing merge; D4 resolve consumes the row. reason is a sibling column.  

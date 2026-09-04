@@ -2,8 +2,8 @@
 
 3A ∧ 3B remain PASS. Remaining live required-set readers load persisted
 tenant_delta. D4 matches the operator write. Named leftovers stay
-leftover-out-of-scope. Does not amend the sequential queue, start Mapping,
-or close the RPM program.
+leftover-out-of-scope. Does not reopen 3A/3B, restore writers, or start
+Mapping feat.
 """
 
 from __future__ import annotations
@@ -176,20 +176,19 @@ def test_rpm_cutover_named_leftovers_do_not_answer() -> None:
     assert "merge_resolved_policy" not in applicability
 
 
-def test_rpm_cutover_brief_does_not_start_program_close() -> None:
+def test_rpm_cutover_brief_gate_pass() -> None:
     brief = _BRIEF.read_text(encoding="utf-8")
     assert "Requirement Policy Consumer Cutover Gate" in brief
     assert CONTRACT_ID.split(".")[0].replace("_", " ") in brief.lower() or CONTRACT_ID in brief
     assert "PASS" in brief
-    assert "program close" in brief.lower()
-    assert "not this" in brief.lower() or "not started" in brief.lower()
+    assert "918274d1" in brief
     assert "Mapping" in brief
     assert "Hiring E2E" in brief
     arch = _ARCH.read_text(encoding="utf-8")
     assert "Consumer Cutover" in arch
+    assert "PASS" in arch
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "Consumer Cutover Gate" in queue
-    assert "feat locked this PR" in queue or "Consumer Cutover Gate" in queue
 
 
 def test_rpm_cutover_named_ci_gate() -> None:

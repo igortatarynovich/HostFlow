@@ -167,16 +167,16 @@ Known acceptance edges unchanged from the Goal. Still **not** proven as executio
 
 ## Next (consumed)
 
-The docs-only queue amendment after this review named **Requirement Policy Management** as the first Product and cut [RPM-1 / RPM-2 / RPM-3](../tasks/requirement-policy-management.md). Mapping remains startable after RPM program close and is **not** auto-scheduled there. This review is still not the schedule.
+The docs-only queue amendment after this review named **Requirement Policy Management** as the first Product and cut [RPM-1 / RPM-2 / RPM-3](../tasks/requirement-policy-management.md). The RPM program close amendment then named **Mapping Authority MA-1** as Active Product (brief; feat locked). External Intake / Hiring E2E / min HR remain queued. This review is still not the schedule.
 
-Until that amendment merged, Product Track stayed **none**. After it, Active Product is RPM-1 (brief; feat locked).
+Until that first amendment merged, Product Track stayed **none**. After it, Active Product was RPM-1 (brief; feat locked). After RPM program close, Active Product is MA-1.
 
 ---
 
 ## Refs
 
 - [HostFlow v1 Release Goal](hostflow-v1-release-goal.md) — v1 in-scope vs later; Release DAG; known acceptance edges  
-- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [RPM-1](../tasks/requirement-policy-management.md) after this review  
+- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [MA-1](../tasks/mapping-authority.md) after RPM program close  
 - [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) — one evaluator; Admin UI for policy was out of Slice 1  
 - [ADR-007](../architecture/ADR-007-forms-platform-capability.md) — Forms Foundation ✅; P3 Publish UI locked  
 - [Handoff contract](../architecture/handoff-contract.md) · [Documents E8-eval](../tasks/documents-platform-e8-eval.md) · [CL6 Flight map](../tasks/entity-field-composition-cl6-flight-map.md)
