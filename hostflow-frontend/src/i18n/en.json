@@ -11665,8 +11665,18 @@
           "unmapped": "Unmapped"
         },
         "destination": {
-          "none": "Not used yet"
+          "none": "Not used yet",
+          "invalid": "HostFlow field is no longer valid"
         },
+        "drift": {
+          "field_added": "A new question appeared on the form",
+          "field_removed": "This question was removed from the form — review this binding",
+          "option_added": "The form added an answer that is not decided",
+          "option_removed": "The form removed an answer that was mapped",
+          "type_changed": "This question’s type changed",
+          "destination_invalid": "The HostFlow field is no longer valid"
+        },
+        "historical": "Removed from the form — review this binding",
         "option_map": {
           "hostflow": "HostFlow value",
           "unset": "Not decided",

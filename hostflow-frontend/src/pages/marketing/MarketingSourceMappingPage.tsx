@@ -35,9 +35,13 @@ type DraftRow = {
   sample_example: string
   binding: 'mapped' | 'ignored' | 'unmapped'
   destination_code: string
+  destination_label: string
   choice: boolean
   option_map: Record<string, string>
   in_schema: boolean
+  field_type: string
+  drift: string | null
+  drift_human: string | null
 }
 
 function rowsFromWorkspace(mapping: MarketingSourceMapping): DraftRow[] {
@@ -51,9 +55,13 @@ function rowsFromWorkspace(mapping: MarketingSourceMapping): DraftRow[] {
       binding:
         row.binding === 'ignored' || row.binding === 'mapped' ? row.binding : 'unmapped',
       destination_code: row.destination_code || '',
+      destination_label: row.destination_label || '',
       choice: Boolean(row.choice),
       option_map: { ...(row.option_map || {}) },
       in_schema: Boolean(row.in_schema),
+      field_type: row.field_type || '',
+      drift: row.drift || null,
+      drift_human: row.drift_human || null,
     }))
   }
   return (mapping.mapping_rules || []).map((rule) => ({
@@ -63,9 +71,13 @@ function rowsFromWorkspace(mapping: MarketingSourceMapping): DraftRow[] {
     sample_example: '',
     binding: String(rule.action || '').toLowerCase() === 'ignore' ? 'ignored' : 'mapped',
     destination_code: String(rule.qualified_field_code || rule.target || ''),
+    destination_label: '',
     choice: false,
     option_map: { ...(rule.option_map || {}) },
     in_schema: false,
+    field_type: '',
+    drift: null,
+    drift_human: null,
   }))
 }
 
@@ -295,6 +307,7 @@ export default function MarketingSourceMappingPage() {
                             source: d.source,
                             label: d.label,
                             options: d.options,
+                            field_type: d.field_type,
                           })),
                         }
                       : null
@@ -342,11 +355,31 @@ export default function MarketingSourceMappingPage() {
                           : row.binding === 'ignored'
                             ? t('app.marketing.mapping.binding.ignored')
                             : t('app.marketing.mapping.binding.unmapped')
+                      const driftLabel = row.drift
+                        ? t(`app.marketing.mapping.drift.${row.drift}`, {
+                            defaultValue: row.drift_human || row.drift,
+                          })
+                        : ''
                       return (
                         <tr key={row.source} data-testid={`marketing-mapping-row-${row.source}`}>
                           <td className="px-3 py-2 align-top">
                             <div className="font-medium text-slate-900">{row.label}</div>
                             <div className="mt-0.5 text-xs text-slate-500">{statusLabel}</div>
+                            {!row.in_schema ? (
+                              <p className="mt-1 text-xs text-amber-800" data-testid={`marketing-mapping-historical-${row.source}`}>
+                                {t('app.marketing.mapping.historical', {
+                                  defaultValue: 'Removed from the form — review this binding',
+                                })}
+                              </p>
+                            ) : null}
+                            {driftLabel ? (
+                              <p
+                                className="mt-1 text-xs text-amber-800"
+                                data-testid={`marketing-mapping-drift-${row.source}`}
+                              >
+                                {driftLabel}
+                              </p>
+                            ) : null}
                           </td>
                           <td className="px-3 py-2 align-top text-slate-600">
                             {row.sample_example
@@ -376,11 +409,14 @@ export default function MarketingSourceMappingPage() {
                                   {item.label}
                                 </option>
                               ))}
-                              {row.destination_code && !dest
-                                ? (
-                                    <option value={row.destination_code}>{row.destination_code}</option>
-                                  )
-                                : null}
+                              {row.destination_code && !dest ? (
+                                <option value={row.destination_code}>
+                                  {row.destination_label ||
+                                    t('app.marketing.mapping.destination.invalid', {
+                                      defaultValue: 'HostFlow field is no longer valid',
+                                    })}
+                                </option>
+                              ) : null}
                             </select>
                             {row.choice && row.binding === 'mapped' ? (
                               <div className="mt-2 space-y-1" data-testid={`marketing-mapping-options-${row.source}`}>

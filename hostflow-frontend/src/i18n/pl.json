@@ -11665,8 +11665,18 @@
           "unmapped": "Unmapped"
         },
         "destination": {
-          "none": "Na razie nie używać"
+          "none": "Na razie nie używać",
+          "invalid": "Pole HostFlow nie jest już ważne"
         },
+        "drift": {
+          "field_added": "Na formularzu pojawiło się nowe pytanie",
+          "field_removed": "To pytanie zniknęło z formularza — sprawdź to przypisanie",
+          "option_added": "Formularz dodał odpowiedź, która nie jest jeszcze zdecydowana",
+          "option_removed": "Formularz usunął odpowiedź, która była zmapowana",
+          "type_changed": "Zmienił się typ tego pytania",
+          "destination_invalid": "Pole HostFlow nie jest już ważne"
+        },
+        "historical": "Usunięte z formularza — sprawdź to przypisanie",
         "option_map": {
           "hostflow": "Wartość HostFlow",
           "unset": "Nie zdecydowano",

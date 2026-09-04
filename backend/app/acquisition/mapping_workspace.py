@@ -23,6 +23,23 @@ CHOICE_TYPES = frozenset(
     {"select", "enum", "choice", "boolean", "reference", "multiselect", "multi_select"}
 )
 
+DRIFT_FIELD_ADDED = "field_added"
+DRIFT_FIELD_REMOVED = "field_removed"
+DRIFT_OPTION_ADDED = "option_added"
+DRIFT_OPTION_REMOVED = "option_removed"
+DRIFT_TYPE_CHANGED = "type_changed"
+DRIFT_DESTINATION_INVALID = "destination_invalid"
+
+DRIFT_HUMAN = {
+    DRIFT_FIELD_ADDED: "A new question appeared on the form",
+    DRIFT_FIELD_REMOVED: "This question was removed from the form — review this binding",
+    DRIFT_OPTION_ADDED: "The form added an answer that is not decided",
+    DRIFT_OPTION_REMOVED: "The form removed an answer that was mapped",
+    DRIFT_TYPE_CHANGED: "This question’s type changed",
+    DRIFT_DESTINATION_INVALID: "The HostFlow field is no longer valid",
+}
+TAXONOMY_DRIFT = frozenset(DRIFT_HUMAN)
+
 
 def get_schema_snapshot(profile: Any) -> dict[str, Any]:
     cfg = _publication_config(profile)
@@ -58,11 +75,15 @@ def coerce_schema_fields(raw: Any) -> list[dict[str, Any]]:
             for opt in (item.get("options") or [])
             if str(opt).strip()
         ]
+        field_type = str(item.get("field_type") or item.get("type") or "").strip()
+        if not field_type:
+            field_type = "choice" if options else "text"
         out.append(
             {
                 "source": source,
                 "label": str(item.get("label") or source).strip() or source,
                 "options": options,
+                "field_type": field_type,
             }
         )
     return out
@@ -129,40 +150,94 @@ def _destination_lookup(
     return by_key
 
 
+def _source_type(field_type: str, options: list[str]) -> str:
+    raw = str(field_type or "").strip().lower()
+    if raw:
+        return raw
+    return "choice" if options else "text"
+
+
+def _choice_options_incomplete(
+    *,
+    binding: str,
+    choice: bool,
+    options: list[str],
+    option_map: dict[str, str],
+) -> bool:
+    if binding != "mapped" or not options:
+        return False
+    if not (choice or options):
+        return False
+    decided = {k.lower() for k in option_map}
+    return any(str(opt).lower() not in decided for opt in options)
+
+
 def _human_summary(
     *,
     total: int,
     mapped: int,
     ignored: int,
     unmapped: int,
-    new_questions: int,
-    option_drift: int,
+    field_added: int,
+    field_removed: int,
+    option_added: int,
+    option_removed: int,
+    type_changed: int,
+    destination_invalid: int,
+    incomplete_options: int,
     has_schema: bool,
 ) -> dict[str, Any]:
     configured = mapped + ignored
+    option_drift = option_added + option_removed
+    blocking = destination_invalid + type_changed
     if total <= 0 and not has_schema:
         headline = "empty_schema"
         human = "No questions yet. Mapping is still possible once the form schema is available."
+        health = "needs_review"
+    elif destination_invalid:
+        headline = DRIFT_DESTINATION_INVALID
+        human = (
+            f"A HostFlow field is no longer valid. Check {destination_invalid} question"
+            f"{'s' if destination_invalid != 1 else ''}."
+        )
+        health = "invalid"
+    elif type_changed:
+        headline = DRIFT_TYPE_CHANGED
+        human = (
+            f"A question’s type changed. Check {type_changed} question"
+            f"{'s' if type_changed != 1 else ''}."
+        )
+        health = "invalid"
     elif option_drift:
         headline = "option_drift"
         human = (
             f"The form changed. Check {option_drift} answer"
             f"{'s' if option_drift != 1 else ''} before automatic evaluation continues."
         )
-    elif new_questions or unmapped:
-        pending = new_questions or unmapped
+        health = "needs_review"
+    elif field_removed:
+        headline = DRIFT_FIELD_REMOVED
+        human = (
+            f"The form removed {field_removed} question"
+            f"{'s' if field_removed != 1 else ''}. Review those bindings."
+        )
+        health = "needs_review"
+    elif field_added:
+        headline = DRIFT_FIELD_ADDED
+        human = (
+            f"Needs a check — {field_added} new question"
+            f"{'s' if field_added != 1 else ''} appeared on the form"
+        )
+        health = "needs_review"
+    elif unmapped or incomplete_options:
+        pending = unmapped or incomplete_options
         headline = "needs_check"
         human = f"Needs a check — {pending} question{'s' if pending != 1 else ''} to set"
+        health = "needs_review"
     else:
         headline = "all_set"
         human = f"All set — {configured} of {total} questions"
-    health = "valid"
-    if option_drift:
-        health = "needs_review"
-    elif unmapped or new_questions:
-        health = "needs_review" if has_schema or total else "needs_review"
-    if total == 0 and not has_schema:
-        health = "needs_review"
+        health = "valid"
     return {
         "headline": headline,
         "configured_count": configured,
@@ -170,10 +245,18 @@ def _human_summary(
         "mapped_count": mapped,
         "ignored_count": ignored,
         "unmapped_count": unmapped,
-        "new_question_count": new_questions,
+        "new_question_count": field_added,
+        "field_added_count": field_added,
+        "field_removed_count": field_removed,
+        "option_added_count": option_added,
+        "option_removed_count": option_removed,
+        "type_changed_count": type_changed,
+        "destination_invalid_count": destination_invalid,
         "option_drift_count": option_drift,
+        "incomplete_option_count": incomplete_options,
         "human": human,
         "contract_health": health,
+        "blocking_drift_count": blocking,
     }
 
 
@@ -271,11 +354,15 @@ async def _schema_from_presentation(
                     val = str(opt).strip()
                 if val:
                     options.append(val)
+        field_type = str(embedded.get("field_type") or embedded.get("type") or "").strip()
+        if not field_type:
+            field_type = "choice" if options else "text"
         fields.append(
             {
                 "source": source,
                 "label": str(row.get("label") or source).strip() or source,
                 "options": options,
+                "field_type": field_type,
             }
         )
     return fields
@@ -293,8 +380,18 @@ def build_workspace_rows(
     dest_by_key = _destination_lookup(destinations)
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
+    has_saved_decisions = any(
+        _binding_for_rule(rule) in {"mapped", "ignored"} for rule in mapping_rules
+    )
 
-    def _append(source: str, label: str, options: list[str], *, in_schema: bool) -> None:
+    def _append(
+        source: str,
+        label: str,
+        options: list[str],
+        *,
+        in_schema: bool,
+        field_type: str = "",
+    ) -> None:
         key = source.lower()
         if key in seen:
             return
@@ -316,26 +413,40 @@ def build_workspace_rows(
         dest_type = str((dest or {}).get("field_type") or "")
         dest_label = str((dest or {}).get("label") or dest_code)
         dest_options = list((dest or {}).get("options") or [])
-        choice = bool((dest or {}).get("choice")) or _is_choice_type(dest_type) or bool(options)
+        source_type = _source_type(field_type, options)
+        source_choice = _is_choice_type(source_type) or bool(options)
+        dest_choice = bool((dest or {}).get("choice")) or _is_choice_type(dest_type)
+        choice = dest_choice or source_choice
         drift: Optional[str] = None
-        if in_schema and binding == "unmapped":
-            drift = "new_question"
-        elif not in_schema and has_schema:
-            drift = "missing_from_form"
+        if not in_schema and has_schema:
+            drift = DRIFT_FIELD_REMOVED
+        elif in_schema and binding == "unmapped" and has_saved_decisions:
+            drift = DRIFT_FIELD_ADDED
         elif dest_code and destinations and dest is None:
-            drift = "destination_invalid"
+            drift = DRIFT_DESTINATION_INVALID
+        elif dest and binding == "mapped" and source_choice != dest_choice:
+            drift = DRIFT_TYPE_CHANGED
         elif binding == "mapped" and options:
             decided_opts = {k.lower() for k in option_map}
             schema_opts = {o.lower() for o in options}
-            if schema_opts - decided_opts:
-                drift = "changed_options"
-            elif decided_opts - schema_opts:
-                drift = "missing_option"
+            extra_decisions = decided_opts - schema_opts
+            missing_decisions = schema_opts - decided_opts
+            if extra_decisions:
+                drift = DRIFT_OPTION_REMOVED
+            elif missing_decisions and decided_opts:
+                drift = DRIFT_OPTION_ADDED
+        incomplete = _choice_options_incomplete(
+            binding=binding,
+            choice=choice,
+            options=options,
+            option_map=option_map,
+        )
         rows.append(
             {
                 "source": source,
                 "label": label,
                 "options": options,
+                "field_type": source_type,
                 "sample_example": sample_by_source.get(key) or None,
                 "binding": binding,
                 "destination_code": dest_code or None,
@@ -345,7 +456,10 @@ def build_workspace_rows(
                 "option_map": option_map,
                 "destination_options": dest_options,
                 "in_schema": in_schema,
+                "historical": not in_schema,
                 "drift": drift,
+                "drift_human": DRIFT_HUMAN.get(drift or ""),
+                "incomplete_options": incomplete,
             }
         )
 
@@ -355,6 +469,7 @@ def build_workspace_rows(
             str(field.get("label") or field.get("source") or ""),
             list(field.get("options") or []),
             in_schema=True,
+            field_type=str(field.get("field_type") or ""),
         )
     for rule in mapping_rules:
         if not isinstance(rule, dict):
@@ -366,19 +481,18 @@ def build_workspace_rows(
     mapped = sum(1 for r in rows if r["binding"] == "mapped")
     ignored = sum(1 for r in rows if r["binding"] == "ignored")
     unmapped = sum(1 for r in rows if r["binding"] == "unmapped")
-    new_questions = sum(1 for r in rows if r.get("drift") == "new_question")
-    option_drift = sum(
-        1
-        for r in rows
-        if r.get("drift") in {"changed_options", "missing_option", "destination_invalid"}
-    )
     summary = _human_summary(
         total=len(rows),
         mapped=mapped,
         ignored=ignored,
         unmapped=unmapped,
-        new_questions=new_questions,
-        option_drift=option_drift,
+        field_added=sum(1 for r in rows if r.get("drift") == DRIFT_FIELD_ADDED),
+        field_removed=sum(1 for r in rows if r.get("drift") == DRIFT_FIELD_REMOVED),
+        option_added=sum(1 for r in rows if r.get("drift") == DRIFT_OPTION_ADDED),
+        option_removed=sum(1 for r in rows if r.get("drift") == DRIFT_OPTION_REMOVED),
+        type_changed=sum(1 for r in rows if r.get("drift") == DRIFT_TYPE_CHANGED),
+        destination_invalid=sum(1 for r in rows if r.get("drift") == DRIFT_DESTINATION_INVALID),
+        incomplete_options=sum(1 for r in rows if r.get("incomplete_options")),
         has_schema=has_schema,
     )
     return rows, summary
@@ -488,6 +602,14 @@ async def workspace_envelope(
 __all__ = [
     "SCHEMA_CONFIG_KEY",
     "OPTION_IGNORE_VALUE",
+    "DRIFT_FIELD_ADDED",
+    "DRIFT_FIELD_REMOVED",
+    "DRIFT_OPTION_ADDED",
+    "DRIFT_OPTION_REMOVED",
+    "DRIFT_TYPE_CHANGED",
+    "DRIFT_DESTINATION_INVALID",
+    "DRIFT_HUMAN",
+    "TAXONOMY_DRIFT",
     "workspace_envelope",
     "coerce_schema_fields",
     "set_schema_snapshot",

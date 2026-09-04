@@ -3,23 +3,39 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any, NoReturn, Optional
 from uuid import uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.constants.spa_paths import MARKETING_SOURCES
 from backend.app.entity_profile.ingest_runtime import IngestEnvelope, stamp_ingest_envelope_v1
 from backend.app.entity_profile.mapping_write import MappingWriteError, validate_intake_mapping_rules_write
 from backend.app.entity_profile.public_intake_draft_session import create_or_reuse_public_intake_lead_draft
-from backend.app.field_registry.intake_mapping import enrich_mapping_rules_for_storage
 from backend.app.models.intake_routing import IntakeSourceProfile
 from backend.app.modules.intake_routing import crud as intake_crud
 from backend.app.modules.leads.normalizer import coerce_generic_json_to_meta_normalizer_payload, normalize_meta_payload
 from backend.app.services.intake_form_admin_context import _load_lead_form
 from backend.app.services.lead_forms_quota import lead_form_meta_for_intake_state
 from backend.app.services.source_labels import normalize_candidate_source
+
+INTAKE_FORM_MAPPING_WRITES_RETIRED = "intake_form_mapping_writes_retired"
+
+
+def raise_intake_form_mapping_writes_retired(*, mapping_path: str) -> NoReturn:
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": INTAKE_FORM_MAPPING_WRITES_RETIRED,
+            "message": (
+                "Intake form mapping is edited in the Mapping workspace. "
+                "This leftover PUT is no longer a writer."
+            ),
+            "mapping_path": mapping_path,
+        },
+    )
 
 
 def _coerce_rules(raw: Any) -> list[dict[str, Any]]:
@@ -153,6 +169,7 @@ async def save_intake_form_mapping(
     form_id: str,
     mapping_rules: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    del mapping_rules
     lead_form = await _load_lead_form(db, tenant_id=str(tenant_id), form_id=str(form_id))
     public_slug = str(getattr(lead_form, "public_slug", None) or "").strip() or None
     intake_source = await _intake_source_for_form(
@@ -161,27 +178,12 @@ async def save_intake_form_mapping(
         form_id=str(form_id),
         public_slug=public_slug,
     )
-    if intake_source is None:
-        raise HTTPException(status_code=422, detail="Intake source profile is not bound to this form")
-    entity_profile_code = str(getattr(intake_source, "entity_profile_code", None) or "").strip()
-    if not entity_profile_code:
-        raise HTTPException(status_code=422, detail="Intake source must have entity_profile_code before saving mapping")
-
-    try:
-        accepted, validation = await validate_intake_mapping_rules_write(
-            db,
-            tenant_id=str(tenant_id),
-            entity_profile_code=entity_profile_code,
-            rules=mapping_rules,
-        )
-    except MappingWriteError as exc:
-        raise _http_from_mapping_error(exc) from exc
-
-    intake_source.mapping_rules = enrich_mapping_rules_for_storage(accepted)
-    await db.commit()
-    ctx = await build_intake_form_mapping_context(db, tenant_id=str(tenant_id), form_id=str(form_id))
-    ctx["validation"] = validation.to_dict()
-    return ctx
+    mapping_path = (
+        f"{MARKETING_SOURCES}/{intake_source.id}/mapping"
+        if intake_source is not None
+        else MARKETING_SOURCES
+    )
+    raise_intake_form_mapping_writes_retired(mapping_path=mapping_path)
 
 
 async def preview_intake_form_mapping(

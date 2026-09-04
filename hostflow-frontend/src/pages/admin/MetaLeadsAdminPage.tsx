@@ -17,7 +17,6 @@ import {
   getMetaLeadSettings,
   getUnmappedLeads,
   listMetaLeadForms,
-  putMetaLeadFormMapping,
   putMetaFormRoute,
   listMetaAdsMap,
   listMetaLeadCredentials,
@@ -1119,55 +1118,6 @@ export default function MetaLeadsAdminPage() {
     },
     [planLimitModal, t],
   )
-
-  const handleSaveFieldMapping = useCallback(async () => {
-    const built = rulesFromRowStates(fieldMappingRows)
-    if (built === 'incomplete') {
-      setError({
-        title: t('admin.meta_leads.errors.field_mapping_row_incomplete'),
-        hint: t('admin.meta_leads.errors.field_mapping_row_incomplete_hint'),
-      })
-      return
-    }
-    try {
-      if (selectedFormKey === META_FORM_TENANT_DEFAULT_KEY) {
-        const result = await updateMetaLeadSettings({ field_mapping: built })
-        setSettings(result)
-        setMappingInheritsTenant(true)
-        setFieldMappingRows((result?.field_mapping ?? []).map((r) => ruleToRowState(r, newMappingRowId())))
-        setNotice(t('admin.meta_leads.notices.tenant_mapping_saved'))
-      } else {
-        const parsed = parseMetaFormSelectionKey(selectedFormKey)
-        if (!parsed) return
-        const detail = await putMetaLeadFormMapping(parsed.form_id, {
-          source: parsed.source,
-          page_id: parsed.page_id || null,
-          form_name: formNameDraft.trim() || null,
-          mapping_rules: built,
-          last_sample_lead_id: graphHostflowLeadPick.trim() || null,
-        })
-        setFieldMappingRows((detail.mapping_rules ?? []).map((r) => ruleToRowState(r, newMappingRowId())))
-        setMappingInheritsTenant(Boolean(detail.inherits_tenant_fallback))
-        setNotice(t('admin.meta_leads.notices.form_mapping_saved'))
-        await loadMetaFormsList()
-      }
-    } catch (err: any) {
-      console.error('[MetaLeadsAdmin] save field mapping failed', err)
-      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.settings_update'))) {
-        return
-      }
-      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.settings_update'), t))
-    }
-  }, [
-    fieldMappingRows,
-    formNameDraft,
-    graphHostflowLeadPick,
-    loadMetaFormsList,
-    mappingRulesLimit,
-    planLimitModal,
-    selectedFormKey,
-    t,
-  ])
 
   const handleSaveIntakeRoute = useCallback(async () => {
     const parsed = parseMetaFormSelectionKey(selectedFormKey)

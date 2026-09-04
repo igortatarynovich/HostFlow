@@ -28,4 +28,16 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     expect(src).toContain('IntakeFormMappingEditor')
     expect(src).not.toContain('putIntakeFormMapping')
   })
+
+  it('Meta Settings field mapping is deep-link, not a writer', () => {
+    const src = readFileSync(
+      path.join(ROOT, 'src/pages/admin/MetaLeadsAdminPage.tsx'),
+      'utf8',
+    )
+    expect(src).not.toContain('putMetaLeadFormMapping')
+    expect(src).not.toContain('handleSaveFieldMapping')
+    expect(src).not.toContain('field_mapping: built')
+    expect(src).toContain('marketingSourceMappingPath')
+    expect(src).toContain('meta-field-mapping-workspace')
+  })
 })

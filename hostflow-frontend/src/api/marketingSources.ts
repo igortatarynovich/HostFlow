@@ -95,7 +95,11 @@ export type MappingWorkspaceRow = {
   choice: boolean
   option_map: Record<string, string>
   in_schema: boolean
+  historical?: boolean
   drift: string | null
+  drift_human?: string | null
+  field_type?: string
+  incomplete_options?: boolean
   destination_options?: Array<{ value: string; label: string }>
 }
 
@@ -116,7 +120,14 @@ export type MappingWorkspaceSummary = {
   ignored_count?: number
   unmapped_count: number
   new_question_count: number
+  field_added_count?: number
+  field_removed_count?: number
+  option_added_count?: number
+  option_removed_count?: number
+  type_changed_count?: number
+  destination_invalid_count?: number
   option_drift_count: number
+  incomplete_option_count?: number
   human: string
   contract_health: string
 }

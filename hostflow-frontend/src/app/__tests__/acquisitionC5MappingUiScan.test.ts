@@ -34,6 +34,9 @@ describe('C-5 Mapping workspace UI shell', () => {
     expect(src).toContain('creates_entities')
     expect(src).toContain('marketing-mapping-applied')
     expect(src).toContain('applied_evidence')
+    expect(src).toContain('marketing-mapping-drift-')
+    expect(src).toContain('app.marketing.mapping.drift.')
+    expect(src).not.toContain('>{row.destination_code}<')
   })
 
   it('Sources list Mapping CTA still uses server mapping_path', () => {
