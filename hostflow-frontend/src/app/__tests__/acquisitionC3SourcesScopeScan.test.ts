@@ -19,6 +19,7 @@ describe('C-3 Sources scope guards', () => {
     expect(src).toContain('waiting_submissions')
     expect(src).toContain('listMarketingSources')
     expect(src).toContain('mappingAssessmentCopy')
+    expect(src).toContain('mappingWorkspaceCta')
     expect(src).not.toContain("app.marketing.sources.health.ready")
     expect(src).not.toContain("app.marketing.sources.health.broken")
     // C-3.1 inventory columns

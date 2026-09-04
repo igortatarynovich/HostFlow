@@ -47,16 +47,19 @@ def _assert_canonical_mapping(row: Any) -> None:
         human = row["mapping_human"]
         headline = row["mapping_headline"]
         contract = row["contract_health"]
+        cta = row["mapping_cta"]
     else:
         health = row.mapping_health
         human = row.mapping_human
         headline = row.mapping_headline
         contract = row.contract_health
+        cta = row.mapping_cta
     assert health in CONTRACT_HEALTH
     assert health not in {HEALTH_READY, HEALTH_BROKEN}
     assert contract == health
     assert human
     assert headline
+    assert cta
 
 
 def _headers(base: Dict[str, str], *, tenant_id: str = DEFAULT_TENANT_ID) -> Dict[str, str]:

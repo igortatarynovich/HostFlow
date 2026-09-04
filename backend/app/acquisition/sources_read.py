@@ -70,6 +70,7 @@ class SourceSummary:
     mapping_health: str
     mapping_headline: str
     mapping_human: str
+    mapping_cta: str
     contract_health: str
     last_submission_at: Optional[datetime]
     last_error_at: Optional[datetime]
@@ -104,6 +105,7 @@ class SourceSummary:
             "mapping_health": self.mapping_health,
             "mapping_headline": self.mapping_headline,
             "mapping_human": self.mapping_human,
+            "mapping_cta": self.mapping_cta,
             "contract_health": self.contract_health,
             "last_submission_at": self.last_submission_at,
             "last_error_at": self.last_error_at,
@@ -596,6 +598,7 @@ async def list_marketing_source_summaries(
         )
         mapping_headline = str(assessment.get("headline") or "needs_check")
         mapping_human = str(assessment.get("human") or "")
+        mapping_cta = str(assessment.get("cta") or "Open Mapping")
         contract_health = str(assessment.get("contract_health") or "needs_review")
 
         waiting_submissions = int(waiting_count.get(pid, 0))
@@ -680,6 +683,7 @@ async def list_marketing_source_summaries(
                 mapping_health=contract_health,
                 mapping_headline=mapping_headline,
                 mapping_human=mapping_human,
+                mapping_cta=mapping_cta,
                 contract_health=contract_health,
                 last_submission_at=last_submission,
                 last_error_at=last_error,

@@ -13,6 +13,7 @@ import {
   listMarketingSources,
   mappingAssessmentCopy,
   mappingContractTone,
+  mappingWorkspaceCta,
   postMarketingSourceCaptureNext,
   postMarketingSourceSampleFromPayload,
   postMarketingSourceSamplePreview,
@@ -481,7 +482,7 @@ export default function MarketingSourceTestLeadPage() {
               className="btn-primary btn-sm"
               data-testid="marketing-test-lead-continue-mapping"
             >
-              {t('app.marketing.test_lead.actions.continue_mapping')}
+              {source ? mappingWorkspaceCta(source) : t('app.marketing.test_lead.actions.continue_mapping')}
             </Link>
             <Link
               to={CRM_APP_PATHS.marketingSources}

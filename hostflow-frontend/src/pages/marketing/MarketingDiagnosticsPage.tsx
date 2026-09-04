@@ -22,6 +22,7 @@ import {
 import {
   mappingAssessmentCopy,
   mappingContractTone,
+  mappingWorkspaceCta,
 } from '../../api/marketingSources'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { PageHeader } from '../../components/nav/PageHeader'
@@ -302,7 +303,7 @@ function CaseDetail({
                 to={row.mapping.mapping_path}
                 data-testid="marketing-diagnostics-open-mapping"
               >
-                {t('app.marketing.diagnostics.mapping.open')}
+                {mappingWorkspaceCta(row.mapping)}
               </Link>
             ) : null}
           </div>

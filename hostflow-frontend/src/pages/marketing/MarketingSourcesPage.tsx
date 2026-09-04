@@ -13,6 +13,7 @@ import {
   listMarketingSources,
   mappingAssessmentCopy,
   mappingContractTone,
+  mappingWorkspaceCta,
   type MarketingSourceSummary,
 } from '../../api/marketingSources'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
@@ -239,12 +240,13 @@ export default function MarketingSourcesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${mappingContractTone(row.contract_health || row.mapping_health)}`}
+                    <Link
+                      to={row.mapping_path}
+                      className={`inline-flex rounded px-2 py-0.5 text-xs font-medium hover:underline ${mappingContractTone(row.contract_health || row.mapping_health)}`}
                       data-testid={`marketing-source-health-${row.source_id}`}
                     >
                       {mappingAssessmentCopy(row)}
-                    </span>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     {row.last_submission_at
@@ -310,7 +312,7 @@ export default function MarketingSourcesPage() {
                         className="text-sm font-medium text-brand-700 hover:underline"
                         data-testid={`marketing-source-mapping-${row.source_id}`}
                       >
-                        {t('app.marketing.sources.actions.mapping')}
+                        {mappingWorkspaceCta(row)}
                       </Link>
                       <Link
                         to={row.test_lead_path}

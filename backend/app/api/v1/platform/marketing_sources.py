@@ -52,6 +52,7 @@ class MarketingSourceSummaryOut(BaseModel):
     mapping_health: str
     mapping_headline: str = ""
     mapping_human: str = ""
+    mapping_cta: str = "Open Mapping"
     contract_health: str = "needs_review"
     last_submission_at: Optional[datetime] = None
     last_error_at: Optional[datetime] = None
@@ -137,6 +138,7 @@ class SourceMappingOut(BaseModel):
     mapping_health: str
     mapping_headline: str = ""
     mapping_human: str = ""
+    mapping_cta: str = "Open Mapping"
     destination: Optional[str] = None
     destination_label: Optional[str] = None
     route_intent: Optional[str] = None

@@ -123,6 +123,7 @@ class DiagnosticsMappingOut(BaseModel):
     mapping_health: Optional[str] = None
     mapping_headline: Optional[str] = None
     mapping_human: Optional[str] = None
+    mapping_cta: Optional[str] = None
     contract_health: Optional[str] = None
     mapping_rules_count: int = 0
     rules_source: Optional[str] = None
@@ -316,6 +317,7 @@ async def get_submission_case(
             mapping_health=detail.mapping.mapping_health,
             mapping_headline=detail.mapping.mapping_headline,
             mapping_human=detail.mapping.mapping_human,
+            mapping_cta=detail.mapping.mapping_cta,
             contract_health=detail.mapping.contract_health,
             mapping_rules_count=detail.mapping.mapping_rules_count,
             rules_source=detail.mapping.rules_source,

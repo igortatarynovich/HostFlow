@@ -87,6 +87,7 @@ class DiagnosticsMappingContext:
     mapping_health: Optional[str]
     mapping_headline: Optional[str]
     mapping_human: Optional[str]
+    mapping_cta: Optional[str]
     contract_health: Optional[str]
     mapping_rules_count: int
     rules_source: Optional[str]
@@ -214,6 +215,7 @@ def _empty_mapping(*, source_id: str | None = None, profile_missing: bool = Fals
         mapping_health=None,
         mapping_headline=None,
         mapping_human=None,
+        mapping_cta=None,
         contract_health=None,
         mapping_rules_count=0,
         rules_source=None,
@@ -255,6 +257,7 @@ async def compose_mapping_context(
                 mapping_health=None,
                 mapping_headline=None,
                 mapping_human=None,
+                mapping_cta=None,
                 contract_health=None,
                 mapping_rules_count=0,
                 rules_source=None,
@@ -290,6 +293,7 @@ async def compose_mapping_context(
             mapping_health=None,
             mapping_headline=None,
             mapping_human=None,
+            mapping_cta=None,
             contract_health=None,
             mapping_rules_count=0,
             rules_source=None,
@@ -329,6 +333,7 @@ async def compose_mapping_context(
     summary_block = summary.get("summary") if isinstance(summary.get("summary"), dict) else {}
     mapping_headline = str(summary.get("mapping_headline") or summary_block.get("headline") or "").strip() or None
     mapping_human = str(summary.get("mapping_human") or summary_block.get("human") or "").strip() or None
+    mapping_cta = str(summary.get("mapping_cta") or summary_block.get("cta") or "").strip() or None
     contract_health = str(
         summary.get("contract_health") or summary_block.get("contract_health") or ""
     ).strip() or None
@@ -341,6 +346,7 @@ async def compose_mapping_context(
         mapping_health=contract_health,
         mapping_headline=mapping_headline,
         mapping_human=mapping_human,
+        mapping_cta=mapping_cta,
         contract_health=contract_health,
         mapping_rules_count=int(summary.get("mapping_rules_count") or 0),
         rules_source=str(summary.get("rules_source") or "").strip() or None,
@@ -701,6 +707,7 @@ def build_diagnostic_export_bundle(detail: DiagnosticsCaseDetail) -> dict[str, A
             "mapping_health": mapping.mapping_health,
             "mapping_headline": mapping.mapping_headline,
             "mapping_human": mapping.mapping_human,
+            "mapping_cta": mapping.mapping_cta,
             "contract_health": mapping.contract_health,
             "mapping_rules_count": mapping.mapping_rules_count,
             "rules_source": mapping.rules_source,

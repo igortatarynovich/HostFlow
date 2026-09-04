@@ -238,6 +238,14 @@ def _human_summary(
         headline = "all_set"
         human = f"All set — {configured} of {total} questions"
         health = "valid"
+    pending = unmapped or incomplete_options
+    if headline == "needs_check":
+        n = max(pending, 1)
+        cta = "1 field is not configured" if n == 1 else f"{n} fields are not configured"
+    elif headline in {"empty_schema", "all_set"}:
+        cta = "Open Mapping"
+    else:
+        cta = "Check Mapping"
     return {
         "headline": headline,
         "configured_count": configured,
@@ -255,6 +263,7 @@ def _human_summary(
         "option_drift_count": option_drift,
         "incomplete_option_count": incomplete_options,
         "human": human,
+        "cta": cta,
         "contract_health": health,
         "blocking_drift_count": blocking,
     }

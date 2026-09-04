@@ -76,10 +76,20 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     )
     for (const src of [sources, diagnostics, testLead]) {
       expect(src).toContain('mappingAssessmentCopy')
+      expect(src).toContain('mappingWorkspaceCta')
       expect(src).not.toContain("app.marketing.sources.health.ready")
       expect(src).not.toContain("app.marketing.sources.health.broken")
       expect(src).not.toContain("case 'ready':")
       expect(src).not.toContain("case 'broken':")
     }
+  })
+
+  it('Connect bind opens Mapping workspace when a source exists', () => {
+    const src = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingConnectSourcePage.tsx'),
+      'utf8',
+    )
+    expect(src).toContain('marketingSourceMappingPath')
+    expect(src).toContain('navigate')
   })
 })

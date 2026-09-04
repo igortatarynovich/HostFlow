@@ -188,6 +188,7 @@ async def test_get_put_mapping_persists_profile_rules(
     assert put_body["mapping_health"] in {"valid", "needs_review", "invalid"}
     assert put_body["mapping_health"] not in {"ready", "broken"}
     assert put_body["mapping_human"]
+    assert put_body["mapping_cta"]
 
     async with async_session_maker() as db:
         row = (
@@ -535,6 +536,7 @@ def test_workspace_rows_do_not_require_sample() -> None:
     assert all(r["binding"] == "unmapped" for r in rows)
     assert summary["headline"] == "needs_check"
     assert summary["total_count"] == 2
+    assert summary["cta"] == "2 fields are not configured"
 
 
 def test_incomplete_option_map_is_not_ready() -> None:
@@ -575,6 +577,7 @@ def test_incomplete_option_map_is_not_ready() -> None:
     assert rows[0]["incomplete_options"] is True
     assert summary["headline"] == "needs_check"
     assert summary["contract_health"] == "needs_review"
+    assert summary["cta"] == "1 field is not configured"
 
 
 def test_option_added_is_named_taxonomy_not_ready() -> None:
@@ -614,6 +617,7 @@ def test_option_added_is_named_taxonomy_not_ready() -> None:
     assert rows[0]["drift"] == "option_added"
     assert summary["headline"] == "option_drift"
     assert summary["contract_health"] == "needs_review"
+    assert summary["cta"] == "Check Mapping"
 
 
 def test_complete_option_decisions_are_ready() -> None:
@@ -656,6 +660,7 @@ def test_complete_option_decisions_are_ready() -> None:
     assert rows[0]["drift"] is None
     assert summary["headline"] == "all_set"
     assert summary["contract_health"] == "valid"
+    assert summary["cta"] == "Open Mapping"
 
 
 def test_projection_does_not_pass_through_raw_option() -> None:

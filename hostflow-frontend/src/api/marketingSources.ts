@@ -14,6 +14,10 @@ export function mappingAssessmentCopy(row: {
   return headline || '—'
 }
 
+export function mappingWorkspaceCta(row: { mapping_cta?: string | null }): string {
+  return String(row.mapping_cta || '').trim() || 'Open Mapping'
+}
+
 export function mappingContractTone(health: string | null | undefined): string {
   if (health === 'valid') return 'bg-emerald-50 text-emerald-800'
   if (health === 'invalid') return 'bg-rose-50 text-rose-800'
@@ -28,6 +32,7 @@ export type MarketingSourceSummary = {
   mapping_health: MappingContractHealth | string
   mapping_headline?: string | null
   mapping_human?: string | null
+  mapping_cta?: string | null
   contract_health?: MappingContractHealth | string | null
   last_submission_at: string | null
   last_error_at: string | null
@@ -149,6 +154,7 @@ export type MappingWorkspaceSummary = {
   option_drift_count: number
   incomplete_option_count?: number
   human: string
+  cta?: string
   contract_health: string
 }
 
@@ -190,6 +196,7 @@ export type MarketingSourceMapping = {
   mapping_health: MappingContractHealth | string
   mapping_headline?: string | null
   mapping_human?: string | null
+  mapping_cta?: string | null
   destination: string | null
   destination_label: string | null
   route_intent: string | null

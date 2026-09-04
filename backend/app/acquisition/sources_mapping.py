@@ -140,6 +140,7 @@ async def get_source_mapping(
         "mapping_health": contract_health,
         "mapping_headline": str(summary.get("headline") or ""),
         "mapping_human": str(summary.get("human") or ""),
+        "mapping_cta": str(summary.get("cta") or "Open Mapping"),
         "destination": dest,
         "destination_label": dest_label,
         "route_intent": str(getattr(profile, "route_intent", None) or "") or None,
