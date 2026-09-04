@@ -184,7 +184,28 @@ class DocumentApplicabilityResolver:
             if prev is None or (required and not bool(prev.get("required"))):
                 out_by_code[code] = row
 
-        out = list(out_by_code.values())
+        from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+        from backend.app.reference.requirement_policy_consumer_parity import (
+            overlay_r5_required_on_expected_rows,
+        )
+
+        owner_ctx = {
+            "citizenship": context.citizenship,
+            "work_country": context.work_country,
+            "residency_status": context.residence_status,
+            "position_category": context.position_category,
+            "employment_type": context.employment_type,
+            "stage": context.stage,
+            "client_id": context.client_id,
+            "vacancy_id": context.vacancy_id,
+            "candidate_id": context.candidate_id,
+        }
+        tenant_delta = await load_persisted_tenant_delta(db, tid)
+        out = overlay_r5_required_on_expected_rows(
+            list(out_by_code.values()),
+            owner_ctx,
+            tenant_delta,
+        )
 
         # Optional status projection against live docs when candidate/employee context is provided.
         candidate_id = str(context.candidate_id or "").strip()

@@ -13,6 +13,7 @@ from backend.app.requirement_rules.registry import (
     RequirementRulesNotFoundError,
     build_requirement_rule_set,
 )
+from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
 from backend.app.requirement_rules.tenant_override_repository import list_active_tenant_requirement_overrides
 
 
@@ -49,6 +50,7 @@ async def resolve_requirement_rule_set(
         context=str(context or "readiness").strip().lower(),
         stage_code=stage_code,
     )
+    tenant_delta = await load_persisted_tenant_delta(db, str(tenant_id).strip())
 
     return build_requirement_rule_set(
         profile_view,
@@ -56,6 +58,7 @@ async def resolve_requirement_rule_set(
         stage_code=stage_code,
         transition_code=transition_code,
         tenant_overrides=tenant_overrides,
+        tenant_delta=tenant_delta,
     )
 
 
@@ -97,6 +100,7 @@ async def evaluate_entity_requirements(
         context=str(context or "readiness").strip().lower(),
         stage_code=stage_code,
     )
+    tenant_delta = await load_persisted_tenant_delta(db, str(tenant_id).strip())
 
     return evaluate_requirement_rules(
         profile_view,
@@ -109,4 +113,5 @@ async def evaluate_entity_requirements(
         stage_code=stage_code,
         transition_code=transition_code,
         tenant_overrides=tenant_overrides,
+        tenant_delta=tenant_delta,
     )

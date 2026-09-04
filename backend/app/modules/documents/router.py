@@ -49,6 +49,9 @@ from backend.app.security.event_taxonomy import (
 )
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.reference.requirement_policy_parallel_authority_retirement import (
+    raise_ruleset_writes_retired,
+)
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
@@ -1128,6 +1131,10 @@ async def _list_documents_for_candidate(
 
     if fill_missing:
         ctx = _owner_context_or_400(owner_context, candidate_id, owner_context_defaults)
+        from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+        from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
+
+        ctx["tenant_delta"] = await load_persisted_tenant_delta(session, doc_tenant_id)
         ruleset_version = await ensure_ruleset_seed(
             session,
             doc_tenant_id,
@@ -1137,6 +1144,7 @@ async def _list_documents_for_candidate(
         await session.commit()
         ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
         checklist = compute_candidate_checklist(ctx, ruleset_payload)
+        checklist["requiredTypes"] = sorted(r5_required_set(ctx, ctx.get("tenant_delta")))
         auto_docs = await list_candidate_documents(
             session,
             doc_tenant_id,
@@ -2072,6 +2080,9 @@ async def fetch_candidate_documents_summary_response(
         candidate_id,
         _candidate_owner_context_defaults(cand_ctx.candidate, candidate_id),
     )
+    from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+
+    ctx["tenant_delta"] = await load_persisted_tenant_delta(session, cand_ctx.owner_tenant_id)
     docs = await list_candidate_documents(
         session,
         cand_ctx.owner_tenant_id,
@@ -2143,7 +2154,13 @@ async def fetch_candidate_documents_summary_response(
         candidate=cand_ctx.candidate,
     )
     summary = merge_document_hub_requirements_into_summary_via_contract(summary, hub_requirements)
-    checklist = _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload)
+    from backend.app.reference.requirement_policy_consumer_parity import seal_checklist_required_types
+
+    checklist = seal_checklist_required_types(
+        _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload),
+        ctx,
+        ctx.get("tenant_delta") if isinstance(ctx.get("tenant_delta"), dict) else None,
+    )
     summary["checklist"] = checklist
     auto_created = await _ensure_auto_ordered_documents(
         session,
@@ -2182,7 +2199,13 @@ async def fetch_candidate_documents_summary_response(
         serialized_visible = _serialized_visible(serialized_docs_full)
         summary = compute_owner_summary(ctx, ruleset_payload, serialized_visible)
         summary = merge_document_hub_requirements_into_summary_via_contract(summary, hub_requirements)
-        checklist = _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload)
+        from backend.app.reference.requirement_policy_consumer_parity import seal_checklist_required_types
+
+        checklist = seal_checklist_required_types(
+            _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload),
+            ctx,
+            ctx.get("tenant_delta") if isinstance(ctx.get("tenant_delta"), dict) else None,
+        )
         summary["checklist"] = checklist
     synthetic_models = _build_synthetic_documents(
         cand_ctx.owner_tenant_id, candidate_id, checklist, serialized_docs_full
@@ -2289,6 +2312,9 @@ async def api_candidate_checklist(
         candidate_id,
         _candidate_owner_context_defaults(cand_ctx.candidate, candidate_id),
     )
+    from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+
+    ctx["tenant_delta"] = await load_persisted_tenant_delta(session, cand_ctx.owner_tenant_id)
     ruleset_version = await ensure_ruleset_seed(
         session,
         cand_ctx.owner_tenant_id,
@@ -2310,6 +2336,13 @@ async def api_candidate_checklist(
         from backend.app.requirement_rules.document_hub_bridge import apply_hub_requirements_to_checklist
 
         checklist = apply_hub_requirements_to_checklist(checklist, hub_requirements)
+    from backend.app.reference.requirement_policy_consumer_parity import seal_checklist_required_types
+
+    checklist = seal_checklist_required_types(
+        checklist,
+        ctx,
+        ctx.get("tenant_delta") if isinstance(ctx.get("tenant_delta"), dict) else None,
+    )
     await log_ruleset_usage(
         session,
         cand_ctx.owner_tenant_id,
@@ -2920,6 +2953,7 @@ async def api_create_ruleset_version(
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
+    raise_ruleset_writes_retired()
     session, tenant_id = db_dep
     ruleset_data = payload.get("ruleset") or payload.get("json_data")
     if not isinstance(ruleset_data, dict):
@@ -2951,6 +2985,7 @@ async def api_activate_ruleset_version(
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
+    raise_ruleset_writes_retired()
     session, tenant_id = db_dep
     pre = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
     if not pre or not ruleset_version_visible_for_scope(pre, own_company_id):
@@ -2974,6 +3009,7 @@ async def api_rollback_ruleset_version(
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
+    raise_ruleset_writes_retired()
     session, tenant_id = db_dep
     target = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
     if not target or not ruleset_version_visible_for_scope(target, own_company_id):
@@ -3148,6 +3184,7 @@ async def api_update_ruleset(
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
+    raise_ruleset_writes_retired()
     session, tenant_id = db_dep
     ruleset_data = payload.get("ruleset") or payload.get("json_data")
     if not isinstance(ruleset_data, dict):

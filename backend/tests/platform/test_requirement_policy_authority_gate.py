@@ -93,6 +93,7 @@ def test_rpm1_brief_authority_gate_pass() -> None:
     assert "**PASS**" in text
     assert "feat locked" in text.lower() or "Feat locked" in text
     assert "RPM-2" in text
+    assert "RPM-3A" in text
     assert "lead_criteria_v1" in text
     assert "tenth write" in text.lower()
     assert "Mapping Authority" in text or "mapping-authority.md" in text
@@ -115,6 +116,7 @@ def test_rpm1_queue_names_successor_not_mapping() -> None:
     assert "Requirement Policy Authority Gate" in text
     assert "requirement-policy-authority.md" in text
     assert "RPM-2" in text
+    assert "RPM-3A" in text
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "requirement-policy-management.md" in agents
     lowered = text.lower()

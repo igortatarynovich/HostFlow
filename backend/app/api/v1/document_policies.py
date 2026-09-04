@@ -16,6 +16,9 @@ from backend.app.auth.deps import get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.document_policy import DocumentPolicy, DocumentPolicyScope, RequirementLevel
 from backend.app.models.user import Role
+from backend.app.reference.requirement_policy_parallel_authority_retirement import (
+    raise_document_policies_writes_retired,
+)
 
 router = APIRouter(prefix="/document-policies", tags=["document-policies"])
 
@@ -125,6 +128,7 @@ async def create_document_policy(
     active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> DocumentPolicyOut:
     """Create a new document policy."""
+    raise_document_policies_writes_retired()
     db, tenant_id = db_tenant
 
     if payload.scope == DocumentPolicyScope.TENANT:
@@ -179,6 +183,7 @@ async def update_document_policy(
     active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> DocumentPolicyOut:
     """Update an existing document policy."""
+    raise_document_policies_writes_retired()
     db, tenant_id = db_tenant
 
     stmt = (
@@ -215,6 +220,7 @@ async def delete_document_policy(
     active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> None:
     """Delete a document policy."""
+    raise_document_policies_writes_retired()
     db, tenant_id = db_tenant
 
     stmt = (

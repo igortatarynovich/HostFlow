@@ -301,6 +301,10 @@ async def check_gate_requirements(
     for policy in final_policies.values():
         if policy.required_level == RequirementLevel.DISABLED:
             continue
+        # RPM-3B: DocumentPolicy must not answer “need document type X?”.
+        # GateCode / requirement_code rows remain leftover-out-of-scope.
+        if policy.document_type_id and not policy.requirement_code:
+            continue
 
         check_result = await check_requirement_satisfaction(
             db,

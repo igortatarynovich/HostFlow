@@ -32,13 +32,13 @@ No second question is this contract. Mapping, intake publish, hiring stage ident
 |-----------|----------------|
 | Platform pack (`document-policy-platform-pack-v1.json`) as the base | A parallel pack catalog treated as SoT |
 | Tenant overlay delta that `validate_tenant_overlay_delta` accepts | A tenant fork of pack defaults (`requiredTypes` / `optionalTypes` at delta root) |
-| Later RPM-2 operator overlay that persists **that** delta | Vacancy Overlay / screening pack (already Overlay Gate) |
+| RPM-2 operator overlay that persists **that** delta (`tenant_document_policy_deltas`) | Vacancy Overlay / screening pack (already Overlay Gate) |
 | | Leftover `sample_ruleset.json` / seeded `document_ruleset_versions` as a second write |
 | | A Hub packages table |
 | | `document_policies` flags as a parallel authority (fold in RPM-3) |
 
 Producer of the merge function: `backend/app/reference/document_policy_merge.py` (`merge_resolved_policy`).  
-D4 already **reads** this merge via E8-eval. This contract forbids a second **write** of the same question. It does not ship the operator UI (RPM-2) and does not cut over leftover consumers (RPM-3).
+D4 already **reads** this merge via E8-eval. RPM-2 persists `tenant_delta` in `tenant_document_policy_deltas`. This contract forbids a second **write** of the same question. It does not cut over leftover consumers (RPM-3A/3B).
 
 ---
 
@@ -68,9 +68,9 @@ Roles are closed: `write_authority` · `not_this_write` · `leftover` · `consum
 |---|--------|
 | 1 | **Owner:** Platform Reference owns the merge write. Documents Hub **consumes** evaluation (E8-eval). Recruitment / Hiring **consume** the result; they do not write this authority. |
 | 2 | Not a new capability. Applies ADR-018 evaluation + R5 merge. The unnamed gap was **who may write**. |
-| 3 | No new adapter. Evaluation stays `documents.hub_adapter_v1`. Merge stays `document_policy_merge`. RPM-2 will persist `tenant_delta`, not mint a second adapter. |
+| 3 | No new adapter. Evaluation stays `documents.hub_adapter_v1`. Merge stays `document_policy_merge`. RPM-2 persists `tenant_delta` in `tenant_document_policy_deltas`; it does not mint a second adapter. |
 | 4 | Overlay remains Overlay. No Hub packages table. No Documents Admin vs Rules Admin. No CL8. E8-eval / R5 not reopened. |
-| 5 | Settings that edit non-authority JSON are not this write. RPM-2 is the one operator overlay. |
+| 5 | Settings that edit non-authority JSON are not this write. RPM-2 is the one operator overlay. RPM-3A retires parallel writers; it does not mint a second overlay. |
 | 6 | SoT for the operator question = this file + `requirement_policy_authority.v1`. Parallel leftover writers are classified, not blessed. |
 | 7 | No new event family. RPM-2/3 emit existing security/eval events if they persist or cut over. |
 | 8 | **Requires:** R5 merge, E8-eval D4 bind. **Optional:** Overlay as CL7 vacancy delta (different write-set). |
@@ -89,13 +89,18 @@ Reject: Documents Admin separate from Rules Admin; Hub packages table; Overlay r
 
 ## Consequences
 
-- RPM-2 may persist only this write authority (operator overlay with reason).  
-- RPM-3 must make classified consumers read the same merge or retire them.  
+- RPM-2 persists only this write authority (operator overlay with reason as sibling metadata).  
+- RPM-3A **PASS** retired parallel writers of the operator question: A `document_policies`, C leftover ruleset writes, J P3B `document_required` only.  
+- RPM-3B **PASS** made remaining classified consumers read the same merge or retired them as answerers.  
+- The Consumer Cutover Gate (feat locked) closes the RPM-3 program ladder after 3A ∧ 3B.  
 - ADR-018 “Admin UI for policy editing” is this program, not a second product.
 
 ---
 
 ## History
 
+- 2026-09-03: RPM-3B Consumer Parity Gate **PASS**. Surviving consumers read the same R5 required-set. Active Product → Consumer Cutover Gate.
+- 2026-09-03: RPM-3A Parallel Authority Retirement Gate **PASS**. Writes of A / C / J `document_required` retired. Active Product → RPM-3B.
+- 2026-09-03: RPM-2 Operator Gate PASS [#342](https://github.com/igortatarynovich/HostFlow/pull/342). RPM-3A docs lock activates parallel-writer retirement (A / C / J `document_required`).
 - 2026-09-03: Screening / `lead_criteria_v1` named as a different question, not a tenth write.
 - 2026-09-02: Accepted as RPM-1 Authority contract. Nine-row classification frozen. Feat locked until RPM-2.

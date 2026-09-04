@@ -3,11 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
-from backend.app.reference.document_policy_merge import (
-    eu_member_alpha2_lower,
-    oswiadczenie_eligible_alpha2_lower,
-)
-from backend.app.services.document_applicability_policy import derive_document_applicability_decision
+from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
 
 
 def _norm(value: Any) -> str:
@@ -22,14 +18,9 @@ def _ctx_value(ctx: dict[str, Any], *keys: str) -> str:
     return ""
 
 
-def _applicability_decision(ctx: dict[str, Any]):
-    return derive_document_applicability_decision(
-        citizenship=_ctx_value(ctx, "citizenship"),
-        work_country=_ctx_value(ctx, "work_country") or "pl",
-        role=_ctx_value(ctx, "position_category", "role", "profession_category"),
-        eu_countries=set(eu_member_alpha2_lower()),
-        oswiadczenie_countries=set(oswiadczenie_eligible_alpha2_lower()),
-    )
+def _ctx_tenant_delta(ctx: dict[str, Any]):
+    raw = ctx.get("tenant_delta")
+    return raw if isinstance(raw, dict) else None
 
 
 @dataclass(frozen=True)
@@ -61,17 +52,6 @@ def _employment_pack_applies(ctx: dict[str, Any]) -> bool:
 
 def _client_pack_applies(_ctx: dict[str, Any]) -> bool:
     return True
-
-
-def _legal_stay_required_codes(ctx: dict[str, Any], base_codes: tuple[str, ...]) -> tuple[str, ...]:
-    decision = _applicability_decision(ctx)
-    citizenship = _ctx_value(ctx, "citizenship")
-    codes = list(base_codes)
-    if citizenship in eu_member_alpha2_lower():
-        codes = [c for c in codes if c not in {"work_permit", "visa", "residence_card"}]
-    elif not decision.visa_required:
-        codes = [c for c in codes if c != "visa"]
-    return tuple(codes)
 
 
 DOCUMENT_PACK_DEFINITIONS: tuple[DocumentPackDefinition, ...] = (
@@ -134,10 +114,10 @@ def get_pack_definition(code: str) -> Optional[DocumentPackDefinition]:
 
 
 def required_codes_for_pack(pack: DocumentPackDefinition, ctx: dict[str, Any]) -> tuple[str, ...]:
+    """Grouping ∩ R5 required-set. Packs do not invent policy required codes."""
     if pack.skeleton:
         return ()
     if not pack.applies(ctx):
         return ()
-    if pack.code == "legal_stay_pack":
-        return _legal_stay_required_codes(ctx, pack.document_codes)
-    return pack.document_codes
+    r5 = r5_required_set(ctx, _ctx_tenant_delta(ctx))
+    return tuple(code for code in pack.document_codes if code in r5)

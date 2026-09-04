@@ -218,6 +218,9 @@ async def _legacy_document_type_blockers(
     from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 
     owner_ctx = _owner_context_for_docs(candidate_id=candidate_id, extra=extra, personal=personal)
+    from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+
+    owner_ctx["tenant_delta"] = await load_persisted_tenant_delta(db, tenant_id)
 
     oc_row = await db.execute(
         select(Candidate.own_company_id).where(

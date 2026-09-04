@@ -102,6 +102,8 @@ jobs:
       dr1_runtime: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1_runtime == 'true' }}
       rpm1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm1 == 'true' }}
       rpm2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm2 == 'true' }}
+      rpm3a: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm3a == 'true' }}
+      rpm3b: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm3b == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -283,6 +285,38 @@ jobs:
               - 'backend/tests/api/test_document_policy_overlay.py'
               - 'docs/specs/tasks/requirement-policy-management.md'
               - 'hostflow-frontend/src/pages/admin/RequirementPolicyOverlayPage.tsx'
+            rpm3a:
+              - 'backend/app/reference/requirement_policy_parallel_authority_retirement.py'
+              - 'backend/tests/platform/test_requirement_policy_parallel_authority_retirement_gate.py'
+              - 'backend/tests/requirement_rules/test_tenant_overrides_p3b.py'
+              - 'backend/app/api/v1/document_policies.py'
+              - 'backend/app/api/v1/platform/tenant_requirement_overrides.py'
+              - 'backend/app/requirement_rules/tenant_override_source.py'
+              - 'backend/app/modules/documents/router.py'
+              - 'docs/specs/tasks/requirement-policy-management.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'AGENTS.md'
+              - 'hostflow-frontend/src/pages/Companies.tsx'
+              - 'hostflow-frontend/src/pages/admin/RulesetVersionsPage.tsx'
+            rpm3b:
+              - 'backend/app/reference/requirement_policy_consumer_parity.py'
+              - 'backend/tests/platform/test_requirement_policy_consumer_parity_gate.py'
+              - 'backend/app/requirement_rules/registry.py'
+              - 'backend/app/requirement_rules/evaluator.py'
+              - 'backend/app/requirement_rules/facade.py'
+              - 'backend/app/requirement_rules/document_hub_bridge.py'
+              - 'backend/app/modules/documents/owner_summary.py'
+              - 'backend/app/modules/documents/pack_definitions.py'
+              - 'backend/app/modules/documents/router.py'
+              - 'backend/app/services/candidate_doc_pipeline_guard.py'
+              - 'backend/app/services/document_applicability_resolver.py'
+              - 'backend/app/services/transfer_policy_resolver.py'
+              - 'backend/app/services/requirement_checker.py'
+              - 'backend/app/services/hr_expected_documents_resolver.py'
+              - 'docs/specs/tasks/requirement-policy-management.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'AGENTS.md'
+              - 'hostflow-frontend/src/utils/candidateStageDocPolicy.ts'
 
   guards:
     name: guards
@@ -741,6 +775,38 @@ jobs:
             tests/platform/test_requirement_policy_operator_gate.py
             tests/api/test_document_policy_overlay.py
 
+  rpm3a-parallel-retirement-gate:
+    name: Requirement Policy Parallel Authority Retirement Gate
+    needs: changes
+    if: needs.changes.outputs.rpm3a == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RPM-3A retirement gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_requirement_policy_parallel_authority_retirement_gate.py') == ''
+        run: echo "RPM-3A Parallel Authority Retirement gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_requirement_policy_parallel_authority_retirement_gate.py') != ''
+        with:
+          tests: >-
+            tests/platform/test_requirement_policy_parallel_authority_retirement_gate.py
+            tests/requirement_rules/test_tenant_overrides_p3b.py
+
+  rpm3b-consumer-parity-gate:
+    name: Requirement Policy Consumer Parity Gate
+    needs: changes
+    if: needs.changes.outputs.rpm3b == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RPM-3B consumer parity gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_requirement_policy_consumer_parity_gate.py') == ''
+        run: echo "RPM-3B Consumer Parity gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_requirement_policy_consumer_parity_gate.py') != ''
+        with:
+          tests: tests/platform/test_requirement_policy_consumer_parity_gate.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -783,6 +849,8 @@ jobs:
       - overlay-contract-gate
       - rpm1-authority-gate
       - rpm2-operator-gate
+      - rpm3a-parallel-retirement-gate
+      - rpm3b-consumer-parity-gate
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:

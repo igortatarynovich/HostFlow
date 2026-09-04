@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
-  activateRulesetVersion,
-  createRulesetVersion,
-  getRuleset,
   getRulesetDiff,
   getRulesetUsage,
   listRulesetVersions,
-  rollbackRulesetVersion,
 } from '../../api/documents'
 import type { RulesetDiff, RulesetUsageResponse, RulesetVersion } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
@@ -23,14 +20,6 @@ function formatDate(value?: string | null): string {
   return new Date(timestamp).toLocaleString()
 }
 
-function toPrettyJson(source: Record<string, any> | null | undefined): string {
-  try {
-    return JSON.stringify(source ?? {}, null, 2)
-  } catch (error) {
-    return JSON.stringify({ error: 'Unable to stringify payload', raw: source }, null, 2)
-  }
-}
-
 type DiffState = {
   versionId: string | null
   payload: RulesetDiff | null
@@ -43,11 +32,6 @@ const INITIAL_DIFF: DiffState = { versionId: null, payload: null, loading: false
 export default function RulesetVersionsPage() {
   const { t } = useI18n()
   const [versions, setVersions] = useState<RulesetVersion[]>([])
-  const [active, setActive] = useState<RulesetVersion | null>(null)
-  const [draftJson, setDraftJson] = useState<string>('')
-  const [draftComment, setDraftComment] = useState<string>('')
-  const [draftActivate, setDraftActivate] = useState<boolean>(false)
-  const [prefilled, setPrefilled] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [diffState, setDiffState] = useState<DiffState>(INITIAL_DIFF)
@@ -76,22 +60,14 @@ export default function RulesetVersionsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [current, list] = await Promise.all([
-        getRuleset(),
-        listRulesetVersions(),
-      ])
-      setActive(current)
+      const list = await listRulesetVersions()
       setVersions(list)
-      if (!prefilled) {
-        setDraftJson(toPrettyJson(current.ruleset))
-        setPrefilled(true)
-      }
     } catch (err) {
       setError(summarizeError(err))
     } finally {
       setLoading(false)
     }
-  }, [prefilled])
+  }, [summarizeError])
 
   const refreshUsage = useCallback(async () => {
     setUsageLoading(true)
@@ -104,69 +80,12 @@ export default function RulesetVersionsPage() {
     } finally {
       setUsageLoading(false)
     }
-  }, [])
+  }, [summarizeError])
 
   useEffect(() => {
     refreshVersions()
     refreshUsage()
   }, [refreshVersions, refreshUsage])
-
-  const handleCreateDraft = async () => {
-    setError(null)
-    try {
-      const parsed = JSON.parse(draftJson || '{}')
-      const payload = {
-        ruleset: parsed,
-        comment: draftComment || undefined,
-        activate: draftActivate,
-      }
-      await createRulesetVersion(payload)
-      setDraftComment('')
-      if (!draftActivate) {
-        setDraftActivate(false)
-      }
-      setDiffState(INITIAL_DIFF)
-      setPrefilled(false)
-      await refreshVersions()
-      await refreshUsage()
-    } catch (err) {
-      setError(summarizeError(err))
-    }
-  }
-
-  const handleActivate = async (version: RulesetVersion) => {
-    if (!window.confirm(t('app.admin.ruleset.actions.confirm_activate', { values: { version: version.version } }))) return
-    try {
-      await activateRulesetVersion(version.id)
-      setDiffState(INITIAL_DIFF)
-      setPrefilled(false)
-      await refreshVersions()
-    } catch (err) {
-      setError(summarizeError(err))
-    }
-  }
-
-  const handleRollback = async (version: RulesetVersion) => {
-    const comment = window.prompt(
-      t('app.admin.ruleset.actions.rollback_prompt', { values: { version: version.version } }),
-      t('app.admin.ruleset.actions.rollback_default_comment'),
-    )
-    if (!comment || comment.trim().length < 3) {
-      if (comment !== null) {
-        setError(t('app.admin.ruleset.errors.comment_short'))
-      }
-      return
-    }
-    try {
-      await rollbackRulesetVersion(version.id, { comment: comment.trim() })
-      setDiffState(INITIAL_DIFF)
-      setPrefilled(false)
-      await refreshVersions()
-      await refreshUsage()
-    } catch (err) {
-      setError(summarizeError(err))
-    }
-  }
 
   const handleShowDiff = async (version: RulesetVersion) => {
     setDiffState({ versionId: version.id, payload: null, loading: true, error: null })
@@ -176,12 +95,6 @@ export default function RulesetVersionsPage() {
     } catch (err) {
       setDiffState({ versionId: version.id, payload: null, loading: false, error: summarizeError(err) })
     }
-  }
-
-  const handleUseAsDraft = (version: RulesetVersion) => {
-    setDraftJson(toPrettyJson(version.ruleset))
-    setDraftComment(version.comment ?? '')
-    setDraftActivate(false)
   }
 
   const diffSummary = useMemo(() => {
@@ -249,68 +162,25 @@ export default function RulesetVersionsPage() {
         />
       )}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-medium text-slate-900">{t('app.admin.ruleset.create.title')}</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {t('app.admin.ruleset.create.description')}
+      <section
+        className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm"
+        data-rpm3a-ruleset-writes-retired="true"
+      >
+        <h2 className="text-lg font-medium text-amber-950">{t('app.admin.ruleset.create.title')}</h2>
+        <p className="mt-2 text-sm text-amber-950">
+          {t('app.admin.ruleset.retired_as_authority', {
+            defaultValue:
+              'Ruleset create/activate/rollback is retired as requirement authority. History below stays read-only. Manage required document types in Settings → Requirement Policy.',
+          })}{' '}
+          <Link
+            to={CRM_APP_PATHS.settingsRequirementPolicy}
+            className="font-medium text-brand-700 underline"
+          >
+            {t('app.admin.ruleset.open_requirement_policy', {
+              defaultValue: 'Open Requirement Policy',
+            })}
+          </Link>
         </p>
-
-        <div className="mt-4 space-y-4">
-          <div>
-            <label htmlFor="ruleset-json" className="mb-1 block text-sm font-medium text-slate-700">
-              {t('app.admin.ruleset.create.json_label')}
-            </label>
-            <textarea
-              id="ruleset-json"
-              className="textarea font-mono"
-              rows={12}
-              value={draftJson}
-              onChange={(event) => setDraftJson(event.target.value)}
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
-            <div>
-              <label htmlFor="ruleset-comment" className="mb-1 block text-sm font-medium text-slate-700">
-                {t('app.admin.ruleset.create.comment_label')}
-              </label>
-              <input
-                id="ruleset-comment"
-                className="input"
-                placeholder={t('app.admin.ruleset.create.comment_placeholder')}
-                value={draftComment}
-                onChange={(event) => setDraftComment(event.target.value)}
-              />
-            </div>
-            <label className="mt-6 flex items-start gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={draftActivate}
-                onChange={(event) => setDraftActivate(event.target.checked)}
-              />
-              <span>{t('app.admin.ruleset.create.activate_toggle')}</span>
-            </label>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={handleCreateDraft}
-            >
-              {t('app.admin.ruleset.create.save')}
-            </button>
-            {active && (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => handleUseAsDraft(active)}
-              >
-                {t('app.admin.ruleset.create.copy_active')}
-              </button>
-            )}
-          </div>
-        </div>
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -359,32 +229,9 @@ export default function RulesetVersionsPage() {
                       <button
                         type="button"
                         className="btn-secondary btn-xs"
-                        onClick={() => handleUseAsDraft(version)}
-                      >
-                        {t('app.admin.ruleset.history.actions.use_as_draft')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-xs"
                         onClick={() => handleShowDiff(version)}
                       >
                         {t('app.admin.ruleset.history.actions.diff')}
-                      </button>
-                      {!version.is_active && (
-                        <button
-                          type="button"
-                          className="btn-secondary btn-xs"
-                          onClick={() => handleActivate(version)}
-                        >
-                          {t('app.admin.ruleset.history.actions.activate')}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="btn-danger btn-xs"
-                        onClick={() => handleRollback(version)}
-                      >
-                        {t('app.admin.ruleset.history.actions.rollback')}
                       </button>
                     </div>
                   </td>

@@ -67,9 +67,7 @@ def test_p2a_map_evaluation_to_readiness_fragments() -> None:
         documents=[{"type": "passport", "status": "uploaded", "has_files": True}],
     )
     fragments = map_requirement_evaluation_to_package_fragments(evaluation)
-    assert "passport" in fragments["missing_documents"]
-    assert "code95" in fragments["missing_documents"]
-    assert "tacho_card" in fragments["missing_documents"]
+    assert "driver_qualification_card" in fragments["missing_documents"]
     assert any(row["field_code"] == "last_name" for row in fragments["missing_data_fields"])
     assert any(row["source_layer"] == "requirement_engine" for row in fragments["blocking_reasons"])
 
@@ -86,7 +84,9 @@ def test_p2a_requirement_engine_section_shape() -> None:
     assert section["evaluation_version"] == REQUIREMENT_EVALUATION_V1
     assert section["entity_profile_code"] == DRIVER_CE_PROFILE_CODE
     assert section["satisfied"] is False
-    assert len(section["required_documents"]) == 4
+    assert {row["document_type_code"] for row in section["required_documents"]} == {
+        "driver_qualification_card"
+    }
 
 
 @pytest.mark.anyio
@@ -181,9 +181,7 @@ async def test_p2a_evaluates_via_requirement_engine_with_vacancy(db, tenant_id: 
         for row in evaluation.get("blockers") or []
         if row.get("document_type_code")
     }
-    assert "passport" in missing_docs
-    assert "code95" in missing_docs
-    assert "tacho_card" in missing_docs
+    assert "driver_qualification_card" in missing_docs
 
     missing_fields = {
         row.get("qualified_code")

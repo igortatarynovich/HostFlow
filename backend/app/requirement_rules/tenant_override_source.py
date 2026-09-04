@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from backend.app.reference.requirement_policy_parallel_authority_retirement import (
+    filter_out_document_required_overrides,
+)
 from backend.app.requirement_rules.constants import (
     LEVEL_BLOCKING,
     LEVEL_WARNING,
@@ -163,6 +166,7 @@ def apply_tenant_overrides(
     context: str,
 ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     """Apply tenant relax/add/severity after platform rule merge."""
+    tenant_overrides = filter_out_document_required_overrides(tenant_overrides)
     rules_by_key = {_rule_dedup_key(rule): dict(rule) for rule in base_rules}
     order = [_rule_dedup_key(rule) for rule in base_rules]
 

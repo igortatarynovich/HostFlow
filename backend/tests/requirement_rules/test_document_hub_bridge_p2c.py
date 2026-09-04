@@ -94,7 +94,7 @@ def test_p2c_driver_ce_required_documents_from_engine() -> None:
     assert hub["evaluation_version"] == REQUIREMENT_EVALUATION_V1
 
     required_codes = {row["document_type_code"] for row in hub["required_documents"]}
-    assert required_codes == {"passport", "driver_license", "code95", "tacho_card"}
+    assert required_codes == {"driver_qualification_card"}
     assert all(row["source_layer"] == SOURCE_LAYER for row in hub["required_documents"])
     assert hub["missing_documents"] == sorted(required_codes)
     assert hub["satisfied_documents"] == []
@@ -112,6 +112,7 @@ def test_p2c_satisfied_documents_when_approved() -> None:
     hub = map_requirement_evaluation_to_document_hub(
         evaluation,
         documents=[
+            {"type": "driver_qualification_card", "status": "approved", "has_files": True},
             {"type": "passport", "status": "approved", "has_files": True},
             {"type": "driver_license", "status": "approved", "has_files": True},
             {"type": "code95", "status": "approved", "has_files": True},
@@ -119,7 +120,7 @@ def test_p2c_satisfied_documents_when_approved() -> None:
         ],
     )
 
-    assert hub["satisfied_documents"] == ["code95", "driver_license", "passport", "tacho_card"]
+    assert hub["satisfied_documents"] == ["driver_qualification_card"]
     assert hub["missing_documents"] == []
     statuses = {row["document_type_code"]: row["status"] for row in hub["required_documents"]}
     assert all(status == "satisfied" for status in statuses.values())
@@ -135,14 +136,12 @@ def test_p2c_missing_documents_when_absent() -> None:
     hub = map_requirement_evaluation_to_document_hub(evaluation)
 
     assert hub["satisfied_documents"] == []
-    assert set(hub["missing_documents"]) == {"driver_license", "code95", "tacho_card"}
-    assert hub["pending_documents"] == ["passport"]
+    assert set(hub["missing_documents"]) == {"driver_qualification_card"}
+    assert hub["pending_documents"] == []
 
     by_code = {row["document_type_code"]: row for row in hub["required_documents"]}
-    assert by_code["passport"]["status"] == "pending"
-    assert by_code["passport"]["lifecycle_status"] == "uploaded"
-    assert by_code["code95"]["status"] == "missing"
-    assert by_code["code95"]["source_layer"] == SOURCE_LAYER
+    assert by_code["driver_qualification_card"]["status"] == "missing"
+    assert by_code["driver_qualification_card"]["source_layer"] == SOURCE_LAYER
 
 
 def test_p2c_merge_into_owner_summary_overlays_requirement_engine() -> None:
@@ -163,17 +162,13 @@ def test_p2c_merge_into_owner_summary_overlays_requirement_engine() -> None:
 
     assert merged["source_layer"] == SOURCE_LAYER
     assert merged["requirement_engine"]["applied"] is True
-    assert set(merged["required"]["missing_types"]) == {"driver_license", "code95", "tacho_card"}
-    assert merged["required"]["in_progress_types"] == ["passport"]
+    assert set(merged["required"]["missing_types"]) == {"driver_qualification_card"}
+    assert merged["required"]["in_progress_types"] == []
     assert merged["required"]["ready_types"] == []
     assert merged["checklist"]["runtimeItems"]
     assert merged["document_runtime"]["evaluation_version"] == "document_runtime_v1"
-    assert set(merged["checklist"]["requiredTypes"]) == {
-        "passport",
-        "driver_license",
-        "code95",
-        "tacho_card",
-    }
+    assert "driver_qualification_card" in merged["checklist"]["requiredTypes"]
+    assert "passport" in merged["checklist"]["requiredTypes"]
     assert merged["checklist"]["source_layer"] == SOURCE_LAYER
 
 
@@ -263,6 +258,6 @@ async def test_p2c_evaluates_via_requirement_engine_with_vacancy(db, tenant_id: 
     assert hub["entity_profile_code"] == DRIVER_CE_PROFILE_CODE
 
     required_codes = {row["document_type_code"] for row in hub["required_documents"]}
-    assert required_codes == {"passport", "driver_license", "code95", "tacho_card"}
+    assert required_codes == {"driver_qualification_card"}
     assert hub["missing_documents"] == sorted(required_codes)
     assert hub["satisfied_documents"] == []

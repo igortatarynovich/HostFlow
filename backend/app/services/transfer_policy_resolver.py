@@ -239,13 +239,29 @@ class TransferPolicyResolver:
                 vacancy_id=ctx.vacancy_id,
             ),
         )
-        required_documents = sorted(
-            {
-                str(row.get("document_code") or "").strip()
-                for row in expected_docs
-                if bool(row.get("required")) and str(row.get("document_code") or "").strip()
-            }
-        )
+        from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+        from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
+
+        tenant_delta = await load_persisted_tenant_delta(db, tenant_id)
+        owner_ctx = {
+            "citizenship": ctx.citizenship,
+            "work_country": ctx.work_country,
+            "residency_status": ctx.residence_status,
+            "position_category": ctx.position_category,
+            "employment_type": ctx.employment_type,
+            "stage": ctx.stage,
+            "client_id": ctx.client_id,
+            "vacancy_id": ctx.vacancy_id,
+            "candidate_id": str(candidate_id),
+        }
+        r5_required = r5_required_set(owner_ctx, tenant_delta)
+        required_documents = sorted(r5_required)
+        pack_claimed_required = {
+            str(row.get("document_code") or "").strip()
+            for row in expected_docs
+            if bool(row.get("required")) and str(row.get("document_code") or "").strip()
+        }
+        transfer_operation_documents = sorted(pack_claimed_required - set(required_documents))
 
         ops = dict(eligibility.get("allowed_operations") or {})
         handoff_allowed = bool(ops.get("handoff_to_hr", ops.get("hr_handoff", True)))
@@ -500,6 +516,7 @@ class TransferPolicyResolver:
             "blocking_reasons": blocking_reasons,
             "warnings": warnings,
             "required_documents": required_documents,
+            "transfer_operation_documents": transfer_operation_documents,
             "missing_documents": missing_documents,
             "pending_verification_documents": pending_verification,
             "missing_data_fields": missing_data_fields,
