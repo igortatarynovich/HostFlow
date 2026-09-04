@@ -29,6 +29,9 @@ describe('C-4 Test lead UI shell', () => {
     expect(src).toContain('marketing-test-lead-mode-a')
     expect(src).toContain('marketing-test-lead-mode-b')
     expect(src).toContain('marketing-test-lead-mode-c')
+    expect(src).toContain('mappingAssessmentCopy')
+    expect(src).not.toContain("app.marketing.sources.health.ready")
+    expect(src).not.toContain("app.marketing.sources.health.broken")
     // C-5 boundary: no mapping_rules persist from this page
     expect(src).not.toContain('putIntakeFormMapping')
     expect(src).not.toContain('mapping_rules:')

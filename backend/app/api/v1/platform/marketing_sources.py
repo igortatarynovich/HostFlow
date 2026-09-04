@@ -50,6 +50,9 @@ class MarketingSourceSummaryOut(BaseModel):
     display_name: str
     connection_status: str
     mapping_health: str
+    mapping_headline: str = ""
+    mapping_human: str = ""
+    contract_health: str = "needs_review"
     last_submission_at: Optional[datetime] = None
     last_error_at: Optional[datetime] = None
     last_error_code: Optional[str] = None
@@ -132,6 +135,8 @@ class SourceMappingOut(BaseModel):
     rules_source: str = "none"
     mapping_rules_count: int = 0
     mapping_health: str
+    mapping_headline: str = ""
+    mapping_human: str = ""
     destination: Optional[str] = None
     destination_label: Optional[str] = None
     route_intent: Optional[str] = None

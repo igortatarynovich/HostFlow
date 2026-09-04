@@ -364,7 +364,11 @@ async def test_diagnostics_case_mapping_context(client: AsyncClient, auth_header
     assert mapping["active"] is True
     assert mapping["source_id"] == profile_id
     assert mapping["display_name"] == "Diag Mapping Source"
-    assert mapping["mapping_health"] in {"ready", "needs_review"}
+    assert mapping["mapping_health"] in {"valid", "needs_review", "invalid"}
+    assert mapping["mapping_health"] not in {"ready", "broken"}
+    assert mapping["contract_health"] == mapping["mapping_health"]
+    assert mapping["mapping_human"]
+    assert mapping["mapping_headline"]
     assert mapping["mapping_rules_count"] >= 1
     assert mapping["historical_version_available"] is False
     assert mapping["profile_missing"] is False

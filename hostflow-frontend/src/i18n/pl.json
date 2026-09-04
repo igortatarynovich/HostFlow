@@ -11235,7 +11235,7 @@
     "marketing": {
       "sources": {
         "title": "Źródła",
-        "subtitle": "Podłączone źródła, Mapping Health, oczekujące zgłoszenia i ostatnie zdarzenia.",
+        "subtitle": "Podłączone źródła, mapowanie, oczekujące zgłoszenia i ostatnie zdarzenia.",
         "none": "—",
         "empty_title": "Brak źródeł",
         "empty_body": "Podłącz Meta w Integrations lub powiąż intake source — pojawią się tutaj.",
@@ -11243,7 +11243,7 @@
           "source": "Źródło",
           "provider": "Dostawca",
           "connection": "Połączenie",
-          "mapping_health": "Stan mapowania",
+          "mapping_health": "Mapowanie",
           "last_lead": "Ostatni lead",
           "waiting": "Oczekujące",
           "routing_issue": "Problem routingu",
@@ -11605,11 +11605,11 @@
           "suggested": "Sugerowany kandydat"
         },
         "mapping": {
-          "title": "Mapowanie / stan mapowania",
+          "title": "Mapowanie",
           "body": "Bieżące mapowanie źródła (nie historyczny stempel ingest). Otwórz mapowanie, aby sprawdzić reguły.",
           "open": "Otwórz mapowanie",
           "source": "Źródło",
-          "health": "Stan mapowania",
+          "health": "Mapowanie",
           "rules": "Reguły",
           "profile_updated": "Profil zaktualizowany",
           "historical": "Wersja historyczna",
@@ -11706,7 +11706,7 @@
         },
         "fields": {
           "provider": "Dostawca",
-          "health": "Stan mapowania",
+          "health": "Mapowanie",
           "destination": "Przeznaczenie",
           "rules_source": "Źródło reguł"
         },
@@ -11767,7 +11767,7 @@
         "context": {
           "title": "Źródło",
           "provider": "Dostawca",
-          "health": "Stan mapowania",
+          "health": "Mapowanie",
           "sample_source": "Źródło sample",
           "rules": "Reguły mapowania"
         },

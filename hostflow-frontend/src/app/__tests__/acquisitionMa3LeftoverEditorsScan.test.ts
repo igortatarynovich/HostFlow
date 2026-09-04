@@ -60,4 +60,26 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     expect(intakeApi).not.toContain('testIntakeFormMappingIngest')
     expect(metaApi).not.toContain('putMetaLeadFormMapping')
   })
+
+  it('Sources, Diagnostics, and Test lead read canonical mapping copy, not leftover ready/broken', () => {
+    const sources = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingSourcesPage.tsx'),
+      'utf8',
+    )
+    const diagnostics = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingDiagnosticsPage.tsx'),
+      'utf8',
+    )
+    const testLead = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingSourceTestLeadPage.tsx'),
+      'utf8',
+    )
+    for (const src of [sources, diagnostics, testLead]) {
+      expect(src).toContain('mappingAssessmentCopy')
+      expect(src).not.toContain("app.marketing.sources.health.ready")
+      expect(src).not.toContain("app.marketing.sources.health.broken")
+      expect(src).not.toContain("case 'ready':")
+      expect(src).not.toContain("case 'broken':")
+    }
+  })
 })

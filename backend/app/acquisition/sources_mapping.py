@@ -23,7 +23,7 @@ from backend.app.acquisition.mapping_workspace import (
     set_schema_snapshot,
     workspace_envelope,
 )
-from backend.app.acquisition.sources_read import compute_destination, compute_mapping_health
+from backend.app.acquisition.sources_read import compute_destination
 from backend.app.acquisition.sources_sample import (
     _bindings_for_profile,
     _mapping_rules_for_source,
@@ -113,17 +113,14 @@ async def get_source_mapping(
         route_intent=getattr(profile, "route_intent", None),
         lead_target_type=getattr(profile, "lead_target_type", None),
     )
-    health = compute_mapping_health(
-        connection_status="connected",
-        mapping_rules_count=len(effective),
-        last_error_code=None,
-    )
     workspace = await workspace_envelope(
         db,
         tenant_id=tenant_id,
         profile=profile,
         mapping_rules=effective,
     )
+    summary = workspace.get("summary") if isinstance(workspace.get("summary"), dict) else {}
+    contract_health = str(summary.get("contract_health") or "needs_review")
     applied = await _applied_evidence_for_source(
         db,
         tenant_id=tenant_id,
@@ -140,7 +137,9 @@ async def get_source_mapping(
         "profile_mapping_rules": profile_rules,
         "rules_source": "profile" if profile_rules or effective else "none",
         "mapping_rules_count": len(effective),
-        "mapping_health": health,
+        "mapping_health": contract_health,
+        "mapping_headline": str(summary.get("headline") or ""),
+        "mapping_human": str(summary.get("human") or ""),
         "destination": dest,
         "destination_label": dest_label,
         "route_intent": str(getattr(profile, "route_intent", None) or "") or None,

@@ -11235,7 +11235,7 @@
     "marketing": {
       "sources": {
         "title": "Sources",
-        "subtitle": "Connected sources, Mapping Health, waiting submissions, and last events.",
+        "subtitle": "Connected sources, mapping, waiting submissions, and last events.",
         "none": "—",
         "empty_title": "No sources yet",
         "empty_body": "Connect Meta in Integrations or bind an intake source — they will appear here.",
@@ -11243,7 +11243,7 @@
           "source": "Source",
           "provider": "Provider",
           "connection": "Connection",
-          "mapping_health": "Mapping Health",
+          "mapping_health": "Mapping",
           "last_lead": "Last lead",
           "waiting": "Waiting",
           "routing_issue": "Routing issue",
@@ -11605,11 +11605,11 @@
           "suggested": "Suggested candidate"
         },
         "mapping": {
-          "title": "Mapping / Mapping Health",
+          "title": "Mapping",
           "body": "Current Source mapping (not a historical ingest stamp). Open Mapping workspace to review rules.",
           "open": "Open Mapping",
           "source": "Source",
-          "health": "Mapping Health",
+          "health": "Mapping",
           "rules": "Rules",
           "profile_updated": "Profile updated",
           "historical": "Historical version",
@@ -11706,7 +11706,7 @@
         },
         "fields": {
           "provider": "Provider",
-          "health": "Mapping Health",
+          "health": "Mapping",
           "destination": "Destination",
           "rules_source": "Rules source"
         },
@@ -11767,7 +11767,7 @@
         "context": {
           "title": "Source",
           "provider": "Provider",
-          "health": "Mapping Health",
+          "health": "Mapping",
           "sample_source": "Sample source",
           "rules": "Mapping rules"
         },

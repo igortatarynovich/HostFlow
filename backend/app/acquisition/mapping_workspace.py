@@ -558,13 +558,13 @@ def build_projection(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-async def workspace_envelope(
+async def _schema_for_profile(
     db: AsyncSession,
     *,
     tenant_id: str,
     profile: Any,
     mapping_rules: list[dict[str, Any]],
-) -> dict[str, Any]:
+) -> tuple[list[dict[str, Any]], str, bool]:
     snapshot_fields = coerce_schema_fields(get_schema_snapshot(profile))
     schema_source = "snapshot" if snapshot_fields else "none"
     schema_fields = list(snapshot_fields)
@@ -578,6 +578,67 @@ async def workspace_envelope(
     has_schema = schema_source in {"snapshot", "presentation"}
     if not schema_fields and mapping_rules:
         schema_source = "rules"
+    return schema_fields, schema_source, has_schema
+
+
+def assess_mapping(
+    *,
+    schema_fields: list[dict[str, Any]],
+    mapping_rules: list[dict[str, Any]],
+    destinations: list[dict[str, Any]],
+    has_schema: bool,
+) -> dict[str, Any]:
+    """Canonical mapping assessment — same object the workspace summary uses."""
+    _rows, summary = build_workspace_rows(
+        schema_fields=schema_fields,
+        mapping_rules=mapping_rules,
+        sample_by_source={},
+        destinations=destinations,
+        has_schema=has_schema,
+    )
+    return summary
+
+
+async def mapping_assessment_for_profile(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    profile: Any,
+    mapping_rules: list[dict[str, Any]],
+    destinations: Optional[list[dict[str, Any]]] = None,
+) -> dict[str, Any]:
+    schema_fields, _schema_source, has_schema = await _schema_for_profile(
+        db,
+        tenant_id=tenant_id,
+        profile=profile,
+        mapping_rules=mapping_rules,
+    )
+    dests = (
+        destinations
+        if destinations is not None
+        else await _destinations_for_tenant(db, tenant_id=tenant_id)
+    )
+    return assess_mapping(
+        schema_fields=schema_fields,
+        mapping_rules=mapping_rules,
+        destinations=dests,
+        has_schema=has_schema,
+    )
+
+
+async def workspace_envelope(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    profile: Any,
+    mapping_rules: list[dict[str, Any]],
+) -> dict[str, Any]:
+    schema_fields, schema_source, has_schema = await _schema_for_profile(
+        db,
+        tenant_id=tenant_id,
+        profile=profile,
+        mapping_rules=mapping_rules,
+    )
     destinations = await _destinations_for_tenant(db, tenant_id=tenant_id)
     sample_by_source = _sample_examples(profile=profile, mapping_rules=mapping_rules)
     rows, summary = build_workspace_rows(
@@ -614,6 +675,8 @@ __all__ = [
     "coerce_schema_fields",
     "set_schema_snapshot",
     "get_schema_snapshot",
+    "assess_mapping",
+    "mapping_assessment_for_profile",
     "build_workspace_rows",
     "build_projection",
 ]

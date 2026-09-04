@@ -1,6 +1,6 @@
 /**
  * Marketing Sources foundation (Acquisition UI Cutover C-3).
- * Read-only inventory: connection, Mapping Health, last lead/error, CTA deep-links.
+ * Read-only inventory: connection, canonical mapping assessment, last lead/error, CTA deep-links.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -11,6 +11,8 @@ import {
 } from '../../api/marketingDiagnostics'
 import {
   listMarketingSources,
+  mappingAssessmentCopy,
+  mappingContractTone,
   type MarketingSourceSummary,
 } from '../../api/marketingSources'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
@@ -33,28 +35,9 @@ function connectionLabel(status: string, t: (k: string, o?: object) => string): 
   }
 }
 
-function healthLabel(status: string, t: (k: string, o?: object) => string): string {
-  switch (status) {
-    case 'ready':
-      return t('app.marketing.sources.health.ready')
-    case 'needs_review':
-      return t('app.marketing.sources.health.needs_review')
-    case 'broken':
-      return t('app.marketing.sources.health.broken')
-    default:
-      return status
-  }
-}
-
 function connectionTone(status: string): string {
   if (status === 'connected') return 'bg-emerald-50 text-emerald-800'
   if (status === 'attention') return 'bg-amber-50 text-amber-900'
-  return 'bg-rose-50 text-rose-800'
-}
-
-function healthTone(status: string): string {
-  if (status === 'ready') return 'bg-emerald-50 text-emerald-800'
-  if (status === 'needs_review') return 'bg-amber-50 text-amber-900'
   return 'bg-rose-50 text-rose-800'
 }
 
@@ -257,10 +240,10 @@ export default function MarketingSourcesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${healthTone(row.mapping_health)}`}
+                      className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${mappingContractTone(row.contract_health || row.mapping_health)}`}
                       data-testid={`marketing-source-health-${row.source_id}`}
                     >
-                      {healthLabel(row.mapping_health, t)}
+                      {mappingAssessmentCopy(row)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-slate-600">

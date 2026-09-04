@@ -69,7 +69,12 @@ class DiagnosticsDuplicateDecision:
 
 @dataclass(frozen=True)
 class DiagnosticsMappingContext:
-    """Current Source mapping / Mapping Health for the case (read-only).
+    """Current Source mapping assessment for the case (read-only).
+
+    ``mapping_human`` / ``mapping_headline`` / ``contract_health`` are the
+    workspace assessment. ``mapping_health`` carries the same MA-1
+    ``valid`` / ``needs_review`` / ``invalid`` value, not leftover ready/broken.
+    Fingerprint ``drift`` is applied-stale vs current rules, not schema taxonomy.
 
     When ``mapping_applied_v1`` exists on Lead.normalized (ingest stamp),
     ``historical_version_available`` is True and drift compares fingerprints.
@@ -80,6 +85,9 @@ class DiagnosticsMappingContext:
     display_name: Optional[str]
     provider: Optional[str]
     mapping_health: Optional[str]
+    mapping_headline: Optional[str]
+    mapping_human: Optional[str]
+    contract_health: Optional[str]
     mapping_rules_count: int
     rules_source: Optional[str]
     meta_form_id: Optional[str]
@@ -204,6 +212,9 @@ def _empty_mapping(*, source_id: str | None = None, profile_missing: bool = Fals
         display_name=None,
         provider=None,
         mapping_health=None,
+        mapping_headline=None,
+        mapping_human=None,
+        contract_health=None,
         mapping_rules_count=0,
         rules_source=None,
         meta_form_id=None,
@@ -221,7 +232,7 @@ async def compose_mapping_context(
     routing: Mapping[str, Any],
     normalized: Mapping[str, Any] | None = None,
 ) -> DiagnosticsMappingContext:
-    """Resolve current Mapping Health + optional ingest ``mapping_applied_v1`` stamp."""
+    """Resolve current mapping assessment + optional ingest ``mapping_applied_v1`` stamp."""
     applied = read_mapping_applied_stamp(normalized)
     applied_fp = str(applied.get("rules_fingerprint") or "").strip() or None
     applied_count = int(applied.get("rules_count") or 0)
@@ -242,6 +253,9 @@ async def compose_mapping_context(
                 display_name=None,
                 provider=None,
                 mapping_health=None,
+                mapping_headline=None,
+                mapping_human=None,
+                contract_health=None,
                 mapping_rules_count=0,
                 rules_source=None,
                 meta_form_id=None,
@@ -274,6 +288,9 @@ async def compose_mapping_context(
             display_name=None,
             provider=None,
             mapping_health=None,
+            mapping_headline=None,
+            mapping_human=None,
+            contract_health=None,
             mapping_rules_count=0,
             rules_source=None,
             meta_form_id=None,
@@ -309,12 +326,22 @@ async def compose_mapping_context(
     )
     drift = bool(historical and applied_fp and current_fp and applied_fp != current_fp)
 
+    summary_block = summary.get("summary") if isinstance(summary.get("summary"), dict) else {}
+    mapping_headline = str(summary.get("mapping_headline") or summary_block.get("headline") or "").strip() or None
+    mapping_human = str(summary.get("mapping_human") or summary_block.get("human") or "").strip() or None
+    contract_health = str(
+        summary.get("contract_health") or summary_block.get("contract_health") or ""
+    ).strip() or None
+
     return DiagnosticsMappingContext(
         active=True,
         source_id=source_id,
         display_name=str(summary.get("display_name") or "").strip() or None,
         provider=str(summary.get("provider") or "").strip() or None,
-        mapping_health=str(summary.get("mapping_health") or "").strip() or None,
+        mapping_health=contract_health,
+        mapping_headline=mapping_headline,
+        mapping_human=mapping_human,
+        contract_health=contract_health,
         mapping_rules_count=int(summary.get("mapping_rules_count") or 0),
         rules_source=str(summary.get("rules_source") or "").strip() or None,
         meta_form_id=str(summary.get("meta_form_id") or "").strip() or None,
@@ -672,6 +699,9 @@ def build_diagnostic_export_bundle(detail: DiagnosticsCaseDetail) -> dict[str, A
             "display_name": mapping.display_name,
             "provider": mapping.provider,
             "mapping_health": mapping.mapping_health,
+            "mapping_headline": mapping.mapping_headline,
+            "mapping_human": mapping.mapping_human,
+            "contract_health": mapping.contract_health,
             "mapping_rules_count": mapping.mapping_rules_count,
             "rules_source": mapping.rules_source,
             "meta_form_id": mapping.meta_form_id,

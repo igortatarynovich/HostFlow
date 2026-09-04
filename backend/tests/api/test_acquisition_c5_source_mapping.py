@@ -185,7 +185,9 @@ async def test_get_put_mapping_persists_profile_rules(
     put_body = put.json()
     assert put_body["mapping_rules_count"] == 3
     assert put_body["rules_source"] == "profile"
-    assert put_body["mapping_health"] in {"ready", "needs_review"}
+    assert put_body["mapping_health"] in {"valid", "needs_review", "invalid"}
+    assert put_body["mapping_health"] not in {"ready", "broken"}
+    assert put_body["mapping_human"]
 
     async with async_session_maker() as db:
         row = (

@@ -36,6 +36,10 @@ HEALTH_READY = "ready"
 HEALTH_NEEDS_REVIEW = "needs_review"
 HEALTH_BROKEN = "broken"
 
+# Leftover C-5 mix of connection + errors + rule count. Operator surfaces must
+# not use this as mapping readiness. Mapping readiness is workspace assessment
+# (questions to set / named drift / Ready via contract_health + human).
+
 # Operator-facing routing issue (C-3 visibility). Runtime stop of profile_default = next PR.
 ROUTING_ISSUE_MISSING_CAMPAIGN_FLIGHT = "missing_campaign_flight"
 ROUTING_ISSUE_MISSING_CAMPAIGN_FLIGHT_MESSAGE = (
@@ -64,6 +68,9 @@ class SourceSummary:
     display_name: str
     connection_status: str
     mapping_health: str
+    mapping_headline: str
+    mapping_human: str
+    contract_health: str
     last_submission_at: Optional[datetime]
     last_error_at: Optional[datetime]
     last_error_code: Optional[str]
@@ -95,6 +102,9 @@ class SourceSummary:
             "display_name": self.display_name,
             "connection_status": self.connection_status,
             "mapping_health": self.mapping_health,
+            "mapping_headline": self.mapping_headline,
+            "mapping_human": self.mapping_human,
+            "contract_health": self.contract_health,
             "last_submission_at": self.last_submission_at,
             "last_error_at": self.last_error_at,
             "last_error_code": self.last_error_code,
@@ -160,6 +170,7 @@ def compute_mapping_health(
     mapping_rules_count: int,
     last_error_code: Optional[str],
 ) -> str:
+    """Leftover C-5 health mix. Do not use as mapping readiness on operator surfaces."""
     if connection_status == CONNECTION_DISCONNECTED:
         return HEALTH_BROKEN
     err = str(last_error_code or "").strip().lower()
@@ -510,6 +521,12 @@ async def list_marketing_source_summaries(
                 last_problem_ad[pid] = (created_at, ad_id)
 
     summaries: list[SourceSummary] = []
+    from backend.app.acquisition.mapping_workspace import (
+        mapping_assessment_for_profile,
+        _destinations_for_tenant,
+    )
+
+    destinations = await _destinations_for_tenant(db, tenant_id=tid)
     for profile in profiles:
         pid = str(profile.id)
         provider = str(profile.provider or "unknown")
@@ -569,11 +586,17 @@ async def list_marketing_source_summaries(
         if last_error is None and sample_lead_id and sample_lead_id in lead_errors:
             last_error, error_code = lead_errors[sample_lead_id]
 
-        mapping_health = compute_mapping_health(
-            connection_status=connection_status,
-            mapping_rules_count=mapping_rules_count,
-            last_error_code=error_code,
+        authority_rules = [r for r in profile_rules if isinstance(r, dict)]
+        assessment = await mapping_assessment_for_profile(
+            db,
+            tenant_id=tid,
+            profile=profile,
+            mapping_rules=authority_rules,
+            destinations=destinations,
         )
+        mapping_headline = str(assessment.get("headline") or "needs_check")
+        mapping_human = str(assessment.get("human") or "")
+        contract_health = str(assessment.get("contract_health") or "needs_review")
 
         waiting_submissions = int(waiting_count.get(pid, 0))
         problem_ad = last_problem_ad.get(pid)
@@ -589,8 +612,6 @@ async def list_marketing_source_summaries(
                 meta_form_id=meta_form_id,
                 ad_id=last_problematic_ad_id,
             )
-            if mapping_health == HEALTH_READY:
-                mapping_health = HEALTH_NEEDS_REVIEW
         elif waiting_submissions > 0:
             # Waiting without Ad ID — still surface setup CTA for Meta/source binding.
             routing_issue_code = ROUTING_ISSUE_MISSING_CAMPAIGN_FLIGHT
@@ -599,8 +620,6 @@ async def list_marketing_source_summaries(
                 intake_source_profile_id=pid,
                 meta_form_id=meta_form_id,
             )
-            if mapping_health == HEALTH_READY:
-                mapping_health = HEALTH_NEEDS_REVIEW
 
         mapping_path, test_lead_path, settings_path = build_source_paths(
             source_id=pid,
@@ -658,7 +677,10 @@ async def list_marketing_source_summaries(
                 provider=provider,
                 display_name=display_name,
                 connection_status=connection_status,
-                mapping_health=mapping_health,
+                mapping_health=contract_health,
+                mapping_headline=mapping_headline,
+                mapping_human=mapping_human,
+                contract_health=contract_health,
                 last_submission_at=last_submission,
                 last_error_at=last_error,
                 last_error_code=error_code,

@@ -48,6 +48,9 @@ export type DiagnosticsMapping = {
   display_name?: string | null
   provider?: string | null
   mapping_health?: string | null
+  mapping_headline?: string | null
+  mapping_human?: string | null
+  contract_health?: string | null
   mapping_rules_count: number
   rules_source?: string | null
   meta_form_id?: string | null

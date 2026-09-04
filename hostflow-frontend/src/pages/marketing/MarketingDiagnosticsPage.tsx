@@ -19,6 +19,10 @@ import {
   type DiagnosticsDriftSummary,
   type DiagnosticsSubmission,
 } from '../../api/marketingDiagnostics'
+import {
+  mappingAssessmentCopy,
+  mappingContractTone,
+} from '../../api/marketingSources'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { PageHeader } from '../../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../../components/layout'
@@ -311,10 +315,13 @@ function CaseDetail({
             </div>
             <div>
               <dt className="text-slate-500">{t('app.marketing.diagnostics.mapping.health')}</dt>
-              <dd className="font-medium text-slate-900" data-testid="marketing-diagnostics-mapping-health">
+              <dd
+                className={`font-medium ${mappingContractTone(row.mapping.contract_health || row.mapping.mapping_health)}`}
+                data-testid="marketing-diagnostics-mapping-health"
+              >
                 {row.mapping.profile_missing
                   ? t('app.marketing.diagnostics.mapping.profile_missing')
-                  : row.mapping.mapping_health || '—'}
+                  : mappingAssessmentCopy(row.mapping)}
               </dd>
             </div>
             <div>

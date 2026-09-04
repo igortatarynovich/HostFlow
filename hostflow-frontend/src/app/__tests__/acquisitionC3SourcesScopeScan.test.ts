@@ -18,6 +18,9 @@ describe('C-3 Sources scope guards', () => {
     expect(src).toContain('row.setup_campaign_flight_path')
     expect(src).toContain('waiting_submissions')
     expect(src).toContain('listMarketingSources')
+    expect(src).toContain('mappingAssessmentCopy')
+    expect(src).not.toContain("app.marketing.sources.health.ready")
+    expect(src).not.toContain("app.marketing.sources.health.broken")
     // C-3.1 inventory columns
     expect(src).toContain('row.page_id')
     expect(src).toContain('row.provider_form')

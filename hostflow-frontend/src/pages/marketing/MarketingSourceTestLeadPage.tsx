@@ -11,6 +11,8 @@ import {
 import {
   getMarketingSourceSample,
   listMarketingSources,
+  mappingAssessmentCopy,
+  mappingContractTone,
   postMarketingSourceCaptureNext,
   postMarketingSourceSampleFromPayload,
   postMarketingSourceSamplePreview,
@@ -23,19 +25,6 @@ import { PageHeader } from '../../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
-
-function healthLabel(status: string, t: (k: string, o?: object) => string): string {
-  switch (status) {
-    case 'ready':
-      return t('app.marketing.sources.health.ready')
-    case 'needs_review':
-      return t('app.marketing.sources.health.needs_review')
-    case 'broken':
-      return t('app.marketing.sources.health.broken')
-    default:
-      return status
-  }
-}
 
 function fieldStatusLabel(status: string, t: (k: string, o?: object) => string): string {
   switch (status) {
@@ -187,8 +176,11 @@ export default function MarketingSourceTestLeadPage() {
                 <dt className="text-slate-500">
                   {t('app.marketing.test_lead.context.health')}
                 </dt>
-                <dd data-testid="marketing-test-lead-health">
-                  {source ? healthLabel(String(source.mapping_health), t) : '—'}
+                <dd
+                  className={`font-medium ${source ? mappingContractTone(source.contract_health || source.mapping_health) : ''}`}
+                  data-testid="marketing-test-lead-health"
+                >
+                  {source ? mappingAssessmentCopy(source) : '—'}
                 </dd>
               </div>
               <div>

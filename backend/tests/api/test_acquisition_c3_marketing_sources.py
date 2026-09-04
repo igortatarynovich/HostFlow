@@ -37,6 +37,26 @@ from backend.app.models.tenant import Tenant
 
 DEFAULT_TENANT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
+CONTRACT_HEALTH = {"valid", "needs_review", "invalid"}
+
+
+def _assert_canonical_mapping(row: Any) -> None:
+    """List/detail mapping state is workspace assessment, not leftover ready/broken."""
+    if isinstance(row, dict):
+        health = row["mapping_health"]
+        human = row["mapping_human"]
+        headline = row["mapping_headline"]
+        contract = row["contract_health"]
+    else:
+        health = row.mapping_health
+        human = row.mapping_human
+        headline = row.mapping_headline
+        contract = row.contract_health
+    assert health in CONTRACT_HEALTH
+    assert health not in {HEALTH_READY, HEALTH_BROKEN}
+    assert contract == health
+    assert human
+    assert headline
 
 
 def _headers(base: Dict[str, str], *, tenant_id: str = DEFAULT_TENANT_ID) -> Dict[str, str]:
@@ -91,7 +111,8 @@ def test_compute_destination_from_route_intent() -> None:
     assert code is None and label is None
 
 
-def test_mapping_health_projection_matrix() -> None:
+def test_leftover_compute_mapping_health_is_not_operator_readiness() -> None:
+    """Leftover C-5 mix still exists; operator list must not use it as mapping state."""
     assert (
         compute_mapping_health(
             connection_status="connected",
@@ -342,13 +363,13 @@ async def test_list_sources_aggregates_bindings_and_flights(
     assert linked["provider_form"] == "Kierowca CE Lead Form"
     assert linked["destination"] == "candidate_application"
     assert linked["destination_label"] == "Recruitment / Candidate"
-    # routing_failed → Broken even with mapping rules
-    assert linked["mapping_health"] == HEALTH_BROKEN
+    # routing_failed stays operational last_error; mapping is workspace assessment.
+    assert linked["last_error_code"] == "routing_failed"
+    _assert_canonical_mapping(linked)
     assert linked["campaign_count"] >= 1
     assert linked["flight_count"] >= 1
     assert linked["last_submission_at"] is not None
     assert linked["last_error_at"] is not None
-    assert linked["last_error_code"] == "routing_failed"
     assert linked["mapping_path"].startswith(MARKETING_SOURCES)
     assert linked["mapping_path"].endswith(f"/{linked['source_id']}/mapping")
     assert linked["test_lead_path"].startswith(MARKETING_SOURCES)
@@ -358,7 +379,7 @@ async def test_list_sources_aggregates_bindings_and_flights(
     lonely_row = by_id[lonely_id]
     assert lonely_row["campaign_count"] == 0
     assert lonely_row["flight_count"] == 0
-    assert lonely_row["mapping_health"] == HEALTH_NEEDS_REVIEW
+    _assert_canonical_mapping(lonely_row)
 
 
 @pytest.mark.anyio
@@ -417,7 +438,7 @@ async def test_ready_health_when_mapped_and_connected() -> None:
         rows = await list_marketing_source_summaries(db, tenant_id=tid)
     by_id = {r.source_id: r for r in rows}
     assert pid in by_id
-    assert by_id[pid].mapping_health == HEALTH_READY
+    _assert_canonical_mapping(by_id[pid])
     assert by_id[pid].connection_status == "connected"
 
 
@@ -546,5 +567,5 @@ async def test_waiting_submissions_project_ad_id_and_setup_cta(
     assert row["setup_campaign_flight_path"].startswith(MARKETING_NEW)
     assert f"intake_source_profile_id={profile_id}" in row["setup_campaign_flight_path"]
     assert f"ad_id={ad_id}" in row["setup_campaign_flight_path"]
-    assert row["mapping_health"] in {HEALTH_NEEDS_REVIEW, HEALTH_BROKEN}
+    _assert_canonical_mapping(row)
     assert row["last_submission_at"] is not None

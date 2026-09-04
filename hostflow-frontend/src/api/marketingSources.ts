@@ -1,14 +1,34 @@
 import http from './http'
 
 export type MarketingSourceConnectionStatus = 'connected' | 'attention' | 'disconnected'
-export type MarketingSourceMappingHealth = 'ready' | 'needs_review' | 'broken'
+export type MappingContractHealth = 'valid' | 'needs_review' | 'invalid'
+
+/** Same sentence the Mapping workspace shows — not leftover ready / broken. */
+export function mappingAssessmentCopy(row: {
+  mapping_human?: string | null
+  mapping_headline?: string | null
+}): string {
+  const human = String(row.mapping_human || '').trim()
+  if (human) return human
+  const headline = String(row.mapping_headline || '').trim()
+  return headline || '—'
+}
+
+export function mappingContractTone(health: string | null | undefined): string {
+  if (health === 'valid') return 'bg-emerald-50 text-emerald-800'
+  if (health === 'invalid') return 'bg-rose-50 text-rose-800'
+  return 'bg-amber-50 text-amber-900'
+}
 
 export type MarketingSourceSummary = {
   source_id: string
   provider: string
   display_name: string
   connection_status: MarketingSourceConnectionStatus | string
-  mapping_health: MarketingSourceMappingHealth | string
+  mapping_health: MappingContractHealth | string
+  mapping_headline?: string | null
+  mapping_human?: string | null
+  contract_health?: MappingContractHealth | string | null
   last_submission_at: string | null
   last_error_at: string | null
   last_error_code: string | null
@@ -167,7 +187,9 @@ export type MarketingSourceMapping = {
   profile_mapping_rules: MarketingSourceMappingRule[]
   rules_source: string
   mapping_rules_count: number
-  mapping_health: MarketingSourceMappingHealth | string
+  mapping_health: MappingContractHealth | string
+  mapping_headline?: string | null
+  mapping_human?: string | null
   destination: string | null
   destination_label: string | null
   route_intent: string | null
