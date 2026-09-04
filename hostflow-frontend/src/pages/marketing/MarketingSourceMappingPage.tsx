@@ -2,7 +2,7 @@
  * MA-3 Mapping workspace — one editor over IntakeSourceProfile.mapping_rules.
  * Schema-first. Sample is evidence in this scenario, not a second authority.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
@@ -165,6 +165,8 @@ export default function MarketingSourceMappingPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const busyRef = useRef(false)
+  busyRef.current = busy
 
   const load = useCallback(async () => {
     if (!sourceId) return
@@ -191,6 +193,37 @@ export default function MarketingSourceMappingPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const waitingUntil = mapping?.sample_evidence?.capture_next_until
+  const appliedPresent = Boolean(mapping?.applied_evidence?.present)
+
+  useEffect(() => {
+    if (!sourceId || !waitingUntil || appliedPresent) return
+    const end = Date.parse(waitingUntil)
+    if (Number.isNaN(end) || end <= Date.now()) return
+    const timer = window.setInterval(() => {
+      if (Date.now() >= end) {
+        window.clearInterval(timer)
+        return
+      }
+      if (busyRef.current) return
+      void getMarketingSourceMapping(sourceId)
+        .then((next) => {
+          setMapping(next)
+          if (!busyRef.current) {
+            setDrafts(rowsFromWorkspace(next))
+          }
+          if (next.applied_evidence?.present) {
+            setActionMessage(
+              next.applied_evidence.sentences[0]?.sentence ||
+                t('app.marketing.mapping.applied.current'),
+            )
+          }
+        })
+        .catch(() => undefined)
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [appliedPresent, sourceId, t, waitingUntil])
 
   const destinations = mapping?.destinations || []
 
@@ -616,7 +649,9 @@ export default function MarketingSourceMappingPage() {
               </div>
             ) : (
               <p className="text-sm text-slate-500" data-testid="marketing-mapping-applied-empty">
-                {t('app.marketing.mapping.applied.none')}
+                {mapping.sample_evidence?.capture_next_until
+                  ? t('app.marketing.mapping.applied.waiting')
+                  : t('app.marketing.mapping.applied.none')}
               </p>
             )}
           </section>

@@ -11695,6 +11695,7 @@
         "applied": {
           "title": "Co zapisał ostatni wniosek",
           "none": "Żaden wniosek jeszcze nie użył tego mapowania. Projekcja powyżej to to, co zapisze następny.",
+          "waiting": "Czekamy na następne zgłoszenie, żeby potwierdzić to mapowanie.",
           "drift": "Ostatni wniosek użył starszego mapowania niż to, które jest zapisane teraz.",
           "current": "Ostatni wniosek użył mapowania zapisanego teraz."
         },

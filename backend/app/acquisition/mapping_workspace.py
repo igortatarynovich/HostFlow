@@ -90,6 +90,41 @@ def coerce_schema_fields(raw: Any) -> list[dict[str, Any]]:
     return out
 
 
+def schema_fields_from_graph_questions(questions: Any) -> list[dict[str, Any]]:
+    """Graph Lead Form ``questions`` → workspace schema fields. Sample is not used."""
+    if not isinstance(questions, list):
+        return []
+    raw: list[dict[str, Any]] = []
+    for item in questions:
+        if not isinstance(item, dict):
+            continue
+        source = str(item.get("key") or item.get("id") or item.get("name") or "").strip()
+        if not source:
+            continue
+        options: list[str] = []
+        for opt in item.get("options") or []:
+            if isinstance(opt, dict):
+                val = str(opt.get("value") or opt.get("key") or opt.get("label") or "").strip()
+            else:
+                val = str(opt).strip()
+            if val:
+                options.append(val)
+        field_type = str(item.get("type") or item.get("field_type") or "").strip()
+        if not field_type:
+            field_type = "choice" if options else "text"
+        elif options and field_type.upper() in {"CUSTOM", "SELECT", "CHOICE"}:
+            field_type = "choice"
+        raw.append(
+            {
+                "source": source,
+                "label": str(item.get("label") or source).strip() or source,
+                "options": options,
+                "field_type": field_type,
+            }
+        )
+    return coerce_schema_fields(raw)
+
+
 def fingerprint_schema_fields(fields: Sequence[Mapping[str, Any]] | None) -> str:
     """Deterministic schema fingerprint — questions, types, options. Not mapping rules."""
     cleaned: list[dict[str, Any]] = []
@@ -777,6 +812,7 @@ __all__ = [
     "set_schema_snapshot",
     "get_schema_snapshot",
     "fingerprint_schema_fields",
+    "schema_fields_from_graph_questions",
     "build_schema_identity",
     "assess_mapping",
     "mapping_assessment_for_profile",

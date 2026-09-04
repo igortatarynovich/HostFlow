@@ -37,6 +37,8 @@ describe('C-5 Mapping workspace UI shell', () => {
     expect(src).toContain('marketing-mapping-sample-wait')
     expect(src).toContain('postMarketingSourceMappingSampleLatest')
     expect(src).toContain('postMarketingSourceMappingSampleCaptureNext')
+    expect(src).toContain('setInterval')
+    expect(src).toContain('capture_next_until')
     expect(src).not.toContain('marketing-mapping-to-test-lead')
     expect(src).not.toContain('postMarketingSourceSampleFromPayload')
     expect(src).not.toContain('postMarketingSourceSamplePreview')

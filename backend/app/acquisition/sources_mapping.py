@@ -20,6 +20,7 @@ from backend.app.acquisition.mapping_applied_stamp import (
 )
 from backend.app.acquisition.mapping_workspace import (
     coerce_schema_fields,
+    get_schema_snapshot,
     set_schema_snapshot,
     workspace_envelope,
 )
@@ -32,6 +33,7 @@ from backend.app.acquisition.sources_sample import (
     persist_latest_sample,
     preview_source_sample,
     resolve_meta_form_id,
+    try_graph_form_schema,
 )
 from backend.app.acquisition.submission_routing import ACQUISITION_ROUTING_V1_KEY
 from backend.app.field_registry.intake_mapping import enrich_mapping_rules_for_storage
@@ -97,6 +99,31 @@ def normalize_rules_for_write(rules: list[Any]) -> list[dict[str, Any]]:
     return enrich_mapping_rules_for_storage(accepted)
 
 
+async def hydrate_meta_schema_if_empty(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    profile: Any,
+    bindings: list[Any],
+    meta_form_id: Optional[str],
+) -> bool:
+    """Persist Graph questions once. Does not overwrite a saved snapshot or mint a lead."""
+    if coerce_schema_fields(get_schema_snapshot(profile)):
+        return False
+    fields, _error = await try_graph_form_schema(
+        db,
+        tenant_id=str(tenant_id),
+        bindings=bindings,
+        meta_form_id=meta_form_id,
+    )
+    if not fields:
+        return False
+    set_schema_snapshot(profile, {"fields": fields})
+    await db.commit()
+    await db.refresh(profile)
+    return True
+
+
 async def get_source_mapping(
     db: AsyncSession,
     *,
@@ -106,6 +133,13 @@ async def get_source_mapping(
     profile = await load_source_profile(db, tenant_id=tenant_id, source_id=source_id)
     bindings = await _bindings_for_profile(db, tenant_id=tenant_id, profile_id=str(profile.id))
     meta_form_id = resolve_meta_form_id(profile, bindings)
+    await hydrate_meta_schema_if_empty(
+        db,
+        tenant_id=tenant_id,
+        profile=profile,
+        bindings=bindings,
+        meta_form_id=meta_form_id,
+    )
     effective = await _mapping_rules_for_source(
         db, tenant_id=tenant_id, profile=profile, meta_form_id=meta_form_id
     )

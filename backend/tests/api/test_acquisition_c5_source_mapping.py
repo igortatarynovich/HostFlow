@@ -1064,3 +1064,168 @@ async def test_mapping_latest_uses_graph_field_data_as_evidence(
     by_source = {row["source"]: row for row in body["schema_fields"]}
     assert by_source["licence_category"]["sample_example"]
     assert by_source["phone_number"]["sample_example"] is None
+
+
+_GRAPH_QUESTIONS = [
+    {
+        "key": "licence_category",
+        "label": "Категория прав",
+        "type": "CUSTOM",
+        "options": [{"value": "C+E"}],
+    },
+    {"key": "code_95", "label": "Code 95", "options": [{"value": "Да"}, {"value": "Нет"}]},
+    {
+        "key": "document_validity",
+        "label": "Срок документов",
+        "options": [{"value": "Более 8 месяцев"}],
+    },
+    {"key": "eu_experience", "label": "Стаж в ЕС"},
+    {"key": "favourite_color", "label": "Любимый цвет"},
+    {"key": "full_name", "label": "Имя", "type": "FULL_NAME"},
+    {"key": "email", "label": "Email", "type": "EMAIL"},
+    {"key": "phone_number", "label": "Телефон", "type": "PHONE"},
+]
+
+
+def test_graph_questions_become_schema_rows_not_sample() -> None:
+    from backend.app.acquisition.mapping_workspace import schema_fields_from_graph_questions
+
+    fields = schema_fields_from_graph_questions(_GRAPH_QUESTIONS)
+    assert [row["source"] for row in fields] == [q["key"] for q in _GRAPH_QUESTIONS]
+    assert fields[0]["options"] == ["C+E"]
+    assert fields[0]["label"] == "Категория прав"
+
+
+@pytest.mark.anyio
+async def test_mapping_hydrates_graph_schema_when_snapshot_empty(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    from backend.app.acquisition.mapping_workspace import schema_fields_from_graph_questions
+
+    form_id = f"form-ma3-hydrate-{uuid4().hex[:8]}"
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db, tenant_id=DEFAULT_TENANT_ID, form_id=form_id, mapping_rules=[]
+        )
+        await db.commit()
+        source_id = str(profile.id)
+
+    headers = _headers(manager_headers)
+    fields = schema_fields_from_graph_questions(_GRAPH_QUESTIONS)
+    with patch(
+        "backend.app.acquisition.sources_mapping.try_graph_form_schema",
+        new=AsyncMock(return_value=(fields, None)),
+    ):
+        got = await client.get(
+            f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+            headers=headers,
+        )
+    assert got.status_code == 200, got.text
+    body = got.json()
+    assert body["has_schema"] is True
+    assert body["applied_evidence"]["present"] is False
+    assert [row["source"] for row in body["schema_fields"]] == [q["key"] for q in _GRAPH_QUESTIONS]
+
+    again = await client.get(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+    )
+    assert again.status_code == 200, again.text
+    assert [row["source"] for row in again.json()["schema_fields"]] == [
+        q["key"] for q in _GRAPH_QUESTIONS
+    ]
+
+
+@pytest.mark.anyio
+async def test_graph_sample_is_not_applied_until_ingest(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-ma3-applied-{uuid4().hex[:8]}"
+    page_id = f"page-ma3-applied-{uuid4().hex[:6]}"
+    async with async_session_maker() as db:
+        from backend.tests.api.test_leads_meta import _ensure_company, _ensure_vacancy
+
+        profile = await _make_meta_source(
+            db,
+            tenant_id=DEFAULT_TENANT_ID,
+            form_id=form_id,
+            page_id=page_id,
+            mapping_rules=[],
+        )
+        company_id = await _ensure_company(db, DEFAULT_TENANT_ID)
+        vacancy_id = await _ensure_vacancy(db, DEFAULT_TENANT_ID, company_id)
+        await db.commit()
+        source_id = str(profile.id)
+
+    headers = _headers(manager_headers)
+    saved = await client.put(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+        json={
+            "schema_snapshot": {
+                "fields": [
+                    {"source": "email", "label": "Email"},
+                    {"source": "favourite_color", "label": "Favourite color"},
+                ]
+            },
+            "mapping_rules": [
+                {
+                    "source": "email",
+                    "target": "email",
+                    "qualified_field_code": "recruitment.candidate.contacts.email",
+                },
+                {"source": "favourite_color", "action": "ignore"},
+            ],
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["summary"]["headline"] == "all_set"
+    assert saved.json()["applied_evidence"]["present"] is False
+
+    graph_payload = {
+        "id": "leadgen-sample-only",
+        "form_id": form_id,
+        "created_time": "2026-09-04T21:18:00+00:00",
+        "field_data": _seven_field_payload(form_id)["field_data"],
+    }
+    with patch(
+        "backend.app.acquisition.sources_sample._try_graph_latest_payload",
+        new=AsyncMock(return_value=(graph_payload, None)),
+    ):
+        latest = await client.post(
+            f"/api/v1/platform/marketing/sources/{source_id}/mapping/sample/latest",
+            headers=headers,
+        )
+    assert latest.status_code == 200, latest.text
+    assert latest.json()["has_sample"] is True
+    assert latest.json()["applied_evidence"]["present"] is False
+    projection_text = " ".join(item["sentence"] for item in latest.json()["projection"])
+    assert "The next application will write" in projection_text
+
+    suffix = uuid4().hex[:8]
+    email = f"applied-{suffix}@example.com"
+    payload = _meta_lead_payload(
+        form_id=form_id,
+        email=email,
+        color="blue",
+        leadgen_id=f"lg-applied-{suffix}",
+        page_id=page_id,
+        vacancy_id=vacancy_id,
+    )
+    ingest = await client.post(
+        "/api/v1/leads/meta",
+        headers=_meta_ingest_headers(manager_headers, payload),
+        content=json.dumps(payload),
+    )
+    assert ingest.status_code == 200, ingest.text
+    after = await client.get(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+    )
+    assert after.status_code == 200, after.text
+    evidence = after.json()["applied_evidence"]
+    assert evidence["present"] is True
+    assert evidence["drift"] is False
+    sentences = " ".join(row["sentence"] for row in evidence["sentences"])
+    assert email in sentences
+    assert "blue" not in sentences

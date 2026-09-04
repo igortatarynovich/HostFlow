@@ -411,20 +411,14 @@ def persist_sample_on_profile(
     set_discovery_state(profile, next_state)
 
 
-async def _try_graph_latest_payload(
+async def _meta_page_token(
     db: AsyncSession,
     *,
     tenant_id: str,
     bindings: list[IntakeSourceBinding],
-    meta_form_id: Optional[str],
-) -> tuple[Optional[dict[str, Any]], Optional[str]]:
-    """Pull Graph latest ``field_data``. Never mints a Facebook test lead."""
-    form_id = str(meta_form_id or "").strip()
-    if not form_id:
-        return None, None
+) -> tuple[Optional[str], Optional[str]]:
     from backend.app.acquisition.campaign_source_cards import parse_meta_page_id
     from backend.app.modules.leads.admin_service import get_page_access_token
-    from backend.app.modules.leads.meta_marketing_graph import fetch_leadgen_form_latest_lead
 
     page_id: Optional[str] = None
     for binding in bindings:
@@ -436,6 +430,25 @@ async def _try_graph_latest_payload(
     token = await get_page_access_token(db, tenant_id, page_id)
     if not token:
         return None, "no_page_token"
+    return token, None
+
+
+async def _try_graph_latest_payload(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    bindings: list[IntakeSourceBinding],
+    meta_form_id: Optional[str],
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+    """Pull Graph latest ``field_data``. Never mints a Facebook test lead."""
+    form_id = str(meta_form_id or "").strip()
+    if not form_id:
+        return None, None
+    from backend.app.modules.leads.meta_marketing_graph import fetch_leadgen_form_latest_lead
+
+    token, token_error = await _meta_page_token(db, tenant_id=tenant_id, bindings=bindings)
+    if not token:
+        return None, token_error
     try:
         latest = await fetch_leadgen_form_latest_lead(form_id, token)
     except Exception as exc:
@@ -454,6 +467,31 @@ async def _try_graph_latest_payload(
         },
         None,
     )
+
+
+async def try_graph_form_schema(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    bindings: list[IntakeSourceBinding],
+    meta_form_id: Optional[str],
+) -> tuple[list[dict[str, Any]], Optional[str]]:
+    """Pull Graph Lead Form questions. Does not mint a Facebook test lead."""
+    form_id = str(meta_form_id or "").strip()
+    if not form_id:
+        return [], None
+    from backend.app.acquisition.mapping_workspace import schema_fields_from_graph_questions
+    from backend.app.modules.leads.meta_marketing_graph import fetch_leadgen_form
+
+    token, token_error = await _meta_page_token(db, tenant_id=tenant_id, bindings=bindings)
+    if not token:
+        return [], token_error
+    try:
+        node = await fetch_leadgen_form(form_id, token)
+    except Exception as exc:
+        return [], f"graph_error:{exc}"[:180]
+    questions = node.get("questions") if isinstance(node, dict) else None
+    return schema_fields_from_graph_questions(questions), None
 
 
 async def resolve_sample_for_profile(
@@ -745,4 +783,5 @@ __all__ = [
     "resolve_sample_for_profile",
     "set_discovery_state",
     "store_sample_from_payload",
+    "try_graph_form_schema",
 ]

@@ -11695,6 +11695,7 @@
         "applied": {
           "title": "What the last application wrote",
           "none": "No application has used this mapping yet. Projection above is what the next one will write.",
+          "waiting": "Waiting for the next application to prove this mapping.",
           "drift": "The last application used an older mapping than the one saved now.",
           "current": "The last application used the mapping saved now."
         },
