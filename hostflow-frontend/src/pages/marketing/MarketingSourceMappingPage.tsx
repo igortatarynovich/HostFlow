@@ -474,6 +474,38 @@ export default function MarketingSourceMappingPage() {
 
           <section
             className="rounded-lg border border-slate-200 bg-white p-4"
+            data-testid="marketing-mapping-applied"
+          >
+            <h2 className="mb-2 text-base font-semibold text-slate-900">
+              {t('app.marketing.mapping.applied.title')}
+            </h2>
+            {mapping.applied_evidence?.present ? (
+              <div className="space-y-2 text-sm" data-testid="marketing-mapping-applied-result">
+                <p
+                  className={mapping.applied_evidence.drift ? 'text-amber-800' : 'text-slate-600'}
+                  data-testid="marketing-mapping-applied-drift"
+                >
+                  {mapping.applied_evidence.drift
+                    ? t('app.marketing.mapping.applied.drift')
+                    : t('app.marketing.mapping.applied.current')}
+                </p>
+                {mapping.applied_evidence.sentences.length > 0 ? (
+                  <ul className="space-y-1 text-slate-800" data-testid="marketing-mapping-applied-sentences">
+                    {mapping.applied_evidence.sentences.map((item) => (
+                      <li key={`${item.source}-${item.destination_label}`}>{item.sentence}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500" data-testid="marketing-mapping-applied-empty">
+                {t('app.marketing.mapping.applied.none')}
+              </p>
+            )}
+          </section>
+
+          <section
+            className="rounded-lg border border-slate-200 bg-white p-4"
             data-testid="marketing-mapping-routing"
           >
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

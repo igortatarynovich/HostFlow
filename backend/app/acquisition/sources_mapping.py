@@ -10,8 +10,19 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.acquisition.mapping_applied_stamp import (
+    MAPPING_APPLIED_V1_KEY,
+    compose_applied_evidence,
+    empty_applied_evidence,
+)
+from backend.app.acquisition.mapping_workspace import (
+    coerce_schema_fields,
+    set_schema_snapshot,
+    workspace_envelope,
+)
 from backend.app.acquisition.sources_read import compute_destination, compute_mapping_health
 from backend.app.acquisition.sources_sample import (
     _bindings_for_profile,
@@ -20,12 +31,9 @@ from backend.app.acquisition.sources_sample import (
     preview_source_sample,
     resolve_meta_form_id,
 )
-from backend.app.acquisition.mapping_workspace import (
-    coerce_schema_fields,
-    set_schema_snapshot,
-    workspace_envelope,
-)
+from backend.app.acquisition.submission_routing import ACQUISITION_ROUTING_V1_KEY
 from backend.app.field_registry.intake_mapping import enrich_mapping_rules_for_storage
+from backend.app.models.lead import Lead
 
 
 def _coerce_rule(raw: Any) -> Optional[dict[str, Any]]:
@@ -116,6 +124,13 @@ async def get_source_mapping(
         profile=profile,
         mapping_rules=effective,
     )
+    applied = await _applied_evidence_for_source(
+        db,
+        tenant_id=tenant_id,
+        source_id=str(profile.id),
+        current_rules=effective,
+        destinations=list(workspace.get("destinations") or []),
+    )
     return {
         "source_id": str(profile.id),
         "provider": str(profile.provider or ""),
@@ -130,7 +145,44 @@ async def get_source_mapping(
         "destination_label": dest_label,
         "route_intent": str(getattr(profile, "route_intent", None) or "") or None,
         **workspace,
+        "applied_evidence": applied,
     }
+
+
+async def _applied_evidence_for_source(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    source_id: str,
+    current_rules: list[dict[str, Any]],
+    destinations: list[dict[str, Any]],
+) -> dict[str, Any]:
+    sid = str(source_id)
+    stamp = Lead.normalized[MAPPING_APPLIED_V1_KEY]
+    routing = Lead.normalized[ACQUISITION_ROUTING_V1_KEY]
+    stmt = (
+        select(Lead)
+        .where(
+            Lead.tenant_id == str(tenant_id),
+            stamp.isnot(None),
+            or_(
+                stamp["source_id"].as_string() == sid,
+                routing["intake_source_profile_id"].as_string() == sid,
+            ),
+        )
+        .order_by(Lead.created_at.desc(), Lead.id.desc())
+        .limit(1)
+    )
+    lead = (await db.execute(stmt)).scalars().first()
+    if lead is None:
+        return empty_applied_evidence()
+    normalized = lead.normalized if isinstance(lead.normalized, dict) else {}
+    return compose_applied_evidence(
+        lead_id=str(lead.id),
+        normalized=normalized,
+        current_rules=current_rules,
+        destinations=destinations,
+    )
 
 
 async def put_source_mapping(

@@ -9,8 +9,11 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
+from backend.app.acquisition.mapping_applied_stamp import stamp_mapping_applied_v1
+from backend.app.acquisition.submission_routing import ACQUISITION_ROUTING_V1_KEY
 from backend.app.db.session import async_session_maker
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
+from backend.app.models.lead import Lead
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.tenant import Tenant
 
@@ -124,6 +127,7 @@ async def test_get_put_mapping_persists_profile_rules(
     assert body["rules_source"] == "profile"
     assert body["destination"] == "candidate_application"
     assert body["mapping_rules_count"] >= 1
+    assert body["applied_evidence"]["present"] is False
 
     put = await client.put(
         f"/api/v1/platform/marketing/sources/{source_id}/mapping",
@@ -151,6 +155,72 @@ async def test_get_put_mapping_persists_profile_rules(
         rules = list(row.mapping_rules or [])
         sources = {str(r.get("source")) for r in rules if isinstance(r, dict)}
         assert sources == {"email", "full_name", "which_licence"}
+
+
+@pytest.mark.anyio
+async def test_mapping_workspace_returns_applied_evidence_from_last_submission(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-c5-applied-{uuid4().hex[:8]}"
+    rules = [
+        {
+            "source": "email",
+            "target": "email",
+            "qualified_field_code": "recruitment.candidate.contacts.email",
+        }
+    ]
+    lead_id = str(uuid4())
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db,
+            tenant_id=DEFAULT_TENANT_ID,
+            form_id=form_id,
+            mapping_rules=rules,
+        )
+        source_id = str(profile.id)
+        normalized: dict[str, Any] = {
+            "email": "anna@example.com",
+            ACQUISITION_ROUTING_V1_KEY: {
+                "status": "routed",
+                "route_intent": "candidate_application",
+                "intake_source_profile_id": source_id,
+            },
+        }
+        stamp_mapping_applied_v1(
+            normalized,
+            rules=rules,
+            source_id=source_id,
+            rules_source="authority",
+        )
+        db.add(
+            Lead(
+                id=lead_id,
+                tenant_id=DEFAULT_TENANT_ID,
+                source="meta",
+                status="processed",
+                lead_type="candidate",
+                lead_target_type="candidate",
+                external_id=f"meta-lead-{uuid4().hex[:10]}",
+                normalized=normalized,
+                payload={},
+            )
+        )
+        await db.commit()
+
+    headers = _headers(manager_headers)
+    got = await client.get(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+    )
+    assert got.status_code == 200, got.text
+    evidence = got.json()["applied_evidence"]
+    assert evidence["present"] is True
+    assert evidence["lead_id"] == lead_id
+    assert evidence["drift"] is False
+    assert evidence["rules_fingerprint"]
+    sentences = " ".join(row["sentence"] for row in evidence["sentences"])
+    assert "anna@example.com" in sentences
+    assert "Last application wrote" in sentences
 
 
 @pytest.mark.anyio

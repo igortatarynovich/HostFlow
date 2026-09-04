@@ -11675,6 +11675,12 @@
         "projection": {
           "title": "Co zapisze następny wniosek"
         },
+        "applied": {
+          "title": "Co zapisał ostatni wniosek",
+          "none": "Żaden wniosek jeszcze nie użył tego mapowania. Projekcja powyżej to to, co zapisze następny.",
+          "drift": "Ostatni wniosek użył starszego mapowania niż to, które jest zapisane teraz.",
+          "current": "Ostatni wniosek użył mapowania zapisanego teraz."
+        },
         "rules": {
           "empty": "Nie ma jeszcze pytań. Mapowanie będzie możliwe, gdy pojawi się schema.",
           "title": "Pytania"
@@ -18272,7 +18278,7 @@
         "smoke": "Smoke test submit",
         "answers_routing": "Gdzie trafiają odpowiedzi",
         "form_edit": "Metadane formularza",
-        "mapping_edit": "Mapowanie pól dostawcy (P9)",
+        "mapping_edit": "Mapowanie",
         "normalized_preview": "Podgląd znormalizowanego payload",
         "presentation_edit": "Pola prezentacji (P8)",
         "presentation_rules": "Reguły prezentacji (P10A)",
@@ -18361,6 +18367,11 @@
         "hidden": "Ukryte",
         "optional": "Opcjonalne",
         "required": "Wymagane"
+      },
+      "mapping_workspace": {
+        "body": "Mapowanie tej ankiety edytuje się w Mapping — nie tutaj.",
+        "open": "Otwórz mapping",
+        "unbound": "Ten formularz nie jest powiązany ze źródłem intake. Mapowania nie da się tu edytować."
       },
       "mapping_add_row": "Dodaj wiersz",
       "mapping_empty": "Brak reguł mapowania. Dodaj wiersz lub uruchom podgląd z przykładowym JSON.",

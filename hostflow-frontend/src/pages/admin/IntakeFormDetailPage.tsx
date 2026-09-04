@@ -411,10 +411,10 @@ export default function IntakeFormDetailPage() {
             {canMutate && (
               <div className="rounded-xl border border-brand-100 bg-white p-4 shadow-sm">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {t('admin.intake_forms.sections.mapping_edit', { defaultValue: 'Provider field mapping (P9)' })}
+                  {t('admin.intake_forms.sections.mapping_edit', { defaultValue: 'Mapping' })}
                 </h3>
                 <div className="mt-4">
-                  <IntakeFormMappingEditor formId={formId} entityProfileCode={entityProfileCode} />
+                  <IntakeFormMappingEditor formId={formId} />
                 </div>
               </div>
             )}

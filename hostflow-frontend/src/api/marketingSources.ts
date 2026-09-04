@@ -129,6 +129,24 @@ export type MappingProjection = {
   sentence: string
 }
 
+export type MappingAppliedSentence = {
+  source: string | null
+  destination_label: string
+  value: string | null
+  sentence: string
+}
+
+export type MappingAppliedEvidence = {
+  present: boolean
+  lead_id: string | null
+  stamped_at: string | null
+  rules_fingerprint: string | null
+  rules_count: number
+  rules_source: string | null
+  drift: boolean
+  sentences: MappingAppliedSentence[]
+}
+
 export type MarketingSourceMapping = {
   source_id: string
   provider: string
@@ -150,6 +168,7 @@ export type MarketingSourceMapping = {
   contract_health?: string | null
   destinations?: MappingDestination[]
   projection?: MappingProjection[]
+  applied_evidence?: MappingAppliedEvidence
 }
 
 export type MarketingSourceRoutingPreview = {

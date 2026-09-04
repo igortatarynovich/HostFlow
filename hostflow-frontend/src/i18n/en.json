@@ -11675,6 +11675,12 @@
         "projection": {
           "title": "What the next application will write"
         },
+        "applied": {
+          "title": "What the last application wrote",
+          "none": "No application has used this mapping yet. Projection above is what the next one will write.",
+          "drift": "The last application used an older mapping than the one saved now.",
+          "current": "The last application used the mapping saved now."
+        },
         "rules": {
           "empty": "No questions yet. Mapping is still possible once the form schema is available.",
           "title": "Questions"
@@ -17829,7 +17835,7 @@
         "smoke": "Smoke test submit",
         "answers_routing": "Where answers go",
         "form_edit": "Form metadata",
-        "mapping_edit": "Provider field mapping (P9)",
+        "mapping_edit": "Mapping",
         "normalized_preview": "Normalized payload preview",
         "presentation_edit": "Presentation fields (P8)",
         "presentation_rules": "Presentation rules (P10A)",
@@ -17918,6 +17924,11 @@
         "hidden": "Hidden",
         "optional": "Optional",
         "required": "Required"
+      },
+      "mapping_workspace": {
+        "body": "Edit mapping for this form in the Mapping workspace — one editor for every intake source.",
+        "open": "Open mapping",
+        "unbound": "This form is not bound to an intake source. Mapping cannot be edited here."
       },
       "mapping_add_row": "Add row",
       "mapping_empty": "No mapping rules yet. Add a row or run preview with sample JSON.",

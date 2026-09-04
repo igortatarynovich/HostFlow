@@ -143,6 +143,7 @@ class SourceMappingOut(BaseModel):
     contract_health: Optional[str] = None
     destinations: list[dict[str, Any]] = Field(default_factory=list)
     projection: list[dict[str, Any]] = Field(default_factory=list)
+    applied_evidence: dict[str, Any] = Field(default_factory=dict)
 
 
 class SourceMappingPutIn(BaseModel):
