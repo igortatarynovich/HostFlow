@@ -30,6 +30,7 @@ describe('C-5 Mapping workspace UI shell', () => {
     expect(src).toContain('marketing-mapping-rules-table')
     expect(src).toContain('marketing-mapping-save')
     expect(src).toContain('marketing-mapping-routing-run')
+    expect(src).toContain('marketing-mapping-summary')
     expect(src).toContain('creates_entities')
   })
 

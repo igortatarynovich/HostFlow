@@ -11638,7 +11638,7 @@
       "mapping": {
         "title": "Маппинг источника",
         "title_named": "Mapping — {name}",
-        "subtitle": "Подтвердите размещение полей и посмотрите dry-run routing — без создания Candidate / Application.",
+        "subtitle": "Что HostFlow сделает с вопросами этой формы? Сначала schema — sample только как пример.",
         "errors": {
           "load": "Не удалось загрузить mapping для источника",
           "action": "Не удалось выполнить действие"
@@ -11649,10 +11649,33 @@
           "save": "Сохранить маппинг",
           "preview_routing": "Показать preview маршрута"
         },
-        "saved": "Mapping сохранён на IntakeSourceProfile.mapping_rules",
+        "saved": "Маппинг сохранён. Следующая заявка запишется по этим правилам.",
+        "summary": {
+          "fallback": "Проверьте вопросы этого источника"
+        },
+        "sample": {
+          "present": "Последние ответы показаны как примеры — это не структура формы.",
+          "none": "Примеров ответов пока нет. Mapping всё равно возможен.",
+          "none_short": "Примера пока нет",
+          "latest": "Последний пример: {value}"
+        },
+        "binding": {
+          "mapped": "Mapped",
+          "ignored": "Ignored",
+          "unmapped": "Unmapped"
+        },
+        "destination": {
+          "none": "Пока не использовать"
+        },
+        "option_map": {
+          "hostflow": "Значение HostFlow"
+        },
+        "projection": {
+          "title": "Что запишет следующая заявка"
+        },
         "rules": {
-          "empty": "Нет правил и sample полей. Сначала получите sample на Test lead.",
-          "title": "Маппинг полей"
+          "empty": "Вопросов пока нет. Mapping возможен, как только появится schema формы.",
+          "title": "Вопросы"
         },
         "routing": {
           "empty": "Preview покажет destination, ignored и unmapped fields без production writes.",
@@ -11670,10 +11693,10 @@
           "rules_source": "Источник правил"
         },
         "table": {
-          "provider_field": "Поле провайдера",
-          "sample": "Sample",
+          "provider_field": "Вопрос источника",
+          "sample": "Пример",
           "target": "Поле HostFlow",
-          "action": "Действие"
+          "action": "Использовать"
         },
         "action": {
           "map": "Сопоставить",

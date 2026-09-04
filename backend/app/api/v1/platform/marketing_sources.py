@@ -135,10 +135,19 @@ class SourceMappingOut(BaseModel):
     destination: Optional[str] = None
     destination_label: Optional[str] = None
     route_intent: Optional[str] = None
+    schema_source: str = "none"
+    has_schema: bool = False
+    has_sample: bool = False
+    schema_fields: list[dict[str, Any]] = Field(default_factory=list)
+    summary: dict[str, Any] = Field(default_factory=dict)
+    contract_health: Optional[str] = None
+    destinations: list[dict[str, Any]] = Field(default_factory=list)
+    projection: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class SourceMappingPutIn(BaseModel):
     mapping_rules: list[dict[str, Any]] = Field(default_factory=list)
+    schema_snapshot: Optional[dict[str, Any]] = None
 
 
 class SourceRoutingPreviewIn(BaseModel):
@@ -269,6 +278,7 @@ async def put_marketing_source_mapping(
         tenant_id=str(tenant_id),
         source_id=str(source_id),
         mapping_rules=payload.mapping_rules,
+        schema_snapshot=payload.schema_snapshot,
     )
     return SourceMappingOut.model_validate(result)
 

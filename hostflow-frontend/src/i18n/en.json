@@ -11638,7 +11638,7 @@
       "mapping": {
         "title": "Source mapping",
         "title_named": "Mapping — {name}",
-        "subtitle": "Confirm field placement and run dry-run routing — without creating a Candidate / Application.",
+        "subtitle": "What will HostFlow do with this form’s questions? Schema first — a sample is only an example.",
         "errors": {
           "load": "Failed to load mapping for the source",
           "action": "Failed to run the action"
@@ -11649,10 +11649,33 @@
           "save": "Save mapping",
           "preview_routing": "Run routing preview"
         },
-        "saved": "Mapping saved on IntakeSourceProfile.mapping_rules",
+        "saved": "Mapping saved. The next application will use these placements.",
+        "summary": {
+          "fallback": "Review the questions on this source"
+        },
+        "sample": {
+          "present": "Latest answers are shown as examples — they are not the form structure.",
+          "none": "No example answers yet. Mapping is still possible.",
+          "none_short": "No example yet",
+          "latest": "Latest example: {value}"
+        },
+        "binding": {
+          "mapped": "Mapped",
+          "ignored": "Ignored",
+          "unmapped": "Unmapped"
+        },
+        "destination": {
+          "none": "Not used yet"
+        },
+        "option_map": {
+          "hostflow": "HostFlow value"
+        },
+        "projection": {
+          "title": "What the next application will write"
+        },
         "rules": {
-          "empty": "No rules and no sample fields. Get a sample on Test lead first.",
-          "title": "Field mapping"
+          "empty": "No questions yet. Mapping is still possible once the form schema is available.",
+          "title": "Questions"
         },
         "routing": {
           "empty": "Preview will show destination, ignored, and unmapped fields without production writes.",
@@ -11670,10 +11693,10 @@
           "rules_source": "Rules source"
         },
         "table": {
-          "provider_field": "Provider field",
-          "sample": "Sample",
-          "target": "HostFlow target",
-          "action": "Action"
+          "provider_field": "Source question",
+          "sample": "Example",
+          "target": "HostFlow field",
+          "action": "Use"
         },
         "action": {
           "map": "Map",

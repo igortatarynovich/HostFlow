@@ -153,7 +153,7 @@ Reject: a fourth store; renaming C-5 as “the authority” while Meta admin sti
 ## Consequences
 
 - MA-2 resolves only this write authority (one store, one resolver). The other two stores are read-through or migrated; the precedence chain is removed. See [mapping-authority-resolution.md](mapping-authority-resolution.md).  
-- MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Remaining surfaces become views or are retired.  
+- MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Remaining writable surfaces must cease to be editors (deep-link/redirect or separately owned read-only diagnostics).  
 - MA-4 makes `qualified_code` the only write vocabulary on the intake path.  
 - RPM / evaluators consume canonical facts only. Mapping uncertainty is never `no_fit`.
 

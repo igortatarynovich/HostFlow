@@ -80,6 +80,52 @@ export type MarketingSourceMappingRule = {
   action?: string
   format?: string
   overwrite?: boolean
+  option_map?: Record<string, string>
+}
+
+export type MappingWorkspaceRow = {
+  source: string
+  label: string
+  options: string[]
+  sample_example: string | null
+  binding: string
+  destination_code: string | null
+  destination_label: string | null
+  destination_type: string | null
+  choice: boolean
+  option_map: Record<string, string>
+  in_schema: boolean
+  drift: string | null
+}
+
+export type MappingDestination = {
+  code: string
+  label: string
+  field_type: string
+  choice: boolean
+  aliases?: string[]
+  options: Array<{ value: string; label: string }>
+}
+
+export type MappingWorkspaceSummary = {
+  headline: string
+  configured_count: number
+  total_count: number
+  mapped_count?: number
+  ignored_count?: number
+  unmapped_count: number
+  new_question_count: number
+  option_drift_count: number
+  human: string
+  contract_health: string
+}
+
+export type MappingProjection = {
+  source: string
+  destination_label: string
+  example_in: string | null
+  example_out: string
+  sentence: string
 }
 
 export type MarketingSourceMapping = {
@@ -95,6 +141,14 @@ export type MarketingSourceMapping = {
   destination: string | null
   destination_label: string | null
   route_intent: string | null
+  schema_source?: string
+  has_schema?: boolean
+  has_sample?: boolean
+  schema_fields?: MappingWorkspaceRow[]
+  summary?: MappingWorkspaceSummary
+  contract_health?: string | null
+  destinations?: MappingDestination[]
+  projection?: MappingProjection[]
 }
 
 export type MarketingSourceRoutingPreview = {
@@ -171,10 +225,14 @@ export async function getMarketingSourceMapping(
 export async function putMarketingSourceMapping(
   sourceId: string,
   mappingRules: MarketingSourceMappingRule[],
+  schemaSnapshot?: { fields: Array<{ source: string; label: string; options?: string[] }> } | null,
 ): Promise<MarketingSourceMapping> {
   const { data } = await http.put<MarketingSourceMapping>(
     `/platform/marketing/sources/${encodeURIComponent(sourceId)}/mapping`,
-    { mapping_rules: mappingRules },
+    {
+      mapping_rules: mappingRules,
+      ...(schemaSnapshot ? { schema_snapshot: schemaSnapshot } : {}),
+    },
   )
   return data
 }

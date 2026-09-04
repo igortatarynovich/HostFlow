@@ -11638,7 +11638,7 @@
       "mapping": {
         "title": "Mapowanie źródła",
         "title_named": "Mapping — {name}",
-        "subtitle": "Potwierdź rozmieszczenie pól i uruchom dry-run routing — bez tworzenia Candidate / Application.",
+        "subtitle": "Co HostFlow zrobi z pytaniami tego formularza? Najpierw schema — sample tylko jako przykład.",
         "errors": {
           "load": "Nie udało się wczytać mapowania źródła",
           "action": "Nie udało się wykonać działania"
@@ -11649,10 +11649,33 @@
           "save": "Zapisz mapowanie",
           "preview_routing": "Uruchom podgląd routingu"
         },
-        "saved": "Mapowanie zapisane w IntakeSourceProfile.mapping_rules",
+        "saved": "Mapowanie zapisane. Następny wniosek użyje tych przypisań.",
+        "summary": {
+          "fallback": "Sprawdź pytania tego źródła"
+        },
+        "sample": {
+          "present": "Ostatnie odpowiedzi są przykładami — to nie struktura formularza.",
+          "none": "Nie ma jeszcze przykładowych odpowiedzi. Mapowanie i tak jest możliwe.",
+          "none_short": "Brak przykładu",
+          "latest": "Ostatni przykład: {value}"
+        },
+        "binding": {
+          "mapped": "Mapped",
+          "ignored": "Ignored",
+          "unmapped": "Unmapped"
+        },
+        "destination": {
+          "none": "Na razie nie używać"
+        },
+        "option_map": {
+          "hostflow": "Wartość HostFlow"
+        },
+        "projection": {
+          "title": "Co zapisze następny wniosek"
+        },
         "rules": {
-          "empty": "Brak reguł i pól sample. Najpierw pobierz sample na Test lead.",
-          "title": "Mapowanie pól"
+          "empty": "Nie ma jeszcze pytań. Mapowanie będzie możliwe, gdy pojawi się schema.",
+          "title": "Pytania"
         },
         "routing": {
           "empty": "Podgląd pokaże destination, ignored i unmapped fields bez zapisów produkcyjnych.",
@@ -11670,10 +11693,10 @@
           "rules_source": "Źródło reguł"
         },
         "table": {
-          "provider_field": "Pole dostawcy",
-          "sample": "Sample",
+          "provider_field": "Pytanie źródła",
+          "sample": "Przykład",
           "target": "Pole HostFlow",
-          "action": "Akcja"
+          "action": "Użycie"
         },
         "action": {
           "map": "Mapuj",

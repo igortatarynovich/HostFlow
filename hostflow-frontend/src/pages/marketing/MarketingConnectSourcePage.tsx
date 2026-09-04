@@ -7,6 +7,7 @@ import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-r
 import {
   CRM_APP_PATHS,
   marketingCampaignPath,
+  marketingSourceMappingPath,
 } from '../../app/crmAppPaths'
 import { createIntakeForm, listIntakeFormEntityProfiles } from '../../api/intakeForms'
 import { listLeadForms, type TenantLeadForm } from '../../api/leadForms'
@@ -35,6 +36,18 @@ import {
   type MarketingSourceKind,
 } from './marketingPresentation'
 import { MarketingOptionCard } from './MarketingOptionCard'
+
+function mappingSourceIdFromCampaign(campaign: Campaign, preferred?: string): string | null {
+  const want = String(preferred || '').trim()
+  if (want) return want
+  for (const flight of campaign.flights || []) {
+    for (const src of flight.intake_sources || []) {
+      const id = String(src.intake_source_profile_id || '').trim()
+      if (id) return id
+    }
+  }
+  return null
+}
 
 export default function MarketingConnectSourcePage() {
   const { t } = useI18n()
@@ -169,21 +182,29 @@ export default function MarketingConnectSourcePage() {
     setSubmitting(true)
     setError(null)
     try {
+      let saved: Campaign
+      let preferredSourceId: string | undefined
       if (sourceKind === 'public_form') {
-        await attachCampaignForm(campaign.id, formId, 'primary')
+        saved = await attachCampaignForm(campaign.id, formId, 'primary')
       } else {
         const selected = metaSources.find((s) => s.id === metaSourceId)
         if (selected?.needs_create && selected.meta_form_id) {
-          await attachCampaignIntakeSource(campaign.id, {
+          saved = await attachCampaignIntakeSource(campaign.id, {
             meta_form_id: selected.meta_form_id,
             page_id: selected.page_id,
             role: 'primary',
           })
         } else {
-          await attachCampaignIntakeSource(campaign.id, metaSourceId, 'primary')
+          preferredSourceId = metaSourceId
+          saved = await attachCampaignIntakeSource(campaign.id, metaSourceId, 'primary')
         }
       }
-      navigate(marketingCampaignPath(campaign.id))
+      const sourceId = mappingSourceIdFromCampaign(saved, preferredSourceId)
+      navigate(
+        sourceId
+          ? marketingSourceMappingPath(sourceId)
+          : marketingCampaignPath(campaign.id),
+      )
     } catch (err) {
       setError(
         getFriendlyErrorInfo(
