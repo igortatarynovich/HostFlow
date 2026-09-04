@@ -933,6 +933,21 @@ async def _load_public_intake_session(
     )
 
 
+async def _seal_checklist_with_persisted_delta(
+    session: AsyncSession,
+    tenant_id: UUID | str,
+    owner_context: Dict[str, Any],
+    checklist: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Required-set from persisted R5 overlay, not leftover ruleset json_data."""
+    from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+    from backend.app.reference.requirement_policy_consumer_parity import seal_checklist_required_types
+
+    delta = await load_persisted_tenant_delta(session, str(tenant_id))
+    owner_context["tenant_delta"] = delta
+    return seal_checklist_required_types(checklist, owner_context, delta)
+
+
 async def _build_checklist_and_docs_for_session(
     session: AsyncSession,
     tenant_id: UUID,
@@ -963,6 +978,9 @@ async def _build_checklist_and_docs_for_session(
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     checklist = compute_candidate_checklist_via_contract(owner_context, ruleset_payload)
     checklist = _ensure_checklist_defaults(checklist, ruleset_payload)
+    checklist = await _seal_checklist_with_persisted_delta(
+        session, tenant_id, owner_context, checklist
+    )
     pending = []
     if public_session.lead is not None:
         from backend.app.entity_profile.public_intake_draft_session import get_public_intake_draft_block
@@ -3141,7 +3159,9 @@ async def _build_checklist_and_docs(
     owner_context = _owner_context_from_state(state, candidate.id)
     checklist = compute_candidate_checklist_via_contract(owner_context, ruleset_payload)
     checklist = _ensure_checklist_defaults(checklist, ruleset_payload)
-    checklist = _ensure_checklist_defaults(checklist, ruleset_payload)
+    checklist = await _seal_checklist_with_persisted_delta(
+        session, tenant_id, owner_context, checklist
+    )
 
     docs = await list_candidate_documents_via_contract(
         session,

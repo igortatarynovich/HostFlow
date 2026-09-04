@@ -473,12 +473,16 @@ def _outstanding_asks_from_required(required: dict[str, Any] | None) -> list[dic
 
 def project_outstanding_asks_via_contract(
     items: list[dict[str, Any]] | None = None,
+    *,
+    tenant_delta: Mapping[str, Any] | None = None,
+    owner_context: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Hub outstanding-ask projection for public resolve / owner_summary.
 
     SoT is Hub required type vs Document Link rows — not Candidate stage,
     not HR ``hr_document_requests`` JSON, not Activity ``document_request``,
-    and not a Hub request table.
+    and not a Hub request table. Required-set membership is R5
+    ``merge(pack, tenant_delta)``, not leftover ruleset defaults.
     """
     docs = [
         {
@@ -491,7 +495,10 @@ def project_outstanding_asks_via_contract(
         for row in (items or [])
     ]
     docs = [row for row in docs if row["doc_type"]]
-    summary = compute_owner_summary({}, load_default_ruleset(), docs)
+    ctx = dict(owner_context or {})
+    if tenant_delta is not None:
+        ctx["tenant_delta"] = tenant_delta
+    summary = compute_owner_summary(ctx, load_default_ruleset(), docs)
     return _outstanding_asks_from_required(summary.get("required") if isinstance(summary, dict) else None)
 
 
