@@ -60,6 +60,7 @@ __all__ = [
     "count_by_stage",
     "count_by_manager",
     "list_candidate_stage_history",
+    "unattached_compliance_shell_clause",
 ]
 
 READY_STATUSES = (
@@ -78,6 +79,23 @@ IN_PROGRESS_STATUSES = (DocumentStatus.in_progress,)
 ORDERED_STATUSES = (DocumentStatus.requested,)
 
 # --- helpers to pack/unpack profile fields into extra ------------------------
+
+def unattached_compliance_shell_clause():
+    """ADR-031 early Candidate shells that Process has not attached yet.
+
+    Ingest may create a shell for compliance outbound, but the person is still
+    an inbox application. Hide them from Candidates until the operator processes
+    the application (``compliance_shell_attached_at_process`` is stamped then).
+    ``Candidate.extra`` is JSON text.
+    """
+    extra = func.coalesce(Candidate.extra, "")
+    is_shell = or_(
+        extra.like('%"compliance_candidate_shell_v1": true%'),
+        extra.like('%"compliance_candidate_shell_v1":true%'),
+    )
+    attached = extra.like('%"compliance_shell_attached_at_process"%')
+    return and_(is_shell, ~attached)
+
 
 def _parse_extra(raw: Any) -> dict:
     """Best-effort parse of JSON stored in Candidate.extra."""
@@ -463,7 +481,11 @@ def _coerce_naive_utc_datetime(value: Any) -> datetime | None:
 
 def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: TenantVisibility | None = None):
     is_client = bool(filters.get("is_client_tenant"))
-    conds = [Candidate.deleted_at.is_(None), _candidate_scope_clause(tenant_id, visibility, is_client_tenant=is_client)]
+    conds = [
+        Candidate.deleted_at.is_(None),
+        ~unattached_compliance_shell_clause(),
+        _candidate_scope_clause(tenant_id, visibility, is_client_tenant=is_client),
+    ]
 
     q_raw = (filters.get("q") or "").strip()
     q = q_raw.lower()

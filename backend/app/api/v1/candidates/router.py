@@ -1636,6 +1636,7 @@ async def list_candidates_no_next_action(
     where = [
         Candidate.tenant_id == scope_tenant,
         Candidate.deleted_at.is_(None),
+        ~cand_repo.unattached_compliance_shell_clause(),
         active_pipeline,
         ~reminder_exists,
     ]
