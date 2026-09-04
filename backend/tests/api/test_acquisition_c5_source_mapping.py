@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 from typing import Any, Dict
 from uuid import uuid4
 
@@ -11,6 +14,7 @@ from sqlalchemy import select
 
 from backend.app.acquisition.mapping_applied_stamp import stamp_mapping_applied_v1
 from backend.app.acquisition.submission_routing import ACQUISITION_ROUTING_V1_KEY
+from backend.app.core.settings import settings
 from backend.app.db.session import async_session_maker
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.lead import Lead
@@ -26,6 +30,41 @@ def _headers(base: Dict[str, str], *, tenant_id: str = DEFAULT_TENANT_ID) -> Dic
     merged["X-Tenant-Id"] = tenant_id
     merged.setdefault("Content-Type", "application/json")
     return merged
+
+
+def _meta_ingest_headers(base: Dict[str, str], payload: dict[str, Any]) -> Dict[str, str]:
+    secret = str(settings.meta_webhook_secret or "").encode("utf-8")
+    body = json.dumps(payload).encode("utf-8")
+    digest = hmac.new(secret, body, hashlib.sha256).hexdigest()
+    return {**_headers(base), "X-Hub-Signature-256": f"sha256={digest}"}
+
+
+def _meta_lead_payload(
+    *,
+    form_id: str,
+    email: str,
+    color: str,
+    leadgen_id: str,
+    page_id: str | None = None,
+    vacancy_id: str | None = None,
+) -> dict[str, Any]:
+    field_data = [
+        {"name": "email", "values": [email]},
+        {"name": "favourite_color", "values": [color]},
+    ]
+    if vacancy_id:
+        field_data.append({"name": "vacancy_id", "values": [vacancy_id]})
+    value: dict[str, Any] = {
+        "leadgen_id": leadgen_id,
+        "form_id": form_id,
+        "field_data": field_data,
+    }
+    if page_id:
+        value["page_id"] = page_id
+    entry: dict[str, Any] = {"changes": [{"value": value}]}
+    if page_id:
+        entry["id"] = page_id
+    return {"entry": [entry]}
 
 
 async def _ensure_tenant(db, tenant_id: str) -> None:
@@ -68,9 +107,11 @@ async def _make_meta_source(
     tenant_id: str,
     form_id: str,
     mapping_rules: list[dict[str, Any]] | None = None,
+    page_id: str | None = None,
 ) -> IntakeSourceProfile:
     await _ensure_tenant(db, tenant_id)
     oc = await _own_company_id(db, tenant_id)
+    page_key = str(page_id or f"page-{uuid4().hex[:6]}").strip()
     profile = IntakeSourceProfile(
         id=str(uuid4()),
         tenant_id=tenant_id,
@@ -92,7 +133,7 @@ async def _make_meta_source(
             intake_source_profile_id=profile.id,
             provider="meta",
             external_key=f"form_id:{form_id}",
-            external_key_secondary=f"page_id:page-{uuid4().hex[:6]}",
+            external_key_secondary=f"page_id:{page_key}",
             is_active=True,
             priority=10,
         )
@@ -221,6 +262,96 @@ async def test_mapping_workspace_returns_applied_evidence_from_last_submission(
     sentences = " ".join(row["sentence"] for row in evidence["sentences"])
     assert "anna@example.com" in sentences
     assert "Last application wrote" in sentences
+
+
+@pytest.mark.anyio
+async def test_mapping_close_path_ready_projection_then_real_ingest_applied_evidence(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    """Close path through ingest — not a hand-stamped Lead. Does not mark Operator Gate PASS."""
+    form_id = f"form-c5-close-{uuid4().hex[:8]}"
+    page_id = f"page-c5-close-{uuid4().hex[:6]}"
+    async with async_session_maker() as db:
+        from backend.tests.api.test_leads_meta import _ensure_company, _ensure_vacancy
+
+        profile = await _make_meta_source(
+            db,
+            tenant_id=DEFAULT_TENANT_ID,
+            form_id=form_id,
+            page_id=page_id,
+            mapping_rules=[],
+        )
+        company_id = await _ensure_company(db, DEFAULT_TENANT_ID)
+        vacancy_id = await _ensure_vacancy(db, DEFAULT_TENANT_ID, company_id)
+        await db.commit()
+        source_id = str(profile.id)
+
+    headers = _headers(manager_headers)
+    saved = await client.put(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+        json={
+            "schema_snapshot": {
+                "fields": [
+                    {"source": "email", "label": "Email"},
+                    {"source": "favourite_color", "label": "Favourite color"},
+                ]
+            },
+            "mapping_rules": [
+                {
+                    "source": "email",
+                    "target": "email",
+                    "qualified_field_code": "recruitment.candidate.contacts.email",
+                },
+                {"source": "favourite_color", "action": "ignore"},
+            ],
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    workspace = saved.json()
+    assert workspace["has_schema"] is True
+    assert workspace["summary"]["headline"] == "all_set"
+    assert workspace["summary"]["contract_health"] == "valid"
+    assert workspace["applied_evidence"]["present"] is False
+    projection_text = " ".join(item["sentence"] for item in workspace["projection"])
+    assert "The next application will write" in projection_text
+    by_source = {row["source"]: row for row in workspace["schema_fields"]}
+    assert by_source["email"]["binding"] == "mapped"
+    assert by_source["favourite_color"]["binding"] == "ignored"
+
+    suffix = uuid4().hex[:8]
+    email = f"close-{suffix}@example.com"
+    payload = _meta_lead_payload(
+        form_id=form_id,
+        email=email,
+        color="blue",
+        leadgen_id=f"lg-close-{suffix}",
+        page_id=page_id,
+        vacancy_id=vacancy_id,
+    )
+    ingest = await client.post(
+        "/api/v1/leads/meta",
+        headers=_meta_ingest_headers(manager_headers, payload),
+        content=json.dumps(payload),
+    )
+    assert ingest.status_code == 200, ingest.text
+    ingest_body = ingest.json()
+    lead_id = ingest_body.get("lead_id")
+    assert lead_id
+
+    after = await client.get(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+    )
+    assert after.status_code == 200, after.text
+    evidence = after.json()["applied_evidence"]
+    assert evidence["present"] is True
+    assert evidence["lead_id"] == lead_id
+    assert evidence["drift"] is False
+    sentences = " ".join(row["sentence"] for row in evidence["sentences"])
+    assert email in sentences
+    assert "Last application wrote" in sentences
+    assert "blue" not in sentences
 
 
 @pytest.mark.anyio
