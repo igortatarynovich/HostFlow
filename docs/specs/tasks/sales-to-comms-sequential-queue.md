@@ -30,7 +30,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat may be opened. Not MA-4. Not External Intake. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
+| **Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. Not MA-4. Not External Intake. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
 | **Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` — [brief](platform-reference-identity-sot.md). No named Engineering successor this amendment. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background — **not** Active Engineering |
 | **Launch-ops** | **[Operate & Launch](operate-and-launch.md)** — v1 blocker 6 (brief this amendment; **not scheduled**, no Active Launch-ops slice yet). Write-set: `deploy/`, `docs/runbooks/`, infra defaults, tenant-lifecycle surfaces. Occupies the second-track slot left free by Engineering DONE. Not an SRE programme. Not Billing | Second track, small share of capacity |
 
@@ -46,7 +46,7 @@ Reaching the program horizon of this section is **not** a release. Release-ready
 
 | Role | Value |
 |------|--------|
-| **Active Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat may be opened. External Intake / Hiring / min HR remain queued. |
+| **Active Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. External Intake / Hiring / min HR remain queued. |
 | **Queued Product successor** | **MA-4** Consumer cutover after Mapping Operator Gate PASS — [brief](mapping-authority.md). Do not start MA-4 / External Intake / Forms Publish / Hiring in the MA-3 feat. Hiring is unlocked by RPM close, **not** scheduled. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
 | **Active Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` (`ref-id-exit`). No named successor. |
 | **Queued Engineering after Exit** | none this amendment. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
@@ -133,7 +133,7 @@ DR1-runtime  also required  DR1-contract ∧ Reference R5   (PASS [#313](https:/
 | **P-MA1** | [MA-1](mapping-authority.md) Authority contract | **Mapping Authority Contract Gate** ✅ — one operator question; one write; twelve answerers classified; contract shape SoT; no fourth store. SoT: [mapping-authority-contract.md](../architecture/mapping-authority-contract.md). Feat locked. Not Mapping feat. Not Hiring E2E. Not CL8 | RPM program DONE | MA-2 |
 | **P-MA2** | [MA-2](mapping-authority.md) Resolution runtime | **Mapping Resolution Gate** ✅ — exactly one store answers “which rule applies?”; leftover stores read-through or migrated; precedence chain removed. SoT: [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md) | Mapping Authority Contract Gate | MA-3 |
 
-**Now:** Product **MA-3** (UX contract Accepted; Mapping Operator Gate not PASS; feat may be opened) after Mapping Resolution Gate **PASS**. SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping Operator Gate PASS. **Not** MA-4. **Not** External Intake. **Not** Hiring E2E. **Not** OCR. Do not invent CL8. Do not mark Foundation ✅.
+**Now:** Product **MA-3** (UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open) after Mapping Resolution Gate **PASS**. SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping Operator Gate PASS. **Not** MA-4. **Not** External Intake. **Not** Hiring E2E. **Not** OCR. Do not invent CL8. Do not mark Foundation ✅.
 
 LI-1 is the **only** Lifecycle slice between CL1 and CL2. LI-2…LI-4 stay in [the Lifecycle brief](lifecycle-identity-l0-contract-seal.md) and do not stall Field Composition.
 
@@ -306,7 +306,7 @@ A reader who has only this section can answer every item **yes**:
 - **DR1-contract** ← **PASS** [#302](https://github.com/igortatarynovich/HostFlow/pull/302) — [brief](engine-document-request-dr1-contract.md). **DR1-runtime** ← **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313)
 - **Documents E8-eval** ← **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — [brief](documents-platform-e8-eval.md); required / optional / applicability from R5 merge. Not OCR. Not CL8. Not mass D3–D9 bind. Successor = RPM program **DONE**.
 - **Requirement Policy Management** ← **DONE** — RPM-1…3B PASS · Consumer Cutover Gate **PASS** `918274d1` · program close this amendment — [brief](requirement-policy-management.md). Hiring E2E unlocked, **not** scheduled. Not CL8.
-- **Mapping Authority** ← **Active = MA-3** (UX contract Accepted; Mapping Operator Gate not PASS; feat may be opened) — [brief](mapping-authority.md). Mapping Resolution Gate **PASS**. MA-1 Contract Gate **PASS**. External Intake / Hiring / min HR remain queued.
+- **Mapping Authority** ← **Active = MA-3** (UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open) — [brief](mapping-authority.md). Mapping Resolution Gate **PASS**. MA-1 Contract Gate **PASS**. External Intake / Hiring / min HR remain queued.
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -391,10 +391,10 @@ A reader who has only this section can answer every item **yes**:
 | **45h** | **RPM program close** | [brief](requirement-policy-management.md) | **DONE** this amendment — outcome + release delta |
 | **46** | **MA-1** Authority contract | [brief](mapping-authority.md) · [authority SoT](../architecture/mapping-authority-contract.md) | after RPM program close; **PASS** |
 | **46a** | **MA-2** Resolution runtime | [brief](mapping-authority.md) · [resolution SoT](../architecture/mapping-authority-resolution.md) | after MA-1 Contract Gate; **PASS** |
-| **46b** | **MA-3** Operator surface | [brief](mapping-authority.md) · [UX SoT](../architecture/mapping-authority-operator.md) | after Mapping Resolution Gate; **Active** (UX contract Accepted; Operator Gate not PASS; feat may be opened) |
+| **46b** | **MA-3** Operator surface | [brief](mapping-authority.md) · [UX SoT](../architecture/mapping-authority-operator.md) | after Mapping Resolution Gate; **Active** (UX contract Accepted; Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open) |
 
 **C0–C2.3** ✅. **C2.4 frozen (Epic C residual R1).** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** **[MA-3](mapping-authority.md)** (UX contract Accepted; Mapping Operator Gate not PASS; feat may be opened) after Mapping Resolution Gate **PASS**. SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping Operator Gate PASS. **Not** MA-4. **Not** External Intake. **Not** Hiring E2E. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
+**Active (Product):** **[MA-3](mapping-authority.md)** (UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open) after Mapping Resolution Gate **PASS**. SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping Operator Gate PASS. **Not** MA-4. **Not** External Intake. **Not** Hiring E2E. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
 **Active (Engineering):** **DONE** — Reference Program Exit Gate PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. No named successor. Legacy full-repo pytest does **not** become Active Engineering.
 
 ---
@@ -631,7 +631,7 @@ Next branch only after:
 
 ## 8. History
 
-- 2026-09-04: **MA-3 UX contract Accepted.** SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). Mapping Operator Gate **not PASS**. Feat may be opened. Not MA-4 / External Intake / Forms Publish / Hiring.
+- 2026-09-04: **MA-3 Operator Surface feat opened.** Branch `feat/mapping-authority-ma3-operator-gate` from `4073f3a7` ([#350](https://github.com/igortatarynovich/HostFlow/pull/350)). Close path = source → schema → explicit bindings/options → Ready → projection → real submission → applied evidence, plus leftover writer retirement. Mapping Operator Gate **not PASS**. An existing page is not PASS. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-04: **Mapping Resolution Gate PASS.** One resolver (`resolve_mapping_authority`) over `intake_source_profiles.mapping_rules`. Leftover Meta stores read-through / migrated. Precedence chain removed. SoT: [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md). Active Product → **MA-3** (operator surface; not started this PR). External Intake / Hiring E2E / min HR remain queued. Not CL8. Foundation stays 🔄.
 - 2026-09-04: **MA-1 Contract Gate PASS.** Operator question + one write (`intake_source_profiles.mapping_rules`) + twelve-row classification sealed in [mapping-authority-contract.md](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`). Named CI + boundary guard. Feat still locked. Active Product → **MA-2** (resolution runtime; not started this PR). External Intake / Hiring E2E / min HR remain queued. Not CL8. Foundation stays 🔄.
 - 2026-09-04: **RPM program close.** Consumer Cutover Gate **PASS** (`918274d1`). Program outcome + release delta recorded. RPM four-checks PASS (Documents domain). Active Product → **[MA-1](mapping-authority.md)** (brief; feat locked this PR). Mapping feat not opened. External Intake / Hiring E2E / min HR remain queued. Hiring unlocked, not scheduled. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.

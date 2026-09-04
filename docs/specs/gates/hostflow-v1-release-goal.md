@@ -196,7 +196,7 @@ Recorded at RPM program close (2026-09-04). RS-4 is named; the [Release Readines
 ## What this document does not do
 
 - Does not schedule External Intake, Hiring E2E, or min HR (MA-3 is scheduled in the sequential queue, not by this file; the Launch-ops track is opened by a queue amendment)  
-- Does not mark Mapping Operator Gate PASS (MA-1 / MA-2 PASS; MA-3 UX contract Accepted; feat may be opened)  
+- Does not mark Mapping Operator Gate PASS (MA-1 / MA-2 PASS; MA-3 UX contract Accepted; feat `feat/mapping-authority-ma3-operator-gate` open; a mapping page is not PASS)  
 - Does not lock a linear program / slice order (that is the sequential queue)  
 - Does not reopen E8-eval, Overlay, CL7, DR1-runtime, E8-bind, or RPM  
 - Does not mark Documents Foundation ✅  
