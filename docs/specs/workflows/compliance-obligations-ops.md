@@ -84,4 +84,4 @@ UI: Leads workspace chip / queue link `?compliance_open=1` (`LeadRodoObligations
 
 ## Tests
 
-`backend/tests/services/test_lead_rodo_ops.py`, `backend/tests/services/test_lead_rodo_bulk_retry.py`. Bound-path send: `backend/tests/api/test_lead_rodo_bound_retry.py` (`delivery_failed` → retry → `delivered` on a SalesInquiry lead).
+`backend/tests/services/test_lead_rodo_ops.py`, `backend/tests/services/test_lead_rodo_bulk_retry.py`. Bound-path send: `backend/tests/api/test_lead_rodo_bound_retry.py` (SalesInquiry) and `backend/tests/api/test_lead_rodo_recruitment_bound_retry.py` (Application / vacancy).
