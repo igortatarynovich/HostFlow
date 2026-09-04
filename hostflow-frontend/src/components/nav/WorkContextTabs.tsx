@@ -79,21 +79,21 @@ export default function WorkContextTabs({ businessType = 'agency' }: WorkContext
 
   const tabs = useMemo(() => {
     const out: TabDef[] = []
-    if (can('leads.view')) {
+    if (can('candidates.view') || can('leads.view')) {
       out.push({
         key: 'recruitment-inbox',
         to: RECRUITMENT_INBOX_PATH,
         label: t('app.nav.items.recruitment_inbox', { defaultValue: 'Отклики' }),
         isActive: (p, _tab) => p.startsWith(RECRUITMENT_INBOX_PATH),
       })
-      if (businessType === 'services') {
-        out.push({
-          key: 'sales',
-          to: CRM_APP_PATHS.sales,
-          label: t('app.nav.items.sales', { defaultValue: 'Обращения' }),
-          isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.sales),
-        })
-      }
+    }
+    if (can('leads.view') && businessType === 'services') {
+      out.push({
+        key: 'sales',
+        to: CRM_APP_PATHS.sales,
+        label: t('app.nav.items.sales', { defaultValue: 'Обращения' }),
+        isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.sales),
+      })
     }
     if (can('candidates.view')) {
       out.push({

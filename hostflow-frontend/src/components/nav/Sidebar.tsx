@@ -267,6 +267,12 @@ export function Sidebar({
 
     const moduleFiltered = items.filter((item) => {
       if (SIDEBAR_HIDDEN_ITEM_KEYS.has(item.key)) return false
+      // Отклики is the recruitment applications inbox. Do not hide it behind the
+      // employer `leads` module (that flag used to wait until “first lead”).
+      if (item.key === 'recruitment-inbox') {
+        if (!modules) return true
+        return Boolean(modules.candidates || modules.leads)
+      }
       if (item.key === 'work-hub') {
         return (
           can('candidates.view') ||

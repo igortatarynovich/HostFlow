@@ -606,7 +606,9 @@ def _onboarding_module_profile(company_type: str | None) -> Dict[str, bool]:
             "companies": True,
             "vacancies": True,
             "documents": True,
-            "leads": False,
+            # Recruitment inbox (Отклики) is gated on this flag — keep it on so
+            # applications are visible before the first inbound, same as Candidates.
+            "leads": True,
             "services": False,
             "client_portal": False,
         },

@@ -199,7 +199,7 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'app.nav.items.recruitment_inbox',
     path: RECRUITMENT_INBOX_PATH,
     group: 'people',
-    permission: 'leads.view',
+    permission: ['candidates.view', 'leads.view'],
   },
   {
     key: 'sales',
