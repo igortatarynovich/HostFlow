@@ -1,6 +1,6 @@
 # Mapping Authority Operator Surface
 
-**Status:** **Accepted** (L2 UX contract — Mapping Operator Gate not PASS; feat open)  
+**Status:** **Accepted** (L2 UX contract — Mapping Operator Gate **not PASS**; feat may be opened)  
 **Date:** 2026-09-04  
 **Trusted base:** `integration/release-product-a-b` @ `3a4297b0` ([#348](https://github.com/igortatarynovich/HostFlow/pull/348))  
 **Related:** [`mapping-authority-contract.md`](mapping-authority-contract.md) (`mapping_authority.v1`) · [`mapping-authority-resolution.md`](mapping-authority-resolution.md) (`resolve_mapping_authority`) · [`../tasks/mapping-authority.md`](../tasks/mapping-authority.md) · [`ADR-021`](ADR-021-unified-intake-resolution-model.md)
@@ -8,7 +8,7 @@
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (one owner of this write), **INV-01** (one SoT for the operator question), **INV-16** (contract before a second editor). Does not rewrite L0. Does not mint a fourth mapping store or a Field Registry fork.
 
 > This file is the **SoT** for MA-3 product surface: one editor, many entry points, schema-first, human-language health.  
-> Feat `feat/mapping-authority-ma3-operator-surface` implements the editor. Mapping Operator Gate stays **not PASS** until the untrained-operator criterion holds on a real source.  
+> This merge **Accepts** the UX contract. It does **not** PASS Mapping Operator Gate. A later feat closes the remaining product gap. MA-4 / External Intake / Forms Publish / Hiring are not that feat.  
 > Binding / option map / evaluator isolation remain [MA-1](mapping-authority-contract.md). One resolver remains [MA-2](mapping-authority-resolution.md).
 
 ---
@@ -173,6 +173,24 @@ If answering those requires Diagnostics + Meta Settings + Marketing Mapping, MA-
 
 ---
 
+## Remaining product gap (not this merge)
+
+This contract is **Accepted**. Mapping Operator Gate is **not PASS**. Do not fit this file to the current UI.
+
+A later feat must close, at least:
+
+- projection must not use a raw-text fallback;
+- incomplete option map must not produce Ready;
+- Meta Settings and other leftover surfaces must cease to be writers;
+- schema-first mapping must work without a sample;
+- preview must use the same resolution/transform contract as ingestion, not a private evaluator.
+
+Schema + no sample + no binding → “Needs a check — 1 question to set” is the required no-sample semantics. It is not Operator Gate PASS.
+
+MA-4 vocabulary cutover, External Intake, Forms Publish, and Hiring E2E are **not** that feat.
+
+---
+
 ## Measurement (2026-09-04 — current surfaces)
 
 Measured on `3a4297b0` after Mapping Resolution Gate PASS. This is the gap the feat must close; it is not today’s product.
@@ -275,7 +293,7 @@ Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin st
 
 ## Consequences
 
-- Mapping Operator Gate **PASS** only when the feat ships this surface and the product criterion above is true on a real source.  
+- Mapping Operator Gate **PASS** only when a later feat ships this surface and the product criterion above is true on a real source. This Accepted contract is not that PASS.  
 - Remaining writable screens must cease to be editors (deep-link/redirect or separately owned read-only diagnostics).  
 - MA-4 still owns vocabulary cutover (`qualified_code` only). This file does not open MA-4.
 
@@ -283,6 +301,7 @@ Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin st
 
 ## History
 
+- 2026-09-04: UX contract **Accepted** (PASS_WITH_SMALL_CORRECTIONS). Mapping Operator Gate **not PASS**. MA-3 feat may be opened to close the remaining product gap. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-04: **PASS_WITH_SMALL_CORRECTIONS** — split configuration-time schema from submission-time answers; Ready as projection; complete option-map / unknown-option semantics; drift taxonomy + historical removed fields; explicit Ignore; Shared Intake / ingestion as the one runtime caller; leftover screens cease to be editors. Mapping Operator Gate not PASS.
 - 2026-09-04: Feat `feat/mapping-authority-ma3-operator-surface` opened. Mapping Operator Gate not PASS.
 - 2026-09-04: UX contract accepted from measurement after [#348](https://github.com/igortatarynovich/HostFlow/pull/348). Feat locked. Mapping Operator Gate not PASS.
