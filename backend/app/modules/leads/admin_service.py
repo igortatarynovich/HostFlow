@@ -1722,16 +1722,22 @@ async def upsert_meta_lead_form_mapping(
     await ensure_meta_lead_field_mapping_rows_allowed(db, tenant_id, len(rules))
     src = (payload.source or "meta").strip().lower() or "meta"
     pid = str(payload.page_id or "").strip() or None
+    dumped = [r.model_dump() for r in rules]
     await crud.upsert_meta_form_mapping(
         db,
         tenant_id=tenant_id,
         form_id=fid,
         page_id=pid,
         source=src,
-        mapping_rules=[r.model_dump() for r in rules],
+        mapping_rules=dumped,
         form_name=payload.form_name,
         last_sample_lead_id=str(payload.last_sample_lead_id).strip() if payload.last_sample_lead_id else None,
         updated_by=user_sub,
+    )
+    from backend.app.entity_profile.mapping_resolve import write_through_authority_for_meta_form
+
+    await write_through_authority_for_meta_form(
+        db, tenant_id=tenant_id, form_id=fid, page_id=pid, rules=dumped
     )
     return await get_meta_lead_form_mapping(db, tenant_id, fid, page_id=pid, source=src)
 

@@ -272,7 +272,7 @@ class MetaFormRoute(TimestampMixin, Base):
 
 
 class MetaLeadFormMapping(TimestampMixin, Base):
-    """Per Meta lead form field-mapping rules (PR-2); falls back to MetaLeadSettings.field_mapping when absent."""
+    """Per Meta lead form field-mapping rules — leftover store (MA-2 read-through / migrate)."""
 
     __tablename__ = "meta_lead_form_mappings"
 

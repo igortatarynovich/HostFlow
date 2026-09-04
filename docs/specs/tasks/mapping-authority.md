@@ -1,9 +1,9 @@
 # Mapping Authority
 
-**Status:** **ACTIVE** — MA-1 Contract Gate **PASS**. Active Product = **MA-2** (brief; feat locked). Mapping feat not opened this PR.  
+**Status:** **ACTIVE** — MA-1 Contract Gate **PASS**. Mapping Resolution Gate **PASS**. Active Product = **MA-3** (brief; feat locked). MA-3 editor not opened this PR.  
 **Phase class:** platform
 **Branch (docs):** `docs/mapping-authority-ma1-contract-gate`
-**Branch (code):** none — feat locked. Later slices `feat/mapping-authority-maN-…`
+**Branch (code):** `feat/mapping-authority-ma2-resolution-gate`. Later slices `feat/mapping-authority-maN-…`
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 2) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-3](../journeys/release-readiness-acceptance-suite.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [ADR-021](../architecture/ADR-021-unified-intake-resolution-model.md) · [Entity Profile Definition Registry](../platform/entity-profile-definition-registry.md) · [Field Registry](../platform/field-registry-card-configuration.md) · [CL6 Flight map](entity-field-composition-cl6-flight-map.md) · [C-5 mapping workspace](acquisition-ui-cutover-c5-mapping-workspace.md)
 **Estimate:** 4–6 slices (1 slice = one docs PR + one feat PR)
 
@@ -11,7 +11,7 @@
 > Not “build another mapping editor” — there are already three editors writing three stores.
 > **Not** Forms Publish (that is [External Intake](external-intake-forms-publish.md), which consumes this). **Not** Requirement Policy. **Not** CL8. **Not** OCR. **Not** a Zapier product.
 > Zapier is a **UX reference** (schema + sample → pick destination). HostFlow adds what Zapier is not required to solve: typed Field Registry destinations, option maps, binding vs contract-health scales, versioning, drift, and evaluator isolation.
-> [RPM program close](requirement-policy-management.md) named MA-1 Active Product. This slice seals the [Mapping Authority Contract](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`). Feat remains locked. MA-2 runtime is **not** opened here. External Intake / Hiring E2E / min HR remain queued.
+> [RPM program close](requirement-policy-management.md) named MA-1 Active Product. MA-1 sealed the [Mapping Authority Contract](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`). This slice seals the [one resolver](../architecture/mapping-authority-resolution.md). MA-3 editor is **not** opened here. External Intake / Hiring E2E / min HR remain queued.
 
 ---
 
@@ -77,7 +77,7 @@ Four parallel ways answers become entity-shaped data: Forms answers (`forms.norm
 
 ## Internal ladder (this program only)
 
-One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **MA-2 is Active Product** (brief; feat locked). This amendment does **not** open `feat/mapping-authority-maN-…`.
+One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **MA-3 is Active Product** (brief; feat locked). This amendment does **not** open `feat/mapping-authority-ma3-…`.
 
 ```text
 MA-1 Authority contract
@@ -90,7 +90,7 @@ MA-1 Authority contract
 | # | Slice | Machine id | Named gate (PASS =) | Depends on | Estimate |
 |---|-------|------------|---------------------|------------|----------|
 | **MA-1** | Authority contract | `map-authority` | **Mapping Authority Contract Gate** ✅ — one operator question; one write authority named; twelve answerers classified; contract shape (option map, schema ≠ sample, binding vs health, version/drift, evaluator isolation, uncertainty ≠ failure) is SoT; no fourth store. SoT: [mapping-authority-contract.md](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`) | RPM program close (queue amendment) | 1 slice (docs) |
-| **MA-2** | Resolution runtime | `map-resolve` | **Mapping Resolution Gate** — exactly one store answers “which rule applies to this source?”; the other two are read-through or migrated; precedence chain removed, not documented | MA-1 Gate | 1–2 slices |
+| **MA-2** | Resolution runtime | `map-resolve` | **Mapping Resolution Gate** ✅ — exactly one store answers “which rule applies to this source?”; leftover stores are read-through or migrated; precedence chain removed. SoT: [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md) (`resolve_mapping_authority`) | MA-1 Gate | 1–2 slices |
 | **MA-3** | Operator surface | `map-operator` | **Mapping Operator Gate** — one editor writes the authority; remaining surfaces are views or retired; operator sees applied result and drift for a real submission | MA-2 Gate | 1 slice |
 | **MA-4** | Consumer cutover | `map-cutover` | **Mapping Consumer Cutover Gate** — canonical `qualified_code` is the only write vocabulary on the intake path; hardcoded extractors read the authority or are named leftovers with owner + expiry | MA-3 Gate | 1–2 slices |
 
@@ -102,7 +102,7 @@ MA-1 Authority contract
 
 **Operator question (one):** for this source (Meta form, public form, import file, flight), which incoming answer writes which canonical entity field — including which source **option** writes which canonical **option** when the destination is choice-typed — and what happens when the binding is unset or the contract cannot compute a fact?
 
-**Write authority (one):** `intake_source_profiles.mapping_rules` (per-source lineage). Field Registry `qualified_code` is the destination vocabulary. `meta_lead_form_mappings.mapping_rules` and `meta_lead_settings.field_mapping` are leftover read-through stores until MA-2. The silent precedence chain is leftover, not a second authority.
+**Write authority (one):** `intake_source_profiles.mapping_rules` (per-source lineage). Field Registry `qualified_code` is the destination vocabulary. `meta_lead_form_mappings.mapping_rules` and `meta_lead_settings.field_mapping` are leftover read-through stores. MA-2 removed the silent precedence chain: ingest consults `resolve_mapping_authority` only.
 
 MA-1 ships no runtime and no UI. It forbids a second write authority for the same question. The shape below is **docs SoT**; it does not unlock `feat/mapping-authority-maN-…`.
 
@@ -182,15 +182,31 @@ PASS when:
 4. No fourth store; no Zapier product; Sales convert / OCR / CL6 not absorbed.  
 5. RPM / Intake / Hiring E2E / min HR are not this slice.
 
-This slice **closes** the Contract Gate. Feat remains locked until **MA-2**. Do not start MA-2 runtime in this PR (queue invariant 6).
+This slice **closes** the Contract Gate. Feat remained locked until **MA-2**. Do not start MA-3 editor in a Contract Gate PR (queue invariant 6).
 
 ---
 
-## MA-2 — Resolution runtime (queued)
+## MA-2 — Resolution runtime (**PASS**)
 
-Collapse the fallback chain. Success is that a rule saved anywhere the operator can reach lands in the authority, and ingest consults exactly one resolver. Drift diagnostics (`mapping_applied_v1`) must keep working as **applied-rule evidence**; contract health / version from MA-1 is the SoT for Valid / Needs review / Invalid.
+**SoT:** [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md) · `resolve_mapping_authority`.
+
+Collapse the fallback chain. Success is that a rule saved anywhere the operator can reach lands in the authority, and ingest consults exactly one resolver. Drift diagnostics (`mapping_applied_v1`) keep working as **applied-rule evidence**; contract health / version from MA-1 is the SoT for Valid / Needs review / Invalid.
 
 Out: transformation DSL; Zapier-style conditions. Option maps, binding states, and contract health are **MA-1 contract**, executed here — not new MA-2 semantics.
+
+#### Mapping Resolution Gate
+
+**Outcome:** **PASS**. Named CI: `backend/tests/platform/test_mapping_authority_resolution_gate.py` + `backend/tests/entity_profile/test_mapping_resolve.py`.
+
+PASS when:
+
+1. This brief is merged and the queue Active Product is **MA-2** (or a later MA slice after this gate).  
+2. Ingest consults exactly one resolver over `intake_source_profiles.mapping_rules`.  
+3. Leftover Meta form / tenant stores are read-through or migrated, not a second ingest answerer.  
+4. The silent precedence chain is removed, not documented.  
+5. RPM / Intake / Hiring E2E / min HR / MA-3 editor are not this slice.
+
+This slice **closes** the Resolution Gate. Feat remains locked until **MA-3**. Do not start MA-3 editor in this PR (queue invariant 6).
 
 ---
 
@@ -224,13 +240,14 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 ## Queue position
 
 **Depends on:** [RPM program close](requirement-policy-management.md). The [DAG](../gates/hostflow-v1-release-goal.md) does **not** make RPM a predecessor of Mapping — one-Active-Product serialized them.  
-**Unlocks:** MA-2 Resolution runtime (feat still locked this PR); [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance remains a later edge — **not** scheduled here  
-**Does not:** open Mapping feat; absorb Forms Publish; reopen CL6 / C-5 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR
+**Unlocks:** MA-3 Operator surface (feat still locked this PR); [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance remains a later edge — **not** scheduled here  
+**Does not:** open MA-3 editor; absorb Forms Publish; reopen CL6 / C-5 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR
 
 ---
 
 ## Refs
 
+- [Mapping Authority Resolution](../architecture/mapping-authority-resolution.md) — one resolver (`resolve_mapping_authority`)
 - [Mapping Authority Contract](../architecture/mapping-authority-contract.md) — operator question + write + twelve-row classification (`mapping_authority.v1`)
 - [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) — blocker 2 and the four checks
 - [Acceptance suite RS-3](../journeys/release-readiness-acceptance-suite.md) — the proof this program must satisfy
@@ -244,4 +261,5 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 
 ## History
 
+- 2026-09-04: Mapping Resolution Gate **PASS**. SoT = [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md) (`resolve_mapping_authority`). One store at ingest. Leftover Meta stores read-through / migrated. Active Product → **MA-3** (brief; feat locked). External Intake / Hiring E2E / min HR remain queued. Not CL8. Foundation stays 🔄.
 - 2026-09-04: Mapping Authority Contract Gate **PASS**. SoT = [mapping-authority-contract.md](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`). Named CI + boundary. Active Product → **MA-2** (brief; feat locked). Mapping feat not opened. External Intake / Hiring E2E / min HR remain queued. Not CL8. Foundation stays 🔄.

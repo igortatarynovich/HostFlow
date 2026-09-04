@@ -167,7 +167,7 @@ Known acceptance edges unchanged from the Goal. Still **not** proven as executio
 
 ## Next (consumed)
 
-The docs-only queue amendment after this review named **Requirement Policy Management** as the first Product and cut [RPM-1 / RPM-2 / RPM-3](../tasks/requirement-policy-management.md). The RPM program close amendment then named **Mapping Authority MA-1** as Active Product (brief; feat locked). Mapping Authority Contract Gate then **PASS**; Active Product is [MA-2](../tasks/mapping-authority.md) (brief; feat locked). External Intake / Hiring E2E / min HR remain queued. This review is still not the schedule.
+The docs-only queue amendment after this review named **Requirement Policy Management** as the first Product and cut [RPM-1 / RPM-2 / RPM-3](../tasks/requirement-policy-management.md). The RPM program close amendment then named **Mapping Authority MA-1** as Active Product (brief; feat locked). Mapping Authority Contract Gate then **PASS**; Mapping Resolution Gate then **PASS**; Active Product is [MA-3](../tasks/mapping-authority.md) (brief; feat locked). External Intake / Hiring E2E / min HR remain queued. This review is still not the schedule.
 
 Until that first amendment merged, Product Track stayed **none**. After it, Active Product was RPM-1 (brief; feat locked). After RPM program close, Active Product was MA-1. After MA-1 Contract Gate PASS, Active Product is MA-2.
 

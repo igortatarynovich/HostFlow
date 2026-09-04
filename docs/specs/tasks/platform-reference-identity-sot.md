@@ -8,7 +8,7 @@
 **Parents:** [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) (parallel Product while R1 ran) · [REF-4 Phase 1 closeout](../gates/ref4_phase1_final_closeout.md) · [REF-4 Phase 2 start gate](../gates/ref4_phase2_start_gate.md) · [Reference delivery contract](../reference_delivery_contract_standard.md) · [Reference layer architecture](../architecture/reference-layer-and-applicability-packs.md) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [`document-type-registry-v1.json`](../platform/document-type-registry-v1.json) · [`document-type-legacy-aliases-v1.json`](../platform/document-type-legacy-aliases-v1.json) · [Document type model standard](../architecture/document-type-model-standard.md) · [AGENTS.md](../../../AGENTS.md) (Architecture Rule 1)
 
 > **R1–R5 Gates PASS** — Country Registry, runtime cutover (R2), document identity (R3), alias consolidation (R4), policy merge (R5). **Reference Program Exit Gate PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. Engineering = **DONE**.  
-> **E8-eval Gate PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. RPM program **DONE**. MA-1 Contract Gate **PASS**. Product = **[MA-2](mapping-authority.md)** (brief; feat locked). OCR stays locked.
+> **E8-eval Gate PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. RPM program **DONE**. MA-1 Contract Gate **PASS**. Mapping Resolution Gate **PASS**. Product = **[MA-3](mapping-authority.md)** (brief; feat locked). OCR stays locked.
 
 **Naming (do not collapse):** this program is **Reference R1–R5**. It is **not** Documents E8, not Entity Field Composition CL0, not **Epic C residual R1** (C2.4 freeze), not Acquisition R6, not a second document-type catalog in `definitions.py`, not REF-4 Phase 1 re-open, not REF-4 Phase 2 (that is **Reference R2**), not tenant-owned document type lists, not a monolithic “catalog of everything”, not L0 Catalog rewrite, not Billing / AI / Forms P3–P5.
 
@@ -278,7 +278,7 @@ Fan-out is **only** `{R2, R3}`. R5 is **not** a third concurrent Engineering sli
 - **Reference R1** may run **now** (parallel CL0).  
 - After **Reference R1 Gate**: fan-out **{R2 ∥ R3}** only. Then collapse.  
 - **E8-bind** **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`.  
-- **E8-eval** **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Does **not** start OCR. RPM program **DONE**. MA-1 Contract Gate **PASS**. Product = **[MA-2](mapping-authority.md)** (brief; feat locked).  
+- **E8-eval** **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Does **not** start OCR. RPM program **DONE**. MA-1 Contract Gate **PASS**. Mapping Resolution Gate **PASS**. Product = **[MA-3](mapping-authority.md)** (brief; feat locked).  
 - **DR1-runtime** is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). It does **not** park later CL (CL2+ already PASS).
 
 ### R1 gate (named)
