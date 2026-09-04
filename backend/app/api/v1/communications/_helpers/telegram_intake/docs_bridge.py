@@ -94,6 +94,9 @@ async def _telegram_required_docs_snapshot(
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     owner_context = _candidate_owner_context_for_docs(candidate)
+    from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+
+    owner_context["tenant_delta"] = await load_persisted_tenant_delta(db, str(tenant_id))
 
     docs = await list_candidate_documents_via_contract(
         db,

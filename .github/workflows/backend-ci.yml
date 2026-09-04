@@ -104,6 +104,7 @@ jobs:
       rpm2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm2 == 'true' }}
       rpm3a: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm3a == 'true' }}
       rpm3b: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm3b == 'true' }}
+      rpm_cutover: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm_cutover == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -317,6 +318,19 @@ jobs:
               - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
               - 'AGENTS.md'
               - 'hostflow-frontend/src/utils/candidateStageDocPolicy.ts'
+            rpm_cutover:
+              - 'backend/app/reference/requirement_policy_consumer_cutover.py'
+              - 'backend/tests/platform/test_requirement_policy_consumer_cutover_gate.py'
+              - 'backend/app/reference/document_policy_overlay_store.py'
+              - 'backend/app/api/v1/platform/documents_public.py'
+              - 'backend/app/api/public/intake.py'
+              - 'backend/app/api/v1/documents.py'
+              - 'backend/app/api/v1/communications/_helpers/telegram_intake/docs_bridge.py'
+              - 'backend/app/services/candidate_telegram_notifications.py'
+              - 'backend/app/services/document_hub_delivery_contract.py'
+              - 'backend/app/modules/documents/router.py'
+              - 'docs/specs/tasks/requirement-policy-management.md'
+              - 'docs/specs/architecture/requirement-policy-authority.md'
 
   guards:
     name: guards
@@ -807,6 +821,21 @@ jobs:
         with:
           tests: tests/platform/test_requirement_policy_consumer_parity_gate.py
 
+  rpm-cutover-gate:
+    name: Requirement Policy Consumer Cutover Gate
+    needs: changes
+    if: needs.changes.outputs.rpm_cutover == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RPM Consumer Cutover gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_requirement_policy_consumer_cutover_gate.py') == ''
+        run: echo "RPM Consumer Cutover gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_requirement_policy_consumer_cutover_gate.py') != ''
+        with:
+          tests: tests/platform/test_requirement_policy_consumer_cutover_gate.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -851,6 +880,7 @@ jobs:
       - rpm2-operator-gate
       - rpm3a-parallel-retirement-gate
       - rpm3b-consumer-parity-gate
+      - rpm-cutover-gate
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:

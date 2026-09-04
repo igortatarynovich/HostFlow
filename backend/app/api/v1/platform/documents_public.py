@@ -113,6 +113,7 @@ async def resolve_documents_via_public_contract(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    tenant_delta = await load_persisted_tenant_delta(db, tenant_id)
     persisted = load_outstanding_asks_via_contract(
         linked_entity_type=etype,
         linked_entity_id=linked_entity_id.strip(),
@@ -125,8 +126,7 @@ async def resolve_documents_via_public_contract(
             if code and state:
                 asks.append({"doc_type": code, "state": state})
     else:
-        asks = project_outstanding_asks_via_contract(items)
-    tenant_delta = await load_persisted_tenant_delta(db, tenant_id)
+        asks = project_outstanding_asks_via_contract(items, tenant_delta=tenant_delta)
     return DocumentsResolveOut(
         items=[DocumentHubViewOut.model_validate(row) for row in items],
         outstanding_asks=[OutstandingAskOut.model_validate(row) for row in asks],

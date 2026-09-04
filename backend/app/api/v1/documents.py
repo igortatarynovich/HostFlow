@@ -807,7 +807,16 @@ async def order_document(
         load_default_ruleset(),
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
+    from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+    from backend.app.reference.requirement_policy_consumer_parity import seal_checklist_required_types
+
+    owner_context["tenant_delta"] = await load_persisted_tenant_delta(db, str(tenant_id))
     checklist = compute_candidate_checklist(owner_context, ruleset_payload)
+    checklist = seal_checklist_required_types(
+        checklist,
+        owner_context,
+        owner_context.get("tenant_delta") if isinstance(owner_context.get("tenant_delta"), dict) else None,
+    )
 
     existing_docs = await documents_crud.list_candidate_documents(
         db,

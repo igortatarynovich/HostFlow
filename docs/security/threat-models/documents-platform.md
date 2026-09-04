@@ -7,7 +7,7 @@
 - Document Hub rows (`documents`) scoped by tenant — **no** `candidate_id` column  
 - Public contract / adapter ids: `documents.public_contract.v1` / `documents.hub_adapter_v1`
 
-This model covers the **platform capability** consume path sealed in E3–E8: HR employee (D8) reads reused documents via Document Link (`workforce_employee` / `reused_for_hr`); Candidate (D4) reads via Document Link (`candidate` / `primary`). E6 adds Hub expiry fields on the same DTO. E7 adds Hub outstanding-ask projection (required type vs linked docs). E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` canonicalizes type identity (display / select / persist). E8-eval projects required / optional / blocked applicability from R5 `merge(pack, tenant_delta)` (+ Overlay as existing CL7 input) as additive `applicability` on the same DTO. Neither consumer uses a page-local widget as the D2 path. Candidate relationship storage is Hub links only — **not** `documents.candidate_id`. Validity is on the Document, not on a Candidate status machine. The outstanding ask is Hub required type + entity, not Candidate stage / HR JSON / Activity `document_request`. Applicability is R5 merged policy, not screening `required=true` on a field. File bytes, signed URLs, and upload remain [`document-uploads.md`](./document-uploads.md). Candidate portal uploads remain [`candidate-portal.md`](./candidate-portal.md). Handoff copy-vs-link remains [`handoff.md`](./handoff.md) — E3–E8 do not add a file-copy path.
+This model covers the **platform capability** consume path sealed in E3–E8: HR employee (D8) reads reused documents via Document Link (`workforce_employee` / `reused_for_hr`); Candidate (D4) reads via Document Link (`candidate` / `primary`). E6 adds Hub expiry fields on the same DTO. E7 adds Hub outstanding-ask projection (required type vs linked docs). E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` canonicalizes type identity (display / select / persist). E8-eval projects required / optional / blocked applicability from R5 `merge(pack, tenant_delta)` (+ Overlay as existing CL7 input) as additive `applicability` on the same DTO. RPM Consumer Cutover loads that same persisted `tenant_delta` into the outstanding-ask fallback on this resolve (no second merge, no new public URL / signed link). Neither consumer uses a page-local widget as the D2 path. Candidate relationship storage is Hub links only — **not** `documents.candidate_id`. Validity is on the Document, not on a Candidate status machine. The outstanding ask is Hub required type + entity, not Candidate stage / HR JSON / Activity `document_request`. Applicability is R5 merged policy, not screening `required=true` on a field. File bytes, signed URLs, and upload remain [`document-uploads.md`](./document-uploads.md). Candidate portal uploads remain [`candidate-portal.md`](./candidate-portal.md). Handoff copy-vs-link remains [`handoff.md`](./handoff.md) — E3–E8 do not add a file-copy path.
 
 DP-12 stays the E8-bind identity threat. OCR / packages-product stay out of this surface until a later named slice.
 
@@ -40,6 +40,7 @@ Not this surface: OCR / e-sign / packages product, D3 / D5–D7 / D9 bind, Found
 | DP-12 | Alias as stored type identity | Displaying, selecting, or persisting R4 alias / module codes as Hub `document_type_code` identity |
 | DP-13 | Screening `required=true` as applicability SoT | Treating a field flag / Hub ask / identity bind as required / optional / blocked |
 | DP-14 | Non-canonical applicability codes | Emitting alias / local dictionary codes on `applicability.doc_type` |
+| DP-15 | Leftover ruleset as required-set SoT | Outstanding-ask fallback / live checklist answering “need X?” from `json_data` while operator overlay sits in `tenant_document_policy_deltas` |
 
 ## Митигации
 
@@ -51,10 +52,12 @@ Not this surface: OCR / e-sign / packages product, D3 / D5–D7 / D9 bind, Found
 - Named **Documents Platform E7 Document Requests Gate** fails if `outstanding_asks` is missing from the Hub resolve, if a Hub request table appears, if Catalog `document.requested` is minted, or if D3 / D5–D7 / D9 bind `documents`.  
 - Named **Documents Platform E8 Canonical Type Bind Gate** **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — fails if D4 display / select / persist uses alias identity, if R4 aliases are stored as Hub `document_type_code`, if CL8 / mass D3–D9 bind appear, or if a Hub request table / Catalog `document.requested` is minted.  
 - Named **Documents Platform E8 Required-Doc Evaluation Gate** **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — fails if D4 applicability is not from R5 merge with canonical types, if screening `required=true` is Documents SoT, if OCR / packages / Hub request table / Catalog `document.requested` appear, or if CL8 / mass D3–D9 bind / Foundation ✅ are claimed. Overlay is typed CL7 input; Documents does not import Overlay / CL7 runtimes.  
+- Named **Requirement Policy Consumer Cutover Gate** — outstanding-ask fallback and remaining live required-set readers load persisted `tenant_delta`. Does not mint a public resolve, signed URL, or second Adapter.  
 - No new security events. Catalog events stay `document.created` / `linked` / `verified` / `expired`.
 
 ## Тесты
 
+- `backend/tests/platform/test_requirement_policy_consumer_cutover_gate.py`  
 - `backend/tests/platform/test_documents_e8_required_doc_eval_gate.py`  
 - `backend/tests/platform/test_documents_e8_canonical_type_bind_gate.py`  
 - `backend/tests/platform/test_documents_e7_document_requests_gate.py`  
