@@ -91,7 +91,7 @@ MA-1 Authority contract
 |---|-------|------------|---------------------|------------|----------|
 | **MA-1** | Authority contract | `map-authority` | **Mapping Authority Contract Gate** ✅ — one operator question; one write authority named; twelve answerers classified; contract shape (option map, schema ≠ sample, binding vs health, version/drift, evaluator isolation, uncertainty ≠ failure) is SoT; no fourth store. SoT: [mapping-authority-contract.md](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`) | RPM program close (queue amendment) | 1 slice (docs) |
 | **MA-2** | Resolution runtime | `map-resolve` | **Mapping Resolution Gate** ✅ — exactly one store answers “which rule applies to this source?”; leftover stores are read-through or migrated; precedence chain removed. SoT: [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md) (`resolve_mapping_authority`) | MA-1 Gate | 1–2 slices |
-| **MA-3** | Operator surface | `map-operator` | **Mapping Operator Gate** — UX SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). PASS only when an untrained operator connects a source, sees schema, maps every answer, reaches **ready**, and can explain the next submission — on **one** editor (many entry points). Remaining screens are views or redirects. | MA-2 Gate | 1 slice (docs this PR + later feat) |
+| **MA-3** | Operator surface | `map-operator` | **Mapping Operator Gate** — UX SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). PASS only when an untrained operator connects a source, sees schema, maps every answer, reaches **ready**, and can explain the next submission — on **one** editor (many entry points). Remaining writable surfaces must cease to be editors. | MA-2 Gate | 1 slice (docs this PR + later feat) |
 | **MA-4** | Consumer cutover | `map-cutover` | **Mapping Consumer Cutover Gate** — canonical `qualified_code` is the only write vocabulary on the intake path; hardcoded extractors read the authority or are named leftovers with owner + expiry | MA-3 Gate | 1–2 slices |
 
 ---
@@ -214,11 +214,11 @@ This slice **closes** the Resolution Gate. Feat remains locked until **MA-3**. D
 
 **SoT:** [mapping-authority-operator.md](../architecture/mapping-authority-operator.md).
 
-The operator object is the **source** (“what will HostFlow do with this form?”), not a mapping-rules table. Mapping happens after source schema/answers and **before** any business evaluation. Intake runtime is the only direct Mapping consumer; Recruitment / Hiring / RPM / External Intake / routing consume **canonical facts only**. Sales convert, OCR, and CL6 stay adjacent — not this editor.
+The operator object is the **source** (“what will HostFlow do with this form?”), not a mapping-rules table. Mapping is configured from source schema before submissions may exist. At submission runtime, source answers are resolved through the saved Mapping contract into canonical facts before any business evaluation. **Direct runtime caller (one boundary):** Shared Intake / ingestion runtime. Business modules never call Mapping Authority directly. Recruitment / Hiring / RPM / External Intake / routing consume **canonical facts only**. Sales convert, OCR, and CL6 stay adjacent — not this editor.
 
-**Invariant:** one editing surface, many entry points. Connect, form, diagnostics, and “1 field is not configured” may open Mapping; editing always lands in the same workspace.
+**Invariant:** one editing surface, many entry points. Connect, form, diagnostics, and “1 field is not configured” may open Mapping; editing always lands in the same workspace. Existing writable surfaces must cease to be editors (deep-link/redirect or separately owned read-only diagnostics).
 
-**Main screen (human language):** “All set — 8 of 8 questions” or “Needs a check — 1 new question”. Binding (`Mapped` / `Ignored` / `Unmapped`) and contract health (`Valid` / `Needs review` / `Invalid`) stay two scales; the operator is not forced to live in two technical columns. Choice destinations open option map in-row. Type belongs to Field Registry. Sample is an example, not schema SoT. Missing sample is “no example answers yet”, not a dead end.
+**Main screen (human language):** “All set — 8 of 8 questions” is the **Ready** projection (not a third status). Binding (`Mapped` / `Ignored` / `Unmapped`) and contract health (`Valid` / `Needs review` / `Invalid`) stay two scales. **Ignored** is always an explicit operator decision; absence of a destination is `Unmapped`. Choice destinations open option map in-row; a choice binding is not Ready while a known source option lacks a canonical binding or explicit ignore. Unknown runtime options must not pass through as raw text. Type belongs to Field Registry. Sample is an example, not schema SoT. Missing sample is “no example answers yet”, not a dead end. Preview is a projection from the saved contract + Field Registry via the same resolver as ingestion — not a second evaluator.
 
 Measured gap (2026-09-04): three writable screens (C-5, Meta Settings, Intake form admin); Connect returns to the campaign; C-5 rows are rules ∪ sample, not schema; health is `ready` / `needs_review` / `broken`; diagnostics drift is a fingerprint boolean; save does not project “next application writes Code 95 = Yes”.
 
@@ -231,9 +231,9 @@ Out: themes, analytics, bulk rule import, a fourth editor, Zapier-style conditio
 PASS when:
 
 1. This UX contract is merged and the queue Active Product is **MA-3** (or a later MA slice after this gate).  
-2. An untrained operator connects a source, sees its **schema**, understands where each answer will land, brings mapping to **ready**, and can explain what the next submission will write — without switching between several Settings / admin screens.  
-3. One editor writes the authority. Remaining surfaces are views or redirects. Entry points (Connect, form, diagnostics, “1 field is not configured”) open that same workspace.  
-4. Schema ≠ sample; no-sample is not a dead end; drift names the change (new question / missing option / changed options); save shows a canonical-fact projection; a real submission shows applied evidence (RS-3 remains program proof).  
+2. An untrained operator connects a source, sees its **schema**, understands where each answer will land, brings mapping to **ready**, and can explain what the next submission will write — without switching between several Settings / admin screens. This is the MA-3 acceptance statement. Preview is a projection through the same resolver as ingestion, not a second evaluator.  
+3. One editor writes the authority. Remaining writable surfaces must cease to be editors. Entry points (Connect, form, diagnostics, “1 field is not configured”) open that same workspace.  
+4. Schema ≠ sample; no-sample is not a dead end; drift uses the minimum taxonomy (field/option added or removed, type changed, destination no longer valid) and keeps removed fields as historical bindings; save shows a canonical-fact projection; a real submission shows applied evidence (RS-3 remains program proof). Ready, complete option-map, and explicit Ignore follow [mapping-authority-operator.md](../architecture/mapping-authority-operator.md).  
 5. RPM / Intake / Hiring E2E / min HR / MA-4 vocabulary cutover are not this slice.
 
 This amendment **seals the UX contract**. Feat `feat/mapping-authority-ma3-operator-surface` implements the one editor. Mapping Operator Gate stays **not PASS** until the untrained-operator criterion is true on a real source.
@@ -282,6 +282,7 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 
 ## History
 
+- 2026-09-04: Operator UX contract **PASS_WITH_SMALL_CORRECTIONS** — configuration vs submission time; Ready; option-map completeness; drift taxonomy. Mapping Operator Gate not PASS.
 - 2026-09-04: Feat `feat/mapping-authority-ma3-operator-surface` opened — schema-first workspace over C-5 route; Operator Gate not PASS; no MA-4.
 - 2026-09-04: MA-3 UX contract sealed. SoT = [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). Mapping Operator Gate not PASS. Feat still locked. External Intake / Hiring E2E / min HR remain queued.
 - 2026-09-04: Mapping Resolution Gate **PASS**. SoT = [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md) (`resolve_mapping_authority`). One store at ingest. Leftover Meta stores read-through / migrated. Active Product → **MA-3** (brief; feat locked). External Intake / Hiring E2E / min HR remain queued. Not CL8. Foundation stays 🔄.

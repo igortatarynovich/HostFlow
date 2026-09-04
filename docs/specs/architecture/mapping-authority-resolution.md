@@ -62,7 +62,7 @@ Reject: documenting the old chain as “still how ingest works”; a second reso
 
 ## Consequences
 
-- MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Remaining surfaces become views or are retired. Feat stays locked until that slice.  
+- MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Remaining writable surfaces must cease to be editors (deep-link/redirect or separately owned read-only diagnostics). Feat stays locked until that slice.  
 - MA-4 makes `qualified_code` the only write vocabulary on the intake path.  
 - RPM / evaluators still consume canonical facts only.
 
