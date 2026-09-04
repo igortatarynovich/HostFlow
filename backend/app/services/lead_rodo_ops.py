@@ -30,7 +30,6 @@ OperatorAction = Literal["send", "retry", "covered_at_source", "exempt"]
 
 ART14_SLA = timedelta(days=30)
 _FIRST_CONTACT_STAGES = frozenset({"contacted", "qualified", "converted"})
-_SMTP_VIA = frozenset({"tenant_smtp", "platform_smtp"})
 _TERMINAL_LEAD_STATUSES = frozenset({"processed", "rejected", "lost", "archived"})
 _OPEN_STATUS_ALIASES = frozenset(
     {
@@ -214,7 +213,6 @@ def smtp_exhaustion(block: Optional[Mapping[str, Any]]) -> tuple[bool, bool, boo
     platform_exhausted = platform_tried and not platform_ok
     if tenant_ok or platform_ok:
         return tenant_exhausted, platform_exhausted, False
-    smtp_tried = any(str(item.get("via") or "").strip().lower() in _SMTP_VIA for item in attempts)
     evidence = block.get("delivery_evidence")
     reason_raw = ""
     if isinstance(evidence, Mapping):
@@ -223,9 +221,15 @@ def smtp_exhaustion(block: Optional[Mapping[str, Any]]) -> tuple[bool, bool, boo
         reason_raw = str(block.get("failure_reason") or "")
     reason = reason_raw.strip().lower()
     exhausted_reason = "gdpr_notice_delivery_exhausted" in reason or "delivery exhausted" in reason
-    escalated = bool(smtp_tried and not tenant_ok and not platform_ok)
-    if not escalated and exhausted_reason and current_compliance_state(block) == "delivery_failed":
-        escalated = True
+    # Alert only after tenant SMTP then platform SMTP are exhausted — not after
+    # a lone tenant failure or a pipeline-bind miss.
+    escalated = bool(
+        not tenant_ok
+        and not platform_ok
+        and (platform_exhausted or exhausted_reason)
+        and current_compliance_state(block) == "delivery_failed"
+    )
+    if escalated and exhausted_reason and not platform_tried:
         platform_exhausted = True
     return tenant_exhausted, platform_exhausted, escalated
 

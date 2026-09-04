@@ -114,6 +114,31 @@ def test_smtp_exhaustion_requires_failed_smtp_paths() -> None:
     assert escalated is True
 
 
+def test_tenant_only_failure_is_not_escalation() -> None:
+    block = {
+        "compliance_state": "delivery_failed",
+        "status": "failed",
+        "delivery_evidence": {
+            "attempts": [{"via": "tenant_smtp", "ok": False, "error": "timeout"}],
+        },
+    }
+    tenant_ex, platform_ex, escalated = smtp_exhaustion(block)
+    assert tenant_ex is True
+    assert platform_ex is False
+    assert escalated is False
+
+
+def test_pipeline_bind_failure_is_not_smtp_escalation() -> None:
+    block = {
+        "compliance_state": "delivery_failed",
+        "status": "failed",
+        "failure_reason": "communication_pipeline_required",
+        "delivery_evidence": {"failure_reason": "communication_pipeline_required"},
+    }
+    _, _, escalated = smtp_exhaustion(block)
+    assert escalated is False
+
+
 def test_platform_fallback_success_is_not_escalation() -> None:
     block = {
         "compliance_state": "delivered",
