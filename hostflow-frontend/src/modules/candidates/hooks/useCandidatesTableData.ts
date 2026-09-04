@@ -201,6 +201,11 @@ export function useCandidatesTableData({
         insights: normalizeListInsights(parsed.insights) ?? undefined,
       }
       candidateListCache.set(cacheKey, cachedEntry)
+      lastSuccessfulListRef.current = {
+        items: cachedEntry.items,
+        total: cachedEntry.total,
+        ...(cachedEntry.insights ? { insights: cachedEntry.insights } : {}),
+      }
       setItems(cachedEntry.items)
       setTotal(cachedEntry.total)
       setListInsights(cachedEntry.insights ?? null)
@@ -228,6 +233,11 @@ export function useCandidatesTableData({
       const willRefetch = !cacheIsFresh || forceReload
 
       if (cacheValid && cached.total !== 0) {
+        lastSuccessfulListRef.current = {
+          items: cached.items,
+          total: cached.total,
+          ...(cached.insights ? { insights: cached.insights } : {}),
+        }
         setItems(cached.items)
         setTotal(cached.total)
         setListInsights(cached.insights ?? null)
@@ -491,7 +501,8 @@ export function useCandidatesTableData({
         perfOk = false
         const errorInfo = getErrorInfo(e)
         console.error('[Candidates] Load error:', errorInfo)
-        // If current load is the latest, show error and clear list.
+        // Keep the last successful list on screen. Clearing to [] on timeout
+        // produced a 0 → N → 0 flicker while shell pollers were also failing.
         if (myLoadId === loadIdRef.current) {
           const loadFailedTitle =
             t('app.candidates.messages.load_failed') || 'Не удалось загрузить список кандидатов'
@@ -500,9 +511,12 @@ export function useCandidatesTableData({
           } else {
             setErrorText(getFriendlyErrorInfo(e, loadFailedTitle, t))
           }
-          setItems([])
-          setTotal(0)
-          setListInsights(null)
+          const fallback = lastSuccessfulListRef.current
+          if (fallback && fallback.items.length > 0) {
+            setItems(fallback.items)
+            setTotal(fallback.total)
+            if (fallback.insights) setListInsights(fallback.insights)
+          }
         }
       } finally {
         const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - perfT0
