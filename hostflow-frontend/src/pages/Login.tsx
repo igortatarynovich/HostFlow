@@ -27,7 +27,7 @@ export default function Login(){
   useSeoMeta({
     title: t('app.seo.login.title', { defaultValue: 'Sign In to HostFlow' }),
     description: t('app.seo.login.description', {
-      defaultValue: 'Sign in to HostFlow CRM to manage candidates, documents, and team operations.',
+      defaultValue: 'Sign in to HostFlow to manage candidates, recruitment pipelines, documents, and team operations.',
     }),
     canonicalPath: '/login',
   })
@@ -206,7 +206,7 @@ export default function Login(){
           <div className="grid gap-8 p-6 lg:grid-cols-[1.15fr_0.85fr] lg:p-10">
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
-                {t('app.login.signup_first.badge', { defaultValue: 'New to HostFlow CRM?' })}
+                {t('app.login.signup_first.badge', { defaultValue: 'New to HostFlow?' })}
               </p>
               <h1 className="text-3xl font-semibold tracking-tight text-slate-900 lg:text-4xl">
                 {t('app.login.signup_first.title', { defaultValue: 'Start with signup, not settings' })}

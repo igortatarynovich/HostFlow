@@ -265,7 +265,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       {
         id: "2fa",
         q: { en: "Is there SSO / 2FA?", ru: "Есть ли SSO / 2FA?", pl: "Czy jest SSO / 2FA?" },
-        a: { en: "Enterprise plans cover SSO roadmap items. Check Billing/Enterprise with sales for current MFA/SSO options.", ru: "SSO — в контуре Enterprise. Актуальные MFA/SSO уточняйте в Billing/у sales.", pl: "SSO — w Enterprise. Aktualne MFA/SSO ustal z Billing/sales." },
+        a: { en: "Account security options depend on your plan and configuration. Ask sales about current MFA and enterprise identity options — SSO is not available as a self-serve feature today.", ru: "Варианты безопасности аккаунта зависят от плана и конфигурации. MFA и enterprise identity уточняйте у sales — SSO сейчас не self-serve.", pl: "Opcje bezpieczeństwa konta zależą od planu i konfiguracji. MFA i enterprise identity ustal z sales — SSO nie jest dziś self-serve." },
       },
       {
         id: "breach",

@@ -18,7 +18,6 @@ const PLAN_NAME_DEFAULT: Record<PlanKey, string> = {
 }
 
 const NAVY = '#0B0E14'
-const NAVY_SOFT = '#12151C'
 
 function ProductShot({
   caption,
@@ -28,7 +27,6 @@ function ProductShot({
 }: {
   caption: string
   imageSrc: string
-  /** hero = landing hero only; others are supporting UI inside story blocks */
   size?: 'hero' | 'support' | 'compact' | 'wide' | 'fragment'
   focus?: 'center' | 'top' | 'left' | 'right'
 }) {
@@ -36,7 +34,7 @@ function ProductShot({
   if (!(src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/') || src.startsWith('.'))) {
     return (
       <div
-        className="flex min-h-[200px] items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-slate-800 to-[#0B0E14] p-6 text-center text-sm text-slate-300"
+        className="flex min-h-[200px] items-center justify-center rounded-2xl border border-white/10 bg-slate-800 p-6 text-center text-sm text-slate-300"
         role="img"
         aria-label={caption}
       >
@@ -72,18 +70,9 @@ function ProductShot({
         isHero
           ? 'rounded-t-2xl rounded-b-none border border-b-0 border-slate-300/50 bg-[#0F131A]'
           : isFragment
-            ? 'rounded-2xl border border-slate-200/90 bg-white shadow-[0_18px_50px_-28px_rgba(15,23,42,0.35)]'
-            : 'rounded-2xl border border-white/10 bg-[#0F131A] shadow-[0_24px_60px_-36px_rgba(0,0,0,0.55)] ring-1 ring-white/5'
+            ? 'rounded-2xl border border-slate-200/90 bg-white'
+            : 'rounded-2xl border border-white/10 bg-[#0F131A] ring-1 ring-white/5'
       }`}
-      style={
-        isHero
-          ? {
-              // Soft feathered rim — outside overflow so it doesn't harden into a strip
-              boxShadow:
-                '-2px -3px 8px rgba(15,23,42,0.16), 2px -3px 8px rgba(15,23,42,0.16), 0 -4px 14px rgba(15,23,42,0.12)',
-            }
-          : undefined
-      }
     >
       <div className={`relative overflow-hidden ${isFragment ? 'bg-slate-100' : 'bg-slate-200'} ${frameH}`}>
         <img
@@ -109,7 +98,7 @@ function ProductShot({
           decoding="async"
         />
         {caption && !isHero && !isFragment ? (
-          <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-3 pb-2.5 pt-8 text-xs text-slate-200 sm:px-4 sm:text-sm">
+          <figcaption className="absolute inset-x-0 bottom-0 bg-slate-900/80 px-3 pb-2.5 pt-8 text-xs text-slate-200 sm:px-4 sm:text-sm">
             {caption}
           </figcaption>
         ) : null}
@@ -132,67 +121,45 @@ export default function CrmLandingPage() {
   const isPricingRoute = location.pathname === '/pricing'
   const canonicalPath = isPricingRoute ? '/pricing' : '/'
   const seoTitle = isPricingRoute
-    ? t('app.seo.pricing.title', { defaultValue: 'Pricing for Recruitment CRM' })
-    : t('app.seo.landing.title', { defaultValue: 'HostFlow — recruitment operations in one system' })
+    ? t('app.seo.pricing.title', {
+        defaultValue: 'HostFlow Pricing — Recruitment Plans for Transport Teams',
+      })
+    : t('app.seo.landing.title', {
+        defaultValue: 'HostFlow — Recruitment & Workforce Operations for Transport Companies',
+      })
   const seoDescription = isPricingRoute
     ? t('app.seo.pricing.description', {
-        defaultValue: 'Compare HostFlow plans and start your recruitment CRM trial in minutes.',
+        defaultValue:
+          'Compare HostFlow plans. Every plan includes the core recruitment workflow and document control.',
       })
     : t('app.seo.landing.description', {
         defaultValue:
-          'Control hiring from first lead to hire: pipeline, ownership, documents — without losing candidates to spreadsheet chaos.',
+          'Manage candidates, recruitment pipelines, ownership and documents in one system built for transport operations.',
       })
 
-  const heroProof = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.hero.proof.${i}`)), [t])
-  const trustPoints = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.trust.points.${i}`)), [t])
-  const team = useMemo(
-    () =>
-      [0, 1, 2].map((i) => ({
-        initials: t(`public.crm_landing.team.members.${i}.initials`),
-        name: t(`public.crm_landing.team.members.${i}.name`),
-        role: t(`public.crm_landing.team.members.${i}.role`),
-        line: t(`public.crm_landing.team.members.${i}.line`),
-      })),
-    [t],
-  )
-  const moatItems = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.moat.items.${i}`)), [t])
-  const storySteps = useMemo(
+  const problemItems = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.problem.items.${i}`)), [t])
+  const howSteps = useMemo(
     () =>
       [0, 1, 2, 3, 4].map((i) => ({
-        value: t(`public.crm_landing.story.steps.${i}.value`),
-        label: t(`public.crm_landing.story.steps.${i}.label`),
+        title: t(`public.crm_landing.how.steps.${i}.title`),
+        body: t(`public.crm_landing.how.steps.${i}.body`),
       })),
     [t],
   )
   const productBlocks = useMemo(
     () =>
-      [0, 1, 2].map((i) => ({
-        why: t(`public.crm_landing.product.blocks.${i}.why`),
+      [0, 1, 2, 3, 4].map((i) => ({
         title: t(`public.crm_landing.product.blocks.${i}.title`),
         body: t(`public.crm_landing.product.blocks.${i}.body`),
-        quote: t(`public.crm_landing.product.blocks.${i}.quote`),
         caption: t(`public.crm_landing.product.blocks.${i}.caption`),
         imageSrc: t(`public.crm_landing.product.blocks.${i}.screenshot_src`, { defaultValue: '' }),
       })),
     [t],
   )
-  const compareThem = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.compare.them.${i}`)), [t])
-  const compareUs = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.compare.us.${i}`)), [t])
-
-  const caseSteps = useMemo(
-    () =>
-      [0, 1, 2, 3].map((i) => ({
-        label: t(`public.crm_landing.case.steps.${i}.label`),
-        body: t(`public.crm_landing.case.steps.${i}.body`),
-      })),
-    [t],
-  )
-  const segmentItems = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.segments.items.${i}`)), [t])
   const includedAll = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.pricing.included.${i}`)), [t])
-
   const faq = useMemo(
     () =>
-      ['crm_vs_ats', 'meta', 'whatsapp', 'data', 'rodo', 'recruiters', 'launch', 'plan_change'].map((key) => ({
+      ['distribution', 'documents', 'meta', 'data', 'plan_change', 'demo', 'ats'].map((key) => ({
         q: t(`public.crm_landing.faq.${key}_q`),
         a: t(`public.crm_landing.faq.${key}_a`),
       })),
@@ -240,7 +207,7 @@ export default function CrmLandingPage() {
       {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
-        name: 'HostFlow CRM',
+        name: 'HostFlow',
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
         offers: [
@@ -268,9 +235,8 @@ export default function CrmLandingPage() {
           {
             '@type': 'Offer',
             name: 'Enterprise',
-            price: '499',
             priceCurrency: 'EUR',
-            description: 'From €499/mo or custom; contact sales',
+            description: 'Custom configuration; contact sales',
           },
         ],
         url: `https://hostflow.cc${canonicalPath}`,
@@ -288,7 +254,7 @@ export default function CrmLandingPage() {
     ],
   })
 
-  const caseShot = t('public.crm_landing.case.screenshot_src', {
+  const practiceShot = t('public.crm_landing.practice.screenshot_src', {
     defaultValue: '/landing/shots/hero-pipeline.jpg',
   })
   const heroShot = t('public.crm_landing.hero.screenshot_src', {
@@ -296,10 +262,11 @@ export default function CrmLandingPage() {
   })
 
   const navLinks = [
-    { href: '/#trust', id: 'trust', label: t('public.crm_landing.nav.trust') },
     { href: '/#problem', id: 'problem', label: t('public.crm_landing.nav.problem') },
-    { href: '/#story', id: 'story', label: t('public.crm_landing.nav.story') },
-    { href: '/#case', id: 'case', label: t('public.crm_landing.nav.case') },
+    { href: '/#how', id: 'how', label: t('public.crm_landing.nav.how') },
+    { href: '/#product', id: 'product', label: t('public.crm_landing.nav.product') },
+    { href: '/#transport', id: 'transport', label: t('public.crm_landing.nav.transport') },
+    { href: '/#practice', id: 'practice', label: t('public.crm_landing.nav.practice') },
     { href: '/#pricing', id: 'pricing', label: t('public.crm_landing.nav.pricing') },
     { href: '/#faq', id: 'faq', label: t('public.crm_landing.nav.faq') },
   ]
@@ -369,235 +336,110 @@ export default function CrmLandingPage() {
         </div>
       </header>
 
-      {/* 1. HERO — dark zone (headline+CTA); curve lowered; tight light zone around shot */}
       <section id="top" className="relative overflow-hidden pt-14 sm:pt-16">
-        {/* Dark header — extra space under CTA so the curve sits lower */}
         <div className="bg-[#0B0E14] text-white">
           <div className="mx-auto flex max-w-3xl flex-col items-center space-y-5 px-4 pb-16 pt-10 text-center sm:px-6 sm:pb-20 sm:pt-14 lg:pb-24 lg:pt-16">
             <p className="inline-flex rounded-full border border-[#00C2A8]/35 bg-white/[0.04] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#00C2A8]">
               {t('public.crm_landing.hero.badge')}
             </p>
             <h1 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.05rem]">
-              {t('public.crm_landing.hero.title_line1')}{' '}
-              <span className="whitespace-pre-line text-[#00C2A8]">{t('public.crm_landing.hero.title_accent')}</span>
+              {t('public.crm_landing.hero.title')}
             </h1>
             <p className="max-w-2xl text-base leading-relaxed text-slate-300 sm:text-[17px]">
               {t('public.crm_landing.hero.lead')}
             </p>
-            <div className="pt-1">
+            <p className="max-w-2xl text-sm font-medium leading-relaxed text-[#B8FFF3] sm:text-base">
+              {t('public.crm_landing.hero.platform_line')}
+            </p>
+            <div className="flex flex-col items-center gap-3 pt-1 sm:flex-row">
               <Link
                 to="/signup"
                 onClick={() => trackCta('hero_signup', '/signup')}
-                className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-7 py-3.5 text-base font-semibold text-[#04201C] shadow-[0_12px_40px_-12px_rgba(0,194,168,0.45)] transition hover:bg-[#1ad4bb]"
+                className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-7 py-3.5 text-base font-semibold text-[#04201C] transition hover:bg-[#1ad4bb]"
               >
                 {t('public.crm_landing.hero.primary_cta')}
               </Link>
+              <Link
+                to="/demo"
+                onClick={() => trackCta('hero_demo', '/demo')}
+                className="inline-flex items-center justify-center rounded-xl border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/5"
+              >
+                {t('public.crm_landing.hero.secondary_cta')}
+              </Link>
             </div>
           </div>
-
-          {/* Symmetrical curve — sits lower after CTA padding */}
           <svg
             className="block h-[64px] w-full text-[#F7F8FA] sm:h-[88px] lg:h-[112px]"
             viewBox="0 0 1440 180"
             preserveAspectRatio="none"
             aria-hidden
           >
-            <path
-              fill="currentColor"
-              d="M0 180V150C200 150 320 20 720 20C1120 20 1240 150 1440 150V180H0Z"
-            />
+            <path fill="currentColor" d="M0 180V150C200 150 320 20 720 20C1120 20 1240 150 1440 150V180H0Z" />
           </svg>
         </div>
 
-        {/* Light zone — pull up into curve valley; height ≈ screenshot */}
         <div className="relative z-10 -mt-1 bg-[#F7F8FA]">
-          <div className="mx-auto grid max-w-6xl items-center gap-6 px-4 sm:gap-8 sm:px-6 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] lg:gap-10">
-            <div className="relative z-10 space-y-4">
-              <p className="max-w-md text-base font-medium leading-relaxed text-slate-800 sm:text-[17px]">
-                {t('public.crm_landing.hero.system_line')}
-              </p>
-              <ul className="space-y-3 text-sm text-slate-600 sm:text-[15px]">
-                {heroProof.map((chip) => (
-                  <li key={chip} className="flex items-start gap-2.5">
-                    <span className="mt-0.5 text-[#00C2A8]" aria-hidden>
-                      ✓
-                    </span>
-                    <span>{chip}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="relative z-10 flex w-full justify-center leading-none lg:justify-end">
-              <div className="w-full max-w-[1000px] leading-none lg:max-w-none lg:w-[156%] lg:origin-bottom-right">
-                <ProductShot
-                  size="hero"
-                  caption={t('public.crm_landing.hero.screenshot_caption')}
-                  imageSrc={heroShot}
-                />
-              </div>
+          <div className="mx-auto flex max-w-6xl justify-center px-4 sm:px-6">
+            <div className="w-full max-w-[1000px] leading-none">
+              <ProductShot
+                size="hero"
+                caption={t('public.crm_landing.hero.screenshot_caption')}
+                imageSrc={heroShot}
+              />
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. TRUST FIRST — why you can trust us */}
-      <section id="trust" className="scroll-mt-20 bg-white sm:scroll-mt-24">
-        <div className="mx-auto max-w-6xl space-y-12 px-4 py-16 sm:px-6 lg:py-24">
-          <div className="mx-auto max-w-3xl space-y-5 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
-              {t('public.crm_landing.trust.badge')}
-            </p>
-            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.1]">
-              {t('public.crm_landing.trust.title')}
-            </h2>
-            <p className="text-lg leading-relaxed text-slate-600">{t('public.crm_landing.trust.lead')}</p>
-          </div>
-
-          <ul className="mx-auto grid max-w-4xl gap-3">
-            {trustPoints.map((point) => (
-              <li
-                key={point}
-                className="rounded-2xl border border-slate-200 bg-[#F7F8FA] px-5 py-4 text-left text-sm font-medium leading-relaxed text-slate-800 sm:text-base"
-              >
-                {point}
-              </li>
-            ))}
-          </ul>
-
-          <p className="mx-auto max-w-3xl text-center text-base font-semibold leading-relaxed text-slate-900 sm:text-lg">
-            {t('public.crm_landing.trust.closing')}
-          </p>
-
-          {/* People — CRM is sold by people */}
-          <div className="space-y-6 rounded-[1.75rem] border border-slate-200 bg-[#0B0E14] p-6 text-white sm:p-10">
-            <div className="max-w-2xl space-y-3">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">
-                {t('public.crm_landing.team.badge')}
-              </p>
-              <h3 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('public.crm_landing.team.title')}</h3>
-              <p className="text-sm leading-relaxed text-slate-300 sm:text-base">{t('public.crm_landing.team.body')}</p>
-            </div>
-            <ul className="grid gap-4 md:grid-cols-3">
-              {team.map((member) => (
-                <li key={member.name} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#00C2A8]/15 text-sm font-bold text-[#00C2A8]">
-                    {member.initials}
-                  </div>
-                  <p className="mt-4 text-base font-semibold">{member.name}</p>
-                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[#00C2A8]">{member.role}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-300">{member.line}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. COMPARE — show only the argument, no screenshots */}
       <section id="problem" className="scroll-mt-20 bg-white sm:scroll-mt-24">
-        <div className="mx-auto max-w-6xl space-y-10 px-4 py-16 sm:px-6 lg:py-20">
-          <h2 className="mx-auto max-w-3xl text-balance text-center text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-            {t('public.crm_landing.compare.title')}
-          </h2>
-          <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
-            <article className="rounded-3xl border border-slate-200 bg-[#F7F8FA] p-6 sm:p-8">
-              <h3 className="text-center text-lg font-semibold text-slate-900 sm:text-xl">
-                {t('public.crm_landing.compare.them_title')}
-              </h3>
-              <ul className="mt-6 space-y-4">
-                {compareThem.map((item) => (
-                  <li key={item} className="flex gap-3 text-sm leading-relaxed text-slate-600 sm:text-base">
-                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-xs font-bold text-rose-600">
-                      ×
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-            <article className="rounded-3xl bg-[#0B0E14] p-6 text-white sm:p-8">
-              <h3 className="text-center text-lg font-semibold sm:text-xl">
-                {t('public.crm_landing.compare.us_title')}
-              </h3>
-              <ul className="mt-6 space-y-4">
-                {compareUs.map((item) => (
-                  <li key={item} className="flex gap-3 text-sm leading-relaxed text-slate-200 sm:text-base">
-                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#00C2A8] text-[11px] font-bold text-[#04201C]">
-                      ✓
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
+        <div className="mx-auto max-w-6xl space-y-10 px-4 py-16 sm:px-6 lg:py-24">
+          <div className="mx-auto max-w-3xl space-y-4 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
+              {t('public.crm_landing.problem.badge')}
+            </p>
+            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+              {t('public.crm_landing.problem.title')}
+            </h2>
+            <p className="text-base leading-relaxed text-slate-600 sm:text-lg">{t('public.crm_landing.problem.lead')}</p>
           </div>
-          <div className="flex justify-center">
-            <Link
-              to="/signup"
-              onClick={() => trackCta('compare_signup', '/signup')}
-              className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-7 py-3.5 text-base font-semibold text-[#04201C] transition hover:bg-[#1ad4bb]"
-            >
-              {t('public.crm_landing.compare.cta')}
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. MOAT — short authority after compare */}
-      <section
-        id="moat"
-        className="scroll-mt-20"
-        style={{ background: `linear-gradient(180deg, ${NAVY} 0%, #10141C 100%)` }}
-      >
-        <div className="mx-auto max-w-3xl space-y-8 px-4 py-16 text-center sm:px-6 lg:py-20">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00C2A8]">
-            {t('public.crm_landing.moat.badge')}
-          </p>
-          <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl sm:leading-[1.1]">
-            {t('public.crm_landing.moat.title')}
-          </h2>
-          <ul className="space-y-3 text-left">
-            {moatItems.map((item) => (
+          <ul className="mx-auto grid max-w-4xl gap-3">
+            {problemItems.map((item) => (
               <li
                 key={item}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-base font-medium text-slate-200"
+                className="rounded-2xl border border-slate-200 bg-[#F7F8FA] px-5 py-4 text-left text-sm font-medium leading-relaxed text-slate-800 sm:text-base"
               >
                 {item}
               </li>
             ))}
           </ul>
-          <p className="text-lg font-semibold text-[#B8FFF3]">{t('public.crm_landing.moat.closing')}</p>
-        </div>
-      </section>
-
-      {/* 5. STORY PROCESS — not a schema */}
-      <section id="story" className="scroll-mt-20 bg-white sm:scroll-mt-24">
-        <div className="mx-auto max-w-6xl space-y-10 px-4 py-16 sm:px-6 lg:py-24">
-          <div className="mx-auto max-w-2xl space-y-3 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
-              {t('public.crm_landing.story.badge')}
-            </p>
-            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-              {t('public.crm_landing.story.title')}
-            </h2>
-            <p className="text-base text-slate-600">{t('public.crm_landing.story.lead')}</p>
-          </div>
-          <ol className="grid gap-3 md:grid-cols-5">
-            {storySteps.map((step, idx) => (
-              <li key={step.label} className="relative rounded-3xl border border-slate-200 bg-[#F7F8FA] p-5 text-center">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">0{idx + 1}</p>
-                <p className="mt-3 text-3xl font-bold tracking-tight text-[#0B0E14]">{step.value}</p>
-                <p className="mt-2 text-sm font-medium leading-snug text-slate-600">{step.label}</p>
-              </li>
-            ))}
-          </ol>
-          <p className="mx-auto max-w-2xl text-center text-sm font-medium text-slate-500">
-            {t('public.crm_landing.story.footnote')}
+          <p className="mx-auto max-w-3xl text-center text-base font-semibold leading-relaxed text-slate-900 sm:text-lg">
+            {t('public.crm_landing.problem.closing')}
           </p>
         </div>
       </section>
 
-      {/* 6. HOW IT WORKS — cropped UI fragments only (Pipedrive-style Z rows) */}
+      <section id="how" className="scroll-mt-20 bg-[#F7F8FA] sm:scroll-mt-24">
+        <div className="mx-auto max-w-6xl space-y-10 px-4 py-16 sm:px-6 lg:py-24">
+          <div className="mx-auto max-w-2xl space-y-3 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
+              {t('public.crm_landing.how.badge')}
+            </p>
+            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+              {t('public.crm_landing.how.title')}
+            </h2>
+          </div>
+          <ol className="grid gap-4 md:grid-cols-5">
+            {howSteps.map((step, idx) => (
+              <li key={step.title} className="rounded-3xl border border-slate-200 bg-white p-5">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">0{idx + 1}</p>
+                <p className="mt-3 text-lg font-semibold tracking-tight text-[#0B0E14]">{step.title}</p>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
       <section id="product" className="scroll-mt-20 bg-white sm:scroll-mt-24">
         <div className="mx-auto max-w-6xl space-y-14 px-4 py-16 sm:px-6 lg:space-y-20 lg:py-24">
           <div className="mx-auto max-w-2xl space-y-3 text-center">
@@ -607,21 +449,16 @@ export default function CrmLandingPage() {
             <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
               {t('public.crm_landing.product.title')}
             </h2>
-            <p className="text-base text-slate-600">{t('public.crm_landing.product.lead')}</p>
           </div>
 
           <div className="space-y-16 lg:space-y-24">
             {productBlocks.map((block, idx) => {
               const visualLeft = idx % 2 === 0
-              const focus = idx === 0 ? 'left' : idx === 1 ? 'top' : 'center'
+              const focus = idx === 0 ? 'left' : idx === 2 ? 'top' : 'center'
               const copy = (
                 <div className="space-y-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{block.why}</p>
                   <h3 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{block.title}</h3>
                   <p className="max-w-md text-base leading-relaxed text-slate-600">{block.body}</p>
-                  <blockquote className="max-w-md border-l-2 border-[#00C2A8] pl-4">
-                    <p className="text-sm italic leading-relaxed text-slate-500">“{block.quote}”</p>
-                  </blockquote>
                 </div>
               )
               const visual = (
@@ -630,12 +467,9 @@ export default function CrmLandingPage() {
                 </div>
               )
               return (
-                <article
-                  key={block.title}
-                  className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14"
-                >
-                  <div className={visualLeft ? 'order-2 lg:order-1' : 'order-2 lg:order-2'}>{visual}</div>
-                  <div className={visualLeft ? 'order-1 lg:order-2' : 'order-1 lg:order-1'}>{copy}</div>
+                <article key={block.title} className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
+                  <div className={visualLeft ? 'order-2 lg:order-1' : 'order-2'}>{visual}</div>
+                  <div className={visualLeft ? 'order-1 lg:order-2' : 'order-1'}>{copy}</div>
                 </article>
               )
             })}
@@ -643,78 +477,117 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* 7. CASE — fragment shot beside story */}
-      <section id="case" className="scroll-mt-20 bg-[#0B0E14] text-white sm:scroll-mt-24">
-        <div className="mx-auto max-w-6xl space-y-8 px-4 py-12 sm:px-6 lg:py-16">
+      <section id="transport" className="scroll-mt-20 bg-[#0B0E14] text-white sm:scroll-mt-24">
+        <div className="mx-auto max-w-3xl space-y-5 px-4 py-16 text-center sm:px-6 lg:py-24">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00C2A8]">
+            {t('public.crm_landing.transport.badge')}
+          </p>
+          <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl sm:leading-[1.1]">
+            {t('public.crm_landing.transport.title')}
+          </h2>
+          <p className="text-lg font-medium text-[#B8FFF3]">{t('public.crm_landing.transport.lead')}</p>
+          <p className="text-base leading-relaxed text-slate-300 sm:text-lg">{t('public.crm_landing.transport.body')}</p>
+          <p className="text-base font-semibold leading-relaxed text-white sm:text-lg">
+            {t('public.crm_landing.transport.closing')}
+          </p>
+        </div>
+      </section>
+
+      <section id="origin" className="scroll-mt-20 bg-white sm:scroll-mt-24">
+        <div className="mx-auto max-w-3xl space-y-4 px-4 py-16 text-center sm:px-6 lg:py-20">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
+            {t('public.crm_landing.origin.badge')}
+          </p>
+          <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+            {t('public.crm_landing.origin.title')}
+          </h2>
+          <p className="text-base font-medium text-slate-800 sm:text-lg">{t('public.crm_landing.origin.lead')}</p>
+          <p className="text-base leading-relaxed text-slate-600">{t('public.crm_landing.origin.body')}</p>
+        </div>
+      </section>
+
+      <section id="practice" className="scroll-mt-20 bg-[#F7F8FA] sm:scroll-mt-24">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 sm:px-6 lg:py-20">
           <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-12">
-            <div className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">
-                {t('public.crm_landing.case.badge')}
+            <div className="space-y-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#2E6F74]">
+                {t('public.crm_landing.practice.badge')}
               </p>
-              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl sm:leading-[1.1]">
-                {t('public.crm_landing.case.title')}
+              <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+                {t('public.crm_landing.practice.title')}
               </h2>
-              <p className="text-base leading-relaxed text-slate-300">{t('public.crm_landing.case.lead')}</p>
-              <ol className="mt-4 grid gap-3 sm:grid-cols-2">
-                {caseSteps.map((step, idx) => (
-                  <li key={step.label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#00C2A8]">
-                      0{idx + 1} · {step.label}
-                    </p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-200">{step.body}</p>
-                  </li>
-                ))}
-              </ol>
-              <blockquote className="mt-2 border-l-2 border-[#00C2A8] pl-4">
-                <p className="text-base font-medium leading-relaxed text-slate-100 sm:text-lg">
-                  “{t('public.crm_landing.case.quote')}”
-                </p>
-                <footer className="mt-3 text-sm text-[#B8FFF3]">
-                  <p className="font-semibold">{t('public.crm_landing.case.quote_name')}</p>
-                  <p className="mt-1 text-slate-400">{t('public.crm_landing.case.quote_role')}</p>
-                </footer>
-              </blockquote>
+              <p className="text-base leading-relaxed text-slate-700">{t('public.crm_landing.practice.lead')}</p>
+              <p className="text-base leading-relaxed text-slate-600">{t('public.crm_landing.practice.body')}</p>
             </div>
             <div className="flex justify-center lg:justify-end">
               <ProductShot
                 size="fragment"
                 focus="left"
-                caption={t('public.crm_landing.case.screenshot_caption')}
-                imageSrc={caseShot}
+                caption={t('public.crm_landing.practice.screenshot_caption')}
+                imageSrc={practiceShot}
               />
             </div>
           </div>
         </div>
       </section>
 
-      {/* 8. FOR WHOM */}
-      <section className="bg-white">
-        <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 sm:px-6 lg:py-20">
-          <div className="max-w-2xl space-y-3">
-            <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-              {t('public.crm_landing.segments.title')}
-            </h2>
-            <p className="text-base text-slate-600">{t('public.crm_landing.segments.lead')}</p>
-          </div>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {segmentItems.map((item, idx) => (
-              <li
-                key={item}
-                className={`rounded-2xl border px-5 py-6 text-sm font-semibold ${
-                  idx === 0
-                    ? 'border-[#00C2A8]/35 bg-[#0B0E14] text-white'
-                    : 'border-slate-200 bg-[#F7F8FA] text-slate-800'
-                }`}
-              >
-                {item}
-              </li>
-            ))}
-          </ul>
+      <section id="platform" className="scroll-mt-20 bg-white sm:scroll-mt-24">
+        <div className="mx-auto max-w-3xl space-y-4 px-4 py-16 text-center sm:px-6 lg:py-20">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
+            {t('public.crm_landing.platform.badge')}
+          </p>
+          <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+            {t('public.crm_landing.platform.title')}
+          </h2>
+          <p className="text-base leading-relaxed text-slate-600 sm:text-lg">{t('public.crm_landing.platform.lead')}</p>
+          <p className="text-base leading-relaxed text-slate-600">{t('public.crm_landing.platform.body')}</p>
+          <p className="text-base font-semibold text-slate-900">{t('public.crm_landing.platform.today')}</p>
+          <p className="text-base leading-relaxed text-slate-600">{t('public.crm_landing.platform.closing')}</p>
         </div>
       </section>
 
-      {/* 9. PRICING */}
-      <section id="pricing" className="scroll-mt-20 bg-[#F7F8FA] sm:scroll-mt-24">
+      <section id="trust" className="scroll-mt-20 bg-[#0B0E14] text-white sm:scroll-mt-24">
+        <div className="mx-auto max-w-3xl space-y-4 px-4 py-16 text-center sm:px-6 lg:py-20">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00C2A8]">
+            {t('public.crm_landing.trust.badge')}
+          </p>
+          <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+            {t('public.crm_landing.trust.title')}
+          </h2>
+          <p className="text-base leading-relaxed text-slate-300 sm:text-lg">{t('public.crm_landing.trust.body')}</p>
+        </div>
+      </section>
+
+      <section id="demo" className="scroll-mt-20 bg-[#F7F8FA] sm:scroll-mt-24">
+        <div className="mx-auto max-w-3xl space-y-5 px-4 py-16 text-center sm:px-6 lg:py-20">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
+            {t('public.crm_landing.demo.badge')}
+          </p>
+          <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+            {t('public.crm_landing.demo.title')}
+          </h2>
+          <p className="text-base leading-relaxed text-slate-600 sm:text-lg">{t('public.crm_landing.demo.body')}</p>
+          <p className="text-sm leading-relaxed text-slate-500">{t('public.crm_landing.demo.note')}</p>
+          <div className="flex flex-col items-center justify-center gap-3 pt-2 sm:flex-row">
+            <Link
+              to="/signup"
+              onClick={() => trackCta('demo_signup', '/signup')}
+              className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-7 py-3.5 text-base font-semibold text-[#04201C] transition hover:bg-[#1ad4bb]"
+            >
+              {t('public.crm_landing.demo.primary_cta')}
+            </Link>
+            <Link
+              to="/demo"
+              onClick={() => trackCta('demo_explore', '/demo')}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+            >
+              {t('public.crm_landing.demo.secondary_cta')}
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section id="pricing" className="scroll-mt-20 bg-white sm:scroll-mt-24">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 sm:px-6 lg:py-24">
           <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-end">
             <div className="space-y-2">
@@ -726,7 +599,7 @@ export default function CrmLandingPage() {
               </h2>
               <p className="max-w-xl text-sm text-slate-600">{t('public.crm_landing.pricing.note')}</p>
             </div>
-            <div className="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 text-sm font-semibold shadow-sm">
+            <div className="inline-flex items-center rounded-full border border-slate-200 bg-[#F7F8FA] p-1 text-sm font-semibold">
               <button
                 type="button"
                 onClick={() => setBilling('monthly')}
@@ -755,8 +628,8 @@ export default function CrmLandingPage() {
                 return (
                   <article
                     key={plan.key}
-                    className={`flex flex-col rounded-3xl border bg-white p-5 ${
-                      plan.featured ? 'border-[#00C2A8] shadow-[0_0_0_1px_rgba(0,194,168,0.25)]' : 'border-slate-200'
+                    className={`flex flex-col rounded-3xl border bg-[#F7F8FA] p-5 ${
+                      plan.featured ? 'border-[#00C2A8]' : 'border-slate-200'
                     }`}
                   >
                     {plan.featured ? (
@@ -775,7 +648,7 @@ export default function CrmLandingPage() {
                       <a
                         href={plan.ctaHref}
                         onClick={() => trackCta(`pricing_${plan.key}`, plan.ctaHref)}
-                        className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                        className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
                       >
                         {t('public.crm_landing.pricing.contact_sales_cta')}
                       </a>
@@ -796,7 +669,7 @@ export default function CrmLandingPage() {
                 )
               })}
             </div>
-            <aside className="rounded-3xl border border-slate-200 bg-white p-6 lg:w-64">
+            <aside className="rounded-3xl border border-slate-200 bg-[#F7F8FA] p-6 lg:w-64">
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
                 {t('public.crm_landing.pricing.included_title')}
               </p>
@@ -815,8 +688,7 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* 10. FAQ */}
-      <section id="faq" className="scroll-mt-20 bg-white sm:scroll-mt-24">
+      <section id="faq" className="scroll-mt-20 bg-[#F7F8FA] sm:scroll-mt-24">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 sm:px-6 lg:py-24">
           <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
             {t('public.crm_landing.faq.title')}
@@ -825,7 +697,7 @@ export default function CrmLandingPage() {
             {faq.map((item, idx) => {
               const open = openFaq === idx
               return (
-                <article key={item.q} className="rounded-2xl border border-slate-200 bg-[#F7F8FA]">
+                <article key={item.q} className="rounded-2xl border border-slate-200 bg-white">
                   <button
                     type="button"
                     className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
@@ -847,13 +719,7 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* 11. FINAL CTA — positioning statement */}
-      <section
-        className="px-4 py-20 sm:px-6"
-        style={{
-          background: `radial-gradient(ellipse 70% 80% at 50% 0%, rgba(0,194,168,0.16), transparent 55%), ${NAVY}`,
-        }}
-      >
+      <section className="px-4 py-20 sm:px-6" style={{ background: NAVY }}>
         <div className="mx-auto max-w-3xl space-y-6 text-center">
           <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl sm:leading-[1.15]">
             {t('public.crm_landing.final_cta.title')}
@@ -870,8 +736,8 @@ export default function CrmLandingPage() {
               {t('public.crm_landing.final_cta.button')}
             </Link>
             <Link
-              to="/signup?plan=team"
-              onClick={() => trackCta('final_signup', '/signup?plan=team')}
+              to="/demo"
+              onClick={() => trackCta('final_demo', '/demo')}
               className="inline-flex items-center justify-center rounded-xl border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/5"
             >
               {t('public.crm_landing.final_cta.secondary')}
