@@ -495,8 +495,9 @@ async def test_mapping_workspace_schema_without_sample(
     assert by_source["document_validity"]["binding"] == "mapped"
     assert by_source["favourite_color"]["binding"] == "ignored"
     assert by_source["eu_experience"]["binding"] == "unmapped"
-    assert by_source["eu_experience"]["drift"] == "new_question"
-    assert by_source["document_validity"]["drift"] in {"changed_options", "destination_invalid"}
+    assert by_source["eu_experience"]["drift"] == "field_added"
+    assert by_source["eu_experience"]["drift_human"]
+    assert by_source["document_validity"]["drift"] == "option_added"
     assert body["summary"]["headline"] == "option_drift"
     assert body["summary"]["unmapped_count"] == 1
     assert body["projection"]
@@ -549,6 +550,28 @@ def test_incomplete_option_map_is_not_ready() -> None:
             {
                 "source": "document_validity",
                 "qualified_field_code": "candidate.document_validity",
+                "option_map": {},
+            }
+    assert rows[0]["incomplete_options"] is True
+    assert summary["headline"] == "needs_check"
+    assert summary["contract_health"] == "needs_review"
+
+
+def test_option_added_is_named_taxonomy_not_ready() -> None:
+    from backend.app.acquisition.mapping_workspace import build_workspace_rows
+
+    rows, summary = build_workspace_rows(
+        schema_fields=[
+            {
+                "source": "document_validity",
+                "label": "Document validity",
+                "options": ["Under 3 months", "Over 8 months"],
+            }
+        ],
+        mapping_rules=[
+            {
+                "source": "document_validity",
+                "qualified_field_code": "candidate.document_validity",
                 "option_map": {"Over 8 months": "GT_8_MONTHS"},
             }
         ],
@@ -568,7 +591,7 @@ def test_incomplete_option_map_is_not_ready() -> None:
         ],
         has_schema=True,
     )
-    assert rows[0]["drift"] == "changed_options"
+    assert rows[0]["drift"] == "option_added"
     assert summary["headline"] == "option_drift"
     assert summary["contract_health"] == "needs_review"
 
