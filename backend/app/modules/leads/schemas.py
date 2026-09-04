@@ -439,7 +439,7 @@ class BulkAutoProcessQueueResponse(BaseModel):
 
 
 class BulkLeadRodoRetryRequest(BaseModel):
-    """ADR-031 ops: re-send art.14 for leads stuck after Pipeline cutover."""
+    """Ops: re-send for retryable open compliance states (default delivery_failed)."""
 
     lead_ids: Optional[List[str]] = Field(
         default=None,
@@ -447,7 +447,11 @@ class BulkLeadRodoRetryRequest(BaseModel):
     )
     statuses: Optional[List[str]] = Field(
         default=None,
-        description="RODO statuses to retry: failed | pending_channel | manual_required | unsatisfied. Default: failed.",
+        description=(
+            "Open states to retry: delivery_failed | delivery_required "
+            "(legacy failed | pending_channel | pending_policy | deferred | undelivered map to delivery_failed). "
+            "Default: delivery_failed. review_required is rejected."
+        ),
     )
     max_items: int = Field(default=50, ge=1, le=200)
     include_terminal: bool = Field(
@@ -463,6 +467,8 @@ class BulkLeadRodoRetryItemOut(BaseModel):
     rodo_status_before: str
     rodo_status_after: Optional[str] = None
     message: str
+    compliance_state_before: Optional[str] = None
+    compliance_state_after: Optional[str] = None
 
 
 class BulkLeadRodoRetryResponse(BaseModel):
@@ -472,6 +478,43 @@ class BulkLeadRodoRetryResponse(BaseModel):
     skipped: int
     failed: int
     dry_run: bool
+
+
+class LeadRodoOpsQueueItemOut(BaseModel):
+    lead_id: str
+    compliance_state: str
+    article: Optional[str] = None
+    evaluated_at: Optional[str] = None
+    aging_hours: Optional[float] = None
+    sla_due_at: Optional[str] = None
+    sla_breached: bool = False
+    last_attempt_at: Optional[str] = None
+    last_failure: Optional[str] = None
+    attempt_count: int = 0
+    tenant_smtp_exhausted: bool = False
+    platform_smtp_exhausted: bool = False
+    escalated: bool = False
+    operator_actions: List[str] = Field(default_factory=list)
+    email: Optional[str] = None
+    source: Optional[str] = None
+    lead_status: Optional[str] = None
+    lead_stage: Optional[str] = None
+    display_name: Optional[str] = None
+
+
+class LeadRodoOpsQueueResponse(BaseModel):
+    items: List[LeadRodoOpsQueueItemOut]
+    total: int
+    counts: Dict[str, int]
+    sla_breached: int
+    escalated: int
+    limit: int
+    offset: int
+
+
+class LeadRodoExemptRequest(BaseModel):
+    exemption_code: str = Field(..., min_length=1, max_length=64)
+    note: Optional[str] = Field(default=None, max_length=2000)
 
 
 class LeadListResponse(BaseModel):

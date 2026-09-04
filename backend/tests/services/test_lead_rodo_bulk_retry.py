@@ -47,6 +47,7 @@ async def test_bulk_retry_dry_run_lists_failed_only() -> None:
     assert out.attempted == 1
     assert out.items[0].lead_id == "lead-failed"
     assert out.items[0].outcome == "dry_run"
+    assert out.items[0].compliance_state_before == "delivery_failed"
 
 
 @pytest.mark.asyncio

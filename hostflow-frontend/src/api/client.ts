@@ -1502,6 +1502,75 @@ export async function markLeadRodoSourceProvided(leadId: string, opts?: { note?:
   return data
 }
 
+export type LeadRodoOpsState = 'delivery_required' | 'review_required' | 'delivery_failed'
+
+export type LeadRodoOpsQueueItem = {
+  lead_id: string
+  compliance_state: LeadRodoOpsState | string
+  article?: string | null
+  evaluated_at?: string | null
+  aging_hours?: number | null
+  sla_due_at?: string | null
+  sla_breached: boolean
+  last_attempt_at?: string | null
+  last_failure?: string | null
+  attempt_count: number
+  tenant_smtp_exhausted: boolean
+  platform_smtp_exhausted: boolean
+  escalated: boolean
+  operator_actions: string[]
+  email?: string | null
+  source?: string | null
+  lead_status?: string | null
+  lead_stage?: string | null
+  display_name?: string | null
+}
+
+export type LeadRodoOpsQueueResponse = {
+  items: LeadRodoOpsQueueItem[]
+  total: number
+  counts: Record<string, number>
+  sla_breached: number
+  escalated: number
+  limit: number
+  offset: number
+}
+
+/** GET /leads/compliance/rodo/queue — open obligations projection. */
+export async function listLeadRodoObligationQueue(opts?: {
+  state?: LeadRodoOpsState | string
+  slaBreached?: boolean
+  escalated?: boolean
+  includeTerminal?: boolean
+  limit?: number
+  offset?: number
+}): Promise<LeadRodoOpsQueueResponse> {
+  const params: Record<string, string | number | boolean> = {}
+  if (opts?.state) params.state = opts.state
+  if (opts?.slaBreached) params.sla_breached = true
+  if (opts?.escalated) params.escalated = true
+  if (opts?.includeTerminal) params.include_terminal = true
+  if (opts?.limit != null) params.limit = opts.limit
+  if (opts?.offset != null) params.offset = opts.offset
+  const { data } = await api.get<LeadRodoOpsQueueResponse>('/leads/compliance/rodo/queue', { params })
+  return data
+}
+
+/** POST /leads/{id}/compliance/rodo/retry — delivery_failed / delivery_required only. */
+export async function retryLeadRodoObligation(leadId: string): Promise<{ ok: boolean; message: string }> {
+  const { data } = await api.post<{ ok: boolean; message: string }>(`/leads/${leadId}/compliance/rodo/retry`)
+  return data
+}
+
+/** POST /leads/{id}/compliance/rodo/exempt — lawful reason code, not mark-resolved. */
+export async function exemptLeadRodoObligation(
+  leadId: string,
+  payload: { exemption_code: string; note?: string },
+): Promise<{ ok: boolean }> {
+  const { data } = await api.post<{ ok: boolean }>(`/leads/${leadId}/compliance/rodo/exempt`, payload)
+  return data
+}
+
 export async function deleteLead(leadId: string): Promise<void> {
   await api.delete(`/leads/${leadId}`);
 }

@@ -117,6 +117,11 @@ export function notificationDisplayTitle(item: NotificationItem, t: TranslateFn)
   if (eventType === 'communications_thread_escalated') {
     return t('app.notifications.communications_thread_escalated_title')
   }
+  if (eventType === 'lead_rodo_delivery_escalated') {
+    return t('app.notifications.lead_rodo_delivery_escalated_title', {
+      defaultValue: 'RODO delivery exhausted — action needed',
+    })
+  }
   if (eventType === 'lead_public_intake_client') {
     return t('app.notifications.lead_public_intake_client_title')
   }

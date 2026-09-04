@@ -18,6 +18,7 @@ from backend.app.services.lead_lifecycle_email_policy import (
     is_platform_rodo_template_ref,
 )
 from backend.app.services.lead_rodo_obligation import (
+    LAWFUL_EXEMPTION_CODES,
     ComplianceTransitionError,
     apply_compliance_transition,
     current_compliance_state,
@@ -488,6 +489,20 @@ def _attempts_from_send_error(exc: Any) -> Optional[list]:
     return list(raw) if isinstance(raw, list) else None
 
 
+async def _maybe_escalate_after_send_failure(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    actor_id: Optional[str],
+) -> None:
+    from backend.app.services.lead_rodo_ops import maybe_escalate_delivery_exhaustion
+
+    await maybe_escalate_delivery_exhaustion(
+        db, tenant_id=tenant_id, lead=lead, actor_id=actor_id
+    )
+
+
 def _delivery_fields_from_send_result(result: Any) -> Dict[str, Any]:
     if result is None:
         return {}
@@ -913,6 +928,7 @@ async def _send_lead_rodo_via_sales_pipeline(
                 "details": dict(exc.details or {}),
             },
         )
+        await _maybe_escalate_after_send_failure(db, tenant_id=tenant_id, lead=lead, actor_id=actor_id)
         return False, f"Failed to send email: {reason}"
 
     delivery_fields = _delivery_fields_from_send_result(send_result)
@@ -1117,6 +1133,7 @@ async def _send_lead_rodo_via_recruitment_pipeline(
                 "details": dict(exc.details or {}),
             },
         )
+        await _maybe_escalate_after_send_failure(db, tenant_id=tenant_id, lead=lead, actor_id=actor_id)
         return False, f"Failed to send email: {reason}"
 
     delivery_fields = _delivery_fields_from_send_result(send_result)
@@ -1293,6 +1310,73 @@ def mark_lead_rodo_source_provided(
         )
 
 
+def mark_lead_rodo_exempt(
+    lead: Lead,
+    *,
+    exemption_code: str,
+    actor_id: Optional[str] = None,
+    note: Optional[str] = None,
+) -> None:
+    """Close as ``exempt`` only with a lawful reason code — never mark-resolved."""
+    from sqlalchemy.orm.attributes import flag_modified
+
+    code = str(exemption_code or "").strip().lower()
+    if code not in LAWFUL_EXEMPTION_CODES:
+        raise ComplianceTransitionError(
+            "RODO_EXEMPTION_CODE_INVALID",
+            "Exemption requires a lawful reason code",
+        )
+    actor = str(actor_id or "").strip() or None
+    if not actor:
+        raise ComplianceTransitionError(
+            "RODO_OPERATOR_REQUIRED",
+            "Exemption is an operator action and requires an actor",
+        )
+    norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
+    cs = current_compliance_state(block)
+    if cs in ("delivered", "compliant", "exempt"):
+        if cs == "exempt" and str(block.get("exemption_code") or "").strip().lower() == code:
+            return
+        raise ComplianceTransitionError(
+            "RODO_TRANSITION_REJECTED",
+            "Closed obligations cannot be rewritten to exempt",
+        )
+    now = datetime.now(timezone.utc).isoformat()
+    assessment: Dict[str, Any] = (
+        dict(block["assessment"]) if isinstance(block.get("assessment"), dict) else {}
+    )
+    assessment["state"] = "exempt"
+    assessment["reason_code"] = code
+    assessment["proof"] = "operator_exemption"
+    assessment["evaluated_at"] = now
+    assessment["actor_id"] = actor
+    if note:
+        assessment["note"] = str(note).strip()[:2000]
+    block["assessment"] = assessment
+    block["exemption_code"] = code
+    if not apply_compliance_transition(block, "exempt"):
+        raise ComplianceTransitionError(
+            "RODO_TRANSITION_REJECTED",
+            "Cannot close this obligation as exempt without a lawful reason code",
+        )
+    block["status"] = "exempt"
+    if note:
+        block["exemption_note"] = str(note).strip()[:2000]
+    block["exempted_by"] = actor
+    block["exempted_at"] = now
+    norm["rodo"] = block
+    lead.normalized = norm
+    flag_modified(lead, "normalized")
+    from backend.app.modules.leads.intake_lifecycle import mark_recruitment_intake_in_progress
+
+    mark_recruitment_intake_in_progress(
+        lead,
+        actor=actor,
+        last_action="rodo_exempt",
+    )
+
+
 __all__ = [
     "normalized_merging_lead_rodo",
     "ensure_lead_rodo_allows_action",
@@ -1323,6 +1407,7 @@ __all__ = [
     "resolve_lead_controller_identity",
     "ComplianceTransitionError",
     "mark_lead_rodo_source_provided",
+    "mark_lead_rodo_exempt",
     "rodo_lead_audit_for_candidate_extra",
     "send_lead_rodo_email",
 ]

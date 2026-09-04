@@ -14,7 +14,7 @@ export function getNotificationUosGroup(item: NotificationItem): NotificationUos
   const payload = (item.payload || {}) as Record<string, unknown>
   const source = String(payload.source || '').toLowerCase()
 
-  if (et === 'communications_sla_overdue' || et === 'communications_thread_escalated') return 'sla'
+  if (et === 'communications_sla_overdue' || et === 'communications_thread_escalated' || et === 'lead_rodo_delivery_escalated') return 'sla'
   if (et === 'lead_no_next_action' || et === 'lead_stuck_stage') return 'tasks'
   if (et === 'invoice_overdue' || source.includes('invoice_overdue')) return 'sla'
   if (

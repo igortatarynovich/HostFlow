@@ -78,6 +78,7 @@ _EXEMPT_CODES = frozenset(
         "legal_obligation",
     }
 )
+LAWFUL_EXEMPTION_CODES: frozenset[str] = _EXEMPT_CODES
 
 _NEGATIVE_STATUSES = frozenset(
     {
@@ -576,6 +577,7 @@ __all__ = [
     "CANONICAL_COMPLIANCE_STATES",
     "COMPLIANCE_CLOSED_STATES",
     "COMPLIANCE_OPEN_STATES",
+    "LAWFUL_EXEMPTION_CODES",
     "CollectionPath",
     "ComplianceState",
     "ComplianceTransitionError",

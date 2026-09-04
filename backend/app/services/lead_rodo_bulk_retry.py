@@ -1,7 +1,9 @@
-"""Bulk retry for Lead-stage art.14 RODO after Pipeline migration (ADR-031).
+"""Bulk retry for open Lead RODO obligations (canonical ``compliance_state``).
 
-Re-sends via ``send_lead_rodo_email`` (Sales/Recruitment binders). Does not
-bypass Result Link / SMTP. Skips already-satisfied and pending_channel without email.
+Re-sends via ``send_lead_rodo_email`` only for retryable open states
+(``delivery_failed``, ``delivery_required``). Does not retry ``review_required``,
+does not bypass Result Link / SMTP, and does not overwrite ``delivery_failed``
+when a retry still fails.
 """
 
 from __future__ import annotations
@@ -9,27 +11,35 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.lead import Lead
 from backend.app.services.lead_rodo import (
     lead_normalized_rodo_block,
     lead_rodo_satisfied_from_normalized,
-    lead_rodo_sent_from_normalized,
     send_lead_rodo_email,
+)
+from backend.app.services.lead_rodo_obligation import current_compliance_state
+from backend.app.services.lead_rodo_ops import (
+    RETRYABLE_COMPLIANCE_STATES,
+    is_retryable_open_state,
+    maybe_escalate_delivery_exhaustion,
 )
 from backend.app.services.lead_rodo_settings import get_lead_rodo_settings
 
-DEFAULT_RETRY_STATUSES = ("failed",)
-ALLOWED_RETRY_STATUSES = frozenset(
+DEFAULT_RETRY_STATUSES = ("delivery_failed",)
+_LEGACY_FAILED_ALIASES = frozenset(
     {
         "failed",
-        "manual_required",
         "pending_channel",
-        "unsatisfied",  # no / empty rodo block
+        "pending_policy",
+        "deferred",
+        "undelivered",
+        "unsatisfied",
     }
 )
+ALLOWED_RETRY_STATUSES = frozenset(RETRYABLE_COMPLIANCE_STATES) | _LEGACY_FAILED_ALIASES
 _TERMINAL_LEAD_STATUSES = frozenset({"processed", "rejected", "lost", "archived"})
 
 
@@ -40,6 +50,8 @@ class LeadRodoBulkRetryItem:
     rodo_status_before: str
     message: str
     rodo_status_after: Optional[str] = None
+    compliance_state_before: Optional[str] = None
+    compliance_state_after: Optional[str] = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,25 +64,34 @@ class LeadRodoBulkRetryResult:
     dry_run: bool
 
 
+def _canonical_retry_states(statuses: Sequence[str]) -> set[str]:
+    wanted: set[str] = set()
+    for raw in statuses:
+        token = str(raw).strip().lower()
+        if token in RETRYABLE_COMPLIANCE_STATES:
+            wanted.add(token)
+        elif token in _LEGACY_FAILED_ALIASES:
+            wanted.add("delivery_failed")
+    return wanted
+
+
 def _rodo_status_label(normalized: Optional[dict[str, Any]]) -> str:
     block = lead_normalized_rodo_block(normalized if isinstance(normalized, dict) else None)
     st = str(block.get("status") or "").strip().lower()
     if st:
         return st
-    return "unsatisfied"
+    cs = current_compliance_state(block)
+    return cs or "unsatisfied"
 
 
-def _matches_retry_status(normalized: Optional[dict[str, Any]], statuses: Sequence[str]) -> bool:
-    label = _rodo_status_label(normalized)
-    wanted = {str(s).strip().lower() for s in statuses if str(s).strip()}
-    if label in wanted:
-        return True
-    if "unsatisfied" in wanted and label in {"unsatisfied", "manual_required"}:
-        # UI maps empty → manual_required; both covered by unsatisfied filter.
-        return True
-    if "manual_required" in wanted and label == "unsatisfied":
-        return True
-    return False
+def _matches_retry_state(normalized: Optional[dict[str, Any]], wanted: set[str]) -> bool:
+    block = lead_normalized_rodo_block(normalized if isinstance(normalized, dict) else None)
+    cs = current_compliance_state(block)
+    if not is_retryable_open_state(cs):
+        return False
+    if not wanted:
+        return cs == "delivery_failed"
+    return cs in wanted
 
 
 async def bulk_retry_lead_rodo(
@@ -85,9 +106,11 @@ async def bulk_retry_lead_rodo(
     dry_run: bool = False,
 ) -> LeadRodoBulkRetryResult:
     """
-    Retry art.14 for leads matching ``statuses`` (default: ``failed`` only).
+    Retry fulfillment for leads in retryable open states.
 
-    ``dry_run`` lists candidates without calling send.
+    Default: canonical ``delivery_failed`` (legacy ``failed`` / ``pending_channel``
+    map here). ``review_required`` is never retried. ``dry_run`` lists candidates
+    without calling send.
     """
     tid = str(tenant_id).strip()
     limit = max(1, min(int(max_items or 50), 200))
@@ -95,7 +118,10 @@ async def bulk_retry_lead_rodo(
     bad = [s for s in status_filter if str(s).strip().lower() not in ALLOWED_RETRY_STATUSES]
     if bad:
         raise ValueError(f"unsupported rodo retry statuses: {bad}")
+    if any(str(s).strip().lower() == "review_required" for s in status_filter):
+        raise ValueError("review_required is not retried")
 
+    wanted = _canonical_retry_states(status_filter)
     ids = [str(x).strip() for x in (lead_ids or []) if str(x).strip()]
     q = select(Lead).where(Lead.tenant_id == tid)
     if ids:
@@ -103,19 +129,15 @@ async def bulk_retry_lead_rodo(
     if not include_terminal:
         q = q.where(~Lead.status.in_(sorted(_TERMINAL_LEAD_STATUSES)))
 
-    # Prefer failed JSON path when possible; still filter in Python for unsatisfied.
-    rodo_st = Lead.normalized["rodo"]["status"].as_string()
-    status_wanted = {str(s).strip().lower() for s in status_filter}
-    json_statuses = sorted(status_wanted & {"failed", "pending_channel", "manual_required", "sent", "satisfied", "source_provided"})
+    cs_col = Lead.normalized["rodo"]["compliance_state"].as_string()
+    st_col = Lead.normalized["rodo"]["status"].as_string()
     if ids:
-        pass  # explicit ids — load then filter
-    elif "unsatisfied" in status_wanted or "manual_required" in status_wanted:
-        # Broad open-lead scan; Python filter applies status match.
         pass
-    elif json_statuses:
-        q = q.where(rodo_st.in_(json_statuses))
     else:
-        q = q.where(rodo_st.in_(["failed"]))
+        status_aliases: set[str] = set(wanted)
+        if "delivery_failed" in wanted:
+            status_aliases.update(_LEGACY_FAILED_ALIASES | {"delivery_failed"})
+        q = q.where(or_(cs_col.in_(sorted(wanted)), st_col.in_(sorted(status_aliases))))
 
     q = q.order_by(Lead.created_at.asc()).limit(limit * 3 if not ids else limit)
     rows = list((await db.execute(q)).scalars().all())
@@ -125,9 +147,7 @@ async def bulk_retry_lead_rodo(
         norm = lead.normalized if isinstance(lead.normalized, dict) else {}
         if lead_rodo_satisfied_from_normalized(norm):
             continue
-        if lead_rodo_sent_from_normalized(norm):
-            continue
-        if not _matches_retry_status(norm, status_filter):
+        if not _matches_retry_state(norm, wanted):
             continue
         candidates.append(lead)
         if len(candidates) >= limit:
@@ -144,7 +164,9 @@ async def bulk_retry_lead_rodo(
     from backend.app.services.lead_rodo_settings import DEFAULT_LEAD_RODO_CHANNELS
 
     for lead in candidates:
-        before = _rodo_status_label(lead.normalized if isinstance(lead.normalized, dict) else None)
+        norm_before = lead.normalized if isinstance(lead.normalized, dict) else None
+        before = _rodo_status_label(norm_before)
+        cs_before = current_compliance_state(lead_normalized_rodo_block(norm_before))
         if dry_run:
             items.append(
                 LeadRodoBulkRetryItem(
@@ -153,6 +175,8 @@ async def bulk_retry_lead_rodo(
                     rodo_status_before=before,
                     message="would_retry",
                     rodo_status_after=before,
+                    compliance_state_before=cs_before,
+                    compliance_state_after=cs_before,
                 )
             )
             skipped_n += 1
@@ -173,12 +197,17 @@ async def bulk_retry_lead_rodo(
             auto_trigger="bulk_retry",
             ingest_source="bulk_rodo_retry",
         )
-        after = _rodo_status_label(lead.normalized if isinstance(lead.normalized, dict) else None)
+        if not ok:
+            await maybe_escalate_delivery_exhaustion(
+                db, tenant_id=tid, lead=lead, actor_id=actor_id
+            )
+        after_norm = lead.normalized if isinstance(lead.normalized, dict) else None
+        after = _rodo_status_label(after_norm)
+        cs_after = current_compliance_state(lead_normalized_rodo_block(after_norm))
         if ok:
             outcome = "sent"
             sent_n += 1
         else:
-            # pending_channel / already sent / pipeline required → classify
             low = (msg or "").lower()
             if "already sent" in low or after in {"sent", "satisfied", "source_provided"}:
                 outcome = "skipped"
@@ -196,6 +225,8 @@ async def bulk_retry_lead_rodo(
                 rodo_status_before=before,
                 message=str(msg or "")[:500],
                 rodo_status_after=after,
+                compliance_state_before=cs_before,
+                compliance_state_after=cs_after,
             )
         )
 
@@ -222,6 +253,8 @@ def summarize_bulk_retry(result: LeadRodoBulkRetryResult) -> dict[str, Any]:
                 "outcome": i.outcome,
                 "rodo_status_before": i.rodo_status_before,
                 "rodo_status_after": i.rodo_status_after,
+                "compliance_state_before": i.compliance_state_before,
+                "compliance_state_after": i.compliance_state_after,
                 "message": i.message,
             }
             for i in result.items
