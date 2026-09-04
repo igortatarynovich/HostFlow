@@ -47,6 +47,12 @@ describe('C-5 Mapping workspace UI shell', () => {
     expect(src).not.toContain('>{row.destination_code}<')
     expect(src).not.toContain('postMarketingSourceRoutingPreview')
     expect(src).not.toContain('marketing-mapping-routing-run')
+    expect(src).toContain('app.marketing.mapping.sample.ask')
+    expect(src).toContain('app.marketing.mapping.applied.next')
+    expect(src).toContain('marketing-mapping-sample-prompt')
+    expect(src).toContain('marketing-mapping-applied-next')
+    expect(src).toContain('latestPrimary')
+    expect(src).toContain('waitPrimary')
   })
 
   it('Sources list Mapping CTA still uses server mapping_path', () => {
@@ -56,5 +62,7 @@ describe('C-5 Mapping workspace UI shell', () => {
     )
     expect(src).toContain('row.mapping_path')
     expect(src).toContain('marketing-source-mapping-')
+    expect(src).not.toContain('row.test_lead_path')
+    expect(src).not.toContain('marketing-source-test-lead-')
   })
 })

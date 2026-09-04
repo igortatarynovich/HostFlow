@@ -11657,6 +11657,7 @@
         },
         "sample": {
           "present": "Latest answers are shown as examples — they are not the form structure.",
+          "ask": "We'll get an example application so you can set the fields.",
           "none": "No example on Meta or in HostFlow yet. Mapping is still possible.",
           "none_short": "No example yet",
           "latest": "example: {value}",
@@ -11695,6 +11696,7 @@
         "applied": {
           "title": "What the last application wrote",
           "none": "No application has used this mapping yet. Projection above is what the next one will write.",
+          "next": "All set. Wait for the next application to see what it wrote.",
           "waiting": "Waiting for the next application to prove this mapping.",
           "drift": "The last application used an older mapping than the one saved now.",
           "current": "The last application used the mapping saved now."

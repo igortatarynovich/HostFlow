@@ -87,6 +87,17 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     }
   })
 
+  it('Sources list Mapping is the operator CTA; leftover Test lead is not a Sources action', () => {
+    const src = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingSourcesPage.tsx'),
+      'utf8',
+    )
+    expect(src).toContain('row.mapping_path')
+    expect(src).toContain('mappingWorkspaceCta')
+    expect(src).not.toContain('row.test_lead_path')
+    expect(src).not.toContain('marketing-source-test-lead-')
+  })
+
   it('Connect bind opens Mapping workspace when a source exists', () => {
     const src = readFileSync(
       path.join(ROOT, 'src/pages/marketing/MarketingConnectSourcePage.tsx'),

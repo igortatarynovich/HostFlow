@@ -11657,6 +11657,7 @@
         },
         "sample": {
           "present": "Ostatnie odpowiedzi są przykładami — to nie struktura formularza.",
+          "ask": "Pobierzemy przykładowe zgłoszenie, żeby ustawić pola.",
           "none": "Nie ma jeszcze przykładu w Meta ani w HostFlow. Mapowanie i tak jest możliwe.",
           "none_short": "Brak przykładu",
           "latest": "przykład: {value}",
@@ -11695,6 +11696,7 @@
         "applied": {
           "title": "Co zapisał ostatni wniosek",
           "none": "Żaden wniosek jeszcze nie użył tego mapowania. Projekcja powyżej to to, co zapisze następny.",
+          "next": "Gotowe. Poczekaj na następne zgłoszenie, żeby zobaczyć, co zapisało.",
           "waiting": "Czekamy na następne zgłoszenie, żeby potwierdzić to mapowanie.",
           "drift": "Ostatni wniosek użył starszego mapowania niż to, które jest zapisane teraz.",
           "current": "Ostatni wniosek użył mapowania zapisanego teraz."

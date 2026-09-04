@@ -315,13 +315,6 @@ export default function MarketingSourcesPage() {
                         {mappingWorkspaceCta(row)}
                       </Link>
                       <Link
-                        to={row.test_lead_path}
-                        className="text-sm font-medium text-brand-700 hover:underline"
-                        data-testid={`marketing-source-test-lead-${row.source_id}`}
-                      >
-                        {t('app.marketing.sources.actions.test_lead')}
-                      </Link>
-                      <Link
                         to={row.settings_path}
                         className="text-sm font-medium text-slate-600 hover:underline"
                         data-testid={`marketing-source-settings-${row.source_id}`}

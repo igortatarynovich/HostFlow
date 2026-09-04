@@ -226,6 +226,11 @@ export default function MarketingSourceMappingPage() {
   }, [appliedPresent, sourceId, t, waitingUntil])
 
   const destinations = mapping?.destinations || []
+  const isMeta = (mapping?.provider || '').toLowerCase() === 'meta'
+  const mappingReady = mapping?.summary?.headline === 'all_set'
+  const hasSample = Boolean(mapping?.has_sample)
+  const waitPrimary = Boolean(mappingReady && !appliedPresent)
+  const latestPrimary = isMeta && !hasSample && !waitPrimary
 
   const title = useMemo(() => {
     const name = mapping?.display_name || source?.display_name
@@ -283,7 +288,7 @@ export default function MarketingSourceMappingPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="btn-secondary btn-sm"
+                className={latestPrimary ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
                 disabled={busy || !sourceId}
                 data-testid="marketing-mapping-sample-latest"
                 onClick={() =>
@@ -303,7 +308,7 @@ export default function MarketingSourceMappingPage() {
               </button>
               <button
                 type="button"
-                className="btn-secondary btn-sm"
+                className={waitPrimary ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
                 disabled={busy || !sourceId}
                 data-testid="marketing-mapping-sample-wait"
                 onClick={() =>
@@ -359,6 +364,16 @@ export default function MarketingSourceMappingPage() {
             <p className="mt-1 text-sm text-slate-600" data-testid="marketing-mapping-sample-note">
               {t('app.marketing.mapping.subtitle')}
             </p>
+            {isMeta && !hasSample && !mappingReady ? (
+              <p className="mt-2 text-sm text-slate-800" data-testid="marketing-mapping-sample-prompt">
+                {t('app.marketing.mapping.sample.ask')}
+              </p>
+            ) : null}
+            {mappingReady && !appliedPresent ? (
+              <p className="mt-2 text-sm text-slate-800" data-testid="marketing-mapping-applied-next">
+                {t('app.marketing.mapping.applied.next')}
+              </p>
+            ) : null}
             {mapping.sample_evidence?.capture_next_until ? (
               <p className="mt-2 text-sm text-slate-700" data-testid="marketing-mapping-sample-waiting">
                 {t('app.marketing.mapping.sample.waiting', {

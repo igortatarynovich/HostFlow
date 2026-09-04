@@ -38,12 +38,13 @@ describe('C-4 Test lead UI shell', () => {
     expect(src).not.toContain('mapping_rules:')
   })
 
-  it('Sources list Test lead CTA still uses server test_lead_path', () => {
+  it('Sources list does not promote leftover Test lead as an operator CTA', () => {
     const src = readFileSync(
       path.join(ROOT, 'src/pages/marketing/MarketingSourcesPage.tsx'),
       'utf8',
     )
-    expect(src).toContain('row.test_lead_path')
-    expect(src).toContain('marketing-source-test-lead-')
+    expect(src).not.toContain('row.test_lead_path')
+    expect(src).not.toContain('marketing-source-test-lead-')
+    expect(src).toContain('row.mapping_path')
   })
 })
