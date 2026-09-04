@@ -17,6 +17,15 @@ from backend.app.services.lead_lifecycle_email_policy import (
     PLATFORM_RODO_PUBLIC_PATH,
     is_platform_rodo_template_ref,
 )
+from backend.app.services.lead_rodo_obligation import (
+    ComplianceTransitionError,
+    apply_compliance_transition,
+    current_compliance_state,
+    has_assessment_proof,
+    has_delivery_proof,
+    has_exemption_proof,
+    notice_provided_at_source,
+)
 from backend.app.services.legal_documents import get_active_legal_document
 from backend.app.services.message_hub import resolve_lead_email_message
 
@@ -63,22 +72,23 @@ LEAD_RODO_REASON_DELIVERY_FAILED = "delivery_failed"
 
 
 def lead_rodo_satisfied_from_normalized(normalized: Optional[Dict[str, Any]]) -> bool:
-    """Information obligation closed: sent, source-provided, exempt, or explicitly satisfied.
+    """Information obligation closed only with proof — never by compliance_state alone.
 
-    SMTP ``sent`` counts until a delivery problem is recorded (``failed`` / ``deferred`` /
-    ``undelivered``). Temporary deferral also blocks — obligation is not fulfilled until
-    delivery succeeds, source-provided is marked, or a lawful exemption is recorded.
+    SMTP ``sent`` counts until a delivery problem is recorded. Temporary deferral
+    also blocks. Source-provided requires assessment evidence; exemption requires
+    a valid reason code. Webhook/notify is not fulfillment proof.
     """
     block = lead_normalized_rodo_block(normalized if isinstance(normalized, dict) else {})
-    st = str(block.get("status") or "").strip().lower()
-    if st in LEAD_RODO_NEGATIVE_STATUSES:
+    cs = current_compliance_state(block)
+    if cs in ("review_required", "delivery_required", "delivery_failed") or not cs:
         return False
-    if st in ("sent", "satisfied", "source_provided", "exempt"):
-        return True
-    cs = str(block.get("compliance_state") or "").strip().lower()
-    if cs in ("delivered", "compliant", "exempt"):
-        return True
-    return bool(str(block.get("sent_at") or "").strip())
+    if cs == "delivered":
+        return has_delivery_proof(block)
+    if cs == "compliant":
+        return has_assessment_proof(block)
+    if cs == "exempt":
+        return has_exemption_proof(block)
+    return False
 
 
 def lead_rodo_notice_status_from_normalized(normalized: Optional[Dict[str, Any]]) -> str:
@@ -118,15 +128,16 @@ def mark_lead_rodo_pending_channel(lead: Lead, *, reason: str = "no_channel") ->
     now = datetime.now(timezone.utc).isoformat()
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
-    block["status"] = "pending_channel"
-    block["pending_reason"] = str(reason or "no_channel").strip()[:256]
-    block["compliance_state"] = "delivery_failed"
     _merge_delivery_evidence(
         block,
         state="delivery_failed",
         failure_reason=str(reason or "no_channel").strip()[:256],
         recorded_at=now,
     )
+    if not apply_compliance_transition(block, "delivery_failed"):
+        return
+    block["status"] = "pending_channel"
+    block["pending_reason"] = str(reason or "no_channel").strip()[:256]
     norm["rodo"] = block
     lead.normalized = norm
     flag_modified(lead, "normalized")
@@ -147,8 +158,18 @@ def mark_lead_rodo_pending_policy(
         LEAD_RODO_REASON_POLICY_MISCONFIGURED,
     ):
         code = LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING
+    now = datetime.now(timezone.utc).isoformat()
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
+    _merge_delivery_evidence(
+        block,
+        state="delivery_failed",
+        failure_reason=str(reason or "").strip()[:2000],
+        failure_reason_code=code,
+        recorded_at=now,
+    )
+    if not apply_compliance_transition(block, "delivery_failed"):
+        return
     block["status"] = "pending_policy"
     block["failure_reason"] = str(reason or "").strip()[:2000]
     block["failure_reason_code"] = code
@@ -164,9 +185,6 @@ def mark_lead_rodo_failed(lead: Lead, *, reason: str, attempts: Optional[list] =
     now = datetime.now(timezone.utc).isoformat()
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
-    block["status"] = "failed"
-    block["failure_reason"] = str(reason or "").strip()[:2000]
-    block["compliance_state"] = "delivery_failed"
     extra: Dict[str, Any] = {
         "state": "delivery_failed",
         "failure_reason": str(reason or "").strip()[:2000],
@@ -175,6 +193,10 @@ def mark_lead_rodo_failed(lead: Lead, *, reason: str, attempts: Optional[list] =
     if attempts:
         extra["attempts"] = attempts
     _merge_delivery_evidence(block, **extra)
+    if not apply_compliance_transition(block, "delivery_failed"):
+        return
+    block["status"] = "failed"
+    block["failure_reason"] = str(reason or "").strip()[:2000]
     norm["rodo"] = block
     lead.normalized = norm
     flag_modified(lead, "normalized")
@@ -202,12 +224,6 @@ def mark_lead_rodo_undelivered(
     code = str(reason_code or LEAD_RODO_REASON_DELIVERY_FAILED).strip().lower()[:64]
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
-    block["status"] = status
-    block["failure_reason"] = str(reason or "").strip()[:2000]
-    block["failure_reason_code"] = code
-    block["delivery_outcome"] = oc
-    block["undelivered_at"] = now
-    block["compliance_state"] = "delivery_failed"
     _merge_delivery_evidence(
         block,
         state="delivery_failed",
@@ -217,10 +233,20 @@ def mark_lead_rodo_undelivered(
         recorded_at=now,
         provider_event_id=str(provider_event_id).strip()[:255] if provider_event_id else None,
     )
+    if not apply_compliance_transition(block, "delivery_failed"):
+        return
+    from sqlalchemy.orm.attributes import flag_modified
+
+    block["status"] = status
+    block["failure_reason"] = str(reason or "").strip()[:2000]
+    block["failure_reason_code"] = code
+    block["delivery_outcome"] = oc
+    block["undelivered_at"] = now
     if provider_event_id:
         block["delivery_feedback_event_id"] = str(provider_event_id).strip()[:255]
     norm["rodo"] = block
     lead.normalized = norm
+    flag_modified(lead, "normalized")
 
 
 def lead_rodo_satisfied(lead: Lead) -> bool:
@@ -385,23 +411,16 @@ def _stamp_lead_rodo_sent(
     ingest_source: Optional[str],
     extra: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """Merge a successful send onto the existing evaluation block (keep obligation / controller)."""
+    """Merge a successful SMTP send onto the evaluation block (keep obligation / controller).
+
+    ``delivery_failed`` → ``delivered`` only after proof is on the block. Webhook/notify
+    cannot close the obligation.
+    """
     from sqlalchemy.orm.attributes import flag_modified
 
     now = datetime.now(timezone.utc).isoformat()
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
-    block["status"] = "sent"
-    block["sent_at"] = now
-    block["channel"] = channel
-    block["recipient"] = email
-    block["rodo_version_id"] = rodo_version_id
-    block["delivery"] = "communication_pipeline"
-    block["compliance_state"] = "delivered"
-    if auto_trigger:
-        block["auto_trigger"] = str(auto_trigger).strip()
-    if ingest_source:
-        block["ingest_source"] = str(ingest_source).strip()
     extra_fields = dict(extra or {})
     evidence_keys = (
         "controller_name",
@@ -435,6 +454,27 @@ def _stamp_lead_rodo_sent(
             if value is None or value == "":
                 continue
             block[str(key)] = value
+    if auto_trigger:
+        block["auto_trigger"] = str(auto_trigger).strip()
+    if ingest_source:
+        block["ingest_source"] = str(ingest_source).strip()
+    block["channel"] = channel
+    block["recipient"] = email
+    block["rodo_version_id"] = rodo_version_id
+    block["delivery"] = "communication_pipeline"
+    if apply_compliance_transition(block, "delivered"):
+        block["status"] = "sent"
+        block["sent_at"] = now
+    else:
+        _merge_delivery_evidence(
+            block,
+            state="delivery_failed",
+            failure_reason="webhook_is_not_gdpr_proof",
+            recorded_at=now,
+        )
+        if apply_compliance_transition(block, "delivery_failed"):
+            block["status"] = "failed"
+            block["failure_reason"] = "webhook_is_not_gdpr_proof"
     norm["rodo"] = block
     lead.normalized = norm
     flag_modified(lead, "normalized")
@@ -1172,27 +1212,83 @@ def mark_lead_rodo_source_provided(
     *,
     actor_id: Optional[str] = None,
     note: Optional[str] = None,
+    proof: str = "operator_attestation",
 ) -> None:
-    """Stamp ``normalized['rodo'].status = source_provided`` (e.g. public intake already included art.14)."""
+    """Close as ``compliant`` only with assessment evidence — never a silent resolve.
+
+    ``proof="notice_at_source"`` — ingest captured that the person saw the notice.
+    ``proof="operator_attestation"`` — explicit operator action; ``actor_id`` is required.
+    """
+    from sqlalchemy.orm.attributes import flag_modified
+
+    proof_kind = str(proof or "operator_attestation").strip().lower()
+    actor = str(actor_id or "").strip() or None
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     prev = lead_normalized_rodo_block(norm)
     block: Dict[str, Any] = {**prev} if prev else {}
+    cs = current_compliance_state(block)
+    if cs in ("delivered", "exempt"):
+        return
+    if proof_kind == "operator_attestation":
+        if not actor:
+            raise ComplianceTransitionError(
+                "RODO_OPERATOR_REQUIRED",
+                "Covered at source is an operator attestation and requires an actor",
+            )
+    elif proof_kind == "notice_at_source":
+        assessment_prev = block.get("assessment") if isinstance(block.get("assessment"), dict) else {}
+        if not (
+            notice_provided_at_source(norm)
+            or (isinstance(assessment_prev, dict) and assessment_prev.get("notice_at_source") is True)
+        ):
+            raise ComplianceTransitionError(
+                "RODO_SOURCE_PROOF_MISSING",
+                "notice_at_source proof is missing from the lead assessment",
+            )
+    else:
+        raise ComplianceTransitionError(
+            "RODO_UNKNOWN_PROOF",
+            "Covered at source requires notice_at_source or operator_attestation",
+        )
+
     now = datetime.now(timezone.utc).isoformat()
-    block["status"] = "source_provided"
-    block["compliance_state"] = "compliant"
+    assessment: Dict[str, Any] = (
+        dict(block["assessment"]) if isinstance(block.get("assessment"), dict) else {}
+    )
+    assessment["state"] = "compliant"
+    assessment["reason_code"] = (
+        "source_provided_operator" if proof_kind == "operator_attestation" else "notice_at_source"
+    )
+    assessment["notice_at_source"] = proof_kind == "notice_at_source" or bool(
+        assessment.get("notice_at_source")
+    )
+    assessment["proof"] = proof_kind
+    assessment["evaluated_at"] = now
+    if actor:
+        assessment["actor_id"] = actor
+    if note:
+        assessment["note"] = str(note).strip()[:2000]
+    block["assessment"] = assessment
     block["source_provided_at"] = now
-    if actor_id:
-        block["source_provided_by"] = str(actor_id).strip()
+    if actor:
+        block["source_provided_by"] = actor
     if note:
         block["source_provided_note"] = str(note).strip()[:2000]
+    if not apply_compliance_transition(block, "compliant"):
+        raise ComplianceTransitionError(
+            "RODO_TRANSITION_REJECTED",
+            "Cannot close this obligation as compliant without assessment proof",
+        )
+    block["status"] = "source_provided"
     norm["rodo"] = block
     lead.normalized = norm
-    if actor_id:
+    flag_modified(lead, "normalized")
+    if actor:
         from backend.app.modules.leads.intake_lifecycle import mark_recruitment_intake_in_progress
 
         mark_recruitment_intake_in_progress(
             lead,
-            actor=actor_id,
+            actor=actor,
             last_action="rodo_source_provided",
         )
 
@@ -1225,6 +1321,7 @@ __all__ = [
     "lead_rodo_satisfied_from_normalized",
     "lead_rodo_sent_from_normalized",
     "resolve_lead_controller_identity",
+    "ComplianceTransitionError",
     "mark_lead_rodo_source_provided",
     "rodo_lead_audit_for_candidate_extra",
     "send_lead_rodo_email",

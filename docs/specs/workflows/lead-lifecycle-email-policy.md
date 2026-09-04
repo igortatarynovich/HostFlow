@@ -1,7 +1,7 @@
 # Lead lifecycle email policy (v1)
 
 **Status:** NORMATIVE (L2 — workflow / operating canon)  
-**Date:** 2026-07-29 · **Updated:** 2026-09-02 (mandatory RODO evaluation; tenant configures fulfillment, cannot disable it)  
+**Date:** 2026-07-29 · **Updated:** 2026-09-04 (restricted RODO compliance-state transitions)  
 **Owner:** Communication capability (settings + templates); Leads module consumes resolver  
 **Parents:** [ADR-033](../architecture/ADR-033-lead-lifecycle-email-company-policy.md) · [ADR-005](../architecture/ADR-005-three-level-settings-hierarchy.md) · [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) · [c0-0 Communication canon §14](../tasks/c0-0-communication-canon.md) · [§8.0.1–8.0.2 intake continuity](lead-intake-resolution-and-activity-continuity.md)
 
@@ -90,6 +90,20 @@ Two evidence objects (never mixed):
 - **`delivery_evidence`** — what was sent or attempted: controller, recipient, timestamp, notice version/hash, template, sender, channel, `attempts[]`, delivery status.
 
 Delivery path: tenant SMTP → on failure platform SMTP (`info@hostflow.cc`) → on failure `delivery_failed` with both attempts (webhook notify is **not** GDPR proof). Idempotency: the same obligation is not sent twice because of webhook replay.
+
+**Transitions (no universal mark-resolved):**
+
+| From | To | Required proof |
+|------|----|----------------|
+| unset / `delivery_required` / `review_required` | `delivered` | Successful SMTP `delivery_evidence` |
+| `delivery_failed` | `delivered` | Successful SMTP send only |
+| `review_required` | `compliant` | Assessment proof: notice at source **or** operator attestation (`actor_id`) |
+| `review_required` | `exempt` | Valid exemption reason code |
+| `delivery_failed` | `compliant` / `exempt` | Same proofs as above (operator attestation or lawful code) |
+| `delivered` | `delivery_failed` | Bounce / DSN feedback |
+| any closed state | another closed state | **Forbidden** (no mark resolved) |
+
+`delivery_failed` is not rewritten back to `delivery_required` on re-evaluation. Covered-at-source is an explicit operator (or ingest-captured notice) path with `assessment` evidence — not a silent close.
 
 ---
 

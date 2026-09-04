@@ -79,7 +79,6 @@ _EXEMPT_CODES = frozenset(
     }
 )
 
-_SATISFIED_STATUSES = frozenset({"sent", "satisfied", "source_provided", "exempt"})
 _NEGATIVE_STATUSES = frozenset(
     {
         "failed",
@@ -92,6 +91,74 @@ _NEGATIVE_STATUSES = frozenset(
         "delivery_failed",
     }
 )
+
+CANONICAL_COMPLIANCE_STATES: frozenset[str] = frozenset(
+    {
+        "compliant",
+        "delivery_required",
+        "delivered",
+        "exempt",
+        "review_required",
+        "delivery_failed",
+    }
+)
+COMPLIANCE_CLOSED_STATES: frozenset[str] = frozenset({"compliant", "delivered", "exempt"})
+COMPLIANCE_OPEN_STATES: frozenset[str] = frozenset(
+    {"delivery_required", "review_required", "delivery_failed"}
+)
+_WEBHOOK_DELIVERY_MARKERS = frozenset({"webhook", "notify", "webhook_notify"})
+
+# Open ``status`` wins over a closed ``compliance_state`` so writing
+# ``compliant`` / ``delivered`` cannot silently bypass an open obligation.
+_STATUS_TO_COMPLIANCE: dict[str, str] = {
+    "failed": "delivery_failed",
+    "deferred": "delivery_failed",
+    "undelivered": "delivery_failed",
+    "pending_channel": "delivery_failed",
+    "pending_policy": "delivery_failed",
+    "review_required": "review_required",
+    "delivery_required": "delivery_required",
+    "delivery_failed": "delivery_failed",
+    "sent": "delivered",
+    "satisfied": "delivered",
+    "source_provided": "compliant",
+    "exempt": "exempt",
+}
+
+# No universal "mark resolved". Closed states require proof on the block.
+ALLOWED_COMPLIANCE_TRANSITIONS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("", "compliant"),
+        ("", "delivery_required"),
+        ("", "delivered"),
+        ("", "exempt"),
+        ("", "review_required"),
+        ("", "delivery_failed"),
+        ("delivery_required", "delivered"),
+        ("delivery_required", "delivery_failed"),
+        ("delivery_required", "compliant"),
+        ("delivery_required", "exempt"),
+        ("delivery_required", "review_required"),
+        ("review_required", "delivered"),
+        ("review_required", "delivery_required"),
+        ("review_required", "delivery_failed"),
+        ("review_required", "compliant"),
+        ("review_required", "exempt"),
+        ("delivery_failed", "delivered"),
+        ("delivery_failed", "compliant"),
+        ("delivery_failed", "exempt"),
+        ("delivered", "delivery_failed"),
+        *{(state, state) for state in CANONICAL_COMPLIANCE_STATES},
+    }
+)
+
+
+class ComplianceTransitionError(ValueError):
+    """Illegal or unproven RODO compliance-state transition."""
+
+    def __init__(self, code: str, message: str) -> None:
+        self.code = str(code)
+        super().__init__(message)
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,6 +268,125 @@ def _exemption_claimed_without_reason(
         return True
     raw = block.get("exemption_code") or (normalized or {}).get("rodo_exempt_code")
     return bool(str(raw or "").strip())
+
+
+def current_compliance_state(block: Optional[Mapping[str, Any]]) -> str:
+    """Canonical state. An open ``status`` cannot be closed by ``compliance_state`` alone."""
+    if not isinstance(block, Mapping):
+        return ""
+    st = str(block.get("status") or "").strip().lower()
+    cs = str(block.get("compliance_state") or "").strip().lower()
+    if st in _NEGATIVE_STATUSES:
+        return _STATUS_TO_COMPLIANCE.get(st, "delivery_failed")
+    if cs in CANONICAL_COMPLIANCE_STATES:
+        return cs
+    return _STATUS_TO_COMPLIANCE.get(st, "")
+
+
+def _webhook_delivery(block: Mapping[str, Any]) -> bool:
+    via_fields = [block.get("delivery_via"), block.get("delivery")]
+    evidence = block.get("delivery_evidence")
+    if isinstance(evidence, Mapping):
+        via_fields.extend([evidence.get("delivery_via"), evidence.get("path"), evidence.get("channel")])
+        attempts = evidence.get("attempts")
+        if isinstance(attempts, list):
+            for item in attempts:
+                if isinstance(item, Mapping):
+                    via_fields.append(item.get("via"))
+    for raw in via_fields:
+        token = str(raw or "").strip().lower()
+        if token in _WEBHOOK_DELIVERY_MARKERS or "webhook" in token:
+            return True
+    return False
+
+
+def has_delivery_proof(block: Optional[Mapping[str, Any]]) -> bool:
+    """Successful SMTP send evidence. Webhook/notify is not GDPR proof."""
+    if not isinstance(block, Mapping) or _webhook_delivery(block):
+        return False
+    evidence = block.get("delivery_evidence")
+    if isinstance(evidence, Mapping):
+        if _webhook_delivery({"delivery_evidence": evidence, "delivery_via": evidence.get("delivery_via")}):
+            return False
+        attempts = evidence.get("attempts")
+        if isinstance(attempts, list) and attempts:
+            any_ok = any(isinstance(item, Mapping) and item.get("ok") is True for item in attempts)
+            if not any_ok:
+                return False
+        sent = str(evidence.get("sent_at") or "").strip()
+        recipient = str(evidence.get("recipient") or "").strip()
+        if str(evidence.get("state") or "").strip().lower() == "delivered" and (sent or recipient):
+            return True
+        if sent and recipient:
+            return True
+    st = str(block.get("status") or "").strip().lower()
+    if st in ("sent", "satisfied") and str(block.get("sent_at") or "").strip():
+        return True
+    return False
+
+
+def has_assessment_proof(block: Optional[Mapping[str, Any]]) -> bool:
+    """Notice-at-source or explicit operator attestation — not a silent close."""
+    if not isinstance(block, Mapping):
+        return False
+    assessment = block.get("assessment")
+    assessment_map = assessment if isinstance(assessment, Mapping) else {}
+    reason = str(assessment_map.get("reason_code") or "").strip().lower()
+    if assessment_map.get("notice_at_source") is True or reason == "notice_at_source":
+        return True
+    actor = str(
+        assessment_map.get("actor_id") or block.get("source_provided_by") or ""
+    ).strip()
+    if reason in ("source_provided", "source_provided_operator") and actor:
+        return True
+    if (
+        str(block.get("status") or "").strip().lower() == "source_provided"
+        and str(block.get("source_provided_at") or "").strip()
+        and actor
+    ):
+        return True
+    if (
+        str(block.get("status") or "").strip().lower() == "source_provided"
+        and str(block.get("source_provided_at") or "").strip()
+        and (reason == "notice_at_source" or assessment_map.get("notice_at_source") is True)
+    ):
+        return True
+    return False
+
+
+def has_exemption_proof(block: Optional[Mapping[str, Any]]) -> bool:
+    if not isinstance(block, Mapping):
+        return False
+    code = str(block.get("exemption_code") or "").strip().lower()
+    if code not in _EXEMPT_CODES:
+        return False
+    assessment = block.get("assessment")
+    if isinstance(assessment, Mapping):
+        reason = str(assessment.get("reason_code") or "").strip().lower()
+        if reason and reason not in _EXEMPT_CODES:
+            return False
+    return True
+
+
+def apply_compliance_transition(block: dict[str, Any], target: str) -> bool:
+    """Apply ``target`` only if the edge is allowed and closed states have proof.
+
+    Returns True when ``compliance_state`` was set to ``target``.
+    """
+    wanted = str(target or "").strip().lower()
+    if wanted not in CANONICAL_COMPLIANCE_STATES:
+        return False
+    current = current_compliance_state(block)
+    if (current, wanted) not in ALLOWED_COMPLIANCE_TRANSITIONS:
+        return False
+    if wanted == "delivered" and (not has_delivery_proof(block) or _webhook_delivery(block)):
+        return False
+    if wanted == "compliant" and not has_assessment_proof(block):
+        return False
+    if wanted == "exempt" and not has_exemption_proof(block):
+        return False
+    block["compliance_state"] = wanted
+    return True
 
 
 def _decision(
@@ -340,26 +526,43 @@ def stamp_obligation_evaluation(
     if decision.article:
         block["article"] = decision.article
 
-    current = str(block.get("status") or "").strip().lower()
-    if current not in _SATISFIED_STATUSES:
+    current_cs = current_compliance_state(block)
+    if current_cs in COMPLIANCE_CLOSED_STATES:
+        if not str(block.get("compliance_state") or "").strip():
+            apply_compliance_transition(block, current_cs)
+    elif current_cs == "delivery_failed" and decision.state in (
+        "delivery_required",
+        "review_required",
+    ):
+        apply_compliance_transition(block, "delivery_failed")
+    else:
+        target: Optional[ComplianceState] = None
+        status_for_target: Optional[str] = None
         if decision.state == "exempt":
-            block["status"] = "exempt"
             block["exemption_code"] = decision.reason_code
-            block["compliance_state"] = "exempt"
+            target = "exempt"
+            status_for_target = "exempt"
         elif decision.state == "review_required":
-            block["status"] = "review_required"
-            block["compliance_state"] = "review_required"
+            target = "review_required"
+            status_for_target = "review_required"
         elif decision.state == "delivery_required":
-            block["status"] = "delivery_required"
-            block["compliance_state"] = "delivery_required"
+            target = "delivery_required"
+            status_for_target = "delivery_required"
         elif decision.state == "compliant":
-            block["compliance_state"] = "compliant"
-        else:
-            block["compliance_state"] = decision.state
-    elif not block.get("compliance_state"):
-        block["compliance_state"] = (
-            "delivered" if current in ("sent", "satisfied") else ("exempt" if current == "exempt" else "compliant")
-        )
+            if decision.notice_at_source or decision.reason_code in (
+                "notice_at_source",
+                "source_provided",
+            ):
+                target = "compliant"
+                status_for_target = "source_provided"
+            elif decision.already_notified and has_delivery_proof(block):
+                target = "delivered"
+                status_for_target = "sent"
+        if target and apply_compliance_transition(block, target):
+            if status_for_target:
+                block["status"] = status_for_target
+        elif not str(block.get("compliance_state") or "").strip() and current_cs in CANONICAL_COMPLIANCE_STATES:
+            apply_compliance_transition(block, current_cs)
 
     norm["rodo"] = block
     lead.normalized = norm
@@ -367,14 +570,24 @@ def stamp_obligation_evaluation(
 
 
 __all__ = [
+    "ALLOWED_COMPLIANCE_TRANSITIONS",
     "Article",
     "AssessmentState",
+    "CANONICAL_COMPLIANCE_STATES",
+    "COMPLIANCE_CLOSED_STATES",
+    "COMPLIANCE_OPEN_STATES",
     "CollectionPath",
     "ComplianceState",
+    "ComplianceTransitionError",
     "ObligationAction",
     "ObligationDecision",
+    "apply_compliance_transition",
     "classify_collection_path",
+    "current_compliance_state",
     "evaluate_lead_rodo_obligation",
+    "has_assessment_proof",
+    "has_delivery_proof",
+    "has_exemption_proof",
     "notice_provided_at_source",
     "stamp_obligation_evaluation",
 ]

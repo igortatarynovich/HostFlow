@@ -384,7 +384,7 @@ CRM `Lead.stage` is a **compatibility projection** only (`new` → `contacted` o
 
 **Platform invariant:** tenant may configure **how** the obligation is fulfilled (controller identity, clause, sender, copy) but cannot disable **that** it is evaluated and fulfilled when applicable. Missing configuration uses the HostFlow default (body + mailbox), not “do nothing”. HostFlow is delivery infrastructure; the named controller is the operating firm (`OwnCompany`).
 
-**Technical invariant:** no lead may silently bypass evaluation. An unresolved or failed obligation (`review_required`, `delivery_required`, `delivery_failed`) stays explicitly actionable until resolved. Assessment evidence and delivery evidence are stored separately on `normalized.rodo`.
+**Technical invariant:** no lead may silently bypass evaluation. An unresolved or failed obligation (`review_required`, `delivery_required`, `delivery_failed`) stays explicitly actionable until resolved. Assessment evidence and delivery evidence are stored separately on `normalized.rodo`. State transitions are restricted: `delivery_failed` → `delivered` only after a successful send; `review_required` → `compliant` only with assessment proof; `review_required` → `exempt` only with a valid reason code. There is no universal mark-resolved.
 
 **Tenant policy** (`Tenant.settings.lead_rodo_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings` — **preset / migration**):
 

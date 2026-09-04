@@ -707,20 +707,30 @@ async def mark_lead_rodo_source_provided_endpoint(
     current_user: UserCtx = Depends(get_current_user),
     note: str | None = Query(None, max_length=2000, description="Optional operator note (why source counts as art.14)."),
 ) -> Dict[str, Any]:
-    """Mark art.14 as satisfied via source (no outbound email). Persists ``lead.normalized['rodo']``."""
+    """Mark art.14 as satisfied via source (no outbound email). Persists ``lead.normalized['rodo']``.
+
+    Operator attestation only — not a generic resolve. Assessment evidence is required.
+    """
     from backend.app.modules.leads import crud
-    from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+    from backend.app.services.lead_rodo import ComplianceTransitionError, mark_lead_rodo_source_provided
 
     db, tenant_uuid = db_tenant
     tenant_id_str = str(tenant_uuid)
     lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
-    mark_lead_rodo_source_provided(
-        lead,
-        actor_id=str(current_user.sub or "").strip() or None,
-        note=note,
-    )
+    try:
+        mark_lead_rodo_source_provided(
+            lead,
+            actor_id=str(current_user.sub or "").strip() or None,
+            note=note,
+            proof="operator_attestation",
+        )
+    except ComplianceTransitionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
     await db.commit()
     return {"ok": True}
 

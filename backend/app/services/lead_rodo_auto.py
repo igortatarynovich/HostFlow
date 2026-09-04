@@ -21,6 +21,7 @@ from backend.app.services.lead_rodo import (
     send_lead_rodo_email,
 )
 from backend.app.services.lead_rodo_obligation import (
+    ComplianceTransitionError,
     evaluate_lead_rodo_obligation,
     notice_provided_at_source,
     stamp_obligation_evaluation,
@@ -71,7 +72,19 @@ async def apply_lead_rodo_on_ingest(
     )
 
     if evaluation.action == "no_delivery_source_provided":
-        mark_lead_rodo_source_provided(lead, actor_id=None, note="notice provided at collection")
+        if evaluation.notice_at_source:
+            try:
+                mark_lead_rodo_source_provided(
+                    lead,
+                    actor_id=None,
+                    note="notice provided at collection",
+                    proof="notice_at_source",
+                )
+            except ComplianceTransitionError:
+                logger.info(
+                    "lead_rodo_source_provided_transition_rejected",
+                    extra={"tenant_id": tenant_id, "lead_id": str(lead.id)},
+                )
         stamp_obligation_evaluation(
             lead,
             evaluation,
@@ -130,7 +143,19 @@ async def maybe_auto_send_before_gated_action(
     )
     if evaluation.action != "delivery_required":
         if evaluation.action == "no_delivery_source_provided":
-            mark_lead_rodo_source_provided(lead, actor_id=None, note="notice provided at collection")
+            if evaluation.notice_at_source:
+                try:
+                    mark_lead_rodo_source_provided(
+                        lead,
+                        actor_id=None,
+                        note="notice provided at collection",
+                        proof="notice_at_source",
+                    )
+                except ComplianceTransitionError:
+                    logger.info(
+                        "lead_rodo_source_provided_transition_rejected",
+                        extra={"tenant_id": tenant_id, "lead_id": str(lead.id)},
+                    )
             stamp_obligation_evaluation(
                 lead,
                 evaluation,
