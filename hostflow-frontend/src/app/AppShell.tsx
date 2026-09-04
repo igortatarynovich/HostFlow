@@ -228,6 +228,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
               onLogout={onLogout}
               onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
               compact={isCrmWorkspace}
+              pendingHandoffsCount={pendingHandoffsCount}
             />
             <WizardSetupRail hidden={!onboardingWizardEnabled || isOnboardingPage || !me?.tenant_id} />
 

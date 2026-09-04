@@ -124,6 +124,19 @@ export function isNetworkError(error: unknown): boolean {
   return !axiosError?.response && Boolean(axiosError?.message)
 }
 
+/** Axios/browser timeout (ECONNABORTED, Chrome net::ERR_TIMED_OUT wrapped as "timeout exceeded"). */
+export function isTimeoutError(error: unknown): boolean {
+  const axiosError = error as { code?: string; message?: string } | null
+  const code = String(axiosError?.code || '')
+  const msg = String(axiosError?.message || '').toLowerCase()
+  return code === 'ECONNABORTED' || code === 'ETIMEDOUT' || msg.includes('timeout')
+}
+
+/** Timeout or no HTTP response — safe to retry with backoff; do not treat as empty data. */
+export function isTransientRequestError(error: unknown): boolean {
+  return isTimeoutError(error) || isNetworkError(error)
+}
+
 /**
  * Checks if error is a validation error (400 or 422)
  */

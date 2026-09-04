@@ -1867,11 +1867,6 @@ export default function Candidates(){
 
 
 
-  // Отслеживаем изменения items для диагностики
-  useEffect(() => {
-    console.info('[Candidates] items state changed: length=', items.length, 'total=', total)
-  }, [items.length, total])
-
   // Автоматически сбрасываем фильтр isFavorite, если он блокирует все элементы
   useEffect(() => {
     if (isFavoriteFilter === true && enrichedItems.length > 0) {
