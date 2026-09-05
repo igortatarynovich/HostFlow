@@ -1,4 +1,6 @@
 /** @vitest-environment node */
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { APP_ROUTES, NAV_ITEMS } from '../routes'
 import { CRM_APP_PATHS, crmAppRouteSegment } from '../crmAppPaths'
@@ -8,6 +10,8 @@ import {
   SIDEBAR_AGENCY_SALES_ORDER,
   SIDEBAR_HUB_NAV_ITEM_KEYS,
 } from '../../nav/sidebarRailBuckets'
+
+const ROOT = path.resolve(__dirname, '../../..')
 
 describe('marketing workspace route registration', () => {
   it('registers NAV_ITEMS + APP_ROUTES under /app/marketing', () => {
@@ -59,5 +63,17 @@ describe('marketing workspace route registration', () => {
     }
     const nav = NAV_ITEMS.find((item) => item.key === 'marketing')
     expect(nav?.permission).toBe('vacancies.view')
+  })
+
+  it('campaign roster uses system DataTable, not a local list', () => {
+    const src = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingCampaignsPage.tsx'),
+      'utf8',
+    )
+    expect(src).toContain('from \'../../components/layout\'')
+    expect(src).toContain('DataTable')
+    expect(src).toContain('StatusBadge')
+    expect(src).not.toMatch(/<ul\b/)
+    expect(src).not.toContain('statusTone')
   })
 })

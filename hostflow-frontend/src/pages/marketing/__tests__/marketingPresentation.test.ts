@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest'
 import type { AcquisitionActivityEvent } from '../../../api/acquisitionActivity'
-import { countFlightFunnel, destinationSummary, statusLabel } from '../marketingPresentation'
+import { countFlightFunnel, destinationSummary, statusLabel, statusSemantic } from '../marketingPresentation'
 import type { Campaign } from '../../../api/platformCampaigns'
 
 function event(partial: Partial<AcquisitionActivityEvent>): AcquisitionActivityEvent {
@@ -49,5 +49,14 @@ describe('marketingPresentation', () => {
   it('labels statuses in English by default', () => {
     expect(statusLabel('active')).toBe('Active')
     expect(statusLabel('paused')).toBe('On hold')
+  })
+
+  it('maps lifecycle status to STATUS_BADGE_V1 semantics', () => {
+    expect(statusSemantic('active')).toBe('brand')
+    expect(statusSemantic('paused')).toBe('warning')
+    expect(statusSemantic('planned')).toBe('neutral')
+    expect(statusSemantic('draft')).toBe('neutral')
+    expect(statusSemantic('completed')).toBe('info')
+    expect(statusSemantic('failed')).toBe('danger')
   })
 })

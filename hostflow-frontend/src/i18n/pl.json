@@ -11554,7 +11554,29 @@
         "destination": "Dokąd: {value}",
         "launch": "Start: {when}",
         "not_launched": "jeszcze nie uruchomiono",
-        "open": "Otwórz"
+        "open": "Otwórz",
+        "search_placeholder": "Szukaj kampanii…",
+        "empty_filtered": "Brak kampanii dla bieżących filtrów.",
+        "footer_visible": "{count} kampanii",
+        "aria": "Kampanie",
+        "price_not_loaded": "Nie zaimportowano",
+        "columns": {
+          "campaign": "Kampania",
+          "status": "Status",
+          "applications": "Zgłoszenia",
+          "form": "Formularz",
+          "source": "Źródło",
+          "destination": "Dokąd",
+          "launch": "Start",
+          "price": "Cena",
+          "actions": "Akcje"
+        },
+        "filters": {
+          "all": "Wszystkie kampanie",
+          "active": "Aktywne",
+          "paused": "Wstrzymane",
+          "completed": "Zakończone"
+        }
       },
       "title": "Marketing",
       "subtitle": "Kampanie, formularze i start Flight — od pomysłu do przychodzących zgłoszeń.",

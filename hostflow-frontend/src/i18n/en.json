@@ -11554,7 +11554,29 @@
         "destination": "Goes to: {value}",
         "launch": "Launch: {when}",
         "not_launched": "not launched yet",
-        "open": "Open"
+        "open": "Open",
+        "search_placeholder": "Search campaigns…",
+        "empty_filtered": "No campaigns match the current filters.",
+        "footer_visible": "{count} campaigns",
+        "aria": "Campaigns",
+        "price_not_loaded": "Not imported",
+        "columns": {
+          "campaign": "Campaign",
+          "status": "Status",
+          "applications": "Applications",
+          "form": "Form",
+          "source": "Source",
+          "destination": "Goes to",
+          "launch": "Launch",
+          "price": "Price",
+          "actions": "Actions"
+        },
+        "filters": {
+          "all": "All campaigns",
+          "active": "Active",
+          "paused": "On hold",
+          "completed": "Completed"
+        }
       },
       "title": "Marketing",
       "subtitle": "Campaigns, forms, and Flight launch — from the idea to inbound applications.",

@@ -11554,7 +11554,29 @@
         "destination": "Куда: {value}",
         "launch": "Запуск: {when}",
         "not_launched": "ещё не запускали",
-        "open": "Открыть"
+        "open": "Открыть",
+        "search_placeholder": "Поиск кампаний…",
+        "empty_filtered": "Нет кампаний по текущим фильтрам.",
+        "footer_visible": "{count} кампаний",
+        "aria": "Кампании",
+        "price_not_loaded": "Не загружено",
+        "columns": {
+          "campaign": "Кампания",
+          "status": "Статус",
+          "applications": "Заявки",
+          "form": "Форма",
+          "source": "Источник",
+          "destination": "Куда",
+          "launch": "Запуск",
+          "price": "Цена",
+          "actions": "Действия"
+        },
+        "filters": {
+          "all": "Все кампании",
+          "active": "Активные",
+          "paused": "На паузе",
+          "completed": "Завершённые"
+        }
       },
       "title": "Маркетинг",
       "subtitle": "Кампании, формы и запуск Flight — от идеи до входящих заявок.",

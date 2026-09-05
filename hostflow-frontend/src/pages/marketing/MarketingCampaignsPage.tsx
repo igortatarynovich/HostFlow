@@ -1,8 +1,8 @@
 /**
- * Marketing Workspace — campaign list (product surface for Flights).
+ * Marketing Workspace — campaign roster (TABLE_V1 DataTable).
  */
-import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { CRM_APP_PATHS, marketingCampaignPath } from '../../app/crmAppPaths'
 import {
   currentFlight,
@@ -14,10 +14,19 @@ import {
   resumeFlight,
   type Campaign,
   type CampaignPortfolio,
+  type PortfolioCampaignRow,
 } from '../../api/platformCampaigns'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { Chip } from '../../components/ui/Chip'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 import { PageHeader } from '../../components/nav/PageHeader'
-import { PageShell, PageShellHeader } from '../../components/layout'
+import {
+  DataTable,
+  PageShell,
+  PageShellHeader,
+  Toolbar,
+  type DataTableColumn,
+} from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { formatDateTime } from '../../utils/dateFormat'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
@@ -26,38 +35,76 @@ import {
   primaryForm,
   primarySource,
   statusLabel,
-  statusTone,
+  statusSemantic,
 } from './marketingPresentation'
 import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
 
-type RowMeta = { received: number }
+type RosterFilter = 'all' | 'active' | 'paused' | 'completed'
+
+type CampaignRosterRow = {
+  campaign: Campaign
+  status: string
+  formTitle: string
+  sourceLabel: string
+  destination: string
+  launchedLabel: string
+  received: number | null
+  costPerLead: string | null
+  currency: string | null
+}
+
+const ROSTER_FILTERS: RosterFilter[] = ['all', 'active', 'paused', 'completed']
+const LIST_LIMIT = 100
+
+function rosterStatus(campaign: Campaign): string {
+  const flight = currentFlight(campaign)
+  return String(flight?.status || campaign.status || '').toLowerCase()
+}
+
+function matchesRoster(status: string, filter: RosterFilter): boolean {
+  if (filter === 'all') return true
+  if (filter === 'active') return status === 'active'
+  if (filter === 'paused') return status === 'paused'
+  return status === 'completed' || status === 'archived'
+}
+
+function portfolioByCampaign(portfolio: CampaignPortfolio | null): Map<string, PortfolioCampaignRow> {
+  const map = new Map<string, PortfolioCampaignRow>()
+  for (const row of portfolio?.campaigns ?? []) {
+    map.set(row.campaign_id, row)
+  }
+  return map
+}
 
 export default function MarketingCampaignsPage() {
   const { t, locale } = useI18n()
+  const navigate = useNavigate()
   const [items, setItems] = useState<Campaign[]>([])
   const [portfolio, setPortfolio] = useState<CampaignPortfolio | null>(null)
-  const [counts, setCounts] = useState<Record<string, RowMeta>>({})
+  const [counts, setCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
+  const [query, setQuery] = useState('')
+  const [rosterFilter, setRosterFilter] = useState<RosterFilter>('all')
 
   const loadCounts = useCallback(async (campaigns: Campaign[]) => {
     const entries = await Promise.all(
       campaigns.map(async (c) => {
         const flight = currentFlight(c)
-        if (!flight) return [c.id, { received: 0 }] as const
+        if (!flight) return [c.id, 0] as const
         try {
           // Same SoT as detail KPI «Заявки»: Flight-attributed people, not Activity.
           const mon = await getLiveIntakeMonitor(c.id, flight.id, { limit: 1 })
-          return [c.id, { received: mon.counters?.submissions ?? 0 }] as const
+          return [c.id, mon.counters?.submissions ?? 0] as const
         } catch {
-          return [c.id, { received: 0 }] as const
+          return [c.id, 0] as const
         }
       }),
     )
-    const next: Record<string, RowMeta> = {}
-    for (const [id, funnel] of entries) {
-      next[id] = { received: funnel.received }
+    const next: Record<string, number> = {}
+    for (const [id, received] of entries) {
+      next[id] = received
     }
     setCounts(next)
   }, [])
@@ -67,7 +114,7 @@ export default function MarketingCampaignsPage() {
     setError(null)
     try {
       const [rows, folio] = await Promise.all([
-        listCampaigns({ limit: 100 }),
+        listCampaigns({ limit: LIST_LIMIT }),
         getCampaignPortfolio(50).catch(() => null),
       ])
       setItems(rows)
@@ -92,7 +139,7 @@ export default function MarketingCampaignsPage() {
     void load()
   }, [load])
 
-  async function runCommand(campaign: Campaign, kind: 'launch' | 'pause' | 'resume') {
+  const runCommand = useCallback(async (campaign: Campaign, kind: 'launch' | 'pause' | 'resume') => {
     const flight = currentFlight(campaign)
     if (!flight) return
     setActingId(campaign.id)
@@ -112,7 +159,178 @@ export default function MarketingCampaignsPage() {
     } finally {
       setActingId(null)
     }
-  }
+  }, [t])
+
+  const rows = useMemo((): CampaignRosterRow[] => {
+    const folioMap = portfolioByCampaign(portfolio)
+    const q = query.trim().toLowerCase()
+    const built: CampaignRosterRow[] = []
+    for (const campaign of items) {
+      const status = rosterStatus(campaign)
+      if (!matchesRoster(status, rosterFilter)) continue
+      const flight = currentFlight(campaign)
+      const form = primaryForm(flight)
+      const source = primarySource(flight)
+      const sourceLabel = source?.name || source?.provider || (form ? t('app.marketing.list.public_form') : '—')
+      const destination = destinationSummary(campaign, t)
+      const launchedLabel = flight?.starts_at
+        ? formatDateTime(flight.starts_at, locale)
+        : t('app.marketing.list.not_launched')
+      if (q) {
+        const hay = [campaign.name, form?.title || '', sourceLabel, destination].join(' ').toLowerCase()
+        if (!hay.includes(q)) continue
+      }
+      const folio = folioMap.get(campaign.id)
+      built.push({
+        campaign,
+        status,
+        formTitle: form?.title || '—',
+        sourceLabel,
+        destination,
+        launchedLabel,
+        received: counts[campaign.id] ?? null,
+        costPerLead: folio?.cost_per_lead ?? null,
+        currency: folio?.currency || portfolio?.currency || null,
+      })
+    }
+    return built
+  }, [counts, items, locale, portfolio, query, rosterFilter, t])
+
+  const showPriceColumn = useMemo(
+    () => rows.some((row) => Boolean(row.costPerLead)),
+    [rows],
+  )
+
+  const columns = useMemo((): DataTableColumn<CampaignRosterRow>[] => {
+    const cols: DataTableColumn<CampaignRosterRow>[] = [
+      {
+        key: 'campaign',
+        header: t('app.marketing.list.columns.campaign'),
+        minWidth: 180,
+        render: (row) => (
+          <span className="font-medium text-slate-900" data-testid={`marketing-campaign-name-${row.campaign.id}`}>
+            {row.campaign.name}
+          </span>
+        ),
+      },
+      {
+        key: 'status',
+        header: t('app.marketing.list.columns.status'),
+        render: (row) => (
+          <StatusBadge label={statusLabel(row.status, t)} semantic={statusSemantic(row.status)} />
+        ),
+      },
+      {
+        key: 'applications',
+        header: t('app.marketing.list.columns.applications'),
+        align: 'right',
+        tabularNums: true,
+        compact: true,
+        render: (row) => (row.received == null ? '…' : row.received),
+      },
+      {
+        key: 'form',
+        header: t('app.marketing.list.columns.form'),
+        render: (row) => <span className="text-slate-700">{row.formTitle}</span>,
+      },
+      {
+        key: 'source',
+        header: t('app.marketing.list.columns.source'),
+        render: (row) => <span className="text-slate-700">{row.sourceLabel}</span>,
+      },
+      {
+        key: 'destination',
+        header: t('app.marketing.list.columns.destination'),
+        render: (row) => <span className="text-slate-700">{row.destination}</span>,
+      },
+      {
+        key: 'launch',
+        header: t('app.marketing.list.columns.launch'),
+        render: (row) => <span className="text-slate-600">{row.launchedLabel}</span>,
+      },
+    ]
+
+    if (showPriceColumn) {
+      cols.push({
+        key: 'price',
+        header: t('app.marketing.list.columns.price'),
+        align: 'right',
+        tabularNums: true,
+        compact: true,
+        render: (row) =>
+          row.costPerLead ? (
+            <span className="text-slate-900">
+              {row.costPerLead}
+              {row.currency ? ` ${row.currency}` : ''}
+            </span>
+          ) : (
+            <span className="text-slate-500">{t('app.marketing.list.price_not_loaded')}</span>
+          ),
+      })
+    }
+
+    cols.push({
+      key: 'actions',
+      header: t('app.marketing.list.columns.actions'),
+      align: 'right',
+      render: (row) => {
+        const busy = actingId === row.campaign.id
+        const flight = currentFlight(row.campaign)
+        return (
+          <div className="flex flex-wrap justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+            <Link to={marketingCampaignPath(row.campaign.id)} className="btn-secondary btn-sm">
+              {t('app.marketing.list.open')}
+            </Link>
+            {row.status === 'planned' ? (
+              <button
+                type="button"
+                className="btn-primary btn-sm"
+                disabled={busy || !flight}
+                onClick={() => void runCommand(row.campaign, 'launch')}
+              >
+                {t('app.marketing.detail.start')}
+              </button>
+            ) : null}
+            {row.status === 'active' ? (
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={busy || !flight}
+                onClick={() => void runCommand(row.campaign, 'pause')}
+              >
+                {t('app.marketing.detail.pause')}
+              </button>
+            ) : null}
+            {row.status === 'paused' ? (
+              <button
+                type="button"
+                className="btn-primary btn-sm"
+                disabled={busy || !flight}
+                onClick={() => void runCommand(row.campaign, 'resume')}
+              >
+                {t('app.marketing.detail.resume')}
+              </button>
+            ) : null}
+          </div>
+        )
+      },
+    })
+
+    return cols
+  }, [actingId, runCommand, showPriceColumn, t])
+
+  const emptyState =
+    items.length === 0 && !error ? (
+      <div className="mx-auto max-w-md">
+        <p className="text-sm font-medium text-slate-800">{t('app.marketing.empty_title')}</p>
+        <p className="mt-1 text-sm text-slate-600">{t('app.marketing.empty_body')}</p>
+        <Link to={CRM_APP_PATHS.marketingNew} className="btn-primary btn-sm mt-4 inline-flex">
+          {t('app.marketing.actions.create')}
+        </Link>
+      </div>
+    ) : (
+      t('app.marketing.list.empty_filtered')
+    )
 
   return (
     <PageShell>
@@ -131,14 +349,11 @@ export default function MarketingCampaignsPage() {
           }
         />
         <MarketingWorkspaceNav />
-      </PageShellHeader>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
-        {error ? <ErrorRecoveryBanner info={error} onRetry={() => void load()} /> : null}
+        {error ? <div className="mt-3"><ErrorRecoveryBanner info={error} onRetry={() => void load()} /></div> : null}
 
         {portfolio && portfolio.campaigns.length > 0 ? (
           <section
-            className="rounded-xl border border-slate-200 bg-white px-4 py-4"
+            className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
             data-testid="marketing-campaign-portfolio"
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -147,9 +362,7 @@ export default function MarketingCampaignsPage() {
               </h2>
               <p className="text-xs text-slate-500">
                 {t('app.marketing.portfolio.subtitle')}
-                {portfolio.scan_capped
-                  ? t('app.marketing.portfolio.capped')
-                  : ''}
+                {portfolio.scan_capped ? t('app.marketing.portfolio.capped') : ''}
               </p>
             </div>
             <div
@@ -194,170 +407,47 @@ export default function MarketingCampaignsPage() {
                 </div>
               </div>
             </div>
-            <div className="mt-3 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-xs text-slate-500">
-                  <tr>
-                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.campaign')}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.status')}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.spend')}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.leads')}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.cpl')}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.cac_proxy')}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.marketing.metrics.value')}</th>
-                    <th className="py-2 font-medium">{t('app.marketing.metrics.roi')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {portfolio.campaigns.map((row) => (
-                    <tr
-                      key={row.campaign_id}
-                      className="border-t border-slate-100"
-                      data-testid={`marketing-portfolio-row-${row.campaign_id}`}
-                    >
-                      <td className="py-2 pr-3 text-slate-900">
-                        <Link
-                          to={marketingCampaignPath(row.campaign_id)}
-                          className="font-medium hover:underline"
-                        >
-                          {row.name}
-                        </Link>
-                        {row.is_best_cpl ? (
-                          <span className="ml-2 rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                            {t('app.marketing.metrics.best_cpl')}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status, t)}</td>
-                      <td className="py-2 pr-3 tabular-nums text-slate-900">
-                        {row.spend}
-                        {row.currency ? ` ${row.currency}` : ''}
-                      </td>
-                      <td className="py-2 pr-3 tabular-nums text-slate-900">{row.leads}</td>
-                      <td className="py-2 pr-3 tabular-nums text-slate-700">
-                        {row.cost_per_lead != null ? row.cost_per_lead : '—'}
-                      </td>
-                      <td className="py-2 pr-3 tabular-nums text-slate-700">
-                        {row.cost_per_outcome != null ? row.cost_per_outcome : '—'}
-                      </td>
-                      <td className="py-2 pr-3 tabular-nums text-slate-700">
-                        {row.outcome_value != null ? row.outcome_value : '—'}
-                      </td>
-                      <td className="py-2 tabular-nums text-slate-700">
-                        {row.roi != null ? row.roi : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </section>
         ) : null}
+      </PageShellHeader>
 
-        {!loading && items.length === 0 && !error ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
-            <p className="text-sm font-medium text-slate-800">
-              {t('app.marketing.empty_title')}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              {t('app.marketing.empty_body')}
-            </p>
-            <Link to={CRM_APP_PATHS.marketingNew} className="btn-primary btn-sm mt-4 inline-flex">
-              {t('app.marketing.actions.create')}
-            </Link>
+      <Toolbar>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className="input w-56"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('app.marketing.list.search_placeholder')}
+            data-testid="marketing-campaigns-search"
+            aria-label={t('app.marketing.list.search_placeholder')}
+          />
+          <div className="flex flex-wrap items-center gap-1.5" data-testid="marketing-campaigns-filters">
+            {ROSTER_FILTERS.map((key) => (
+              <Chip
+                key={key}
+                behavior="selectable"
+                size="sm"
+                selected={rosterFilter === key}
+                selectedAppearance="soft"
+                label={t(`app.marketing.list.filters.${key}`)}
+                onClick={() => setRosterFilter(key)}
+              />
+            ))}
           </div>
-        ) : null}
+        </div>
+      </Toolbar>
 
-        <ul className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
-          {items.map((campaign) => {
-            const flight = currentFlight(campaign)
-            const form = primaryForm(flight)
-            const source = primarySource(flight)
-            const sourceLabel = source?.name || source?.provider || (form ? t('app.marketing.list.public_form') : '—')
-            const status = flight?.status || 'planned'
-            const busy = actingId === campaign.id
-            return (
-              <li key={campaign.id} className="px-4 py-3">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <Link
-                    to={marketingCampaignPath(campaign.id)}
-                    className="min-w-0 flex-1 transition hover:opacity-90"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-semibold text-slate-900">{campaign.name}</span>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${statusTone(campaign.status)}`}
-                      >
-                        {statusLabel(campaign.status, t)}
-                      </span>
-                      {flight ? (
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${statusTone(flight.status)}`}
-                        >
-                          Flight: {statusLabel(flight.status, t)}
-                        </span>
-                      ) : null}
-                      <span className="text-xs text-slate-500">
-                        {t('app.marketing.list.applications', {
-                          values: { count: String(counts[campaign.id]?.received ?? '…') },
-                        })}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span>{t('app.marketing.list.form', { values: { name: form?.title || '—' } })}</span>
-                      <span>{t('app.marketing.list.source', { values: { name: sourceLabel } })}</span>
-                      <span>{t('app.marketing.list.destination', { values: { value: destinationSummary(campaign, t) } })}</span>
-                      <span>
-                        {t('app.marketing.list.launch', {
-                          values: {
-                            when: flight?.starts_at
-                              ? formatDateTime(flight.starts_at, locale)
-                              : t('app.marketing.list.not_launched'),
-                          },
-                        })}
-                      </span>
-                    </div>
-                  </Link>
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <Link to={marketingCampaignPath(campaign.id)} className="btn-secondary btn-sm">
-                      {t('app.marketing.list.open')}
-                    </Link>
-                    {status === 'planned' ? (
-                      <button
-                        type="button"
-                        className="btn-primary btn-sm"
-                        disabled={busy || !flight}
-                        onClick={() => void runCommand(campaign, 'launch')}
-                      >
-                        {t('app.marketing.detail.start')}
-                      </button>
-                    ) : null}
-                    {status === 'active' ? (
-                      <button
-                        type="button"
-                        className="btn-secondary btn-sm"
-                        disabled={busy || !flight}
-                        onClick={() => void runCommand(campaign, 'pause')}
-                      >
-                        {t('app.marketing.detail.pause')}
-                      </button>
-                    ) : null}
-                    {status === 'paused' ? (
-                      <button
-                        type="button"
-                        className="btn-primary btn-sm"
-                        disabled={busy || !flight}
-                        onClick={() => void runCommand(campaign, 'resume')}
-                      >
-                        {t('app.marketing.detail.resume')}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
+      <div className="flex min-h-0 flex-1 flex-col" data-testid="marketing-campaigns-table">
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => row.campaign.id}
+          loading={loading}
+          onRowClick={(row) => navigate(marketingCampaignPath(row.campaign.id))}
+          emptyState={emptyState}
+          ariaLabel={t('app.marketing.list.aria')}
+          footer={t('app.marketing.list.footer_visible', { values: { count: String(rows.length) } })}
+        />
       </div>
     </PageShell>
   )
