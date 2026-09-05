@@ -1234,6 +1234,43 @@ async def test_graph_sample_is_not_applied_until_ingest(
     assert "blue" not in sentences
 
 
+def test_destination_group_for_code_uses_entity_not_short_name() -> None:
+    from backend.app.acquisition.mapping_workspace import destination_group_for_code
+
+    assert destination_group_for_code("platform.identity.address") == ("candidate", "Candidate")
+    assert destination_group_for_code("recruitment.candidate.contacts.email")[0] == "candidate"
+    assert destination_group_for_code("crm.client.address") == ("client", "Client")
+    assert destination_group_for_code("service_sales.warehouse_hiring.advances")[0] == (
+        "warehouse_hiring"
+    )
+
+
+@pytest.mark.anyio
+async def test_candidate_mapping_destinations_are_candidate_section_only(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-ma3-dest-{uuid4().hex[:8]}"
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db, tenant_id=DEFAULT_TENANT_ID, form_id=form_id, mapping_rules=[]
+        )
+        await db.commit()
+        source_id = str(profile.id)
+
+    got = await client.get(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=_headers(manager_headers),
+    )
+    assert got.status_code == 200, got.text
+    dests = got.json().get("destinations") or []
+    for row in dests:
+        code = str(row.get("code") or "")
+        assert not code.startswith("service_sales.")
+        assert not code.startswith("crm.")
+        assert row.get("group") == "candidate"
+        assert row.get("group_label")
+
+
 def test_extract_lead_page_id_from_routing_stamp_and_webhook() -> None:
     from backend.app.acquisition.sources_read import extract_lead_page_id
 

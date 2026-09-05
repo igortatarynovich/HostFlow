@@ -135,6 +135,35 @@ export type MappingDestination = {
   choice: boolean
   aliases?: string[]
   options: Array<{ value: string; label: string }>
+  group?: string | null
+  group_label?: string | null
+  module?: string | null
+  entity_type?: string | null
+}
+
+export type MappingDestinationGroup = {
+  key: string
+  label: string
+  items: MappingDestination[]
+}
+
+export function groupMappingDestinations(
+  destinations: MappingDestination[],
+): MappingDestinationGroup[] {
+  const groups: MappingDestinationGroup[] = []
+  const index = new Map<string, number>()
+  for (const item of destinations) {
+    const key = String(item.group || 'other').trim() || 'other'
+    const label = String(item.group_label || key).trim() || key
+    let slot = index.get(key)
+    if (slot == null) {
+      slot = groups.length
+      index.set(key, slot)
+      groups.push({ key, label, items: [] })
+    }
+    groups[slot].items.push(item)
+  }
+  return groups
 }
 
 export type MappingSchemaIdentity = {

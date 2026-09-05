@@ -11679,7 +11679,18 @@
         },
         "destination": {
           "none": "Na razie nie używać",
-          "invalid": "Pole HostFlow nie jest już ważne"
+          "invalid": "Pole HostFlow nie jest już ważne",
+          "groups": {
+            "candidate": "Kandydat",
+            "vacancy": "Wakans",
+            "client": "Klient",
+            "driver_hiring": "Rekrutacja kierowców",
+            "warehouse_hiring": "Rekrutacja magazyn",
+            "targeted_advertising": "Reklama",
+            "hr_employee": "Pracownik",
+            "fleet_vehicle": "Pojazd",
+            "other": "Inne"
+          }
         },
         "drift": {
           "field_added": "Na formularzu pojawiło się nowe pytanie",

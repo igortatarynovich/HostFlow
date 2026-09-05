@@ -446,15 +446,85 @@ def _sample_evidence(
     }
 
 
+_DESTINATION_GROUP_BY_NS: dict[str, tuple[str, str]] = {
+    "platform.identity": ("candidate", "Candidate"),
+    "recruitment.candidate": ("candidate", "Candidate"),
+    "recruitment.vacancy": ("vacancy", "Vacancy"),
+    "crm.client": ("client", "Client"),
+    "service_sales.driver_hiring": ("driver_hiring", "Driver hiring"),
+    "service_sales.warehouse_hiring": ("warehouse_hiring", "Warehouse hiring"),
+    "service_sales.targeted_advertising": ("targeted_advertising", "Advertising"),
+    "hr.employee": ("hr_employee", "Employee"),
+    "fleet.vehicle": ("fleet_vehicle", "Vehicle"),
+}
+
+_GROUPS_FOR_ROUTE_INTENT: dict[str, frozenset[str]] = {
+    "candidate_application": frozenset({"candidate"}),
+    "sales_inquiry": frozenset({"client"}),
+    "service_request": frozenset(
+        {"driver_hiring", "warehouse_hiring", "targeted_advertising"}
+    ),
+    "partner_inquiry": frozenset({"client"}),
+}
+
+_GROUP_SORT = (
+    "candidate",
+    "vacancy",
+    "client",
+    "driver_hiring",
+    "warehouse_hiring",
+    "targeted_advertising",
+    "hr_employee",
+    "fleet_vehicle",
+)
+
+
+def destination_namespace(code: str) -> str:
+    parts = str(code or "").split(".")
+    if len(parts) >= 2:
+        return f"{parts[0]}.{parts[1]}"
+    return str(code or "").strip()
+
+
+def destination_group_for_code(code: str) -> tuple[str, str]:
+    """Operator group for a Field Registry field. Not a second registry."""
+    ns = destination_namespace(code)
+    if ns in _DESTINATION_GROUP_BY_NS:
+        return _DESTINATION_GROUP_BY_NS[ns]
+    if ns:
+        return ns, ns.replace("_", " ").replace(".", " · ").strip().title()
+    return "other", "Other"
+
+
+def _keep_codes_from_rules(mapping_rules: Sequence[Mapping[str, Any]] | None) -> set[str]:
+    out: set[str] = set()
+    for rule in mapping_rules or []:
+        if not isinstance(rule, Mapping):
+            continue
+        code = str(rule.get("qualified_field_code") or rule.get("target") or "").strip()
+        if code:
+            out.add(code.lower())
+    return out
+
+
+def _groups_allowed_for_intent(route_intent: Optional[str]) -> Optional[frozenset[str]]:
+    intent = str(route_intent or "").strip().lower()
+    return _GROUPS_FOR_ROUTE_INTENT.get(intent)
+
+
 async def _destinations_for_tenant(
     db: AsyncSession,
     *,
     tenant_id: str,
+    route_intent: Optional[str] = None,
+    keep_codes: Optional[Sequence[str]] = None,
 ) -> list[dict[str, Any]]:
     try:
         rows = await list_canonical_fields_for_scope(db, tenant_id=str(tenant_id))
     except Exception:
         return []
+    allowed = _groups_allowed_for_intent(route_intent)
+    keep = {str(c).strip().lower() for c in (keep_codes or []) if str(c).strip()}
     out: list[dict[str, Any]] = []
     for row in rows:
         if not isinstance(row, dict):
@@ -464,6 +534,9 @@ async def _destinations_for_tenant(
             continue
         status = str(row.get("status") or "active").strip().lower()
         if status and status not in {"active", "published", ""}:
+            continue
+        group, group_label = destination_group_for_code(code)
+        if allowed is not None and group not in allowed and code.lower() not in keep:
             continue
         label = str(row.get("name") or row.get("label_key") or code.split(".")[-1]).strip()
         field_type = str(row.get("field_type") or "string").strip() or "string"
@@ -476,9 +549,29 @@ async def _destinations_for_tenant(
                 "choice": _is_choice_type(field_type),
                 "aliases": aliases,
                 "options": _dest_options(row),
+                "group": group,
+                "group_label": group_label,
+                "module": str(row.get("module") or "").strip() or None,
+                "entity_type": str(row.get("entity_type") or "").strip() or None,
             }
         )
-    out.sort(key=lambda d: str(d.get("label") or "").lower())
+    labels_in_group: dict[str, list[str]] = {}
+    for item in out:
+        labels_in_group.setdefault(f"{item['group']}:{str(item['label']).lower()}", []).append(
+            str(item["code"])
+        )
+    for item in out:
+        key = f"{item['group']}:{str(item['label']).lower()}"
+        if len(labels_in_group.get(key) or []) > 1:
+            item["label"] = f"{item['label']} · {str(item['code']).split('.')[-1]}"
+    group_rank = {name: idx for idx, name in enumerate(_GROUP_SORT)}
+    out.sort(
+        key=lambda d: (
+            group_rank.get(str(d.get("group") or ""), 99),
+            str(d.get("label") or "").lower(),
+            str(d.get("code") or ""),
+        )
+    )
     return out
 
 
@@ -802,7 +895,12 @@ async def mapping_assessment_for_profile(
     dests = (
         destinations
         if destinations is not None
-        else await _destinations_for_tenant(db, tenant_id=tenant_id)
+        else await _destinations_for_tenant(
+            db,
+            tenant_id=tenant_id,
+            route_intent=str(getattr(profile, "route_intent", None) or "") or None,
+            keep_codes=list(_keep_codes_from_rules(mapping_rules)),
+        )
     )
     return assess_mapping(
         schema_fields=schema_fields,
@@ -827,7 +925,12 @@ async def workspace_envelope(
         mapping_rules=mapping_rules,
         meta_form_id=meta_form_id,
     )
-    destinations = await _destinations_for_tenant(db, tenant_id=tenant_id)
+    destinations = await _destinations_for_tenant(
+        db,
+        tenant_id=tenant_id,
+        route_intent=str(getattr(profile, "route_intent", None) or "") or None,
+        keep_codes=list(_keep_codes_from_rules(mapping_rules)),
+    )
     sample = await resolve_sample_for_profile(
         db,
         tenant_id=str(tenant_id),
@@ -880,6 +983,7 @@ __all__ = [
     "fingerprint_schema_fields",
     "schema_fields_from_graph_questions",
     "schema_fields_from_stored_lead_questions",
+    "destination_group_for_code",
     "build_schema_identity",
     "assess_mapping",
     "mapping_assessment_for_profile",

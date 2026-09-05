@@ -11679,7 +11679,18 @@
         },
         "destination": {
           "none": "Пока не использовать",
-          "invalid": "Поле HostFlow больше не действует"
+          "invalid": "Поле HostFlow больше не действует",
+          "groups": {
+            "candidate": "Кандидат",
+            "vacancy": "Вакансия",
+            "client": "Клиент",
+            "driver_hiring": "Найм водителей",
+            "warehouse_hiring": "Найм на склад",
+            "targeted_advertising": "Реклама",
+            "hr_employee": "Сотрудник",
+            "fleet_vehicle": "Транспорт",
+            "other": "Другое"
+          }
         },
         "drift": {
           "field_added": "На форме появился новый вопрос",

@@ -11679,7 +11679,18 @@
         },
         "destination": {
           "none": "Not used yet",
-          "invalid": "HostFlow field is no longer valid"
+          "invalid": "HostFlow field is no longer valid",
+          "groups": {
+            "candidate": "Candidate",
+            "vacancy": "Vacancy",
+            "client": "Client",
+            "driver_hiring": "Driver hiring",
+            "warehouse_hiring": "Warehouse hiring",
+            "targeted_advertising": "Advertising",
+            "hr_employee": "Employee",
+            "fleet_vehicle": "Vehicle",
+            "other": "Other"
+          }
         },
         "drift": {
           "field_added": "A new question appeared on the form",

@@ -7,6 +7,7 @@ import { Link, useParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
   getMarketingSourceMapping,
+  groupMappingDestinations,
   listMarketingSources,
   postMarketingSourceMappingSampleCaptureNext,
   postMarketingSourceMappingSampleLatest,
@@ -227,6 +228,10 @@ export default function MarketingSourceMappingPage() {
   }, [appliedPresent, sourceId, t, waitingUntil])
 
   const destinations = mapping?.destinations || []
+  const destinationGroups = useMemo(
+    () => groupMappingDestinations(destinations),
+    [destinations],
+  )
   const isMeta = (mapping?.provider || '').toLowerCase() === 'meta'
   const mappingReady = mapping?.summary?.headline === 'all_set'
   const hasSample = Boolean(mapping?.has_sample)
@@ -535,10 +540,19 @@ export default function MarketingSourceMappingPage() {
                               <option value="">
                                 {t('app.marketing.mapping.destination.none')}
                               </option>
-                              {destinations.map((item) => (
-                                <option key={item.code} value={item.code}>
-                                  {item.label}
-                                </option>
+                              {destinationGroups.map((group) => (
+                                <optgroup
+                                  key={group.key}
+                                  label={t(`app.marketing.mapping.destination.groups.${group.key}`, {
+                                    defaultValue: group.label,
+                                  })}
+                                >
+                                  {group.items.map((item) => (
+                                    <option key={item.code} value={item.code}>
+                                      {item.label}
+                                    </option>
+                                  ))}
+                                </optgroup>
                               ))}
                               {row.destination_code && !dest ? (
                                 <option value={row.destination_code}>
