@@ -117,6 +117,7 @@ async def hydrate_meta_schema_if_empty(
         meta_form_id=meta_form_id,
     )
     if not fields:
+        await db.commit()
         return False
     set_schema_snapshot(profile, {"fields": fields})
     await db.commit()

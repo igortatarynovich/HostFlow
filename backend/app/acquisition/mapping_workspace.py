@@ -125,6 +125,54 @@ def schema_fields_from_graph_questions(questions: Any) -> list[dict[str, Any]]:
     return coerce_schema_fields(raw)
 
 
+def schema_fields_from_stored_lead_questions(
+    normalized: Any,
+    payload: Any = None,
+) -> list[dict[str, Any]]:
+    """Last known form questions from a Graph-enriched ingest. Not sample-as-schema."""
+    from backend.app.services.intake_mapping_admin_service import extract_source_fields_from_sample
+
+    norm = dict(normalized) if isinstance(normalized, dict) else {}
+    labels = norm.get("form_question_labels_v1") if isinstance(norm.get("form_question_labels_v1"), dict) else {}
+    names: list[str] = []
+    raw_names = norm.get("raw_field_names")
+    if isinstance(raw_names, list):
+        names.extend(str(item).strip() for item in raw_names if str(item).strip())
+    answers = norm.get("field_answers")
+    if isinstance(answers, list):
+        for item in answers:
+            if not isinstance(item, dict):
+                continue
+            source = str(item.get("name") or "").strip()
+            if not source:
+                continue
+            names.append(source)
+            label = str(item.get("label") or "").strip()
+            if label and source not in labels:
+                labels[source] = label
+    if isinstance(payload, dict):
+        for item in extract_source_fields_from_sample(payload):
+            source = str(item.get("source") or "").strip()
+            if source:
+                names.append(source)
+    raw: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for source in names:
+        key = source.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        raw.append(
+            {
+                "source": source,
+                "label": str(labels.get(source) or labels.get(key) or source).strip() or source,
+                "options": [],
+                "field_type": "text",
+            }
+        )
+    return coerce_schema_fields(raw)
+
+
 def fingerprint_schema_fields(fields: Sequence[Mapping[str, Any]] | None) -> str:
     """Deterministic schema fingerprint — questions, types, options. Not mapping rules."""
     cleaned: list[dict[str, Any]] = []
@@ -685,6 +733,7 @@ async def _schema_for_profile(
     tenant_id: str,
     profile: Any,
     mapping_rules: list[dict[str, Any]],
+    meta_form_id: Optional[str] = None,
 ) -> tuple[list[dict[str, Any]], str, bool]:
     snapshot_fields = coerce_schema_fields(get_schema_snapshot(profile))
     schema_source = "snapshot" if snapshot_fields else "none"
@@ -696,7 +745,23 @@ async def _schema_for_profile(
         if presented:
             schema_fields = presented
             schema_source = "presentation"
-    has_schema = schema_source in {"snapshot", "presentation"}
+    if not schema_fields:
+        from backend.app.acquisition.sources_sample import latest_lead_with_answers_for_source
+
+        lead = await latest_lead_with_answers_for_source(
+            db,
+            tenant_id=str(tenant_id),
+            profile_id=str(getattr(profile, "id", "") or ""),
+            meta_form_id=meta_form_id,
+        )
+        if lead is not None:
+            lead_fields = schema_fields_from_stored_lead_questions(
+                lead.normalized, lead.payload if isinstance(lead.payload, dict) else None
+            )
+            if lead_fields:
+                schema_fields = lead_fields
+                schema_source = "lead_questions"
+    has_schema = schema_source in {"snapshot", "presentation", "lead_questions"}
     if not schema_fields and mapping_rules:
         schema_source = "rules"
     return schema_fields, schema_source, has_schema
@@ -760,6 +825,7 @@ async def workspace_envelope(
         tenant_id=tenant_id,
         profile=profile,
         mapping_rules=mapping_rules,
+        meta_form_id=meta_form_id,
     )
     destinations = await _destinations_for_tenant(db, tenant_id=tenant_id)
     sample = await resolve_sample_for_profile(
@@ -813,6 +879,7 @@ __all__ = [
     "get_schema_snapshot",
     "fingerprint_schema_fields",
     "schema_fields_from_graph_questions",
+    "schema_fields_from_stored_lead_questions",
     "build_schema_identity",
     "assess_mapping",
     "mapping_assessment_for_profile",

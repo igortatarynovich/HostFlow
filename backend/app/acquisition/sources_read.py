@@ -252,6 +252,25 @@ def _as_record(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _meta_webhook_value(payload: Any) -> dict[str, Any]:
+    rec = _as_record(payload)
+    nested = rec.get("value")
+    if isinstance(nested, dict):
+        return nested
+    entries = rec.get("entry")
+    if not isinstance(entries, list):
+        return {}
+    for entry in entries:
+        changes = _as_record(entry).get("changes")
+        if not isinstance(changes, list):
+            continue
+        for change in changes:
+            value = _as_record(_as_record(change).get("value"))
+            if value:
+                return value
+    return {}
+
+
 def extract_lead_ad_id(
     *,
     ad_id: Any,
@@ -260,7 +279,11 @@ def extract_lead_ad_id(
 ) -> Optional[str]:
     if ad_id is not None and str(ad_id).strip():
         return str(ad_id).strip()
-    for blob in (_as_record(normalized), _as_record(payload), _as_record(_as_record(payload).get("value"))):
+    for blob in (
+        _as_record(normalized),
+        _as_record(payload),
+        _meta_webhook_value(payload),
+    ):
         raw = blob.get("ad_id")
         if raw is not None and str(raw).strip():
             return str(raw).strip()
@@ -268,10 +291,36 @@ def extract_lead_ad_id(
 
 
 def extract_lead_form_id(*, normalized: Any, payload: Any) -> Optional[str]:
-    for blob in (_as_record(normalized), _as_record(payload), _as_record(_as_record(payload).get("value"))):
+    for blob in (
+        _as_record(normalized),
+        _as_record(payload),
+        _meta_webhook_value(payload),
+    ):
         raw = blob.get("form_id")
         if raw is not None and str(raw).strip():
             return str(raw).strip()
+    return None
+
+
+def extract_lead_page_id(*, normalized: Any, payload: Any) -> Optional[str]:
+    """Page id from routing stamps or the Meta webhook envelope. Binding secondary may be empty."""
+    norm = _as_record(normalized)
+    for blob in (
+        norm,
+        _as_record(norm.get("intake_route_v1")),
+        _as_record(norm.get("intake_routing_v1")),
+        _as_record(payload),
+        _meta_webhook_value(payload),
+    ):
+        raw = blob.get("page_id")
+        if raw is not None and str(raw).strip():
+            return str(raw).strip()
+    entries = _as_record(payload).get("entry")
+    if isinstance(entries, list):
+        for entry in entries:
+            eid = _as_record(entry).get("id")
+            if eid is not None and str(eid).strip():
+                return str(eid).strip()
     return None
 
 
@@ -730,6 +779,7 @@ __all__ = [
     "compute_mapping_health",
     "extract_lead_ad_id",
     "extract_lead_form_id",
+    "extract_lead_page_id",
     "extract_lead_profile_id",
     "list_marketing_source_summaries",
     "parse_meta_form_id",

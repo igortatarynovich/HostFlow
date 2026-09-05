@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
@@ -114,7 +114,10 @@ async def _make_meta_source(
 ) -> IntakeSourceProfile:
     await _ensure_tenant(db, tenant_id)
     oc = await _own_company_id(db, tenant_id)
-    page_key = str(page_id or f"page-{uuid4().hex[:6]}").strip()
+    if page_id is None:
+        page_key = f"page-{uuid4().hex[:6]}"
+    else:
+        page_key = str(page_id).strip()
     profile = IntakeSourceProfile(
         id=str(uuid4()),
         tenant_id=tenant_id,
@@ -136,7 +139,7 @@ async def _make_meta_source(
             intake_source_profile_id=profile.id,
             provider="meta",
             external_key=f"form_id:{form_id}",
-            external_key_secondary=f"page_id:{page_key}",
+            external_key_secondary=f"page_id:{page_key}" if page_key else "",
             is_active=True,
             priority=10,
         )
@@ -1229,3 +1232,238 @@ async def test_graph_sample_is_not_applied_until_ingest(
     sentences = " ".join(row["sentence"] for row in evidence["sentences"])
     assert email in sentences
     assert "blue" not in sentences
+
+
+def test_extract_lead_page_id_from_routing_stamp_and_webhook() -> None:
+    from backend.app.acquisition.sources_read import extract_lead_page_id
+
+    page_id = "259905353877064"
+    assert (
+        extract_lead_page_id(
+            normalized={"intake_routing_v1": {"page_id": page_id}},
+            payload={},
+        )
+        == page_id
+    )
+    assert (
+        extract_lead_page_id(
+            normalized={},
+            payload={
+                "entry": [
+                    {
+                        "id": page_id,
+                        "changes": [{"value": {"page_id": page_id, "form_id": "1", "field_data": []}}],
+                    }
+                ],
+                "object": "page",
+            },
+        )
+        == page_id
+    )
+
+
+def test_stored_lead_questions_are_schema_not_envelope_keys() -> None:
+    from backend.app.acquisition.mapping_workspace import schema_fields_from_stored_lead_questions
+
+    fields = schema_fields_from_stored_lead_questions(
+        {
+            "raw_field_names": ["email", "full_name"],
+            "form_question_labels_v1": {"full_name": "Имя"},
+        },
+        {
+            "entry": [{"changes": [{"value": {"field_data": [], "graph_error": "GRAPH_100"}}]}],
+            "object": "page",
+        },
+    )
+    assert [row["source"] for row in fields] == ["email", "full_name"]
+    assert fields[1]["label"] == "Имя"
+
+
+@pytest.mark.anyio
+async def test_mapping_hydrates_graph_when_page_id_only_on_lead(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    from backend.app.acquisition.mapping_workspace import schema_fields_from_graph_questions
+
+    form_id = f"form-ma3-page-{uuid4().hex[:8]}"
+    page_id = "259905353877064"
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db, tenant_id=DEFAULT_TENANT_ID, form_id=form_id, page_id="", mapping_rules=[]
+        )
+        db.add(
+            Lead(
+                id=str(uuid4()),
+                tenant_id=DEFAULT_TENANT_ID,
+                source="meta",
+                status="failed",
+                lead_type="candidate",
+                lead_target_type="candidate",
+                external_id=f"meta-lead-{uuid4().hex[:10]}",
+                normalized={
+                    "form_id": form_id,
+                    "intake_routing_v1": {
+                        "page_id": page_id,
+                        "intake_source_profile_id": str(profile.id),
+                    },
+                    "raw_field_names": [],
+                },
+                payload={
+                    "entry": [
+                        {
+                            "id": page_id,
+                            "changes": [
+                                {
+                                    "value": {
+                                        "form_id": form_id,
+                                        "page_id": page_id,
+                                        "field_data": [],
+                                        "graph_error": "GRAPH_100",
+                                    }
+                                }
+                            ],
+                        }
+                    ],
+                    "object": "page",
+                },
+            )
+        )
+        await db.commit()
+        source_id = str(profile.id)
+
+    headers = _headers(manager_headers)
+    expected = schema_fields_from_graph_questions(_GRAPH_QUESTIONS)
+    with patch(
+        "backend.app.modules.leads.admin_service.get_page_access_token",
+        new=AsyncMock(return_value="page-token"),
+    ), patch(
+        "backend.app.modules.leads.meta_marketing_graph.fetch_leadgen_form",
+        new=AsyncMock(return_value={"id": form_id, "questions": _GRAPH_QUESTIONS}),
+    ):
+        got = await client.get(
+            f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+            headers=headers,
+        )
+    assert got.status_code == 200, got.text
+    body = got.json()
+    assert body["has_schema"] is True
+    assert [row["source"] for row in body["schema_fields"]] == [row["source"] for row in expected]
+
+    async with async_session_maker() as db:
+        binding = (
+            await db.execute(
+                select(IntakeSourceBinding).where(
+                    IntakeSourceBinding.intake_source_profile_id == source_id
+                )
+            )
+        ).scalar_one()
+        assert binding.external_key_secondary == f"page_id:{page_id}"
+
+
+@pytest.mark.anyio
+async def test_mapping_skips_empty_failed_lead_and_uses_previous_answers(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-ma3-skip-{uuid4().hex[:8]}"
+    page_id = f"page-{uuid4().hex[:6]}"
+    older = datetime.now(timezone.utc).replace(microsecond=0)
+    newer = older + timedelta(hours=4)
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db,
+            tenant_id=DEFAULT_TENANT_ID,
+            form_id=form_id,
+            page_id=page_id,
+            mapping_rules=[],
+        )
+        source_id = str(profile.id)
+        good_payload = _meta_lead_payload(
+            form_id=form_id,
+            email="anna@example.com",
+            color="blue",
+            leadgen_id=f"lg-good-{uuid4().hex[:8]}",
+            page_id=page_id,
+        )
+        db.add(
+            Lead(
+                id=str(uuid4()),
+                tenant_id=DEFAULT_TENANT_ID,
+                source="meta",
+                status="duplicated",
+                lead_type="candidate",
+                lead_target_type="candidate",
+                created_at=older,
+                external_id=f"meta-lead-{uuid4().hex[:10]}",
+                normalized={
+                    "form_id": form_id,
+                    "raw_field_names": ["email", "favourite_color"],
+                    "form_question_labels_v1": {"favourite_color": "Favourite color"},
+                    "intake_routing_v1": {
+                        "page_id": page_id,
+                        "intake_source_profile_id": source_id,
+                    },
+                },
+                payload=good_payload,
+            )
+        )
+        db.add(
+            Lead(
+                id=str(uuid4()),
+                tenant_id=DEFAULT_TENANT_ID,
+                source="meta",
+                status="failed",
+                lead_type="candidate",
+                lead_target_type="candidate",
+                created_at=newer,
+                external_id=f"meta-lead-{uuid4().hex[:10]}",
+                normalized={
+                    "form_id": form_id,
+                    "raw_field_names": [],
+                    "graph_error": "GRAPH_100",
+                    "intake_routing_v1": {
+                        "page_id": page_id,
+                        "intake_source_profile_id": source_id,
+                    },
+                },
+                payload={
+                    "entry": [
+                        {
+                            "id": page_id,
+                            "changes": [
+                                {
+                                    "value": {
+                                        "form_id": form_id,
+                                        "page_id": page_id,
+                                        "field_data": [],
+                                        "graph_error": "GRAPH_100",
+                                    }
+                                }
+                            ],
+                        }
+                    ],
+                    "object": "page",
+                },
+            )
+        )
+        await db.commit()
+
+    headers = _headers(manager_headers)
+    with patch(
+        "backend.app.acquisition.sources_mapping.try_graph_form_schema",
+        new=AsyncMock(return_value=([], None)),
+    ):
+        got = await client.get(
+            f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+            headers=headers,
+        )
+    assert got.status_code == 200, got.text
+    body = got.json()
+    assert body["has_sample"] is True
+    assert body["sample_evidence"]["present"] is True
+    sources = [row["source"] for row in body["schema_fields"]]
+    assert "email" in sources
+    assert "favourite_color" in sources
+    by_source = {row["source"]: row for row in body["schema_fields"]}
+    assert by_source["email"]["sample_example"]
+    assert "entry" not in sources
+    assert body["summary"]["headline"] != "empty_schema"

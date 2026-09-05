@@ -87,6 +87,8 @@ def extract_source_fields_from_sample(raw_payload: dict[str, Any]) -> list[dict[
         sample = str(values[0]) if values else ""
         out.append({"source": name, "sample_value": sample})
     if not out and isinstance(raw_payload, dict):
+        if isinstance(raw_payload.get("entry"), list):
+            return out
         for key, val in raw_payload.items():
             name = str(key).strip()
             if not name or name in seen:

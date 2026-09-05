@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.sources_read import (
     extract_lead_form_id,
+    extract_lead_page_id,
     extract_lead_profile_id,
     parse_meta_form_id,
 )
@@ -249,6 +250,22 @@ async def _mapping_rules_for_source(
     return list(resolved.rules)
 
 
+def _lead_has_example_answers(lead: Lead) -> bool:
+    payload = lead.payload if isinstance(lead.payload, dict) else {}
+    if _field_names_from_payload(payload):
+        return True
+    norm = lead.normalized if isinstance(lead.normalized, dict) else {}
+    names = norm.get("raw_field_names")
+    if isinstance(names, list) and any(str(x).strip() for x in names):
+        return True
+    answers = norm.get("field_answers")
+    if isinstance(answers, list) and any(
+        isinstance(item, dict) and str(item.get("name") or "").strip() for item in answers
+    ):
+        return True
+    return False
+
+
 async def _latest_lead_for_source(
     db: AsyncSession,
     *,
@@ -256,6 +273,7 @@ async def _latest_lead_for_source(
     profile_id: str,
     meta_form_id: Optional[str],
     created_after: Optional[datetime] = None,
+    require_example_answers: bool = True,
 ) -> Optional[Lead]:
     tid = str(tenant_id)
     form_id_to_profile: dict[str, str] = {}
@@ -275,7 +293,8 @@ async def _latest_lead_for_source(
                 if created_after is None or (
                     lead.created_at is not None and lead.created_at >= created_after
                 ):
-                    return lead
+                    if not require_example_answers or _lead_has_example_answers(lead):
+                        return lead
 
     stmt = (
         select(Lead)
@@ -287,6 +306,8 @@ async def _latest_lead_for_source(
         stmt = stmt.where(Lead.created_at >= created_after)
     rows = list((await db.execute(stmt)).scalars().all())
     for lead in rows:
+        if require_example_answers and not _lead_has_example_answers(lead):
+            continue
         form_id = extract_lead_form_id(normalized=lead.normalized, payload=lead.payload)
         pid = extract_lead_profile_id(
             normalized=lead.normalized,
@@ -364,7 +385,7 @@ def _sample_response(
         "lead_id": lead_id,
         "captured_at": captured_at,
         "capture_next_until": capture_next_until,
-        "has_sample": bool(payload),
+        "has_sample": bool(fields),
         "fields": [f.as_dict() for f in fields],
         "raw_payload_masked": mask_payload_for_ui(payload) if payload else {},
         "mapping_rules_count": len(mapping_rules),
@@ -411,20 +432,72 @@ def persist_sample_on_profile(
     set_discovery_state(profile, next_state)
 
 
+async def _page_id_from_recent_leads(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    profile_id: str,
+    meta_form_id: Optional[str],
+) -> Optional[str]:
+    tid = str(tenant_id)
+    form_id_to_profile: dict[str, str] = {}
+    if meta_form_id:
+        form_id_to_profile[str(meta_form_id)] = str(profile_id)
+    stmt = (
+        select(Lead)
+        .where(Lead.tenant_id == tid)
+        .order_by(desc(Lead.created_at))
+        .limit(80)
+    )
+    for lead in list((await db.execute(stmt)).scalars().all()):
+        form_id = extract_lead_form_id(normalized=lead.normalized, payload=lead.payload)
+        pid = extract_lead_profile_id(
+            normalized=lead.normalized,
+            form_id=form_id,
+            form_id_to_profile=form_id_to_profile,
+        )
+        if pid != str(profile_id) and not (
+            meta_form_id and form_id and str(form_id) == str(meta_form_id)
+        ):
+            continue
+        page_id = extract_lead_page_id(normalized=lead.normalized, payload=lead.payload)
+        if page_id:
+            return page_id
+    return None
+
+
 async def _meta_page_token(
     db: AsyncSession,
     *,
     tenant_id: str,
     bindings: list[IntakeSourceBinding],
+    meta_form_id: Optional[str] = None,
+    profile_id: Optional[str] = None,
 ) -> tuple[Optional[str], Optional[str]]:
     from backend.app.acquisition.campaign_source_cards import parse_meta_page_id
+    from backend.app.modules.intake_routing.meta_bridge import meta_external_key_secondary
     from backend.app.modules.leads.admin_service import get_page_access_token
 
     page_id: Optional[str] = None
+    binding_to_backfill: Optional[IntakeSourceBinding] = None
     for binding in bindings:
         page_id = parse_meta_page_id(getattr(binding, "external_key_secondary", "") or "")
         if page_id:
             break
+        if binding_to_backfill is None:
+            binding_to_backfill = binding
+    if not page_id and profile_id:
+        page_id = await _page_id_from_recent_leads(
+            db,
+            tenant_id=tenant_id,
+            profile_id=str(profile_id),
+            meta_form_id=meta_form_id,
+        )
+        if page_id and binding_to_backfill is not None and not str(
+            binding_to_backfill.external_key_secondary or ""
+        ).strip():
+            binding_to_backfill.external_key_secondary = meta_external_key_secondary(page_id)
+            await db.flush()
     if not page_id:
         return None, "no_page_token"
     token = await get_page_access_token(db, tenant_id, page_id)
@@ -446,7 +519,20 @@ async def _try_graph_latest_payload(
         return None, None
     from backend.app.modules.leads.meta_marketing_graph import fetch_leadgen_form_latest_lead
 
-    token, token_error = await _meta_page_token(db, tenant_id=tenant_id, bindings=bindings)
+    token, token_error = await _meta_page_token(
+        db,
+        tenant_id=tenant_id,
+        bindings=bindings,
+        meta_form_id=form_id,
+        profile_id=next(
+            (
+                str(b.intake_source_profile_id)
+                for b in bindings
+                if getattr(b, "intake_source_profile_id", None)
+            ),
+            None,
+        ),
+    )
     if not token:
         return None, token_error
     try:
@@ -483,7 +569,20 @@ async def try_graph_form_schema(
     from backend.app.acquisition.mapping_workspace import schema_fields_from_graph_questions
     from backend.app.modules.leads.meta_marketing_graph import fetch_leadgen_form
 
-    token, token_error = await _meta_page_token(db, tenant_id=tenant_id, bindings=bindings)
+    token, token_error = await _meta_page_token(
+        db,
+        tenant_id=tenant_id,
+        bindings=bindings,
+        meta_form_id=form_id,
+        profile_id=next(
+            (
+                str(b.intake_source_profile_id)
+                for b in bindings
+                if getattr(b, "intake_source_profile_id", None)
+            ),
+            None,
+        ),
+    )
     if not token:
         return [], token_error
     try:
@@ -492,6 +591,23 @@ async def try_graph_form_schema(
         return [], f"graph_error:{exc}"[:180]
     questions = node.get("questions") if isinstance(node, dict) else None
     return schema_fields_from_graph_questions(questions), None
+
+
+async def latest_lead_with_answers_for_source(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    profile_id: str,
+    meta_form_id: Optional[str],
+) -> Optional[Lead]:
+    """Newest HostFlow lead for this source that actually has form answers."""
+    return await _latest_lead_for_source(
+        db,
+        tenant_id=tenant_id,
+        profile_id=profile_id,
+        meta_form_id=meta_form_id,
+        require_example_answers=True,
+    )
 
 
 async def resolve_sample_for_profile(
@@ -533,7 +649,7 @@ async def resolve_sample_for_profile(
             previous = _previous_field_names(discovery)
 
     stored_payload = discovery.get("sample_payload")
-    if isinstance(stored_payload, dict) and stored_payload:
+    if isinstance(stored_payload, dict) and _field_names_from_payload(stored_payload):
         return _sample_response(
             source_id=str(profile.id),
             sample_source=str(discovery.get("sample_source") or SAMPLE_SOURCE_PASTE),
