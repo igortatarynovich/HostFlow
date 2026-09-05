@@ -8,10 +8,8 @@ import {
   deleteMetaAdsMap,
   deleteMetaLeadCredential,
   deleteLeadMessageTemplate,
-  fetchMetaGraphFieldPreview,
   finalizeMetaOAuth,
   getMetaIncomingPreview,
-  getMetaLeadFormMapping,
   getMetaFormRoute,
   getMetaLeadSelfServeOnboarding,
   getMetaLeadSettings,
@@ -33,7 +31,6 @@ import {
 import type { UnmappedAdGroup } from '../../api/metaLeads'
 import { listCompanies, listLeads, listOwnCompanies, listVacancies } from '../../api/client'
 import { listMarketingSources, type MarketingSourceSummary } from '../../api/marketingSources'
-import { createCustomFieldDefinition, listCustomFieldDefinitions } from '../../api/custom_fields'
 import { listAdminUsers } from '../../api/users'
 import { isRecruitmentAssigneeRole } from '../../auth/trustRoles'
 import type {
@@ -41,11 +38,8 @@ import type {
   LeadsProcessingModeV1,
   MetaAdsMapEntry,
   MetaCredentialCreatePayload,
-  MetaFieldMappingFormat,
-  MetaGraphFieldDataPreviewField,
   MetaIncomingLeadPreviewItem,
   MetaLeadCredential,
-  MetaLeadFieldMappingRule,
   MetaLeadSelfServeOnboarding,
   LeadMessageTemplate,
   MetaLeadSettings,
@@ -63,14 +57,6 @@ import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { getLeadErrorSuggestion } from '../../utils/leadErrorSuggestion'
-import { buildMetaFormFieldRows, mappingRowCoversSource } from '../../utils/metaFormFieldRows'
-import {
-  LEAD_INTAKE_QUALIFIED_PRESETS,
-  legacyTargetFromQualified,
-  qualifiedCodeFromLegacyTarget,
-  resolveMappingLegacyTarget,
-  isQualifiedFieldCode,
-} from '../../utils/intakeMappingUtils'
 import { CRM_APP_PATHS, marketingSourceMappingPath } from '../../app/crmAppPaths'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useAuth } from '../../store/auth'
@@ -111,84 +97,6 @@ function parseMainTabFromSearch(search: string): MainTabKey | null {
   return null
 }
 
-interface FieldMappingRowState {
-  id: string
-  sourceText: string
-  target: string
-  qualifiedFieldCode: string
-  format: MetaFieldMappingFormat
-  overwrite: boolean
-}
-
-const META_MAPPING_FORMATS: MetaFieldMappingFormat[] = [
-  'string',
-  'email',
-  'phone',
-  'bool',
-  'int',
-  'float',
-  'uuid',
-  'country',
-  'geo_country',
-  'contact_channel',
-  'list',
-  'csv',
-  'lower',
-  'upper',
-]
-
-const META_MAPPING_TARGET_PRESETS = [
-  'first_name',
-  'last_name',
-  'full_name',
-  'email',
-  'phone',
-  'phone_country_code',
-  'country',
-  'country_raw',
-  'geo_country',
-  'geo_country_raw',
-  'location_country',
-  'current_country',
-  'preferred_contact',
-  'vacancy_id_hint',
-  'vacancy_hint',
-  'company_id_hint',
-  'company_name_hint',
-  'in_poland',
-  'poland_stay_basis',
-  'driving_experience_in_europe',
-  'experience_eu_years',
-] as const
-
-/** Typical normalized / Meta keys not in the short preset list (nested paths for custom mapping). */
-const META_MAPPING_TARGET_EXTENDED = [
-  'vacancy_id',
-  'company_id',
-  'raw_lead_id',
-  'form_id',
-  'created_time',
-  'ad_id',
-  'graph_error',
-  'utm.source',
-  'utm.medium',
-  'utm.campaign',
-  'utm.term',
-  'utm.content',
-  'company_hints',
-  'raw_field_names',
-  'poland_stay_basis_raw',
-  'assignment_lock_v1',
-  'assignment_lock_v1.locked',
-  'assignment_lock_v1.reason',
-] as const
-
-function newMappingRowId(): string {
-  return typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `row-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-}
-
 function metaFormSelectionKey(item: Pick<MetaLeadFormSummary, 'source' | 'form_id' | 'page_id'>): string {
   return `${item.source}:${item.form_id}:${item.page_id ?? ''}`
 }
@@ -204,145 +112,6 @@ function parseMetaFormSelectionKey(
   const idx2 = rest.indexOf(':')
   if (idx2 < 0) return null
   return { source, form_id: rest.slice(0, idx2), page_id: rest.slice(idx2 + 1) }
-}
-
-function collectFieldNamesFromMetaPayloadPreview(json: string): string[] {
-  const out = new Set<string>()
-  try {
-    const root = JSON.parse(json) as Record<string, unknown>
-    const entry = (Array.isArray(root.entry) ? root.entry[0] : null) as Record<string, unknown> | null
-    const changes = entry && Array.isArray(entry.changes) ? (entry.changes[0] as Record<string, unknown>) : null
-    const value = (changes?.value ?? root) as Record<string, unknown>
-    const fieldData = value?.field_data
-    if (!Array.isArray(fieldData)) return []
-    for (const item of fieldData) {
-      if (!item || typeof item !== 'object') continue
-      const name = String((item as Record<string, unknown>).name ?? '')
-        .trim()
-        .toLowerCase()
-      if (name) out.add(name)
-    }
-  } catch {
-    // ignore invalid preview JSON
-  }
-  return [...out].sort()
-}
-
-function collectRawFieldNamesFromNormalizedPreview(json: string): string[] {
-  const out = new Set<string>()
-  try {
-    const o = JSON.parse(json) as unknown
-    if (!o || typeof o !== 'object' || Array.isArray(o)) return []
-    const raw = (o as Record<string, unknown>).raw_field_names
-    if (!Array.isArray(raw)) return []
-    for (const item of raw) {
-      const s = String(item ?? '')
-        .trim()
-        .toLowerCase()
-      if (s) out.add(s)
-    }
-  } catch {
-    // ignore
-  }
-  return [...out].sort()
-}
-
-function extractPageIdsFromMetaPayloadPreview(json: string): string[] {
-  const s = new Set<string>()
-  try {
-    const root = JSON.parse(json) as Record<string, unknown>
-    const entries = Array.isArray(root.entry) ? root.entry : []
-    for (const ent of entries) {
-      if (!ent || typeof ent !== 'object') continue
-      const e = ent as Record<string, unknown>
-      const top = e.id ?? e.page_id
-      if (top != null && String(top).trim()) s.add(String(top).trim())
-      const changes = Array.isArray(e.changes) ? e.changes : []
-      for (const ch of changes) {
-        if (!ch || typeof ch !== 'object') continue
-        const val = (ch as Record<string, unknown>).value
-        if (val && typeof val === 'object' && !Array.isArray(val)) {
-          const v = val as Record<string, unknown>
-          const inner = v.page_id ?? v.page
-          if (inner != null && String(inner).trim()) s.add(String(inner).trim())
-        }
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return [...s].filter(Boolean)
-}
-
-/** Top-level keys on Meta `value` besides `field_data` (ad_id, form_id, …) — no nested `a.b` paths. */
-function collectShallowKeysFromMetaPayloadPreview(json: string): string[] {
-  const out = new Set<string>()
-  try {
-    const root = JSON.parse(json) as Record<string, unknown>
-    const entry = (Array.isArray(root.entry) ? root.entry[0] : null) as Record<string, unknown> | null
-    const changes = entry && Array.isArray(entry.changes) ? (entry.changes[0] as Record<string, unknown>) : null
-    const value = (changes?.value ?? root) as Record<string, unknown>
-    if (!value || typeof value !== 'object') return []
-    for (const k of Object.keys(value)) {
-      const seg = k.trim().toLowerCase()
-      if (!seg || seg === 'field_data') continue
-      out.add(seg)
-    }
-  } catch {
-    // ignore
-  }
-  return [...out].sort()
-}
-
-function leadPayloadJsonPreview(lead: Lead): string {
-  try {
-    return JSON.stringify(lead.payload ?? {})
-  } catch {
-    return ''
-  }
-}
-
-function ruleToRowState(rule: MetaLeadFieldMappingRule, id: string): FieldMappingRowState {
-  const st = Array.isArray(rule.source) ? rule.source.join(', ') : String(rule.source ?? '')
-  const qualified =
-    String(rule.qualified_field_code || '').trim() || qualifiedCodeFromLegacyTarget(rule.target ?? '')
-  const legacyTarget = resolveMappingLegacyTarget(rule.target ?? '', rule.qualified_field_code)
-  return {
-    id,
-    sourceText: st,
-    target: legacyTarget || String(rule.target ?? '').trim(),
-    qualifiedFieldCode: qualified,
-    format: (rule.format ?? 'string') as MetaFieldMappingFormat,
-    overwrite: rule.overwrite !== false,
-  }
-}
-
-function rowStateToRule(row: FieldMappingRowState): MetaLeadFieldMappingRule | null | 'incomplete' {
-  const srcParts = row.sourceText.split(',').map((s) => s.trim()).filter(Boolean)
-  const qualified =
-    row.qualifiedFieldCode.trim() ||
-    (isQualifiedFieldCode(row.target.trim()) ? row.target.trim() : qualifiedCodeFromLegacyTarget(row.target.trim()))
-  const legacyTarget = legacyTargetFromQualified(qualified) || row.target.trim()
-  const tgt = qualified || legacyTarget
-  if (!srcParts.length && !tgt) return null
-  if (!srcParts.length || !tgt) return 'incomplete'
-  return {
-    source: srcParts.length === 1 ? srcParts[0]! : srcParts,
-    target: legacyTarget || row.target.trim(),
-    qualified_field_code: qualified || null,
-    format: row.format,
-    overwrite: row.overwrite,
-  }
-}
-
-function rulesFromRowStates(rows: FieldMappingRowState[]): MetaLeadFieldMappingRule[] | 'incomplete' {
-  const built: MetaLeadFieldMappingRule[] = []
-  for (const row of rows) {
-    const conv = rowStateToRule(row)
-    if (conv === 'incomplete') return 'incomplete'
-    if (conv) built.push(conv)
-  }
-  return built
 }
 
 interface CredentialFormState {
@@ -410,7 +179,6 @@ export default function MetaLeadsAdminPage() {
   const [newTemplateBody, setNewTemplateBody] = useState('')
 
   const [settingsDraft, setSettingsDraft] = useState<MetaLeadSettingsPatch>({})
-  const [fieldMappingRows, setFieldMappingRows] = useState<FieldMappingRowState[]>([])
   const [credentialForm, setCredentialForm] = useState<CredentialFormState>(DEFAULT_CREDENTIAL_FORM)
   const [mappingForm, setMappingForm] = useState<MappingFormState>(DEFAULT_MAPPING_FORM)
   const [mappingSearch, setMappingSearch] = useState('')
@@ -419,26 +187,16 @@ export default function MetaLeadsAdminPage() {
   const [incomingRows, setIncomingRows] = useState<MetaIncomingLeadPreviewItem[]>([])
   const [incomingLoading, setIncomingLoading] = useState(false)
   const [incomingError, setIncomingError] = useState<FriendlyErrorInfo | null>(null)
-  const [leadCustomFieldKeys, setLeadCustomFieldKeys] = useState<string[]>([])
-  const [creatingLeadFieldKey, setCreatingLeadFieldKey] = useState<string | null>(null)
-  const [graphPreviewFields, setGraphPreviewFields] = useState<MetaGraphFieldDataPreviewField[]>([])
   const [metaForms, setMetaForms] = useState<MetaLeadFormSummary[]>([])
-  const [selectedFormKey, setSelectedFormKey] = useState<string>(META_FORM_TENANT_DEFAULT_KEY)
-  const [mappingInheritsTenant, setMappingInheritsTenant] = useState(true)
-  const [tenantFallbackRulesCount, setTenantFallbackRulesCount] = useState(0)
+  const [selectedFormKey, setSelectedFormKey] = useState<string>('')
   const [formMappingLoading, setFormMappingLoading] = useState(false)
   const [workspaceSources, setWorkspaceSources] = useState<MarketingSourceSummary[]>([])
-  const [formNameDraft, setFormNameDraft] = useState('')
   const [ownCompanyOptions, setOwnCompanyOptions] = useState<Array<{ id: string; name: string }>>([])
   const [intakeRouteOwnCompanyId, setIntakeRouteOwnCompanyId] = useState('')
   const [intakeRouteTarget, setIntakeRouteTarget] = useState<LeadTargetType>('candidate')
   const [intakeRouteActive, setIntakeRouteActive] = useState(true)
   const [intakeRouteConfigured, setIntakeRouteConfigured] = useState(false)
   const [intakeRouteSaving, setIntakeRouteSaving] = useState(false)
-  const [graphLeadgenInput, setGraphLeadgenInput] = useState('')
-  const [graphPageInput, setGraphPageInput] = useState('')
-  const [graphHostflowLeadPick, setGraphHostflowLeadPick] = useState('')
-  const [graphFetchLoading, setGraphFetchLoading] = useState(false)
   const [fitVacancyPick, setFitVacancyPick] = useState('')
   const [selfServe, setSelfServe] = useState<MetaLeadSelfServeOnboarding | null>(null)
   const oauthHandledRef = useRef<string | null>(null)
@@ -481,10 +239,7 @@ export default function MetaLeadsAdminPage() {
     'assisted') as LeadsProcessingModeV1
   const autoCreateAppliesToMode = effectiveProcessingMode === 'automatic'
 
-  const mappingRulesLimit = settings?.plan_field_mapping_rules_limit ?? null
   const credentialsPlanLimit = settings?.plan_meta_credentials_limit ?? null
-  const mappingRowsAtCap =
-    mappingRulesLimit != null && fieldMappingRows.length >= mappingRulesLimit
   const credentialsAtCap =
     credentialsPlanLimit != null && credentials.length >= credentialsPlanLimit
 
@@ -584,12 +339,6 @@ export default function MetaLeadsAdminPage() {
       setSettings(settingsData)
       setMessageTemplates(Array.isArray(leadTemplatesData) ? leadTemplatesData : [])
       setSettingsDraft({})
-      if (selectedFormKey === META_FORM_TENANT_DEFAULT_KEY) {
-        setFieldMappingRows(
-          (settingsData?.field_mapping ?? []).map((r) => ruleToRowState(r, newMappingRowId())),
-        )
-        setMappingInheritsTenant(true)
-      }
       setCredentials(credsData)
       setMapping(mapData)
       setLeads(mergeLeadsForLogs(leadsNeedsRoutingResp, leadsFailedResp))
@@ -723,7 +472,7 @@ export default function MetaLeadsAdminPage() {
   }, [disconnectedExpert, metaConnected])
 
   useEffect(() => {
-    if (tab !== 'debug' && tab !== 'field_mapping') return
+    if (tab !== 'debug') return
     const previewSource: 'meta' | 'webhook' =
       tab === 'debug' && searchParams.get('incoming_source') === 'webhook' ? 'webhook' : 'meta'
     let cancelled = false
@@ -751,27 +500,6 @@ export default function MetaLeadsAdminPage() {
       cancelled = true
     }
   }, [planLimitModal, tab, searchParams, t])
-
-  useEffect(() => {
-    if (tab !== 'field_mapping') return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const defs = await listCustomFieldDefinitions({ scope: 'LEAD', is_active: true })
-        if (!cancelled) {
-          setLeadCustomFieldKeys(
-            defs.map((d) => d.key.trim().toLowerCase()).filter((k) => k.length > 0),
-          )
-        }
-      } catch (err) {
-        console.error('[MetaLeadsAdmin] list LEAD custom field definitions failed', err)
-        if (!cancelled) setLeadCustomFieldKeys([])
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [tab])
 
   useEffect(() => {
     if (tab !== 'field_mapping') return
@@ -813,7 +541,6 @@ export default function MetaLeadsAdminPage() {
     try {
       const res = await listMetaLeadForms({ source: 'meta' })
       setMetaForms(Array.isArray(res?.items) ? res.items : [])
-      setTenantFallbackRulesCount(res?.tenant_fallback_rules_count ?? 0)
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] list meta forms failed', err)
       setMetaForms([])
@@ -824,26 +551,13 @@ export default function MetaLeadsAdminPage() {
     async (formKey: string) => {
       setFormMappingLoading(true)
       try {
-        if (formKey === META_FORM_TENANT_DEFAULT_KEY) {
-          const s = settings ?? (await getMetaLeadSettings())
-          setFieldMappingRows((s?.field_mapping ?? []).map((r) => ruleToRowState(r, newMappingRowId())))
-          setMappingInheritsTenant(true)
-          setFormNameDraft('')
+        const parsed = parseMetaFormSelectionKey(formKey)
+        if (!parsed) {
           setIntakeRouteConfigured(false)
           setIntakeRouteOwnCompanyId('')
           setIntakeRouteTarget('candidate')
           return
         }
-        const parsed = parseMetaFormSelectionKey(formKey)
-        if (!parsed) return
-        const detail = await getMetaLeadFormMapping(parsed.form_id, {
-          page_id: parsed.page_id || undefined,
-          source: parsed.source,
-        })
-        setFieldMappingRows((detail.mapping_rules ?? []).map((r) => ruleToRowState(r, newMappingRowId())))
-        setMappingInheritsTenant(Boolean(detail.inherits_tenant_fallback))
-        setFormNameDraft(detail.form_name?.trim() ?? '')
-        setTenantFallbackRulesCount(detail.tenant_fallback_rules?.length ?? tenantFallbackRulesCount)
         try {
           const route = await getMetaFormRoute(parsed.form_id, {
             page_id: parsed.page_id || undefined,
@@ -865,13 +579,13 @@ export default function MetaLeadsAdminPage() {
           }
         }
       } catch (err: any) {
-        console.error('[MetaLeadsAdmin] load form mapping failed', err)
+        console.error('[MetaLeadsAdmin] load form route failed', err)
         setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.load_form_mapping'), t))
       } finally {
         setFormMappingLoading(false)
       }
     },
-    [settings, t, tenantFallbackRulesCount],
+    [t],
   )
 
   useEffect(() => {
@@ -1417,241 +1131,6 @@ export default function MetaLeadsAdminPage() {
     const needle = mappingSearch.trim().toLowerCase()
     return mapping.filter((item) => item.ad_id.includes(needle) || (item.note ?? '').toLowerCase().includes(needle))
   }, [mapping, mappingSearch])
-
-  /** Recent Meta leads: incoming preview rows plus operational list (needs_routing / failed) for Graph pick + autofill. */
-  const graphLeadSelectOptions = useMemo(() => {
-    const rows: Array<{ id: string; label: string; payloadJson: string; externalId?: string }> = []
-    const seen = new Set<string>()
-    for (const r of incomingRows) {
-      if (!r.lead_id || seen.has(r.lead_id)) continue
-      seen.add(r.lead_id)
-      const ext = (r.external_id ?? '').trim()
-      rows.push({
-        id: r.lead_id,
-        label: ext ? `${ext} · ${r.status}` : `${r.lead_id.slice(0, 8)}… · ${r.status}`,
-        payloadJson: r.payload_json_preview ?? '',
-        externalId: ext || undefined,
-      })
-    }
-    for (const l of leads) {
-      if (!l?.id || l.source !== 'meta' || seen.has(l.id)) continue
-      seen.add(l.id)
-      const extId = (l.external_id ?? '').trim()
-      rows.push({
-        id: l.id,
-        label: extId ? `${extId} · ${l.status}` : `${l.id.slice(0, 8)}… · ${l.status}`,
-        payloadJson: leadPayloadJsonPreview(l),
-        externalId: extId || undefined,
-      })
-    }
-    rows.sort((a, b) => a.label.localeCompare(b.label))
-    return rows
-  }, [incomingRows, leads])
-
-  const suggestedMetaFieldKeys = useMemo(() => {
-    const s = new Set<string>()
-    for (const row of incomingRows) {
-      const payload = row.payload_json_preview ?? ''
-      const norm = row.normalized_json_preview ?? ''
-      for (const k of collectFieldNamesFromMetaPayloadPreview(payload)) {
-        s.add(k)
-      }
-      for (const k of collectShallowKeysFromMetaPayloadPreview(payload)) {
-        s.add(k)
-      }
-      for (const k of collectRawFieldNamesFromNormalizedPreview(norm)) {
-        s.add(k)
-      }
-    }
-    for (const f of graphPreviewFields) {
-      const nk = f.name.trim().toLowerCase()
-      if (nk) s.add(nk)
-    }
-    return [...s].sort()
-  }, [incomingRows, graphPreviewFields])
-
-  const metaFormFieldRows = useMemo(
-    () =>
-      buildMetaFormFieldRows({
-        graphFields: graphPreviewFields,
-        incomingPayloads: incomingRows.map((r) => r.payload_json_preview ?? ''),
-        incomingNormalized: incomingRows
-          .map((r) => r.normalized_json_preview ?? '')
-          .filter(Boolean),
-        mappingRows: fieldMappingRows,
-      }),
-    [graphPreviewFields, incomingRows, fieldMappingRows],
-  )
-
-  const mappingTargetSuggestions = useMemo(() => {
-    const s = new Set<string>([
-      ...LEAD_INTAKE_QUALIFIED_PRESETS,
-      ...META_MAPPING_TARGET_PRESETS,
-      ...META_MAPPING_TARGET_EXTENDED,
-      ...leadCustomFieldKeys.map((k) => k.trim().toLowerCase()).filter(Boolean),
-    ])
-    for (const row of fieldMappingRows) {
-      const qualified = row.qualifiedFieldCode.trim()
-      if (qualified) s.add(qualified)
-      const legacy = row.target.trim().toLowerCase()
-      if (legacy) s.add(legacy)
-    }
-    return [...s].sort((a, b) => a.localeCompare(b))
-  }, [fieldMappingRows, leadCustomFieldKeys])
-
-  const unknownKeysForLeadField = useMemo(() => {
-    const have = new Set(leadCustomFieldKeys.map((k) => k.trim().toLowerCase()))
-    return suggestedMetaFieldKeys.filter((k) => !have.has(k)).slice(0, 48)
-  }, [suggestedMetaFieldKeys, leadCustomFieldKeys])
-
-  const createLeadFieldFromIncomingKey = useCallback(
-    async (fieldKey: string) => {
-      const k = fieldKey.trim().toLowerCase()
-      if (!k) return
-      if (mappingRowsAtCap) {
-        setError({
-          title: t('common.errors.plan_meta_field_mapping_limit', { limit: mappingRulesLimit ?? 25 }),
-          hint: t('common.errors.plan_upgrade_team_short'),
-        })
-        return
-      }
-      setCreatingLeadFieldKey(k)
-      setError(null)
-      try {
-        await createCustomFieldDefinition({
-          scope: 'LEAD',
-          key: k,
-          label: k.replace(/_/g, ' '),
-          field_type: 'TEXT',
-          document_type_id: null,
-          is_active: true,
-          order: 0,
-        })
-        setLeadCustomFieldKeys((prev) => [...new Set([...prev, k])].sort())
-        setFieldMappingRows((prev) => {
-          if (prev.some((row) => mappingRowCoversSource(row, k))) return prev
-          return [
-            ...prev,
-            {
-              id: newMappingRowId(),
-              sourceText: k,
-              target: k,
-              format: 'string',
-              overwrite: true,
-            },
-          ]
-        })
-        setNotice(t('admin.meta_leads.field_mapping.lead_field_created_notice', { values: { key: k } }))
-      } catch (err: any) {
-        if (
-          planLimitModal?.showPlanLimitIfNeeded(
-            err,
-            t('admin.meta_leads.errors.lead_field_definition_create'),
-          )
-        ) {
-          return
-        }
-        const status = err?.response?.status
-        if (status === 409) {
-          setError({
-            title: t('admin.meta_leads.errors.lead_field_definition_conflict'),
-            hint: t('admin.meta_leads.errors.lead_field_definition_conflict_hint'),
-          })
-        } else {
-          setError(
-            getFriendlyErrorInfo(err, t('admin.meta_leads.errors.lead_field_definition_create'), t),
-          )
-        }
-      } finally {
-        setCreatingLeadFieldKey(null)
-      }
-    },
-    [fieldMappingRows.length, mappingRowsAtCap, mappingRulesLimit, planLimitModal, t],
-  )
-
-  const handleFetchGraphFields = useCallback(async () => {
-    const pick = graphHostflowLeadPick.trim()
-    const lg = graphLeadgenInput.trim()
-    const pg = graphPageInput.trim()
-    const selectedForm = parseMetaFormSelectionKey(selectedFormKey)
-    const formId = selectedForm?.source === 'meta' ? selectedForm.form_id.trim() : ''
-    const formPage = selectedForm?.page_id?.trim() || pg
-    if (!pick && !(lg && (pg || formPage)) && !formId) {
-      setError({
-        title: t('admin.meta_leads.field_mapping.graph_fetch_validation_title'),
-        hint: t('admin.meta_leads.field_mapping.graph_fetch_validation_hint'),
-      })
-      return
-    }
-    setGraphFetchLoading(true)
-    setError(null)
-    try {
-      const res = await fetchMetaGraphFieldPreview(
-        pick
-          ? { hostflow_lead_id: pick, ...(pg ? { page_id: pg } : {}) }
-          : lg
-            ? { leadgen_id: lg, page_id: pg || formPage }
-            : { form_id: formId, ...(formPage ? { page_id: formPage } : {}) },
-      )
-      setGraphPreviewFields(Array.isArray(res.fields) ? res.fields : [])
-      setGraphLeadgenInput(res.leadgen_id || lg)
-      setGraphPageInput(res.page_id || pg || formPage)
-      if (res.form_id?.trim()) {
-        const fid = res.form_id.trim()
-        const pid = res.page_id?.trim() ?? ''
-        const key = metaFormSelectionKey({ source: 'meta', form_id: fid, page_id: pid })
-        setMetaForms((prev) => {
-          if (prev.some((f) => metaFormSelectionKey(f) === key)) return prev
-          return [
-            ...prev,
-            {
-              form_id: fid,
-              page_id: pid || null,
-              source: 'meta',
-              has_form_mapping: false,
-              mapping_rules_count: 0,
-              inherits_tenant_fallback: true,
-            },
-          ]
-        })
-        setSelectedFormKey(key)
-      }
-      setNotice(
-        t('admin.meta_leads.field_mapping.graph_fetch_notice', {
-          values: { count: res.field_names.length, form_id: res.form_id ?? '—' },
-        }),
-      )
-    } catch (err: any) {
-      console.error('[MetaLeadsAdmin] graph field preview failed', err)
-      if (
-        planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.field_mapping.graph_fetch_error_title'))
-      ) {
-        return
-      }
-      const detail = err?.response?.data?.detail
-      if (detail && typeof detail === 'object' && !Array.isArray(detail) && detail.message) {
-        setError({
-          title: t('admin.meta_leads.field_mapping.graph_fetch_error_title'),
-          hint: String(detail.message),
-        })
-      } else {
-        setError(
-          getFriendlyErrorInfo(err, t('admin.meta_leads.field_mapping.graph_fetch_error_title'), t),
-        )
-      }
-    } finally {
-      setGraphFetchLoading(false)
-    }
-  }, [graphHostflowLeadPick, graphLeadgenInput, graphPageInput, planLimitModal, selectedFormKey, t])
-
-  const fieldMappingRuleCount = useMemo(() => {
-    let n = 0
-    for (const row of fieldMappingRows) {
-      const conv = rowStateToRule(row)
-      if (conv && conv !== 'incomplete') n += 1
-    }
-    return n
-  }, [fieldMappingRows])
 
   const workspaceSource = useMemo(() => {
     const parsed = parseMetaFormSelectionKey(selectedFormKey)
@@ -2831,15 +2310,15 @@ export default function MetaLeadsAdminPage() {
                     {t('admin.meta_leads.settings.field_mapping_card_title')}
                   </span>
                   <p className="mt-1 text-slate-600">
-                    {t('admin.meta_leads.settings.field_mapping_card_body', { values: { count: fieldMappingRuleCount } })}
+                    {t('admin.meta_leads.settings.field_mapping_card_body')}
                   </p>
-                  <button
-                    type="button"
-                    className="btn-secondary btn-sm mt-2"
-                    onClick={() => setTabWithUrl('field_mapping')}
+                  <Link
+                    to={CRM_APP_PATHS.marketingSources}
+                    className="btn-secondary btn-sm mt-2 inline-flex"
+                    data-testid="meta-settings-open-mapping"
                   >
                     {t('admin.meta_leads.settings.open_field_mapping')}
-                  </button>
+                  </Link>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
                   <div>
@@ -3152,10 +2631,8 @@ export default function MetaLeadsAdminPage() {
                 disabled={formMappingLoading}
                 onChange={(e) => setSelectedFormKey(e.target.value)}
               >
-                <option value={META_FORM_TENANT_DEFAULT_KEY}>
-                  {t('admin.meta_leads.field_mapping.form_select_tenant_default', {
-                    values: { count: tenantFallbackRulesCount },
-                  })}
+                <option value="">
+                  {t('admin.meta_leads.field_mapping.form_select_placeholder')}
                 </option>
                 {metaForms.map((f) => (
                   <option key={metaFormSelectionKey(f)} value={metaFormSelectionKey(f)}>
@@ -3163,26 +2640,11 @@ export default function MetaLeadsAdminPage() {
                       t('admin.meta_leads.field_mapping.form_select_option', {
                         values: { form_id: f.form_id, page_id: f.page_id || '—' },
                       })}
-                    {f.has_form_mapping
-                      ? ` · ${t('admin.meta_leads.field_mapping.form_fields.status_mapped')}`
-                      : ''}
                   </option>
                 ))}
               </select>
             </label>
-            {selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
-              <label className="mt-3 flex max-w-md flex-col gap-1 text-xs font-medium text-slate-700">
-                {t('admin.meta_leads.detail.fields.form_name_label')}
-                <input
-                  type="text"
-                  className="input text-sm"
-                  value={formNameDraft}
-                  onChange={(e) => setFormNameDraft(e.target.value)}
-                  placeholder={t('admin.meta_leads.field_mapping.form_name_placeholder')}
-                />
-              </label>
-            )}
-            {selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
+            {selectedFormKey ? (
               <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
                 <h3 className="text-sm font-semibold text-slate-900">
                   {t('admin.meta_leads.intake_route.title')}
@@ -3254,12 +2716,7 @@ export default function MetaLeadsAdminPage() {
                     : t('admin.meta_leads.intake_route.save')}
                 </button>
               </div>
-            )}
-            {mappingInheritsTenant && selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
-              <p className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                {t('admin.meta_leads.field_mapping.inherits_tenant_banner')}
-              </p>
-            )}
+            ) : null}
           </div>
           <div
             className="rounded border border-slate-200 bg-white p-4 shadow-sm"
@@ -3581,13 +3038,19 @@ export default function MetaLeadsAdminPage() {
                         {suggestion && (
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                             <span>{suggestion.hint}</span>
-                            <button
-                              type="button"
-                              className="btn-secondary btn-xs"
-                              onClick={() => setTabWithUrl(suggestion.tab)}
-                            >
-                              {suggestion.actionLabel}
-                            </button>
+                            {suggestion.tab === 'field_mapping' ? (
+                              <Link className="btn-secondary btn-xs" to={CRM_APP_PATHS.marketingSources}>
+                                {suggestion.actionLabel}
+                              </Link>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn-secondary btn-xs"
+                                onClick={() => setTabWithUrl(suggestion.tab)}
+                              >
+                                {suggestion.actionLabel}
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>

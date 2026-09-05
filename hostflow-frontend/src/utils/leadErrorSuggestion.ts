@@ -42,9 +42,9 @@ export function getLeadErrorSuggestion(error: string | null | undefined, t: any)
     return {
       tab: 'field_mapping',
       hint: t('admin.meta_leads.logs.suggestions.no_contacts.hint', {
-        defaultValue: 'Meta не прислал email/phone по вашему маппингу. Проверьте Field mapping и Retry.',
+        defaultValue: 'Meta did not send email/phone for your mapping. Check Mapping, then Retry.',
       }),
-      actionLabel: t('admin.meta_leads.logs.suggestions.no_contacts.action', { defaultValue: 'Field mapping' }),
+      actionLabel: t('admin.meta_leads.logs.suggestions.no_contacts.action', { defaultValue: 'Open Mapping' }),
     }
   }
 

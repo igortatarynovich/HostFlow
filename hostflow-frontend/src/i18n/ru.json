@@ -16190,8 +16190,8 @@
       "new_url_title": "Новый URL — скопируйте сейчас:",
       "copy_url": "Копировать",
       "secret_once_hint": "Храните URL как секрет. При утечке — ротируйте.",
-      "mapping_hint": "Правила source → target — в Meta Leads (вкладка «Маппинг полей»). Тело: плоский JSON или Meta-style field_data.",
-      "mapping_cta": "Хаб интеграций → Meta Leads →",
+      "mapping_hint": "Правила source → target — в Mapping. Тело: плоский JSON или Meta-style field_data.",
+      "mapping_cta": "Открыть Sources",
       "load_error": "Не удалось загрузить настройки webhook",
       "rotate_error": "Не удалось сгенерировать URL",
       "plan_team_required": "Тариф не включает эту интеграцию.",
@@ -16202,7 +16202,7 @@
       "recent_empty": "Пока нет лидов с webhook — отправьте тестовый POST на inbound URL.",
       "step_endpoint": "Endpoint",
       "step_verify": "Проверка и мониторинг",
-      "step_mapping": "Маппинг полей",
+      "step_mapping": "Mapping",
       "sample_payload_title": "Пример JSON",
       "advanced_mapping_toggle": "Формат payload и подсказки по маппингу"
     },
@@ -16242,7 +16242,7 @@
         "settings": "Настройки",
         "credentials": "Учётные данные",
         "mapping": "Маппинг объявлений",
-        "field_mapping": "Маппинг полей",
+        "field_mapping": "Маршрут intake",
         "incoming": "Входящие данные",
         "csv_import": "Импорт CSV",
         "logs": "Логи лидов",
@@ -16398,9 +16398,9 @@
         "last_signature_check": "Последняя проверка подписи: {date}",
         "signature_status": "Статус: {status}",
         "save": "Сохранить настройки",
-        "field_mapping_card_title": "Маппинг полей формы",
-        "field_mapping_card_body": "Настроено правил маппинга: {count}. Редактирование — на вкладке «Маппинг полей» (имена полей Meta в нижнем регистре).",
-        "open_field_mapping": "Открыть маппинг полей",
+        "field_mapping_card_title": "Mapping",
+        "field_mapping_card_body": "Ответы из этого подключения Meta сопоставляются в Mapping.",
+        "open_field_mapping": "Открыть Mapping",
         "lead_fit_order_title": "Порядок вакансий без маппинга ad / vacancy_id",
         "lead_fit_order_hint": "Если у лида нет привязки по рекламе и нет vacancy_id в payload, пайплайн перебирает эти вакансии по порядку до первой, проходящей фит (или без критериев). То же, что Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids.",
         "lead_fit_order_pick": "Выберите вакансию…",
@@ -16467,6 +16467,7 @@
         "graph_fetch_error_title": "Не удалось запросить Meta",
         "form_name_placeholder": "Название формы",
         "form_select_label": "Форма лида",
+        "form_select_placeholder": "Выберите форму",
         "form_select_option": "{name}",
         "form_select_tenant_default": "По умолчанию для тенанта",
         "inherits_tenant_banner": "Эта форма наследует маппинг тенанта, пока вы не сохраните отдельные правила.",
@@ -16580,8 +16581,8 @@
             "hint": "Вакансия не найдена. Проверьте маппинг ad_id → vacancy_id."
           },
           "no_contacts": {
-            "action": "Настройки",
-            "hint": "Meta не прислал email/телефон по вашему маппингу. Проверьте маппинг полей и Retry."
+            "action": "Открыть Mapping",
+            "hint": "Meta не прислал email/телефон по вашему маппингу. Проверьте Mapping, затем Retry."
           },
           "company_not_resolved": {
             "action": "Настройки",

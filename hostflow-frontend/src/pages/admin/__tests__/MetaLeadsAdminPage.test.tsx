@@ -84,11 +84,6 @@ vi.mock('../../../api/leadCsvImport', () => ({
   postLeadCsvImport: vi.fn(),
 }))
 
-vi.mock('../../../api/custom_fields', () => ({
-  createCustomFieldDefinition: vi.fn(),
-  listCustomFieldDefinitions: vi.fn().mockResolvedValue([]),
-}))
-
 vi.mock('../../../api/users', () => ({
   listAdminUsers: mockListAdminUsers,
 }))

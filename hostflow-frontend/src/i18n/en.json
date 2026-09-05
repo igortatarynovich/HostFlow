@@ -16190,8 +16190,8 @@
       "new_url_title": "New inbound URL — copy now:",
       "copy_url": "Copy",
       "secret_once_hint": "Store this URL in a secret manager. Rotate if it leaks.",
-      "mapping_hint": "Configure source → target rules under Meta Leads (Field mapping). The webhook accepts flat JSON keys or Meta-style field_data.",
-      "mapping_cta": "Open Integration hub → Meta Leads →",
+      "mapping_hint": "Configure source → target rules in Mapping. The webhook accepts flat JSON keys or Meta-style field_data.",
+      "mapping_cta": "Open Sources",
       "load_error": "Could not load webhook settings",
       "rotate_error": "Could not generate webhook URL",
       "plan_team_required": "Your plan does not include this integration.",
@@ -16202,7 +16202,7 @@
       "recent_empty": "No webhook leads yet — send a test POST to your inbound URL.",
       "step_endpoint": "Endpoint",
       "step_verify": "Verify & monitor",
-      "step_mapping": "Field mapping",
+      "step_mapping": "Mapping",
       "sample_payload_title": "Sample JSON body",
       "advanced_mapping_toggle": "Payload format & mapping hints"
     },
@@ -16319,7 +16319,7 @@
         "settings": "Settings",
         "credentials": "Credentials",
         "mapping": "Ad mapping",
-        "field_mapping": "Field mapping",
+        "field_mapping": "Intake routing",
         "incoming": "Incoming data",
         "csv_import": "CSV import",
         "logs": "Lead logs",
@@ -16398,9 +16398,9 @@
         "last_signature_check": "Last signature check: {date}",
         "signature_status": "Status: {status}",
         "save": "Save settings",
-        "field_mapping_card_title": "Form field mapping",
-        "field_mapping_card_body": "{count} mapping rule(s) configured. Open Mapping to edit where answers land.",
-        "open_field_mapping": "Open field mapping",
+        "field_mapping_card_title": "Mapping",
+        "field_mapping_card_body": "Answers from this Meta connection are mapped in Mapping.",
+        "open_field_mapping": "Open Mapping",
         "lead_fit_order_title": "Fallback vacancy order (no ad / vacancy_id map)",
         "lead_fit_order_hint": "When a lead has no ad mapping and no vacancy_id in the payload, the pipeline tries these vacancies in order until one passes fit (or has no criteria). Same as Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids.",
         "lead_fit_order_pick": "Select vacancy to append…",
@@ -16467,6 +16467,7 @@
         "graph_fetch_error_title": "Meta request failed",
         "form_name_placeholder": "Form name",
         "form_select_label": "Lead form",
+        "form_select_placeholder": "Select a form",
         "form_select_option": "{name}",
         "form_select_tenant_default": "Tenant default",
         "inherits_tenant_banner": "This form inherits the tenant default mapping until you save form-specific rules.",
@@ -16580,8 +16581,8 @@
             "hint": "Vacancy could not be resolved. Check ad → vacancy mapping."
           },
           "no_contacts": {
-            "action": "Settings",
-            "hint": "Meta did not send email/phone for your mapping. Check Field mapping and Retry."
+            "action": "Open Mapping",
+            "hint": "Meta did not send email/phone for your mapping. Check Mapping, then Retry."
           },
           "company_not_resolved": {
             "action": "Settings",

@@ -39,6 +39,16 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     expect(src).not.toContain('field_mapping: built')
     expect(src).toContain('marketingSourceMappingPath')
     expect(src).toContain('meta-field-mapping-workspace')
+    expect(src).toContain('meta-settings-open-mapping')
+    expect(src).toContain('form_select_placeholder')
+    expect(src).not.toContain('form_select_tenant_default')
+    expect(src).not.toContain('setFormNameDraft')
+    expect(src).not.toContain('inherits_tenant_banner')
+    expect(src).not.toContain('fieldMappingRuleCount')
+    expect(src).not.toContain('getMetaLeadFormMapping')
+    expect(src).not.toContain('listCustomFieldDefinitions')
+    expect(src).not.toContain('createCustomFieldDefinition')
+    expect(src).not.toContain('fetchMetaGraphFieldPreview')
   })
 
   it('Mapping workspace is the editor and does not host leftover routing preview', () => {

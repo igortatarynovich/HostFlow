@@ -16190,8 +16190,8 @@
       "new_url_title": "Nowy URL — skopiuj teraz:",
       "copy_url": "Kopiuj",
       "secret_once_hint": "Trzymaj URL w menedżerze sekretów. Przy wycieku — zrób rotację.",
-      "mapping_hint": "Mapowanie pól jak w Meta Leads (zakładka Field mapping). Treść: płaski JSON albo field_data w stylu Meta.",
-      "mapping_cta": "Hub integracji → Meta Leads →",
+      "mapping_hint": "Mapuj pola w Mapping. Treść: płaski JSON albo field_data w stylu Meta.",
+      "mapping_cta": "Otwórz Sources",
       "load_error": "Nie udało się wczytać ustawień webhooka",
       "rotate_error": "Nie udało się wygenerować URL",
       "plan_team_required": "Plan nie obejmuje tej integracji.",
@@ -16202,7 +16202,7 @@
       "recent_empty": "Brak leadów z webhooka — wyślij testowy POST na swój inbound URL.",
       "step_endpoint": "Endpoint",
       "step_verify": "Weryfikacja i monitoring",
-      "step_mapping": "Mapowanie pól",
+      "step_mapping": "Mapping",
       "sample_payload_title": "Przykładowe JSON",
       "advanced_mapping_toggle": "Format payload i wskazówki mapowania"
     },
@@ -16273,7 +16273,7 @@
         "settings": "Ustawienia",
         "credentials": "Połączenia",
         "mapping": "Mapowanie ogłoszeń",
-        "field_mapping": "Mapowanie pól",
+        "field_mapping": "Routing intake",
         "incoming": "Dane przychodzące",
         "csv_import": "Import CSV",
         "logs": "Logi leadów",
@@ -16398,9 +16398,9 @@
         "last_signature_check": "Ostatnia weryfikacja podpisu: {date}",
         "signature_status": "Status: {status}",
         "save": "Zapisz ustawienia",
-        "field_mapping_card_title": "Mapowanie pól formularza",
-        "field_mapping_card_body": "Skonfigurowanych reguł mapowania: {count}. Edycja na zakładce „Mapowanie pól” (nazwy pól Meta w małych literach).",
-        "open_field_mapping": "Otwórz mapowanie pól",
+        "field_mapping_card_title": "Mapping",
+        "field_mapping_card_body": "Odpowiedzi z tego połączenia Meta mapuje się w Mapping.",
+        "open_field_mapping": "Otwórz Mapping",
         "lead_fit_order_title": "Kolejność ofert bez mapowania ad / vacancy_id",
         "lead_fit_order_hint": "Gdy lead nie ma mapowania z reklamy ani vacancy_id w payloadzie, pipeline przechodzi po tej liście ofert aż do pierwszej z fit (lub bez kryteriów). To samo co Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids.",
         "lead_fit_order_pick": "Wybierz ofertę…",
@@ -16467,6 +16467,7 @@
         "graph_fetch_error_title": "Żądanie do Meta nie powiodło się",
         "form_name_placeholder": "Nazwa formularza",
         "form_select_label": "Formularz leada",
+        "form_select_placeholder": "Wybierz formularz",
         "form_select_option": "{name}",
         "form_select_tenant_default": "Domyślne dla tenanta",
         "inherits_tenant_banner": "Ten formularz dziedziczy mapowanie tenanta, dopóki nie zapiszesz osobnych reguł.",
@@ -16580,8 +16581,8 @@
             "hint": "Nie udało się rozwiązać oferty. Sprawdź mapowanie ad → vacancy_id."
           },
           "no_contacts": {
-            "action": "Ustawienia",
-            "hint": "Meta nie przesłało e-maila/telefonu dla Twojego mapowania. Sprawdź mapowanie pól i Ponów."
+            "action": "Otwórz Mapping",
+            "hint": "Meta nie przesłało e-maila/telefonu dla Twojego mapowania. Sprawdź Mapping, potem Ponów."
           },
           "company_not_resolved": {
             "action": "Ustawienia",
