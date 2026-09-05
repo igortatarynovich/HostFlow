@@ -10,7 +10,10 @@ import sqlalchemy as sa
 from backend.app.db.session import async_session_maker
 from backend.app.core.settings import settings
 from backend.app.modules.leads import meta_oauth_service as meta_oauth_service_mod
-from backend.tests.conftest import DEFAULT_TENANT_ID, _build_token, _init_data
+from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
+from backend.app.models.lead import MetaLeadFormMapping
+from backend.app.models.own_company import OwnCompany
+from backend.tests.conftest import DEFAULT_TENANT_ID, _build_token, _init_data, _set_tenant
 
 
 async def _ensure_company(session, tenant_id: str) -> str:
@@ -81,6 +84,60 @@ def _signed_headers(base_headers: dict, payload: dict, secret: str | None = None
     headers["Content-Type"] = "application/json"
     headers["X-Hub-Signature-256"] = signature
     return headers
+
+
+async def _default_own_company_id(tenant_id: str) -> str:
+    async with async_session_maker() as session:
+        await _set_tenant(session, tenant_id)
+        row = await session.execute(
+            sa.select(OwnCompany.id)
+            .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
+            .limit(1)
+        )
+        oc = row.scalar_one_or_none()
+        assert oc
+        return str(oc)
+
+
+async def _seed_meta_intake_source(
+    tenant_id: str,
+    *,
+    form_id: str,
+    page_id: str = "",
+    name: str | None = None,
+) -> None:
+    own_company_id = await _default_own_company_id(tenant_id)
+    label = name or f"Meta form {form_id}"
+    async with async_session_maker() as session:
+        await _set_tenant(session, tenant_id)
+        profile_id = str(uuid.uuid4())
+        session.add(
+            IntakeSourceProfile(
+                id=profile_id,
+                tenant_id=tenant_id,
+                code=f"meta-form-{form_id}"[:64],
+                name=label,
+                provider="meta",
+                channel="paid",
+                own_company_id=own_company_id,
+                route_intent="candidate_application",
+                is_active=True,
+            )
+        )
+        await session.flush()
+        session.add(
+            IntakeSourceBinding(
+                id=str(uuid.uuid4()),
+                tenant_id=tenant_id,
+                intake_source_profile_id=profile_id,
+                provider="meta",
+                external_key=f"form_id:{form_id}",
+                external_key_secondary=f"page_id:{page_id}" if page_id else "",
+                label=label,
+                is_active=True,
+            )
+        )
+        await session.commit()
 
 
 @pytest.mark.anyio
@@ -587,12 +644,20 @@ async def test_meta_graph_field_preview_by_form_id(client, manager_headers, monk
 
 
 @pytest.mark.anyio
-async def test_meta_forms_list_includes_graph_leadgen_forms(client, manager_headers, monkeypatch):
+async def test_meta_forms_list_includes_graph_leadgen_forms(
+    client, manager_headers, tenant_id, monkeypatch
+):
+    form_id = f"1{uuid.uuid4().int % 10**15:015d}"
+    page_id = "259905353877064"
+    await _seed_meta_intake_source(
+        tenant_id, form_id=form_id, page_id=page_id, name="Metafora TSL C/CE 110"
+    )
+
     async def _fake_graph(_db, *, tenant_id: str):
         return [
             {
-                "form_id": "1074988858916526",
-                "page_id": "259905353877064",
+                "form_id": form_id,
+                "page_id": page_id,
                 "form_name": "Metafora TSL C/CE 110",
                 "source": "meta",
             }
@@ -606,8 +671,68 @@ async def test_meta_forms_list_includes_graph_leadgen_forms(client, manager_head
     assert resp.status_code == 200, resp.text
     items = resp.json().get("items") or []
     by_id = {str(x.get("form_id")): x for x in items}
-    assert "1074988858916526" in by_id
-    assert by_id["1074988858916526"]["form_name"] == "Metafora TSL C/CE 110"
+    assert form_id in by_id
+    assert by_id[form_id]["form_name"] == "Metafora TSL C/CE 110"
+
+
+@pytest.mark.anyio
+async def test_meta_forms_list_hides_unclaimed_graph_and_disconnected_leftover(
+    client, manager_headers, tenant_id, monkeypatch
+):
+    connected_page = "484113398123847"
+    claimed_form = f"8{uuid.uuid4().int % 10**15:015d}"
+    unclaimed_graph = f"9{uuid.uuid4().int % 10**15:015d}"
+    leftover_form = f"7{uuid.uuid4().int % 10**15:015d}"
+    leftover_page = "259905353877064"
+
+    await _seed_meta_intake_source(
+        tenant_id, form_id=claimed_form, page_id=connected_page, name="POLTRAKT ENG CE Drivers PL"
+    )
+    await _seed_meta_intake_source(
+        tenant_id, form_id=leftover_form, page_id=leftover_page, name="ENG Warehouse jobs"
+    )
+
+    async with async_session_maker() as session:
+        await _set_tenant(session, tenant_id)
+        session.add(
+            MetaLeadFormMapping(
+                id=str(uuid.uuid4()),
+                tenant_id=tenant_id,
+                source="meta",
+                form_id=leftover_form,
+                page_id=leftover_page,
+                form_name="ENG Warehouse jobs",
+                mapping_rules=[],
+            )
+        )
+        await session.commit()
+
+    async def _fake_graph(_db, *, tenant_id: str):
+        return [
+            {
+                "form_id": claimed_form,
+                "page_id": connected_page,
+                "form_name": "POLTRAKT ENG CE Drivers PL",
+                "source": "meta",
+            },
+            {
+                "form_id": unclaimed_graph,
+                "page_id": connected_page,
+                "form_name": "Dyspozytor PL",
+                "source": "meta",
+            },
+        ]
+
+    monkeypatch.setattr(
+        "backend.app.acquisition.connect_source_picker.discover_leadgen_forms_from_connected_pages",
+        _fake_graph,
+    )
+    resp = await client.get("/api/v1/settings/leads/meta/forms", headers=manager_headers)
+    assert resp.status_code == 200, resp.text
+    by_id = {str(x.get("form_id")): x for x in (resp.json().get("items") or [])}
+    assert claimed_form in by_id
+    assert unclaimed_graph not in by_id
+    assert leftover_form not in by_id
 
 
 @pytest.mark.anyio

@@ -17,6 +17,10 @@ from backend.app.modules.leads.intake_lifecycle import (
     is_recruitment_intake_lead,
     project_recruitment_intake_lifecycle,
 )
+from backend.app.modules.leads.intake_route_form_visibility import (
+    drop_empty_page_duplicates,
+    keep_intake_route_form,
+)
 from backend.app.models.lead import Lead
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.tenant import Tenant
@@ -1528,6 +1532,56 @@ async def _tenant_mapping_rules(db: AsyncSession, tenant_id: str) -> List[MetaLe
     return _coerce_mapping_rules_for_api(getattr(entry, "field_mapping", None))
 
 
+async def list_connected_meta_page_ids(db: AsyncSession, tenant_id: str) -> set[str]:
+    """Page IDs on this tenant's active Meta credentials (decrypted)."""
+    pages: set[str] = set()
+    for entry in await crud.list_meta_credentials(db, tenant_id=tenant_id):
+        if str(getattr(entry, "status", "") or "").strip().lower() != "active":
+            continue
+        page_id = (decrypt_secret(entry.encrypted_page_id) or "").strip()
+        if page_id:
+            pages.add(page_id)
+    return pages
+
+
+async def list_claimed_meta_form_ids(db: AsyncSession, tenant_id: str) -> set[str]:
+    """Form IDs this tenant already claimed as Meta intake sources."""
+    from backend.app.acquisition.sources_read import parse_meta_form_id
+    from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
+
+    claimed: set[str] = set()
+    bindings = (
+        await db.execute(
+            select(IntakeSourceBinding).where(
+                IntakeSourceBinding.tenant_id == tenant_id,
+                IntakeSourceBinding.is_active.is_(True),
+                IntakeSourceBinding.provider == "meta",
+            )
+        )
+    ).scalars().all()
+    for row in bindings:
+        fid = parse_meta_form_id(getattr(row, "external_key", "") or "")
+        if fid:
+            claimed.add(fid)
+    profiles = (
+        await db.execute(
+            select(IntakeSourceProfile).where(
+                IntakeSourceProfile.tenant_id == tenant_id,
+                IntakeSourceProfile.is_active.is_(True),
+                IntakeSourceProfile.provider == "meta",
+            )
+        )
+    ).scalars().all()
+    prefix = "meta-form-"
+    for row in profiles:
+        code = str(getattr(row, "code", "") or "").strip()
+        if code.startswith(prefix):
+            fid = code[len(prefix) :].strip()
+            if fid:
+                claimed.add(fid)
+    return claimed
+
+
 async def list_meta_lead_forms(
     db: AsyncSession,
     tenant_id: str,
@@ -1649,7 +1703,39 @@ async def list_meta_lead_forms(
             pid,
         )
 
-    items = sorted(by_key.values(), key=lambda x: (x.form_name or x.form_id, x.page_id or ""))
+    connected_page_ids = await list_connected_meta_page_ids(db, tenant_id)
+    claimed_form_ids = await list_claimed_meta_form_ids(db, tenant_id)
+    graph_form_ids = {
+        str(row.get("form_id") or "").strip()
+        for row in graph_forms
+        if str(row.get("form_id") or "").strip()
+    }
+    kept = [
+        summary
+        for summary in by_key.values()
+        if keep_intake_route_form(
+            form_id=summary.form_id,
+            page_id=summary.page_id,
+            claimed_form_ids=claimed_form_ids,
+            connected_page_ids=connected_page_ids,
+            graph_form_ids=graph_form_ids,
+        )
+    ]
+    form_ids_with_page = {
+        str(summary.form_id).strip()
+        for summary in kept
+        if str(summary.page_id or "").strip()
+    }
+    items = sorted(
+        (
+            summary
+            for summary in kept
+            if not drop_empty_page_duplicates(
+                summary.form_id, summary.page_id, form_ids_with_page
+            )
+        ),
+        key=lambda x: (x.form_name or x.form_id, x.page_id or ""),
+    )
     return MetaLeadFormListResponse(
         items=items,
         tenant_fallback_rules_count=len(tenant_rules),

@@ -16669,7 +16669,7 @@
       },
       "intake_route": {
         "active": "Route active",
-        "body": "Bind this Meta form to a company profile and lead target. Ingest uses this before creating candidates or clients.",
+        "body": "Which company and which object this form creates. This is not field mapping — answers are mapped in Mapping. Only forms already added as Sources on this tenant's connected Pages appear here.",
         "fallback_warning": "No route configured — ingest falls back to tenant business type (may create wrong entity type).",
         "lead_target": "Lead target type",
         "own_company": "Company profile",

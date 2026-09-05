@@ -16669,7 +16669,7 @@
       },
       "intake_route": {
         "active": "Trasa aktywna",
-        "body": "Powiąż ten formularz Meta z profilem firmy i celem leada. Ingest korzysta z tego przed utworzeniem kandydatów lub klientów.",
+        "body": "Do jakiej firmy i jakiego obiektu należy ten formularz. To nie jest mapowanie pól — odpowiedzi ustawia się w Mapping. Na liście są tylko formularze już dodane jako Sources na podłączonych Pages tego tenanta.",
         "fallback_warning": "Brak skonfigurowanej trasy — ingest wraca do typu biznesu tenanta (może utworzyć niewłaściwy typ encji).",
         "lead_target": "Typ celu leada",
         "own_company": "Profil firmy",
