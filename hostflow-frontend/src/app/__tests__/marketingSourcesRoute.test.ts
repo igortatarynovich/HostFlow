@@ -27,9 +27,9 @@ describe('marketing sources route registration (C-3)', () => {
     expect(CRM_APP_PATHS.marketingSources).toBe('/app/marketing/sources')
   })
 
-  it('stays off the primary rail (Marketing hub deep link, not Sales / Recruitment / Automations / hub)', () => {
-    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toEqual(['marketing'])
-    expect(APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS).toContain('marketing-sources')
+  it('sits on the Marketing rail, not Sales / Recruitment / Automations / hub', () => {
+    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toEqual(['marketing', 'marketing-sources'])
+    expect(APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS).not.toContain('marketing-sources')
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).not.toContain('marketing-sources')
     expect([...SIDEBAR_AGENCY_RECRUITMENT_ORDER]).not.toContain('marketing-sources')
     expect([...SIDEBAR_AGENCY_AUTOMATIONS_ORDER]).not.toContain('marketing-sources')

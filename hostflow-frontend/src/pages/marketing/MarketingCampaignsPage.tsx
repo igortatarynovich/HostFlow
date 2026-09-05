@@ -28,6 +28,7 @@ import {
   statusLabel,
   statusTone,
 } from './marketingPresentation'
+import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
 
 type RowMeta = { received: number }
 
@@ -129,6 +130,7 @@ export default function MarketingCampaignsPage() {
             </button>
           }
         />
+        <MarketingWorkspaceNav />
       </PageShellHeader>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">

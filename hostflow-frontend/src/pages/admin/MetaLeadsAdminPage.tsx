@@ -114,6 +114,20 @@ function parseMetaFormSelectionKey(
   return { source, form_id: rest.slice(0, idx2), page_id: rest.slice(idx2 + 1) }
 }
 
+function resolveMarketingSourceForMetaForm(
+  sources: MarketingSourceSummary[],
+  formId: string | null | undefined,
+): MarketingSourceSummary | null {
+  const id = String(formId || '').trim()
+  if (!id) return null
+  const needle = `meta-form-${id}`.toLowerCase()
+  return (
+    sources.find((s) => (s.code || '').toLowerCase() === needle) ||
+    sources.find((s) => (s.code || '').includes(id)) ||
+    null
+  )
+}
+
 interface CredentialFormState {
   label: string
   secret: string
@@ -502,7 +516,47 @@ export default function MetaLeadsAdminPage() {
   }, [planLimitModal, tab, searchParams, t])
 
   useEffect(() => {
+    const formId = (searchParams.get('meta_form_id') || '').trim()
+    if (!formId) return
+    const pageId = searchParams.get('meta_page_id') || ''
+    const source = searchParams.get('meta_form_source') === 'webhook' ? 'webhook' : 'meta'
+    setSelectedFormKey(`${source}:${formId}:${pageId}`)
+  }, [searchParams])
+
+  useEffect(() => {
     if (tab !== 'field_mapping') return
+    let cancelled = false
+    ;(async () => {
+      let sources = workspaceSources
+      if (!sources.length) {
+        try {
+          sources = await listMarketingSources()
+          if (!cancelled) setWorkspaceSources(sources)
+        } catch (err) {
+          console.error('[MetaLeadsAdmin] list marketing sources failed', err)
+          sources = []
+          if (!cancelled) setWorkspaceSources([])
+        }
+      }
+      if (cancelled) return
+      const formId =
+        (searchParams.get('meta_form_id') || '').trim() ||
+        parseMetaFormSelectionKey(selectedFormKey)?.form_id ||
+        ''
+      const matched =
+        resolveMarketingSourceForMetaForm(sources, formId) ||
+        (!formId && sources.length === 1 ? sources[0] : null)
+      navigate(matched ? marketingSourceMappingPath(matched.source_id) : CRM_APP_PATHS.marketingSources, {
+        replace: true,
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [navigate, searchParams, selectedFormKey, tab, workspaceSources])
+
+  useEffect(() => {
+    if (tab !== 'processing') return
     let cancelled = false
     ;(async () => {
       try {
@@ -519,7 +573,7 @@ export default function MetaLeadsAdminPage() {
   }, [tab])
 
   useEffect(() => {
-    if (tab !== 'field_mapping') return
+    if (tab !== 'processing') return
     let cancelled = false
     ;(async () => {
       try {
@@ -589,12 +643,12 @@ export default function MetaLeadsAdminPage() {
   )
 
   useEffect(() => {
-    if (tab !== 'field_mapping') return
+    if (tab !== 'processing') return
     void loadMetaFormsList()
   }, [tab, loadMetaFormsList])
 
   useEffect(() => {
-    if (tab !== 'field_mapping') return
+    if (tab !== 'processing') return
     void loadMappingForSelection(selectedFormKey)
   }, [tab, selectedFormKey, loadMappingForSelection])
 
@@ -1134,13 +1188,7 @@ export default function MetaLeadsAdminPage() {
 
   const workspaceSource = useMemo(() => {
     const parsed = parseMetaFormSelectionKey(selectedFormKey)
-    if (!parsed) return null
-    const needle = `meta-form-${parsed.form_id}`.toLowerCase()
-    return (
-      workspaceSources.find((s) => (s.code || '').toLowerCase() === needle) ||
-      workspaceSources.find((s) => (s.code || '').includes(parsed.form_id)) ||
-      null
-    )
+    return resolveMarketingSourceForMetaForm(workspaceSources, parsed?.form_id)
   }, [selectedFormKey, workspaceSources])
 
   const metaSelfServeDocsPanel = selfServe ? (
@@ -1772,13 +1820,6 @@ export default function MetaLeadsAdminPage() {
               </button>
               <button
                 type="button"
-                className={`rounded px-3 py-2 text-sm ${tab === 'field_mapping' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-                onClick={() => setTabWithUrl('field_mapping')}
-              >
-                {t('admin.meta_leads.tabs.field_mapping')}
-              </button>
-              <button
-                type="button"
                 className={`rounded px-3 py-2 text-sm ${tab === 'debug' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
                 onClick={() => setTabWithUrl('debug')}
               >
@@ -2127,6 +2168,128 @@ export default function MetaLeadsAdminPage() {
               )}
             </label>
             </div>
+          </div>
+
+          <div
+            className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4"
+            data-testid="meta-intake-route"
+          >
+            <h3 className="text-sm font-semibold text-slate-900">
+              {t('admin.meta_leads.intake_route.title')}
+            </h3>
+            <p className="mt-1 text-xs text-slate-600">
+              {t('admin.meta_leads.intake_route.body')}
+            </p>
+            <label className="mt-3 flex flex-col gap-1 text-sm font-medium text-slate-800">
+              {t('admin.meta_leads.field_mapping.form_select_label')}
+              <select
+                className="input max-w-xl text-sm"
+                value={selectedFormKey}
+                disabled={formMappingLoading}
+                onChange={(e) => setSelectedFormKey(e.target.value)}
+              >
+                <option value="">
+                  {t('admin.meta_leads.field_mapping.form_select_placeholder')}
+                </option>
+                {metaForms.map((f) => (
+                  <option key={metaFormSelectionKey(f)} value={metaFormSelectionKey(f)}>
+                    {f.form_name?.trim() ||
+                      t('admin.meta_leads.field_mapping.form_select_option', {
+                        values: { form_id: f.form_id, page_id: f.page_id || '—' },
+                      })}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selectedFormKey ? (
+              <>
+                {!intakeRouteConfigured && (
+                  <p className="mt-2 text-xs text-amber-800">
+                    {t('admin.meta_leads.intake_route.fallback_warning')}
+                  </p>
+                )}
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+                    {t('admin.meta_leads.intake_route.own_company')}
+                    <select
+                      className="input text-sm"
+                      value={intakeRouteOwnCompanyId}
+                      onChange={(e) => setIntakeRouteOwnCompanyId(e.target.value)}
+                    >
+                      <option value="">
+                        {t('admin.meta_leads.intake_route.own_company_placeholder')}
+                      </option>
+                      {ownCompanyOptions.map((oc) => (
+                        <option key={oc.id} value={oc.id}>
+                          {oc.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+                    {t('admin.meta_leads.intake_route.lead_target')}
+                    <select
+                      className="input text-sm"
+                      value={intakeRouteTarget}
+                      onChange={(e) => setIntakeRouteTarget(e.target.value as LeadTargetType)}
+                    >
+                      <option value="candidate">
+                        {t('admin.meta_leads.intake_route.targets.candidate')}
+                      </option>
+                      <option value="client_lead">
+                        {t('admin.meta_leads.intake_route.targets.client_lead')}
+                      </option>
+                      <option value="service_order_lead">
+                        {t('admin.meta_leads.intake_route.targets.service_order_lead')}
+                      </option>
+                      <option value="partner_lead">
+                        {t('admin.meta_leads.intake_route.targets.partner_lead')}
+                      </option>
+                    </select>
+                  </label>
+                </div>
+                <label className="mt-3 flex items-center gap-2 text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={intakeRouteActive}
+                    onChange={(e) => setIntakeRouteActive(e.target.checked)}
+                  />
+                  {t('admin.meta_leads.intake_route.active')}
+                </label>
+                <button
+                  type="button"
+                  className="btn-primary btn-sm mt-3"
+                  disabled={intakeRouteSaving || formMappingLoading}
+                  onClick={() => void handleSaveIntakeRoute()}
+                >
+                  {intakeRouteSaving
+                    ? t('common.saving')
+                    : t('admin.meta_leads.intake_route.save')}
+                </button>
+              </>
+            ) : null}
+          </div>
+
+          <div className="mt-4 rounded border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900">
+              {t('admin.meta_leads.settings.field_mapping_card_title')}
+            </h3>
+            <p className="mt-1 text-xs text-slate-600">
+              {t('admin.meta_leads.field_mapping.workspace_body')}
+            </p>
+            <Link
+              className="btn-primary btn-sm mt-3 inline-flex"
+              to={
+                workspaceSource
+                  ? marketingSourceMappingPath(workspaceSource.source_id)
+                  : CRM_APP_PATHS.marketingSources
+              }
+              data-testid="meta-settings-open-mapping-processing"
+            >
+              {workspaceSource
+                ? t('admin.meta_leads.field_mapping.workspace_open')
+                : t('admin.meta_leads.field_mapping.workspace_pick_source')}
+            </Link>
           </div>
 
           <button
@@ -2620,129 +2783,10 @@ export default function MetaLeadsAdminPage() {
         </div>
       )}
 
-      {tab === 'field_mapping' && metaConnected && (
-        <section className="space-y-4">
-          <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-800">
-              {t('admin.meta_leads.field_mapping.form_select_label')}
-              <select
-                className="input max-w-xl text-sm"
-                value={selectedFormKey}
-                disabled={formMappingLoading}
-                onChange={(e) => setSelectedFormKey(e.target.value)}
-              >
-                <option value="">
-                  {t('admin.meta_leads.field_mapping.form_select_placeholder')}
-                </option>
-                {metaForms.map((f) => (
-                  <option key={metaFormSelectionKey(f)} value={metaFormSelectionKey(f)}>
-                    {f.form_name?.trim() ||
-                      t('admin.meta_leads.field_mapping.form_select_option', {
-                        values: { form_id: f.form_id, page_id: f.page_id || '—' },
-                      })}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {selectedFormKey ? (
-              <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
-                <h3 className="text-sm font-semibold text-slate-900">
-                  {t('admin.meta_leads.intake_route.title')}
-                </h3>
-                <p className="mt-1 text-xs text-slate-600">
-                  {t('admin.meta_leads.intake_route.body')}
-                </p>
-                {!intakeRouteConfigured && (
-                  <p className="mt-2 text-xs text-amber-800">
-                    {t('admin.meta_leads.intake_route.fallback_warning')}
-                  </p>
-                )}
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
-                    {t('admin.meta_leads.intake_route.own_company')}
-                    <select
-                      className="input text-sm"
-                      value={intakeRouteOwnCompanyId}
-                      onChange={(e) => setIntakeRouteOwnCompanyId(e.target.value)}
-                    >
-                      <option value="">
-                        {t('admin.meta_leads.intake_route.own_company_placeholder')}
-                      </option>
-                      {ownCompanyOptions.map((oc) => (
-                        <option key={oc.id} value={oc.id}>
-                          {oc.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
-                    {t('admin.meta_leads.intake_route.lead_target')}
-                    <select
-                      className="input text-sm"
-                      value={intakeRouteTarget}
-                      onChange={(e) => setIntakeRouteTarget(e.target.value as LeadTargetType)}
-                    >
-                      <option value="candidate">
-                        {t('admin.meta_leads.intake_route.targets.candidate')}
-                      </option>
-                      <option value="client_lead">
-                        {t('admin.meta_leads.intake_route.targets.client_lead')}
-                      </option>
-                      <option value="service_order_lead">
-                        {t('admin.meta_leads.intake_route.targets.service_order_lead')}
-                      </option>
-                      <option value="partner_lead">
-                        {t('admin.meta_leads.intake_route.targets.partner_lead')}
-                      </option>
-                    </select>
-                  </label>
-                </div>
-                <label className="mt-3 flex items-center gap-2 text-xs text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={intakeRouteActive}
-                    onChange={(e) => setIntakeRouteActive(e.target.checked)}
-                  />
-                  {t('admin.meta_leads.intake_route.active')}
-                </label>
-                <button
-                  type="button"
-                  className="btn-primary btn-sm mt-3"
-                  disabled={intakeRouteSaving || formMappingLoading}
-                  onClick={() => void handleSaveIntakeRoute()}
-                >
-                  {intakeRouteSaving
-                    ? t('common.saving')
-                    : t('admin.meta_leads.intake_route.save')}
-                </button>
-              </div>
-            ) : null}
-          </div>
-          <div
-            className="rounded border border-slate-200 bg-white p-4 shadow-sm"
-            data-testid="meta-field-mapping-workspace"
-          >
-            <h2 className="text-lg font-semibold text-slate-900">
-              {t('admin.meta_leads.field_mapping.workspace_title')}
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              {t('admin.meta_leads.field_mapping.workspace_body')}
-            </p>
-            <Link
-              className="btn-primary btn-sm mt-3 inline-flex"
-              to={
-                workspaceSource
-                  ? marketingSourceMappingPath(workspaceSource.source_id)
-                  : CRM_APP_PATHS.marketingSources
-              }
-              data-testid="meta-field-mapping-workspace-open"
-            >
-              {workspaceSource
-                ? t('admin.meta_leads.field_mapping.workspace_open')
-                : t('admin.meta_leads.field_mapping.workspace_pick_source')}
-            </Link>
-          </div>
-        </section>
+      {tab === 'field_mapping' && (
+        <p className="text-sm text-slate-500" data-testid="meta-field-mapping-redirect">
+          {t('admin.meta_leads.field_mapping.workspace_open')}
+        </p>
       )}
 
       {tab === 'debug' && metaConnected && (

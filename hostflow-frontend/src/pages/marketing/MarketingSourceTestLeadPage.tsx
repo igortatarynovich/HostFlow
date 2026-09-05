@@ -22,6 +22,7 @@ import { PageHeader } from '../../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
 
 export default function MarketingSourceTestLeadPage() {
   const { t } = useI18n()
@@ -90,6 +91,7 @@ export default function MarketingSourceTestLeadPage() {
             </Link>
           }
         />
+        <MarketingWorkspaceNav />
       </PageShellHeader>
 
       {error ? (

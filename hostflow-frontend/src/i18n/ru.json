@@ -1241,7 +1241,7 @@
         "automations": "Автоматизации",
         "automation_log": "Журнал автоматизаций",
         "acquisition_activity": "Активность Acquisition",
-        "marketing_sources": "Sources",
+        "marketing_sources": "Источники",
         "marketing_forms": "Forms",
         "marketing_diagnostics": "Диагностика",
         "automation_rules": "Правила автоматизаций",
@@ -11233,6 +11233,11 @@
       "whatsapp_message": "Здравствуйте! Заполните, пожалуйста, короткую анкету: {{url}}"
     },
     "marketing": {
+      "workspace": {
+        "nav_aria": "Разделы маркетинга",
+        "campaigns": "Кампании",
+        "sources": "Источники"
+      },
       "sources": {
         "title": "Источники",
         "subtitle": "Подключённые источники, маппинг, ожидающие заявки и последние события.",
@@ -16416,7 +16421,7 @@
         "rules_subtitle": "Свяжите вопрос формы Meta с тем, куда сохраняется ответ. Несколько имён источника — через запятую.",
         "rules_hint": "Источник — имя поля из таблицы выше. Цель — внутренний идентификатор поля (позже будет подпись из карточки кандидата).",
         "workspace_title": "Маппинг в одном workspace",
-        "workspace_body": "Куда попадают ответы этой формы, редактируется в Mapping — не здесь. Маршрутизация intake остаётся на этой вкладке.",
+        "workspace_body": "Куда попадают ответы этой формы, редактируется в Mapping — не здесь. Профиль компании и тип цели — это маршрут intake, не маппинг.",
         "workspace_open": "Открыть mapping",
         "workspace_pick_source": "Открыть Источники, чтобы выбрать форму",
         "form_fields": {
@@ -16468,7 +16473,7 @@
         "form_name_placeholder": "Название формы",
         "form_select_label": "Форма лида",
         "form_select_placeholder": "Выберите форму",
-        "form_select_option": "{name}",
+        "form_select_option": "{form_id}",
         "form_select_tenant_default": "По умолчанию для тенанта",
         "inherits_tenant_banner": "Эта форма наследует маппинг тенанта, пока вы не сохраните отдельные правила.",
         "save_form": "Сохранить маппинг формы",

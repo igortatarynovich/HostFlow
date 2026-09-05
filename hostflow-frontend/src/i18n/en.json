@@ -11233,6 +11233,11 @@
       "whatsapp_message": "Hello! Please complete this short questionnaire: {{url}}"
     },
     "marketing": {
+      "workspace": {
+        "nav_aria": "Marketing sections",
+        "campaigns": "Campaigns",
+        "sources": "Sources"
+      },
       "sources": {
         "title": "Sources",
         "subtitle": "Connected sources, mapping, waiting submissions, and last events.",
@@ -16416,7 +16421,7 @@
         "rules_subtitle": "Link each Meta form question to where the answer is stored. Use comma-separated names when one question has several aliases.",
         "rules_hint": "Source = question name from the form (see table above). Target = internal field id until candidate labels are added (PR-3).",
         "workspace_title": "Edit mapping in one workspace",
-        "workspace_body": "Where this form's answers land is edited in Mapping — not here. Intake routing below stays on this tab.",
+        "workspace_body": "Where this form's answers land is edited in Mapping — not here. Company profile and lead target are intake routing, not mapping.",
         "workspace_open": "Open mapping",
         "workspace_pick_source": "Open Sources to pick a form",
         "form_fields": {
@@ -16468,7 +16473,7 @@
         "form_name_placeholder": "Form name",
         "form_select_label": "Lead form",
         "form_select_placeholder": "Select a form",
-        "form_select_option": "{name}",
+        "form_select_option": "{form_id}",
         "form_select_tenant_default": "Tenant default",
         "inherits_tenant_banner": "This form inherits the tenant default mapping until you save form-specific rules.",
         "save_form": "Save form mapping",

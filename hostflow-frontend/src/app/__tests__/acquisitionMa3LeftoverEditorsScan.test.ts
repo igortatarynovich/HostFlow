@@ -38,9 +38,12 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     expect(src).not.toContain('handleSaveFieldMapping')
     expect(src).not.toContain('field_mapping: built')
     expect(src).toContain('marketingSourceMappingPath')
-    expect(src).toContain('meta-field-mapping-workspace')
+    expect(src).toContain('meta-field-mapping-redirect')
+    expect(src).toContain('meta-intake-route')
     expect(src).toContain('meta-settings-open-mapping')
     expect(src).toContain('form_select_placeholder')
+    expect(src).not.toContain('meta-field-mapping-workspace')
+    expect(src).not.toContain("setTabWithUrl('field_mapping')")
     expect(src).not.toContain('form_select_tenant_default')
     expect(src).not.toContain('setFormNameDraft')
     expect(src).not.toContain('inherits_tenant_banner')
@@ -49,6 +52,13 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     expect(src).not.toContain('listCustomFieldDefinitions')
     expect(src).not.toContain('createCustomFieldDefinition')
     expect(src).not.toContain('fetchMetaGraphFieldPreview')
+  })
+
+  it('leftover Meta intake-route href is Processing, not the mapping tab', () => {
+    const src = readFileSync(path.join(ROOT, 'src/utils/metaLeadB2b.ts'), 'utf8')
+    expect(src).toContain("params.set('tab', 'processing')")
+    expect(src).not.toContain("tab=field_mapping")
+    expect(src).not.toContain("params.set('tab', 'field_mapping')")
   })
 
   it('Mapping workspace is the editor and does not host leftover routing preview', () => {
@@ -136,6 +146,29 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     expect(problem).not.toContain("settingsIntegrationsMeta}?tab=mapping")
     expect(webhook).toContain('CRM_APP_PATHS.marketingSources')
     expect(webhook).toContain('admin.integrations_webhook.mapping_cta')
+  })
+
+  it('Marketing hub exposes Sources on the rail and in-page', () => {
+    const nav = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingWorkspaceNav.tsx'),
+      'utf8',
+    )
+    const campaigns = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingCampaignsPage.tsx'),
+      'utf8',
+    )
+    const sources = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingSourcesPage.tsx'),
+      'utf8',
+    )
+    expect(nav).toContain('CRM_APP_PATHS.marketingSources')
+    expect(nav).toContain('marketing-workspace-nav-sources')
+    expect(campaigns).toContain('MarketingWorkspaceNav')
+    expect(sources).toContain('MarketingWorkspaceNav')
+    const rail = readFileSync(path.join(ROOT, 'src/nav/sidebarRailBuckets.ts'), 'utf8')
+    const hidden = readFileSync(path.join(ROOT, 'src/nav/appShellNav.ts'), 'utf8')
+    expect(rail).toContain("'marketing', 'marketing-sources'")
+    expect(hidden).not.toContain("'marketing-sources'")
   })
 
   it('Connect bind opens Mapping workspace when a source exists', () => {

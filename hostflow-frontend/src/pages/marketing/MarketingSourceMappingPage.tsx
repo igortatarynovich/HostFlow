@@ -23,6 +23,7 @@ import { PageHeader } from '../../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
 
 const OPTION_IGNORE_VALUE = '__ignore__'
 
@@ -331,6 +332,7 @@ export default function MarketingSourceMappingPage() {
             </div>
           }
         />
+        <MarketingWorkspaceNav />
       </PageShellHeader>
 
       {error ? (

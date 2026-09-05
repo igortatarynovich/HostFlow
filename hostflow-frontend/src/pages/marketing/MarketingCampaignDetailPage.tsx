@@ -46,6 +46,7 @@ import {
 } from './marketingPresentation'
 import { HostFlowFormSourceCard, MetaLeadFormSourceCard } from './MarketingSourceCards'
 import { MarketingAdBindingsPanel } from './MarketingAdBindingsPanel'
+import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
 
 export default function MarketingCampaignDetailPage() {
   const { t, locale } = useI18n()
@@ -396,6 +397,7 @@ export default function MarketingCampaignDetailPage() {
             ) : undefined
           }
         />
+        <MarketingWorkspaceNav />
       </PageShellHeader>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-6">

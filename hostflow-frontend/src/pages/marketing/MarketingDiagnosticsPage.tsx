@@ -30,6 +30,7 @@ import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { formatDateTime } from '../../utils/dateFormat'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
 
 function JsonBlock({ title, value, testId }: { title: string; value: unknown; testId: string }) {
   return (
@@ -511,6 +512,7 @@ export default function MarketingDiagnosticsPage() {
         <PageHeader
           kind="browse"
         />
+        <MarketingWorkspaceNav />
       </PageShellHeader>
 
       {!leadId && driftSummary && driftSummary.drift_count > 0 ? (

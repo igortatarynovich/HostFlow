@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { I18nProvider } from '../../../i18n'
 
 import MetaLeadsAdminPage from '../MetaLeadsAdminPage'
@@ -24,6 +24,7 @@ const {
   mockListAdminUsers,
   mockGetMetaIncomingPreview,
   mockGetMetaLeadSelfServeOnboarding,
+  mockListMarketingSources,
 } = vi.hoisted(() => ({
   mockGetSettings: vi.fn(),
   mockUpdateSettings: vi.fn(),
@@ -43,6 +44,7 @@ const {
   mockListAdminUsers: vi.fn(),
   mockGetMetaIncomingPreview: vi.fn(),
   mockGetMetaLeadSelfServeOnboarding: vi.fn(),
+  mockListMarketingSources: vi.fn(),
 }))
 
 vi.mock('../../../api/metaLeads', async () => {
@@ -65,6 +67,10 @@ vi.mock('../../../api/metaLeads', async () => {
     retryLeads: vi.fn(),
     getMetaIncomingPreview: mockGetMetaIncomingPreview,
     getMetaLeadSelfServeOnboarding: mockGetMetaLeadSelfServeOnboarding,
+    listLeadMessageTemplates: vi.fn().mockResolvedValue([]),
+    listMetaLeadForms: vi.fn().mockResolvedValue({ items: [] }),
+    getMetaFormRoute: vi.fn().mockRejectedValue({ response: { status: 404 } }),
+    putMetaFormRoute: vi.fn(),
   }
 })
 
@@ -75,6 +81,7 @@ vi.mock('../../../api/client', async () => {
     listLeads: mockListLeads,
     listCompanies: mockListCompanies,
     listVacancies: mockListVacancies,
+    listOwnCompanies: vi.fn().mockResolvedValue({ items: [] }),
   }
 })
 
@@ -86,6 +93,10 @@ vi.mock('../../../api/leadCsvImport', () => ({
 
 vi.mock('../../../api/users', () => ({
   listAdminUsers: mockListAdminUsers,
+}))
+
+vi.mock('../../../api/marketingSources', () => ({
+  listMarketingSources: mockListMarketingSources,
 }))
 
 vi.mock('../../../store/auth', () => ({
@@ -141,6 +152,7 @@ function seedMetaMocks(oauthQuickConnect = false) {
   mockListAdminUsers.mockResolvedValue([])
   mockGetUnmappedLeads.mockResolvedValue({ groups: [] })
   mockListLeads.mockResolvedValue({ items: [], total: 0, limit: 100, offset: 0 })
+  mockListMarketingSources.mockResolvedValue([])
 }
 
 describe('MetaLeadsAdminPage', () => {
@@ -171,5 +183,45 @@ describe('MetaLeadsAdminPage', () => {
     )
 
     expect((await screen.findAllByText('Админка Meta Leads')).length).toBeGreaterThan(0)
+  })
+
+  it('redirects leftover field_mapping tab into Mapping', async () => {
+    seedMetaMocks(false)
+    mockListMarketingSources.mockResolvedValue([
+      {
+        source_id: 'src-1',
+        provider: 'meta',
+        display_name: 'Driver form',
+        connection_status: 'connected',
+        mapping_health: 'needs_review',
+        last_submission_at: null,
+        last_error_at: null,
+        last_error_code: null,
+        campaign_count: 0,
+        flight_count: 0,
+        mapping_path: '/app/marketing/sources/src-1/mapping',
+        test_lead_path: '/app/marketing/sources/src-1/test-lead',
+        settings_path: '',
+        code: 'meta-form-123',
+      },
+    ])
+
+    render(
+      <MemoryRouter
+        initialEntries={['/app/settings/integrations/meta?tab=field_mapping&meta_form_id=123']}
+      >
+        <I18nProvider initialLocale="en">
+          <Routes>
+            <Route path="/app/settings/integrations/meta" element={<MetaLeadsAdminPage />} />
+            <Route path="/app/marketing/sources/:id/mapping" element={<div>mapping workspace</div>} />
+            <Route path="/app/marketing/sources" element={<div>sources list</div>} />
+          </Routes>
+        </I18nProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('mapping workspace')).toBeInTheDocument()
+    expect(screen.queryByText('Company profile')).not.toBeInTheDocument()
+    expect(screen.queryByText('Lead target type')).not.toBeInTheDocument()
   })
 })

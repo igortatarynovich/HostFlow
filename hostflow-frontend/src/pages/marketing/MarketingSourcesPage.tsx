@@ -22,6 +22,7 @@ import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { formatDateTime } from '../../utils/dateFormat'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
 
 function connectionLabel(status: string, t: (k: string, o?: object) => string): string {
   switch (status) {
@@ -97,6 +98,7 @@ export default function MarketingSourcesPage() {
             </Link>
           }
         />
+        <MarketingWorkspaceNav />
       </PageShellHeader>
 
       {driftSummary && driftSummary.drift_count > 0 ? (

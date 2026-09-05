@@ -1241,7 +1241,7 @@
         "automations": "Automatyzacje",
         "automation_log": "Dziennik automatyzacji",
         "acquisition_activity": "Aktywność Acquisition",
-        "marketing_sources": "Sources",
+        "marketing_sources": "Źródła",
         "marketing_forms": "Forms",
         "marketing_diagnostics": "Diagnostyka",
         "automation_rules": "Reguły automatyzacji",
@@ -11233,6 +11233,11 @@
       "whatsapp_message": "Dzień dobry! Prosimy o wypełnienie krótkiej ankiety: {{url}}"
     },
     "marketing": {
+      "workspace": {
+        "nav_aria": "Sekcje marketingu",
+        "campaigns": "Kampanie",
+        "sources": "Źródła"
+      },
       "sources": {
         "title": "Źródła",
         "subtitle": "Podłączone źródła, mapowanie, oczekujące zgłoszenia i ostatnie zdarzenia.",
@@ -16416,7 +16421,7 @@
         "rules_subtitle": "Powiąż pytanie z formularza Meta z miejscem zapisu odpowiedzi. Wiele nazw źródła — po przecinku.",
         "rules_hint": "Źródło = nazwa pola z tabeli powyżej. Cel = wewnętrzny identyfikator pola (później etykiety kandydata).",
         "workspace_title": "Mapowanie w jednym workspace",
-        "workspace_body": "Gdzie trafiają odpowiedzi z tego formularza edytuje się w Mapping — nie tutaj. Routing intake zostaje na tej zakładce.",
+        "workspace_body": "Gdzie trafiają odpowiedzi z tego formularza edytuje się w Mapping — nie tutaj. Profil firmy i typ celu to routing intake, nie mapowanie.",
         "workspace_open": "Otwórz mapping",
         "workspace_pick_source": "Otwórz Źródła, aby wybrać formularz",
         "form_fields": {
@@ -16468,7 +16473,7 @@
         "form_name_placeholder": "Nazwa formularza",
         "form_select_label": "Formularz leada",
         "form_select_placeholder": "Wybierz formularz",
-        "form_select_option": "{name}",
+        "form_select_option": "{form_id}",
         "form_select_tenant_default": "Domyślne dla tenanta",
         "inherits_tenant_banner": "Ten formularz dziedziczy mapowanie tenanta, dopóki nie zapiszesz osobnych reguł.",
         "save_form": "Zapisz mapowanie formularza",

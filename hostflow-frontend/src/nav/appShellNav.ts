@@ -22,7 +22,6 @@ export const APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS = [
   'settings-users',
   /** Not production-ready: hide from the rail until the module ships. Agency buckets are empty. */
   'hr-workspace',
-  'marketing-sources',
   'marketing-forms',
   'marketing-diagnostics',
   'acquisition-activity',

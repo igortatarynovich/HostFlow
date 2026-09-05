@@ -69,12 +69,11 @@ export function metaFormSelectionKey(formId: string, pageId?: string | null, sou
   return `${source}:${formId}:${pageId ?? ''}`
 }
 
-/** Deep-link to Meta field mapping + intake route for a form. */
+/** Deep-link to leftover Meta intake route (company + lead target), not Mapping. */
 export function metaIntakeRouteSettingsHref(formId?: string | null, pageId?: string | null): string {
-  const base = `${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=field_mapping`
-  if (!formId) return base
   const params = new URLSearchParams()
-  params.set('tab', 'field_mapping')
+  params.set('tab', 'processing')
+  if (!formId) return `${CRM_APP_PATHS.settingsIntegrationsMeta}?${params.toString()}`
   params.set('meta_form_id', formId)
   if (pageId) params.set('meta_page_id', pageId)
   return `${CRM_APP_PATHS.settingsIntegrationsMeta}?${params.toString()}`

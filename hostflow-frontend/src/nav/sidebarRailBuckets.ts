@@ -40,11 +40,11 @@ export const SIDEBAR_AGENCY_RECRUITMENT_ORDER = [
 export const SIDEBAR_AGENCY_HR_ORDER = [] as const
 
 /**
- * Marketing / Growth — Campaign + Flight operator hub.
- * Nested Sources / Forms / Diagnostics / Activity stay off the rail (deep links remain).
+ * Marketing / Growth — Campaign hub + Sources (MA-3 Mapping entry).
+ * Forms / Diagnostics / Activity stay off the rail (deep links remain).
  * Top-level rail section; must not nest under Sales (Acquisition UI Cutover C-1).
  */
-export const SIDEBAR_AGENCY_MARKETING_ORDER = ['marketing'] as const
+export const SIDEBAR_AGENCY_MARKETING_ORDER = ['marketing', 'marketing-sources'] as const
 
 /** Sales owns Inquiry + ClientAccount — not Invoice/Payment model; not Growth/Campaigns. */
 export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'clients'] as const

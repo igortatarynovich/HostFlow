@@ -432,6 +432,9 @@ export function Sidebar({
 
   const marketingRailActive = useMemo(() => {
     const path = location.pathname
+    if (path === p.marketingSources || path.startsWith(`${p.marketingSources}/`)) return false
+    if (path === p.marketingDiagnostics || path.startsWith(`${p.marketingDiagnostics}/`)) return false
+    if (path === p.marketingForms || path.startsWith(`${p.marketingForms}/`)) return false
     return path === p.marketing || path.startsWith(`${p.marketing}/`)
   }, [location.pathname, p])
 
