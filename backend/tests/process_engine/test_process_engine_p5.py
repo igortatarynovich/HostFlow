@@ -19,6 +19,7 @@ from backend.app.process_engine.handoff_evaluator import (
     resolve_handoff_mode_from_profile,
 )
 from backend.app.process_engine import handoff_evaluator as handoff_module
+from backend.tests.test_support.repo_paths import read_repo_text
 
 
 def _tenant_link(*, internal_hr: bool = True, client: bool = True, enabled: bool = True) -> SimpleNamespace:
@@ -178,8 +179,6 @@ async def test_p5_adapter_evaluate_handoff_exposes_destinations(
 
 
 def test_p5_transfer_policy_resolver_uses_handoff_evaluator() -> None:
-    from pathlib import Path
-
-    source = Path("backend/app/services/transfer_policy_resolver.py").read_text(encoding="utf-8")
+    source = read_repo_text("backend/app/services/transfer_policy_resolver.py")
     assert "evaluate_handoff_destinations" in source
     assert "_evaluate_handoff_routing" in source

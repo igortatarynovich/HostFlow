@@ -17,6 +17,7 @@ from backend.app.process_engine.profile_resolver import (
     resolve_effective_process_profile_for_candidate,
 )
 from backend.app.process_engine import profile_resolver as resolver_module
+from backend.tests.test_support.repo_paths import read_repo_text
 
 
 def _profile(
@@ -243,8 +244,6 @@ def test_p3_vacancy_model_has_process_profile_column() -> None:
 
 
 def test_p3_candidates_service_uses_adapter_for_effective_profile() -> None:
-    from pathlib import Path
-
-    source = Path("backend/app/api/v1/candidates/service.py").read_text(encoding="utf-8")
+    source = read_repo_text("backend/app/api/v1/candidates/service.py")
     assert "resolve_effective_process_profile_for_candidate_id" in source
     assert "TransferPolicyResolver" not in source
