@@ -119,6 +119,8 @@ class SalesOrderOut(BaseModel):
     invoice_right_policy: Optional[str] = None
     billing_notes: Optional[str] = None
     commercial_snapshot: Optional[dict[str, Any]] = None
+    commercial_version: int = 1
+    commercial_versions: Optional[list[dict[str, Any]]] = None
     lines: list[SalesOrderLineOut] = Field(default_factory=list)
 
 
@@ -171,6 +173,18 @@ class ComposeInvoiceResponse(BaseModel):
     currency: Optional[str] = None
     total_amount: Optional[Decimal] = None
     billable_item_ids: list[str] = Field(default_factory=list)
+
+
+class SalesOrderAmendRequest(BaseModel):
+    currency: Optional[str] = None
+    payment_term_days: Optional[int] = Field(None, ge=0, le=365)
+    payment_model: Optional[str] = None
+    vat_rate: Optional[Decimal] = None
+    guarantee_days: Optional[int] = Field(None, ge=0, le=3650)
+    invoice_right_policy: Optional[str] = None
+    payer_company_id: Optional[str] = None
+    billing_notes: Optional[str] = None
+    reason: Optional[str] = Field(None, max_length=500)
 
 
 def _status_ok(st: str) -> bool:
@@ -235,6 +249,10 @@ def _order_out(order: SalesOrder, lines: list[SalesOrderLineOut]) -> SalesOrderO
         invoice_right_policy=order.invoice_right_policy,
         billing_notes=order.billing_notes,
         commercial_snapshot=order.commercial_snapshot if isinstance(order.commercial_snapshot, dict) else None,
+        commercial_version=int(getattr(order, "commercial_version", None) or 1),
+        commercial_versions=list(order.commercial_versions)
+        if isinstance(order.commercial_versions, list)
+        else None,
         lines=lines,
     )
 
@@ -427,6 +445,45 @@ async def patch_sales_order(
             setattr(order, field, val)
     await db.commit()
     await db.refresh(order)
+    return _order_out(order, await _load_lines_out(db, tenant_id=tenant_id, order=order))
+
+
+@router.post(
+    "/sales-orders/{order_id}/amend",
+    response_model=SalesOrderOut,
+    dependencies=[_WRITE],
+)
+async def amend_sales_order_endpoint(
+    order_id: str,
+    payload: SalesOrderAmendRequest,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+) -> SalesOrderOut:
+    """Explicit commercial amendment after billables (ADR-032). Does not use PATCH."""
+    from backend.app.modules.sales_orders.amendment import amend_sales_order
+
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    order = await db.get(SalesOrder, str(order_id).strip())
+    if order is None or str(order.tenant_id) != tenant_id:
+        raise HTTPException(status_code=404, detail="Sales order not found")
+    changes = payload.model_dump(exclude_unset=True)
+    reason = changes.pop("reason", None)
+    if not changes:
+        raise HTTPException(status_code=422, detail="No commercial fields to amend")
+    try:
+        await amend_sales_order(
+            db,
+            order,
+            changes=changes,
+            reason=reason,
+            actor_user_id=ctx.sub,
+        )
+        await db.commit()
+        await db.refresh(order)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return _order_out(order, await _load_lines_out(db, tenant_id=tenant_id, order=order))
 
 
