@@ -39,7 +39,7 @@ import {
 import { useI18n } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
-import { isTransientRequestError } from '../../utils/errorHandling'
+import { isHttpUnauthorized, isTransientRequestError } from '../../utils/errorHandling'
 import { nextPollDelayMs, shouldDeferPollWake } from '../../utils/pollBackoff'
 import { communicationsThreadPath, CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { isPlatformSuperadminRole } from '../../utils/platformSuperadmin'
@@ -412,6 +412,10 @@ export function Topbar({
         }
       } catch (err) {
         if (!cancelled) {
+          if (isHttpUnauthorized(err)) {
+            cancelled = true
+            return
+          }
           pollFailuresRef.current += 1
           if (!isTransientRequestError(err)) {
             console.warn('[Topbar] reminders count failed', err)

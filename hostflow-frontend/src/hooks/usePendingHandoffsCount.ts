@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getPendingWithCandidates } from '../api/handoffs'
 import { useAuth } from '../store/useAuth'
-import { isTransientRequestError } from '../utils/errorHandling'
+import { isHttpUnauthorized, isTransientRequestError } from '../utils/errorHandling'
 import { nextPollDelayMs } from '../utils/pollBackoff'
 import { usePermissions } from './usePermissions'
 
@@ -37,6 +37,10 @@ export function usePendingHandoffsCount(): number {
         setCount(Array.isArray(items) ? items.length : 0)
       } catch (err) {
         if (cancelled) return
+        if (isHttpUnauthorized(err)) {
+          cancelled = true
+          return
+        }
         consecutiveFailures += 1
         if (!isTransientRequestError(err)) {
           console.warn('[Handoffs] pending count failed', err)

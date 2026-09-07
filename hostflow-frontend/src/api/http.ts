@@ -55,16 +55,4 @@ http.interceptors.request.use((config) => {
   return config
 })
 
-http.interceptors.response.use(
-  (r) => r,
-  (err) => {
-    if (err?.response?.status === 401) {
-      try {
-        window.dispatchEvent(new CustomEvent('auth:unauthorized'))
-      } catch {}
-    }
-    return Promise.reject(err)
-  },
-)
-
 export default http

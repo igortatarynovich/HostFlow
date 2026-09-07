@@ -137,6 +137,11 @@ export function isTransientRequestError(error: unknown): boolean {
   return isTimeoutError(error) || isNetworkError(error)
 }
 
+export function isHttpUnauthorized(error: unknown): boolean {
+  const status = (error as { response?: { status?: number } } | null)?.response?.status
+  return status === 401
+}
+
 /**
  * Checks if error is a validation error (400 or 422)
  */
