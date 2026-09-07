@@ -11284,6 +11284,13 @@
         "errors": {
           "load": "Не удалось загрузить источники"
         },
+        "groups": {
+          "candidate_application": "Заявки кандидатов",
+          "sales_inquiry": "Sales-заявки",
+          "service_request": "Заявки на услугу",
+          "partner_inquiry": "Партнёрские заявки",
+          "unset": "Назначение не задано"
+        },
         "drift_summary": "Mapping drift: {count} заявк(и) за {hours} ч. Откройте Diagnostics."
       },
       "status": {

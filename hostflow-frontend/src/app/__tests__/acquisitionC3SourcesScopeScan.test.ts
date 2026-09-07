@@ -18,6 +18,7 @@ describe('C-3 Sources scope guards', () => {
     expect(src).toContain('row.setup_campaign_flight_path')
     expect(src).toContain('waiting_submissions')
     expect(src).toContain('listMarketingSources')
+    expect(src).toContain('groupMarketingSourcesByType')
     expect(src).toContain('mappingAssessmentCopy')
     expect(src).toContain('mappingWorkspaceCta')
     expect(src).not.toContain("app.marketing.sources.health.ready")

@@ -284,6 +284,7 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 
 ## History
 
+- 2026-09-05: Sources inventory groups by destination type (Candidate / Sales / Service), not vacancy. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-05: Mapping HostFlow-field picker is scoped to the source destination (Candidate vs Client vs hiring products) and grouped in sections. Short Field Registry names are not flattened across modules. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-05: Mapping loads Graph questions when the Page id is only on the lead (Connect left binding secondary empty). A GRAPH_100 lead with empty `field_data` is not “the example” and not zero questions; the previous answered lead still supplies rows until Graph schema persists. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-05: Marketing hub shows Campaigns / Sources in-page. Sources stay off the agency rail. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.

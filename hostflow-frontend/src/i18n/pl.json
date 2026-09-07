@@ -11284,6 +11284,13 @@
         "errors": {
           "load": "Nie udało się załadować źródeł"
         },
+        "groups": {
+          "candidate_application": "Aplikacje kandydatów",
+          "sales_inquiry": "Zapytania sprzedażowe",
+          "service_request": "Zgłoszenia usług",
+          "partner_inquiry": "Zapytania partnerskie",
+          "unset": "Brak przeznaczenia"
+        },
         "drift_summary": "Mapping drift: {count} zgłoszeń w {hours} godz. Otwórz Diagnostics."
       },
       "status": {

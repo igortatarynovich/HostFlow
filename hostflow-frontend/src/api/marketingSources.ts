@@ -166,6 +166,44 @@ export function groupMappingDestinations(
   return groups
 }
 
+const SOURCE_TYPE_ORDER = [
+  'candidate_application',
+  'sales_inquiry',
+  'service_request',
+  'partner_inquiry',
+] as const
+
+export type MarketingSourceTypeGroup = {
+  key: string
+  items: MarketingSourceSummary[]
+}
+
+export function sourceTypeKey(
+  row: Pick<MarketingSourceSummary, 'destination'>,
+): string {
+  return String(row.destination || '').trim() || 'unset'
+}
+
+export function groupMarketingSourcesByType(
+  items: MarketingSourceSummary[],
+): MarketingSourceTypeGroup[] {
+  const buckets = new Map<string, MarketingSourceSummary[]>()
+  for (const item of items) {
+    const key = sourceTypeKey(item)
+    const list = buckets.get(key)
+    if (list) list.push(item)
+    else buckets.set(key, [item])
+  }
+  const rank = (key: string) => {
+    const i = (SOURCE_TYPE_ORDER as readonly string[]).indexOf(key)
+    if (i >= 0) return i
+    return key === 'unset' ? 99 : 50
+  }
+  return [...buckets.entries()]
+    .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
+    .map(([key, groupItems]) => ({ key, items: groupItems }))
+}
+
 export type MappingSchemaIdentity = {
   kind: string
   native_id?: string | null
