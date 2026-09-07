@@ -6,6 +6,7 @@ Does not send mail. Does not mark Lead as processed / converted for UI
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -50,7 +51,41 @@ class ComplianceOutboundEnsureResult:
 
 
 def _record(value: Any) -> dict[str, Any]:
-    return dict(value) if isinstance(value, dict) else {}
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str) and value.strip():
+        try:
+            parsed = json.loads(value)
+        except Exception:
+            return {}
+        return dict(parsed) if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _write_candidate_extra(candidate: Any, extra: dict[str, Any]) -> None:
+    """Persist extra as JSON text on Candidate; keep dicts for in-memory test doubles."""
+    setter = getattr(candidate, "_set_extra", None)
+    if callable(setter):
+        setter(extra)
+        return
+    raw = getattr(candidate, "extra", None)
+    if isinstance(raw, str):
+        candidate.extra = json.dumps(extra, ensure_ascii=False, separators=(",", ":"))
+        return
+    candidate.extra = extra
+    flag_modified(candidate, "extra")
+
+
+def stamp_compliance_shell_attached_if_needed(candidate: Any) -> bool:
+    """Mark a reused shell as attached so Candidates list will show it. Returns True if extra changed."""
+    extra = _record(getattr(candidate, "extra", None))
+    if extra.get(SHELL_EXTRA_KEY) is not True:
+        return False
+    if extra.get("compliance_shell_attached_at_process"):
+        return False
+    extra["compliance_shell_attached_at_process"] = datetime.now(timezone.utc).isoformat()
+    _write_candidate_extra(candidate, extra)
+    return True
 
 
 def _intake_result_link(lead: Lead) -> dict[str, Any]:
@@ -186,6 +221,8 @@ async def attach_compliance_shell_candidate_on_process(
             and str(existing.tenant_id) == str(tenant_id)
             and existing.deleted_at is None
         ):
+            if stamp_compliance_shell_attached_if_needed(existing):
+                await db.flush()
             return existing
     cand = await find_compliance_shell_candidate_for_lead(
         db, tenant_id=tenant_id, lead=lead
@@ -193,12 +230,7 @@ async def attach_compliance_shell_candidate_on_process(
     if cand is None:
         return None
     lead.candidate_id = str(cand.id)
-    # Clear shell-only marker once Process attaches (optional; keep audit trail).
-    extra = _record(getattr(cand, "extra", None))
-    if extra.get(SHELL_EXTRA_KEY) is True:
-        extra["compliance_shell_attached_at_process"] = datetime.now(timezone.utc).isoformat()
-        cand.extra = extra
-        flag_modified(cand, "extra")
+    stamp_compliance_shell_attached_if_needed(cand)
     await db.flush()
     return cand
 

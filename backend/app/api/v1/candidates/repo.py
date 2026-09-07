@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from backend.app.models.candidate import Candidate
+from backend.app.models.lead import Lead
 from backend.app.models.risk_intel import RiskIntelEntityShadow
 from backend.app.models.candidate_stage_history import CandidateStageHistory
 from backend.app.models.candidate_handoff import CandidateHandoff
@@ -87,6 +88,10 @@ def unattached_compliance_shell_clause():
     an inbox application. Hide them from Candidates until the operator processes
     the application (``compliance_shell_attached_at_process`` is stamped then).
     ``Candidate.extra`` is JSON text.
+
+    Converted rows (``leads.candidate_id`` points at the shell) must stay visible
+    even when the stamp is missing — Process used to skip the stamp because extra
+    is stored as a JSON string, not a dict.
     """
     extra = func.coalesce(Candidate.extra, "")
     is_shell = or_(
@@ -94,7 +99,12 @@ def unattached_compliance_shell_clause():
         extra.like('%"compliance_candidate_shell_v1":true%'),
     )
     attached = extra.like('%"compliance_shell_attached_at_process"%')
-    return and_(is_shell, ~attached)
+    linked_from_lead = exists().where(
+        Lead.candidate_id == Candidate.id,
+        Lead.tenant_id == Candidate.tenant_id,
+        Lead.candidate_id.isnot(None),
+    )
+    return and_(is_shell, ~attached, ~linked_from_lead)
 
 
 def _parse_extra(raw: Any) -> dict:

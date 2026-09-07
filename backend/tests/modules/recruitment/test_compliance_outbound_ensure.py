@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -162,3 +163,30 @@ async def test_process_attaches_shell_candidate() -> None:
     assert attached is shell
     assert lead.candidate_id == "cand-shell"
     assert shell.extra.get("compliance_shell_attached_at_process")
+
+
+@pytest.mark.asyncio
+async def test_process_attaches_shell_when_extra_is_json_text() -> None:
+    """Candidate.extra is a Text JSON column — attach must parse and rewrite a string."""
+    lead = SimpleNamespace(id="lead-1", candidate_id=None)
+    shell = SimpleNamespace(
+        id="cand-shell",
+        tenant_id="t1",
+        deleted_at=None,
+        extra=json.dumps({SHELL_EXTRA_KEY: True}, separators=(",", ":")),
+    )
+    app = SimpleNamespace(id="app-1", candidate_id="cand-shell")
+    db = AsyncMock()
+    db.scalar = AsyncMock(return_value=app)
+    db.get = AsyncMock(return_value=shell)
+    db.flush = AsyncMock()
+
+    attached = await attach_compliance_shell_candidate_on_process(
+        db, tenant_id="t1", lead=lead
+    )
+    assert attached is shell
+    assert lead.candidate_id == "cand-shell"
+    assert isinstance(shell.extra, str)
+    parsed = json.loads(shell.extra)
+    assert parsed.get(SHELL_EXTRA_KEY) is True
+    assert parsed.get("compliance_shell_attached_at_process")
