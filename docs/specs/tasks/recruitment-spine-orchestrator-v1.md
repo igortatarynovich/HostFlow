@@ -1,11 +1,12 @@
 # Recruitment Spine Orchestrator v1
 
-**Status:** **RSO-1 Contract Gate PASS** (feat locked) — runtime = RSO-2; see [ready-for-employment-contract.md](../architecture/ready-for-employment-contract.md).  
+**Status:** **RSO-2 in progress** (Fits → Handoff Gate) — RSO-1 Contract Gate **PASS**; see [ready-for-employment-contract.md](../architecture/ready-for-employment-contract.md).  
 **Phase class:** product  
 **Module owner:** **Recruitment** (independent of Employment / HR)  
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · Architecture Rule 2 (no cross-module internal access — handoff via delivery contract only) · Strategy Lock (Operator Test / Zero-choice / Happy path short)  
 **Sibling (Employment):** [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — owns employability/legalization, formalize, Employee, Started  
 **Contract SoT:** [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`)  
+**Runtime:** `backend/app/modules/recruitment/services/ready_for_employment_orchestrator.py` · gate `backend/tests/platform/test_rso2_fits_handoff_gate.py` · CI `rso2-fits-handoff-gate`  
 **Estimate:** 1 docs contract slice + feat slices for Recruitment rail only  
 
 > Not Mapping Authority. Not Forms Publish. Not Employment / HR creating Employee from Recruitment.  
@@ -203,7 +204,14 @@ FAIL if Recruitment UI creates Employee or asks for zezwolenie type.
 ## Next
 
 1. **RSO-1 PASS** — package contract + three acceptance gates frozen.  
-2. **RSO-2** runtime: `fits` → validate/emit `ready_for_employment.v1` → `offer_handoff` (cut over from legacy snapshot later).  
+2. **RSO-2 in progress** — Fits auto-runs recruitment prep (`POST …/fits`); Transfer is explicit (`POST …/transfer-to-employment`); machine gate `test_rso2_fits_handoff_gate.py`.  
 3. ESO-1 accept policy on [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — must enforce gate 2 (no re-ask).
+
+### RSO-2 runtime invariants (machine)
+
+- **Fits** never creates handoff / Employee / Recruitment completed audit.  
+- **Transfer** revalidates `ready_for_employment.v1` from current facts (no stale snapshot).  
+- Successful Transfer → exactly one pending handoff (idempotent) + audit **Recruitment completed**.  
+- Recruitment missing never includes employment/legalization shopping lists.
 
 Canvas: `meta-to-started-target-journey` (visual; not L2 canon).

@@ -22,6 +22,8 @@ class AuditEventType(str, Enum):
     handoff_rejected = "handoff_rejected"
     handoff_returned = "handoff_returned"
     handoff_cancelled = "handoff_cancelled"
+    # RSO-2: Recruitment completed only after successful boundary transfer
+    recruitment_completed = "recruitment_completed"
     # RODO
     rodo_sent = "rodo_sent"
     rodo_sent_failed = "rodo_sent_failed"
