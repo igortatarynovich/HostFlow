@@ -246,3 +246,58 @@ export async function logRecruitmentApplicationCallResult(
   )
   return data
 }
+
+export type ApplicationFitsNextAction =
+  | 'offer_handoff'
+  | 'ask_recruitment_missing'
+  | 'confirm_probable_duplicate'
+  | 'ask_vacancy'
+  | 'not_fits'
+
+export type ApplicationFitsResult = {
+  application: Application
+  next_action: ApplicationFitsNextAction
+  package_valid: boolean
+  package?: Record<string, unknown> | null
+  package_fingerprint?: string | null
+  recruitment_missing: Array<{ field_code?: string; label?: string }>
+  probable_duplicate?: Record<string, unknown> | null
+  vacancy_prompt?: string | null
+  ready_label?: string | null
+  transfer_action?: string | null
+  candidate_id?: string | null
+  message?: string | null
+}
+
+/** RSO-2 Fits: auto recruitment prep (never creates handoff). */
+export async function recruitmentApplicationFits(applicationId: string): Promise<ApplicationFitsResult> {
+  const { data } = await api.post<ApplicationFitsResult>(
+    `/recruitment/applications/${encodeURIComponent(applicationId)}/fits`,
+  )
+  return data
+}
+
+export type ApplicationTransferResult = {
+  application: Application
+  handoff_id: string
+  package: Record<string, unknown>
+  package_fingerprint: string
+  created: boolean
+  message?: string | null
+}
+
+/** RSO-2 Transfer: explicit boundary (create_handoff + Recruitment completed). */
+export async function recruitmentApplicationTransferToEmployment(
+  applicationId: string,
+  payload?: {
+    destination?: 'internal_hr' | 'client_portal'
+    client_company_id?: string | null
+    client_tenant_id?: string | null
+  },
+): Promise<ApplicationTransferResult> {
+  const { data } = await api.post<ApplicationTransferResult>(
+    `/recruitment/applications/${encodeURIComponent(applicationId)}/transfer-to-employment`,
+    payload ?? {},
+  )
+  return data
+}

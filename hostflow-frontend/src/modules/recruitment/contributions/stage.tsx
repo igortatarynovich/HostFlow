@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import {
   createRecruitmentApplicationFollowUp,
   processRecruitmentApplication,
+  recruitmentApplicationFits,
+  recruitmentApplicationTransferToEmployment,
   submitRecruitmentApplicationIntakeDecision,
   updateRecruitmentApplicationStage,
 } from '../../../api/applications'
@@ -13,7 +15,10 @@ import { useToast } from '../../../components/Toast'
 import { useI18n } from '../../../i18n'
 import { getFriendlyErrorInfo } from '../../../utils/friendlyError'
 import { ContextRailDecisionZone } from '../../../platform/context-rail'
-import { resolveRecruitmentApplicationDecision } from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
+import {
+  applicationReadyForEmploymentPrep,
+  resolveRecruitmentApplicationDecision,
+} from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
 import type {
   RecruitmentApplicationStage,
   WorkspaceCapabilityRenderContext,
@@ -107,7 +112,50 @@ export function RecruitmentStageContribution({
     })
   }, [application, navigate, notify, run, t])
 
+  const runFits = useCallback(() => {
+    if (!application) return
+    void run(async () => {
+      const result = await recruitmentApplicationFits(application.id)
+      if (result.next_action === 'offer_handoff') {
+        notify({
+          title: result.ready_label || t('app.recruitment_inquiry.rso.ready_label', {
+            defaultValue: 'Готов к передаче на трудоустройство',
+          }),
+          variant: 'success',
+        })
+      } else if (result.message) {
+        notify({ title: result.message, variant: 'info' })
+      }
+      onRefresh()
+    })
+  }, [application, notify, onRefresh, run, t])
+
+  const transferToEmployment = useCallback(() => {
+    if (!application) return
+    void run(async () => {
+      const result = await recruitmentApplicationTransferToEmployment(application.id)
+      notify({
+        title: result.message
+          || t('app.recruitment_inquiry.rso.handed_off_title', {
+            defaultValue: 'Передано на трудоустройство',
+          }),
+        variant: 'success',
+      })
+      onRefresh()
+    })
+  }, [application, notify, onRefresh, run, t])
+
   if (!application || !onStage) return null
+
+  const prep = applicationReadyForEmploymentPrep(application)
+  const rsoNext = String(prep?.next_action || '').trim()
+  const hideLegacyStagePicker =
+    rsoNext === 'offer_handoff'
+    || rsoNext === 'ask_recruitment_missing'
+    || rsoNext === 'confirm_probable_duplicate'
+    || rsoNext === 'ask_vacancy'
+    || rsoNext === 'handed_off'
+    || Boolean(prep?.handoff_id)
 
   const stageSelectValue = CRM_STAGE_OPTIONS.includes(currentStage as (typeof CRM_STAGE_OPTIONS)[number])
     ? currentStage
@@ -154,29 +202,33 @@ export function RecruitmentStageContribution({
         await submitRecruitmentApplicationIntakeDecision(application.id, { decision: 'pool' })
         notify({ title: t('app.recruitment.contributions.pooled'), variant: 'success' })
       }),
+    onTransferToEmployment: transferToEmployment,
+    onRunFits: runFits,
     t,
   })
 
   return (
     <div data-capability-id="recruitment.stage" data-widget-class="decision_zone">
-      <label className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-        <span className="shrink-0 font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.recruitment.contributions.stage', { defaultValue: 'Этап' })}
-        </span>
-        <select
-          className="input h-8 min-w-[10rem] rounded-lg border-slate-300 bg-white px-2 text-xs"
-          value={displayedStage}
-          disabled={busy || patching || Boolean(application.outcome_entity_id)}
-          aria-label={t('app.recruitment.contributions.stage', { defaultValue: 'Этап' })}
-          onChange={(event) => onStageSelect(event.target.value)}
-        >
-          {CRM_STAGE_OPTIONS.map((code) => (
-            <option key={code} value={code} disabled={code === 'new' && currentStage !== 'new'}>
-              {t(`app.leads.stages.${code}`)}
-            </option>
-          ))}
-        </select>
-      </label>
+      {!hideLegacyStagePicker ? (
+        <label className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <span className="shrink-0 font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.recruitment.contributions.stage', { defaultValue: 'Этап' })}
+          </span>
+          <select
+            className="input h-8 min-w-[10rem] rounded-lg border-slate-300 bg-white px-2 text-xs"
+            value={displayedStage}
+            disabled={busy || patching || Boolean(application.outcome_entity_id)}
+            aria-label={t('app.recruitment.contributions.stage', { defaultValue: 'Этап' })}
+            onChange={(event) => onStageSelect(event.target.value)}
+          >
+            {CRM_STAGE_OPTIONS.map((code) => (
+              <option key={code} value={code} disabled={code === 'new' && currentStage !== 'new'}>
+                {t(`app.leads.stages.${code}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <ContextRailDecisionZone decision={decision} />
       {showReject ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
