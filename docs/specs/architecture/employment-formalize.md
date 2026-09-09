@@ -103,7 +103,7 @@ No other items appear on this thin table. Position may refine labels, not invent
 
 ## Non-goals
 
-- ESO-5 Started (physical start / выход).  
+- ESO-5 Started (physical start / выход) — [`employment-started.md`](employment-started.md).  
 - HR employee card / workforce profile chrome.  
 - Actually inserting `workforce_employees` in this gate (allow signal only).  
 - Full Legalization Engine.  

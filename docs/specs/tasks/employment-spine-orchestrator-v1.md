@@ -1,10 +1,10 @@
 # Employment Spine Orchestrator v1
 
-**Status:** **ESO-4 in progress** (Employment Formalize Gate) — ESO-1…3 SoTs linked; Formalize: [employment-formalize.md](../architecture/employment-formalize.md) (`employment_formalize.v1`).  
+**Status:** **ESO-5 in progress** (Employment Started Gate) — ESO-1…4 SoTs linked; Started: [employment-started.md](../architecture/employment-started.md) (`employment_started.v1`).  
 **Phase class:** product  
 **Module owner:** **Employment / HR** (independent of Recruitment)  
-**Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) · [Employment accept policy](../architecture/employment-accept-policy.md) · [Early employability](../architecture/early-employability.md) · [Employment missing resolution](../architecture/employment-missing-resolution.md) · [Employment formalize](../architecture/employment-formalize.md) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock  
-**Machine:** accept / employability / missing-resolution / formalize · gates ESO-1…ESO-4 · CI `eso1`…`eso4-formalize-gate`  
+**Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) · [Employment accept policy](../architecture/employment-accept-policy.md) · [Early employability](../architecture/early-employability.md) · [Employment missing resolution](../architecture/employment-missing-resolution.md) · [Employment formalize](../architecture/employment-formalize.md) · [Employment started](../architecture/employment-started.md) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock  
+**Machine:** accept / employability / missing-resolution / formalize / started · gates ESO-1…ESO-5 · CI `eso1`…`eso5-started-gate`  
 **Estimate:** TBD after RSO-1 handoff package shape freezes  
 
 > Recruitment ends when the **Ready for employment contract** (handoff package) is emitted. This program **starts** there.  
@@ -22,7 +22,7 @@
 
 Gate 2 is the usual failure mode: citizenship asked twice, employer re-selected, documents re-uploaded. Domain boundary splits responsibility, not data for the user.
 
-Machine gates: `backend/tests/platform/test_ready_for_employment_contract_gate.py` · `backend/tests/platform/test_employment_accept_policy_gate.py`.
+Machine gates: `backend/tests/platform/test_ready_for_employment_contract_gate.py` · `backend/tests/platform/test_employment_accept_policy_gate.py` · `backend/tests/platform/test_early_employability_gate.py` · `backend/tests/platform/test_employment_missing_resolution_gate.py` · `backend/tests/platform/test_employment_formalize_gate.py` · `backend/tests/platform/test_employment_started_gate.py`.
 
 ---
 
@@ -75,7 +75,7 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 2�
 | **ESO-2** | **Early Employability Gate** — `early_employability.v1` (employable / blocked / insufficient_facts; unique pathway; no Employee) | ESO-1 |
 | **ESO-3** | **Employment Missing / Resolution Gate** — `employment_missing_resolution.v1` (minimal active path → patch → auto re-eval → ready_to_formalize; no checklist dump; no Employee) | ESO-2 |
 | **ESO-4** | **Employment Formalize Gate** — `employment_formalize.v1` (context formal actions → complete/missing/blocked; `ready_to_create_employee`; no Employee mint / no HR card) | ESO-3 |
-| **ESO-5** | Started confirm (physical start / выход — not mere Employee existence) | ESO-4 |
+| **ESO-5** | **Employment Started Gate** — `employment_started.v1` (explicit start date + context; Employee created ≠ Started; idempotent `employee_physical_start`; spine Employee → Started) | ESO-4 |
 
 ---
 
@@ -89,6 +89,5 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 2�
 
 ## Next
 
-1. **ESO-4 in progress** — formalize SoT + apply (`POST /handoffs/{id}/employment-formalize`); stops at `ready_to_create_employee`.  
-2. **ESO-5** — Started (фактический выход).  
-3. RSO-2 Transfer remains Recruitment-owned and must **not** call Employment accept / employability / resolution / formalize.
+1. **ESO-5 in progress** — physical start SoT + apply (`POST /handoffs/{id}/employment-started`); Employee created ≠ Started; closes spine Employee → Started.  
+2. RSO-2 Transfer remains Recruitment-owned and must **not** call Employment accept / employability / resolution / formalize / started.

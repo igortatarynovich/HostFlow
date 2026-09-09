@@ -750,6 +750,89 @@ async def employment_formalize_route(
     return EmploymentFormalizeOut.model_validate(result)
 
 
+class EmploymentStartedIn(BaseModel):
+    """ESO-5: physical start confirm (Employee created ≠ Started)."""
+
+    package: Optional[dict[str, Any]] = None
+    employment_context: Optional[dict[str, Any]] = None
+    start_confirmation: Optional[Any] = None
+    known_start_date: Optional[str] = None
+    employment_missing: Optional[List[dict[str, Any]]] = None
+    require_confirm_when_not_started: bool = False
+    ensure_employee: bool = False
+
+
+class EmploymentStartedOut(BaseModel):
+    policy_id: str
+    handoff_id: Optional[str] = None
+    decision: str
+    employee_id: Optional[str] = None
+    employee_created: bool = False
+    mint_employee: bool = False
+    ready_to_create_employee: bool = False
+    started: bool = False
+    start_date: Optional[str] = None
+    employment_context: Optional[dict[str, Any]] = None
+    active_missing: List[dict[str, Any]] = Field(default_factory=list)
+    primary_item: Optional[dict[str, Any]] = None
+    start_event_emitted: bool = False
+    idempotent_replay: bool = False
+    audit_event_type: Optional[str] = None
+    formalization_complete_implies_started: bool = False
+    employee_created_implies_started: bool = False
+    llm_start: bool = False
+    blockers: List[dict[str, Any]] = Field(default_factory=list)
+    reuse_violations: List[str] = Field(default_factory=list)
+    rejection_reason: Optional[str] = None
+    hr_employee_card: bool = False
+    spine: Optional[str] = None
+
+
+@router.post(
+    "/{handoff_id}/employment-started",
+    response_model=EmploymentStartedOut,
+    dependencies=[Depends(require_hr_workforce_module_access)],
+)
+async def employment_started_route(
+    handoff_id: UUID,
+    payload: Optional[EmploymentStartedIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+):
+    """ESO-5: confirm physical first day (date + context). Idempotent. No auto-start.
+
+    Must not be used by Recruitment Transfer as its completion.
+    """
+    from backend.app.services.employment_started_orchestrator import (
+        EmploymentStartedError,
+        confirm_employment_started_for_handoff,
+    )
+
+    db, tenant_id = db_tenant
+    body = payload or EmploymentStartedIn()
+    try:
+        result = await confirm_employment_started_for_handoff(
+            db,
+            tenant_id=str(tenant_id),
+            handoff_id=str(handoff_id),
+            actor_id=str(getattr(current_user, "id", "") or "") or None,
+            package=body.package,
+            employment_context=body.employment_context,
+            start_confirmation=body.start_confirmation,
+            known_start_date=body.known_start_date,
+            employment_missing=body.employment_missing,
+            require_confirm_when_not_started=body.require_confirm_when_not_started,
+            ensure_employee=body.ensure_employee,
+        )
+    except EmploymentStartedError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    return EmploymentStartedOut.model_validate(result)
+
+
 @router.post("/{handoff_id}/reject", response_model=HandoffOut)
 async def reject_handoff_route(
     handoff_id: UUID,
