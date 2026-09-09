@@ -8,7 +8,7 @@ synced only for launch/resume/pause (not complete). Cancel is deferred.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from sqlalchemy import select
@@ -193,6 +193,9 @@ async def execute_flight_command(
 
     campaign_event: AcquisitionActivityEvent | None = None
     if cmd in {"launch", "resume"}:
+        # Roster «Start» reads starts_at; launch without a schedule still means go-live now.
+        if flight.starts_at is None:
+            flight.starts_at = occurred_at or datetime.now(timezone.utc)
         campaign_event = await _sync_campaign_status(
             db,
             campaign=campaign,

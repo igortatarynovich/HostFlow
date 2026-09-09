@@ -52,6 +52,8 @@ export interface MarketingEfficiencyPanelProps {
   totals: MarketingTotals
   series: MarketingDaySeriesPoint[]
   loading: boolean
+  /** Show Snapshot banner/chips only for manual import — never for live Meta sync. */
+  showSnapshotDisclosure?: boolean
 }
 
 const BAR_PALETTE = ['#0ea5e9', '#8b5cf6', '#14b8a6', '#f97316', '#6366f1', '#ec4899', '#84cc16']
@@ -79,6 +81,7 @@ export function MarketingEfficiencyPanel({
   totals,
   series,
   loading,
+  showSnapshotDisclosure = false,
 }: MarketingEfficiencyPanelProps) {
   const chartsReady = !loading
 
@@ -153,19 +156,21 @@ export function MarketingEfficiencyPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-        <div className="font-semibold">
-          {t('app.dashboard.marketing.snapshot_badge', {
-            defaultValue: 'Meta snapshot metrics',
-          })}
+      {showSnapshotDisclosure ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <div className="font-semibold">
+            {t('app.dashboard.marketing.snapshot_badge', {
+              defaultValue: 'Meta snapshot metrics',
+            })}
+          </div>
+          <p className="mt-0.5 text-xs text-amber-900/90">
+            {t('app.dashboard.marketing.snapshot_hint', {
+              defaultValue:
+                'Impressions and reach come from the latest Meta insights snapshot, not the spend ledger window.',
+            })}
+          </p>
         </div>
-        <p className="mt-0.5 text-xs text-amber-900/90">
-          {t('app.dashboard.marketing.snapshot_hint', {
-            defaultValue:
-              'Impressions and reach come from the latest Meta insights snapshot, not the spend ledger window.',
-          })}
-        </p>
-      </div>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -212,11 +217,13 @@ export function MarketingEfficiencyPanel({
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
             {t('app.dashboard.marketing.stats.impressions')}
-            <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold normal-case text-amber-800">
-              {t('app.dashboard.marketing.snapshot_chip', {
-                defaultValue: 'Snapshot',
-              })}
-            </span>
+            {showSnapshotDisclosure ? (
+              <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold normal-case text-amber-800">
+                {t('app.dashboard.marketing.snapshot_chip', {
+                  defaultValue: 'Snapshot',
+                })}
+              </span>
+            ) : null}
           </div>
           <div className="mt-1 text-2xl font-semibold text-slate-900">
             {totals.impressions != null ? formatNumber(totals.impressions) : '—'}
@@ -225,11 +232,13 @@ export function MarketingEfficiencyPanel({
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
             {t('app.dashboard.marketing.stats.reach')}
-            <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold normal-case text-amber-800">
-              {t('app.dashboard.marketing.snapshot_chip', {
-                defaultValue: 'Snapshot',
-              })}
-            </span>
+            {showSnapshotDisclosure ? (
+              <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold normal-case text-amber-800">
+                {t('app.dashboard.marketing.snapshot_chip', {
+                  defaultValue: 'Snapshot',
+                })}
+              </span>
+            ) : null}
           </div>
           <div className="mt-1 text-2xl font-semibold text-slate-900">
             {totals.reach != null ? formatNumber(totals.reach) : '—'}

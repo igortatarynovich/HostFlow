@@ -229,6 +229,7 @@ export default function MetaLeadsAdminPage() {
   const [adInsights, setAdInsights] = useState<MetaAdAccountInsights | null>(null)
   const [adInsightsLoading, setAdInsightsLoading] = useState(false)
   const [adInsightsError, setAdInsightsError] = useState<FriendlyErrorInfo | null>(null)
+  const [latestMetaLeadAt, setLatestMetaLeadAt] = useState<string | null>(null)
   const [metaAdvancedOpen, setMetaAdvancedOpen] = useState(false)
   const metaAdvancedBootstrapped = useRef(false)
 
@@ -275,12 +276,13 @@ export default function MetaLeadsAdminPage() {
   )
 
   const lastLeadActivityLabel = useMemo(() => {
+    if (latestMetaLeadAt) return formatDateTime(latestMetaLeadAt)
     const a = leads[0]?.created_at
     if (a) return formatDateTime(a)
     const b = incomingRows[0]?.created_at
     if (b) return formatDateTime(b)
     return null
-  }, [leads, incomingRows])
+  }, [latestMetaLeadAt, leads, incomingRows])
 
   const setTabWithUrl = useCallback(
     (next: MainTabKey) => {
@@ -342,6 +344,7 @@ export default function MetaLeadsAdminPage() {
         mapData,
         leadsNeedsRoutingResp,
         leadsFailedResp,
+        recentMetaPreview,
         unmappedResp,
         companiesResp,
         vacanciesResp,
@@ -353,6 +356,7 @@ export default function MetaLeadsAdminPage() {
         listMetaAdsMap({ limit: 200 }),
         listLeads({ status: 'needs_routing', limit: 100, offset: 0 }),
         listLeads({ status: 'failed', limit: 100, offset: 0 }),
+        getMetaIncomingPreview({ limit: 1, source: 'meta' }).catch(() => ({ items: [] })),
         getUnmappedLeads({ status: 'needs_routing', limit_per_ad: 5 }).catch(() => ({ groups: [] })),
         listCompanies({ limit: 200 }),
         listVacancies({ limit: 200 }).catch(() => ({ items: [] })),
@@ -364,6 +368,8 @@ export default function MetaLeadsAdminPage() {
       setCredentials(credsData)
       setMapping(mapData)
       setLeads(mergeLeadsForLogs(leadsNeedsRoutingResp, leadsFailedResp))
+      const latestAt = recentMetaPreview?.items?.[0]?.created_at
+      setLatestMetaLeadAt(typeof latestAt === 'string' && latestAt.trim() ? latestAt : null)
       setUnmappedGroups(unmappedResp.groups || [])
       const vacList: any[] = Array.isArray(vacanciesResp?.items) ? vacanciesResp.items : Array.isArray(vacanciesResp) ? vacanciesResp : []
       setVacancyOptions(vacList.map((v: any) => ({ id: v?.id, title: v?.title || v?.vacancy_title || t('common.labels.unnamed') })).filter((v: any) => v.id))

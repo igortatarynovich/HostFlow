@@ -66,6 +66,21 @@ def _parse_note_metrics(note: str | None) -> tuple[int, int]:
     )
 
 
+def _note_ad_metrics_provenance(note: str | None) -> Optional[str]:
+    """Classify impressions/reach attached to a spend note.
+
+    ``meta_live`` — synced from Meta Insights Graph (not a manual dump).
+    ``manual`` — any other note that carries impressions/reach (CSV / hand import).
+    """
+    text = str(note or "").strip()
+    imp, reach = _parse_note_metrics(text)
+    if imp <= 0 and reach <= 0:
+        return None
+    if text.startswith("meta_insights:"):
+        return "meta_live"
+    return "manual"
+
+
 @dataclass(frozen=True)
 class PortfolioCampaignRow:
     campaign_id: str
@@ -172,6 +187,8 @@ class PortfolioBundle:
     series_by_campaign: tuple[PortfolioDayCampaignPoint, ...] = ()
     impressions: Optional[int] = None
     reach: Optional[int] = None
+    # Provenance for impressions/reach: meta_live | manual | None
+    ad_metrics_provenance: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -197,6 +214,7 @@ class PortfolioBundle:
             "series_by_campaign": [p.to_dict() for p in self.series_by_campaign],
             "impressions": self.impressions,
             "reach": self.reach,
+            "ad_metrics_provenance": self.ad_metrics_provenance,
         }
 
 
@@ -207,9 +225,9 @@ async def _reach_impressions_by_campaign(
     campaign_ids: list[str],
     date_from: Optional[datetime],
     date_to: Optional[datetime],
-) -> dict[str, tuple[int, int]]:
+) -> tuple[dict[str, tuple[int, int]], Optional[str]]:
     if not campaign_ids:
-        return {}
+        return {}, None
     q = select(CampaignFlightSpendEntry).where(
         CampaignFlightSpendEntry.tenant_id == str(tenant_id),
         CampaignFlightSpendEntry.campaign_id.in_(campaign_ids),
@@ -220,13 +238,25 @@ async def _reach_impressions_by_campaign(
         q = q.where(CampaignFlightSpendEntry.created_at < date_to)
     rows = (await db.execute(q)).scalars().all()
     out: dict[str, list[int]] = {}
+    saw_live = False
+    saw_manual = False
     for row in rows:
         cid = str(row.campaign_id)
         imp, reach = _parse_note_metrics(row.note)
         bucket = out.setdefault(cid, [0, 0])
         bucket[0] += imp
         bucket[1] += reach
-    return {cid: (vals[0], vals[1]) for cid, vals in out.items()}
+        prov = _note_ad_metrics_provenance(row.note)
+        if prov == "meta_live":
+            saw_live = True
+        elif prov == "manual":
+            saw_manual = True
+    provenance: Optional[str] = None
+    if saw_live:
+        provenance = "meta_live"
+    elif saw_manual:
+        provenance = "manual"
+    return {cid: (vals[0], vals[1]) for cid, vals in out.items()}, provenance
 
 
 async def _compose_series(
@@ -372,7 +402,7 @@ async def compose_campaign_portfolio(
                 )
         draft.append((str(camp.id), str(camp.name or ""), str(camp.status or ""), kpi))
 
-    metrics = await _reach_impressions_by_campaign(
+    metrics, ad_metrics_provenance = await _reach_impressions_by_campaign(
         db,
         tenant_id=str(tenant_id),
         campaign_ids=[cid for cid, _, _, _ in draft],
@@ -470,6 +500,7 @@ async def compose_campaign_portfolio(
         series_by_campaign=series_by_campaign,
         impressions=total_imp if any_imp else None,
         reach=total_reach if any_imp else None,
+        ad_metrics_provenance=ad_metrics_provenance,
     )
 
 

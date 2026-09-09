@@ -11554,6 +11554,7 @@
         "destination": "Куда: {value}",
         "launch": "Запуск: {when}",
         "not_launched": "ещё не запускали",
+        "active_no_schedule": "активна (без даты старта)",
         "open": "Открыть",
         "search_placeholder": "Поиск кампаний…",
         "empty_filtered": "Нет кампаний по текущим фильтрам.",

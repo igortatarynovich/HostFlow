@@ -12,6 +12,7 @@ import {
   listCampaigns,
   pauseFlight,
   resumeFlight,
+  syncMetaSpendToPortfolio,
   type Campaign,
   type CampaignPortfolio,
   type PortfolioCampaignRow,
@@ -116,23 +117,43 @@ export default function MarketingCampaignsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [rows, folio, insightsSettled] = await Promise.all([
+      const [rows, insightsSettled] = await Promise.all([
         listCampaigns({ limit: LIST_LIMIT }),
-        getCampaignPortfolio(50).catch(() => null),
         getMetaAdAccountInsights({ date_preset: 'last_7d' }).then(
           (data) => ({ ok: true as const, data }),
           () => ({ ok: false as const }),
         ),
       ])
       setItems(rows)
-      setPortfolio(folio)
       if (insightsSettled.ok) {
         setMetaInsights(insightsSettled.data)
         setMetaInsightsMissing(false)
+        const ins = insightsSettled.data
+        if (
+          !ins.warning &&
+          ins.ad_account_id &&
+          ins.currency &&
+          Number.isFinite(Number(ins.spend))
+        ) {
+          try {
+            await syncMetaSpendToPortfolio({
+              amount: Number(ins.spend),
+              currency: String(ins.currency),
+              date_preset: ins.date_preset || 'last_7d',
+              ad_account_id: String(ins.ad_account_id),
+              impressions: Number(ins.impressions) || 0,
+              reach: Number(ins.reach) || 0,
+            })
+          } catch {
+            // Portfolio still loads; spend stays from ledger if sync fails.
+          }
+        }
       } else {
         setMetaInsights(null)
         setMetaInsightsMissing(true)
       }
+      const folio = await getCampaignPortfolio(50).catch(() => null)
+      setPortfolio(folio)
       void loadCounts(rows)
     } catch (err: unknown) {
       setError(
@@ -189,7 +210,9 @@ export default function MarketingCampaignsPage() {
       const destination = destinationSummary(campaign, t)
       const launchedLabel = flight?.starts_at
         ? formatDateTime(flight.starts_at, locale)
-        : t('app.marketing.list.not_launched')
+        : flight && ['active', 'paused', 'completed'].includes(String(flight.status || '').toLowerCase())
+          ? formatDateTime(campaign.created_at || null, locale) || t('app.marketing.list.active_no_schedule')
+          : t('app.marketing.list.not_launched')
       if (q) {
         const hay = [campaign.name, form?.title || '', sourceLabel, destination].join(' ').toLowerCase()
         if (!hay.includes(q)) continue

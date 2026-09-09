@@ -8,9 +8,11 @@ import {
 import {
   getCampaignPortfolio,
   listCampaigns,
+  syncMetaSpendToPortfolio,
   type CampaignPortfolio,
   type PortfolioCampaignRow,
 } from '../api/platformCampaigns'
+import { getMetaAdAccountInsights } from '../api/metaLeads'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
 import { useI18n } from '../i18n'
@@ -180,10 +182,39 @@ export default function MarketingEfficiencyDashboard() {
               ...(dateTo ? { date_to: dateTo } : {}),
             }
           : undefined
-      const [folio, campaigns] = await Promise.all([
-        getCampaignPortfolio(100, portfolioParams),
+      const [insightsSettled, campaigns] = await Promise.all([
+        getMetaAdAccountInsights({ date_preset: 'last_7d' }).then(
+          (data) => ({ ok: true as const, data }),
+          () => ({ ok: false as const }),
+        ),
         listCampaigns({ limit: 100 }).catch(() => []),
       ])
+      if (seq !== loadSeq.current) return
+
+      if (insightsSettled.ok) {
+        const ins = insightsSettled.data
+        if (
+          !ins.warning &&
+          ins.ad_account_id &&
+          ins.currency &&
+          Number.isFinite(Number(ins.spend))
+        ) {
+          try {
+            await syncMetaSpendToPortfolio({
+              amount: Number(ins.spend),
+              currency: String(ins.currency),
+              date_preset: ins.date_preset || 'last_7d',
+              ad_account_id: String(ins.ad_account_id),
+              impressions: Number(ins.impressions) || 0,
+              reach: Number(ins.reach) || 0,
+            })
+          } catch {
+            // Portfolio still loads without snapshot metrics.
+          }
+        }
+      }
+
+      const folio = await getCampaignPortfolio(100, portfolioParams)
       if (seq !== loadSeq.current) return
 
       const extras: Record<string, { impressions: number | null; reach: number | null }> = {}
@@ -286,6 +317,17 @@ export default function MarketingEfficiencyDashboard() {
     () => recomputeTotals(selectedRows, displayCurrency),
     [selectedRows, displayCurrency],
   )
+
+  const showSnapshotDisclosure = useMemo(() => {
+    // LIVE Meta Graph sync must never be labeled Snapshot.
+    if (portfolio?.ad_metrics_provenance === 'meta_live') return false
+    if (portfolio?.ad_metrics_provenance === 'manual') return true
+    // Fallback: campaign description markers from manual Meta Ads import.
+    return selectedIds.some((id) => {
+      const ex = extrasById[id]
+      return ex != null && (ex.impressions != null || ex.reach != null)
+    })
+  }, [portfolio?.ad_metrics_provenance, selectedIds, extrasById])
 
   const series: MarketingDaySeriesPoint[] = useMemo(() => {
     const points = portfolio?.series_by_campaign ?? []
@@ -424,6 +466,7 @@ export default function MarketingEfficiencyDashboard() {
           totals={totals}
           series={series}
           loading={loading}
+          showSnapshotDisclosure={showSnapshotDisclosure}
         />
       </div>
     </PageShell>

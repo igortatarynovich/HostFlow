@@ -13,7 +13,12 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.acquisition.endpoint_activity import form_endpoint_id, intake_source_endpoint_id
+from backend.app.acquisition.endpoint_activity import (
+    ENDPOINT_KIND_FORM,
+    ENDPOINT_KIND_INTAKE_SOURCE,
+    form_endpoint_id,
+    intake_source_endpoint_id,
+)
 from backend.app.acquisition.sources_read import parse_meta_form_id
 from backend.app.models.acquisition_activity_event import AcquisitionActivityEvent
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
@@ -108,6 +113,67 @@ async def load_last_submission_by_endpoint(
         if not eid or occurred_at is None or eid in out:
             continue
         out[eid] = occurred_at
+
+    # Fallback: Meta webhook leads stamp intake_source / form on normalized but may
+    # predate Activity projection — still show last_lead on Marketing cards.
+    missing = [eid for eid in endpoint_ids if str(eid).strip() and str(eid).strip() not in out]
+    if missing:
+        from backend.app.models.lead import Lead
+        from sqlalchemy import or_
+
+        profile_ids: list[str] = []
+        form_ids: list[str] = []
+        for eid in missing:
+            raw = str(eid or "").strip()
+            if raw.startswith(f"{ENDPOINT_KIND_INTAKE_SOURCE}:"):
+                pid = raw.split(":", 1)[1].strip()
+                if pid:
+                    profile_ids.append(pid)
+            elif raw.startswith(f"{ENDPOINT_KIND_FORM}:"):
+                fid = raw.split(":", 1)[1].strip()
+                if fid:
+                    form_ids.append(fid)
+        if profile_ids or form_ids:
+            clauses = []
+            if profile_ids:
+                clauses.append(
+                    Lead.normalized["acquisition_routing_v1"]["intake_source_profile_id"].astext.in_(
+                        profile_ids
+                    )
+                )
+            if form_ids:
+                clauses.append(Lead.normalized["form_id"].astext.in_(form_ids))
+                clauses.append(
+                    Lead.normalized["acquisition_routing_v1"]["form_id"].astext.in_(form_ids)
+                )
+            lead_rows = (
+                await db.execute(
+                    select(Lead.normalized, Lead.created_at)
+                    .where(
+                        Lead.tenant_id == str(tenant_id),
+                        Lead.source == "meta",
+                        Lead.created_at.is_not(None),
+                        or_(*clauses),
+                    )
+                    .order_by(Lead.created_at.desc())
+                    .limit(500)
+                )
+            ).all()
+            for normalized, created_at in lead_rows:
+                if created_at is None or not isinstance(normalized, dict):
+                    continue
+                stamp = normalized.get("acquisition_routing_v1")
+                stamp = stamp if isinstance(stamp, dict) else {}
+                profile_id = str(stamp.get("intake_source_profile_id") or "").strip()
+                form_id = str(stamp.get("form_id") or normalized.get("form_id") or "").strip()
+                candidates: list[str] = []
+                if profile_id:
+                    candidates.append(intake_source_endpoint_id(profile_id))
+                if form_id:
+                    candidates.append(form_endpoint_id(form_id))
+                for eid in candidates:
+                    if eid in missing and eid not in out:
+                        out[eid] = created_at
     return out
 
 

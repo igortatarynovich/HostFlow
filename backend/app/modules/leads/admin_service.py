@@ -688,6 +688,7 @@ async def get_connected_ad_account_insights(
                 date_preset=preset,
                 spend=float(metrics.get("spend") or 0),
                 impressions=int(metrics.get("impressions") or 0),
+                reach=int(metrics.get("reach") or 0),
                 clicks=int(metrics.get("clicks") or 0),
                 ctr=float(metrics.get("ctr") or 0),
                 leads=int(metrics.get("leads") or 0),

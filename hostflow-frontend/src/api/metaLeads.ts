@@ -60,6 +60,7 @@ export type MetaAdAccountInsights = {
   date_preset: string
   spend: number
   impressions: number
+  reach?: number
   clicks: number
   ctr: number
   leads: number

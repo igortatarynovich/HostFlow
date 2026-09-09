@@ -11554,6 +11554,7 @@
         "destination": "Dokąd: {value}",
         "launch": "Start: {when}",
         "not_launched": "jeszcze nie uruchomiono",
+        "active_no_schedule": "aktywna (bez daty startu)",
         "open": "Otwórz",
         "search_placeholder": "Szukaj kampanii…",
         "empty_filtered": "Brak kampanii dla bieżących filtrów.",
