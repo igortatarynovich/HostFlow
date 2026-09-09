@@ -1,15 +1,28 @@
 # Recruitment Spine Orchestrator v1
 
-**Status:** **BRIEF** — contract first; runtime not started.  
+**Status:** **RSO-1 Contract Gate PASS** (feat locked) — runtime = RSO-2; see [ready-for-employment-contract.md](../architecture/ready-for-employment-contract.md).  
 **Phase class:** product  
 **Module owner:** **Recruitment** (independent of Employment / HR)  
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · Architecture Rule 2 (no cross-module internal access — handoff via delivery contract only) · Strategy Lock (Operator Test / Zero-choice / Happy path short)  
 **Sibling (Employment):** [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — owns employability/legalization, formalize, Employee, Started  
+**Contract SoT:** [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`)  
 **Estimate:** 1 docs contract slice + feat slices for Recruitment rail only  
 
 > Not Mapping Authority. Not Forms Publish. Not Employment / HR creating Employee from Recruitment.  
 > Not “Recruitment continues until Started”. Not auto-accept handoff as a Recruitment side-effect.  
 > Mapping Connect→Ready stays **parallel** and must not block this brief.
+
+---
+
+## Acceptance gates (every subsequent change)
+
+1. **RSO does not know how to employ.** Terminal result = valid Ready for employment **handoff package** (`ready_for_employment.v1`).  
+2. **ESO does not re-ask Recruitment.** Package facts/evidence are reused; only **employment missing** may be requested. *(Owned/enforced on Employment side — Recruitment must not emit employment doc shopping lists.)*  
+3. **Operator does not service the boundary.** **Передать на трудоустройство** continues the same person; package emit, audit, owner switch, Employment init are internal.
+
+Gate 2 failure mode to watch forever: citizenship twice, employer re-picked, documents re-uploaded. Domain boundary splits **responsibility**, not user-visible data.
+
+Machine gate: `backend/tests/platform/test_ready_for_employment_contract_gate.py`.
 
 ---
 
@@ -139,7 +152,7 @@ Same-tenant auto-accept, if any, is **Employment module policy** after receiving
 
 | Slice | Name | Gate | Depends |
 |-------|------|------|---------|
-| **RSO-1** | Recruitment orchestrator **contract** (this brief) | **Recruitment Orchestrator Contract Gate** — boundary, pipeline 1–7, handoff package shape, false closes frozen | — |
+| **RSO-1** | Recruitment orchestrator **contract** (this brief + package SoT) | **Recruitment Orchestrator Contract Gate** — **PASS** (`ready_for_employment.v1` + `test_ready_for_employment_contract_gate.py`) | — |
 | **RSO-2** | Runtime `fits` → package → `offer_handoff` | **Fits → Handoff Gate** — no Create candidate / vacancy bind / stage menu on happy path | RSO-1 |
 | **RSO-3** | Call triad + My Work (Recruitment card states) | **Call / My Work Gate** | RSO-2 (or FE parallel after contract types stable) |
 
@@ -189,8 +202,8 @@ FAIL if Recruitment UI creates Employee or asks for zezwolenie type.
 
 ## Next
 
-1. Freeze **RSO-1** (this contract + handoff package fields).  
-2. Open / refine [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) for employability → formalize → Employee → Started (incl. auto-accept **policy**).  
-3. RSO-2 runtime on Recruitment only.
+1. **RSO-1 PASS** — package contract + three acceptance gates frozen.  
+2. **RSO-2** runtime: `fits` → validate/emit `ready_for_employment.v1` → `offer_handoff` (cut over from legacy snapshot later).  
+3. ESO-1 accept policy on [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — must enforce gate 2 (no re-ask).
 
 Canvas: `meta-to-started-target-journey` (visual; not L2 canon).

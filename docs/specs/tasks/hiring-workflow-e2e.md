@@ -12,7 +12,7 @@
 > **Not** Requirement Policy Management (consumed). **Not** min HR handoff (that is [the next node](recruitment-hr-minimal-handoff.md)). **Not** LI-2+ Lifecycle cutover. **Not** CL8.
 > Opening this brief does **not** schedule it. RPM program close **unlocks** Hiring (policy-authority edge). Unlock ≠ schedule. The queue’s Active Product is [MA-3](mapping-authority.md).
 >
-> **Related (not a schedule):** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) (Recruitment → Ready for employment) · [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) (handoff → Started). Separate module ownership; seamless user handoff — not one mega-orchestrator creating Employee from Recruitment.
+> **Related (not a schedule):** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) (Recruitment → Ready for employment) · [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) (handoff → Started) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`). Separate module ownership; seamless user handoff — not one mega-orchestrator creating Employee from Recruitment.
 
 ---
 
