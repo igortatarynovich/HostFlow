@@ -214,8 +214,11 @@ def build_ready_for_employment_package_v1(
     if not isinstance(personal, dict):
         personal = {}
     identity_facts: dict[str, Any] = {}
+    extra = candidate._get_extra() if hasattr(candidate, "_get_extra") else {}
+    if not isinstance(extra, dict):
+        extra = {}
     for key in ("citizenship", "first_name", "last_name", "nationality"):
-        val = personal.get(key) or getattr(candidate, key, None)
+        val = personal.get(key) or extra.get(key) or getattr(candidate, key, None)
         if val is not None and _text(val):
             identity_facts[key] = val
     if candidate.first_name and "first_name" not in identity_facts:

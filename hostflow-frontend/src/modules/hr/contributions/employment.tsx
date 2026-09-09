@@ -49,7 +49,12 @@ export function HrEmploymentContribution({
     if (!handoffId) return
     setBusy(true)
     try {
-      await applyEmploymentAcceptPolicy(handoffId)
+      try {
+        await applyEmploymentAcceptPolicy(handoffId)
+      } catch {
+        // Auto-accept is Employment-internal. Already-accepted or a current
+        // employment blocker must not eject the operator from this card.
+      }
       const formalizeOut = await applyEmploymentFormalize(handoffId)
       setFormalize(formalizeOut)
       const startedOut = await confirmEmploymentStarted(handoffId, {
