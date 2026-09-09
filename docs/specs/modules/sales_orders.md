@@ -71,6 +71,13 @@ Idempotent on `(line, trigger, source_entity_type, source_entity_id)` among non-
 - Sales order create: selecting Client Account **prefills** form; «Сохранить как defaults клиента» writes back
 - Changing defaults **must not** rewrite existing Service Orders (snapshot SoT)
 
+## Commercial amendment (V1)
+
+- After non-`void` billables, commercial PATCH → **409** (unchanged)
+- `POST /api/v1/sales-orders/{id}/amend` — append prior commercial state to `commercial_versions`, bump `commercial_version`, apply new terms
+- Columns: `commercial_version` (int, default 1), `commercial_versions` (JSON history)
+- UI: order detail → «Amend commercial terms»
+
 ## SPA (V1)
 
 - List / create / detail: `/app/sales/orders` (`CRM_APP_PATHS.salesOrders`)

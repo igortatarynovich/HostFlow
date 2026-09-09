@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   BILLING_TRIGGERS,
+  amendSalesOrder,
   composeSalesOrderInvoice,
   createSalesOrderLine,
   getSalesOrder,
@@ -49,6 +50,14 @@ export default function SalesOrderDetailPage() {
   const [billables, setBillables] = useState<SalesBillableItem[]>([])
   const [selectedBillables, setSelectedBillables] = useState<Record<string, boolean>>({})
   const [composing, setComposing] = useState(false)
+  const [amending, setAmending] = useState(false)
+  const [showAmend, setShowAmend] = useState(false)
+  const [amendCurrency, setAmendCurrency] = useState('')
+  const [amendTerm, setAmendTerm] = useState('')
+  const [amendModel, setAmendModel] = useState('')
+  const [amendVat, setAmendVat] = useState('')
+  const [amendGuarantee, setAmendGuarantee] = useState('')
+  const [amendReason, setAmendReason] = useState('')
 
   const load = useCallback(async () => {
     if (!orderId) return
@@ -170,6 +179,50 @@ export default function SalesOrderDetailPage() {
     }
   }
 
+  const openAmendForm = () => {
+    if (!order) return
+    setAmendCurrency(order.currency || '')
+    setAmendTerm(order.payment_term_days != null ? String(order.payment_term_days) : '')
+    setAmendModel(order.payment_model || '')
+    setAmendVat(order.vat_rate != null ? String(order.vat_rate) : '')
+    setAmendGuarantee(order.guarantee_days != null ? String(order.guarantee_days) : '')
+    setAmendReason('')
+    setShowAmend(true)
+  }
+
+  const onAmend = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!order) return
+    setAmending(true)
+    setError(null)
+    setMessage(null)
+    try {
+      await amendSalesOrder(order.id, {
+        currency: amendCurrency.trim() || undefined,
+        payment_term_days: amendTerm !== '' ? Number(amendTerm) : undefined,
+        payment_model: amendModel.trim() || undefined,
+        vat_rate: amendVat !== '' ? Number(amendVat) : undefined,
+        guarantee_days: amendGuarantee !== '' ? Number(amendGuarantee) : undefined,
+        reason: amendReason.trim() || undefined,
+      })
+      setShowAmend(false)
+      setMessage(
+        t('app.sales_orders.detail.amended', {
+          defaultValue: 'Коммерческий снимок обновлён (amendment).',
+        }),
+      )
+      await load()
+    } catch (err: unknown) {
+      const detail =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined
+      setError(detail || (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setAmending(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="px-4 py-6 text-sm text-slate-500 sm:px-6">
@@ -230,10 +283,31 @@ export default function SalesOrderDetailPage() {
 
       <div data-entity-workspace-slot="overview" className="space-y-6">
       <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.sales_orders.detail.snapshot', { defaultValue: 'Снимок сделки' })}
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.sales_orders.detail.snapshot', { defaultValue: 'Снимок сделки' })}
+            <span className="ml-2 font-normal normal-case text-slate-400">
+              v{order.commercial_version ?? 1}
+            </span>
+          </h3>
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            onClick={openAmendForm}
+            data-testid="sales-order-amend-open"
+          >
+            {t('app.sales_orders.detail.amend', { defaultValue: 'Amend commercial terms' })}
+          </button>
+        </div>
         <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-slate-500">{t('app.sales_orders.create.currency', { defaultValue: 'Валюта' })}</dt>
+            <dd className="font-medium text-slate-900">{order.currency || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">{t('app.sales_orders.create.payment_term', { defaultValue: 'Отсрочка, дней' })}</dt>
+            <dd className="font-medium text-slate-900">{order.payment_term_days ?? '—'}</dd>
+          </div>
           <div>
             <dt className="text-slate-500">{t('app.sales_orders.create.payment_model', { defaultValue: 'Модель оплаты' })}</dt>
             <dd className="font-medium text-slate-900">{order.payment_model || '—'}</dd>
@@ -257,6 +331,70 @@ export default function SalesOrderDetailPage() {
             </div>
           ) : null}
         </dl>
+
+        {showAmend ? (
+          <form className="mt-4 space-y-3 border-t border-slate-100 pt-4" onSubmit={onAmend} data-testid="sales-order-amend-form">
+            <p className="text-sm text-slate-600">
+              {t('app.sales_orders.detail.amend_hint', {
+                defaultValue:
+                  'Явный amendment: предыдущий снимок сохраняется в истории. PATCH коммерческих полей после billables запрещён.',
+              })}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <div className="label">{t('app.sales_orders.create.currency', { defaultValue: 'Валюта' })}</div>
+                <input className="input" value={amendCurrency} onChange={(e) => setAmendCurrency(e.target.value)} />
+              </label>
+              <label className="block">
+                <div className="label">{t('app.sales_orders.create.payment_term', { defaultValue: 'Отсрочка, дней' })}</div>
+                <input className="input" type="number" min={0} value={amendTerm} onChange={(e) => setAmendTerm(e.target.value)} />
+              </label>
+              <label className="block">
+                <div className="label">{t('app.sales_orders.create.payment_model', { defaultValue: 'Модель оплаты' })}</div>
+                <input className="input" value={amendModel} onChange={(e) => setAmendModel(e.target.value)} />
+              </label>
+              <label className="block">
+                <div className="label">{t('app.sales_orders.create.vat', { defaultValue: 'VAT %' })}</div>
+                <input className="input" type="number" step="0.01" value={amendVat} onChange={(e) => setAmendVat(e.target.value)} />
+              </label>
+              <label className="block">
+                <div className="label">{t('app.sales_orders.create.guarantee', { defaultValue: 'Гарантия, дней' })}</div>
+                <input className="input" type="number" min={0} value={amendGuarantee} onChange={(e) => setAmendGuarantee(e.target.value)} />
+              </label>
+              <label className="block sm:col-span-2">
+                <div className="label">{t('app.sales_orders.detail.amend_reason', { defaultValue: 'Причина amendment' })}</div>
+                <input className="input" value={amendReason} onChange={(e) => setAmendReason(e.target.value)} />
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" className="btn-primary" disabled={amending} data-testid="sales-order-amend-submit">
+                {amending
+                  ? t('common.saving', { defaultValue: 'Сохранение…' })
+                  : t('app.sales_orders.detail.amend_submit', { defaultValue: 'Применить amendment' })}
+              </button>
+              <button type="button" className="btn-secondary" disabled={amending} onClick={() => setShowAmend(false)}>
+                {t('common.cancel', { defaultValue: 'Отмена' })}
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        {(order.commercial_versions || []).length > 0 ? (
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.sales_orders.detail.amend_history', { defaultValue: 'История amendments' })}
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-slate-600">
+              {(order.commercial_versions || []).map((entry, idx) => (
+                <li key={`${entry.version}-${idx}`}>
+                  v{entry.version}
+                  {entry.recorded_at ? ` · ${entry.recorded_at}` : ''}
+                  {entry.reason ? ` · ${entry.reason}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
 
       <section>
