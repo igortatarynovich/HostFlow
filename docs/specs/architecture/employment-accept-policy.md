@@ -80,7 +80,7 @@ After Transfer, same person continues. When policy = `auto_accept`, no separate 
 
 ## Non-goals
 
-- ESO-2 early employability SoT / pathway choice.  
+- ESO-2 early employability SoT / pathway choice — **ESO-2:** [`early-employability.md`](early-employability.md).  
 - ESO-3 formalize / Employee materialization policy depth beyond what `accept_handoff` already does.  
 - ESO-4 Started.  
 - Cutting over legacy handoff snapshot to `ready_for_employment.v1` storage (may read package from RSO prep or explicit payload).  

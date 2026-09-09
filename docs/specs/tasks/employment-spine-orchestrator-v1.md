@@ -1,10 +1,10 @@
 # Employment Spine Orchestrator v1
 
-**Status:** **ESO-1 in progress** (Employment Accept Policy Gate) — package SoT frozen on RSO-1 (**PASS**); accept policy SoT: [employment-accept-policy.md](../architecture/employment-accept-policy.md).  
+**Status:** **ESO-2 in progress** (Early Employability Gate) — ESO-1 accept policy SoT: [employment-accept-policy.md](../architecture/employment-accept-policy.md); employability SoT: [early-employability.md](../architecture/early-employability.md).  
 **Phase class:** product  
 **Module owner:** **Employment / HR** (independent of Recruitment)  
-**Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`) · [Employment accept policy](../architecture/employment-accept-policy.md) (`employment_accept_policy.v1`) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock  
-**Machine:** `backend/app/reference/employment_accept_policy.py` · `backend/app/services/employment_accept_orchestrator.py` · gate `backend/tests/platform/test_employment_accept_policy_gate.py` · CI `eso1-accept-policy-gate`  
+**Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`) · [Employment accept policy](../architecture/employment-accept-policy.md) (`employment_accept_policy.v1`) · [Early employability](../architecture/early-employability.md) (`early_employability.v1`) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock  
+**Machine:** `employment_accept_policy.py` / `early_employability.py` · orchestrators · gates `test_employment_accept_policy_gate.py` · `test_early_employability_gate.py` · CI `eso1-accept-policy-gate` · `eso2-early-employability-gate`  
 **Estimate:** TBD after RSO-1 handoff package shape freezes  
 
 > Recruitment ends when the **Ready for employment contract** (handoff package) is emitted. This program **starts** there.  
@@ -72,7 +72,7 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 3.
 | Slice | Gate | Depends |
 |-------|------|---------|
 | **ESO-1** | **Employment Accept Policy Gate** — `employment_accept_policy.v1` + auto-accept via `accept_handoff` when gates pass (no ritual Accept; gate 2 reuse) | RSO-1 package |
-| **ESO-2** | Early employability SoT (Employment-owned) | ESO-1 |
+| **ESO-2** | **Early Employability Gate** — `early_employability.v1` (employable / blocked / insufficient_facts; unique pathway; no Employee) | ESO-1 |
 | **ESO-3** | Formalize gate (auto materialize **or** blockers) | ESO-2 |
 | **ESO-4** | Started confirm | ESO-3 |
 
@@ -88,6 +88,6 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 3.
 
 ## Next
 
-1. **ESO-1 in progress** — accept policy SoT + evaluate/apply (`POST /handoffs/{id}/employment-accept-policy`).  
-2. **ESO-2** — early employability SoT (ownership card if Rule 3 requires).  
-3. RSO-2 Transfer remains Recruitment-owned and must **not** call Employment accept.
+1. **ESO-2 in progress** — early employability SoT + evaluate (`POST /handoffs/{id}/early-employability`).  
+2. **ESO-3** — Formalize (Employee still downstream of employability).  
+3. RSO-2 Transfer remains Recruitment-owned and must **not** call Employment accept or employability.

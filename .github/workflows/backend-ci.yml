@@ -111,6 +111,7 @@ jobs:
       ma3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma3 == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       eso1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso1 == 'true' }}
+      eso2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso2 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -370,6 +371,14 @@ jobs:
               - 'docs/specs/architecture/employment-accept-policy.md'
               - 'docs/specs/tasks/employment-spine-orchestrator-v1.md'
               - 'docs/specs/architecture/ready-for-employment-contract.md'
+            eso2:
+              - 'backend/app/reference/early_employability.py'
+              - 'backend/app/services/early_employability_orchestrator.py'
+              - 'backend/tests/platform/test_early_employability_gate.py'
+              - 'backend/app/api/v1/handoffs.py'
+              - 'docs/specs/architecture/early-employability.md'
+              - 'docs/specs/architecture/employment-accept-policy.md'
+              - 'docs/specs/tasks/employment-spine-orchestrator-v1.md'
             ma2:
               - 'backend/app/entity_profile/mapping_resolve.py'
               - 'backend/app/entity_profile/ingest_runtime.py'
@@ -951,6 +960,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_employment_accept_policy_gate.py') != ''
         with:
           tests: tests/platform/test_employment_accept_policy_gate.py
+
+  eso2-early-employability-gate:
+    name: Early Employability Gate
+    needs: changes
+    if: needs.changes.outputs.eso2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Early Employability gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_early_employability_gate.py') == ''
+        run: echo "Early Employability gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_early_employability_gate.py') != ''
+        with:
+          tests: tests/platform/test_early_employability_gate.py
 
   ma2-resolution-gate:
     name: Mapping Resolution Gate

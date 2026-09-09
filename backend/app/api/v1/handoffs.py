@@ -534,6 +534,78 @@ async def employment_accept_policy_route(
     return EmploymentAcceptPolicyOut.model_validate(result)
 
 
+class EarlyEmployabilityIn(BaseModel):
+    """ESO-2 evaluate inputs (optional overrides; evaluate-only)."""
+
+    package: Optional[dict[str, Any]] = None
+    employment_context: Optional[dict[str, Any]] = None
+    canonical_facts: Optional[dict[str, Any]] = None
+    employment_missing: Optional[List[dict[str, Any]]] = None
+
+
+class EarlyEmployabilityOut(BaseModel):
+    policy_id: str
+    handoff_id: Optional[str] = None
+    decision: str
+    package_valid: Optional[bool] = None
+    handoff_accepted: Optional[bool] = None
+    employment_country: Optional[str] = None
+    citizenship: Optional[str] = None
+    citizenship_group: Optional[str] = None
+    legal_pathway: Optional[dict[str, Any]] = None
+    pathway_selection_required: bool = False
+    blockers: List[dict[str, Any]] = Field(default_factory=list)
+    requirements: List[dict[str, Any]] = Field(default_factory=list)
+    reuse_violations: List[str] = Field(default_factory=list)
+    next_step: Optional[dict[str, Any]] = None
+    employee_created: bool = False
+    employee_id: Optional[str] = None
+    llm_eligibility: bool = False
+    message: Optional[str] = None
+
+
+@router.post(
+    "/{handoff_id}/early-employability",
+    response_model=EarlyEmployabilityOut,
+    dependencies=[Depends(require_hr_workforce_module_access)],
+)
+async def early_employability_route(
+    handoff_id: UUID,
+    payload: Optional[EarlyEmployabilityIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+):
+    """ESO-2: Employment-owned early employability evaluate (no Employee create).
+
+    Must not be used by Recruitment Transfer as its completion.
+    """
+    from backend.app.services.early_employability_orchestrator import (
+        EarlyEmployabilityError,
+        evaluate_early_employability_for_handoff,
+    )
+
+    db, tenant_id = db_tenant
+    body = payload or EarlyEmployabilityIn()
+    try:
+        result = await evaluate_early_employability_for_handoff(
+            db,
+            tenant_id=str(tenant_id),
+            handoff_id=str(handoff_id),
+            package=body.package,
+            employment_context=body.employment_context,
+            canonical_facts=body.canonical_facts,
+            employment_missing=body.employment_missing,
+        )
+    except EarlyEmployabilityError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    # Evaluate-only: no commit side effects required.
+    return EarlyEmployabilityOut.model_validate(result)
+
+
 @router.post("/{handoff_id}/reject", response_model=HandoffOut)
 async def reject_handoff_route(
     handoff_id: UUID,
