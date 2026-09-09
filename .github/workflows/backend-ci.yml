@@ -112,6 +112,8 @@ jobs:
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       eso1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso1 == 'true' }}
       eso2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso2 == 'true' }}
+      eso3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso3 == 'true' }}
+      eso4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso4 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -378,6 +380,22 @@ jobs:
               - 'backend/app/api/v1/handoffs.py'
               - 'docs/specs/architecture/early-employability.md'
               - 'docs/specs/architecture/employment-accept-policy.md'
+              - 'docs/specs/tasks/employment-spine-orchestrator-v1.md'
+            eso3:
+              - 'backend/app/reference/employment_missing_resolution.py'
+              - 'backend/app/services/employment_missing_resolution_orchestrator.py'
+              - 'backend/tests/platform/test_employment_missing_resolution_gate.py'
+              - 'backend/app/api/v1/handoffs.py'
+              - 'docs/specs/architecture/employment-missing-resolution.md'
+              - 'docs/specs/architecture/early-employability.md'
+              - 'docs/specs/tasks/employment-spine-orchestrator-v1.md'
+            eso4:
+              - 'backend/app/reference/employment_formalize.py'
+              - 'backend/app/services/employment_formalize_orchestrator.py'
+              - 'backend/tests/platform/test_employment_formalize_gate.py'
+              - 'backend/app/api/v1/handoffs.py'
+              - 'docs/specs/architecture/employment-formalize.md'
+              - 'docs/specs/architecture/employment-missing-resolution.md'
               - 'docs/specs/tasks/employment-spine-orchestrator-v1.md'
             ma2:
               - 'backend/app/entity_profile/mapping_resolve.py'
@@ -975,6 +993,36 @@ jobs:
         if: hashFiles('backend/tests/platform/test_early_employability_gate.py') != ''
         with:
           tests: tests/platform/test_early_employability_gate.py
+
+  eso3-missing-resolution-gate:
+    name: Employment Missing Resolution Gate
+    needs: changes
+    if: needs.changes.outputs.eso3 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Employment Missing Resolution gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_employment_missing_resolution_gate.py') == ''
+        run: echo "Employment Missing Resolution gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_employment_missing_resolution_gate.py') != ''
+        with:
+          tests: tests/platform/test_employment_missing_resolution_gate.py
+
+  eso4-formalize-gate:
+    name: Employment Formalize Gate
+    needs: changes
+    if: needs.changes.outputs.eso4 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Employment Formalize gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_employment_formalize_gate.py') == ''
+        run: echo "Employment Formalize gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_employment_formalize_gate.py') != ''
+        with:
+          tests: tests/platform/test_employment_formalize_gate.py
 
   ma2-resolution-gate:
     name: Mapping Resolution Gate

@@ -102,8 +102,9 @@ For `employment_country=PL` (default when context omits country but package `tar
 
 ## Non-goals
 
-- ESO-3 Formalize / Employee materialization.  
-- ESO-4 Started.  
+- ESO-3 Employment Missing / Resolution — [`employment-missing-resolution.md`](employment-missing-resolution.md).  
+- ESO-4 Formalize / Employee materialization.  
+- ESO-5 Started.  
 - Full Legalization Engine / multi-jurisdiction pathway menus.  
 - ADR-017 ZUS registration gate cutover (satellite; may consume pathway later).  
 - Mapping Authority.  
