@@ -22,6 +22,8 @@ class AuditEventType(str, Enum):
     handoff_rejected = "handoff_rejected"
     handoff_returned = "handoff_returned"
     handoff_cancelled = "handoff_cancelled"
+    # ESO-1: Employment started only after Employment accept policy auto/manual accept
+    employment_started = "employment_started"
     # RODO
     rodo_sent = "rodo_sent"
     rodo_sent_failed = "rodo_sent_failed"

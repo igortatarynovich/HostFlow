@@ -97,7 +97,7 @@ False closes: status-only “ready” without package; operator copy-paste betwe
 ## Non-goals
 
 - Runtime emit cutover from legacy handoff snapshot (later slice).  
-- Employment accept policy / early employability SoT (ESO).  
+- Employment accept policy / early employability SoT — **ESO-1 accept policy:** [`employment-accept-policy.md`](employment-accept-policy.md); employability remains ESO-2+.  
 - Mapping Authority.  
 - Merging Recruitment + Employment into one orchestrator.
 
@@ -105,4 +105,4 @@ False closes: status-only “ready” without package; operator copy-paste betwe
 
 ## Completion of RSO-1
 
-**PASS** when this document + `ready_for_employment.v1` + gate tests exist, and both RSO/ESO briefs name the three acceptance gates. Runtime happy path is **RSO-2**, not this gate.
+**PASS** when this document + `ready_for_employment.v1` + gate tests exist, and both RSO/ESO briefs name the three acceptance gates. Runtime happy path is **RSO-2**, not this gate. Employment accept after emit is **ESO-1**.
