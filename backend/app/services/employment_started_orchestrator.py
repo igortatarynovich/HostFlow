@@ -24,7 +24,9 @@ from backend.app.reference.employment_started import (
 )
 from backend.app.services.audit import log_audit_event
 from backend.app.services.employment_accept_orchestrator import (
+    read_employment_spine,
     resolve_ready_for_employment_package,
+    write_employment_spine,
 )
 from backend.app.services import workforce_employees as we_svc
 
@@ -111,6 +113,7 @@ async def confirm_employment_started_for_handoff(
         package=resolved,
         handoff_status=_text(getattr(handoff, "status", None)),
         employment_context=ctx,
+        confirmed_actions=read_employment_spine(handoff).get("confirmed_actions"),
         employment_missing=employment_missing,
     )
 
@@ -192,6 +195,25 @@ async def confirm_employment_started_for_handoff(
     else:
         result["start_event_emitted"] = bool(result.get("start_event_emitted")) and (
             result.get("decision") == DECISION_STARTED
+        )
+
+    if result.get("started") or result.get("decision") in {DECISION_STARTED, "already_started"}:
+        write_employment_spine(
+            handoff,
+            {
+                "next_action": "started",
+                "started": True,
+                "ready_to_create_employee": True,
+            },
+        )
+    elif result.get("ready_to_create_employee"):
+        write_employment_spine(
+            handoff,
+            {
+                "next_action": "confirm_physical_start",
+                "ready_to_create_employee": True,
+                "started": False,
+            },
         )
 
     result["policy_id"] = POLICY_ID

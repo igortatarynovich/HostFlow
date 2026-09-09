@@ -205,3 +205,74 @@ export async function getHandoffsWithCandidates(params: {
   })
   return data
 }
+
+export type EmploymentAcceptPolicyOut = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: string
+  accepted: boolean
+  employment_started?: boolean
+  blockers?: Array<{ code?: string; message?: string }>
+  message?: string | null
+}
+
+export async function applyEmploymentAcceptPolicy(handoffId: string): Promise<EmploymentAcceptPolicyOut> {
+  const { data } = await api.post<EmploymentAcceptPolicyOut>(
+    `/handoffs/${encodeURIComponent(handoffId)}/employment-accept-policy`,
+  )
+  return data
+}
+
+export type EmploymentFormalizeOut = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: string
+  ready_to_formalize?: boolean | null
+  ready_to_create_employee: boolean
+  primary_item?: { code?: string; message?: string } | null
+  blockers?: Array<{ code?: string; message?: string }>
+  confirmed_actions?: string[]
+  next_action?: string | null
+}
+
+export async function applyEmploymentFormalize(
+  handoffId: string,
+  payload?: {
+    confirmed_actions?: string[]
+    formalize_patch?: Record<string, unknown>
+  },
+): Promise<EmploymentFormalizeOut> {
+  const { data } = await api.post<EmploymentFormalizeOut>(
+    `/handoffs/${encodeURIComponent(handoffId)}/employment-formalize`,
+    payload ?? {},
+  )
+  return data
+}
+
+export type EmploymentStartedOut = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: string
+  started: boolean
+  ready_to_create_employee?: boolean
+  employee_created?: boolean
+  employee_id?: string | null
+  primary_item?: { code?: string; message?: string } | null
+  active_missing?: Array<{ code?: string; message?: string }>
+}
+
+export async function confirmEmploymentStarted(
+  handoffId: string,
+  payload?: {
+    start_confirmation?: { confirmed?: boolean; start_date?: string }
+    known_start_date?: string
+    ensure_employee?: boolean
+    require_confirm_when_not_started?: boolean
+  },
+): Promise<EmploymentStartedOut> {
+  const { data } = await api.post<EmploymentStartedOut>(
+    `/handoffs/${encodeURIComponent(handoffId)}/employment-started`,
+    payload ?? {},
+  )
+  return data
+}

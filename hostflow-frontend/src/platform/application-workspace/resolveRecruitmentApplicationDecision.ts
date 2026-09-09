@@ -34,7 +34,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
     application,
     patching,
     busy,
-    onCreateCandidate,
+    onCreateCandidate: _onCreateCandidate,
     onFollowUp,
     onReject,
     onPool,
@@ -63,16 +63,9 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
       why: t('app.recruitment_inquiry.rso.handed_off_body', {
         defaultValue: 'Recruitment completed. Employment continues with the same person.',
       }),
-      primaryAction: candidateHref
-        ? {
-            id: 'open_candidate',
-            label: t('app.candidates.detail.open_full_profile'),
-            href: candidateHref,
-          }
-        : null,
-      requiredContext: ['outcome'],
+      primaryAction: null,
+      requiredContext: [],
       variant: 'success',
-      terminal: true,
     }
   }
 
@@ -93,15 +86,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
         onClick: onTransferToEmployment,
         disabled,
       },
-      secondaryActions: candidateHref
-        ? [
-            {
-              id: 'open_candidate',
-              label: t('app.candidates.detail.open_full_profile'),
-              href: candidateHref,
-            },
-          ]
-        : [],
+      secondaryActions: [],
       requiredContext: [],
       variant: 'success',
     }
@@ -180,6 +165,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
   // After Fits interest without prep yet — prefer Fits intent over Create candidate.
   const call = asRecord(application.extensions?.call_result_v1)
   const interested = String(call?.result || '').trim() === 'interested'
+  const vacancyKnown = Boolean(String(application.extensions?.vacancy_id || '').trim())
   if (interested && onRunFits && !prep) {
     return {
       stateId: 'recruitment.fits_pending',
@@ -191,7 +177,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
       }),
       primaryAction: {
         id: 'run_fits',
-        label: t('app.recruitment_inquiry.rso.run_fits', { defaultValue: 'Продолжить' }),
+        label: t('app.recruitment_inquiry.rso.run_fits', { defaultValue: 'Подходит' }),
         onClick: onRunFits,
         disabled,
       },
@@ -205,7 +191,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
           disabled,
         },
       ],
-      requiredContext: [],
+      requiredContext: vacancyKnown ? [] : ['vacancy'],
       variant: 'default',
     }
   }
@@ -260,13 +246,16 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
         }
       : null,
     secondaryActions: [
-      // Legacy Create candidate stays available only before Fits happy path.
-      {
-        id: 'create_candidate',
-        label: t('app.recruitment_inquiry.create_candidate'),
-        onClick: onCreateCandidate,
-        disabled,
-      },
+      ...(onRunFits
+        ? [
+            {
+              id: 'run_fits',
+              label: t('app.recruitment_inquiry.rso.run_fits', { defaultValue: 'Подходит' }),
+              onClick: onRunFits,
+              disabled,
+            },
+          ]
+        : []),
       { id: 'follow_up', label: t('app.recruitment_inquiry.follow_up'), onClick: onFollowUp, disabled },
       { id: 'pool', label: t('app.recruitment_inquiry.pool'), onClick: onPool, disabled },
       {
@@ -277,7 +266,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
         disabled,
       },
     ],
-    requiredContext: ['vacancy', 'assignee'],
+    requiredContext: vacancyKnown ? [] : ['vacancy'],
     variant: callHref ? 'default' : 'blocker',
   }
 }

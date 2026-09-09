@@ -747,6 +747,7 @@ async def employment_formalize_route(
             status_code=422,
             detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
         ) from exc
+    await db.commit()
     return EmploymentFormalizeOut.model_validate(result)
 
 
@@ -816,7 +817,8 @@ async def employment_started_route(
             db,
             tenant_id=str(tenant_id),
             handoff_id=str(handoff_id),
-            actor_id=str(getattr(current_user, "id", "") or "") or None,
+            actor_id=str(getattr(current_user, "sub", None) or getattr(current_user, "id", "") or "")
+            or None,
             package=body.package,
             employment_context=body.employment_context,
             start_confirmation=body.start_confirmation,
@@ -830,6 +832,7 @@ async def employment_started_route(
             status_code=422,
             detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
         ) from exc
+    await db.commit()
     return EmploymentStartedOut.model_validate(result)
 
 

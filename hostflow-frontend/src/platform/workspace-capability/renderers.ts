@@ -10,6 +10,7 @@ import { RecruitmentStageContribution } from '../../modules/recruitment/contribu
 import { RecruitmentVacancyContribution } from '../../modules/recruitment/contributions/vacancy'
 import { RecruitmentAssigneeContribution } from '../../modules/recruitment/contributions/assignee'
 import { RecruitmentIntakeContribution } from '../../modules/recruitment/contributions/intake'
+import { HrEmploymentContribution } from '../../modules/hr/contributions/employment'
 import { OptionalAddonFixture } from './fixtures/optional-addon'
 import type { WorkspaceRendererComponentId } from './registry'
 import type { WorkspaceCapabilityRenderContext } from './renderContext'
@@ -32,5 +33,6 @@ export const WORKSPACE_CAPABILITY_RENDERERS = {
   'workspace.module.recruitment.vacancy': RecruitmentVacancyContribution,
   'workspace.module.recruitment.assignee': RecruitmentAssigneeContribution,
   'workspace.module.recruitment.intake': RecruitmentIntakeContribution,
+  'workspace.module.hr.employment': HrEmploymentContribution,
   'workspace.fixture.optional_addon': OptionalAddonFixture,
 } as const satisfies Partial<Record<WorkspaceRendererComponentId, WorkspaceCapabilityRenderer>>

@@ -165,6 +165,37 @@ def filter_rso_recruitment_missing(missing: list[dict[str, str]]) -> list[dict[s
     return out
 
 
+def _alpha2(value: Any) -> str:
+    code = _text(value).upper()
+    return code if len(code) == 2 and code.isalpha() else ""
+
+
+def _identity_overlay_from_lead(lead: Lead | None) -> dict[str, Any]:
+    if lead is None:
+        return {}
+    norm = _record(lead.normalized)
+    out: dict[str, Any] = {}
+    for key in ("citizenship", "nationality", "nationality_code"):
+        code = _alpha2(norm.get(key))
+        if code:
+            out["citizenship"] = code
+            break
+    first = _text(norm.get("first_name") or getattr(lead, "first_name", None))
+    last = _text(norm.get("last_name") or getattr(lead, "last_name", None))
+    if first:
+        out.setdefault("first_name", first)
+    if last:
+        out.setdefault("last_name", last)
+    return out
+
+
+def _employment_country_from_vacancy(vacancy: Vacancy | None) -> str:
+    loc = _text(getattr(vacancy, "location", None)).upper()
+    if "PL" in loc or "POLAND" in loc or "POLSKA" in loc:
+        return "PL"
+    return "PL"
+
+
 def build_ready_for_employment_package_v1(
     *,
     tenant_id: str,
@@ -176,6 +207,7 @@ def build_ready_for_employment_package_v1(
     evidence: Mapping[str, Any] | None = None,
     recruitment_facts: Mapping[str, Any] | None = None,
     source_id: str | None = None,
+    lead: Lead | None = None,
 ) -> dict[str, Any]:
     """Assemble package blocks. Does not persist. Does not create handoff."""
     personal = candidate._get_personal_data() if hasattr(candidate, "_get_personal_data") else {}
@@ -190,6 +222,9 @@ def build_ready_for_employment_package_v1(
         identity_facts["first_name"] = candidate.first_name
     if candidate.last_name and "last_name" not in identity_facts:
         identity_facts["last_name"] = candidate.last_name
+    overlay = _identity_overlay_from_lead(lead)
+    for key, val in overlay.items():
+        identity_facts.setdefault(key, val)
 
     vac_id = _text(getattr(vacancy, "id", None) or getattr(candidate, "vacancy_id", None)) or None
     employer_id = _text(getattr(vacancy, "company_id", None) or getattr(candidate, "company_id", None)) or None
@@ -202,6 +237,7 @@ def build_ready_for_employment_package_v1(
         target_work["employer_id"] = employer_id
     if role:
         target_work["role"] = role
+    target_work["employment_country"] = _employment_country_from_vacancy(vacancy)
 
     context_refs: dict[str, Any] = {"application_id": application_id}
     if source_id:
@@ -518,6 +554,7 @@ async def run_fits_prep(
         evidence=evidence,
         recruitment_facts={},
         source_id=_text(getattr(lead, "external_id", None)) or None,
+        lead=lead,
     )
     errors = validate_ready_for_employment_package_v1(package)
     missing = evaluate_package_recruitment_missing(

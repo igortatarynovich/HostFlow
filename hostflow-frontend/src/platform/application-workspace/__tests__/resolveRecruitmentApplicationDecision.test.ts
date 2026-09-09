@@ -30,20 +30,22 @@ const handlers = {
 }
 
 describe('resolveRecruitmentApplicationDecision', () => {
-  it('keeps create-candidate as a secondary action, not the primary', () => {
+  it('puts Fits on the happy path instead of Create candidate', () => {
+    const onRunFits = vi.fn()
     const decision = resolveRecruitmentApplicationDecision({
       ...handlers,
-      application: app(),
+      onRunFits,
+      application: app({ extensions: { vacancy_id: 'vac-1' } }),
     })
     expect(decision.stateId).toBe('recruitment.triage')
     expect(decision.primaryAction?.id).toBe('call')
-    expect(decision.primaryAction?.href).toBe('tel:+48111')
     expect(decision.secondaryActions?.map((row) => row.id)).toEqual([
-      'create_candidate',
+      'run_fits',
       'follow_up',
       'pool',
       'reject',
     ])
+    expect(decision.requiredContext).toEqual([])
   })
 
   it('does not offer convert when the application is already a candidate', () => {
@@ -79,5 +81,27 @@ describe('resolveRecruitmentApplicationDecision', () => {
     expect(decision.stateId).toBe('recruitment.offer_handoff')
     expect(decision.primaryAction?.id).toBe('transfer_to_employment')
     expect(decision.secondaryActions?.some((row) => row.id === 'create_candidate')).toBeFalsy()
+    expect(decision.secondaryActions?.some((row) => row.id === 'open_candidate')).toBeFalsy()
+  })
+
+  it('stays on the same card after Transfer instead of open_candidate', () => {
+    const decision = resolveRecruitmentApplicationDecision({
+      ...handlers,
+      application: app({
+        status: 'completed',
+        tab_bucket: 'completed',
+        outcome_entity_type: 'candidate',
+        outcome_entity_id: 'cand-1',
+        extensions: {
+          ready_for_employment_prep_v1: {
+            next_action: 'handed_off',
+            handoff_id: 'handoff-1',
+          },
+        },
+      }),
+    })
+    expect(decision.stateId).toBe('recruitment.handed_off')
+    expect(decision.primaryAction).toBeNull()
+    expect(decision.terminal).toBeFalsy()
   })
 })

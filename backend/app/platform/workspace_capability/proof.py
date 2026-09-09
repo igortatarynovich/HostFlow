@@ -56,6 +56,14 @@ RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS: tuple[dict[str, object], ...] = (
     },
     {
         "class": "module_contribution",
+        "capability_id": "hr.employment",
+        "host": PROOF_HOST_ID,
+        "consumer": PROOF_CONSUMER_ID,
+        "component_id": "workspace.module.hr.employment",
+        "license": "default",
+    },
+    {
+        "class": "module_contribution",
         "capability_id": "recruitment.vacancy",
         "host": PROOF_HOST_ID,
         "consumer": PROOF_CONSUMER_ID,

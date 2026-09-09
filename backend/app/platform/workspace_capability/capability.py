@@ -185,8 +185,8 @@ MODULE_CAPABILITY_DEFINITIONS: dict[str, dict[str, Any]] = {
         "owner": "hr",
         "state_owner": "hr",
         "contributor": "hr",
-        "allowed_hosts": ("entity_workspace",),
-        "allowed_regions": ("overview", "rail"),
+        "allowed_hosts": _BOTH_HOSTS,
+        "allowed_regions": ("overview", "rail", "decision"),
     },
     "fleet.assignment": {
         "class": "module_contribution",

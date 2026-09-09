@@ -13,8 +13,20 @@ export function RecruitmentAssigneeContribution({
 }: WorkspaceCapabilityRenderContext) {
   const { notify } = useToast()
   const { t } = useI18n()
-  const [assigneeId, setAssigneeId] = useState(application?.assignee_id || '')
+  const knownAssignee = String(application?.assignee_id || '').trim()
+  const [assigneeId, setAssigneeId] = useState(knownAssignee)
   const [busy, setBusy] = useState(false)
+
+  if (knownAssignee) {
+    return (
+      <section className="space-y-1" data-capability-id="recruitment.assignee">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {t('app.recruitment.contributions.assignee')}
+        </p>
+        <p className="text-sm text-slate-800">{knownAssignee}</p>
+      </section>
+    )
+  }
 
   return (
     <section className="space-y-2" data-capability-id="recruitment.assignee">
