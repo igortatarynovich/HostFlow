@@ -1,10 +1,10 @@
 # Employment Spine Orchestrator v1
 
-**Status:** **ESO-5 in progress** (Employment Started Gate) — ESO-1…4 SoTs linked; Started: [employment-started.md](../architecture/employment-started.md) (`employment_started.v1`).  
+**Status:** **ESO-1…5 assembled** (Employment Started Gate freeze on stack) — next named proof: [Full Spine Gate](../gates/full-spine-gate.md) (`full_spine.v1`).  
 **Phase class:** product  
 **Module owner:** **Employment / HR** (independent of Recruitment)  
-**Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) · [Employment accept policy](../architecture/employment-accept-policy.md) · [Early employability](../architecture/early-employability.md) · [Employment missing resolution](../architecture/employment-missing-resolution.md) · [Employment formalize](../architecture/employment-formalize.md) · [Employment started](../architecture/employment-started.md) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock  
-**Machine:** accept / employability / missing-resolution / formalize / started · gates ESO-1…ESO-5 · CI `eso1`…`eso5-started-gate`  
+**Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) · [Employment accept policy](../architecture/employment-accept-policy.md) · [Early employability](../architecture/early-employability.md) · [Employment missing resolution](../architecture/employment-missing-resolution.md) · [Employment formalize](../architecture/employment-formalize.md) · [Employment started](../architecture/employment-started.md) · [Full Spine Gate](../gates/full-spine-gate.md) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock  
+**Machine:** accept / employability / missing-resolution / formalize / started · gates ESO-1…ESO-5 · Full Spine `full-spine-gate` · CI `eso1`…`eso5-started-gate` + `full-spine-gate`  
 **Estimate:** TBD after RSO-1 handoff package shape freezes  
 
 > Recruitment ends when the **Ready for employment contract** (handoff package) is emitted. This program **starts** there.  
@@ -89,5 +89,6 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 2�
 
 ## Next
 
-1. **ESO-5 in progress** — physical start SoT + apply (`POST /handoffs/{id}/employment-started`); Employee created ≠ Started; closes spine Employee → Started.  
-2. RSO-2 Transfer remains Recruitment-owned and must **not** call Employment accept / employability / resolution / formalize / started.
+1. **Full Spine Gate** — [full-spine-gate.md](../gates/full-spine-gate.md): one happy path lead → Started + Operator / Zero-choice UI audit. **Not ESO-6.**  
+2. RSO-2 Transfer remains Recruitment-owned and must **not** call Employment accept / employability / resolution / formalize / started.  
+3. Integrate the ESO-1…5 stack only after Full Spine Gate **PASS** (machine walk **and** new-operator witness).

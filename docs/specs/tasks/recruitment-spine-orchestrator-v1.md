@@ -203,7 +203,7 @@ FAIL if Recruitment UI creates Employee or asks for zezwolenie type.
 ## Next
 
 1. **RSO-1 PASS** — package contract + three acceptance gates frozen.  
-2. **RSO-2** runtime: `fits` → validate/emit `ready_for_employment.v1` → `offer_handoff` (cut over from legacy snapshot later).  
-3. ESO-1 accept policy on [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — must enforce gate 2 (no re-ask).
+2. **RSO-2** runtime: `fits` → validate/emit `ready_for_employment.v1` → `offer_handoff` (may still be a parallel branch).  
+3. **Full Spine Gate** — [`full-spine-gate.md`](../gates/full-spine-gate.md) (`full_spine.v1`) over RSO + ESO-1…5. Not ESO-6. Operator / Zero-choice evidence required before integration.
 
 Canvas: `meta-to-started-target-journey` (visual; not L2 canon).
