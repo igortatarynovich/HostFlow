@@ -201,6 +201,26 @@ async def fetch_ad_insights(
     return {}
 
 
+async def fetch_ad_account_insights(
+    ad_account_id: str,
+    access_token: str,
+    *,
+    date_preset: str = "last_7d",
+) -> dict[str, Any]:
+    """Account-level Insights (spend / impressions / clicks) for Marketing + App Review demo."""
+    fields = "spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type"
+    data = await _graph_get(
+        f"{_ad_account_path(ad_account_id)}/insights",
+        access_token=access_token,
+        params={"fields": fields, "date_preset": date_preset},
+    )
+    rows = data.get("data")
+    if isinstance(rows, list) and rows:
+        row = rows[0]
+        return row if isinstance(row, dict) else {}
+    return {}
+
+
 def _lead_count_from_actions(actions: Any) -> int:
     if not isinstance(actions, list):
         return 0

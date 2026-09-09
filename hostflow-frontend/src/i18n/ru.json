@@ -11594,6 +11594,14 @@
         "subtitle": "Сводка по кампаниям компании (только чтение).",
         "capped": " Список ограничен."
       },
+      "meta_insights": {
+        "title": "Рекламный аккаунт Meta (7 дней)",
+        "subtitle": "Живая статистика подключённого рекламного аккаунта (ads_read).",
+        "connect_hint": "Подключите Meta и выберите рекламный аккаунт в Настройки → Интеграции → Meta.",
+        "open_settings": "Открыть интеграцию Meta",
+        "impressions": "Показы",
+        "clicks": "Клики"
+      },
       "diagnostics": {
         "subtitle": "Операции по поступившим заявкам: маршрут, timeline, payload. Sources — настройка.",
         "back_list": "← К списку",
@@ -16658,16 +16666,31 @@
         "oauth_server_env_hint": "Facebook Login разрешён вашим тарифом, но здесь не включён: оператор должен настроить на сервере META_LEADS_APP_ID, META_LEADS_SHARED_APP_SECRET и redirect для OAuth.",
         "oauth_redirect_label": "OAuth redirect URI (добавьте в приложение Meta)",
         "oauth_connect": "Подключить через Meta",
-        "oauth_connect_hint": "Войдите через Facebook, выберите страницу и сохраните подключение — настройка вебхука выше всё равно нужна.",
-        "oauth_pick_title": "Страница и название подключения",
+        "oauth_connect_hint": "Войдите через Facebook, выберите страницу и рекламный аккаунт и сохраните подключение — настройка вебхука выше всё равно нужна.",
+        "oauth_pick_title": "Страница, рекламный аккаунт и название",
         "oauth_pick_page": "Страница Facebook",
+        "oauth_pick_ad_account": "Рекламный аккаунт",
+        "oauth_pick_ad_account_hint": "Нужен для расходов, показов и кликов в Marketing (ads_read).",
+        "oauth_no_ad_accounts": "Для этого пользователя Facebook не вернулись рекламные аккаунты. Страницу для лидов можно подключить; аккаунт для статистики добавьте позже в «Учётные данные».",
         "oauth_pick_label": "Название подключения",
         "oauth_subscribe_leadgen": "Подписать страницу на leadgen (рекомендуется)",
         "oauth_confirm": "Сохранить подключение",
-        "oauth_pages_ready": "Сессия Facebook подтверждена — выберите страницу и сохраните.",
+        "oauth_pages_ready": "Сессия Facebook подтверждена — выберите страницу и рекламный аккаунт, затем сохраните.",
         "oauth_done": "Подключение Meta сохранено.",
         "oauth_error_title": "Ошибка OAuth Meta",
         "oauth_warning": "Внимание: {{message}}"
+      },
+      "insights": {
+        "title": "Рекламный аккаунт Meta (7 дней)",
+        "load_failed": "Не удалось загрузить статистику рекламного аккаунта",
+        "empty": "Подключите рекламный аккаунт, чтобы видеть расходы, показы и клики.",
+        "account_named": "{{name}} ({{id}})",
+        "account_id": "Рекламный аккаунт {{id}}",
+        "period_7d": "Последние 7 дней",
+        "spend": "Расход",
+        "impressions": "Показы",
+        "clicks": "Клики",
+        "open_marketing": "Открыть Marketing"
       },
       "guided": {
         "title_setup": "Подключите Meta за 3 шага",

@@ -84,6 +84,7 @@ def build_facebook_authorize_url(*, state: str) -> str:
         "pages_manage_metadata",
         "pages_show_list",
         "leads_retrieval",
+        "ads_read",
     ]
     q = urlencode(
         {
@@ -190,6 +191,29 @@ async def fetch_pages_with_tokens(*, user_access_token: str) -> List[dict[str, s
             nxt = paging.get("next")
             next_url = str(nxt).strip() if nxt else None
     return out
+
+
+async def fetch_page_access_token(*, page_id: str, user_or_page_access_token: str) -> str:
+    """Resolve a Page access token from a user (or page) token via Graph ``/{page-id}``."""
+    pid = str(page_id or "").strip()
+    token_in = str(user_or_page_access_token or "").strip()
+    if not pid or not token_in:
+        raise MetaOAuthError("missing_page_or_token")
+    gv = _graph_version()
+    url = f"https://graph.facebook.com/{gv}/{pid}"
+    params = {"fields": "access_token", "access_token": token_in}
+    async with httpx.AsyncClient(timeout=25.0) as client:
+        r = await client.get(url, params=params)
+        data = r.json() if r.content else {}
+    if r.status_code >= 400 or not isinstance(data, dict):
+        raise MetaOAuthError(f"page_token_http_{r.status_code}")
+    if data.get("error"):
+        err = data.get("error") or {}
+        raise MetaOAuthError(str(err.get("message") or err))
+    token = str(data.get("access_token") or "").strip()
+    if not token:
+        raise MetaOAuthError("missing_page_access_token")
+    return token
 
 
 async def subscribe_page_leadgen(*, page_id: str, page_access_token: str) -> None:

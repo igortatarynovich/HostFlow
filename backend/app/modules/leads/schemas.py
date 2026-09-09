@@ -1141,21 +1141,44 @@ class MetaOAuthPageOptionOut(BaseModel):
     name: str
 
 
+class MetaOAuthAdAccountOptionOut(BaseModel):
+    id: str
+    name: str
+
+
 class MetaOAuthCompleteOut(BaseModel):
     pending_id: str
     pages: List[MetaOAuthPageOptionOut]
+    ad_accounts: List[MetaOAuthAdAccountOptionOut] = Field(default_factory=list)
 
 
 class MetaOAuthFinalizeIn(BaseModel):
     pending_id: str
     page_id: str
     label: str
+    ad_account_id: Optional[str] = None
     subscribe_leadgen: bool = True
 
 
 class MetaOAuthFinalizeOut(BaseModel):
     credential: MetaCredentialOut
     subscribed_leadgen: bool = False
+    warning: Optional[str] = None
+
+
+class MetaAdAccountInsightsOut(BaseModel):
+    """Connected Ad Account Insights snapshot for Marketing / App Review demo."""
+
+    ad_account_id: str
+    ad_account_name: Optional[str] = None
+    date_preset: str = "last_7d"
+    spend: float = 0
+    impressions: int = 0
+    clicks: int = 0
+    ctr: float = 0
+    leads: int = 0
+    cpl: Optional[float] = None
+    currency: Optional[str] = None
     warning: Optional[str] = None
 
 

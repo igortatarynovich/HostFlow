@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -69,21 +70,26 @@ from backend.app.modules.leads.schemas import (
     MetaLeadSettingsUpdate,
     MetaOAuthCompleteIn,
     MetaOAuthCompleteOut,
+    MetaOAuthAdAccountOptionOut,
     MetaOAuthFinalizeIn,
     MetaOAuthFinalizeOut,
     MetaOAuthPageOptionOut,
     MetaOAuthStartOut,
+    MetaAdAccountInsightsOut,
     UnmappedAdGroup,
     UnmappedLeadsResponse,
     LeadMessageTemplateOut,
     LeadMessageTemplateCreateUpdate,
 )
 
+logger = logging.getLogger(__name__)
+
 META_LEADS_GRAPH_PERMISSIONS = [
     "pages_read_engagement",
     "pages_manage_metadata",
     "pages_show_list",
     "leads_retrieval",
+    "ads_read",
 ]
 
 
@@ -487,8 +493,37 @@ async def meta_oauth_complete(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "meta_oauth_no_pages", "message": "No Facebook Pages returned for this account."},
         )
+
+    ad_accounts_out: list[MetaOAuthAdAccountOptionOut] = []
+    ad_accounts_raw: list[dict[str, str]] = []
+    try:
+        from backend.app.modules.leads.meta_marketing_graph import fetch_user_ad_accounts
+
+        for row in await fetch_user_ad_accounts(long_tok, limit=50):
+            if not isinstance(row, dict):
+                continue
+            aid = str(row.get("id") or row.get("account_id") or "").strip()
+            if aid.startswith("act_"):
+                aid = aid[4:]
+            name = str(row.get("name") or aid).strip() or aid
+            if not aid:
+                continue
+            ad_accounts_raw.append({"id": aid, "name": name})
+            ad_accounts_out.append(MetaOAuthAdAccountOptionOut(id=aid, name=name))
+    except Exception as exc:
+        # Pages still usable for leadgen; Marketing insights need an Ad Account later.
+        logger.warning("meta_oauth_ad_accounts_failed tenant=%s err=%s", tenant_id, exc)
+
     await crud.delete_expired_meta_oauth_pending(db)
-    enc = encrypt_secret(json.dumps(pages_raw))
+    enc = encrypt_secret(
+        json.dumps(
+            {
+                "pages": pages_raw,
+                "ad_accounts": ad_accounts_raw,
+                "user_token": long_tok,
+            }
+        )
+    )
     if not enc:
         raise HTTPException(status_code=500, detail="encrypt_failed")
     exp = datetime.now(timezone.utc) + timedelta(seconds=meta_oauth.PENDING_TTL_SECONDS)
@@ -502,6 +537,7 @@ async def meta_oauth_complete(
     return MetaOAuthCompleteOut(
         pending_id=row.id,
         pages=[MetaOAuthPageOptionOut(id=p["id"], name=p["name"]) for p in pages_raw],
+        ad_accounts=ad_accounts_out,
     )
 
 
@@ -527,42 +563,152 @@ async def meta_oauth_finalize(
         await crud.delete_meta_oauth_pending(db, row)
         raise HTTPException(status_code=500, detail="oauth_pending_corrupt")
     try:
-        pages_list = json.loads(raw)
+        pending_payload = json.loads(raw)
     except json.JSONDecodeError:
         await crud.delete_meta_oauth_pending(db, row)
         raise HTTPException(status_code=500, detail="oauth_pending_corrupt")
+
+    # Backward-compatible pending shapes: bare page list OR {pages, ad_accounts, user_token}.
+    if isinstance(pending_payload, list):
+        pages_list = pending_payload
+        ad_accounts_list: list[dict] = []
+        user_token = ""
+    elif isinstance(pending_payload, dict):
+        pages_list = pending_payload.get("pages") or []
+        ad_accounts_list = pending_payload.get("ad_accounts") or []
+        user_token = str(pending_payload.get("user_token") or "").strip()
+    else:
+        await crud.delete_meta_oauth_pending(db, row)
+        raise HTTPException(status_code=500, detail="oauth_pending_corrupt")
+
     page_id_want = (payload.page_id or "").strip()
     match = next((p for p in pages_list if isinstance(p, dict) and str(p.get("id") or "") == page_id_want), None)
     if not match:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="oauth_page_not_in_session")
-    access_token = str(match.get("access_token") or "").strip()
-    if not access_token:
+    page_access_token = str(match.get("access_token") or "").strip()
+    if not page_access_token:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="oauth_page_token_missing")
+
+    ad_account_id = (payload.ad_account_id or "").strip() or None
+    if ad_account_id and ad_account_id.startswith("act_"):
+        ad_account_id = ad_account_id[4:]
+    if ad_accounts_list:
+        allowed = {
+            str(a.get("id") or "").removeprefix("act_")
+            for a in ad_accounts_list
+            if isinstance(a, dict) and str(a.get("id") or "").strip()
+        }
+        if not ad_account_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "oauth_ad_account_required",
+                    "message": "Select an Ad Account to connect Marketing insights.",
+                },
+            )
+        if ad_account_id not in allowed:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="oauth_ad_account_not_in_session")
+
     label = (payload.label or "").strip()
     if not label:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="credential_label_required")
     app_secret = (settings.meta_leads_shared_app_secret or "").strip()
     if not app_secret:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="meta_oauth_not_configured")
+
+    # Prefer long-lived user token (ads_read) for Marketing Insights; fall back to page token.
+    stored_token = user_token or page_access_token
     cred_in = MetaCredentialCreate(
         label=label,
         status="active",
         secret=app_secret,
-        access_token=access_token,
+        access_token=stored_token,
         page_id=page_id_want,
-        ad_account_id=None,
+        ad_account_id=ad_account_id,
     )
     cred_out = await create_credential(db, tenant_id, cred_in)
     subscribed = False
     warning: Optional[str] = None
     if payload.subscribe_leadgen:
         try:
-            await meta_oauth.subscribe_page_leadgen(page_id=page_id_want, page_access_token=access_token)
+            await meta_oauth.subscribe_page_leadgen(page_id=page_id_want, page_access_token=page_access_token)
             subscribed = True
         except meta_oauth.MetaOAuthError as exc:
             warning = str(exc)
+    if not ad_account_id:
+        warn_no_ad = "No Ad Account selected — Marketing spend/insights will be unavailable until one is set."
+        warning = f"{warning}; {warn_no_ad}" if warning else warn_no_ad
     await crud.delete_meta_oauth_pending(db, row)
     return MetaOAuthFinalizeOut(credential=cred_out, subscribed_leadgen=subscribed, warning=warning)
+
+
+async def get_connected_ad_account_insights(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    date_preset: str = "last_7d",
+) -> MetaAdAccountInsightsOut:
+    """Read Insights for the first active credential that has an ad_account_id."""
+    from backend.app.modules.leads.meta_marketing_graph import (
+        fetch_ad_account_insights,
+        fetch_user_ad_accounts,
+        normalize_insights_row,
+    )
+
+    preset = (date_preset or "last_7d").strip() or "last_7d"
+    entries = await crud.list_meta_credentials(db, tenant_id=tenant_id)
+    for entry in entries:
+        if str(getattr(entry, "status", "") or "").strip().lower() != "active":
+            continue
+        token = (decrypt_secret(entry.encrypted_access_token) or "").strip()
+        ad_account_id = (decrypt_secret(entry.encrypted_ad_account_id) or "").strip()
+        if not token or not ad_account_id:
+            continue
+        if ad_account_id.startswith("act_"):
+            ad_account_id = ad_account_id[4:]
+        account_name: Optional[str] = None
+        currency: Optional[str] = None
+        try:
+            for row in await fetch_user_ad_accounts(token, limit=50):
+                if not isinstance(row, dict):
+                    continue
+                rid = str(row.get("id") or row.get("account_id") or "").removeprefix("act_")
+                if rid == ad_account_id:
+                    account_name = str(row.get("name") or "").strip() or None
+                    currency = str(row.get("currency") or "").strip() or None
+                    break
+        except Exception:
+            pass
+        try:
+            raw = await fetch_ad_account_insights(ad_account_id, token, date_preset=preset)
+            metrics = normalize_insights_row(raw if isinstance(raw, dict) else {})
+            return MetaAdAccountInsightsOut(
+                ad_account_id=ad_account_id,
+                ad_account_name=account_name,
+                date_preset=preset,
+                spend=float(metrics.get("spend") or 0),
+                impressions=int(metrics.get("impressions") or 0),
+                clicks=int(metrics.get("clicks") or 0),
+                ctr=float(metrics.get("ctr") or 0),
+                leads=int(metrics.get("leads") or 0),
+                cpl=metrics.get("cpl"),
+                currency=currency,
+            )
+        except Exception as exc:
+            return MetaAdAccountInsightsOut(
+                ad_account_id=ad_account_id,
+                ad_account_name=account_name,
+                date_preset=preset,
+                currency=currency,
+                warning=str(exc),
+            )
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail={
+            "code": "meta_ad_account_not_connected",
+            "message": "Connect Meta and select an Ad Account to load Marketing insights.",
+        },
+    )
 
 
 async def update_settings(
@@ -1025,7 +1171,11 @@ async def get_page_access_token(
     tenant_id: str,
     page_id: str,
 ) -> Optional[str]:
-    """Return the newest **active** page token (skips inactive duplicates for the same page_id)."""
+    """Return a Page access token for leadgen / Graph lead reads.
+
+    OAuth credentials store the long-lived *user* token (ads_read). Manual
+    credentials may still store a page token. Prefer Graph ``/{page-id}?fields=access_token``.
+    """
     entries = await crud.list_meta_credentials(db, tenant_id=tenant_id)
     for entry in entries:
         if str(getattr(entry, "status", "") or "").strip().lower() != "active":
@@ -1033,7 +1183,13 @@ async def get_page_access_token(
         decrypted_page = decrypt_secret(entry.encrypted_page_id)
         if decrypted_page and decrypted_page.strip() == page_id:
             token = decrypt_secret(entry.encrypted_access_token)
-            if token:
+            if not token:
+                continue
+            try:
+                return await meta_oauth.fetch_page_access_token(
+                    page_id=page_id, user_or_page_access_token=token
+                )
+            except meta_oauth.MetaOAuthError:
                 return token
     return None
 

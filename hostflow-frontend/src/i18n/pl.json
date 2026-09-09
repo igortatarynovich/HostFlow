@@ -11594,6 +11594,14 @@
         "subtitle": "Podsumowanie kampanii firmy (tylko odczyt).",
         "capped": " Lista jest ograniczona."
       },
+      "meta_insights": {
+        "title": "Konto reklamowe Meta (7 dni)",
+        "subtitle": "Na żywo Insights z podłączonego konta reklamowego (ads_read).",
+        "connect_hint": "Połącz Meta i wybierz konto reklamowe w Ustawienia → Integracje → Meta.",
+        "open_settings": "Otwórz integrację Meta",
+        "impressions": "Wyświetlenia",
+        "clicks": "Kliknięcia"
+      },
       "diagnostics": {
         "subtitle": "Operacje na przychodzących zgłoszeniach: trasa, oś czasu, payload. Sources służy do konfiguracji.",
         "back_list": "← Do listy",
@@ -16658,16 +16666,31 @@
         "oauth_server_env_hint": "Facebook Login jest dozwolony w Twoim planie, ale tu jest wyłączony: operator musi skonfigurować na serwerze META_LEADS_APP_ID, META_LEADS_SHARED_APP_SECRET i redirect OAuth.",
         "oauth_redirect_label": "OAuth redirect URI (dodaj w aplikacji Meta)",
         "oauth_connect": "Połącz z Meta",
-        "oauth_connect_hint": "Zaloguj się przez Facebook, wybierz stronę i zapisz połączenie — konfiguracja webhooka powyżej nadal jest potrzebna.",
-        "oauth_pick_title": "Wybierz stronę i etykietę",
+        "oauth_connect_hint": "Zaloguj się przez Facebook, wybierz stronę i konto reklamowe, zapisz połączenie — konfiguracja webhooka powyżej nadal jest potrzebna.",
+        "oauth_pick_title": "Wybierz stronę, konto reklamowe i etykietę",
         "oauth_pick_page": "Strona Facebook",
+        "oauth_pick_ad_account": "Konto reklamowe",
+        "oauth_pick_ad_account_hint": "Potrzebne do wydatków, wyświetleń i kliknięć w Marketing (ads_read).",
+        "oauth_no_ad_accounts": "Dla tego użytkownika Facebook nie zwrócono kont reklamowych. Stronę do leadów można połączyć; konto do statystyk dodaj później w Poświadczeniach.",
         "oauth_pick_label": "Etykieta połączenia",
         "oauth_subscribe_leadgen": "Subskrybuj stronę do leadgen (zalecane)",
         "oauth_confirm": "Zapisz połączenie",
-        "oauth_pages_ready": "Sesja Facebook potwierdzona — wybierz stronę i zapisz.",
+        "oauth_pages_ready": "Sesja Facebook potwierdzona — wybierz stronę i konto reklamowe, potem zapisz.",
         "oauth_done": "Zapisano połączenie Meta.",
         "oauth_error_title": "Błąd OAuth Meta",
         "oauth_warning": "Uwaga: {{message}}"
+      },
+      "insights": {
+        "title": "Konto reklamowe Meta (7 dni)",
+        "load_failed": "Nie udało się wczytać statystyk konta reklamowego",
+        "empty": "Połącz konto reklamowe, aby zobaczyć wydatki, wyświetlenia i kliknięcia.",
+        "account_named": "{{name}} ({{id}})",
+        "account_id": "Konto reklamowe {{id}}",
+        "period_7d": "Ostatnie 7 dni",
+        "spend": "Wydatki",
+        "impressions": "Wyświetlenia",
+        "clicks": "Kliknięcia",
+        "open_marketing": "Otwórz Marketing"
       },
       "guided": {
         "title_setup": "Podłącz Meta w 3 krokach",

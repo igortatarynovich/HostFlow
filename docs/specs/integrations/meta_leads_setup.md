@@ -31,10 +31,11 @@ Keep the App Secret in `meta_lead_credentials.secret` (encrypted in storage) and
 ## 3. Obtain Long‑Lived Tokens
 
 1. In Graph API Explorer choose the **HostFlow Leads** app.
-2. Enable permissions: `pages_read_engagement`, `pages_manage_metadata`, `pages_show_list`, `leads_retrieval`.
+2. Enable permissions: `pages_read_engagement`, `pages_manage_metadata`, `pages_show_list`, `leads_retrieval`, `ads_read`.
 3. Generate a short‑lived **User Access Token** and exchange it for a long‑lived token (`fb_exchange_token`).
 4. Verify the token via `/debug_token` – it must belong to App ID `1102404865044655`.
 5. With that user token, request a **Page Access Token** for the target page. If Meta returns “Provide valid app ID (200)” the wrong app is selected.
+6. For Marketing insights, also note the **Ad Account** id (`act_…` / numeric) that should be stored on the HostFlow credential.
 
 Store the resulting page token and app secret in the HostFlow credential record (see §5).
 

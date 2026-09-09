@@ -11594,6 +11594,14 @@
         "subtitle": "Company campaign summary (read-only).",
         "capped": " List is capped."
       },
+      "meta_insights": {
+        "title": "Meta Ad Account (last 7 days)",
+        "subtitle": "Live Insights from the connected advertising account (ads_read).",
+        "connect_hint": "Connect Meta and select an Ad Account in Settings → Integrations → Meta to see spend here.",
+        "open_settings": "Open Meta integration",
+        "impressions": "Impressions",
+        "clicks": "Clicks"
+      },
       "diagnostics": {
         "subtitle": "Operations on inbound applications: route, timeline, payload. Sources is for setup.",
         "back_list": "← Back to list",
@@ -16658,16 +16666,31 @@
         "oauth_server_env_hint": "Facebook Login is allowed for your plan but disabled here: the operator must configure META_LEADS_APP_ID, META_LEADS_SHARED_APP_SECRET, and the OAuth redirect on the server.",
         "oauth_redirect_label": "OAuth redirect URI (add to Meta app)",
         "oauth_connect": "Connect with Meta",
-        "oauth_connect_hint": "Sign in with Facebook, pick a Page, and save a credential — webhook setup above still applies.",
-        "oauth_pick_title": "Choose Page and label",
+        "oauth_connect_hint": "Sign in with Facebook, pick a Page and Ad Account, and save a credential — webhook setup above still applies.",
+        "oauth_pick_title": "Choose Page, Ad Account, and label",
         "oauth_pick_page": "Facebook Page",
+        "oauth_pick_ad_account": "Ad Account",
+        "oauth_pick_ad_account_hint": "Used for Marketing spend, impressions, and clicks (ads_read).",
+        "oauth_no_ad_accounts": "No Ad Accounts were returned for this Facebook user. You can still connect the Page for leads; add an Ad Account later under Credentials for Marketing insights.",
         "oauth_pick_label": "Credential label",
         "oauth_subscribe_leadgen": "Subscribe Page to leadgen (recommended)",
         "oauth_confirm": "Save credential",
-        "oauth_pages_ready": "Facebook session OK — choose a Page and save.",
+        "oauth_pages_ready": "Facebook session OK — choose a Page and Ad Account, then save.",
         "oauth_done": "Meta credential saved.",
         "oauth_error_title": "Meta OAuth failed",
         "oauth_warning": "Warning: {{message}}"
+      },
+      "insights": {
+        "title": "Meta Ad Account (last 7 days)",
+        "load_failed": "Could not load Ad Account insights",
+        "empty": "Connect an Ad Account to see spend, impressions, and clicks here.",
+        "account_named": "{{name}} ({{id}})",
+        "account_id": "Ad Account {{id}}",
+        "period_7d": "Last 7 days",
+        "spend": "Spend",
+        "impressions": "Impressions",
+        "clicks": "Clicks",
+        "open_marketing": "Open Marketing"
       },
       "guided": {
         "title_setup": "Connect Meta in 3 steps",

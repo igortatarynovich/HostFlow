@@ -16,6 +16,7 @@ import {
   type CampaignPortfolio,
   type PortfolioCampaignRow,
 } from '../../api/platformCampaigns'
+import { getMetaAdAccountInsights, type MetaAdAccountInsights } from '../../api/metaLeads'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { Chip } from '../../components/ui/Chip'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -81,6 +82,8 @@ export default function MarketingCampaignsPage() {
   const navigate = useNavigate()
   const [items, setItems] = useState<Campaign[]>([])
   const [portfolio, setPortfolio] = useState<CampaignPortfolio | null>(null)
+  const [metaInsights, setMetaInsights] = useState<MetaAdAccountInsights | null>(null)
+  const [metaInsightsMissing, setMetaInsightsMissing] = useState(false)
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
@@ -113,12 +116,23 @@ export default function MarketingCampaignsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [rows, folio] = await Promise.all([
+      const [rows, folio, insightsSettled] = await Promise.all([
         listCampaigns({ limit: LIST_LIMIT }),
         getCampaignPortfolio(50).catch(() => null),
+        getMetaAdAccountInsights({ date_preset: 'last_7d' }).then(
+          (data) => ({ ok: true as const, data }),
+          () => ({ ok: false as const }),
+        ),
       ])
       setItems(rows)
       setPortfolio(folio)
+      if (insightsSettled.ok) {
+        setMetaInsights(insightsSettled.data)
+        setMetaInsightsMissing(false)
+      } else {
+        setMetaInsights(null)
+        setMetaInsightsMissing(true)
+      }
       void loadCounts(rows)
     } catch (err: unknown) {
       setError(
@@ -350,6 +364,53 @@ export default function MarketingCampaignsPage() {
         />
         <MarketingWorkspaceNav />
         {error ? <div className="mt-3"><ErrorRecoveryBanner info={error} onRetry={() => void load()} /></div> : null}
+
+        {!loading && (metaInsights || metaInsightsMissing) ? (
+          <section
+            className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
+            data-testid="marketing-meta-ad-insights"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold text-slate-900">
+                {t('app.marketing.meta_insights.title')}
+              </h2>
+              <p className="text-xs text-slate-500">{t('app.marketing.meta_insights.subtitle')}</p>
+            </div>
+            {metaInsights && !metaInsights.warning ? (
+              <div className="mt-3 grid grid-cols-3 gap-3 sm:max-w-lg">
+                <div>
+                  <div className="text-xs text-slate-500">{t('app.marketing.metrics.spend')}</div>
+                  <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                    {metaInsights.spend}
+                    {metaInsights.currency ? ` ${metaInsights.currency}` : ''}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500">{t('app.marketing.meta_insights.impressions')}</div>
+                  <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                    {metaInsights.impressions}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500">{t('app.marketing.meta_insights.clicks')}</div>
+                  <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                    {metaInsights.clicks}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-slate-600">
+                {metaInsights?.warning || t('app.marketing.meta_insights.connect_hint')}{' '}
+                <Link
+                  to={CRM_APP_PATHS.settingsIntegrationsMeta}
+                  className="font-medium text-brand-700 underline"
+                >
+                  {t('app.marketing.meta_insights.open_settings')}
+                </Link>
+              </p>
+            )}
+          </section>
+        ) : null}
 
         {portfolio && portfolio.campaigns.length > 0 ? (
           <section

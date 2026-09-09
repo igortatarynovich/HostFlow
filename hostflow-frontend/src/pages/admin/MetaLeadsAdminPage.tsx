@@ -9,6 +9,7 @@ import {
   deleteMetaLeadCredential,
   deleteLeadMessageTemplate,
   finalizeMetaOAuth,
+  getMetaAdAccountInsights,
   getMetaIncomingPreview,
   getMetaFormRoute,
   getMetaLeadSelfServeOnboarding,
@@ -28,6 +29,7 @@ import {
   updateMetaLeadCredential,
   updateMetaLeadSettings,
 } from '../../api/metaLeads'
+import type { MetaAdAccountInsights } from '../../api/metaLeads'
 import type { UnmappedAdGroup } from '../../api/metaLeads'
 import { listCompanies, listLeads, listOwnCompanies, listVacancies } from '../../api/client'
 import { listMarketingSources, type MarketingSourceSummary } from '../../api/marketingSources'
@@ -214,13 +216,19 @@ export default function MetaLeadsAdminPage() {
   const [fitVacancyPick, setFitVacancyPick] = useState('')
   const [selfServe, setSelfServe] = useState<MetaLeadSelfServeOnboarding | null>(null)
   const oauthHandledRef = useRef<string | null>(null)
-  const [oauthPick, setOauthPick] = useState<{ pending_id: string; pages: { id: string; name: string }[] } | null>(
-    null,
-  )
+  const [oauthPick, setOauthPick] = useState<{
+    pending_id: string
+    pages: { id: string; name: string }[]
+    ad_accounts: { id: string; name: string }[]
+  } | null>(null)
   const [oauthLabel, setOauthLabel] = useState('')
   const [oauthPageId, setOauthPageId] = useState('')
+  const [oauthAdAccountId, setOauthAdAccountId] = useState('')
   const [oauthSubscribe, setOauthSubscribe] = useState(true)
   const [oauthBusy, setOauthBusy] = useState(false)
+  const [adInsights, setAdInsights] = useState<MetaAdAccountInsights | null>(null)
+  const [adInsightsLoading, setAdInsightsLoading] = useState(false)
+  const [adInsightsError, setAdInsightsError] = useState<FriendlyErrorInfo | null>(null)
   const [metaAdvancedOpen, setMetaAdvancedOpen] = useState(false)
   const metaAdvancedBootstrapped = useRef(false)
 
@@ -707,6 +715,7 @@ export default function MetaLeadsAdminPage() {
 
   const handleFinalizeMetaOAuth = useCallback(async () => {
     if (!oauthPick || !oauthPageId.trim() || !oauthLabel.trim()) return
+    if (oauthPick.ad_accounts.length > 0 && !oauthAdAccountId.trim()) return
     setOauthBusy(true)
     setError(null)
     try {
@@ -714,6 +723,7 @@ export default function MetaLeadsAdminPage() {
         pending_id: oauthPick.pending_id,
         page_id: oauthPageId.trim(),
         label: oauthLabel.trim(),
+        ad_account_id: oauthAdAccountId.trim() || null,
         subscribe_leadgen: oauthSubscribe,
       })
       setOauthPick(null)
@@ -735,7 +745,17 @@ export default function MetaLeadsAdminPage() {
     } finally {
       setOauthBusy(false)
     }
-  }, [oauthLabel, oauthPageId, oauthPick, oauthSubscribe, planLimitModal, refreshAll, setTabWithUrl, t])
+  }, [
+    oauthAdAccountId,
+    oauthLabel,
+    oauthPageId,
+    oauthPick,
+    oauthSubscribe,
+    planLimitModal,
+    refreshAll,
+    setTabWithUrl,
+    t,
+  ])
 
   useEffect(() => {
     const sp = new URLSearchParams(location.search || '')
@@ -752,9 +772,11 @@ export default function MetaLeadsAdminPage() {
     void (async () => {
       try {
         const res = await completeMetaOAuth({ code, state })
-        setOauthPick({ pending_id: res.pending_id, pages: res.pages })
+        const adAccounts = res.ad_accounts ?? []
+        setOauthPick({ pending_id: res.pending_id, pages: res.pages, ad_accounts: adAccounts })
         const first = res.pages[0]
         setOauthPageId(first?.id ?? '')
+        setOauthAdAccountId(adAccounts[0]?.id ?? '')
         setOauthLabel(first ? `Meta · ${first.name}` : 'Meta Page')
         setOauthSubscribe(true)
         setNotice(t('admin.meta_leads.self_serve.oauth_pages_ready'))
@@ -769,6 +791,38 @@ export default function MetaLeadsAdminPage() {
       }
     })()
   }, [location.search, me, navigate, planLimitModal, t])
+
+  useEffect(() => {
+    if (!metaConnected) {
+      setAdInsights(null)
+      setAdInsightsError(null)
+      return
+    }
+    const hasAdAccount = credentials.some((c) => Boolean(c.ad_account_id?.trim()))
+    if (!hasAdAccount) {
+      setAdInsights(null)
+      setAdInsightsError(null)
+      return
+    }
+    let cancelled = false
+    setAdInsightsLoading(true)
+    setAdInsightsError(null)
+    void getMetaAdAccountInsights({ date_preset: 'last_7d' })
+      .then((data) => {
+        if (!cancelled) setAdInsights(data)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setAdInsights(null)
+        setAdInsightsError(getFriendlyErrorInfo(err, t('admin.meta_leads.insights.load_failed'), t))
+      })
+      .finally(() => {
+        if (!cancelled) setAdInsightsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [credentials, metaConnected, t])
 
   const addLeadFitVacancy = useCallback(
     (vacancyId: string) => {
@@ -1409,6 +1463,32 @@ export default function MetaLeadsAdminPage() {
                 ))}
               </select>
             </label>
+            {oauthPick.ad_accounts.length > 0 ? (
+              <label className="flex flex-col gap-1">
+                <span className="font-medium text-slate-700">
+                  {t('admin.meta_leads.self_serve.oauth_pick_ad_account')}
+                </span>
+                <select
+                  className="input w-full"
+                  value={oauthAdAccountId}
+                  onChange={(e) => setOauthAdAccountId(e.target.value)}
+                  data-testid="meta-oauth-ad-account"
+                >
+                  {oauthPick.ad_accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.id})
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-slate-500">
+                  {t('admin.meta_leads.self_serve.oauth_pick_ad_account_hint')}
+                </span>
+              </label>
+            ) : (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-950">
+                {t('admin.meta_leads.self_serve.oauth_no_ad_accounts')}
+              </p>
+            )}
             <label className="flex flex-col gap-1">
               <span className="font-medium text-slate-700">{t('admin.meta_leads.self_serve.oauth_pick_label')}</span>
               <input className="input w-full" value={oauthLabel} onChange={(e) => setOauthLabel(e.target.value)} />
@@ -1425,7 +1505,12 @@ export default function MetaLeadsAdminPage() {
               <button
                 type="button"
                 className="btn-primary"
-                disabled={oauthBusy || !oauthPageId.trim() || !oauthLabel.trim()}
+                disabled={
+                  oauthBusy ||
+                  !oauthPageId.trim() ||
+                  !oauthLabel.trim() ||
+                  (oauthPick.ad_accounts.length > 0 && !oauthAdAccountId.trim())
+                }
                 onClick={() => void handleFinalizeMetaOAuth()}
               >
                 {oauthBusy ? t('common.loading') : t('admin.meta_leads.self_serve.oauth_confirm')}
@@ -1902,6 +1987,90 @@ export default function MetaLeadsAdminPage() {
                 : t('admin.meta_leads.overview.last_lead_none')}
             </li>
           </ul>
+
+          <div
+            className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+            data-testid="meta-ad-account-insights"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-sm font-semibold text-slate-900">
+                {t('admin.meta_leads.insights.title')}
+              </h3>
+              <button
+                type="button"
+                className="text-xs font-medium text-brand-700 underline"
+                disabled={adInsightsLoading}
+                onClick={() => {
+                  setAdInsightsLoading(true)
+                  setAdInsightsError(null)
+                  void getMetaAdAccountInsights({ date_preset: 'last_7d' })
+                    .then((data) => setAdInsights(data))
+                    .catch((err) => {
+                      setAdInsights(null)
+                      setAdInsightsError(
+                        getFriendlyErrorInfo(err, t('admin.meta_leads.insights.load_failed'), t),
+                      )
+                    })
+                    .finally(() => setAdInsightsLoading(false))
+                }}
+              >
+                {adInsightsLoading ? t('common.loading') : t('common.actions.refresh')}
+              </button>
+            </div>
+            {adInsightsError ? (
+              <p className="mt-2 text-sm text-amber-900">
+                {adInsightsError.title}
+                {adInsightsError.detail ? ` — ${adInsightsError.detail}` : ''}
+              </p>
+            ) : null}
+            {adInsights?.warning ? (
+              <p className="mt-2 text-sm text-amber-900">{adInsights.warning}</p>
+            ) : null}
+            {adInsights && !adInsights.warning ? (
+              <>
+                <p className="mt-1 text-xs text-slate-500">
+                  {adInsights.ad_account_name
+                    ? t('admin.meta_leads.insights.account_named', {
+                        values: { name: adInsights.ad_account_name, id: adInsights.ad_account_id },
+                      })
+                    : t('admin.meta_leads.insights.account_id', {
+                        values: { id: adInsights.ad_account_id },
+                      })}{' '}
+                  · {t('admin.meta_leads.insights.period_7d')}
+                </p>
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  <div>
+                    <div className="text-xs text-slate-500">{t('admin.meta_leads.insights.spend')}</div>
+                    <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">
+                      {adInsights.spend}
+                      {adInsights.currency ? ` ${adInsights.currency}` : ''}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500">{t('admin.meta_leads.insights.impressions')}</div>
+                    <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">
+                      {adInsights.impressions}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500">{t('admin.meta_leads.insights.clicks')}</div>
+                    <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">
+                      {adInsights.clicks}
+                    </div>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-slate-500">
+                  <Link to={CRM_APP_PATHS.marketing} className="font-medium text-brand-700 underline">
+                    {t('admin.meta_leads.insights.open_marketing')}
+                  </Link>
+                </p>
+              </>
+            ) : null}
+            {!adInsights && !adInsightsError && !adInsightsLoading ? (
+              <p className="mt-2 text-sm text-slate-600">{t('admin.meta_leads.insights.empty')}</p>
+            ) : null}
+          </div>
+
           {credentials.length > 0 ? (
             <div className="mt-4 overflow-x-auto rounded border border-slate-200">
               <table className="min-w-full divide-y divide-slate-200 text-sm">

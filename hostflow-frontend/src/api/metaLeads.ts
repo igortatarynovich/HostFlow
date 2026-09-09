@@ -38,13 +38,33 @@ export async function getMetaLeadSelfServeOnboarding(): Promise<MetaLeadSelfServ
 
 export type MetaOAuthPageOption = { id: string; name: string }
 
+export type MetaOAuthAdAccountOption = { id: string; name: string }
+
 export type MetaOAuthStartResponse = { authorize_url: string; state: string }
 
-export type MetaOAuthCompleteResponse = { pending_id: string; pages: MetaOAuthPageOption[] }
+export type MetaOAuthCompleteResponse = {
+  pending_id: string
+  pages: MetaOAuthPageOption[]
+  ad_accounts?: MetaOAuthAdAccountOption[]
+}
 
 export type MetaOAuthFinalizeResponse = {
   credential: MetaLeadCredential
   subscribed_leadgen: boolean
+  warning?: string | null
+}
+
+export type MetaAdAccountInsights = {
+  ad_account_id: string
+  ad_account_name?: string | null
+  date_preset: string
+  spend: number
+  impressions: number
+  clicks: number
+  ctr: number
+  leads: number
+  cpl?: number | null
+  currency?: string | null
   warning?: string | null
 }
 
@@ -65,9 +85,21 @@ export async function finalizeMetaOAuth(payload: {
   pending_id: string
   page_id: string
   label: string
+  ad_account_id?: string | null
   subscribe_leadgen?: boolean
 }): Promise<MetaOAuthFinalizeResponse> {
   const { data } = await api.post<MetaOAuthFinalizeResponse>(`${BASE}/meta/oauth/finalize`, payload)
+  return data
+}
+
+export async function getMetaAdAccountInsights(opts?: {
+  date_preset?: string
+}): Promise<MetaAdAccountInsights> {
+  const params: Record<string, string> = {}
+  if (opts?.date_preset) params.date_preset = opts.date_preset
+  const { data } = await api.get<MetaAdAccountInsights>(`${BASE}/meta/ad-account-insights`, {
+    params: Object.keys(params).length ? params : undefined,
+  })
   return data
 }
 

@@ -52,6 +52,7 @@ from backend.app.modules.leads.schemas import (
     MetaOAuthFinalizeIn,
     MetaOAuthFinalizeOut,
     MetaOAuthStartOut,
+    MetaAdAccountInsightsOut,
     LeadMessageTemplateOut,
     LeadMessageTemplateCreateUpdate,
     UnmappedLeadsResponse,
@@ -501,6 +502,25 @@ async def meta_oauth_finalize_endpoint(
     result = await admin_service.meta_oauth_finalize(db, tenant_id, ctx.sub, payload)
     await db.commit()
     return result
+
+
+@router.get(
+    "/meta/ad-account-insights",
+    response_model=MetaAdAccountInsightsOut,
+    dependencies=[Depends(require_trust_read())],
+)
+async def meta_ad_account_insights_endpoint(
+    date_preset: str = Query("last_7d", description="Meta Insights date_preset"),
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaAdAccountInsightsOut:
+    """Spend / impressions / clicks for the connected Meta Ad Account (ads_read)."""
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    return await admin_service.get_connected_ad_account_insights(
+        db, tenant_id, date_preset=date_preset
+    )
 
 
 @router.patch(

@@ -5,10 +5,11 @@ import { I18nProvider } from '../../../i18n'
 import MarketingCampaignsPage from '../MarketingCampaignsPage'
 import type { Campaign } from '../../../api/platformCampaigns'
 
-const { mockList, mockPortfolio, mockMonitor } = vi.hoisted(() => ({
+const { mockList, mockPortfolio, mockMonitor, mockMetaInsights } = vi.hoisted(() => ({
   mockList: vi.fn(),
   mockPortfolio: vi.fn(),
   mockMonitor: vi.fn(),
+  mockMetaInsights: vi.fn(),
 }))
 
 vi.mock('../../../api/platformCampaigns', async (importOriginal) => {
@@ -18,6 +19,14 @@ vi.mock('../../../api/platformCampaigns', async (importOriginal) => {
     listCampaigns: mockList,
     getCampaignPortfolio: mockPortfolio,
     getLiveIntakeMonitor: mockMonitor,
+  }
+})
+
+vi.mock('../../../api/metaLeads', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../api/metaLeads')>()
+  return {
+    ...actual,
+    getMetaAdAccountInsights: mockMetaInsights,
   }
 })
 
@@ -89,6 +98,8 @@ describe('MarketingCampaignsPage roster', () => {
     mockList.mockReset()
     mockPortfolio.mockReset()
     mockMonitor.mockReset()
+    mockMetaInsights.mockReset()
+    mockMetaInsights.mockRejectedValue({ response: { status: 404 } })
     mockList.mockResolvedValue([campaign()])
     mockPortfolio.mockResolvedValue({
       tenant_id: 't1',
