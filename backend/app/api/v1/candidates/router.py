@@ -1033,34 +1033,8 @@ async def list_candidates(
             scope_source,
             total,
         )
-    # For agency/superadmin: log linked tenants/companies to diagnose scope issues
-    if not client_tenant and current_user.role in (Role.admin.value, Role.administrator.value, Role.superadmin.value):
-        linked_tenants = await db.execute(
-            select(TenantLink.client_tenant_id)
-            .where(
-                TenantLink.agency_tenant_id == scope_tenant,
-                TenantLink.client_tenant_id.isnot(None),
-            )
-            .distinct()
-        )
-        linked_tenant_ids = [str(tid) for (tid,) in linked_tenants.all() if tid]
-        linked_companies = await db.execute(
-            select(TenantLink.client_company_id)
-            .where(
-                TenantLink.agency_tenant_id == scope_tenant,
-                TenantLink.client_company_id.isnot(None),
-            )
-            .distinct()
-        )
-        linked_company_ids = [str(cid) for (cid,) in linked_companies.all() if cid]
-        logging.getLogger(__name__).info(
-            "Candidates agency scope: tenant=%s total=%s linked_client_tenants=%s linked_companies=%s",
-            scope_tenant,
-            total,
-            linked_tenant_ids,
-            linked_company_ids,
-        )
-    # Log when list is empty to diagnose client/scope issues
+    # Agency-scope diagnostic queries used to run on every list request for
+    # admin/superadmin (two extra DISTINCT scans). Keep them off the hot path.
     if total == 0:
         logging.getLogger(__name__).info(
             "Candidates list total=0 scope_tenant=%s scope_source=%s client_tenant=%s",
