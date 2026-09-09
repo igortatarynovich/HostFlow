@@ -95,7 +95,7 @@ On successful patch apply, HostFlow **must** re-run `evaluate_early_employabilit
 
 ## Non-goals
 
-- ESO-4 Formalize / Employee materialization.  
+- ESO-4 Formalize / `ready_to_create_employee` — [`employment-formalize.md`](employment-formalize.md).  
 - ESO-5 Started.  
 - Full Legalization Engine.  
 - Replacing `early_employability.v1` as eligibility SoT.  
