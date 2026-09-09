@@ -10,6 +10,7 @@ from backend.app.modules.leads.intake_lifecycle import (
     project_recruitment_intake_lifecycle,
     resolve_intake_lifecycle_filter,
     stamp_recruitment_intake_converted,
+    stamp_recruitment_intake_rejected,
 )
 
 
@@ -45,6 +46,8 @@ def test_call_result_is_in_progress_not_a_stage() -> None:
 def test_rejected_and_converted_terminals() -> None:
     rejected = _lead(status="rejected", normalized={"intake_resolution_v1": {"status": "rejected"}})
     assert project_recruitment_intake_lifecycle(rejected) == "rejected"
+    lost_only = _lead(status="processed", stage="lost", normalized={"intake_resolution_v1": {"status": "new"}})
+    assert project_recruitment_intake_lifecycle(lost_only) == "rejected"
     converted = _lead(candidate_id="c1", normalized={"intake_resolution_v1": {"status": "in_progress"}})
     assert project_recruitment_intake_lifecycle(converted) == "converted"
 
@@ -83,6 +86,15 @@ def test_converted_stamp() -> None:
     assert lead.normalized["intake_resolution_v1"]["status"] == "converted"
     assert lead.stage == "converted"
     assert project_recruitment_intake_lifecycle(lead) == "converted"
+
+
+def test_rejected_stamp_from_new_stage() -> None:
+    lead = _lead(normalized={"intake_resolution_v1": {"status": "new"}}, stage="new", status="processed")
+    stamp_recruitment_intake_rejected(lead, actor="u1", reason_code="no_response")
+    assert lead.normalized["intake_resolution_v1"]["status"] == "rejected"
+    assert lead.stage == "lost"
+    assert lead.status == "rejected"
+    assert project_recruitment_intake_lifecycle(lead) == "rejected"
 
 
 def test_legacy_lane_aliases() -> None:

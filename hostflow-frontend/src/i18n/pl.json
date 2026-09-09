@@ -12028,6 +12028,7 @@
         "bind_search": "Powiąż z naborem",
         "bound": "Nabór powiązany",
         "bind_failed": "Nie udało się powiązać naboru",
+        "stage": "Etap",
         "reject_title": "Odrzuć zgłoszenie",
         "comment_placeholder": "Komentarz",
         "reject": "Odrzuć",

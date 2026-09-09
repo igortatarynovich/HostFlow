@@ -12028,6 +12028,7 @@
         "bind_search": "Bind to search",
         "bound": "Search bound",
         "bind_failed": "Could not bind the search",
+        "stage": "Stage",
         "reject_title": "Reject application",
         "comment_placeholder": "Comment",
         "reject": "Reject",

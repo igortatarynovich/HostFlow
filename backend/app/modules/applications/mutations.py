@@ -367,6 +367,10 @@ async def patch_recruitment_stage(
     payload: ApplicationStagePatch,
     current_user: UserCtx,
 ) -> ApplicationOut:
+    from backend.app.modules.leads.intake_lifecycle import (
+        mark_recruitment_intake_in_progress,
+        stamp_recruitment_intake_rejected,
+    )
     from backend.app.modules.leads.router import update_lead_stage_endpoint
 
     stage_payload = LeadStageUpdate(
@@ -381,6 +385,27 @@ async def patch_recruitment_stage(
         current_user=current_user,
         _role="recruiter",
     )
+    lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
+    if lead:
+        actor_id = str(current_user.sub or "").strip() or None
+        next_stage = str(payload.stage or "").strip().lower()
+        if next_stage in {"contacted", "qualified"}:
+            mark_recruitment_intake_in_progress(
+                lead,
+                actor=actor_id,
+                last_action="stage_patch",
+            )
+            flag_modified(lead, "normalized")
+            await db.commit()
+        elif next_stage == "lost":
+            stamp_recruitment_intake_rejected(
+                lead,
+                actor=actor_id,
+                reason_code=payload.lost_reason_code,
+                note=payload.lost_reason_note,
+            )
+            flag_modified(lead, "normalized")
+            await db.commit()
     return await _reload_recruitment(db, tenant_id, application_id)
 
 

@@ -129,3 +129,23 @@ def test_recruitment_mapper_ingest_processed_without_call_stays_new() -> None:
     app = lead_to_recruitment_application(lead)
     assert app.status == "new"
     assert app.tab_bucket == "new"
+
+
+def test_recruitment_mapper_lost_stage_is_rejected_not_new() -> None:
+    lead = Lead(
+        id="11111111-1111-1111-1111-111111111111",
+        tenant_id="11111111-1111-1111-1111-111111111111",
+        source="meta",
+        status="processed",
+        stage="lost",
+        lead_type="candidate",
+        payload={},
+        normalized={
+            "full_name": "Ada",
+            "intake_resolution_v1": {"status": "new"},
+        },
+    )
+    app = lead_to_recruitment_application(lead)
+    assert app.status == "rejected"
+    assert app.tab_bucket == "completed"
+    assert app.extensions["stage"] == "lost"
