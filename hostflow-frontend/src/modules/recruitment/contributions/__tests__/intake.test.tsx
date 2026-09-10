@@ -71,4 +71,31 @@ describe('RecruitmentIntakeContribution', () => {
       })
     })
   })
+
+  it('hides active call chrome after Transfer', () => {
+    render(
+      <MemoryRouter>
+        <I18nProvider initialLocale="en">
+          <ToastProvider>
+            <PlanLimitModalProvider>
+              <RecruitmentIntakeContribution
+                application={{
+                  ...application,
+                  extensions: {
+                    ...application.extensions,
+                    ready_for_employment_prep_v1: { next_action: 'handed_off', handoff_id: 'h-1' },
+                  },
+                }}
+                patching={false}
+                onClose={() => undefined}
+                onRefresh={() => undefined}
+              />
+            </PlanLimitModalProvider>
+          </ToastProvider>
+        </I18nProvider>
+      </MemoryRouter>,
+    )
+    expect(screen.queryByRole('button', { name: 'Interested' })).toBeNull()
+    expect(screen.getByText('Jaką masz kategorię?')).toBeTruthy()
+  })
 })

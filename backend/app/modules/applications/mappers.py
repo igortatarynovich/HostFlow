@@ -360,6 +360,9 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
     field_answers, additional_answers = _recruitment_form_answers(normalized, getattr(lead, "payload", None))
     call_latest = normalized.get("call_result_v1") if isinstance(normalized.get("call_result_v1"), dict) else None
     call_history = normalized.get("call_results_v1") if isinstance(normalized.get("call_results_v1"), list) else []
+    rfe_prep = normalized.get("ready_for_employment_prep_v1")
+    if not isinstance(rfe_prep, dict):
+        rfe_prep = None
     meta = _record(normalized.get("meta"))
     assignee = (
         _text(meta.get("assigned_manager_id"))
@@ -396,6 +399,7 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
             else {},
             "call_result_v1": call_latest,
             "call_results_v1": call_history,
+            "ready_for_employment_prep_v1": rfe_prep,
         },
         outcome_entity_id=candidate_id,
         outcome_entity_type="candidate" if candidate_id else None,

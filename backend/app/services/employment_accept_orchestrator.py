@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Mapping, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.models.candidate_handoff import CandidateHandoff
@@ -30,6 +31,7 @@ from backend.app.services.audit import log_audit_event
 from backend.app.services import handoff as handoff_service
 
 PREP_KEY = "ready_for_employment_prep_v1"
+SPINE_KEY = "employment_spine_v1"
 
 
 class EmploymentAcceptError(Exception):
@@ -88,6 +90,21 @@ async def resolve_ready_for_employment_package(
     if isinstance(stored, Mapping) and is_valid_ready_for_employment_package_v1(stored):
         return dict(stored)
     return dict(stored) if isinstance(stored, Mapping) else None
+
+
+def read_employment_spine(handoff: CandidateHandoff) -> dict[str, Any]:
+    """Employment-owned continuation state on the handoff (not an HR card)."""
+    return _record(_record(getattr(handoff, "meta", None)).get(SPINE_KEY))
+
+
+def write_employment_spine(handoff: CandidateHandoff, patch: Mapping[str, Any]) -> dict[str, Any]:
+    """Persist Employment next_action / confirmed formal items on the same handoff."""
+    meta = _record(getattr(handoff, "meta", None))
+    spine = {**_record(meta.get(SPINE_KEY)), **dict(patch)}
+    meta[SPINE_KEY] = spine
+    handoff.meta = meta
+    flag_modified(handoff, "meta")
+    return spine
 
 
 async def apply_employment_accept_policy(
@@ -199,4 +216,7 @@ __all__ = [
     "EmploymentAcceptError",
     "resolve_ready_for_employment_package",
     "apply_employment_accept_policy",
+    "read_employment_spine",
+    "write_employment_spine",
+    "SPINE_KEY",
 ]

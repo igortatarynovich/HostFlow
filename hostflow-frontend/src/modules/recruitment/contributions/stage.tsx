@@ -1,34 +1,24 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   createRecruitmentApplicationFollowUp,
   processRecruitmentApplication,
+  recruitmentApplicationFits,
+  recruitmentApplicationTransferToEmployment,
   submitRecruitmentApplicationIntakeDecision,
   updateRecruitmentApplicationStage,
 } from '../../../api/applications'
-import type { Application } from '../../../api/types/application'
 import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
 import { Button } from '../../../components/ui/Button'
 import { useToast } from '../../../components/Toast'
 import { useI18n } from '../../../i18n'
 import { getFriendlyErrorInfo } from '../../../utils/friendlyError'
 import { ContextRailDecisionZone } from '../../../platform/context-rail'
-import { resolveRecruitmentApplicationDecision } from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
-import type {
-  RecruitmentApplicationStage,
-  WorkspaceCapabilityRenderContext,
-} from '../../../platform/workspace-capability/renderContext'
-
-const CRM_STAGE_OPTIONS = ['new', 'contacted', 'qualified', 'lost'] as const
-
-function applicationCrmStage(application: Application): string {
-  const ext = application.extensions?.stage
-  if (typeof ext === 'string' && ext.trim()) return ext.trim().toLowerCase()
-  if (application.status === 'rejected') return 'lost'
-  if (application.status === 'completed') return 'converted'
-  if (application.status === 'in_progress') return 'contacted'
-  return 'new'
-}
+import {
+  applicationReadyForEmploymentPrep,
+  resolveRecruitmentApplicationDecision,
+} from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
+import type { WorkspaceCapabilityRenderContext } from '../../../platform/workspace-capability/renderContext'
 
 const REJECT_REASON_CODES = [
   'insufficient_experience',
@@ -69,12 +59,6 @@ export function RecruitmentStageContribution({
   const [rejectNote, setRejectNote] = useState('')
   const [showFollowUp, setShowFollowUp] = useState(false)
   const [followUpTitle, setFollowUpTitle] = useState('')
-  const [pendingStage, setPendingStage] = useState<string | null>(null)
-  const currentStage = application ? applicationCrmStage(application) : 'new'
-
-  useEffect(() => {
-    setPendingStage(null)
-  }, [currentStage])
 
   const run = useCallback(
     async (fn: () => Promise<void>) => {
@@ -107,36 +91,45 @@ export function RecruitmentStageContribution({
     })
   }, [application, navigate, notify, run, t])
 
+  const runFits = useCallback(() => {
+    if (!application) return
+    void run(async () => {
+      const result = await recruitmentApplicationFits(application.id)
+      if (result.next_action === 'offer_handoff') {
+        notify({
+          title: result.ready_label || t('app.recruitment_inquiry.rso.ready_label', {
+            defaultValue: 'Готов к передаче на трудоустройство',
+          }),
+          variant: 'success',
+        })
+      } else if (result.message) {
+        notify({ title: result.message, variant: 'info' })
+      }
+      onRefresh()
+    })
+  }, [application, notify, onRefresh, run, t])
+
+  const transferToEmployment = useCallback(() => {
+    if (!application) return
+    void run(async () => {
+      const result = await recruitmentApplicationTransferToEmployment(application.id)
+      notify({
+        title: result.message
+          || t('app.recruitment_inquiry.rso.handed_off_title', {
+            defaultValue: 'Передано на трудоустройство',
+          }),
+        variant: 'success',
+      })
+      onRefresh()
+    })
+  }, [application, notify, onRefresh, run, t])
+
   if (!application || !onStage) return null
 
-  const stageSelectValue = CRM_STAGE_OPTIONS.includes(currentStage as (typeof CRM_STAGE_OPTIONS)[number])
-    ? currentStage
-    : currentStage === 'converted'
-      ? 'qualified'
-      : 'new'
-  const displayedStage = pendingStage ?? stageSelectValue
-
-  const onStageSelect = (next: string) => {
-    if (!next || next === currentStage) return
-    if (next === 'lost') {
-      setShowReject(true)
-      return
-    }
-    if (next === 'contacted' || next === 'qualified') {
-      setPendingStage(next)
-      void run(async () => {
-        try {
-          await updateRecruitmentApplicationStage(application.id, {
-            stage: next as RecruitmentApplicationStage,
-          })
-          notify({ title: t('app.leads.inbox.stage_updated'), variant: 'success' })
-        } catch (err) {
-          setPendingStage(null)
-          throw err
-        }
-      })
-    }
-  }
+  const prep = applicationReadyForEmploymentPrep(application)
+  const rsoNext = String(prep?.next_action || '').trim()
+  const handedOff = Boolean(prep?.handoff_id) || rsoNext === 'handed_off'
+  if (handedOff) return null
 
   const decision = resolveRecruitmentApplicationDecision({
     application,
@@ -154,29 +147,13 @@ export function RecruitmentStageContribution({
         await submitRecruitmentApplicationIntakeDecision(application.id, { decision: 'pool' })
         notify({ title: t('app.recruitment.contributions.pooled'), variant: 'success' })
       }),
+    onTransferToEmployment: transferToEmployment,
+    onRunFits: runFits,
     t,
   })
 
   return (
     <div data-capability-id="recruitment.stage" data-widget-class="decision_zone">
-      <label className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-        <span className="shrink-0 font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.recruitment.contributions.stage', { defaultValue: 'Этап' })}
-        </span>
-        <select
-          className="input h-8 min-w-[10rem] rounded-lg border-slate-300 bg-white px-2 text-xs"
-          value={displayedStage}
-          disabled={busy || patching || Boolean(application.outcome_entity_id)}
-          aria-label={t('app.recruitment.contributions.stage', { defaultValue: 'Этап' })}
-          onChange={(event) => onStageSelect(event.target.value)}
-        >
-          {CRM_STAGE_OPTIONS.map((code) => (
-            <option key={code} value={code} disabled={code === 'new' && currentStage !== 'new'}>
-              {t(`app.leads.stages.${code}`)}
-            </option>
-          ))}
-        </select>
-      </label>
       <ContextRailDecisionZone decision={decision} />
       {showReject ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

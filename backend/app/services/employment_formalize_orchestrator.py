@@ -16,7 +16,9 @@ from backend.app.reference.employment_formalize import (
     apply_employment_formalize_v1,
 )
 from backend.app.services.employment_accept_orchestrator import (
+    read_employment_spine,
     resolve_ready_for_employment_package,
+    write_employment_spine,
 )
 
 
@@ -66,15 +68,44 @@ async def formalize_employment_for_handoff(
                 ctx.setdefault("vacancy_id", target.get("vacancy_id"))
             if not _text(ctx.get("position_category")) and target.get("position_category"):
                 ctx.setdefault("position_category", target.get("position_category"))
+            if not _text(ctx.get("employment_country")) and (
+                target.get("employment_country") or target.get("country")
+            ):
+                ctx.setdefault(
+                    "employment_country",
+                    target.get("employment_country") or target.get("country"),
+                )
+    if not _text(ctx.get("employment_country")):
+        ctx.setdefault("employment_country", "PL")
+
+    stored = read_employment_spine(handoff)
+    stored_confirmed = stored.get("confirmed_actions")
+    merged_confirmed = confirmed_actions if confirmed_actions is not None else stored_confirmed
 
     result = apply_employment_formalize_v1(
         package=resolved,
         handoff_status=_text(getattr(handoff, "status", None)),
         employment_context=ctx,
         formalize_patch=formalize_patch,
-        confirmed_actions=confirmed_actions,
+        confirmed_actions=merged_confirmed,
         employment_missing=employment_missing,
         require_patch_when_missing=require_patch_when_missing,
+    )
+
+    next_action = "formalize"
+    if result.get("ready_to_create_employee"):
+        next_action = "confirm_physical_start"
+    elif result.get("ready_to_formalize"):
+        next_action = "formalize"
+    write_employment_spine(
+        handoff,
+        {
+            "confirmed_actions": list(result.get("confirmed_actions") or []),
+            "ready_to_formalize": bool(result.get("ready_to_formalize")),
+            "ready_to_create_employee": bool(result.get("ready_to_create_employee")),
+            "next_action": next_action,
+            "decision": result.get("decision"),
+        },
     )
 
     return {
@@ -84,6 +115,7 @@ async def formalize_employment_for_handoff(
         "employee_id": None,
         "employee_created": False,
         "hr_employee_card": False,
+        "next_action": next_action,
     }
 
 

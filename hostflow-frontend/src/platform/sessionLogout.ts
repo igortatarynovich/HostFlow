@@ -12,6 +12,7 @@ import {
   SYSTEM_MODULE_HOSTS,
   deployHostPublicOrigin,
   isAllowedHandoffNext,
+  isLocalDevRuntime,
   resolveDeployHost,
   SESSION_COOKIE_NAMES,
   type ModuleDeployHost,
@@ -22,15 +23,8 @@ export const LOGOUT_QUERY = 'hf_logout'
 export const LOGOUT_HOSTS_QUERY = 'hf_logout_hosts'
 export const LOGOUT_RETURN_QUERY = 'hf_logout_return'
 
-function normalizeHostname(hostname: string): string {
-  return hostname.trim().toLowerCase().replace(/\.$/, '')
-}
-
 function isLocalDevHost(hostname?: string): boolean {
-  const hn = normalizeHostname(
-    hostname ?? (typeof window !== 'undefined' ? window.location.hostname : 'localhost'),
-  )
-  return hn === 'localhost' || hn === '127.0.0.1' || hn.endsWith('.local')
+  return isLocalDevRuntime(hostname)
 }
 
 export function markSessionRevoked(): void {

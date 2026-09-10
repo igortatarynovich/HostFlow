@@ -110,6 +110,7 @@ jobs:
       ma2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma2 == 'true' }}
       ma3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma3 == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
+      rso2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rso2 == 'true' }}
       eso1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso1 == 'true' }}
       eso2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso2 == 'true' }}
       eso3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso3 == 'true' }}
@@ -365,6 +366,15 @@ jobs:
               - 'docs/specs/tasks/recruitment-spine-orchestrator-v1.md'
               - 'docs/specs/tasks/employment-spine-orchestrator-v1.md'
               - 'docs/specs/tasks/hiring-workflow-e2e.md'
+            rso2:
+              - 'backend/app/modules/recruitment/services/ready_for_employment_orchestrator.py'
+              - 'backend/tests/platform/test_rso2_fits_handoff_gate.py'
+              - 'backend/app/modules/applications/mutations.py'
+              - 'backend/app/modules/applications/router.py'
+              - 'backend/app/services/handoff.py'
+              - 'backend/app/core/audit_events.py'
+              - 'docs/specs/tasks/recruitment-spine-orchestrator-v1.md'
+              - 'docs/specs/architecture/ready-for-employment-contract.md'
             eso1:
               - 'backend/app/reference/employment_accept_policy.py'
               - 'backend/app/services/employment_accept_orchestrator.py'
@@ -1048,6 +1058,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_employment_started_gate.py') != ''
         with:
           tests: tests/platform/test_employment_started_gate.py
+
+  rso2-fits-handoff-gate:
+    name: RSO-2 Fits → Handoff Gate
+    needs: changes
+    if: needs.changes.outputs.rso2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RSO-2 Fits → Handoff gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_rso2_fits_handoff_gate.py') == ''
+        run: echo "RSO-2 Fits → Handoff gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_rso2_fits_handoff_gate.py') != ''
+        with:
+          tests: tests/platform/test_rso2_fits_handoff_gate.py
 
   ma2-resolution-gate:
     name: Mapping Resolution Gate
