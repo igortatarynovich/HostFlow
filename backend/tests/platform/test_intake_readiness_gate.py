@@ -14,6 +14,7 @@ from backend.app.reference.intake_readiness import (
     POLICY_ID,
     RSO_BRIEF_REL,
     WALK_API,
+    intake_auto_convert_gated_is_actionable,
     recruitment_next_action_after_intake,
 )
 from backend.app.security.api_tenant_context import require_elevated_reason_or_raise
@@ -27,6 +28,9 @@ _CI = _REPO_ROOT / ".github" / "workflows" / "backend-ci.yml"
 _MODULE = _REPO_ROOT / "backend" / "app" / "reference" / "intake_readiness.py"
 _DEP = _REPO_ROOT / "backend" / "app" / "db" / "meta_leads_tenant_dep.py"
 _ROUTE = _REPO_ROOT / "backend" / "app" / "modules" / "leads" / "intake_route.py"
+_PROCESSING = (
+    _REPO_ROOT / "backend" / "app" / "modules" / "leads" / "service" / "_processing.py"
+)
 
 
 def _meta_payload(*, citizenship: str = "PL", gdpr: str = "yes") -> dict:
@@ -82,6 +86,7 @@ def test_intake_readiness_sot_locks() -> None:
     assert "campaign-flight STOP" in text
     assert "canonical facts" in text
     assert "require_elevated_reason_or_raise" in text
+    assert "auto_convert_gated" in text
     assert "next_action` is `fits`" in text or "next_action = fits" in text
 
 
@@ -146,6 +151,31 @@ def test_sufficient_facts_next_action_is_fits() -> None:
         last_name="Nowak",
     )
     assert recruitment_next_action_after_intake(blocked) is None
+
+
+def test_auto_convert_gated_is_not_routing_stop() -> None:
+    assert intake_auto_convert_gated_is_actionable(
+        disposition="needs_routing",
+        blocking_reasons=["auto_convert_gated"],
+        vacancy_resolved=True,
+        triage_gate_bypass=True,
+    )
+    assert not intake_auto_convert_gated_is_actionable(
+        disposition="needs_routing",
+        blocking_reasons=["vacancy_not_resolved"],
+        vacancy_resolved=False,
+        triage_gate_bypass=False,
+    )
+    processing = _PROCESSING.read_text(encoding="utf-8")
+    assert "intake_auto_convert_gated_is_actionable" in processing
+    lead = SimpleNamespace(
+        status="processed",
+        vacancy_id="048408be-fcde-4890-af81-37bb44c523b5",
+        normalized={"full_name": "Jan Nowak"},
+        first_name="Jan",
+        last_name="Nowak",
+    )
+    assert recruitment_next_action_after_intake(lead) == FITS_NEXT_ACTION
 
 
 def test_intake_readiness_briefs_and_ci() -> None:

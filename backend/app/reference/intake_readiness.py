@@ -15,6 +15,7 @@ RSO_BRIEF_REL: Final[str] = "docs/specs/tasks/recruitment-spine-orchestrator-v1.
 WALK_API: Final[str] = "recruitment_next_action_after_intake"
 
 FITS_NEXT_ACTION: Final[str] = "fits"
+AUTO_CONVERT_GATED: Final[str] = "auto_convert_gated"
 BLOCKING_LEAD_STATUSES = frozenset(
     {"needs_routing", "failed", "duplicated", "duplicate_review", "rejected"}
 )
@@ -26,6 +27,27 @@ def _text(value: Any) -> str:
 
 def _record(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, Mapping) else {}
+
+
+def intake_auto_convert_gated_is_actionable(
+    *,
+    disposition: str,
+    blocking_reasons: Any,
+    vacancy_resolved: bool,
+    triage_gate_bypass: bool,
+) -> bool:
+    """Manual/assisted ``auto_convert_gated`` is not a Recruitment routing STOP.
+
+    Known vacancy + candidate-application intent is already an Application.
+    Operator Fits creates the person. Do not park as ``needs_routing``.
+    """
+    reasons = blocking_reasons if isinstance(blocking_reasons, (list, tuple, set, frozenset)) else []
+    return (
+        bool(triage_gate_bypass)
+        and bool(vacancy_resolved)
+        and _text(disposition).lower() == "needs_routing"
+        and AUTO_CONVERT_GATED in {_text(reason) for reason in reasons}
+    )
 
 
 def recruitment_facts_sufficient(lead: Any) -> bool:
@@ -60,11 +82,13 @@ def recruitment_next_action_after_intake(lead: Any) -> str | None:
 
 __all__ = (
     "ARCH_REL",
+    "AUTO_CONVERT_GATED",
     "BLOCKING_LEAD_STATUSES",
     "FITS_NEXT_ACTION",
     "POLICY_ID",
     "RSO_BRIEF_REL",
     "WALK_API",
+    "intake_auto_convert_gated_is_actionable",
     "recruitment_facts_sufficient",
     "recruitment_next_action_after_intake",
 )
