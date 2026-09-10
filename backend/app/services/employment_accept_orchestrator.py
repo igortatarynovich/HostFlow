@@ -62,6 +62,12 @@ async def resolve_ready_for_employment_package(
     if isinstance(package, Mapping) and package:
         return dict(package)
 
+    meta = _record(getattr(handoff, "meta", None))
+    meta_prep = _record(meta.get(PREP_KEY))
+    meta_pkg = meta_prep.get("package")
+    if isinstance(meta_pkg, Mapping) and is_valid_ready_for_employment_package_v1(meta_pkg):
+        return dict(meta_pkg)
+
     app_id = _text(getattr(handoff, "application_id", None))
     cand_id = _text(getattr(handoff, "candidate_id", None))
     lead: Lead | None = None

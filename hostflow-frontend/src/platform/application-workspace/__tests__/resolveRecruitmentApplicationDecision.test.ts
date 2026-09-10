@@ -46,6 +46,19 @@ describe('resolveRecruitmentApplicationDecision', () => {
     ])
   })
 
+  it('offers Fits as the primary verb when next_action is fits', () => {
+    const decision = resolveRecruitmentApplicationDecision({
+      ...handlers,
+      onFits: vi.fn(),
+      application: app({ next_action: 'fits' }),
+    })
+    expect(decision.stateId).toBe('recruitment.fits')
+    expect(decision.primaryAction?.id).toBe('fits')
+    expect(decision.secondaryActions?.map((row) => row.id)).not.toContain('create_candidate')
+    expect(decision.secondaryActions?.map((row) => row.id)).not.toContain('formalize')
+    expect(decision.secondaryActions?.map((row) => row.id)).not.toContain('transfer')
+  })
+
   it('does not offer convert when the application is already a candidate', () => {
     const decision = resolveRecruitmentApplicationDecision({
       ...handlers,

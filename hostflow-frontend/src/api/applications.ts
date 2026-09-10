@@ -201,6 +201,13 @@ export async function processRecruitmentApplication(applicationId: string): Prom
   return data
 }
 
+export async function fitsRecruitmentApplication(applicationId: string): Promise<ApplicationProcessResult> {
+  const { data } = await api.post<ApplicationProcessResult>(
+    `/recruitment/applications/${encodeURIComponent(applicationId)}/fits`,
+  )
+  return data
+}
+
 export async function createRecruitmentApplicationFollowUp(
   applicationId: string,
   payload: { title: string; due_at?: string; note?: string },

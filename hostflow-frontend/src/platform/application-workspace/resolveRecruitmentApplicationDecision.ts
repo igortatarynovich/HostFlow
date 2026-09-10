@@ -12,6 +12,7 @@ type ResolveRecruitmentDecisionArgs = {
   busy: boolean
   onStage: (stage: 'contacted' | 'qualified' | 'lost') => void | Promise<void>
   onCreateCandidate: () => void
+  onFits?: () => void
   onFollowUp: () => void
   onReject: () => void
   onPool: () => void
@@ -25,7 +26,7 @@ function verdictOf(application: Application): RequirementsVerdict | null {
 }
 
 export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDecisionArgs): ObjectDecision {
-  const { application, patching, busy, onCreateCandidate, onFollowUp, onReject, onPool, t } = args
+  const { application, patching, busy, onCreateCandidate, onFits, onFollowUp, onReject, onPool, t } = args
   const statusKey = application.status
   const terminal = statusKey === 'completed' || statusKey === 'rejected'
   const contactPhone = application.contact.phone
@@ -35,6 +36,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
   const candidateHref = candidateId ? candidateDetailPath(candidateId) : undefined
   const callHref = contactPhone ? `tel:${contactPhone.replace(/\s/g, '')}` : null
   const verdict = verdictOf(application)
+  const fitsClick = onFits ?? onCreateCandidate
 
   if (candidateHref) {
     return {
@@ -74,6 +76,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
   }
 
   // Vacancy Requirements verdict drives exactly one primary next action.
+  // ADR-042: Fits enters Candidate via onFits when the host cutover provides it.
   if (verdict?.status === 'fit' && verdict.next_action?.code === 'fits') {
     return {
       stateId: 'recruitment.requirements.fit',
@@ -86,7 +89,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
       primaryAction: {
         id: 'fits',
         label: t('app.recruitment.requirements.action.fits', { defaultValue: 'Подходит' }),
-        onClick: onCreateCandidate,
+        onClick: fitsClick,
         disabled,
       },
       secondaryActions: [
@@ -158,6 +161,47 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
       ],
       requiredContext: ['vacancy'],
       variant: 'blocker',
+    }
+  }
+
+  // ADR-042 fallback when next_action is fits without a requirements verdict payload.
+  const fitsReady = application.next_action === 'fits' && Boolean(onFits)
+  if (fitsReady) {
+    return {
+      stateId: 'recruitment.fits',
+      currentState: t('app.recruitment_inquiry.fits_title', { defaultValue: t('app.recruitment_inquiry.process_title') }),
+      why: t('app.recruitment_inquiry.fits_body', {
+        defaultValue: 'If the person fits, they become a candidate. Employment starts later in HR.',
+      }),
+      primaryAction: {
+        id: 'fits',
+        label: t('app.recruitment_inquiry.fits', { defaultValue: 'Fits' }),
+        onClick: onFits,
+        disabled,
+      },
+      secondaryActions: [
+        ...(callHref
+          ? [
+              {
+                id: 'call' as const,
+                label: t('app.recruitment_inquiry.call'),
+                href: callHref,
+                disabled,
+              },
+            ]
+          : []),
+        { id: 'follow_up', label: t('app.recruitment_inquiry.follow_up'), onClick: onFollowUp, disabled },
+        { id: 'pool', label: t('app.recruitment_inquiry.pool'), onClick: onPool, disabled },
+        {
+          id: 'reject',
+          label: t('app.recruitment_inquiry.reject'),
+          onClick: onReject,
+          variant: 'danger',
+          disabled,
+        },
+      ],
+      requiredContext: ['vacancy', 'assignee'],
+      variant: 'default',
     }
   }
 

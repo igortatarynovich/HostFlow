@@ -218,7 +218,7 @@ FAIL if Recruitment UI creates Employee, asks for zezwolenie type, or hosts Empl
 ## Next
 
 1. **RSO-1 PASS** — package contract + three acceptance gates frozen.  
-2. **RSO-2** runtime: re-host per [`ADR-042`](../architecture/ADR-042-operator-host-boundary.md) — Application Fits enters Candidate; emit `ready_for_employment.v1` + **Передать** only after Recruitment on that Candidate is complete. Do not pursue [#359](https://github.com/igortatarynovich/HostFlow/pull/359) one-card PASS.  
+2. **RSO-2** runtime: **Operator Host Cutover** on `feat/operator-host-cutover` — Application Fits enters Candidate; existing Candidate recruitment determines Ready; Transfer on Candidate emits `ready_for_employment.v1`. Do not pursue [#359](https://github.com/igortatarynovich/HostFlow/pull/359) one-card PASS.  
 3. **Intake Readiness Gate** — [`intake-readiness-gate.md`](../gates/intake-readiness-gate.md) (`intake_readiness.v1`): Meta-like `POST /leads/meta` must become an actionable Application (`next_action = fits`) without hand-written canonical facts. Not Transfer / Formalize / Started.  
 4. **Vacancy Recruitment Requirements SoT** — [vacancy-recruitment-requirements-sot.md](vacancy-recruitment-requirements-sot.md). System result fit / missing / not_fit chooses one next action; **Подходит** stays the human boundary into Candidates. Runtime not started. Unlock ≠ sequential-queue Active Product.  
 5. **Canonical Facts Completeness** — [canonical-facts-completeness.md](canonical-facts-completeness.md). Occupancy cutover before Vacancy Requirements evaluator.  

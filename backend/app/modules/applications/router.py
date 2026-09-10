@@ -369,6 +369,25 @@ async def recruitment_application_process(
     )
 
 
+@recruitment_router.post("/{application_id}/fits", response_model=ApplicationProcessResult)
+async def recruitment_application_fits(
+    application_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+) -> ApplicationProcessResult:
+    """Operator Fits: enter Candidates. Does not Transfer or host Employment."""
+    db, tenant_id = db_tenant
+    return await mutations.recruitment_fits_application(
+        db,
+        tenant_id=str(tenant_id),
+        own_company_id=own_company_id,
+        application_id=application_id,
+        current_user=current_user,
+    )
+
+
 @recruitment_router.post("/{application_id}/follow-up", response_model=ApplicationOut)
 async def recruitment_application_follow_up(
     application_id: str,
