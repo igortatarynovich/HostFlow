@@ -118,4 +118,4 @@ This ADR + RSO/ESO brief errata. Named consumer of the **runtime** cutover is a 
 - Update [`recruitment-spine-orchestrator-v1.md`](../tasks/recruitment-spine-orchestrator-v1.md) — Fits = Application → Candidate; Transfer after Ready for employment.  
 - Update [`employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) — Employment host = HR after Transfer.  
 - Link from [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) and [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md).  
-- Full Spine Gate one-card PASS: **STOP** (wrong contract). Machine ESO walk may remain; operator PASS of Application-hosted Employment is forbidden.
+- Full Spine Gate: **STOP / superseded** — [`../gates/full-spine-gate.md`](../gates/full-spine-gate.md). Do not retune that gate. Machine ESO walk may remain; operator PASS of Application-hosted Employment is forbidden.
