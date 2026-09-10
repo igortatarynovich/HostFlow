@@ -254,6 +254,15 @@ function stripCandidateOverrideFields(payload: Record<string, any>): Record<stri
   return out
 }
 
+/** Stage is persisted only via onStageChangePersist — autosave must not re-PATCH it. */
+function stripAutosaveStageFields(payload: Record<string, any>): Record<string, any> {
+  const out = { ...payload }
+  delete out.stage
+  delete out.status
+  delete out.status_reason
+  return out
+}
+
 function getCandidateOverrideFields(payload: Record<string, any>): string[] {
   return Object.keys(payload || {}).filter((key) => CANDIDATE_OVERRIDE_KEYS.has(key))
 }
@@ -1863,10 +1872,10 @@ export default function CandidateCard(){
   const computeAutosaveFingerprint = (m: Candidate | null, phase: CandidateEditPhase, reason: string) => {
     if (!m) return ''
     const { payload } = buildCandidatePayload(m, meta?.reason_choices ?? {})
-    const stripped = stripCandidateOverrideFields(payload)
+    const stripped = stripAutosaveStageFields(stripCandidateOverrideFields(payload))
     const ov = getCandidateOverrideFields(payload)
     if (phase === 'editing' && ov.length > 0 && reason.trim()) {
-      return JSON.stringify({ payload, override_reason: reason.trim() })
+      return JSON.stringify({ payload: stripAutosaveStageFields(payload), override_reason: reason.trim() })
     }
     return JSON.stringify(stripped)
   }
@@ -1903,7 +1912,7 @@ export default function CandidateCard(){
         const nextFp = computeAutosaveFingerprint(m, phase, trimmed)
         if (lastSavedPayloadRef.current === nextFp) return
         try {
-          await api.patch(`/candidates/${m.id}`, { ...p, override_reason: trimmed })
+          await api.patch(`/candidates/${m.id}`, { ...stripAutosaveStageFields(p), override_reason: trimmed })
           lastSavedPayloadRef.current = nextFp
           setRodoSentTrigger((x) => x + 1)
           setSavedOk(true)
@@ -1923,7 +1932,7 @@ export default function CandidateCard(){
         return
       }
 
-      const pAuto = stripCandidateOverrideFields(p)
+      const pAuto = stripAutosaveStageFields(stripCandidateOverrideFields(p))
       if (Object.keys(pAuto).length === 0) {
         return
       }

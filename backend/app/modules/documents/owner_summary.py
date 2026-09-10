@@ -61,6 +61,43 @@ def _normalize_type_code(value: Any) -> str:
     return compact
 
 
+def _legacy_and_canonical_keys(module_or_canonical: str) -> Set[str]:
+    """Keys a stored module type should satisfy in the owner-summary index.
+
+    R5 required-set uses platform canonical codes (``driver_qualification_card``).
+    Hub rows still persist module catalog codes (``code95``). Pack projection
+    already expands aliases; the stage-forward gate used this summary without
+    that expansion and 409'd even when Code 95 was received.
+    """
+    from backend.app.services.document_type_canonical_bridge import (
+        legacy_codes_for_ref_canonical,
+        normalize_legacy_doc_type,
+    )
+
+    code = _normalize_type_code(module_or_canonical)
+    if not code:
+        return set()
+    keys = {code}
+    ref = normalize_legacy_doc_type(code)
+    if ref and ref != "other":
+        keys.add(ref)
+        keys.update(legacy_codes_for_ref_canonical(ref))
+    return {item for item in keys if item}
+
+
+def _index_keys_for_document(doc: Dict[str, Any]) -> List[str]:
+    module_type = _normalize_type_code(doc.get("type") or doc.get("doc_type"))
+    if not module_type:
+        return []
+    parts = list(EQUIVALENT_SATISFACTION.get(str(module_type)) or [str(module_type)])
+    if _is_adr_like_additional_document(doc):
+        parts = list(dict.fromkeys([*parts, "adr"]))
+    keys: Set[str] = set()
+    for part in parts:
+        keys.update(_legacy_and_canonical_keys(part))
+    return list(keys)
+
+
 def _is_adr_like_additional_document(doc: Dict[str, Any]) -> bool:
     doc_type = _normalize_type_code(doc.get("type") or doc.get("doc_type"))
     if doc_type != "additional_document":
@@ -138,20 +175,14 @@ def compute_owner_summary(
     required = [_normalize_type_code(item) for item in r5_required]
     required = [item for item in required if item]
 
-    # индекс статусов по типам
+    # индекс статусов по типам (module code + canonical ref + aliases)
     by_type: Dict[str, Dict[str, Any]] = {}
     for d in docs:
-        t = _normalize_type_code(d.get("type") or d.get("doc_type"))
-        if not t:
+        targets = _index_keys_for_document(d)
+        if not targets:
             continue
-        targets = EQUIVALENT_SATISFACTION.get(str(t)) or [str(t)]
-        if _is_adr_like_additional_document(d):
-            targets = list(dict.fromkeys([*targets, "adr"]))
         status_map = {status.value: 0 for status in DocumentStatus}
-        for target in targets:
-            normalized_target = _normalize_type_code(target)
-            if not normalized_target:
-                continue
+        for normalized_target in targets:
             cur = by_type.setdefault(
                 normalized_target,
                 status_map.copy(),

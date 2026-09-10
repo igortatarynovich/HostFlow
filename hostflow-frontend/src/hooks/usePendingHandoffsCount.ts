@@ -6,19 +6,19 @@ import { nextPollDelayMs } from '../utils/pollBackoff'
 import { usePermissions } from './usePermissions'
 
 /**
- * Returns the count of pending handoffs for the current user's tenant (client mode).
- * Used to show badge on "Procesowani" and in notifications.
+ * Pending inbound handoffs for a *client* workspace (bell badge).
+ * Agency recruiters must not poll this — it is a client-inbox query and 502s spam the console.
  * Call once from AppShell and pass the count down — do not mount this hook twice.
  */
 export function usePendingHandoffsCount(): number {
   const { me } = useAuth()
-  const { can } = usePermissions()
+  const { can, isClientTenant } = usePermissions()
   const [count, setCount] = useState(0)
-  const canViewCompanies = can('companies.view')
+  const canViewInbox = can('companies.view') && isClientTenant
   const inFlightRef = useRef(false)
 
   useEffect(() => {
-    if (!canViewCompanies || !me?.tenant_id) {
+    if (!canViewInbox || !me?.tenant_id) {
       setCount(0)
       return
     }
@@ -59,7 +59,7 @@ export function usePendingHandoffsCount(): number {
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [canViewCompanies, me?.tenant_id])
+  }, [canViewInbox, me?.tenant_id])
 
   return count
 }

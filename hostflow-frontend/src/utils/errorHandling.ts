@@ -132,9 +132,15 @@ export function isTimeoutError(error: unknown): boolean {
   return code === 'ECONNABORTED' || code === 'ETIMEDOUT' || msg.includes('timeout')
 }
 
-/** Timeout or no HTTP response — safe to retry with backoff; do not treat as empty data. */
+/** Gateway / upstream blip — Caddy 502 when the API worker is restarting or overloaded. */
+export function isTransientHttpStatus(status: unknown): boolean {
+  return status === 502 || status === 503 || status === 504
+}
+
+/** Timeout, no HTTP response, or gateway 502/503/504 — safe to retry with backoff. */
 export function isTransientRequestError(error: unknown): boolean {
-  return isTimeoutError(error) || isNetworkError(error)
+  const status = (error as { response?: { status?: number } } | null)?.response?.status
+  return isTimeoutError(error) || isNetworkError(error) || isTransientHttpStatus(status)
 }
 
 export function isHttpUnauthorized(error: unknown): boolean {
