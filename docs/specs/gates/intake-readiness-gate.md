@@ -42,7 +42,7 @@ One Meta-shaped webhook body, real vacancy/client configuration, handoff already
 2. **Known ad_id / form_id / page_id / vacancy mapping must route Recruitment without a campaign-flight STOP.** Flight remains acquisition attribution, not a domain requirement to exist as a person in Recruitment.  
 3. **Form answers that recruitment/employment need (citizenship, experience, categories) become canonical facts through mapping/normalizer.** They must not remain only in `field_answers`.  
 4. **Staff mapping configuration must not 500** on `require_elevated_reason_or_raise`.  
-5. **When recruitment facts are sufficient, Application `next_action` is `fits`.** Not Create candidate, not an empty next action, not `needs_routing` for campaign-flight.
+5. **When recruitment facts are sufficient, Application `next_action` is `fits`.** Not Create candidate, not an empty next action, not `needs_routing` for campaign-flight, not `needs_routing` for tenant `auto_convert_gated` when vacancy is already resolved.
 
 ---
 
