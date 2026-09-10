@@ -115,6 +115,7 @@ jobs:
       eso3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso3 == 'true' }}
       eso4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso4 == 'true' }}
       eso5: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso5 == 'true' }}
+      intake_readiness: ${{ github.event_name != 'pull_request' || steps.filter.outputs.intake_readiness == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -407,6 +408,20 @@ jobs:
               - 'docs/specs/architecture/employment-started.md'
               - 'docs/specs/architecture/employment-formalize.md'
               - 'docs/specs/tasks/employment-spine-orchestrator-v1.md'
+            intake_readiness:
+              - 'backend/app/reference/intake_readiness.py'
+              - 'backend/tests/platform/test_intake_readiness_gate.py'
+              - 'docs/specs/gates/intake-readiness-gate.md'
+              - 'backend/app/modules/leads/intake_route.py'
+              - 'backend/app/modules/leads/normalizer.py'
+              - 'backend/app/modules/leads/conversion_mapping.py'
+              - 'backend/app/modules/leads/service/_processing.py'
+              - 'backend/app/db/meta_leads_tenant_dep.py'
+              - 'backend/app/services/lead_rodo.py'
+              - 'backend/app/services/lead_rodo_obligation.py'
+              - 'backend/app/modules/applications/mappers.py'
+              - 'backend/app/field_registry/intake_mapping.py'
+              - 'docs/specs/tasks/recruitment-spine-orchestrator-v1.md'
             ma2:
               - 'backend/app/entity_profile/mapping_resolve.py'
               - 'backend/app/entity_profile/ingest_runtime.py'
@@ -1048,6 +1063,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_employment_started_gate.py') != ''
         with:
           tests: tests/platform/test_employment_started_gate.py
+
+  intake-readiness-gate:
+    name: Intake Readiness Gate
+    needs: changes
+    if: needs.changes.outputs.intake_readiness == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Intake Readiness gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_intake_readiness_gate.py') == ''
+        run: echo "Intake Readiness gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_intake_readiness_gate.py') != ''
+        with:
+          tests: tests/platform/test_intake_readiness_gate.py
 
   ma2-resolution-gate:
     name: Mapping Resolution Gate

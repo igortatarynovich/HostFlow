@@ -20,6 +20,7 @@ LEAD_INTAKE_QUALIFIED_TO_NORMALIZED: dict[str, str] = {
     "recruitment.candidate.personal.in_poland": "in_poland",
     "recruitment.candidate.experience.years_ce": "experience_eu_years",
     "recruitment.candidate.experience.intl_experience": "intl_experience",
+    "recruitment.candidate.personal.driving_license_category": "driving_license_category",
     # Lead-normalized hints (not yet candidate columns — intake layer only).
     "recruitment.lead.vacancy_id_hint": "vacancy_hint",
     "recruitment.lead.vacancy_id": "vacancy_id",
