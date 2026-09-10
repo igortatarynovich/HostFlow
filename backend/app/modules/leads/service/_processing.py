@@ -397,9 +397,11 @@ async def process_normalized_lead(
         vacancy = None
         vacancy_for_confirm = None
 
+    source_vacancy_known = vacancy_for_confirm is not None
     triage_gate_bypass = bool(
         force_candidate_conversion
         or intake_vacancy_confirm_triage_bypass(normalized, vacancy_for_confirm)
+        or (source_vacancy_known and creates_candidate)
     )
 
     tenant_autoconv = bool(getattr(settings_row, "leads_auto_convert_on_fit_v1", True))

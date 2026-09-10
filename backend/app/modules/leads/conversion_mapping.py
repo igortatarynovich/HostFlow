@@ -53,6 +53,10 @@ CANDIDATE_WRITE_BY_QUALIFIED: dict[str, dict[str, str]] = {
     },
     "recruitment.candidate.experience.years_ce": {"extra": "experience_eu_years"},
     "recruitment.candidate.experience.intl_experience": {"extra": "intl_experience"},
+    "recruitment.candidate.personal.driving_license_category": {
+        "extra": "driving_license_category",
+        "personal": "license_categories",
+    },
 }
 
 _LEAD_ONLY_TARGETS = frozenset(
@@ -219,6 +223,27 @@ def _value_from_field_answers(normalized: Mapping[str, Any], source: str) -> Any
     return None
 
 
+def _value_from_field_answers_tokens(
+    normalized: Mapping[str, Any],
+    *,
+    include: tuple[str, ...],
+    any_of: tuple[str, ...] = (),
+) -> Any:
+    raw = normalized.get("field_answers")
+    if not isinstance(raw, list):
+        return None
+    for item in raw:
+        if not isinstance(item, Mapping):
+            continue
+        name = str(item.get("name") or "").strip().lower()
+        if not name or not all(token in name for token in include):
+            continue
+        if any_of and not any(token in name for token in any_of):
+            continue
+        return _coerce_scalar(item.get("values"))
+    return None
+
+
 def _apply_write(
     dest: Mapping[str, str],
     value: Any,
@@ -279,6 +304,32 @@ def apply_executable_intake_mapping(normalized: Mapping[str, Any] | None) -> Con
         if qualified.startswith("recruitment.lead."):
             continue
         value = _value_from_normalized(n, target)
+        if qualified == "platform.identity.citizenship" and not value:
+            value = (
+                _value_from_normalized(n, "citizenship")
+                or _value_from_field_answers(n, "citizenship")
+                or _value_from_field_answers(n, "nationality")
+                or _value_from_field_answers(n, "гражданство")
+            )
+            if value:
+                from backend.app.services.integration_inbound_normalization import (
+                    normalize_inbound_country_alpha2,
+                )
+
+                value = normalize_inbound_country_alpha2(value) or value
+        if qualified == "recruitment.candidate.experience.years_ce" and not value:
+            value = _value_from_normalized(n, "driving_experience_in_europe") or _value_from_field_answers_tokens(
+                n,
+                include=("опыт",),
+                any_of=("водител", "европ", "c+e", "c/ce", "c/се", "международн"),
+            )
+        if qualified == "recruitment.candidate.personal.driving_license_category" and not value:
+            value = (
+                _value_from_field_answers(n, "kategoria")
+                or _value_from_field_answers(n, "jaka_masz_kategorie")
+                or _value_from_field_answers_tokens(n, include=("категор",))
+                or _value_from_field_answers_tokens(n, include=("kategor",))
+            )
         if _write_qualified(qualified, value, out):
             out.mapped_sources.append(target)
 

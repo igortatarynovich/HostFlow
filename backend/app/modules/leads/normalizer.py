@@ -47,6 +47,18 @@ COUNTRY_ALIASES = (
     "страна",
 )
 
+CITIZENSHIP_ALIASES = (
+    "citizenship",
+    "nationality",
+    "nationality_code",
+    "obywatelstwo",
+    "country_of_citizenship",
+    "citizenship_country",
+    "гражданство",
+    "какое у вас гражданство",
+    "какое_у_вас_гражданство",
+)
+
 # §2.5: location / current jurisdiction vs citizenship (`country` above).
 GEO_COUNTRY_ALIASES = (
     "geo_country",
@@ -150,6 +162,22 @@ DRIVING_EXPERIENCE_ALIASES = (
     "опыт_работы_с/ce_в_европе",
     "опыт работы с/се в европе",
     "опыт_работы_c/ce_в_европе",
+    "какой у вас опыт работы водителем c+e в международных перевозках по ес?",
+    "какой у вас опыт работы водителем c+e в международных перевозках по ес",
+)
+
+LICENSE_CATEGORY_ALIASES = (
+    "kategoria",
+    "kategorie",
+    "license_category",
+    "driving_license_category",
+    "driver_license_category",
+    "jaka_masz_kategorie",
+    "jaką masz kategorię",
+    "категория",
+    "категория_прав",
+    "категория водительских прав",
+    "какая у вас категория прав",
 )
 
 # Meta Lead Ads custom questions that map into structured sales blocks.
@@ -195,12 +223,14 @@ def _structured_field_alias_keys() -> Set[str]:
         *FIRST_NAME_ALIASES,
         *LAST_NAME_ALIASES,
         *COUNTRY_ALIASES,
+        *CITIZENSHIP_ALIASES,
         *GEO_COUNTRY_ALIASES,
         *CONTACT_ALIASES,
         *COMPANY_ALIASES,
         *IN_POLAND_ALIASES,
         *POLAND_STAY_BASIS_ALIASES,
         *DRIVING_EXPERIENCE_ALIASES,
+        *LICENSE_CATEGORY_ALIASES,
         *_SALES_CUSTOM_QUESTION_ALIASES,
         "email",
         "work_email",
@@ -430,6 +460,26 @@ def _iter_values(mapping: Dict[str, List[str]], *keys: str) -> Iterator[str]:
 
 def _first(mapping: Dict[str, List[str]], *keys: str) -> Optional[str]:
     return next(_iter_values(mapping, *keys), None)
+
+
+def _first_key_tokens(
+    mapping: Dict[str, List[str]],
+    *,
+    include: tuple[str, ...],
+    any_of: tuple[str, ...] = (),
+) -> Optional[str]:
+    """Match a Meta question whose label is longer than the alias list."""
+    for key, values in mapping.items():
+        key_l = str(key).lower()
+        if include and not all(token in key_l for token in include):
+            continue
+        if any_of and not any(token in key_l for token in any_of):
+            continue
+        for value in values or []:
+            text = str(value or "").strip()
+            if text:
+                return text
+    return None
 
 
 def _first_valid(mapping: Dict[str, List[str]], transform, *keys: str) -> Optional[str]:
@@ -947,6 +997,12 @@ def normalize_meta_payload(
         normalized["country"] = normalize_inbound_country_alpha2(country_hint)
         if not normalized.get("in_poland") and _is_poland_value(country_hint):
             normalized["in_poland"] = True
+    citizenship_hint = _first(mapping, *CITIZENSHIP_ALIASES)
+    if citizenship_hint:
+        iso = normalize_inbound_country_alpha2(citizenship_hint) or str(citizenship_hint).strip().upper()
+        if iso:
+            normalized["citizenship"] = iso
+            normalized.setdefault("nationality", iso)
     geo_hint = _first(mapping, *GEO_COUNTRY_ALIASES)
     if geo_hint:
         normalized["geo_country_raw"] = geo_hint
@@ -975,13 +1031,30 @@ def normalize_meta_payload(
     if normalized.get("poland_stay_basis") and normalized.get("in_poland") is None:
         normalized["in_poland"] = True
     # Handle driving experience in Europe
-    driving_experience = _first(mapping, *DRIVING_EXPERIENCE_ALIASES)
+    driving_experience = _first(mapping, *DRIVING_EXPERIENCE_ALIASES) or _first_key_tokens(
+        mapping,
+        include=("опыт",),
+        any_of=("водител", "европ", "c+e", "c/ce", "c/се", "международн"),
+    ) or _first_key_tokens(
+        mapping,
+        include=("experience",),
+        any_of=("driver", "europe", "ce"),
+    )
     if driving_experience:
         normalized["driving_experience_in_europe"] = driving_experience.strip()
         # Also normalize to number of years for experience_eu_years (опыт по ЕС)
         experience_years = _normalize_driving_experience(driving_experience)
         if experience_years is not None:
             normalized["experience_eu_years"] = experience_years
+    license_category = _first(mapping, *LICENSE_CATEGORY_ALIASES) or _first_key_tokens(
+        mapping,
+        include=("категор",),
+    ) or _first_key_tokens(
+        mapping,
+        include=("kategor",),
+    )
+    if license_category:
+        normalized["driving_license_category"] = license_category.strip()
     if graph_error:
         normalized["graph_error"] = graph_error
 
@@ -998,6 +1071,10 @@ def normalize_meta_payload(
         normalized["form_question_labels_v1"] = labels
     if field_answers:
         normalized["field_answers"] = field_answers
+        from backend.app.services.lead_rodo_obligation import notice_provided_at_source
+
+        if notice_provided_at_source(normalized):
+            normalized["rodo_notice_at_source"] = True
 
     # Attempt to parse canonical vacancy UUID from hint
     for key in (vacancy_field, vacancy_hint):

@@ -205,7 +205,8 @@ FAIL if Recruitment UI creates Employee or asks for zezwolenie type.
 
 1. **RSO-1 PASS** — package contract + three acceptance gates frozen.  
 2. **RSO-2 in progress** — Fits auto-runs recruitment prep (`POST …/fits`); Transfer is explicit (`POST …/transfer-to-employment`); machine gate `test_rso2_fits_handoff_gate.py`.  
-3. ESO-1 accept policy on [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — must enforce gate 2 (no re-ask).
+3. **Intake Readiness Gate** — [`intake-readiness-gate.md`](../gates/intake-readiness-gate.md) (`intake_readiness.v1`): Meta-like `POST /leads/meta` must become an actionable Application (`next_action = fits`) without hand-written canonical facts. Not Transfer / Formalize / Started.  
+4. ESO-1 accept policy on [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — must enforce gate 2 (no re-ask).
 
 ### RSO-2 runtime invariants (machine)
 
