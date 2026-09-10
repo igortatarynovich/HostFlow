@@ -11,6 +11,8 @@ import ast
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from backend.app.modules.recruitment.services.operator_host_cutover import record_fits_decision_on_lead
 from backend.app.modules.recruitment.services.ready_for_employment_package import (
     FITS_DECISION_KEY,
@@ -144,3 +146,48 @@ def test_create_handoff_stage_gate_precedes_rfe_assemble() -> None:
     assert stage_at < assemble_at
     assert "candidate.stage = \"ready_for_handoff\"" not in src
     assert "candidate.stage = 'ready_for_handoff'" not in src
+
+
+@pytest.mark.anyio
+async def test_fits_candidate_at_new_cannot_transfer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A Fits-entered candidate at existing default stage cannot Transfer.
+
+    This is the #359 regression: Transfer must not succeed (or bump Ready)
+    just because the person is already a Candidate.
+    """
+    from backend.app.services import company_module_enforcement
+    from backend.app.services.handoff import create_handoff
+
+    candidate = SimpleNamespace(id="cand-1", tenant_id="t1", stage="new")
+    assemble_calls: list[object] = []
+
+    class _Db:
+        async def get(self, _model, _id):
+            return candidate
+
+    async def _ok(*_args, **_kwargs):
+        return None
+
+    async def _assemble(*_args, **_kwargs):
+        assemble_calls.append(1)
+        raise AssertionError("RFE must not assemble before existing recruitment readiness")
+
+    monkeypatch.setattr(company_module_enforcement, "assert_recruitment_for_candidate", _ok)
+    monkeypatch.setattr(company_module_enforcement, "assert_hr_for_candidate", _ok)
+    monkeypatch.setattr(
+        "backend.app.modules.recruitment.services.operator_host_cutover.assemble_ready_for_employment_for_candidate",
+        _assemble,
+    )
+
+    handoff, err = await create_handoff(
+        _Db(),  # type: ignore[arg-type]
+        candidate_id="cand-1",
+        agency_tenant_id="t1",
+        client_company_id="co-1",
+        requested_by_user_id="u1",
+        destination="internal_hr",
+    )
+    assert handoff is None
+    assert err == "Only candidates at ready_for_handoff or ready_for_hr can be transferred to internal HR"
+    assert candidate.stage == "new"
+    assert assemble_calls == []

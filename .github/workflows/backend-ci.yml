@@ -119,6 +119,7 @@ jobs:
       canonical_facts_occupancy: ${{ github.event_name != 'pull_request' || steps.filter.outputs.canonical_facts_occupancy == 'true' }}
       vacancy_requirements_eval: ${{ github.event_name != 'pull_request' || steps.filter.outputs.vacancy_requirements_eval == 'true' }}
       vacancy_overlay_write_ui: ${{ github.event_name != 'pull_request' || steps.filter.outputs.vacancy_overlay_write_ui == 'true' }}
+      operator_host_cutover: ${{ github.event_name != 'pull_request' || steps.filter.outputs.operator_host_cutover == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -411,6 +412,14 @@ jobs:
               - 'docs/specs/architecture/employment-started.md'
               - 'docs/specs/architecture/employment-formalize.md'
               - 'docs/specs/tasks/employment-spine-orchestrator-v1.md'
+            operator_host_cutover:
+              - 'backend/app/modules/recruitment/services/operator_host_cutover.py'
+              - 'backend/app/modules/recruitment/services/ready_for_employment_package.py'
+              - 'backend/app/services/handoff.py'
+              - 'backend/app/modules/applications/mutations.py'
+              - 'backend/app/modules/applications/router.py'
+              - 'backend/tests/platform/test_operator_host_cutover.py'
+              - 'docs/specs/tasks/recruitment-spine-orchestrator-v1.md'
             intake_readiness:
               - 'backend/app/reference/intake_readiness.py'
               - 'backend/tests/platform/test_intake_readiness_gate.py'
@@ -1107,6 +1116,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_employment_started_gate.py') != ''
         with:
           tests: tests/platform/test_employment_started_gate.py
+
+  operator-host-cutover:
+    name: Operator Host Cutover
+    needs: changes
+    if: needs.changes.outputs.operator_host_cutover == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Operator Host Cutover tests are not in this tree
+        if: hashFiles('backend/tests/platform/test_operator_host_cutover.py') == ''
+        run: echo "Operator Host Cutover tests not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_operator_host_cutover.py') != ''
+        with:
+          tests: tests/platform/test_operator_host_cutover.py
 
   intake-readiness-gate:
     name: Intake Readiness Gate
