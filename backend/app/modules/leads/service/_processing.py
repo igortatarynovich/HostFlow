@@ -78,6 +78,7 @@ from backend.app.modules.intake_routing.meta_bridge import (
 )
 from backend.app.modules.leads.intake_route import resolve_intake_route_for_ingest
 from backend.app.modules.outcome_rules.reference import OutcomeEvent, OutcomeRuleType
+from backend.app.reference.intake_readiness import intake_auto_convert_gated_is_actionable
 from backend.app.services.outcome_resolver import resolve_outcomes
 
 _ingest_guard_log = logging.getLogger(__name__)
@@ -1125,6 +1126,57 @@ async def process_normalized_lead(
         )
 
     if ingest_decision.disposition != IngestDisposition.create_candidate.value:
+        if intake_auto_convert_gated_is_actionable(
+            disposition=ingest_decision.disposition,
+            blocking_reasons=ingest_decision.blocking_reasons,
+            vacancy_resolved=vacancy is not None,
+            triage_gate_bypass=triage_gate_bypass,
+        ):
+            actionable_lead_id = str(lead.id)
+            await crud.update_lead(
+                db,
+                lead,
+                status="processed",
+                candidate_id=None,
+                vacancy_id=lead.vacancy_id,
+                normalized=normalized,
+                error=None,
+            )
+            await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+                db,
+                tenant_id=tenant_id,
+                lead_id=actionable_lead_id,
+                normalized=normalized,
+            )
+            await db.flush()
+            await _emit_lead_event(
+                db,
+                tenant_id=tenant_id,
+                lead=lead,
+                event_type="lead.processed",
+                roles=[Role.administrator, Role.employee],
+                business_type=business_type,
+                outcome_entity_type="company",
+                outcome_entity_id=resolved_company_id,
+                outcome_entity_name=resolved_company_name,
+            )
+            await _audit_lead_qualification_rule_match(
+                db, tenant_id=tenant_id, lead_id=actionable_lead_id, normalized=normalized
+            )
+            await db.commit()
+            return MetaLeadResult(
+                lead_id=lead.id,
+                status="processed",
+                vacancy_id=lead.vacancy_id,
+                candidate_id=None,
+                recruiter_id=None,
+                business_type=business_type,
+                outcome_entity_type="company",
+                outcome_entity_id=resolved_company_id,
+                outcome_entity_name=resolved_company_name,
+                error=None,
+                is_new=created_new,
+            )
         disposition_routing_error = (
             unresolved_vacancy_routing_error_code(normalized)
             if not vacancy and not pool_manual_convert_ready
