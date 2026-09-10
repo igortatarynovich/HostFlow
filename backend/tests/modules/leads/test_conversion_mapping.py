@@ -53,10 +53,6 @@ def test_unmapped_answers_are_not_copied_to_candidate() -> None:
                     "name": "inbox_url",
                     "values": ["https://business.facebook.com/latest/thread"],
                 },
-                {
-                    "name": "какой у вас опыт работы водителем c+e в международных перевозках по ес?",
-                    "values": ["1–2_года"],
-                },
             ]
         }
     )
@@ -64,6 +60,24 @@ def test_unmapped_answers_are_not_copied_to_candidate() -> None:
     assert "custom_hobby" not in mapped.extra
     assert "inbox_url" not in mapped.extra
     assert "inbox_url" not in mapped.columns
+
+
+def test_meta_experience_question_maps_without_operator_rule() -> None:
+    mapped = apply_executable_intake_mapping(
+        {
+            "field_answers": [
+                {
+                    "name": "какой у вас опыт работы водителем c+e в международных перевозках по ес?",
+                    "values": ["1–2_года"],
+                },
+                {"name": "jaka_masz_kategorie", "values": ["C+E"]},
+                {"name": "citizenship", "values": ["PL"]},
+            ]
+        }
+    )
+    assert mapped.extra.get("experience_eu_years") in {"1–2_года", 1}
+    assert mapped.extra.get("driving_license_category") == "C+E"
+    assert str(mapped.personal.get("citizenship") or mapped.extra.get("citizenship") or "").upper() == "PL"
 
 
 def test_technical_inbox_url_is_not_written_even_with_rule() -> None:

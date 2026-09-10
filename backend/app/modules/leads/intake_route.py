@@ -228,6 +228,7 @@ async def resolve_intake_route_for_ingest(
 
     from backend.app.acquisition.submission_routing import (
         RoutingDecisionStatus,
+        UnresolvedReason,
         resolve_universal_submission_routing,
     )
 
@@ -244,6 +245,24 @@ async def resolve_intake_route_for_ingest(
         ),
     )
     unresolved = uni.status != RoutingDecisionStatus.routed.value
+    missing_flight = (
+        unresolved
+        and str(uni.unresolved_reason or "") == UnresolvedReason.missing_campaign_flight.value
+    )
+    if missing_flight:
+        # Acquisition attribution only. Known vacancy/ad mapping must still
+        # produce a Recruitment Application (Intake Readiness Gate).
+        return _context_from_routing_result(
+            routing=routing,
+            source=src,
+            form_id=form_id,
+            page_id=page_id,
+            acquisition_routing=uni.to_dict(),
+            acquisition_unresolved=False,
+            extra_warnings=tuple(uni.warnings)
+            + ("missing_campaign_flight:ops_only",),
+            force_failed=False,
+        )
     effective_intent = (
         RouteIntent.unknown.value if unresolved else uni.route_intent
     )

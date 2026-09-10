@@ -6,6 +6,7 @@ from backend.app.models import Lead
 from backend.app.modules.leads.conversion_mapping import is_operator_questionnaire_field
 from backend.app.modules.leads.intake_lifecycle import project_recruitment_intake_lifecycle
 from backend.app.modules.leads.normalizer import resolve_b2b_inquiry_company_name
+from backend.app.reference.intake_readiness import recruitment_next_action_after_intake
 
 from .schemas import ApplicationContactOut, ApplicationOut, ApplicationStatus, ApplicationTabBucket
 
@@ -377,7 +378,8 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
         status=status,
         tab_bucket=_tab_bucket(status),
         assignee_id=assignee,
-        next_action=_text(getattr(lead, "next_action_type", None)) or None,
+        next_action=_text(getattr(lead, "next_action_type", None))
+        or recruitment_next_action_after_intake(lead),
         last_activity_at=getattr(lead, "updated_at", None),
         created_at=getattr(lead, "created_at", None),
         priority=_text(getattr(lead, "priority", None)) or None,
