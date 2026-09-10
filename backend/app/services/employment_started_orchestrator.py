@@ -204,6 +204,8 @@ async def confirm_employment_started_for_handoff(
                 "next_action": "started",
                 "started": True,
                 "ready_to_create_employee": True,
+                "start_date": result.get("start_date"),
+                "employment_context": result.get("employment_context"),
             },
         )
     elif result.get("ready_to_create_employee"):

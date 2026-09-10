@@ -255,6 +255,8 @@ export type EmploymentStartedOut = {
   decision: string
   started: boolean
   ready_to_create_employee?: boolean
+  start_date?: string | null
+  employment_context?: Record<string, unknown> | null
   employee_created?: boolean
   employee_id?: string | null
   primary_item?: { code?: string; message?: string } | null

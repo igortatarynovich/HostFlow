@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
 import { useI18n } from '../../../i18n'
+import { applicationEmploymentSpinePhase } from '../../application-workspace/resolveRecruitmentApplicationDecision'
 import type { WorkspaceCapabilityRenderContext } from '../../workspace-capability/renderContext'
 
 function candidateDetailPath(candidateId: string): string {
@@ -15,7 +16,9 @@ export function IdentityCapability({ application }: WorkspaceCapabilityRenderCon
   const outcomeType = String(application.outcome_entity_type || '').trim()
   const outcomeId = String(application.outcome_entity_id || '').trim()
   const candidateId = outcomeType === 'candidate' || (!outcomeType && outcomeId) ? outcomeId : ''
-  const candidateHref = candidateId ? candidateDetailPath(candidateId) : undefined
+  const phase = applicationEmploymentSpinePhase(application)
+  const stayOnCard = phase !== 'recruitment'
+  const candidateHref = !stayOnCard && candidateId ? candidateDetailPath(candidateId) : undefined
   const meta = application.source
     ? `${application.source}${application.created_at ? ` · ${new Date(application.created_at).toLocaleString()}` : ''}`
     : undefined

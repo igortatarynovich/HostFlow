@@ -15,6 +15,18 @@ export function applicationReadyForEmploymentPrep(application: Application): Rec
   return asRecord(application.extensions?.ready_for_employment_prep_v1)
 }
 
+export type ApplicationEmploymentSpinePhase = 'recruitment' | 'employment'
+
+export function applicationEmploymentSpinePhase(
+  application: Application | null | undefined,
+): ApplicationEmploymentSpinePhase {
+  const prep = application ? applicationReadyForEmploymentPrep(application) : null
+  const nextAction = String(prep?.next_action || '').trim()
+  // Transfer result only. Do not read Employment Started out of Recruitment prep.
+  if (Boolean(prep?.handoff_id) || nextAction === 'handed_off') return 'employment'
+  return 'recruitment'
+}
+
 type ResolveRecruitmentDecisionArgs = {
   application: Application
   patching: boolean

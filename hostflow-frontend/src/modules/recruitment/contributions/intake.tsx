@@ -8,6 +8,7 @@ import { useToast } from '../../../components/Toast'
 import { usePlanLimitModal } from '../../../contexts/PlanLimitModalContext'
 import { useI18n } from '../../../i18n'
 import { getFriendlyErrorInfo } from '../../../utils/friendlyError'
+import { applicationEmploymentSpinePhase } from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
 import type { WorkspaceCapabilityRenderContext } from '../../../platform/workspace-capability/renderContext'
 import { applicationFormAnswerRows } from '../applicationFormAnswers'
 import {
@@ -262,10 +263,13 @@ export function RecruitmentIntakeContribution({
   onRefresh,
 }: WorkspaceCapabilityRenderContext) {
   if (!application) return null
+  const phase = applicationEmploymentSpinePhase(application)
   return (
     <div className="space-y-6" data-capability-id="recruitment.intake">
       <ApplicationAnswers application={application} />
-      <ApplicationCallLog application={application} onRefresh={onRefresh} />
+      {phase === 'recruitment' ? (
+        <ApplicationCallLog application={application} onRefresh={onRefresh} />
+      ) : null}
     </div>
   )
 }

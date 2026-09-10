@@ -15,6 +15,8 @@ export type EmploymentStartedSnapshot = {
   decision?: string | null
   started?: boolean | null
   ready_to_create_employee?: boolean | null
+  start_date?: string | null
+  employment_context?: Record<string, unknown> | null
   primary_item?: { code?: string; message?: string } | null
   active_missing?: Array<{ code?: string; message?: string }>
 }
@@ -32,17 +34,30 @@ function asMessage(row: { message?: string; code?: string } | null | undefined):
   return String(row?.message || row?.code || '').trim()
 }
 
+function startedContextLine(started: EmploymentStartedSnapshot | null | undefined): string {
+  const date = String(started?.start_date || '').trim()
+  const ctx = started?.employment_context
+  const country = ctx && typeof ctx === 'object' ? String(ctx.employment_country || ctx.country || '').trim() : ''
+  const role = ctx && typeof ctx === 'object' ? String(ctx.role || ctx.position_category || '').trim() : ''
+  return [date, country, role].filter(Boolean).join(' · ')
+}
+
 export function resolveEmploymentSpineDecision(args: ResolveEmploymentSpineArgs): ObjectDecision {
   const { busy, onFormalize, onConfirmStart, formalize, started, t } = args
   const disabled = busy
   const startedDone = Boolean(started?.started) || started?.decision === 'already_started' || started?.decision === 'started'
 
   if (startedDone) {
+    const contextLine = startedContextLine(started)
+    const body = contextLine
+      || t('app.recruitment_inquiry.eso.started_body', {
+        defaultValue: 'Физический выход подтверждён. Employee created ≠ Started.',
+      })
     return {
       stateId: 'employment.started',
       currentState: t('app.recruitment_inquiry.eso.started_title', { defaultValue: 'Вышел' }),
-      why: t('app.recruitment_inquiry.eso.started_body', {
-        defaultValue: 'Физический выход подтверждён. Employee created ≠ Started.',
+      why: t('app.recruitment_inquiry.eso.started_why', {
+        defaultValue: 'Работа по этому отклику закрыта. Employee created ≠ Started.',
       }),
       primaryAction: null,
       requiredContext: [],
@@ -50,8 +65,9 @@ export function resolveEmploymentSpineDecision(args: ResolveEmploymentSpineArgs)
       variant: 'success',
       outcome: {
         title: t('app.recruitment_inquiry.eso.started_title', { defaultValue: 'Вышел' }),
-        body: t('app.recruitment_inquiry.eso.started_body', {
-          defaultValue: 'Физический выход подтверждён. Employee created ≠ Started.',
+        body,
+        why: t('app.recruitment_inquiry.eso.started_why', {
+          defaultValue: 'Работа по этому отклику закрыта. Employee created ≠ Started.',
         }),
         variant: 'success',
       },

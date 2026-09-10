@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/Button'
 import { useToast } from '../../../components/Toast'
 import { useI18n } from '../../../i18n'
 import { getFriendlyErrorInfo } from '../../../utils/friendlyError'
+import { applicationEmploymentSpinePhase } from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
 import type { WorkspaceCapabilityRenderContext } from '../../../platform/workspace-capability/renderContext'
 
 export function RecruitmentVacancyContribution({
@@ -15,6 +16,7 @@ export function RecruitmentVacancyContribution({
   const { notify } = useToast()
   const { t } = useI18n()
   const vacancyId = String(application?.extensions?.vacancy_id || '').trim()
+  const phase = applicationEmploymentSpinePhase(application)
   const [vacancies, setVacancies] = useState<Array<{ id: string; title: string }>>([])
   const [selectedVacancyId, setSelectedVacancyId] = useState(vacancyId)
   const [busy, setBusy] = useState(false)
@@ -46,6 +48,8 @@ export function RecruitmentVacancyContribution({
       setBusy(false)
     }
   }, [application, busy, notify, onRefresh, patching, selectedVacancyId, t])
+
+  if (phase !== 'recruitment' && !vacancyId) return null
 
   if (!vacancyId) {
     return (

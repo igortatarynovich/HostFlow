@@ -42,4 +42,19 @@ describe('resolveEmploymentSpineDecision', () => {
     expect(decision.primaryAction).toBeNull()
     expect(decision.terminal).toBe(true)
   })
+
+  it('puts start date and known context in the terminal, without a next action', () => {
+    const decision = resolveEmploymentSpineDecision({
+      ...handlers,
+      started: {
+        started: true,
+        decision: 'started',
+        start_date: '2026-09-09',
+        employment_context: { employment_country: 'PL' },
+      },
+    })
+    expect(decision.primaryAction).toBeNull()
+    expect(decision.outcome?.body).toBe('2026-09-09 · PL')
+    expect(decision.outcome?.title).toBe('Вышел')
+  })
 })

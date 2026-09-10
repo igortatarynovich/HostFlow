@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Application } from '../../../api/types/application'
-import { resolveRecruitmentApplicationDecision } from '../resolveRecruitmentApplicationDecision'
+import { resolveRecruitmentApplicationDecision, applicationEmploymentSpinePhase } from '../resolveRecruitmentApplicationDecision'
 
 function t(key: string, options?: { defaultValue?: string }) {
   return options?.defaultValue || key
@@ -103,5 +103,40 @@ describe('resolveRecruitmentApplicationDecision', () => {
     expect(decision.stateId).toBe('recruitment.handed_off')
     expect(decision.primaryAction).toBeNull()
     expect(decision.terminal).toBeFalsy()
+  })
+})
+
+describe('applicationEmploymentSpinePhase', () => {
+  it('is recruitment until Transfer', () => {
+    expect(applicationEmploymentSpinePhase(app({ extensions: { vacancy_id: 'vac-1' } }))).toBe('recruitment')
+  })
+
+  it('is employment after Transfer, from existing handoff prep only', () => {
+    expect(
+      applicationEmploymentSpinePhase(
+        app({
+          extensions: {
+            ready_for_employment_prep_v1: { next_action: 'handed_off', handoff_id: 'h-1' },
+          },
+        }),
+      ),
+    ).toBe('employment')
+  })
+
+  it('does not treat Employment Started as a Recruitment prep next_action', () => {
+    expect(
+      applicationEmploymentSpinePhase(
+        app({
+          extensions: {
+            ready_for_employment_prep_v1: {
+              next_action: 'started',
+              started: true,
+              start_date: '2026-09-09',
+              handoff_id: 'h-1',
+            },
+          },
+        }),
+      ),
+    ).toBe('employment')
   })
 })
