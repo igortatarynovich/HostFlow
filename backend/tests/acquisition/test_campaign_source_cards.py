@@ -64,3 +64,12 @@ def test_enrich_intake_prefers_meta_form_name() -> None:
     assert card.page_name is None
     assert card.meta_form_id == "99"
     assert card.binding_status == "bound"
+
+
+def test_lead_normalized_json_path_uses_as_string_not_astext() -> None:
+    """Regression: JSONB path filters must use .as_string() (SQLAlchemy 2); .astext raises."""
+    from backend.app.models.lead import Lead
+
+    expr = Lead.normalized["form_id"].as_string().in_(["1917672235588961"])
+    assert expr is not None
+    assert not hasattr(Lead.normalized["form_id"], "astext")

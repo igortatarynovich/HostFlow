@@ -137,14 +137,14 @@ async def load_last_submission_by_endpoint(
             clauses = []
             if profile_ids:
                 clauses.append(
-                    Lead.normalized["acquisition_routing_v1"]["intake_source_profile_id"].astext.in_(
+                    Lead.normalized["acquisition_routing_v1"]["intake_source_profile_id"].as_string().in_(
                         profile_ids
                     )
                 )
             if form_ids:
-                clauses.append(Lead.normalized["form_id"].astext.in_(form_ids))
+                clauses.append(Lead.normalized["form_id"].as_string().in_(form_ids))
                 clauses.append(
-                    Lead.normalized["acquisition_routing_v1"]["form_id"].astext.in_(form_ids)
+                    Lead.normalized["acquisition_routing_v1"]["form_id"].as_string().in_(form_ids)
                 )
             lead_rows = (
                 await db.execute(
