@@ -2,7 +2,7 @@
 
 **Статус:** каноническая карта **границ домена**, **владения** и **скоупов доступа** для платформы (modular multi-company SaaS). Версия **v1** — основа для RLS, permissions API, handoff и Document Hub; **не** заменяет ERD/миграции (следующие артефакты).
 
-**Связанные документы:** [`platform-architecture-principles.md`](platform-architecture-principles.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`ADR-037`](ADR-037-lifecycle-identity-canon.md) (stage existence = Module Stage Registry; Funnel = company configuration).
+**Связанные документы:** [`platform-architecture-principles.md`](platform-architecture-principles.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`ADR-042`](ADR-042-operator-host-boundary.md) (Application → Candidate → HR hosts), [`ADR-037`](ADR-037-lifecycle-identity-canon.md) (stage existence = Module Stage Registry; Funnel = company configuration).
 
 ---
 
@@ -130,8 +130,8 @@ flowchart LR
 
 | Контекст | Владеет смыслом | Не вторгается в |
 |----------|----------------|-----------------|
-| **Recruitment** | Lead, Candidate, Vacancy, Job Post, application pipeline | Employee record, HR contracts, fleet ops, invoices |
-| **HR / Workforce** | Employee, HR case, employment, ZUS, HR documents **как процесс** | Candidate pipeline как замена employee |
+| **Recruitment** | Lead, Candidate, Vacancy, Job Post, application pipeline. Hosts: Application (Fits) then Candidate (Ready for employment → Transfer) — [`ADR-042`](ADR-042-operator-host-boundary.md) | Employee record, HR contracts, Formalize / Started as Application chrome, fleet ops, invoices |
+| **HR / Workforce** | Employee, HR case, employment, ZUS, HR documents **как процесс**. After Transfer: employability / Formalize / Employee / Started ([`ADR-042`](ADR-042-operator-host-boundary.md)) | Candidate pipeline как замена employee |
 | **Fleet** | Vehicle, assignment, handover, damage, inspection | HR contract storage как источник истины |
 | **Services** | Catalog, order, delivery, **Billing Event** | Прямой invoice |
 | **Finance** | Invoice, payment, **из Billing Events** | Бизнес-логика заказа услуги |
@@ -236,5 +236,6 @@ flowchart LR
 
 - **v1 (2026-05):** первая каноническая карта: flow Platform Core → Cross-company, GLOBAL/TENANT/COMPANY/MODULE scopes, bounded contexts, ownership matrix, module interaction rules, запреты.
 - **v1.1 (2026-05):** §6.4 порядок внедрения в код; старт P1b (enforcement recruitment на candidate API).
+- **2026-09-10:** [`ADR-042`](ADR-042-operator-host-boundary.md) — operator hosts: Application Fits enters Candidate; Transfer after Ready for employment; Employment after handoff is HR, not Application Workspace.
 - **2026-09-03:** [`ADR-041`](ADR-041-verified-self-service-signup.md) — SignupIntent is GLOBAL; User/Tenant/trial appear only at complete; OwnCompany ≠ Tenant.
 - **2026-08-23:** [`ADR-037`](ADR-037-lifecycle-identity-canon.md) — lifecycle identity; stage existence is not `funnel_stages` / Candidate.stage HR lane.

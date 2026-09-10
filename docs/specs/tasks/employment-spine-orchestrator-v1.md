@@ -7,9 +7,10 @@
 **Machine:** accept / employability / missing-resolution / formalize / started · gates ESO-1…ESO-5 · CI `eso1`…`eso5-started-gate`  
 **Estimate:** TBD after RSO-1 handoff package shape freezes  
 
-> Recruitment ends when the **Ready for employment contract** (handoff package) is emitted. This program **starts** there.  
+> Recruitment ends when the **Ready for employment contract** (handoff package) is emitted from the **Candidate**. This program **starts** there.  
 > Not a Recruitment feature. Not “Recruitment create+accept Employee”.  
-> User journey stays continuous; ownership does not.  
+> **Host ([`ADR-042`](../architecture/ADR-042-operator-host-boundary.md)):** after **Передать**, the operator continues in **HR**. Formalize / confirm start / Started are not Application Workspace chrome.  
+> Seamless handoff = prepared Employment case with known context. Not “same screen forever”.  
 > **Seamless UX ≠ shared ownership.**
 
 ---
@@ -18,7 +19,7 @@
 
 1. **RSO does not know how to employ** — Employment receives a package; it does not inherit a Recruitment “employ” API.  
 2. **ESO does not re-ask Recruitment.** Anything authoritative in the package (identity, employer/vacancy, recruitment facts, evidence) is **reused**. Additional prompts are **employment missing** only. Re-prompting package facts without a conflict reason is a product FAIL.  
-3. **Operator does not service the boundary.** After **Передать на трудоустройство**, work continues on the same person; Accept/init are Employment-internal (auto when gates pass, else concrete blockers — never ritual Accept).
+3. **Operator does not service the boundary.** After **Передать на трудоустройство**, the operator opens an already-prepared **HR** case for the same person (no Create Employee / re-pick vacancy / copy facts). Accept/init are Employment-internal (auto when gates pass, else concrete blockers — never ritual Accept). Do not keep ESO actions on the Application card.
 
 Gate 2 is the usual failure mode: citizenship asked twice, employer re-selected, documents re-uploaded. Domain boundary splits responsibility, not data for the user.
 
@@ -49,9 +50,9 @@ Do not re-collect recruitment facts already in the package.
 After handoff, cold start (ritual Accept, re-entry of known facts, eligibility only after Employee) — or Recruitment materializes Employee / Employment docs leak into ATS.
 
 **Completion proof (named consumer):**  
-From **Передать на трудоустройство**, Employment receives a valid package → **employment missing** + employability → one next_action → **Оформить** under Employment policy (auto-materialize only if gates pass; else concrete blockers) → **Подтвердить выход** → Started. Audit shows Employment started after Recruitment completed.
+From **Передать на трудоустройство** on the Candidate, Employment receives a valid package. Operator continues in **HR**: **employment missing** + employability → one next_action → **Оформить** under Employment policy (auto-materialize only if gates pass; else concrete blockers) → **Подтвердить выход** → Started. Audit shows Employment started after Recruitment completed.
 
-**False close (reject):** Recruitment calling `accept_handoff` as its completion; Ready for employment as status-only; Employment re-asking recruitment qualification; ritual Accept when gates already pass.
+**False close (reject):** Recruitment calling `accept_handoff` as its completion; Ready for employment as status-only; Employment re-asking recruitment qualification; ritual Accept when gates already pass; Formalize / Started required on the Meta Application card ([#359](https://github.com/igortatarynovich/HostFlow/pull/359) one-card PASS).
 
 ---
 
@@ -60,7 +61,7 @@ From **Передать на трудоустройство**, Employment receiv
 1. **accept_handoff** (Employment policy: auto when gates satisfied vs review).  
 2. **evaluate_employability** — employable / blocked / insufficient_facts (LLM-OFF; unique pathway).  
 3. **resolve employment missing** — minimal active path → patch → auto re-eval → ready_to_formalize.  
-4. **formalize** — required formal actions for context → `ready_to_create_employee` (Employee mint only after threshold; not HR card).  
+4. **formalize** — required formal actions for context → `ready_to_create_employee` (Employee mint only after threshold). Hosted in **HR** after Transfer, not on the Application.  
 5. **confirm_start** → Started (physical start).  
 
 ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 2–3.
@@ -90,4 +91,4 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 2�
 ## Next
 
 1. **ESO-5 in progress** — physical start SoT + apply (`POST /handoffs/{id}/employment-started`); Employee created ≠ Started; closes spine Employee → Started.  
-2. RSO-2 Transfer remains Recruitment-owned and must **not** call Employment accept / employability / resolution / formalize / started.
+2. RSO-2 Transfer remains Recruitment-owned (Candidate, after Ready for employment) and must **not** call Employment accept / employability / resolution / formalize / started. After Transfer the operator continues in HR ([`ADR-042`](../architecture/ADR-042-operator-host-boundary.md)). Do not pursue [#359](https://github.com/igortatarynovich/HostFlow/pull/359) one-card PASS.
