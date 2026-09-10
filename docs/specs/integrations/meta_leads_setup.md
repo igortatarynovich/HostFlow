@@ -180,6 +180,56 @@ On **Team-tier plans and above**, workspace **administrators** can use **Connect
 
 Starter / solo tenants receive **403** with `code: plan_meta_leads_oauth`. **Trial** tenants are allowed (SSOT: 30-day full product / Team-tier flags).
 
+### 12.2 Meta App Review demo profile (`ads_read`)
+
+Use a dedicated HostFlow workspace administrator so Meta reviewers can complete Facebook Login and see Marketing insights that call Graph with **`ads_read`**.
+
+**Profile requirements (EuroDrive demo / equivalent):**
+
+| Check | Required value |
+| --- | --- |
+| User | `demo@hostflow.dev` (or another dedicated review login) |
+| Role | `administrator` on the review tenant |
+| Plan | `trial` / Team+ / Business / Enterprise (`oauth_quick_connect_enabled=true`) |
+| Meta Leads admin | Loads without 500 (`GET /settings/leads/settings`, credentials, leads lists) |
+| OAuth | `POST .../meta/oauth/start` returns `authorize_url` whose `scope` includes `ads_read` |
+| Ad Account | After Connect, reviewer selects a Page **and** an Ad Account; insights use `ads_read` |
+
+**Operator checklist before submitting App Review:**
+
+1. Confirm login works for the demo user; reset password if needed.
+2. Open **Settings → Integrations → Meta Leads** as that user — page must load; **Connect with Meta** must be available.
+3. In Meta Developers → **Roles → Test users**, create a Facebook Test User with access to a Page + Ad Account that has non-empty insights (spend/impressions).
+4. Paste the block below into **App Review → Instructions for reviewers** (replace placeholders).
+5. Do **not** ask the reviewer to add themselves as Tester — provide HostFlow + Facebook Test User credentials instead.
+
+**Paste into Meta App Review (EN):**
+
+```text
+Demo login (HostFlow):
+URL: https://hostflow.cc/login
+(or https://recruitment.hostflow.cc/login → Settings → Integrations → Meta)
+Email: demo@hostflow.dev
+Password: <HOSTFLOW_DEMO_PASSWORD>
+
+Facebook Test User (Development mode OAuth):
+Email: <META_TEST_USER_EMAIL>
+Password: <META_TEST_USER_PASSWORD>
+
+Steps to verify ads_read:
+1. Sign in to HostFlow with the demo credentials.
+2. Open Settings → All integrations → Meta Leads admin.
+3. Click Connect with Meta / Facebook Login and authorize with the Test User.
+4. Grant the requested permissions (includes ads_read).
+5. Select a Facebook Page and an Ad Account, then confirm.
+6. Open Marketing insights / campaign metrics on the same workspace — spend, impressions, and clicks are loaded via ads_read.
+
+App: HostFlow Leads (App ID 1102404865044655)
+Contact: info@hostflow.cc
+```
+
+Rotate `<HOSTFLOW_DEMO_PASSWORD>` after the review window if it was shared broadly.
+
 ---
 
 ## 13. References
@@ -189,3 +239,4 @@ Starter / solo tenants receive **403** with `code: plan_meta_leads_oauth`. **Tri
 - Retry script: `scripts/retry_meta_leads.py`
 - Self-serve API: `GET /api/v1/settings/leads/meta/self-serve-onboarding`
 - Meta OAuth: `POST /api/v1/settings/leads/meta/oauth/start`, `.../complete`, `.../finalize`
+- App Review demo profile: `scripts/ensure_meta_app_review_demo.py` (§12.2)

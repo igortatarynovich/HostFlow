@@ -971,12 +971,16 @@ async def update_lead_stage_endpoint(
         lead.normalized if isinstance(lead.normalized, dict) else {},
         lead.vacancy_id,
     )
+    from backend.app.modules.leads.intake_route import normalize_lead_target_type
+
     return LeadOut(
         id=PyUUID(lead.id),
         tenant_id=PyUUID(lead.tenant_id),
         business_type=business_type,
         lead_type=(getattr(lead, "lead_type", None) or "candidate"),  # type: ignore[arg-type]
-        lead_target_type=(getattr(lead, "lead_target_type", None) or "candidate"),  # type: ignore[arg-type]
+        lead_target_type=normalize_lead_target_type(  # type: ignore[arg-type]
+            getattr(lead, "lead_target_type", None)
+        ),
         company_id=PyUUID(lead.company_id) if lead.company_id else None,
         company_name=None,
         vacancy_id=PyUUID(lead.vacancy_id) if lead.vacancy_id else None,
