@@ -470,6 +470,70 @@ async def accept_handoff_route(
     return HandoffOut.model_validate(handoff)
 
 
+class EmploymentAcceptPolicyIn(BaseModel):
+    """Optional package override + employment_missing for ESO-1 evaluate/apply."""
+
+    package: Optional[dict[str, Any]] = None
+    employment_missing: Optional[List[dict[str, Any]]] = None
+
+
+class EmploymentAcceptPolicyOut(BaseModel):
+    policy_id: str
+    handoff_id: Optional[str] = None
+    decision: str
+    ritual_accept_forbidden: Optional[bool] = None
+    blockers: List[dict[str, Any]] = Field(default_factory=list)
+    employment_missing: List[dict[str, Any]] = Field(default_factory=list)
+    reuse_violations: List[str] = Field(default_factory=list)
+    package_valid: Optional[bool] = None
+    accepted: bool = False
+    employment_started: bool = False
+    employee_id: Optional[str] = None
+    message: Optional[str] = None
+
+
+@router.post(
+    "/{handoff_id}/employment-accept-policy",
+    response_model=EmploymentAcceptPolicyOut,
+    dependencies=[Depends(require_hr_workforce_module_access)],
+)
+async def employment_accept_policy_route(
+    handoff_id: UUID,
+    payload: Optional[EmploymentAcceptPolicyIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+):
+    """ESO-1: Employment-owned accept policy apply (auto-accept when gates pass).
+
+    Must not be used by Recruitment Transfer as its completion.
+    """
+    from backend.app.services.employment_accept_orchestrator import (
+        EmploymentAcceptError,
+        apply_employment_accept_policy,
+    )
+
+    db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
+    body = payload or EmploymentAcceptPolicyIn()
+    try:
+        result = await apply_employment_accept_policy(
+            db,
+            tenant_id=str(tenant_id),
+            handoff_id=str(handoff_id),
+            actor_id=str(current_user.sub or "").strip() or None,
+            package=body.package,
+            employment_missing=body.employment_missing,
+        )
+    except EmploymentAcceptError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    await db.commit()
+    return EmploymentAcceptPolicyOut.model_validate(result)
+
+
 @router.post("/{handoff_id}/reject", response_model=HandoffOut)
 async def reject_handoff_route(
     handoff_id: UUID,

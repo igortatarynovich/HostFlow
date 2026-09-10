@@ -110,6 +110,7 @@ jobs:
       ma2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma2 == 'true' }}
       ma3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma3 == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
+      eso1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso1 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -360,6 +361,15 @@ jobs:
               - 'docs/specs/tasks/recruitment-spine-orchestrator-v1.md'
               - 'docs/specs/tasks/employment-spine-orchestrator-v1.md'
               - 'docs/specs/tasks/hiring-workflow-e2e.md'
+            eso1:
+              - 'backend/app/reference/employment_accept_policy.py'
+              - 'backend/app/services/employment_accept_orchestrator.py'
+              - 'backend/tests/platform/test_employment_accept_policy_gate.py'
+              - 'backend/app/api/v1/handoffs.py'
+              - 'backend/app/core/audit_events.py'
+              - 'docs/specs/architecture/employment-accept-policy.md'
+              - 'docs/specs/tasks/employment-spine-orchestrator-v1.md'
+              - 'docs/specs/architecture/ready-for-employment-contract.md'
             ma2:
               - 'backend/app/entity_profile/mapping_resolve.py'
               - 'backend/app/entity_profile/ingest_runtime.py'
@@ -926,6 +936,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_ready_for_employment_contract_gate.py') != ''
         with:
           tests: tests/platform/test_ready_for_employment_contract_gate.py
+
+  eso1-accept-policy-gate:
+    name: Employment Accept Policy Gate
+    needs: changes
+    if: needs.changes.outputs.eso1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Employment Accept Policy gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_employment_accept_policy_gate.py') == ''
+        run: echo "Employment Accept Policy gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_employment_accept_policy_gate.py') != ''
+        with:
+          tests: tests/platform/test_employment_accept_policy_gate.py
 
   ma2-resolution-gate:
     name: Mapping Resolution Gate
