@@ -1,6 +1,6 @@
 # Vacancy Requirements Evaluator
 
-**Status:** **Accepted** (L2 runtime slice). In progress on `feat/vacancy-requirements-evaluator`.  
+**Status:** **Accepted** (L2 runtime slice). **Vacancy Requirements Evaluator Gate = PASS** on immutable revision `6d2586a5` ([#367](https://github.com/igortatarynovich/HostFlow/pull/367)). Overlay vacancy write UI is the **next** separate slice — not part of #367.  
 **Phase class:** product  
 **Module owner:** **Recruitment**  
 **Date:** 2026-09-11  
@@ -31,9 +31,9 @@ Given this vacancy’s requirements and this person’s **canonical** facts, is 
 
 ## Named Acceptance Gate — Vacancy Requirements Evaluator
 
-**Status:** in progress  
+**Status:** **PASS** on `6d2586a5` ([#367](https://github.com/igortatarynovich/HostFlow/pull/367))  
 **Machine:** `backend/tests/platform/test_vacancy_requirements_eval_gate.py`  
-**CI:** named job `Vacancy Requirements Evaluator Gate`
+**CI:** named job `Vacancy Requirements Evaluator Gate` (`.github/workflows/backend-ci.yml`)
 
 ### Acceptance (all must hold)
 
@@ -56,6 +56,11 @@ Given this vacancy’s requirements and this person’s **canonical** facts, is 
 | required fact missing | `status=missing`, explanation names fact/doc |
 | hard mismatch | `status=not_fit` (e.g. years_ce present but below min) |
 | source-independent | same canonical occupancy via different intake reps → same status |
+
+**PASS evidence (`6d2586a5`):**
+- Named CI **Vacancy Requirements Evaluator Gate** green
+- Diff recheck: no source-local decision authority; no `lead_criteria` SoT; fit ≠ Ready/Transfer; missing = canonical `fact_code` + human `requirement`; not_fit explains hard mismatch; Application UI displays verdict + one action; no Candidate Recruitment module edits
+- Baseline Bandit / scorecard / SPA guards unchanged (not introduced by this diff)
 
 ---
 
