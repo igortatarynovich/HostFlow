@@ -1,6 +1,6 @@
 # Canonical Facts Completeness
 
-**Status:** **Accepted** (L2 contract). **Canonical Facts Occupancy Gate** — implementation on `feat/canonical-facts-occupancy-cutover` (reviewable PR); formal **PASS** only after green named gate on immutable revision. Vacancy Requirements evaluator **not** this PR.  
+**Status:** **Accepted** (L2 contract). **Canonical Facts Occupancy Gate = PASS** on immutable revision `bd0bf284` ([#366](https://github.com/igortatarynovich/HostFlow/pull/366)). Named CI job **Canonical Facts Occupancy Gate** green. Vacancy Requirements evaluator unlocked as the **next** slice — not part of #366.  
 **Phase class:** product  
 **Module owner:** **Platform** (field registry / Mapping Authority write path) · **Recruitment** and **Employment** consume — they do not fork a second fact bag  
 **Date:** 2026-09-11  
@@ -40,8 +40,9 @@ Vacancy Requirements evaluator is **forbidden** to start until that cutover hold
 
 ## Named Acceptance Gate — Runtime Occupancy Cutover
 
-**Status:** implementation complete on `feat/canonical-facts-occupancy-cutover` — declare **PASS** after green gate + review  
+**Status:** **PASS** on `bd0bf284` ([#366](https://github.com/igortatarynovich/HostFlow/pull/366))  
 **Machine:** `backend/tests/platform/test_canonical_facts_occupancy_gate.py`  
+**CI:** named job `Canonical Facts Occupancy Gate` (`.github/workflows/backend-ci.yml`)  
 **Out of this gate:** Vacancy Requirements evaluator · Vacancy Requirements UI · Overlay vacancy create wizard
 
 ### Acceptance (all must hold)
@@ -65,8 +66,12 @@ source representation
 
 without reading the original source bag as authority.
 
-**PASS when:** gate tests green and the consumer file list in the gate’s static scan has no forbidden citizenship OR-chains.  
-**Evidence (machine):** `test_canonical_facts_occupancy_gate.py` — source independence (citizenship + years_ce), nationality/country rejected, `documents[]` not citizenship authority, static OR scan on RSO/ESO consumers, no Vacancy Requirements evaluator files.  
+**PASS evidence (`bd0bf284`):**
+- Named CI **Canonical Facts Occupancy Gate** green
+- Intake Readiness Gate green (assertions aligned to nested `years_ce`)
+- Threat model / security docs green (public-links PL-6, handoff HF-6)
+- Diff recheck: no Vacancy Requirements evaluator/UI; no parallel fact store; no citizenship OR-chains on scanned consumers
+
 **False close:** citizenship-only patch; evaluator started on this branch; `lead_criteria` grown as SoT; `canonical_facts_v2` bag.
 
 ---
