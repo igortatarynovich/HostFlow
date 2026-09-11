@@ -116,6 +116,7 @@ jobs:
       eso4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso4 == 'true' }}
       eso5: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso5 == 'true' }}
       intake_readiness: ${{ github.event_name != 'pull_request' || steps.filter.outputs.intake_readiness == 'true' }}
+      canonical_facts_occupancy: ${{ github.event_name != 'pull_request' || steps.filter.outputs.canonical_facts_occupancy == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -422,6 +423,26 @@ jobs:
               - 'backend/app/modules/applications/mappers.py'
               - 'backend/app/field_registry/intake_mapping.py'
               - 'docs/specs/tasks/recruitment-spine-orchestrator-v1.md'
+            canonical_facts_occupancy:
+              - 'backend/app/field_registry/canonical_facts.py'
+              - 'backend/app/field_registry/intake_mapping.py'
+              - 'backend/app/modules/leads/conversion_mapping.py'
+              - 'backend/app/api/public/intake.py'
+              - 'backend/app/reference/early_employability.py'
+              - 'backend/app/reference/employment_formalize.py'
+              - 'backend/app/reference/employment_missing_resolution.py'
+              - 'backend/app/requirement_rules/readiness_bridge.py'
+              - 'backend/app/requirement_rules/evaluation/candidate_bridge.py'
+              - 'backend/app/services/handoff.py'
+              - 'backend/app/services/handoff_snapshot.py'
+              - 'backend/app/services/hr_recruitment_transfer.py'
+              - 'backend/app/services/recruitment_package_readiness.py'
+              - 'backend/app/services/transfer_policy_resolver.py'
+              - 'backend/app/services/workforce_eligibility_resolver.py'
+              - 'backend/app/services/workforce_action_policy.py'
+              - 'backend/app/services/candidate_doc_pipeline_guard.py'
+              - 'backend/tests/platform/test_canonical_facts_occupancy_gate.py'
+              - 'docs/specs/tasks/canonical-facts-completeness.md'
             ma2:
               - 'backend/app/entity_profile/mapping_resolve.py'
               - 'backend/app/entity_profile/ingest_runtime.py'
@@ -1078,6 +1099,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_intake_readiness_gate.py') != ''
         with:
           tests: tests/platform/test_intake_readiness_gate.py
+
+  canonical-facts-occupancy-gate:
+    name: Canonical Facts Occupancy Gate
+    needs: changes
+    if: needs.changes.outputs.canonical_facts_occupancy == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Canonical Facts Occupancy gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_canonical_facts_occupancy_gate.py') == ''
+        run: echo "Canonical Facts Occupancy gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_canonical_facts_occupancy_gate.py') != ''
+        with:
+          tests: tests/platform/test_canonical_facts_occupancy_gate.py
 
   ma2-resolution-gate:
     name: Mapping Resolution Gate
