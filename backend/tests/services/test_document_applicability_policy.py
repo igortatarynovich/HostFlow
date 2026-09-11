@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from backend.app.services.document_applicability_policy import derive_document_applicability_decision
+from backend.tests.test_support.repo_paths import read_repo_text
 
 
 def test_document_applicability_policy_keeps_legacy_behavior_for_driver_non_eu_pl() -> None:
@@ -32,7 +31,7 @@ def test_document_applicability_policy_keeps_legacy_behavior_for_eu_worker() -> 
 
 
 def test_document_applicability_policy_is_module_owned() -> None:
-    src = Path("/opt/HostFlow/backend/app/services/document_applicability_policy.py").read_text(encoding="utf-8")
+    src = read_repo_text("backend/app/services/document_applicability_policy.py")
     assert "backend.app.reference" not in src
     assert "ReferenceServiceFacade" not in src
 

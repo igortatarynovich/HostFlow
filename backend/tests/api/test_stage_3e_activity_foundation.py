@@ -44,11 +44,12 @@ _BEFORE_ACTIVITY = "202607210002_comm_automation_domain_c2_2"
 
 
 def _alembic_bin() -> str:
-    for rel in (".venv312/bin/alembic", ".venv/bin/alembic"):
-        candidate = _REPO_ROOT / rel
-        if candidate.is_file():
-            return str(candidate)
-    return "alembic"
+    from backend.tests.test_support.repo_paths import alembic_executable
+
+    found = alembic_executable()
+    if found is None:
+        pytest.skip("alembic executable not found")
+    return found
 
 
 def _run_alembic(*args: str) -> subprocess.CompletedProcess[str]:
@@ -260,7 +261,12 @@ def test_alembic_revision_is_linear_no_merge() -> None:
         if line.strip() and not line.startswith("INFO")
     ]
     assert len(head_lines) == 1
-    assert _REV in head_lines[0]
+
+    # This revision must stay reachable in the graph; later migrations displace it
+    # as head, so head identity is not the property being guarded here.
+    history = _run_alembic("history")
+    assert history.returncode == 0, history.stderr + history.stdout
+    assert _REV in history.stdout
 
 
 # --- Runtime contracts --------------------------------------------------------
