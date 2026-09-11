@@ -54,14 +54,10 @@ async def _user_label(db: AsyncSession, user_id: str | None) -> dict[str, Any | 
 
 
 def _citizenship(cand: Candidate) -> str | None:
-    pd = getattr(cand, "personal_data", None) or {}
-    if not isinstance(pd, dict):
-        return None
-    for key in ("citizenship", "nationality", "country_of_citizenship"):
-        v = pd.get(key)
-        if v is not None and str(v).strip():
-            return str(v).strip()
-    return None
+    from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
+
+    code = read_citizenship_alpha2(cand)
+    return code or None
 
 
 def _work_country(cand: Candidate) -> str | None:

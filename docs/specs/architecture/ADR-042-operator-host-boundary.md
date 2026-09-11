@@ -4,7 +4,7 @@
 **Date:** 2026-09-10  
 **Trusted base:** `feat/eso4-formalize` @ `f3eaab2b`  
 **Does not supersede:** [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md) · [`ADR-037`](ADR-037-lifecycle-identity-canon.md) · RSO-1 package · ESO-1…5 policies  
-**Related:** [`../tasks/recruitment-spine-orchestrator-v1.md`](../tasks/recruitment-spine-orchestrator-v1.md) · [`../tasks/employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) · [`../gates/intake-readiness-gate.md`](../gates/intake-readiness-gate.md)
+**Related:** [`../tasks/recruitment-spine-orchestrator-v1.md`](../tasks/recruitment-spine-orchestrator-v1.md) · [`../tasks/employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) · [`../gates/intake-readiness-gate.md`](../gates/intake-readiness-gate.md) · [`../tasks/vacancy-recruitment-requirements-sot.md`](../tasks/vacancy-recruitment-requirements-sot.md)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (Recruitment vs Employment ownership), **INV-01** (one SoT per concern), **INV-16** (one-card convenience does not outrank ownership / contracts). Hosting is L2. Does not merge ESO into `integration`. Does not promote [#359](https://github.com/igortatarynovich/HostFlow/pull/359).
 

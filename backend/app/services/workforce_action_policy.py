@@ -27,9 +27,11 @@ class WorkforceActionBlockedError(Exception):
 def _candidate_ctx(c: Candidate | None) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
     if c is None:
         return None, None, None, None
+    from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
+
     extra = c._get_extra() if hasattr(c, "_get_extra") else {}
     personal = c._get_personal_data() if hasattr(c, "_get_personal_data") else {}
-    citizenship = str(extra.get("citizenship") or personal.get("citizenship") or "").strip() or None
+    citizenship = read_citizenship_alpha2(c) or None
     work_country = str(extra.get("work_country") or personal.get("work_country") or "").strip() or None
     residence_status = str(extra.get("legal_status") or extra.get("residency_status") or personal.get("residency_status") or "").strip() or None
     position_category = str(extra.get("position_category") or extra.get("profession_category") or "").strip() or None

@@ -3506,10 +3506,9 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     # Preferred contact
     if contacts.preferred_messenger:
         extra["preferred_contact"] = contacts.preferred_messenger
-    
-    # Personal data - сохраняем в extra (основное хранилище для карточки)
-    if personal.citizenship:
-        extra["citizenship"] = normalize_inbound_citizenship_alpha2(personal.citizenship)
+
+    # Citizenship authority is personal_data (set above). Do not dual-write
+    # extra.citizenship as a decision bag.
     if personal.in_poland is not None:
         extra["in_poland"] = personal.in_poland
     if personal.birth_date:
@@ -3527,9 +3526,11 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     if basis:
         extra["poland_stay_basis"] = basis
     
-    # Experience data
+    # Experience — canonical nested path (not flat experience_eu_years SoT).
     if merged_years_ce is not None:
-        extra["experience_eu_years"] = merged_years_ce
+        from backend.app.field_registry.canonical_facts import occupy_years_ce_on_extra
+
+        occupy_years_ce_on_extra(extra, value=merged_years_ce)
     if merged_intl_experience is not None:
         extra["intl_experience"] = merged_intl_experience
     extra["trailer_types"] = _normalize_string_list(merged_trailer_types)

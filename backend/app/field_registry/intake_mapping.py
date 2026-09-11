@@ -12,7 +12,9 @@ LEAD_INTAKE_QUALIFIED_TO_NORMALIZED: dict[str, str] = {
     "recruitment.candidate.contacts.phone_country_code": "phone_country_code",
     "recruitment.candidate.contacts.email": "email",
     "recruitment.candidate.contacts.preferred_messenger": "preferred_contact",
-    "platform.identity.citizenship": "country",
+    # Citizenship is not geo country. Transport on lead.normalized uses
+    # ``citizenship``; ``country`` remains a separate location key if mapped.
+    "platform.identity.citizenship": "citizenship",
     "platform.identity.address": "address",
     "platform.identity.birth_date": "birth_date",
     "recruitment.candidate.personal.residency_status": "poland_stay_basis",

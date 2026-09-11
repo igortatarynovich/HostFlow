@@ -105,9 +105,11 @@ def _confirmed_set(value: Any) -> set[str]:
 
 
 def _identity_facts_present(package: Mapping[str, Any] | None) -> bool:
+    from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
+
     person = _record((_record(package)).get("person"))
     identity = _record(person.get("identity_facts"))
-    citizenship = _text(identity.get("citizenship") or person.get("citizenship"))
+    citizenship = read_citizenship_alpha2(package)
     name = _text(identity.get("first_name") or person.get("first_name"))
     return bool(citizenship) and bool(name)
 

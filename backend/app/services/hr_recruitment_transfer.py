@@ -112,12 +112,9 @@ def flatten_recruitment_candidate_fields(candidate: Candidate) -> dict[str, Any]
         personal.get("country_code"),
         extra.get("country_code"),
     )
-    citizenship = _first_non_empty(
-        personal.get("citizenship"),
-        extra.get("citizenship"),
-        personal.get("nationality"),
-        extra.get("nationality"),
-    )
+    from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
+
+    citizenship = read_citizenship_alpha2(candidate) or None
     work_country = _first_non_empty(
         personal.get("work_country"),
         extra.get("work_country"),

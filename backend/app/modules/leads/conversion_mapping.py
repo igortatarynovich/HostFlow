@@ -36,7 +36,8 @@ CANDIDATE_WRITE_BY_QUALIFIED: dict[str, dict[str, str]] = {
         "extra": "preferred_contact",
         "contacts": "preferred_messenger",
     },
-    "platform.identity.citizenship": {"extra": "citizenship", "personal": "citizenship"},
+    # Canonical occupancy: personal_data.citizenship only (not extra / country).
+    "platform.identity.citizenship": {"personal": "citizenship"},
     "platform.identity.address": {"extra": "address", "personal": "address"},
     "platform.identity.birth_date": {"personal": "birth_date"},
     "recruitment.candidate.personal.residency_status": {
@@ -51,7 +52,8 @@ CANDIDATE_WRITE_BY_QUALIFIED: dict[str, dict[str, str]] = {
         "extra": "in_poland",
         "personal": "in_poland",
     },
-    "recruitment.candidate.experience.years_ce": {"extra": "experience_eu_years"},
+    # Canonical: extra.experience.years_ce (registry storage.path).
+    "recruitment.candidate.experience.years_ce": {"extra_path": "experience.years_ce"},
     "recruitment.candidate.experience.intl_experience": {"extra": "intl_experience"},
     "recruitment.candidate.personal.driving_license_category": {
         "extra": "driving_license_category",
@@ -257,6 +259,21 @@ def _apply_write(
     extra = dest.get("extra")
     if extra and extra not in out.extra:
         out.extra[extra] = value
+    extra_path = dest.get("extra_path")
+    if extra_path:
+        from backend.app.field_registry.canonical_facts import set_nested_extra_path
+
+        # Do not overwrite if nested path already set.
+        parts = [p for p in str(extra_path).split(".") if p]
+        cur: Any = out.extra
+        occupied = True
+        for part in parts:
+            if not isinstance(cur, dict) or part not in cur:
+                occupied = False
+                break
+            cur = cur[part]
+        if not occupied:
+            set_nested_extra_path(out.extra, extra_path, value)
     personal = dest.get("personal")
     if personal and personal not in out.personal:
         out.personal[personal] = value
@@ -305,8 +322,11 @@ def apply_executable_intake_mapping(normalized: Mapping[str, Any] | None) -> Con
             continue
         value = _value_from_normalized(n, target)
         if qualified == "platform.identity.citizenship" and not value:
+            # Transport strangler: historical alias wrote citizenship into
+            # ``normalized.country``. Promote into personal occupancy only —
+            # decision consumers never read ``country`` as citizenship.
             value = (
-                _value_from_normalized(n, "citizenship")
+                _value_from_normalized(n, "country")
                 or _value_from_field_answers(n, "citizenship")
                 or _value_from_field_answers(n, "nationality")
                 or _value_from_field_answers(n, "гражданство")

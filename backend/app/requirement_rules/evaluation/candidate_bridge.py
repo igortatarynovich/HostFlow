@@ -37,10 +37,12 @@ def _candidate_personal(candidate: Candidate) -> dict[str, Any]:
 
 
 def _build_person_context(candidate: Candidate) -> PersonContext:
+    from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
+
     extra = _candidate_extra(candidate)
     personal = _candidate_personal(candidate)
     return PersonContext(
-        citizenship=extra.get("citizenship") or personal.get("citizenship"),
+        citizenship=read_citizenship_alpha2(candidate) or None,
         international_haulage=bool(extra.get("international_haulage")),
         community_licence_carrier=bool(extra.get("community_licence_carrier")),
         employment_country=str(extra.get("work_country") or personal.get("work_country") or "PL"),
