@@ -59,4 +59,25 @@ describe('resolveRecruitmentApplicationDecision', () => {
     expect(decision.primaryAction?.id).toBe('open_candidate')
     expect(decision.secondaryActions?.some((row) => row.id === 'create_candidate')).toBeFalsy()
   })
+
+  it('offers transfer after Fits prep, without create_candidate', () => {
+    const onTransfer = vi.fn()
+    const decision = resolveRecruitmentApplicationDecision({
+      ...handlers,
+      onTransferToEmployment: onTransfer,
+      application: app({
+        outcome_entity_type: 'candidate',
+        outcome_entity_id: 'cand-1',
+        extensions: {
+          ready_for_employment_prep_v1: {
+            next_action: 'offer_handoff',
+            package_valid: true,
+          },
+        },
+      }),
+    })
+    expect(decision.stateId).toBe('recruitment.offer_handoff')
+    expect(decision.primaryAction?.id).toBe('transfer_to_employment')
+    expect(decision.secondaryActions?.some((row) => row.id === 'create_candidate')).toBeFalsy()
+  })
 })

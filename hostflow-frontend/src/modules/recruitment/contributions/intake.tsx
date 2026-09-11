@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { useRef, useState } from 'react'
-import { logRecruitmentApplicationCallResult } from '../../../api/applications'
+import { logRecruitmentApplicationCallResult, recruitmentApplicationFits } from '../../../api/applications'
 import type { Application } from '../../../api/types/application'
 import { Button } from '../../../components/ui/Button'
 import { FieldGrid } from '../../../components/ui/FieldGrid'
@@ -117,6 +117,29 @@ function ApplicationCallLog({
       })
       setCallNote('')
       notify({ title: t('app.recruitment_inquiry.call_result.saved'), variant: 'success' })
+      if (result === 'interested') {
+        try {
+          const fits = await recruitmentApplicationFits(application.id)
+          if (fits.next_action === 'offer_handoff') {
+            notify({
+              title: fits.ready_label
+                || t('app.recruitment_inquiry.rso.ready_label', {
+                  defaultValue: 'Готов к передаче на трудоустройство',
+                }),
+              variant: 'success',
+            })
+          } else if (fits.message) {
+            notify({ title: fits.message, variant: 'info' })
+          }
+        } catch (fitsErr: unknown) {
+          const info = getFriendlyErrorInfo(
+            fitsErr,
+            t('app.recruitment_inquiry.rso.fits_failed', { defaultValue: 'Не удалось подготовить передачу' }),
+            t,
+          )
+          notify({ title: info.title, variant: 'error' })
+        }
+      }
       onRefresh()
     } catch (err: unknown) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.recruitment_inquiry.call_result.save_failed'))) {

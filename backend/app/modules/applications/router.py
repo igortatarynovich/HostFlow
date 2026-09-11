@@ -33,12 +33,15 @@ from backend.app.modules.applications.schemas import (
     ApplicationAssignIn,
     ApplicationCallResultIn,
     ApplicationCommentIn,
+    ApplicationFitsResult,
     ApplicationFollowUpIn,
     ApplicationIntakeDecisionIn,
     ApplicationListResponse,
     ApplicationOut,
     ApplicationProcessResult,
     ApplicationStagePatch,
+    ApplicationTransferIn,
+    ApplicationTransferResult,
     ApplicationVacancyConfirmIn,
     SalesCapabilitySpineOut,
     SalesInquiryDuplicateHintOut,
@@ -415,6 +418,47 @@ async def recruitment_application_call_result(
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations.recruitment_log_call_result(
+        db,
+        tenant_id=str(tenant_id),
+        application_id=application_id,
+        payload=payload,
+        current_user=current_user,
+    )
+
+
+@recruitment_router.post("/{application_id}/fits", response_model=ApplicationFitsResult)
+async def recruitment_application_fits(
+    application_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+) -> ApplicationFitsResult:
+    """RSO-2 Fits intent: auto recruitment prep; never creates handoff."""
+    db, tenant_id = db_tenant
+    return await mutations.recruitment_fits_prep(
+        db,
+        tenant_id=str(tenant_id),
+        own_company_id=own_company_id,
+        application_id=application_id,
+        current_user=current_user,
+    )
+
+
+@recruitment_router.post(
+    "/{application_id}/transfer-to-employment",
+    response_model=ApplicationTransferResult,
+)
+async def recruitment_application_transfer_to_employment(
+    application_id: str,
+    payload: ApplicationTransferIn = ApplicationTransferIn(),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+) -> ApplicationTransferResult:
+    """RSO-2 Transfer: explicit boundary — create_handoff + Recruitment completed audit."""
+    db, tenant_id = db_tenant
+    return await mutations.recruitment_transfer_to_employment(
         db,
         tenant_id=str(tenant_id),
         application_id=application_id,
