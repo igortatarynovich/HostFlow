@@ -204,6 +204,6 @@ Do **not** invert steps 2 and 3.
 ## Next
 
 1. **This contract** — sealed.  
-2. **Runtime occupancy cutover** (this feat: `feat/canonical-facts-occupancy-cutover`): Driver CE decision-critical ADAPT — citizenship + years_ce write path; decision consumers via `field_registry.canonical_facts`; source-independence gate `test_canonical_facts_occupancy_gate.py`. No Vacancy Requirements evaluator.  
+2. **Runtime occupancy cutover** — **PASS** `bd0bf284` / [#366](https://github.com/igortatarynovich/HostFlow/pull/366): Driver CE decision-critical ADAPT — citizenship + years_ce write path; decision consumers via `field_registry.canonical_facts`; named CI `Canonical Facts Occupancy Gate`. No Vacancy Requirements evaluator in that PR.  
 3. **Vacancy Requirements evaluator** — only after step 2 holds for the facts that evaluator will read.  
 4. Broader geo / license-category ADAPT decisions resolved in a later cutover against this matrix (no silent new keys).
