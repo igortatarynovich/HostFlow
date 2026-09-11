@@ -12056,6 +12056,19 @@
           "INTAKE_REJECT_REASON_REQUIRED": "Укажите причину отклонения.",
           "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "Это действие недоступно для данного источника."
         }
+      },
+      "requirements": {
+        "title": "Требования вакансии",
+        "status": {
+          "fit": "Подходит",
+          "missing": "Не хватает данных",
+          "not_fit": "Не подходит"
+        },
+        "action": {
+          "fits": "Подходит",
+          "collect": "Получить данные",
+          "reject": "Не подходит"
+        }
       }
     },
     "client_acquisition": {

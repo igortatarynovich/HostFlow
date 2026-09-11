@@ -1,6 +1,6 @@
 # Vacancy Recruitment Requirements SoT
 
-**Status:** **Accepted** (L2 contract). Runtime **not this slice**.  
+**Status:** **Accepted** (L2 contract). Runtime evaluator: [`vacancy-requirements-evaluator.md`](vacancy-requirements-evaluator.md) (after Occupancy Gate PASS).  
 **Phase class:** product  
 **Module owner:** **Recruitment**  
 **Date:** 2026-09-11  
@@ -115,6 +115,6 @@ Show the result. Offer the one `next_action`. Do not host Transfer / Formalize /
 
 ## Next
 
-1. **This contract** — sealed here. Runtime not started.  
-2. **Canonical Facts Completeness** — sealed: [`canonical-facts-completeness.md`](canonical-facts-completeness.md). Then **minimal runtime occupancy cutover** (decision-critical Driver CE set). Evaluator must not precede that cutover onto `lead.normalized`.  
-3. Runtime feat: Overlay operator write at vacancy create + evaluator on Application + leftover `lead_criteria_v1` classified — **after** occupancy cutover. Not auto-scheduled here.
+1. **This contract** — sealed.  
+2. **Canonical Facts Occupancy Gate** — **PASS** `bd0bf284` / [#366](https://github.com/igortatarynovich/HostFlow/pull/366).  
+3. **Runtime evaluator** — [`vacancy-requirements-evaluator.md`](vacancy-requirements-evaluator.md) on `feat/vacancy-requirements-evaluator` (Overlay merge × canonical facts → fit / missing / not_fit). Overlay operator write at vacancy create remains a later feat. Leftover `lead_criteria_v1` classified — not grown.

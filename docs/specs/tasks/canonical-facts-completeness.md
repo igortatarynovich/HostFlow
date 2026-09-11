@@ -109,7 +109,7 @@ Do **not** start from form question inventory. Start from live decision consumer
 | **RSO package / handoff assembly** | Emit / display package identity | `read_citizenship_alpha2` / `project_identity_facts_from_candidate` |
 | **RPM / ADR-018 / slots / readiness_bridge** | Slot applicability + field_required | qualified codes via readiness_bridge + helper |
 | **Vacancy Overlay / CL7** | Vacancy delta predicates | `recruitment.candidate.experience.years_ce` |
-| **Vacancy Requirements evaluator** (future) | fit / missing / not_fit | **blocked** until Occupancy Gate PASS |
+| **Vacancy Requirements evaluator** | fit / missing / not_fit | runtime: [`vacancy-requirements-evaluator.md`](vacancy-requirements-evaluator.md) (after Occupancy PASS) |
 | **`lead_criteria_v1`** (leftover) | Routing / display only | Not a blessed decision consumer; `normalized.documents[]` here is leftover, not RSO/ESO SoT |
 
 Out of scope for this matrix: payroll rates, ZUS post-hire journeys, HR inbox dump fields, calendar.

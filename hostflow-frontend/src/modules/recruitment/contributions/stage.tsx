@@ -14,6 +14,7 @@ import { useI18n } from '../../../i18n'
 import { getFriendlyErrorInfo } from '../../../utils/friendlyError'
 import { ContextRailDecisionZone } from '../../../platform/context-rail'
 import { resolveRecruitmentApplicationDecision } from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
+import { ApplicationRequirementsVerdictPanel } from '../../../components/application/ApplicationRequirementsVerdictPanel'
 import type {
   RecruitmentApplicationStage,
   WorkspaceCapabilityRenderContext,
@@ -159,6 +160,7 @@ export function RecruitmentStageContribution({
 
   return (
     <div data-capability-id="recruitment.stage" data-widget-class="decision_zone">
+      <ApplicationRequirementsVerdictPanel verdict={application.requirements_verdict} t={t} />
       <label className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
         <span className="shrink-0 font-semibold uppercase tracking-wide text-slate-500">
           {t('app.recruitment.contributions.stage', { defaultValue: 'Этап' })}

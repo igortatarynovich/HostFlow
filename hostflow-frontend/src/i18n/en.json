@@ -12056,6 +12056,19 @@
           "INTAKE_REJECT_REASON_REQUIRED": "Provide a rejection reason.",
           "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "This action is not available for this source."
         }
+      },
+      "requirements": {
+        "title": "Vacancy requirements",
+        "status": {
+          "fit": "Fit",
+          "missing": "Missing data",
+          "not_fit": "Not a fit"
+        },
+        "action": {
+          "fits": "Fits",
+          "collect": "Collect data",
+          "reject": "Not a fit"
+        }
       }
     },
     "client_acquisition": {

@@ -117,6 +117,7 @@ jobs:
       eso5: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso5 == 'true' }}
       intake_readiness: ${{ github.event_name != 'pull_request' || steps.filter.outputs.intake_readiness == 'true' }}
       canonical_facts_occupancy: ${{ github.event_name != 'pull_request' || steps.filter.outputs.canonical_facts_occupancy == 'true' }}
+      vacancy_requirements_eval: ${{ github.event_name != 'pull_request' || steps.filter.outputs.vacancy_requirements_eval == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -443,6 +444,19 @@ jobs:
               - 'backend/app/services/candidate_doc_pipeline_guard.py'
               - 'backend/tests/platform/test_canonical_facts_occupancy_gate.py'
               - 'docs/specs/tasks/canonical-facts-completeness.md'
+            vacancy_requirements_eval:
+              - 'backend/app/reference/vacancy_requirements.py'
+              - 'backend/app/services/vacancy_requirements_verdict.py'
+              - 'backend/app/entity_profile/vacancy_overlay_runtime.py'
+              - 'backend/app/field_registry/canonical_facts.py'
+              - 'backend/app/modules/applications/mutations.py'
+              - 'backend/app/modules/applications/schemas.py'
+              - 'backend/tests/platform/test_vacancy_requirements_eval_gate.py'
+              - 'docs/specs/tasks/vacancy-requirements-evaluator.md'
+              - 'docs/specs/tasks/vacancy-recruitment-requirements-sot.md'
+              - 'hostflow-frontend/src/platform/application-workspace/resolveRecruitmentApplicationDecision.ts'
+              - 'hostflow-frontend/src/components/application/ApplicationRequirementsVerdictPanel.tsx'
+              - 'hostflow-frontend/src/modules/recruitment/contributions/stage.tsx'
             ma2:
               - 'backend/app/entity_profile/mapping_resolve.py'
               - 'backend/app/entity_profile/ingest_runtime.py'
@@ -1114,6 +1128,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_canonical_facts_occupancy_gate.py') != ''
         with:
           tests: tests/platform/test_canonical_facts_occupancy_gate.py
+
+  vacancy-requirements-evaluator-gate:
+    name: Vacancy Requirements Evaluator Gate
+    needs: changes
+    if: needs.changes.outputs.vacancy_requirements_eval == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Vacancy Requirements Evaluator gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_vacancy_requirements_eval_gate.py') == ''
+        run: echo "Vacancy Requirements Evaluator gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_vacancy_requirements_eval_gate.py') != ''
+        with:
+          tests: tests/platform/test_vacancy_requirements_eval_gate.py
 
   ma2-resolution-gate:
     name: Mapping Resolution Gate
