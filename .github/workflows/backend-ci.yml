@@ -118,6 +118,7 @@ jobs:
       intake_readiness: ${{ github.event_name != 'pull_request' || steps.filter.outputs.intake_readiness == 'true' }}
       canonical_facts_occupancy: ${{ github.event_name != 'pull_request' || steps.filter.outputs.canonical_facts_occupancy == 'true' }}
       vacancy_requirements_eval: ${{ github.event_name != 'pull_request' || steps.filter.outputs.vacancy_requirements_eval == 'true' }}
+      vacancy_overlay_write_ui: ${{ github.event_name != 'pull_request' || steps.filter.outputs.vacancy_overlay_write_ui == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -457,6 +458,14 @@ jobs:
               - 'hostflow-frontend/src/platform/application-workspace/resolveRecruitmentApplicationDecision.ts'
               - 'hostflow-frontend/src/components/application/ApplicationRequirementsVerdictPanel.tsx'
               - 'hostflow-frontend/src/modules/recruitment/contributions/stage.tsx'
+            vacancy_overlay_write_ui:
+              - 'backend/app/reference/vacancy_overlay_write.py'
+              - 'backend/app/api/v1/vacancies/service.py'
+              - 'backend/app/api/v1/vacancies/schemas.py'
+              - 'backend/tests/platform/test_vacancy_overlay_write_ui_gate.py'
+              - 'docs/specs/tasks/vacancy-overlay-write-ui.md'
+              - 'hostflow-frontend/src/components/vacancies/detail/VacancyRecruitmentRequirementsPanel.tsx'
+              - 'hostflow-frontend/src/components/vacancies/VacancyDetail.tsx'
             ma2:
               - 'backend/app/entity_profile/mapping_resolve.py'
               - 'backend/app/entity_profile/ingest_runtime.py'
@@ -1143,6 +1152,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_vacancy_requirements_eval_gate.py') != ''
         with:
           tests: tests/platform/test_vacancy_requirements_eval_gate.py
+
+  vacancy-overlay-write-ui-gate:
+    name: Vacancy Overlay Write UI Gate
+    needs: changes
+    if: needs.changes.outputs.vacancy_overlay_write_ui == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Vacancy Overlay Write UI gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_vacancy_overlay_write_ui_gate.py') == ''
+        run: echo "Vacancy Overlay Write UI gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_vacancy_overlay_write_ui_gate.py') != ''
+        with:
+          tests: tests/platform/test_vacancy_overlay_write_ui_gate.py
 
   ma2-resolution-gate:
     name: Mapping Resolution Gate

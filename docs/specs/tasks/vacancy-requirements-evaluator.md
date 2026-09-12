@@ -1,6 +1,6 @@
 # Vacancy Requirements Evaluator
 
-**Status:** **Accepted** (L2 runtime slice). **Vacancy Requirements Evaluator Gate = PASS** on immutable revision `6d2586a5` ([#367](https://github.com/igortatarynovich/HostFlow/pull/367)). Overlay vacancy write UI is the **next** separate slice — not part of #367.  
+**Status:** **Accepted** (L2 runtime slice). **Vacancy Requirements Evaluator Gate = PASS** on immutable revision `6d2586a5` ([#367](https://github.com/igortatarynovich/HostFlow/pull/367)). Overlay vacancy write UI is a separate slice — **PASS** `18bef9f0` / [#368](https://github.com/igortatarynovich/HostFlow/pull/368).  
 **Phase class:** product  
 **Module owner:** **Recruitment**  
 **Date:** 2026-09-11  
@@ -69,4 +69,8 @@ Given this vacancy’s requirements and this person’s **canonical** facts, is 
 - Vacancy Overlay create/edit UI  
 - Leftover `lead_criteria_v1` retirement runtime  
 - HR host / Full Spine  
-- Changing Candidate Recruitment chrome after Подходит  
+- Changing Candidate Recruitment chrome after Подходит
+
+## Next
+
+- **Overlay vacancy write UI** — **PASS** `18bef9f0` / [#368](https://github.com/igortatarynovich/HostFlow/pull/368) — [`vacancy-overlay-write-ui.md`](vacancy-overlay-write-ui.md).
