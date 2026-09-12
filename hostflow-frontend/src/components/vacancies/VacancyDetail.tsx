@@ -43,13 +43,14 @@ import {
   VACANCY_COMPOSITION_SLOTS,
   assertVacancyCompositionSlots,
 } from '../../platform/entity-workspace'
-import { criteriaDefaultsFromSource, applyCriteriaToPayload } from './detail/criteriaForm'
+import { criteriaDefaultsFromSource } from './detail/criteriaForm'
 import { computePipelineMetrics, stageCountsFromPipelineColumns } from './detail/pipelineMetrics'
 import { StageMetricCards } from './detail/StageMetricCards'
 import { WorkspaceTab } from './detail/tabs/WorkspaceTab'
 import { JobDetailsTab } from './detail/tabs/JobDetailsTab'
 import { RecruitmentTab } from './detail/tabs/RecruitmentTab'
-import { CandidateRequirementsTab } from './detail/tabs/CandidateRequirementsTab'
+import { VacancyRecruitmentRequirementsPanel } from './detail/VacancyRecruitmentRequirementsPanel'
+import { getDocumentTypes, type DocType } from '../../api/documents/catalog'
 import { AutomationTab } from './detail/tabs/AutomationTab'
 import { AnalyticsTab } from './detail/tabs/AnalyticsTab'
 import { SettingsTab } from './detail/tabs/SettingsTab'
@@ -89,6 +90,10 @@ const vacancyFormSchema = z.object({
   criteria_preferred_languages: stringArray,
   vacancy_disable_auto_convert_on_fit: z.boolean().optional().default(false),
   lead_fit_evaluation_enabled: z.boolean().optional().default(false),
+  recruitment_years_ce_min: z.union([z.string(), z.number()]).optional().or(z.literal('')),
+  recruitment_required_documents: z.array(z.string()).optional().default([]),
+  recruitment_inherited_documents: z.array(z.string()).optional().default([]),
+  recruitment_inherited_years_ce_min: z.union([z.string(), z.number()]).optional().or(z.literal('')),
   headcount_target: z.string().optional().or(z.literal('')),
   order_line_id: z.string().optional().or(z.literal('')),
 })
@@ -122,6 +127,55 @@ function normalizeTab(raw?: string | null, fallback: WorkspaceTabKey = 'workspac
   return fallback
 }
 
+
+function recruitmentDefaultsFromSource(source: any) {
+  // Prefer API effective projection (Profile/Pack ∪ Overlay) so edit is round-trip safe.
+  const effective = source?.recruitment_requirements_effective
+  if (effective && typeof effective === 'object') {
+    const years = effective.years_ce_min
+    const docs = Array.isArray(effective.required_documents)
+      ? effective.required_documents.map(String)
+      : []
+    return {
+      recruitment_years_ce_min: years != null && years !== '' ? String(years) : '',
+      recruitment_required_documents: docs,
+      recruitment_inherited_documents: Array.isArray(effective.inherited_documents)
+        ? effective.inherited_documents.map(String)
+        : [],
+      recruitment_inherited_years_ce_min:
+        effective.inherited_years_ce_min != null && effective.inherited_years_ce_min !== ''
+          ? String(effective.inherited_years_ce_min)
+          : '',
+    }
+  }
+  const extra = source?.extra && typeof source.extra === 'object' ? source.extra : {}
+  const overlay = extra['entity_profile_vacancy_overlay.v1']
+  let years = extra.years_ce_min
+  let docs: string[] = Array.isArray(extra.extra_document_types)
+    ? extra.extra_document_types.map(String)
+    : []
+  if (overlay && Array.isArray(overlay.delta)) {
+    for (const row of overlay.delta) {
+      const pred = row?.predicate || {}
+      if (row?.kind === 'value' && pred.qualified_code === 'recruitment.candidate.experience.years_ce') {
+        years = pred.value ?? pred.minimum ?? years
+      }
+      if (row?.kind === 'document') {
+        const code = String(pred.document_type_code || pred.type_code || pred.type || '')
+          .trim()
+          .toLowerCase()
+        if (code && !docs.includes(code)) docs.push(code)
+      }
+    }
+  }
+  return {
+    recruitment_years_ce_min: years != null && years !== '' ? String(years) : '',
+    recruitment_required_documents: docs,
+    recruitment_inherited_documents: [] as string[],
+    recruitment_inherited_years_ce_min: '',
+  }
+}
+
 function ensurePersistedFields(normalized: any, source: any) {
   const keepKeys = [
     'id',
@@ -133,6 +187,7 @@ function ensurePersistedFields(normalized: any, source: any) {
     'candidate_profile_id',
     'order_line_id',
     'extra',
+    'recruitment_requirements_effective',
     'created_at',
     'updated_at',
     'tenant_id',
@@ -193,6 +248,7 @@ function toFormDefaults(source: any | null): VacancyFormValues {
     criteria_preferred_languages: crit.criteria_preferred_languages,
     vacancy_disable_auto_convert_on_fit: crit.vacancy_disable_auto_convert_on_fit,
     lead_fit_evaluation_enabled: crit.lead_fit_evaluation_enabled,
+    ...recruitmentDefaultsFromSource(source),
     headcount_target:
       source?.headcount_target != null && Number(source.headcount_target) > 0
         ? String(source.headcount_target)
@@ -284,6 +340,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   const [managerOptions, setManagerOptions] = useState<ManagerOption[]>([])
   const [recruiterOptions, setRecruiterOptions] = useState<ManagerOption[]>([])
   const [poolDraft, setPoolDraft] = useState<Record<string, { selected: boolean; weight: number }>>({})
+  const [recruitmentDocTypes, setRecruitmentDocTypes] = useState<DocType[]>([])
   const isCreate = !item && routeId === 'new'
 
   const {
@@ -298,6 +355,29 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
     resolver: zodResolver(vacancyFormSchema),
     defaultValues: toFormDefaults(item ? toModel(item) : null),
   })
+
+  const recruitmentDocOptions = useMemo(
+    () =>
+      recruitmentDocTypes.map((d) => ({
+        value: d.code || d.id,
+        label: d.name || d.code || d.id,
+      })),
+    [recruitmentDocTypes],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    getDocumentTypes()
+      .then((rows) => {
+        if (!cancelled) setRecruitmentDocTypes(Array.isArray(rows) ? rows : [])
+      })
+      .catch(() => {
+        if (!cancelled) setRecruitmentDocTypes([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const watchStatus = watch('status')
   const watchIsOpen = watch('is_open')
@@ -600,20 +680,15 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       try {
         const mode: 'create' | 'update' = model?.id ? 'update' : 'create'
         const payload = buildVacancyPayload(values, model, mode)
-        applyCriteriaToPayload(payload as any, {
-          criteria_min_experience_eu_years: values.criteria_min_experience_eu_years,
-          criteria_requires_documents: values.criteria_requires_documents || [],
-          criteria_requires_candidate_documents_v1:
-            values.criteria_requires_candidate_documents_v1 || [],
-          criteria_candidate_documents_allow_statuses:
-            values.criteria_candidate_documents_allow_statuses || [],
-          criteria_allowed_geo_countries: values.criteria_allowed_geo_countries || [],
-          criteria_blocked_geo_countries: values.criteria_blocked_geo_countries || [],
-          criteria_preferred_documents: values.criteria_preferred_documents || [],
-          criteria_preferred_languages: values.criteria_preferred_languages || [],
-          vacancy_disable_auto_convert_on_fit: !!values.vacancy_disable_auto_convert_on_fit,
-          lead_fit_evaluation_enabled: !!values.lead_fit_evaluation_enabled,
-        })
+        // Overlay write UI: human requirements → backend Overlay delta (not lead_criteria).
+        const yearsRaw = values.recruitment_years_ce_min
+        payload.recruitment_requirements = {
+          years_ce_min:
+            yearsRaw === '' || yearsRaw == null ? null : Number(yearsRaw),
+          required_documents: Array.isArray(values.recruitment_required_documents)
+            ? values.recruitment_required_documents
+            : [],
+        }
 
         const response =
           mode === 'update' ? await updateVacancy(model!.id, payload) : await createVacancy(payload)
@@ -1354,46 +1429,38 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
           ) : null}
 
           {tab === 'requirements' ? (
-            <CandidateRequirementsTab
+            <VacancyRecruitmentRequirementsPanel
               control={control}
-              setValue={setValue}
-              locale={locale}
-              requirementsPresets={requirementsPresets}
+              documentOptions={recruitmentDocOptions}
               labels={{
-                section: t(`${tw}.tabs.requirements`, {
-                  defaultValue: 'Candidate Requirements',
+                title: t(`${tw}.req.overlay_title`, {
+                  defaultValue: 'Что обязательно для этой вакансии?',
                 }),
-                mandatory: t(`${tw}.req.mandatory`, { defaultValue: 'Mandatory' }),
-                preferred: t(`${tw}.req.preferred`, { defaultValue: 'Preferred' }),
-                preferredNote: t(`${tw}.req.preferred_note`, {
+                intro: t(`${tw}.req.overlay_intro`, {
                   defaultValue:
-                    'Preferred criteria are soft signals. Full preferred schema may expand later.',
+                    'Показаны эффективные требования (профиль / пакет + уточнения вакансии). При сохранении в Overlay уходит только delta — унаследованное не копируется.',
                 }),
-                experience: t(`${tw}.req.experience`, { defaultValue: 'Min. EU experience (years)' }),
-                documents: t(`${tw}.req.documents`, { defaultValue: 'Required documents' }),
-                candidateDocs: t('app.vacancies.detail.criteria.candidate_docs_module'),
-                allowStatuses: t(`${tw}.req.allow_statuses`, {
-                  defaultValue: 'Allowed document statuses',
+                yearsCe: t(`${tw}.req.experience`, { defaultValue: 'Мин. опыт C+E по ЕС (лет)' }),
+                yearsCeHint: t(`${tw}.req.overlay_years_hint`, {
+                  defaultValue:
+                    'Эффективный минимум. Равен профилю — без delta; выше — tighten; пусто — сброс к профилю.',
                 }),
-                allowedGeo: t(`${tw}.req.countries_allowed`, {
-                  defaultValue: 'Allowed countries',
+                documents: t(`${tw}.req.documents`, {
+                  defaultValue: 'Обязательные документы (эффективный список)',
                 }),
-                blockedGeo: t(`${tw}.req.countries_blocked`, {
-                  defaultValue: 'Blocked countries',
+                documentsHint: t(`${tw}.req.overlay_docs_hint`, {
+                  defaultValue:
+                    'Документы профиля остаются унаследованными; в Overlay попадают только добавленные типы.',
                 }),
-                preferredDocs: t(`${tw}.req.preferred_docs`, {
-                  defaultValue: 'Preferred documents',
+                profileNote: t(`${tw}.req.overlay_profile_note`, {
+                  defaultValue: 'Профиль кандидата выбирается на вкладке Recruitment / Settings.',
                 }),
-                preferredLang: t(`${tw}.req.languages`, { defaultValue: 'Languages' }),
-                preferredLangHint: t(`${tw}.req.languages_hint`, {
-                  defaultValue: 'Comma-separated language codes (e.g. pl, en).',
+                inheritedDocs: t(`${tw}.req.overlay_inherited_docs`, {
+                  defaultValue: 'Из профиля / пакета',
                 }),
-                enableFit: t('app.vacancies.detail.criteria.enable_fit_evaluation'),
-                enableFitHint: t('app.vacancies.detail.criteria.enable_fit_evaluation_hint'),
-                disableConvert: t('app.vacancies.detail.criteria.disable_auto_convert'),
-                disableConvertHint: t('app.vacancies.detail.criteria.disable_auto_convert_hint'),
-                preset: t(`${tw}.req.preset`, { defaultValue: '— requirements preset —' }),
-                applyPreset: t(`${tw}.req.apply_preset`, { defaultValue: 'Apply preset' }),
+                inheritedYears: t(`${tw}.req.overlay_inherited_years`, {
+                  defaultValue: 'Минимум опыта из профиля / пакета',
+                }),
               }}
             />
           ) : null}

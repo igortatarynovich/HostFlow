@@ -1,6 +1,7 @@
 # Vacancy Recruitment Requirements SoT
 
-**Status:** **Accepted** (L2 contract). Runtime **not this slice**.  
+**Status:** **Accepted** (L2 contract). Runtime evaluator: [`vacancy-requirements-evaluator.md`](vacancy-requirements-evaluator.md) (after Occupancy Gate PASS).  
+- 2026-09-11: **Vacancy Overlay Write UI** — operator vacancy requirements → Entity Profile + Overlay delta; named gate `test_vacancy_overlay_write_ui_gate.py` — [`vacancy-overlay-write-ui.md`](vacancy-overlay-write-ui.md).
 **Phase class:** product  
 **Module owner:** **Recruitment**  
 **Date:** 2026-09-11  
@@ -115,6 +116,7 @@ Show the result. Offer the one `next_action`. Do not host Transfer / Formalize /
 
 ## Next
 
-1. **This contract** — sealed here. Runtime not started.  
-2. **Canonical Facts Completeness** — sealed: [`canonical-facts-completeness.md`](canonical-facts-completeness.md). Then **minimal runtime occupancy cutover** (decision-critical Driver CE set). Evaluator must not precede that cutover onto `lead.normalized`.  
-3. Runtime feat: Overlay operator write at vacancy create + evaluator on Application + leftover `lead_criteria_v1` classified — **after** occupancy cutover. Not auto-scheduled here.
+1. **This contract** — sealed.  
+2. **Canonical Facts Occupancy Gate** — **PASS** `bd0bf284` / [#366](https://github.com/igortatarynovich/HostFlow/pull/366).  
+3. **Runtime evaluator** — **PASS** `6d2586a5` / [#367](https://github.com/igortatarynovich/HostFlow/pull/367) — [`vacancy-requirements-evaluator.md`](vacancy-requirements-evaluator.md).  
+4. **Vacancy Overlay Write UI** — **PASS** `18bef9f0` / [#368](https://github.com/igortatarynovich/HostFlow/pull/368) — [`vacancy-overlay-write-ui.md`](vacancy-overlay-write-ui.md). Operator write → minimal Overlay delta → evaluator read is closed. Leftover `lead_criteria_v1` classified — not grown.

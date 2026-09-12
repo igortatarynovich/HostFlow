@@ -17,6 +17,14 @@ def _normalize_status_field(value: Any) -> Any:
     return normalize_vacancy_status(value)
 
 
+
+class VacancyRecruitmentRequirementsIn(BaseModel):
+    """Human operator intent for vacancy Overlay write (not lead_criteria)."""
+
+    years_ce_min: Optional[Union[str, int, float]] = None
+    required_documents: list[str] = Field(default_factory=list)
+
+
 class VacancyIn(BaseModel):
     company_id: UUID
     title: str
@@ -44,6 +52,10 @@ class VacancyIn(BaseModel):
     order_line_id: Optional[UUID] = Field(
         default=None,
         description="ADR-032: bind to Sales Order Line (1:1); pulls headcount from line",
+    )
+    recruitment_requirements: Optional[VacancyRecruitmentRequirementsIn] = Field(
+        default=None,
+        description="Operator vacancy requirements → Overlay delta (not lead_criteria)",
     )
 
     @field_validator("status", mode="before")
@@ -84,6 +96,10 @@ class VacancyOut(BaseModel):
     headcount_target: Optional[int] = None
     order_line_id: Optional[str] = None
     funnel_id: Optional[str] = None
+    recruitment_requirements_effective: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Human effective requirements (Profile/Pack ∪ vacancy Overlay)",
+    )
 
     # Phase 2.6.D Stage A — emit canonical values to clients even when
     # the row in the database still holds a legacy alias (`paused`). The
@@ -123,6 +139,10 @@ class VacancyPatch(BaseModel):
     required_documents_template_id: Optional[UUID] = None
     funnel_id: Optional[UUID] = None
     extra: Optional[Dict[str, Any]] = None
+    recruitment_requirements: Optional[VacancyRecruitmentRequirementsIn] = Field(
+        default=None,
+        description="Operator vacancy requirements → Overlay delta (not lead_criteria)",
+    )
     headcount_target: Optional[int] = Field(
         default=None,
         ge=0,

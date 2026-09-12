@@ -33,6 +33,36 @@ export type Application = {
   sales_inquiry_id?: string | null
   /** Transport Lead id for Lead-only sections (questionnaire, notes, timeline). */
   transport_lead_id?: string | null
+  /** Vacancy Requirements × canonical facts — computed verdict (not persisted). */
+  requirements_verdict?: RequirementsVerdict | null
+}
+
+export type RequirementsVerdictStatus = 'fit' | 'missing' | 'not_fit'
+
+export type RequirementsVerdictNextAction = {
+  code: 'fits' | 'collect_fact' | 'reject' | string
+  message?: string
+  fact_code?: string
+  requirement?: string
+  reason_code?: string
+}
+
+export type RequirementsVerdictExplanation = {
+  kind?: string
+  code?: string
+  outcome?: RequirementsVerdictStatus | string
+  message?: string
+  requirement?: string
+  qualified_code?: string
+  document_type_code?: string
+}
+
+export type RequirementsVerdict = {
+  ok?: boolean
+  contract_id?: string
+  status?: RequirementsVerdictStatus | string
+  explanation?: RequirementsVerdictExplanation[]
+  next_action?: RequirementsVerdictNextAction
 }
 
 export type ApplicationListResponse = {

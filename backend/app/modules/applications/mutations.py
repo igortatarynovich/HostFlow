@@ -184,7 +184,21 @@ async def _reload_recruitment(db: AsyncSession, tenant_id: str, application_id: 
     lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
     if not lead or (lead.lead_type == "client" and lead.lead_target_type == "client_lead"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    return lead_to_recruitment_application(lead)
+    out = lead_to_recruitment_application(lead)
+    try:
+        from backend.app.services.vacancy_requirements_verdict import (
+            build_requirements_verdict_for_lead,
+        )
+
+        verdict = await build_requirements_verdict_for_lead(
+            db, tenant_id=tenant_id, lead=lead
+        )
+        if verdict is not None:
+            out = out.model_copy(update={"requirements_verdict": verdict})
+    except Exception:
+        # Verdict is additive chrome — never block Application reload.
+        pass
+    return out
 
 
 async def patch_sales_stage(

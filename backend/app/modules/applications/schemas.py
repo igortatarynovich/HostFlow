@@ -45,6 +45,8 @@ class ApplicationOut(BaseModel):
     # Stage 3 slice 3 — SalesInquiry product identity (Lead = transport)
     sales_inquiry_id: Optional[str] = None
     transport_lead_id: Optional[str] = None
+    # Vacancy Requirements × canonical facts (computed; not persisted).
+    requirements_verdict: Optional[Dict[str, Any]] = None
 
 
 class ApplicationListResponse(BaseModel):

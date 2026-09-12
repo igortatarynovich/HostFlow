@@ -236,8 +236,9 @@ flowchart LR
 
 - **v1 (2026-05):** первая каноническая карта: flow Platform Core → Cross-company, GLOBAL/TENANT/COMPANY/MODULE scopes, bounded contexts, ownership matrix, module interaction rules, запреты.
 - **v1.1 (2026-05):** §6.4 порядок внедрения в код; старт P1b (enforcement recruitment на candidate API).
-- **2026-09-11:** [`canonical-facts-completeness.md`](../tasks/canonical-facts-completeness.md) — decision-critical facts: one canonical representation + one read path; occupancy matrix; evaluator blocked until cutover.
+- **2026-09-11:** [`canonical-facts-completeness.md`](../tasks/canonical-facts-completeness.md) — decision-critical facts: one canonical representation + one read path; Occupancy Gate PASS unlocks Vacancy Requirements evaluator.
 - **2026-09-11:** [`vacancy-recruitment-requirements-sot.md`](../tasks/vacancy-recruitment-requirements-sot.md) — vacancy requirements write = profile + Overlay; system result fit/missing/not_fit; **Подходит** remains the human boundary.
+- **2026-09-11:** [`vacancy-requirements-evaluator.md`](../tasks/vacancy-requirements-evaluator.md) — Overlay merge × canonical facts → fit/missing/not_fit + one next action on Application (after Occupancy PASS).
 - **2026-09-10:** [`ADR-042`](ADR-042-operator-host-boundary.md) — operator hosts: Application Fits enters Candidate; Transfer after Ready for employment; Employment after handoff is HR, not Application Workspace.
 - **2026-09-03:** [`ADR-041`](ADR-041-verified-self-service-signup.md) — SignupIntent is GLOBAL; User/Tenant/trial appear only at complete; OwnCompany ≠ Tenant.
 - **2026-08-23:** [`ADR-037`](ADR-037-lifecycle-identity-canon.md) — lifecycle identity; stage existence is not `funnel_stages` / Candidate.stage HR lane.

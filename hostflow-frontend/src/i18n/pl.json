@@ -12056,6 +12056,19 @@
           "INTAKE_REJECT_REASON_REQUIRED": "Podaj powód odrzucenia.",
           "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "Ta czynność jest niedostępna dla tego źródła."
         }
+      },
+      "requirements": {
+        "title": "Wymagania oferty",
+        "status": {
+          "fit": "Pasuje",
+          "missing": "Brakuje danych",
+          "not_fit": "Nie pasuje"
+        },
+        "action": {
+          "fits": "Pasuje",
+          "collect": "Uzupełnij dane",
+          "reject": "Nie pasuje"
+        }
       }
     },
     "client_acquisition": {

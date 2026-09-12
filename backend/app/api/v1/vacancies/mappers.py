@@ -3,6 +3,8 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 from backend.app.models import Vacancy
 from backend.app.models.vacancy import EmploymentType
+from backend.app.entity_profile.constants import DRIVER_CE_PROFILE_CODE
+from backend.app.reference.vacancy_overlay_write import project_effective_requirements
 from .schemas import VacancyOut
 
 _EMPLOYMENT_VALUES = {et.value for et in EmploymentType}
@@ -32,6 +34,12 @@ def vacancy_to_out(v: Vacancy, *, company_name: Optional[str] = None,
 
     # Get candidate_profile_id from vacancy if not provided
     profile_id = candidate_profile_id or getattr(v, "candidate_profile_id", None)
+    extra_data = _loads_extra(v.extra)
+    overlay = extra_data.get("entity_profile_vacancy_overlay.v1")
+    profile_code = DRIVER_CE_PROFILE_CODE
+    if isinstance(overlay, dict) and str(overlay.get("profile_code") or "").strip():
+        profile_code = str(overlay["profile_code"]).strip()
+    effective = project_effective_requirements(profile=profile_code, extra=extra_data)
 
     return VacancyOut(
         id=v.id,
@@ -51,7 +59,7 @@ def vacancy_to_out(v: Vacancy, *, company_name: Optional[str] = None,
         candidate_profile_id=str(profile_id) if profile_id else None,
         candidate_profile_name=candidate_profile_name,
         required_documents_template_id=getattr(v, "required_documents_template_id", None),
-        extra=_loads_extra(v.extra),
+        extra=extra_data,
         employment_type=employment_value,
         created_at=getattr(v, "created_at", None),
         updated_at=getattr(v, "updated_at", None),
@@ -63,4 +71,5 @@ def vacancy_to_out(v: Vacancy, *, company_name: Optional[str] = None,
         headcount_target=getattr(v, "headcount_target", None),
         order_line_id=getattr(v, "order_line_id", None),
         funnel_id=str(getattr(v, "funnel_id", None) or "") or None,
+        recruitment_requirements_effective=effective,
     )
