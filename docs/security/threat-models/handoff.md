@@ -18,6 +18,7 @@
 | HF-4 | Notification leak | push/email с данными чужого тенанта |
 | HF-5 | Export cross-tenant | отчёт тянет строки без фильтра по ACCESS CONTEXT |
 | HF-6 | Source-local facts in ready package | Handoff / transfer assembling citizenship (or other decision facts) from `field_answers` / nationality / country twins instead of canonical occupancy |
+| HF-7 | Premature Transfer / host confuse | Fits-stage Candidate transferred to HR before Ready package, or employment started from Application host instead of Candidate → Ready → Transfer boundary (ADR-042) |
 
 ## Модель контроля
 
@@ -32,9 +33,12 @@
 - Audit на смену ownership и на первый доступ клиента к набору полей.
 - Тесты: два тенанта, два recruiter, client portal — полный cross-matrix (см. SSOT §17A).
 - Package / handoff projection for citizenship uses `read_citizenship_alpha2` (canonical occupancy). Source bags stay provenance; they are not decision authority across the agency↔employer boundary. See [canonical-facts-completeness.md](../../specs/tasks/canonical-facts-completeness.md).
+- Operator Host Cutover (ADR-042): Fits enters Candidate on the Recruitment host; Transfer to HR is allowed only after Ready-for-employment package. Formalize → Started remains HR-owned and is out of Recruitment acceptance. See [recruitment-spine-orchestrator-v1.md](../../specs/tasks/recruitment-spine-orchestrator-v1.md).
 
 ## Связанные спеки
 
 - `docs/specs/architecture/handoff-contract.md`
 - `docs/specs/architecture/multi_tenant_model.md` (tenant_links)
+- `docs/specs/architecture/ADR-042-operator-host-boundary.md`
 - `docs/specs/tasks/canonical-facts-completeness.md`
+- `docs/specs/tasks/recruitment-spine-orchestrator-v1.md`
