@@ -1,6 +1,6 @@
 # Vacancy Overlay Write UI
 
-**Status:** **Accepted** (L2 runtime slice). In progress on `feat/vacancy-overlay-write-ui`.  
+**Status:** **Accepted** (L2 runtime slice). **Vacancy Overlay Write UI Gate = PASS** on immutable revision `18bef9f0` ([#368](https://github.com/igortatarynovich/HostFlow/pull/368)). Requirements SoT is closed from operator write through evaluator read.  
 **Phase class:** product  
 **Module owner:** **Recruitment**  
 **Date:** 2026-09-11  
@@ -32,9 +32,9 @@ When creating or editing a vacancy, what must be true of a person for Recruitmen
 
 ## Named Acceptance Gate — Vacancy Overlay Write UI
 
-**Status:** in progress  
+**Status:** **PASS** on `18bef9f0` ([#368](https://github.com/igortatarynovich/HostFlow/pull/368))  
 **Machine:** `backend/tests/platform/test_vacancy_overlay_write_ui_gate.py`  
-**CI:** named job `Vacancy Overlay Write UI Gate`
+**CI:** named job `Vacancy Overlay Write UI Gate` (`.github/workflows/backend-ci.yml`)
 
 ### Acceptance
 
@@ -67,6 +67,11 @@ Profile/Pack
 - `description` is not used by the evaluator.  
 - Employment / legalization requirements do not appear in this UI.
 
+**PASS evidence (`18bef9f0`):**
+- Named CI **Vacancy Overlay Write UI Gate** green on [#368](https://github.com/igortatarynovich/HostFlow/pull/368)
+- Diff recheck: round-trip safe (unchanged inherited ∉ delta; reset clears delta); FE sends human intent; backend persists only minimal Overlay delta; GET projects effective + inherited; evaluator verdict changes after save; no `lead_criteria_v1` / RPM `tenant_delta`; Employment / legalization / rates out of write path
+- Baseline Bandit / scorecard / SPA guards unchanged (not introduced by this diff; same as parent `e0277edf`)
+
 ---
 
 ## Non-goals
@@ -75,3 +80,4 @@ Profile/Pack
 - RPM operator UI  
 - Employment / rates / permits / contract subtype  
 - Changing Application evaluator chrome (already PASS)  
+
