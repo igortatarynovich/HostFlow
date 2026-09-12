@@ -1446,12 +1446,9 @@ async def list_handoffs_with_candidates(
             personal = cand._get_personal_data() if hasattr(cand, "_get_personal_data") else {}
             if not personal and isinstance(extra, dict):
                 personal = extra.get("personal_data") or extra.get("personal") or {}
-            citizenship = (
-                personal.get("citizenship")
-                or extra.get("citizenship")
-                or extra.get("country_code")
-                or ""
-            )
+            from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
+
+            citizenship = read_citizenship_alpha2(cand)
             vac = getattr(cand, "vacancy", None)
             vacancy_title = vac.title if vac and hasattr(vac, "title") else ""
             # Get docs_progress for documents column

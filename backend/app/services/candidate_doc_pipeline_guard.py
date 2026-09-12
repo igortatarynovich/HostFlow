@@ -11,6 +11,7 @@ Backward/same-index moves are always allowed.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 
 from sqlalchemy import select
@@ -173,9 +174,19 @@ def _owner_context_for_docs(
         for key, value in (docs_raw.items() if isinstance(docs_raw, dict) else [])
         if isinstance(value, bool)
     }
+    from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
+
     ctx: Dict[str, Any] = {
         "candidate_id": str(candidate_id),
-        "citizenship": extra_data.get("citizenship") or personal_data.get("citizenship"),
+        "citizenship": read_citizenship_alpha2(
+            SimpleNamespace(
+                _get_extra=lambda: extra_data,
+                _get_personal_data=lambda: personal_data,
+                personal_data=personal_data,
+                extra=extra_data,
+            )
+        )
+        or None,
         "residency_status": extra_data.get("poland_stay_basis") or personal_data.get("residency_status"),
         "has_adr": extra_data.get("has_adr"),
         "documents": docs_ctx,

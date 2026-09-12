@@ -3,6 +3,11 @@ Single evaluator for vacancy.lead_criteria_v1 vs lead.normalized (§2.10 / §2.5
 
 Used by list/get leads (display) and process_normalized_lead (routing / automatic gating).
 Do not duplicate criteria logic elsewhere — extend here only.
+
+LEFTOVER (Canonical Facts Occupancy): this evaluator reads ``lead.normalized``
+including ``documents[]``. It is **not** an RSO/ESO decision SoT and must not be
+grown as Vacancy Requirements authority. Hub evidence + slots are the document
+decision path. See ``docs/specs/tasks/canonical-facts-completeness.md``.
 """
 
 from __future__ import annotations

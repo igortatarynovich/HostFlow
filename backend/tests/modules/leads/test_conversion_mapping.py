@@ -20,7 +20,8 @@ def test_registry_copies_in_poland_and_experience() -> None:
     )
     assert mapped.extra.get("in_poland") is True
     assert mapped.personal.get("in_poland") is True
-    assert mapped.extra.get("experience_eu_years") == 2
+    assert mapped.extra.get("experience", {}).get("years_ce") == 2
+    assert "experience_eu_years" not in mapped.extra
     assert mapped.columns.get("phone") == "+48111"
     assert mapped.columns.get("first_name") == "Jan"
 
@@ -75,9 +76,10 @@ def test_meta_experience_question_maps_without_operator_rule() -> None:
             ]
         }
     )
-    assert mapped.extra.get("experience_eu_years") in {"1–2_года", 1}
+    assert mapped.extra.get("experience", {}).get("years_ce") in {"1–2_года", 1}
     assert mapped.extra.get("driving_license_category") == "C+E"
-    assert str(mapped.personal.get("citizenship") or mapped.extra.get("citizenship") or "").upper() == "PL"
+    assert str(mapped.personal.get("citizenship") or "").upper() == "PL"
+    assert "citizenship" not in mapped.extra
 
 
 def test_technical_inbox_url_is_not_written_even_with_rule() -> None:

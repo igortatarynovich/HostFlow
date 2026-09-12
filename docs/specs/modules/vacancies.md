@@ -15,6 +15,10 @@
 
 ---
 
+## Recruitment requirements
+
+Vacancy **Recruitment Requirements** (role / Entity Profile + Overlay delta: what must be true of a person) are owned here as policy, not as `description` rich text and not as `lead_criteria_v1` matching parameters. System result on an Application is fit / missing / not_fit; **Подходит** remains the human boundary into Candidates. SoT: [`vacancy-recruitment-requirements-sot.md`](../tasks/vacancy-recruitment-requirements-sot.md). RPM still answers “must provide document type X?”.
+
 ## Логика
 - `employment_type`: `'full_time' | 'part_time' | 'b2b'` (enum, общий для backend и frontend).  
 - Вакансия активна (`is_active=true`) → разрешено назначать кандидатов.  

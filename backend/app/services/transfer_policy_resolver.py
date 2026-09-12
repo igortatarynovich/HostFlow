@@ -47,12 +47,14 @@ def _candidate_personal(candidate: Candidate) -> dict[str, Any]:
 
 
 def _eligibility_context(candidate: Candidate, tenant_id: str, *, stage: str | None = None) -> WorkforceEligibilityContext:
+    from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
+
     extra = _candidate_extra(candidate)
     personal = _candidate_personal(candidate)
     return WorkforceEligibilityContext(
         tenant_id=tenant_id,
         candidate_id=str(candidate.id),
-        citizenship=extra.get("citizenship") or personal.get("citizenship"),
+        citizenship=read_citizenship_alpha2(candidate) or None,
         work_country=extra.get("work_country") or personal.get("work_country"),
         residence_status=extra.get("poland_stay_basis") or personal.get("residency_status"),
         position_category=extra.get("position_category") or extra.get("profession"),

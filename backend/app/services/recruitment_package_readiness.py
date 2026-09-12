@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate import Candidate
+from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
 from backend.app.field_registry.requirement_evaluator import evaluate_field_requirements_for_candidate
 from backend.app.services.hr_verified_field_catalog import (
     DATA_ONLY_VERIFICATION_KEYS,
@@ -140,7 +141,7 @@ async def evaluate_recruitment_package(
         context=WorkforceEligibilityContext(
             tenant_id=str(tenant_id).strip(),
             candidate_id=str(candidate_id).strip(),
-            citizenship=extra.get("citizenship") or personal.get("citizenship"),
+            citizenship=read_citizenship_alpha2(cand) or None,
             work_country=extra.get("work_country") or personal.get("work_country"),
             residence_status=extra.get("poland_stay_basis") or personal.get("residency_status"),
             position_category=extra.get("position_category") or extra.get("profession"),

@@ -84,9 +84,16 @@ def build_normalized_payload_from_candidate(candidate: Candidate) -> dict[str, A
         payload["recruitment.candidate.contacts.email"] = email
         payload["email"] = email
 
-    citizenship = _pick_text(extra.get("citizenship"), personal.get("citizenship"))
+    from backend.app.field_registry.canonical_facts import (
+        CITIZENSHIP_QUALIFIED,
+        YEARS_CE_QUALIFIED,
+        read_citizenship_alpha2,
+        read_years_ce,
+    )
+
+    citizenship = read_citizenship_alpha2(candidate)
     if citizenship:
-        payload["platform.identity.citizenship"] = citizenship
+        payload[CITIZENSHIP_QUALIFIED] = citizenship
         payload["citizenship"] = citizenship
 
     birth_date = _pick_text(extra.get("birth_date"), personal.get("birth_date"))
@@ -99,9 +106,11 @@ def build_normalized_payload_from_candidate(candidate: Candidate) -> dict[str, A
         payload["platform.identity.address"] = address
         payload["address"] = address
 
-    years_ce = _pick_text(extra.get("experience_eu_years"), extra.get("years_ce"), personal.get("years_ce"))
-    if years_ce:
-        payload["recruitment.candidate.experience.years_ce"] = years_ce
+    years_ce = read_years_ce(candidate)
+    if years_ce not in (None, ""):
+        payload[YEARS_CE_QUALIFIED] = years_ce
+        # Display alias only — decision readers must use the qualified key /
+        # read_years_ce, not this flat key as authority.
         payload["experience_eu_years"] = years_ce
 
     return payload

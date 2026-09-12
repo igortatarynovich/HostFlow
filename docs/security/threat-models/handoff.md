@@ -17,6 +17,7 @@
 | HF-3 | IDOR на handoff record | прямой доступ по UUID без проверки relationship |
 | HF-4 | Notification leak | push/email с данными чужого тенанта |
 | HF-5 | Export cross-tenant | отчёт тянет строки без фильтра по ACCESS CONTEXT |
+| HF-6 | Source-local facts in ready package | Handoff / transfer assembling citizenship (or other decision facts) from `field_answers` / nationality / country twins instead of canonical occupancy |
 
 ## Модель контроля
 
@@ -30,8 +31,10 @@
 - Policy layer: единая функция «может ли пользователь X видеть поле Y для кандидата Z».
 - Audit на смену ownership и на первый доступ клиента к набору полей.
 - Тесты: два тенанта, два recruiter, client portal — полный cross-matrix (см. SSOT §17A).
+- Package / handoff projection for citizenship uses `read_citizenship_alpha2` (canonical occupancy). Source bags stay provenance; they are not decision authority across the agency↔employer boundary. See [canonical-facts-completeness.md](../../specs/tasks/canonical-facts-completeness.md).
 
 ## Связанные спеки
 
 - `docs/specs/architecture/handoff-contract.md`
 - `docs/specs/architecture/multi_tenant_model.md` (tenant_links)
+- `docs/specs/tasks/canonical-facts-completeness.md`

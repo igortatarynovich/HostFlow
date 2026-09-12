@@ -224,7 +224,9 @@ class WorkforceEligibilityResolver:
                 extra = cand._get_extra() if hasattr(cand, "_get_extra") else {}
                 personal = cand._get_personal_data() if hasattr(cand, "_get_personal_data") else {}
                 if not context.citizenship:
-                    context.citizenship = str(extra.get("citizenship") or personal.get("citizenship") or "").strip() or None
+                    from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
+
+                    context.citizenship = read_citizenship_alpha2(cand) or None
                 if not context.work_country:
                     context.work_country = str(extra.get("work_country") or personal.get("work_country") or "").strip() or None
                 if not context.position_category:

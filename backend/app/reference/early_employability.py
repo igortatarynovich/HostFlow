@@ -93,31 +93,17 @@ def citizenship_from_canonical_facts(
     *,
     canonical_facts: Mapping[str, Any] | None = None,
 ) -> str:
-    """Prefer explicit canonical_facts override, else package identity_facts."""
+    """Single path: canonical_facts.citizenship or package identity_facts.citizenship.
+
+    Does not accept ``nationality`` / ``country`` as citizenship twins.
+    """
+    from backend.app.field_registry.canonical_facts import read_citizenship_alpha2
+
     if isinstance(canonical_facts, Mapping):
-        for key in ("citizenship", "nationality"):
-            code = _upper_alpha2(canonical_facts.get(key))
-            if code:
-                return code
-    if not isinstance(package, Mapping):
-        return ""
-    person = package.get("person")
-    if isinstance(person, Mapping):
-        identity = person.get("identity_facts")
-        if isinstance(identity, Mapping):
-            for key in ("citizenship", "nationality"):
-                code = _upper_alpha2(identity.get(key))
-                if code:
-                    return code
-        code = _upper_alpha2(person.get("citizenship") or person.get("nationality"))
+        code = read_citizenship_alpha2(canonical_facts)
         if code:
             return code
-    facts = package.get("recruitment_facts")
-    if isinstance(facts, Mapping):
-        code = _upper_alpha2(facts.get("citizenship") or facts.get("nationality"))
-        if code:
-            return code
-    return ""
+    return read_citizenship_alpha2(package)
 
 
 def citizenship_group(citizenship: str) -> str:

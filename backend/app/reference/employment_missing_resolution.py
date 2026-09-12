@@ -169,10 +169,9 @@ def merge_resolution_patch_into_package(
         for key, value in facts.items():
             identity[key] = value
         person["identity_facts"] = identity
-        # Keep top-level mirrors for readers that look there.
-        for key in ("citizenship", "nationality"):
-            if key in facts:
-                person[key] = facts[key]
+        # Keep top-level citizenship mirror only (not nationality-as-citizenship).
+        if "citizenship" in facts:
+            person["citizenship"] = facts["citizenship"]
         base["person"] = person
 
     if evidence_patch:

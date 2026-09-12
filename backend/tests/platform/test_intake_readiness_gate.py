@@ -108,7 +108,9 @@ def test_citizenship_field_becomes_canonical_fact() -> None:
     normalized = normalize_meta_payload(_meta_payload(citizenship="PL"))
     assert str(normalized.get("citizenship") or "").upper() == "PL"
     writes = apply_executable_intake_mapping(normalized)
-    assert str(writes.personal.get("citizenship") or writes.extra.get("citizenship") or "").upper() == "PL"
+    # Canonical occupancy: personal_data.citizenship only (not extra).
+    assert str(writes.personal.get("citizenship") or "").upper() == "PL"
+    assert "citizenship" not in writes.extra
 
 
 def test_experience_and_category_become_canonical_facts() -> None:
@@ -116,7 +118,9 @@ def test_experience_and_category_become_canonical_facts() -> None:
     assert normalized.get("experience_eu_years") == 1
     assert str(normalized.get("driving_license_category") or "") == "C+E"
     writes = apply_executable_intake_mapping(normalized)
-    assert writes.extra.get("experience_eu_years") == 1
+    # Canonical occupancy: extra.experience.years_ce (not flat experience_eu_years).
+    assert writes.extra.get("experience", {}).get("years_ce") == 1
+    assert "experience_eu_years" not in writes.extra
     assert writes.extra.get("driving_license_category") == "C+E"
 
 
