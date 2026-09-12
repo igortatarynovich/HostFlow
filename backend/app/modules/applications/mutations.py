@@ -542,6 +542,45 @@ async def recruitment_process_application(
     return ApplicationProcessResult(application=app, candidate_id=candidate_id, message=getattr(result, "error", None))
 
 
+async def recruitment_fits_application(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str,
+    application_id: str,
+    current_user: UserCtx,
+) -> ApplicationProcessResult:
+    """Fits: existing process creates/finds Candidate. Not Ready. Not Transfer."""
+    from backend.app.modules.recruitment.services.operator_host_cutover import record_fits_decision_on_lead
+
+    result = await recruitment_process_application(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        application_id=application_id,
+        current_user=current_user,
+    )
+    candidate_id = result.candidate_id
+    if not candidate_id:
+        return result
+
+    lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
+    if lead is not None:
+        record_fits_decision_on_lead(
+            lead,
+            actor_id=str(current_user.sub),
+            candidate_id=candidate_id,
+        )
+        await db.commit()
+        app = await _reload_recruitment(db, tenant_id, application_id)
+        return ApplicationProcessResult(
+            application=app,
+            candidate_id=candidate_id,
+            message=result.message,
+        )
+    return result
+
+
 async def recruitment_follow_up(
     db: AsyncSession,
     *,

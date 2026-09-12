@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, select, func
@@ -608,8 +608,14 @@ async def create_handoff(
     assigned_to_user_id: str | None = None,
     destination: str | None = None,
     application_id: str | None = None,
+    ready_for_employment_package: Mapping[str, Any] | None = None,
 ) -> tuple[CandidateHandoff | None, str | dict[str, Any] | None]:
-    """Create handoff (client portal or internal HR). Returns (handoff, error)."""
+    """Create handoff (client portal or internal HR). Returns (handoff, error).
+
+    Internal HR also requires existing recruitment readiness (stage + package)
+    and a valid ``ready_for_employment.v1`` assembled from that state. Fits does
+    not satisfy Transfer.
+    """
     if not client_company_id and not client_tenant_id:
         return None, "Either client_company_id or client_tenant_id required"
     if client_company_id and client_tenant_id:
@@ -648,6 +654,32 @@ async def create_handoff(
     )
     if pkg_err:
         return None, pkg_err
+
+    rfe_package: dict[str, Any] | None = None
+    if dest == "internal_hr":
+        from backend.app.modules.recruitment.services.operator_host_cutover import (
+            assemble_ready_for_employment_for_candidate,
+        )
+        from backend.app.reference.ready_for_employment import validate_ready_for_employment_package_v1
+
+        incoming = ready_for_employment_package if isinstance(ready_for_employment_package, Mapping) else None
+        if incoming is not None:
+            rfe_package = dict(incoming)
+        else:
+            rfe_package = await assemble_ready_for_employment_for_candidate(
+                db,
+                tenant_id=agency_tenant_id,
+                candidate=cand,
+                actor_id=requested_by_user_id,
+                application_id=application_id,
+            )
+        rfe_errors = validate_ready_for_employment_package_v1(rfe_package)
+        if rfe_errors:
+            return None, {
+                "code": "invalid_ready_for_employment_package",
+                "message": "ready_for_employment.v1 failed validation",
+                "errors": rfe_errors,
+            }
 
     link = await get_tenant_link(
         db,
@@ -700,6 +732,27 @@ async def create_handoff(
     if resolved_app:
         handoff.application_id = resolved_app
         await db.flush()
+
+    if dest == "internal_hr" and rfe_package is not None:
+        from backend.app.modules.recruitment.services.operator_host_cutover import (
+            persist_ready_for_employment_on_handoff,
+        )
+
+        persist_errors = await persist_ready_for_employment_on_handoff(
+            db,
+            tenant_id=agency_tenant_id,
+            candidate=cand,
+            handoff=handoff,
+            package=rfe_package,
+            actor_id=requested_by_user_id,
+            created=True,
+        )
+        if persist_errors:
+            return None, {
+                "code": "invalid_ready_for_employment_package",
+                "message": "ready_for_employment.v1 failed validation",
+                "errors": persist_errors,
+            }
 
     # internal_hr: PR-4 — do not materialize workforce / HR checklist until accept_handoff.
     # Candidate stays at recruitment stage (e.g. ready_for_handoff) until HR accepts.

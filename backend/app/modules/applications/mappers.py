@@ -379,7 +379,7 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
         tab_bucket=_tab_bucket(status),
         assignee_id=assignee,
         next_action=_text(getattr(lead, "next_action_type", None))
-        or recruitment_next_action_after_intake(lead),
+        or (None if candidate_id else recruitment_next_action_after_intake(lead)),
         last_activity_at=getattr(lead, "updated_at", None),
         created_at=getattr(lead, "created_at", None),
         priority=_text(getattr(lead, "priority", None)) or None,

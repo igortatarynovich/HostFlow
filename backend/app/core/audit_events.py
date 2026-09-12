@@ -22,6 +22,8 @@ class AuditEventType(str, Enum):
     handoff_rejected = "handoff_rejected"
     handoff_returned = "handoff_returned"
     handoff_cancelled = "handoff_cancelled"
+    # Recruitment → Employment boundary (after Candidate Transfer with valid RFE)
+    recruitment_completed = "recruitment_completed"
     # ESO-1: Employment case started only after Employment accept policy auto/manual accept
     employment_started = "employment_started"
     # ESO-5: physical first day at work (Employee created ≠ this event)

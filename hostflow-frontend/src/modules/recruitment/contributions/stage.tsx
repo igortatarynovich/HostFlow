@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   createRecruitmentApplicationFollowUp,
+  fitsRecruitmentApplication,
   processRecruitmentApplication,
   submitRecruitmentApplicationIntakeDecision,
   updateRecruitmentApplicationStage,
@@ -108,6 +109,27 @@ export function RecruitmentStageContribution({
     })
   }, [application, navigate, notify, run, t])
 
+  const fitsApplication = useCallback(() => {
+    if (!application) return
+    void run(async () => {
+      const result = await fitsRecruitmentApplication(application.id)
+      if (!result.candidate_id) {
+        notify({
+          title: recruitmentActionErrorMessage(processResultError(result.message), t),
+          variant: 'error',
+        })
+        return
+      }
+      notify({
+        title: t('app.recruitment.contributions.fits_opened_candidate', {
+          defaultValue: t('app.recruitment.contributions.candidate_created'),
+        }),
+        variant: 'success',
+      })
+      navigate(candidateDetailPath(String(result.candidate_id)))
+    })
+  }, [application, navigate, notify, run, t])
+
   if (!application || !onStage) return null
 
   const stageSelectValue = CRM_STAGE_OPTIONS.includes(currentStage as (typeof CRM_STAGE_OPTIONS)[number])
@@ -145,6 +167,7 @@ export function RecruitmentStageContribution({
     busy,
     onStage,
     onCreateCandidate: createCandidate,
+    onFits: fitsApplication,
     onFollowUp: () => {
       setFollowUpTitle((prev) => prev || t('app.recruitment.contributions.followup_default'))
       setShowFollowUp(true)
