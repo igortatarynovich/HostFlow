@@ -1,11 +1,10 @@
 # Vacancy Recruitment Requirements SoT
 
-**Status:** **Accepted** (L2 contract). Runtime evaluator: [`vacancy-requirements-evaluator.md`](vacancy-requirements-evaluator.md) (after Occupancy Gate PASS).  
-- 2026-09-11: **Vacancy Overlay Write UI** — operator vacancy requirements → Entity Profile + Overlay delta; named gate `test_vacancy_overlay_write_ui_gate.py` — [`vacancy-overlay-write-ui.md`](vacancy-overlay-write-ui.md).
+**Status:** **Accepted** (L2 contract). Operator write → evaluator read **CLOSED** with Occupancy `bd0bf284` · Evaluator `6d2586a5` · Overlay `18bef9f0`. Part of [Recruitment Architecture CLOSED](../gates/recruitment-architecture-closed.md) @ `61cbc3eb`.  
 **Phase class:** product  
 **Module owner:** **Recruitment**  
 **Date:** 2026-09-11  
-**Trusted base:** `feat/eso4-formalize`  
+**Trusted base:** `feat/eso4-formalize` @ `61cbc3eb`  
 **Parents:** [ADR-042](../architecture/ADR-042-operator-host-boundary.md) · [RSO v1](recruitment-spine-orchestrator-v1.md) · [RPM-1](../architecture/requirement-policy-authority.md) · [Vacancy Overlay](entity-profile-vacancy-overlay-contract.md) · [Mapping Authority](mapping-authority.md) · [ADR-016](../architecture/ADR-016-requirement-evidence-document-separation.md)  
 **Research (L3, not SoT):** [HRappka audit](../../analysis/hrappka-live-session-audit-brief.md) · [Inventory](../../analysis/vacancy-requirements-facts-inventory.md)
 

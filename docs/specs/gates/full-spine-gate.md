@@ -1,16 +1,17 @@
 # Full Spine Gate
 
-**Status:** **STOP** — superseded by [`ADR-042`](../architecture/ADR-042-operator-host-boundary.md). Named operator PASS of this gate is **not pursued**.  
+**Status:** **STOP** — superseded by [`ADR-042`](../architecture/ADR-042-operator-host-boundary.md). Named operator PASS of this gate is **not pursued**. Product spine remains **NOT PASS / BLOCKED BY HR UI**.  
 **Date (freeze):** 2026-09-09  
 **Date (STOP):** 2026-09-10  
-**Trusted base:** `feat/eso4-formalize`  
-**Successor SoT:** [`ADR-042-operator-host-boundary.md`](../architecture/ADR-042-operator-host-boundary.md)
+**Trusted base:** `feat/eso4-formalize` @ `61cbc3eb`  
+**Successor SoT:** [`ADR-042-operator-host-boundary.md`](../architecture/ADR-042-operator-host-boundary.md) · Recruitment Architecture CLOSED: [`recruitment-architecture-closed.md`](recruitment-architecture-closed.md)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Does not rewrite L0. Does not open ESO-6. Does not merge ESO into `integration` on this withdrawn contract.
 
 > This file is **not** the operator journey SoT.  
 > Do **not** retune it into a three-host Full Spine. The original product hypothesis is false.  
-> Machine ESO composition (`full_spine.v1` / `walk_full_spine_happy_path_v1`) may remain as **ESO API evidence**. It is not Full Spine operator PASS.
+> Machine ESO composition (`full_spine.v1` / `walk_full_spine_happy_path_v1`) may remain as **ESO API evidence**. It is not Full Spine operator PASS.  
+> ADR-042 runtime cutover is **done** ([#365](https://github.com/igortatarynovich/HostFlow/pull/365)). That closes Recruitment architecture — **not** Full Spine operator PASS. Remaining block is **HR UI** (Formalize → Started).
 
 ---
 
@@ -26,7 +27,7 @@ That mixed:
 - Fits with Transfer  
 - Seamless handoff with the same UI host  
 
-The hypothesis is withdrawn. A corrected operator journey is **not** this gate with different verbs. It is ADR-042 (hosts) plus a later **runtime cutover** (routing / ownership only). ESO-1…5 are not rewritten here.
+The hypothesis is withdrawn. A corrected operator journey is **not** this gate with different verbs. It is ADR-042 (hosts) plus the **runtime cutover** ([#365](https://github.com/igortatarynovich/HostFlow/pull/365) — done). ESO-1…5 are not rewritten here. Full Spine operator PASS still requires HR UI after Transfer — **BLOCKED BY HR UI**, not a Recruitment reopen.
 
 ---
 

@@ -1,12 +1,13 @@
 # Recruitment Spine Orchestrator v1
 
-**Status:** **RSO-1 Contract Gate PASS** (feat locked) — runtime = RSO-2; see [ready-for-employment-contract.md](../architecture/ready-for-employment-contract.md).  
+**Status:** **Recruitment Architecture CLOSED** on `feat/eso4-formalize` @ `61cbc3eb` — see [recruitment-architecture-closed.md](../gates/recruitment-architecture-closed.md). RSO-1 Contract Gate **PASS**; RSO-2 Operator Host Cutover **PASS** ([#365](https://github.com/igortatarynovich/HostFlow/pull/365) / `efb48c34`). Contract SoT: [ready-for-employment-contract.md](../architecture/ready-for-employment-contract.md).  
 **Phase class:** product  
 **Module owner:** **Recruitment** (independent of Employment / HR)  
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · Architecture Rule 2 (no cross-module internal access — handoff via delivery contract only) · Strategy Lock (Operator Test / Zero-choice / Happy path short)  
 **Sibling (Employment):** [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — owns employability/legalization, formalize, Employee, Started  
 **Contract SoT:** [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`)  
-**Estimate:** 1 docs contract slice + feat slices for Recruitment rail only  
+**Estimate:** program closed at Transfer boundary — no further Recruitment expansion slices  
+**Evidence:** Occupancy `bd0bf284` · Evaluator `6d2586a5` · Overlay `18bef9f0` · Host Cutover `efb48c34` / merge `61cbc3eb`  
 
 > Not Mapping Authority. Not Forms Publish. Not Employment / HR creating Employee from Recruitment.  
 > Not “Recruitment continues until Started”. Not auto-accept handoff as a Recruitment side-effect.  
@@ -168,8 +169,8 @@ Same-tenant auto-accept, if any, is **Employment module policy** after receiving
 | Slice | Name | Gate | Depends |
 |-------|------|------|---------|
 | **RSO-1** | Recruitment orchestrator **contract** (this brief + package SoT) | **Recruitment Orchestrator Contract Gate** — **PASS** (`ready_for_employment.v1` + `test_ready_for_employment_contract_gate.py`) | — |
-| **RSO-2** | Runtime re-host ([`ADR-042`](../architecture/ADR-042-operator-host-boundary.md)): Application `fits` → Candidate; Candidate Ready for employment → `offer_handoff` | **Application Fits / Candidate Transfer Gate** — no Create candidate / vacancy bind / stage menu; Employment verbs not on Application | RSO-1 |
-| **RSO-3** | Call triad + My Work (Recruitment card states) | **Call / My Work Gate** | RSO-2 (or FE parallel after contract types stable) |
+| **RSO-2** | Runtime re-host ([`ADR-042`](../architecture/ADR-042-operator-host-boundary.md)): Application `fits` → Candidate; Candidate Ready for employment → Transfer | **Operator Host Cutover** — **PASS** [#365](https://github.com/igortatarynovich/HostFlow/pull/365) / `efb48c34` / merge `61cbc3eb` (`test_operator_host_cutover.py`) | RSO-1 |
+| **RSO-3** | Call triad + My Work (Recruitment card states) | **Call / My Work Gate** — optional polish; **not** a Recruitment Architecture reopen | RSO-2 (or FE parallel) |
 
 **Not in this program (Employment brief):** early employability SoT, formalize gate, Employee create, Started. See [employment-spine-orchestrator-v1.md](employment-spine-orchestrator-v1.md).
 
@@ -217,11 +218,14 @@ FAIL if Recruitment UI creates Employee, asks for zezwolenie type, or hosts Empl
 
 ## Next
 
-1. **RSO-1 PASS** — package contract + three acceptance gates frozen.  
-2. **RSO-2** runtime: **Operator Host Cutover** on `feat/operator-host-cutover` — Application Fits enters Candidate; existing Candidate recruitment determines Ready; Transfer on Candidate emits `ready_for_employment.v1`. Do not pursue [#359](https://github.com/igortatarynovich/HostFlow/pull/359) one-card PASS.  
-3. **Intake Readiness Gate** — [`intake-readiness-gate.md`](../gates/intake-readiness-gate.md) (`intake_readiness.v1`): Meta-like `POST /leads/meta` must become an actionable Application (`next_action = fits`) without hand-written canonical facts. Not Transfer / Formalize / Started.  
-4. **Vacancy Recruitment Requirements SoT** — [vacancy-recruitment-requirements-sot.md](vacancy-recruitment-requirements-sot.md). System result fit / missing / not_fit chooses one next action; **Подходит** stays the human boundary into Candidates. Runtime not started. Unlock ≠ sequential-queue Active Product.  
-5. **Canonical Facts Completeness** — [canonical-facts-completeness.md](canonical-facts-completeness.md). Occupancy cutover before Vacancy Requirements evaluator.  
-6. ESO-1 accept policy on [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — must enforce gate 2 (no re-ask).
+**Recruitment Architecture = CLOSED** — [`../gates/recruitment-architecture-closed.md`](../gates/recruitment-architecture-closed.md). Do not open further Recruitment expansion slices.
 
-Canvas: `meta-to-started-target-journey` (visual; not L2 canon).
+1. **RSO-1 PASS** — package contract frozen.  
+2. **RSO-2 PASS** — Operator Host Cutover [#365](https://github.com/igortatarynovich/HostFlow/pull/365) / `61cbc3eb`.  
+3. **Requirements block PASS** — Occupancy `bd0bf284` · Evaluator `6d2586a5` · Overlay `18bef9f0`.  
+4. **Full Spine** — remains **NOT PASS / BLOCKED BY HR UI** ([`../gates/full-spine-gate.md`](../gates/full-spine-gate.md)).  
+5. **Next product work** — existing **HR / Employment** track (ESO Formalize → Started). Not Recruitment cleanup or polish.
+
+**Return to Recruitment only** for a concrete closed-contract defect or a proven handoff-boundary interface gap raised by the next owner.
+
+Canvas: `meta-to-started-target-journey` / `recruitment-closure-review` (visual; not L2 canon).

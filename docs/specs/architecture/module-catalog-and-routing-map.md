@@ -262,6 +262,7 @@
 
 ## История
 
+- 2026-09-12: **Recruitment Architecture CLOSED** on `feat/eso4-formalize` @ `61cbc3eb` — ADR-042 runtime cutover DONE ([#365](https://github.com/igortatarynovich/HostFlow/pull/365) / `efb48c34`); Requirements evidence Occupancy `bd0bf284` · Evaluator `6d2586a5` · Overlay `18bef9f0`; Full Spine remains NOT PASS / BLOCKED BY HR UI — [`../gates/recruitment-architecture-closed.md`](../gates/recruitment-architecture-closed.md).  
 - 2026-09-11: **Canonical Facts Completeness** (Accepted — L2 contract; occupancy cutover later) — one canonical representation + one read path for decision-critical facts; consumers-first occupancy matrix; blocks Vacancy Requirements evaluator until cutover — [`../tasks/canonical-facts-completeness.md`](../tasks/canonical-facts-completeness.md).  
 - 2026-09-11: **Vacancy Recruitment Requirements SoT** (Accepted — L2 contract; runtime later) — overlay + profile write; system result fit/missing/not_fit; **Подходит** stays the human boundary; not a Create rename — [`../tasks/vacancy-recruitment-requirements-sot.md`](../tasks/vacancy-recruitment-requirements-sot.md).  
 - 2026-09-11: **Vacancy Requirements Evaluator** (runtime) — Overlay merge × canonical facts → fit/missing/not_fit + one next action on Application; gate `test_vacancy_requirements_eval_gate.py` — [`../tasks/vacancy-requirements-evaluator.md`](../tasks/vacancy-requirements-evaluator.md).

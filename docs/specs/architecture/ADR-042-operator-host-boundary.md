@@ -1,8 +1,9 @@
 # ADR-042: Operator host boundary (Application → Candidate → HR)
 
-**Status:** Accepted (L2 hosting contract). Runtime cutover **not this slice**.  
-**Date:** 2026-09-10  
-**Trusted base:** `feat/eso4-formalize` @ `f3eaab2b`  
+**Status:** Accepted (L2 hosting contract). **Runtime cutover DONE** — Operator Host Cutover [#365](https://github.com/igortatarynovich/HostFlow/pull/365) / tip `efb48c34` / merge `61cbc3eb`.  
+**Date:** 2026-09-10 (contract) · **Runtime stamp:** 2026-09-12  
+**Trusted base:** `feat/eso4-formalize` @ `61cbc3eb`  
+**Architecture close:** [`../gates/recruitment-architecture-closed.md`](../gates/recruitment-architecture-closed.md) — **Recruitment Architecture = CLOSED**  
 **Does not supersede:** [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md) · [`ADR-037`](ADR-037-lifecycle-identity-canon.md) · RSO-1 package · ESO-1…5 policies  
 **Related:** [`../tasks/recruitment-spine-orchestrator-v1.md`](../tasks/recruitment-spine-orchestrator-v1.md) · [`../tasks/employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) · [`../gates/intake-readiness-gate.md`](../gates/intake-readiness-gate.md) · [`../tasks/vacancy-recruitment-requirements-sot.md`](../tasks/vacancy-recruitment-requirements-sot.md)
 
@@ -85,9 +86,9 @@ Allowed and required: leaving Отклики for Кандидаты after Fits; 
 
 - [#359](https://github.com/igortatarynovich/HostFlow/pull/359) must **not** be taken to Full Spine PASS in its current formulation.  
 - Intake Readiness stays: Meta inbound → actionable Application whose next action is Fits — not Transfer, not Formalize.  
-- RSO-2 must be re-hosted: Fits prep may still assemble facts; **Transfer is not the immediate next verb after Fits** unless Recruitment on that Candidate is already complete.  
+- RSO-2 runtime cutover is **done** ([#365](https://github.com/igortatarynovich/HostFlow/pull/365)): Fits enters Candidate; Transfer only after Ready on the Candidate; Application does not host Formalize / Started.  
 - Employment UI after handoff is an HR surface (inbox / employment case), not Application Workspace.  
-- Runtime cutover of hosting is a later feat PR; this ADR seals the contract.
+- **Recruitment Architecture = CLOSED** on `61cbc3eb` — see [`../gates/recruitment-architecture-closed.md`](../gates/recruitment-architecture-closed.md). Full product spine remains **NOT PASS / BLOCKED BY HR UI**.
 
 ---
 
@@ -107,15 +108,16 @@ Allowed and required: leaving Отклики for Кандидаты after Fits; 
 Operator journey that treats a Meta Application as the Employment workspace and Fits as the end of Recruitment.
 
 **Completion proof (named consumer):**  
-This ADR + RSO/ESO brief errata. Named consumer of the **runtime** cutover is a later feat: Application Fits → Candidate Recruitment → Transfer → HR Formalize → Started, without Employment verbs on the Application card.
+This ADR (contract) + Operator Host Cutover runtime [#365](https://github.com/igortatarynovich/HostFlow/pull/365) / `61cbc3eb`: Application Fits → Candidate Recruitment → Ready → Transfer emits `ready_for_employment.v1` → HR owns Formalize / Started. No Employment verbs on the Application card. Recruitment Architecture CLOSED record: [`../gates/recruitment-architecture-closed.md`](../gates/recruitment-architecture-closed.md).
 
-**False close (reject):** green #359 operator walk on one Application URL; claiming Full Spine PASS; deleting ESO-1…5.
+**False close (reject):** green #359 operator walk on one Application URL; claiming Full Spine PASS; deleting ESO-1…5; treating missing HR UI as a reason to keep Recruitment open.
 
 ---
 
 ## Cross-references
 
-- Update [`recruitment-spine-orchestrator-v1.md`](../tasks/recruitment-spine-orchestrator-v1.md) — Fits = Application → Candidate; Transfer after Ready for employment.  
-- Update [`employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) — Employment host = HR after Transfer.  
+- [`../gates/recruitment-architecture-closed.md`](../gates/recruitment-architecture-closed.md) — **Recruitment Architecture = CLOSED** @ `61cbc3eb`.  
+- Update [`recruitment-spine-orchestrator-v1.md`](../tasks/recruitment-spine-orchestrator-v1.md) — Fits = Application → Candidate; Transfer after Ready for employment; RSO-2 PASS.  
+- Update [`employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) — Employment host = HR after Transfer; Formalize→Started = HR scope.  
 - Link from [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) and [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md).  
-- Full Spine Gate: **STOP / superseded** — [`../gates/full-spine-gate.md`](../gates/full-spine-gate.md). Do not retune that gate. Machine ESO walk may remain; operator PASS of Application-hosted Employment is forbidden.
+- Full Spine Gate: **STOP / NOT PASS / BLOCKED BY HR UI** — [`../gates/full-spine-gate.md`](../gates/full-spine-gate.md). Do not retune that gate. Machine ESO walk may remain; operator PASS of Application-hosted Employment is forbidden.

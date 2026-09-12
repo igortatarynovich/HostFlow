@@ -236,6 +236,7 @@ flowchart LR
 
 - **v1 (2026-05):** первая каноническая карта: flow Platform Core → Cross-company, GLOBAL/TENANT/COMPANY/MODULE scopes, bounded contexts, ownership matrix, module interaction rules, запреты.
 - **v1.1 (2026-05):** §6.4 порядок внедрения в код; старт P1b (enforcement recruitment на candidate API).
+- **2026-09-12:** [`recruitment-architecture-closed.md`](../gates/recruitment-architecture-closed.md) — **Recruitment Architecture = CLOSED** on `61cbc3eb`; ADR-042 runtime cutover DONE; Full Spine remains NOT PASS / BLOCKED BY HR UI; Formalize→Started = HR scope.
 - **2026-09-11:** [`canonical-facts-completeness.md`](../tasks/canonical-facts-completeness.md) — decision-critical facts: one canonical representation + one read path; Occupancy Gate PASS unlocks Vacancy Requirements evaluator.
 - **2026-09-11:** [`vacancy-recruitment-requirements-sot.md`](../tasks/vacancy-recruitment-requirements-sot.md) — vacancy requirements write = profile + Overlay; system result fit/missing/not_fit; **Подходит** remains the human boundary.
 - **2026-09-11:** [`vacancy-requirements-evaluator.md`](../tasks/vacancy-requirements-evaluator.md) — Overlay merge × canonical facts → fit/missing/not_fit + one next action on Application (after Occupancy PASS).
