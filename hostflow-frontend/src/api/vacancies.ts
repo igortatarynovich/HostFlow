@@ -63,6 +63,10 @@ export interface VacancyPayload {
   /** ADR-032: Sales Order Line bind (1:1) */
   order_line_id?: string | null;
   extra?: Record<string, unknown> | string | null;
+  recruitment_requirements?: {
+    years_ce_min?: number | null;
+    required_documents?: string[];
+  } | null;
   funnel_id?: string | null;
   manager?: string | null;
 }
@@ -88,6 +92,18 @@ export interface Vacancy {
   funnel_id?: string | null;
   created_at?: string;
   updated_at?: string;
+  /** Effective Profile/Pack ∪ Overlay — round-trip edit SoT for requirements UI */
+  recruitment_requirements_effective?: {
+    years_ce_min?: number | null;
+    inherited_years_ce_min?: number | null;
+    inherited_documents?: string[];
+    vacancy_extra_documents?: string[];
+    required_documents?: string[];
+    labels?: {
+      years_ce?: string;
+      documents?: Record<string, string>;
+    };
+  } | null;
 }
 
 export async function createVacancy(payload: VacancyPayload) {

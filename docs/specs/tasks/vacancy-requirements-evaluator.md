@@ -69,4 +69,8 @@ Given this vacancy’s requirements and this person’s **canonical** facts, is 
 - Vacancy Overlay create/edit UI  
 - Leftover `lead_criteria_v1` retirement runtime  
 - HR host / Full Spine  
-- Changing Candidate Recruitment chrome after Подходит  
+- Changing Candidate Recruitment chrome after Подходит
+
+## Next
+
+- **Overlay vacancy write UI** — [`vacancy-overlay-write-ui.md`](vacancy-overlay-write-ui.md) (operator requirements → Profile + Overlay).

@@ -21,6 +21,55 @@ def _to_str_or_none(v: Any) -> Optional[str]:
     s = str(v).strip()
     return s or None
 
+
+def _apply_requirements_intent(
+    extra_raw, intent, *, profile_code: str | None = None
+) -> dict:
+    from backend.app.reference.vacancy_overlay_write import (
+        VacancyOverlayWriteError,
+        apply_recruitment_requirements_to_extra,
+    )
+    if intent is None:
+        return dict(extra_raw) if isinstance(extra_raw, dict) else {}
+    data = intent.model_dump() if hasattr(intent, "model_dump") else dict(intent)
+    try:
+        return apply_recruitment_requirements_to_extra(
+            extra_raw, data, profile=profile_code
+        )
+    except VacancyOverlayWriteError as exc:
+        raise ValueError(str(exc)) from exc
+
+
+async def _entity_profile_code_for_vacancy_profile(
+    db, *, tenant_id: str, candidate_profile_id: str | None
+) -> str | None:
+    pid = str(candidate_profile_id or "").strip()
+    if not pid:
+        return None
+    from sqlalchemy import select
+    from backend.app.models.candidate_profile import CandidateProfile
+    from backend.app.entity_profile.reverse_map import (
+        find_entity_profile_code_by_legacy_candidate_code,
+    )
+
+    profile = (
+        await db.execute(
+            select(CandidateProfile).where(
+                CandidateProfile.id == pid,
+                CandidateProfile.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if profile is None:
+        return None
+    legacy = str(profile.code or "").strip()
+    if not legacy:
+        return None
+    return await find_entity_profile_code_by_legacy_candidate_code(
+        db, tenant_id=str(tenant_id), legacy_candidate_profile_code=legacy
+    )
+
+
 class VacancyService:
     def __init__(self, repo: VacancyRepo) -> None:
         self.repo = repo
@@ -117,11 +166,27 @@ class VacancyService:
             "candidate_profile_id": str(payload.candidate_profile_id) if payload.candidate_profile_id else None,
             "required_documents_template_id": str(payload.required_documents_template_id) if payload.required_documents_template_id else None,
             "funnel_id": str(payload.funnel_id) if payload.funnel_id else None,
-            "extra": json.dumps(payload.extra, ensure_ascii=False),
+            "extra": None,  # filled after entity profile resolve
             "headcount_target": int(payload.headcount_target)
             if payload.headcount_target is not None and int(payload.headcount_target) > 0
             else None,
         }
+        profile_code = await _entity_profile_code_for_vacancy_profile(
+            self.repo.db,
+            tenant_id=tenant_id,
+            candidate_profile_id=values.get("candidate_profile_id"),
+        )
+        if getattr(payload, "recruitment_requirements", None) is not None:
+            values["extra"] = json.dumps(
+                _apply_requirements_intent(
+                    payload.extra,
+                    payload.recruitment_requirements,
+                    profile_code=profile_code,
+                ),
+                ensure_ascii=False,
+            )
+        else:
+            values["extra"] = json.dumps(payload.extra or {}, ensure_ascii=False)
         order_line_id = getattr(payload, "order_line_id", None)
         if order_line_id:
             from backend.app.modules.vacancies.order_line_bind import (
@@ -268,8 +333,35 @@ class VacancyService:
         if payload.required_documents_template_id is not None:
             values["required_documents_template_id"] = str(payload.required_documents_template_id) if payload.required_documents_template_id else None
 
-        if payload.extra is not None:
-            values["extra"] = json.dumps(payload.extra, ensure_ascii=False)
+        if payload.extra is not None or getattr(payload, "recruitment_requirements", None) is not None:
+            base_extra = payload.extra
+            if base_extra is None:
+                import json as _json
+                raw = getattr(obj, "extra", None)
+                if isinstance(raw, dict):
+                    base_extra = raw
+                elif isinstance(raw, str) and raw.strip():
+                    try:
+                        base_extra = _json.loads(raw)
+                    except Exception:
+                        base_extra = {}
+                else:
+                    base_extra = {}
+            if getattr(payload, "recruitment_requirements", None) is not None:
+                profile_id = values.get(
+                    "candidate_profile_id", getattr(obj, "candidate_profile_id", None)
+                )
+                profile_code = await _entity_profile_code_for_vacancy_profile(
+                    self.repo.db,
+                    tenant_id=self.repo.tenant_id,
+                    candidate_profile_id=str(profile_id) if profile_id else None,
+                )
+                base_extra = _apply_requirements_intent(
+                    base_extra,
+                    payload.recruitment_requirements,
+                    profile_code=profile_code,
+                )
+            values["extra"] = json.dumps(base_extra or {}, ensure_ascii=False)
 
         fields_set = getattr(payload, "model_fields_set", None) or set()
         if "funnel_id" in fields_set:
