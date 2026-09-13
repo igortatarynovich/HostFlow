@@ -197,26 +197,31 @@ ensure seam (authoritative apply only; evaluate = read-only)     ✅
 
 ---
 
+## Integration parity PASS
+
+**Status:** **PASS** — Formalize→ensure integration parity  
+**PASS stamp:** 2026-09-13 · under test `322d0148` · gate `employment-formalize-ensure-integration-gate` **6 passed**  
+**Does not open:** Slice 3 · Slice 4 · Full Spine  
+
+Proven:
+
+1. Formalize **apply** + ready → `ensure_employee_after_formalize_apply` (linked Employee)  
+2. Formalize **evaluate/read** + ready → no mint / no write  
+3. Handoff linkage (`employee_linked_handoff_id` / `meta.internal_hr_handoff_id`) preserved on repeat apply  
+
+**STOP.** Slice 3 remains closed until explicitly opened in a separate brief after this parity.
+
+---
+
 ## Next after this PASS
 
-**Integration wire status (this line):** ESO-1…4 Formalize machine + HTTP are on `integration/release-product-a-b`; authoritative Formalize apply calls `ensure_employee_after_formalize_apply(...)`.
-
-Named proof: `employment-formalize-ensure-integration-gate` (`test_employment_formalize_ensure_integration_gate.py`).
+**Integration wire:** done on this line (`322d0148`). ESA2 portable seam PASS remains valid.
 
 Still locked:
 
-- ESA2 portable seam PASS remains valid  
-- Slice 3 = **closed** until this message’s commit is stamped / accepted as integration parity PASS  
+- Slice 3 = **closed** (do not open in this change)  
 - Full Spine = **NOT PASS**  
 - mixed SHA `0c8b337f` is **not** a pure ESA2 diff  
 - ignore `hostflow-frontend/dummy-non-existing-folder/`
 
-### Integration parity (required before slice 3)
-
-Prove (named gate):
-
-1. Formalize **apply** mints the **linked** Employee for this handoff  
-2. Formalize **evaluate / read** does **not** write  
-3. `meta.internal_hr_handoff_id` (handoff linkage) is preserved  
-
-**Only after** integration parity PASS may **slice 3** (HR host binding) open as a separate brief/PR. Slice 4 and Full Spine remain later / closed.
+Slice 4 and Full Spine remain later / closed.
