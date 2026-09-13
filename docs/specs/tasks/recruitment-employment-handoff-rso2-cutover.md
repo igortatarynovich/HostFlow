@@ -5,7 +5,7 @@
 **Opened:** 2026-09-13  
 **Inventory stamp:** 2026-09-13 (runtime read-only)  
 **RSO-2A closed:** 2026-09-13 — persist = RFE-only; compat = temporary read-shim  
-**RSO-2B PASS:** 2026-09-13 · `rso2-emit-manifest-gate` **10 passed**  
+**RSO-2B PASS:** 2026-09-13 · under test `ab864e86` · `rso2-emit-manifest-gate` **10 passed** · STOP before RSO-2C  
 **Depends on:**  
 - RSO-1 PASS: [`ready-for-employment-contract.md`](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`)  
 - Boundary ownership **Accepted:** [`recruitment-employment-boundary-ownership.md`](../architecture/recruitment-employment-boundary-ownership.md) (dual-axis)  

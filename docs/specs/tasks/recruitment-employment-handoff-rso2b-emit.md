@@ -3,7 +3,7 @@
 **Status:** **PASS**  
 **Phase class:** product  
 **Opened:** 2026-09-13  
-**PASS stamp:** 2026-09-13 · named gate `rso2-emit-manifest-gate` **10 passed**  
+**PASS stamp:** 2026-09-13 · implementation under test `ab864e86` · named gate `rso2-emit-manifest-gate` **10 passed**  
 **Parent:** [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md)  
 **Depends on:**  
 - RSO-1 PASS: [`../architecture/ready-for-employment-contract.md`](../architecture/ready-for-employment-contract.md)  
@@ -14,6 +14,23 @@
 
 > **Emit only.** On `create_handoff` (`destination=internal_hr`), assemble and persist a validated `ready_for_employment.v1` boundary manifest.  
 > Do **not** auto-init Employment, drop Accept ritual, cut over HR UI reads, or remove the shim.
+
+---
+
+## PASS evidence
+
+| Proof | Evidence |
+|-------|----------|
+| Gate | `rso2-emit-manifest-gate` **10 passed** @ `ab864e86` |
+| Emit path | `create_handoff(internal_hr)` → assemble RFE → `validate_ready_for_employment_package_v1` → persist |
+| Persist artifact | `CandidateHandoffSnapshot.payload` = **only** `ready_for_employment.v1` (manifest = sole persisted boundary artifact) |
+| No Accept on create | `create_handoff` does **not** call `accept_handoff` / `apply_employment_accept_policy` / Employment init |
+| Compat | temporary `handoff_manifest_compat` read-shim — **not SoT**; removal = RSO-2E |
+| Current reads | live Person/Documents/Vacancy/Employer remain preferred; manifest = as-of / decisions / refs |
+| Vacancy pre-mint | narrow ADAPT via handoff-lane target proof |
+| Out of slice | RSO-2C · Slice 4 · Full Spine **not touched** |
+
+**STOP.** Do **not** open RSO-2C in this stamp. Next code step = RSO-2C (separate brief/PR).
 
 ---
 
