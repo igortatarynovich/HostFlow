@@ -156,4 +156,4 @@ Use as **competitive evidence**, not as HostFlow scorecard. HostFlow scorecard =
 3. Audit table: **Configuration runtime dependencies** (stage / flight / mapping / …)  
 4. **Done (L3 baseline):** [Employment Formalization Coverage Audit](employment-formalization-coverage-audit.md) @ `b88a6168` — allow-create ≠ formalization complete  
 5. **Accepted (product decision):** [Production Employment Minimum — PEM-1](production-employment-minimum.md) — domestic PL EU/EEA; `start_allowed` before ESO-5; ZUS lifecycle  
-6. **Open / STOP:** [Employment start_allowed](../specs/architecture/employment-start-allowed.md) — architecture only; no code; not Full Spine Gate
+6. **Accepted (L2 contract):** [Employment start_allowed](../specs/architecture/employment-start-allowed.md) — Employee authority / handoff host; next = mint+evidence inventory; not Full Spine Gate

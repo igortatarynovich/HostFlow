@@ -5,9 +5,9 @@
 **Scenario id:** `PEM-1` — Polish domestic employee, EU/EEA pathway  
 **Depends on (baseline):** [`employment-formalization-coverage-audit.md`](employment-formalization-coverage-audit.md) @ `b88a6168`  
 **Parent brief:** [`../specs/tasks/employment-spine-orchestrator-v1.md`](../specs/tasks/employment-spine-orchestrator-v1.md)  
-**Next artifact:** [`../specs/architecture/employment-start-allowed.md`](../specs/architecture/employment-start-allowed.md) (`start_allowed` — **open / STOP** until architecturally closed)  
+**Next artifact:** [`../specs/architecture/employment-start-allowed.md`](../specs/architecture/employment-start-allowed.md) — **`employment_start_allowed.v1` Accepted** (runtime not started; inventory next)  
 **Does not amend:** L0 · ESO-1…5 PASS stamps · Formalize thin table runtime · Full Spine Gate  
-**Code:** closed until `start_allowed` architecture is sealed.
+**Code:** closed until post-Accept **inventory** of mint path + evidence authorities, then thin runtime slice.
 
 > **Product decision**, not inventory.  
 > **PEM-1 Accepted.** Do **not** expand ESO-4 into Contract + Medical + BHP.  
@@ -162,7 +162,7 @@ For **PEM-1** (PL employer, `umowa o pracę`, EU/EEA free-movement worker, domes
 1. ESO-5 [#372](https://github.com/igortatarynovich/HostFlow/pull/372) — Started HR binding (separate).  
 2. Coverage Audit — committed `b88a6168`.  
 3. **PEM-1 Accepted** (this file).  
-4. **`start_allowed` architecture** — open → **STOP** until sealed ([`employment-start-allowed.md`](../specs/architecture/employment-start-allowed.md)).  
+4. **`start_allowed` architecture** — [`employment-start-allowed.md`](../specs/architecture/employment-start-allowed.md) **Accepted**; next = **inventory** (mint path + evidence authorities), then thin runtime.  
 5. Only then: implement Minimum-blocking gaps for PEM-1.  
 6. Three-host Full Spine Gate — later.
 
@@ -175,11 +175,13 @@ For **PEM-1** (PL employer, `umowa o pracę`, EU/EEA free-movement worker, domes
 - Making ZUS a pre-Start blocker for PEM-1.  
 - Equating Employee create with admit-to-work.  
 - ZUS API / Płatnik / ePUAP as PEM-1 requirement.  
-- Code, migrations, or UI before `start_allowed` architecture closes.  
+- Code, migrations, or UI before mint/evidence **inventory** + thin runtime plan.  
 - Full Spine Gate from this Accept.
 
 ---
 
 ## Next action
 
-**STOP on implementation.** Open and architecturally close [`employment-start-allowed.md`](../specs/architecture/employment-start-allowed.md) (Contract + Medical\* + BHP\* → `start_allowed` → feeds ESO-5). No code until that document is Accepted.
+1. **Inventory** before any runtime: Employee mint path + Documents/contract/medical/BHP evidence authorities (no parallel stores).  
+2. Then thin `employment_start_allowed.v1` runtime + `employment-start-allowed-gate`.  
+3. Keep ZUS/Insurance on post-Start lifecycle; do not open A1/delegation under PEM-1.
