@@ -96,6 +96,33 @@ export async function fetchHrHandoffInboxRow(handoffId: string): Promise<HrHando
   return data
 }
 
+/** ESO-1: Employment accept policy apply (`employment_accept_policy.v1`). */
+export type EmploymentAcceptPolicyOut = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: 'auto_accept' | 'review_required' | 'reject_invalid_package' | string
+  ritual_accept_forbidden?: boolean | null
+  blockers?: Array<{ code?: string; message?: string } | Record<string, unknown>>
+  employment_missing?: Array<Record<string, unknown>>
+  reuse_violations?: string[]
+  package_valid?: boolean | null
+  accepted: boolean
+  employment_started: boolean
+  employee_id?: string | null
+  message?: string | null
+}
+
+export async function applyEmploymentAcceptPolicy(
+  handoffId: string,
+  body?: { package?: Record<string, unknown>; employment_missing?: Array<Record<string, unknown>> },
+): Promise<EmploymentAcceptPolicyOut> {
+  const { data } = await api.post<EmploymentAcceptPolicyOut>(
+    `${HANDOFFS}/${encodeURIComponent(handoffId)}/employment-accept-policy`,
+    body ?? {},
+  )
+  return data
+}
+
 export async function fetchHandoffHrReview(handoffId: string): Promise<HrReviewPanel> {
   const { data } = await api.get<HrReviewPanel>(`${HANDOFFS}/${encodeURIComponent(handoffId)}/hr-review`)
   return data

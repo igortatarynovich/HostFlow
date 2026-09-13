@@ -74,7 +74,20 @@ Full employment-missing / legalization shopping lists are **ESO-2+**. ESO-1 may 
 
 ## Delivery UX constraint (gate 3)
 
-After Transfer, same person continues. When policy = `auto_accept`, no separate “Accept handoff” chore. When `review_required`, show **concrete blockers** only.
+After Transfer, same person continues in **HR** on the existing handoff case (`/app/hr/handoffs/:id`).
+
+| Policy decision | Operator UI |
+|-----------------|-------------|
+| `auto_accept` | Apply on open — **no** «Take into HR review» / ritual Accept. Audit: Employment started (case accept). |
+| `review_required` / `reject_invalid_package` | Show **concrete blockers** + one action (retry policy). Ritual Accept forbidden. |
+
+Inbox pending rows open the Employment case (policy host); they must not call raw `POST /handoffs/{id}/accept` as the happy path.
+
+**Named proof (ESO-1 host binding):** valid `ready_for_employment.v1` handoff → existing HR case → `employment_accept_policy.v1` → `auto_accept` or explicit blocker → accepted Employment state.
+
+**Negative proof:** auto_accept handoff does not show ritual Accept and does not require a manual «Take into HR review» chore.
+
+Not ESO-2/3 decision surface. Legacy Approve for employment is not the Employment accept happy path.
 
 ---
 
@@ -90,4 +103,6 @@ After Transfer, same person continues. When policy = `auto_accept`, no separate 
 
 ## Completion of ESO-1
 
-**PASS** when this document + `employment_accept_policy.v1` + gate tests exist, ESO brief names the accept policy, and apply path can auto-accept a valid package via `accept_handoff` without Recruitment calling it.
+**PASS (machine):** this document + `employment_accept_policy.v1` + gate tests exist, ESO brief names the accept policy, and apply path can auto-accept a valid package via `accept_handoff` without Recruitment calling it.
+
+**PASS (HR host binding):** existing `/app/hr/handoffs/:id` applies the policy on pending open; ritual Accept is absent on auto_accept; blockers are concrete; Employment started audit fires on successful accept. Inventory: [`../../analysis/hr-employment-eso-inventory.md`](../../analysis/hr-employment-eso-inventory.md).

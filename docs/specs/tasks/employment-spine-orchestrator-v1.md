@@ -93,7 +93,7 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 2�
 
 ## Next
 
-1. **ESO-1 HR host binding** — adapt existing `/app/hr/handoffs/:id` to `employment_accept_policy.v1` (auto_accept → no ritual Accept; else concrete blocker + one action). Named proof: valid RFE handoff → HR case → ESO-1 → accepted Employment state. Do **not** invent a new HR module or a third Employment workflow.  
+1. **ESO-1 HR host binding (this slice)** — existing `/app/hr/handoffs/:id` applies `employment_accept_policy.v1` (auto_accept → no ritual Accept; else concrete blocker + retry). Named proof: valid RFE handoff → HR case → ESO-1 → accepted Employment state.  
 2. **ESO-2 + ESO-3** as one Employment decision surface (employability → current missing → resolve → auto re-eval) — after ESO-1 host PASS; avoid an extra UI step.  
 3. **ESO-4 Formalize** → **ESO-5 Started** operator surfaces on the same HR host.  
 4. New Full Spine Gate (three-host) after HR UI ladder — do **not** retune the withdrawn one-card Full Spine Gate.  

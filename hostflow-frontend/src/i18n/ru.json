@@ -1302,6 +1302,7 @@
           "col_employee": "Workforce",
           "col_actions": "Actions",
           "accept_pickup": "Take into HR review",
+          "open_employment_case": "Открыть дело трудоустройства",
           "stat_pending": "Awaiting pickup: {n}",
           "stat_accepted": "In review: {n}",
           "stat_tab": "This tab: {n}",

@@ -18,8 +18,8 @@
 |-------|---------|
 | Contracts (SoT) | **PASS / Accepted** for all five |
 | Backend reference + orchestrator + named CI gate + HTTP | **PASS** (machine complete; ESO-5 merged [#357](https://github.com/igortatarynovich/HostFlow/pull/357) / `0d256ba8`, ancestor of tip) |
-| Operator UI on HR host | **MISSING** for all five ESO verbs |
-| Existing HR UI | **Legacy parallel path** — ritual `POST /handoffs/{id}/accept` → `hr-review` docs → `Approve for employment` → employee dossier — **not** the ESO ladder |
+| Operator UI on HR host | **ESO-1 host binding in progress / this slice** — ESO-2…5 still **MISSING** |
+| Existing HR UI | **Legacy parallel path** — ritual accept retired on `/app/hr/handoffs/:id`; hr-review Approve remains collapsed secondary — **not** the ESO ladder |
 
 Product implication: backend Employment spine is ready; HR chrome does not host it. Full product spine remains **NOT PASS / BLOCKED BY HR UI**.
 
