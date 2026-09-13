@@ -272,6 +272,6 @@ Applicability: derive from employment/post context — not a static dump on ever
 
 ## Next (after this Accept)
 
-1. **Inventory (done as L3):** [`../../analysis/employment-start-allowed-runtime-inventory.md`](../../analysis/employment-start-allowed-runtime-inventory.md) — mint = **adapt** `handoff_from_candidate`; Contract/Medical/BHP = **adapt**; Exception = **missing authority**.  
-2. Runtime still **closed** until an explicit thin slice is opened after adapt/missing design choices.  
-3. Full Spine remains **NOT PASS** until PEM-1 `start_allowed` is proven in product with ESO-5 gated on it.
+1. **Inventory (done as L3):** [`../../analysis/employment-start-allowed-runtime-inventory.md`](../../analysis/employment-start-allowed-runtime-inventory.md) @ `466016b6`.  
+2. **Adaptation design (Accepted):** [`../../analysis/employment-start-allowed-adaptation-design.md`](../../analysis/employment-start-allowed-adaptation-design.md) — normalized views; derived `start_allowed`; narrow exceptions.  
+3. **Runtime slice 1 OPEN:** [`../tasks/employment-start-allowed-runtime-foundation.md`](../tasks/employment-start-allowed-runtime-foundation.md) — machine foundation only. Full Spine **NOT PASS**.
