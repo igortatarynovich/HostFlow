@@ -1,6 +1,7 @@
 /**
  * ESO-2 + ESO-3: one Employment Decision Surface on the HR handoff case.
- * Employability → one missing → resolve → auto re-eval. No Formalize UI. No Employee.
+ * Employability → one missing → resolve → auto re-eval.
+ * When formalizeBound, hands off to ESO-4 Formalize panel (no Employee mint here).
  */
 import { useMemo, useState } from 'react'
 import { useI18n } from '../../i18n'
@@ -18,6 +19,8 @@ type Props = {
   evaluating?: boolean
   resolving?: boolean
   error?: string | null
+  /** When true, Formalize panel owns the next step — do not claim Formalize is deferred. */
+  formalizeBound?: boolean
   onResolve: (patch: { facts?: Record<string, unknown>; evidence?: Record<string, unknown> }) => void
 }
 
@@ -26,6 +29,7 @@ export default function HrEmploymentDecisionSurface({
   evaluating,
   resolving,
   error,
+  formalizeBound = false,
   onResolve,
 }: Props) {
   const { t } = useI18n()
@@ -117,17 +121,31 @@ export default function HrEmploymentDecisionSurface({
               defaultValue: 'Employable — ready for Formalize',
             })}
           </p>
-          <p className="mt-1 text-xs text-emerald-800/90">
-            {nextStep?.label ||
-              t('app.hr.employment_decision.employable_next', {
-                defaultValue: 'Next product boundary is ESO-4 Formalize (not opened in this surface).',
+          {formalizeBound ? (
+            <p className="mt-1 text-xs text-emerald-800/90" data-testid="hr-employment-decision-handed-formalize">
+              {t('app.hr.employment_decision.formalize_continues', {
+                defaultValue: 'Formalize continues below on this HR case. Employee is not created here.',
               })}
-          </p>
-          <p className="mt-2 text-xs text-emerald-800/80" data-testid="hr-employment-decision-ready-formalize">
-            {t('app.hr.employment_decision.formalize_deferred', {
-              defaultValue: 'Formalize UI is out of scope here. Employee is not created.',
-            })}
-          </p>
+            </p>
+          ) : (
+            <>
+              <p className="mt-1 text-xs text-emerald-800/90">
+                {nextStep?.label ||
+                  t('app.hr.employment_decision.employable_next', {
+                    defaultValue:
+                      'Next product boundary is ESO-4 Formalize (not opened in this surface).',
+                  })}
+              </p>
+              <p
+                className="mt-2 text-xs text-emerald-800/80"
+                data-testid="hr-employment-decision-ready-formalize"
+              >
+                {t('app.hr.employment_decision.formalize_deferred', {
+                  defaultValue: 'Formalize UI is out of scope here. Employee is not created.',
+                })}
+              </p>
+            </>
+          )}
         </div>
       ) : null}
 

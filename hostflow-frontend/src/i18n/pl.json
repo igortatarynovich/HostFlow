@@ -534,6 +534,7 @@
         "employable_title": "Można zatrudnić — gotowe do Formalize",
         "employable_next": "Następna granica produktu to ESO-4 Formalize (nieotwarte na tej powierzchni).",
         "formalize_deferred": "UI Formalize jest poza zakresem. Pracownik nie jest tworzony.",
+        "formalize_continues": "Formalize kontynuuje poniżej na tej sprawie HR. Pracownik nie jest tu tworzony.",
         "insufficient_title": "Potrzebny jest jeden fakt lub dowód",
         "citizenship_label": "Obywatelstwo (ISO alpha-2)",
         "country_label": "Kraj zatrudnienia",
@@ -543,6 +544,21 @@
         "blocked_title": "Zatrudnienie zablokowane",
         "blocked_fallback": "Konkretne blokady zatrudnienia uniemożliwiają zatrudnienie teraz.",
         "no_fake_action": "Nie oferujemy działania operatora, gdy blokady nie da się tu usunąć.",
+        "pathway_set": "Ścieżka prawna (system): {id}"
+      },
+      "employment_formalize": {
+        "title": "Formalizacja zatrudnienia",
+        "evaluating": "Ocena formalizacji…",
+        "missing_title": "Wymagane jest jedno działanie formalne",
+        "confirm_contract_basis": "Potwierdź podstawę umowy",
+        "confirm_work_auth": "Potwierdź uprawnienie do pracy w aktach",
+        "context_only": "Pokazywane są tylko wymagane w kontekście pozycje — znane dowody nie są pytane ponownie.",
+        "complete_title": "Formalizacja zakończona",
+        "ready_to_create_employee": "ready_to_create_employee=true — tworzenie pracownika jest dozwolone.",
+        "no_employee_mint": "Pracownik nie jest tworzony w tym kroku. Started i tworzenie karty HR pozostają zamknięte.",
+        "blocked_title": "Formalize zablokowane",
+        "blocked_fallback": "Najpierw spełnij warunki employable / ready_to_formalize.",
+        "no_fake_action": "Brak skrótu Formalize, gdy warunki wstępne nie są spełnione.",
         "pathway_set": "Ścieżka prawna (system): {id}"
       },
       "review_case": {

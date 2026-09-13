@@ -616,6 +616,7 @@
         "employable_title": "Employable — ready for Formalize",
         "employable_next": "Next product boundary is ESO-4 Formalize (not opened in this surface).",
         "formalize_deferred": "Formalize UI is out of scope here. Employee is not created.",
+        "formalize_continues": "Formalize continues below on this HR case. Employee is not created here.",
         "insufficient_title": "One fact or evidence is needed",
         "citizenship_label": "Citizenship (ISO alpha-2)",
         "country_label": "Employment country",
@@ -625,6 +626,21 @@
         "blocked_title": "Employment blocked",
         "blocked_fallback": "Concrete employment blockers prevent employ-now.",
         "no_fake_action": "No operator action is offered when the blocker cannot be cleared here.",
+        "pathway_set": "Legal pathway (system): {id}"
+      },
+      "employment_formalize": {
+        "title": "Formalize employment",
+        "evaluating": "Evaluating formalization…",
+        "missing_title": "One formal action is required",
+        "confirm_contract_basis": "Confirm contract basis",
+        "confirm_work_auth": "Confirm work authorization on file",
+        "context_only": "Only context-required formal items appear here — known evidence is not re-asked.",
+        "complete_title": "Formalization complete",
+        "ready_to_create_employee": "ready_to_create_employee=true — Employee creation is allowed.",
+        "no_employee_mint": "Employee is not created in this step. Started and HR-card create stay closed.",
+        "blocked_title": "Formalize blocked",
+        "blocked_fallback": "Resolve employable / ready_to_formalize preconditions first.",
+        "no_fake_action": "No Formalize shortcut when preconditions fail.",
         "pathway_set": "Legal pathway (system): {id}"
       },
       "review_case": {

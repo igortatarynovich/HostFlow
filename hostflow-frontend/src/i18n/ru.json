@@ -534,6 +534,7 @@
         "employable_title": "Можно трудоустроить — готово к Formalize",
         "employable_next": "Следующая граница продукта — ESO-4 Formalize (на этой поверхности не открыта).",
         "formalize_deferred": "UI Formalize вне scope. Сотрудник не создаётся.",
+        "formalize_continues": "Formalize продолжается ниже на этом HR-кейсе. Сотрудник здесь не создаётся.",
         "insufficient_title": "Нужен один факт или доказательство",
         "citizenship_label": "Гражданство (ISO alpha-2)",
         "country_label": "Страна трудоустройства",
@@ -543,6 +544,21 @@
         "blocked_title": "Трудоустройство заблокировано",
         "blocked_fallback": "Конкретные блокеры не позволяют трудоустроить сейчас.",
         "no_fake_action": "Действие оператора не предлагается, если блокер здесь нельзя снять.",
+        "pathway_set": "Правовой путь (система): {id}"
+      },
+      "employment_formalize": {
+        "title": "Формализация трудоустройства",
+        "evaluating": "Оценка формализации…",
+        "missing_title": "Требуется одно формальное действие",
+        "confirm_contract_basis": "Подтвердить основание договора",
+        "confirm_work_auth": "Подтвердить право на работу в деле",
+        "context_only": "Показываются только контекстно обязательные пункты — известные доказательства не спрашиваются повторно.",
+        "complete_title": "Формализация завершена",
+        "ready_to_create_employee": "ready_to_create_employee=true — создание сотрудника разрешено.",
+        "no_employee_mint": "Сотрудник на этом шаге не создаётся. Started и создание HR-карточки остаются закрытыми.",
+        "blocked_title": "Formalize заблокирован",
+        "blocked_fallback": "Сначала выполните условия employable / ready_to_formalize.",
+        "no_fake_action": "Нет обходного Formalize, если предусловия не выполнены.",
         "pathway_set": "Правовой путь (система): {id}"
       },
       "review_case": {

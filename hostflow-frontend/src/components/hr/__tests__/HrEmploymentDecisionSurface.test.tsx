@@ -5,10 +5,11 @@ import { I18nProvider } from '../../../i18n'
 import HrEmploymentDecisionSurface from '../HrEmploymentDecisionSurface'
 
 describe('HrEmploymentDecisionSurface', () => {
-  it('employable shows ready for Formalize without Formalize CTA / Employee', () => {
+  it('employable + formalizeBound hands off without Formalize CTA / Employee', () => {
     render(
       <I18nProvider>
         <HrEmploymentDecisionSurface
+          formalizeBound
           employability={{
             policy_id: 'early_employability.v1',
             decision: 'employable',
@@ -22,8 +23,9 @@ describe('HrEmploymentDecisionSurface', () => {
       </I18nProvider>,
     )
     expect(screen.getByTestId('hr-employment-decision-employable')).toBeTruthy()
-    expect(screen.getByTestId('hr-employment-decision-ready-formalize')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Formalize/i })).toBeNull()
+    expect(screen.getByTestId('hr-employment-decision-handed-formalize')).toBeTruthy()
+    expect(screen.queryByTestId('hr-employment-decision-ready-formalize')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Formalize|Create employee/i })).toBeNull()
     expect(screen.queryByRole('combobox')).toBeNull()
     expect(screen.getByTestId('hr-employment-decision-zero-choice')).toBeTruthy()
   })

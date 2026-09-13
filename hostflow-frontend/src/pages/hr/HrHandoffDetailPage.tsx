@@ -6,26 +6,30 @@ import {
   evaluateEarlyEmployability,
   fetchHandoffHrReview,
   fetchHrHandoffInboxRow,
+  formalizeEmployment,
   resolveEmploymentMissing,
   type EarlyEmployabilityOut,
   type EmploymentAcceptPolicyOut,
+  type EmploymentFormalizeOut,
   type HrHandoffInboxItem,
 } from '../../api/hrWorkspace'
 import HrEmploymentAcceptPanel from '../../components/hr/HrEmploymentAcceptPanel'
 import HrEmploymentDecisionSurface from '../../components/hr/HrEmploymentDecisionSurface'
+import HrEmploymentFormalizePanel from '../../components/hr/HrEmploymentFormalizePanel'
 import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary'
 import HrDataVerificationWorkspace from '../../components/hr/HrDataVerificationWorkspace'
 import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import { shouldApplyEmploymentAcceptPolicyOnOpen } from '../../utils/employmentAcceptUi'
-import { employabilityFromResolution } from '../../utils/employmentDecisionUi'
+import { decisionSurfaceMode, employabilityFromResolution } from '../../utils/employmentDecisionUi'
+import { shouldEnterFormalizeFromEmployability } from '../../utils/employmentFormalizeUi'
 import { useI18n } from '../../i18n'
 import { PageHeader } from '../../components/nav/PageHeader'
 import { useToast } from '../../components/Toast'
 import type { HrReviewPanel } from '../../api/workforce'
 
 /**
- * HR handoff case host: ESO-1 accept + ESO-2/3 Employment Decision Surface.
- * Formalize / Started / Employee mint are out of scope. Recruitment untouched.
+ * HR handoff case host: ESO-1 accept + ESO-2/3 Decision Surface + ESO-4 Formalize.
+ * Employee mint / Started are out of scope. Recruitment untouched.
  */
 export default function HrHandoffDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -34,15 +38,19 @@ export default function HrHandoffDetailPage() {
   const [row, setRow] = useState<HrHandoffInboxItem | null>(null)
   const [policy, setPolicy] = useState<EmploymentAcceptPolicyOut | null>(null)
   const [employability, setEmployability] = useState<EarlyEmployabilityOut | null>(null)
+  const [formalize, setFormalize] = useState<EmploymentFormalizeOut | null>(null)
   const [hrReview, setHrReview] = useState<HrReviewPanel | null>(null)
   const [legacyOpen, setLegacyOpen] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [policyError, setPolicyError] = useState<string | null>(null)
   const [decisionError, setDecisionError] = useState<string | null>(null)
+  const [formalizeError, setFormalizeError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState(false)
   const [evaluating, setEvaluating] = useState(false)
   const [resolving, setResolving] = useState(false)
+  const [formalizeEvaluating, setFormalizeEvaluating] = useState(false)
+  const [formalizeConfirming, setFormalizeConfirming] = useState(false)
   const applyOnceRef = useRef<string | null>(null)
   const evalOnceRef = useRef<string | null>(null)
 
@@ -53,6 +61,28 @@ export default function HrHandoffDetailPage() {
     return inboxRow
   }, [id])
 
+  const runFormalize = useCallback(async () => {
+    if (!id) return
+    setFormalizeEvaluating(true)
+    setFormalizeError(null)
+    try {
+      const result = await formalizeEmployment(id)
+      setFormalize(result)
+    } catch (e: unknown) {
+      const ex = e as { response?: { data?: { detail?: unknown } }; message?: string }
+      const detail = ex?.response?.data?.detail
+      let message = ex?.message || t('common.errors.request_failed')
+      if (typeof detail === 'string') message = detail
+      else if (detail && typeof detail === 'object') {
+        const d = detail as { message?: string; code?: string }
+        message = d.message || d.code || message
+      }
+      setFormalizeError(message)
+    } finally {
+      setFormalizeEvaluating(false)
+    }
+  }, [id, t])
+
   const runEmployability = useCallback(async () => {
     if (!id) return
     setEvaluating(true)
@@ -60,6 +90,11 @@ export default function HrHandoffDetailPage() {
     try {
       const result = await evaluateEarlyEmployability(id)
       setEmployability(result)
+      if (shouldEnterFormalizeFromEmployability(result)) {
+        await runFormalize()
+      } else {
+        setFormalize(null)
+      }
     } catch (e: unknown) {
       const ex = e as { response?: { data?: { detail?: unknown } }; message?: string }
       const detail = ex?.response?.data?.detail
@@ -73,7 +108,7 @@ export default function HrHandoffDetailPage() {
     } finally {
       setEvaluating(false)
     }
-  }, [id, t])
+  }, [id, runFormalize, t])
 
   const runAcceptPolicy = useCallback(async () => {
     if (!id) return
@@ -124,6 +159,9 @@ export default function HrHandoffDetailPage() {
         if (result.rejection_reason) {
           setDecisionError(result.rejection_reason)
         }
+        if (shouldEnterFormalizeFromEmployability(next) || result.resolution_decision === 'ready_to_formalize') {
+          await runFormalize()
+        }
       } catch (e: unknown) {
         const ex = e as { response?: { data?: { detail?: unknown } }; message?: string }
         const detail = ex?.response?.data?.detail
@@ -139,7 +177,39 @@ export default function HrHandoffDetailPage() {
         setResolving(false)
       }
     },
-    [employability, id, notify, t],
+    [employability, id, notify, runFormalize, t],
+  )
+
+  const runFormalizeConfirm = useCallback(
+    async (patch: { confirmed_actions: string[] }) => {
+      if (!id) return
+      setFormalizeConfirming(true)
+      setFormalizeError(null)
+      try {
+        const result = await formalizeEmployment(id, {
+          formalize_patch: patch,
+          require_patch_when_missing: true,
+        })
+        setFormalize(result)
+        if (result.rejection_reason) {
+          setFormalizeError(result.rejection_reason)
+        }
+      } catch (e: unknown) {
+        const ex = e as { response?: { data?: { detail?: unknown } }; message?: string }
+        const detail = ex?.response?.data?.detail
+        let message = ex?.message || t('common.errors.request_failed')
+        if (typeof detail === 'string') message = detail
+        else if (detail && typeof detail === 'object') {
+          const d = detail as { message?: string; code?: string }
+          message = d.message || d.code || message
+        }
+        setFormalizeError(message)
+        notify({ variant: 'error', title: message })
+      } finally {
+        setFormalizeConfirming(false)
+      }
+    },
+    [id, notify, t],
   )
 
   useEffect(() => {
@@ -210,6 +280,8 @@ export default function HrHandoffDetailPage() {
   })
   const accepted =
     Boolean(policy?.accepted) || String(row?.handoff?.status || '').toLowerCase() === 'accepted'
+  const readyForFormalize = decisionSurfaceMode(employability).readyForFormalize
+  const showFormalize = accepted && (readyForFormalize || Boolean(formalize) || formalizeEvaluating)
 
   if (empId) {
     return <Navigate to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(empId)}#hr-verification`} replace />
@@ -254,7 +326,18 @@ export default function HrHandoffDetailPage() {
               evaluating={evaluating}
               resolving={resolving}
               error={decisionError}
+              formalizeBound={showFormalize}
               onResolve={(patch) => void runResolve(patch)}
+            />
+          ) : null}
+
+          {showFormalize ? (
+            <HrEmploymentFormalizePanel
+              formalize={formalize}
+              evaluating={formalizeEvaluating}
+              confirming={formalizeConfirming}
+              error={formalizeError}
+              onConfirm={(patch) => void runFormalizeConfirm(patch)}
             />
           ) : null}
 
@@ -271,7 +354,7 @@ export default function HrHandoffDetailPage() {
             >
               <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-800">
                 {t('app.hr.employment_accept.legacy_review_summary', {
-                  defaultValue: 'Legacy document verification (not Employment Decision Surface)',
+                  defaultValue: 'Legacy document verification (not Employment Formalize)',
                 })}
               </summary>
               {legacyOpen && hrReview ? (

@@ -199,6 +199,52 @@ export async function resolveEmploymentMissing(
   return data
 }
 
+/** ESO-4: formalize evaluate/apply (`employment_formalize.v1`) — allow-create threshold only; no Employee mint. */
+export type EmploymentFormalizeOut = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: 'formalization_complete' | 'missing' | 'blocked' | 'rejected_patch' | string
+  required_actions?: Array<{ code?: string; kind?: string; message?: string } | Record<string, unknown>>
+  active_missing?: Array<{ code?: string; kind?: string; message?: string } | Record<string, unknown>>
+  primary_item?: { code?: string; kind?: string; message?: string } | null
+  ready_to_formalize?: boolean | null
+  ready_to_create_employee: boolean
+  employee_created?: boolean
+  employee_id?: string | null
+  hr_employee_card?: boolean
+  universal_checklist_forbidden?: boolean
+  llm_formalize?: boolean
+  pathway_id?: string | null
+  blockers?: Array<{ code?: string; message?: string } | Record<string, unknown>>
+  reuse_violations?: string[]
+  confirmed_actions?: string[]
+  package_merged?: boolean | null
+  rejection_reason?: string | null
+}
+
+export async function formalizeEmployment(
+  handoffId: string,
+  body?: {
+    package?: Record<string, unknown>
+    employment_context?: Record<string, unknown>
+    formalize_patch?: {
+      facts?: Record<string, unknown>
+      evidence?: Record<string, unknown>
+      confirmed_actions?: string[] | Record<string, boolean>
+      actions?: unknown[]
+    }
+    confirmed_actions?: string[] | Record<string, boolean> | unknown[]
+    employment_missing?: Array<Record<string, unknown>>
+    require_patch_when_missing?: boolean
+  },
+): Promise<EmploymentFormalizeOut> {
+  const { data } = await api.post<EmploymentFormalizeOut>(
+    `${HANDOFFS}/${encodeURIComponent(handoffId)}/employment-formalize`,
+    body ?? {},
+  )
+  return data
+}
+
 export async function fetchHandoffHrReview(handoffId: string): Promise<HrReviewPanel> {
   const { data } = await api.get<HrReviewPanel>(`${HANDOFFS}/${encodeURIComponent(handoffId)}/hr-review`)
   return data
