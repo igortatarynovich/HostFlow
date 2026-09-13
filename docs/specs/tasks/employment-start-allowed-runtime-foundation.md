@@ -1,6 +1,6 @@
 # Employment start_allowed — runtime foundation (slice 1)
 
-**Status:** **PASS** — machine foundation (slice 1) @ `TBD_SHA`  
+**Status:** **PASS** — machine foundation (slice 1) @ `d5767488`  
 **Phase class:** product  
 **Opened:** 2026-09-13  
 **PASS stamp:** local gate `employment-start-allowed-gate` **17 passed** (derived-state replay included); no mint / UI / ESO-5 changes  
