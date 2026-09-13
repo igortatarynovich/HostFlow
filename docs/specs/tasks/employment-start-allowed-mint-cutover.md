@@ -199,8 +199,23 @@ ensure seam (authoritative apply only; evaluate = read-only)     ✅
 
 ## Next after this PASS
 
-**STOP.**
+**STOP.** Next step is **not** slice 3 — it is **integration**: bring/merge the ESO-4 line so authoritative Formalize **apply** actually calls `ensure_employee_after_formalize_apply(...)`.
 
-Do **not** open **slice 3** (HR host binding) while the working line still lacks a real **ESO-4 → ensure** wire. Otherwise UI would depend on a composition that does not exist on `integration/release-product-a-b`.
+Until then:
 
-After ESO-4 Formalize is on the line and calls `ensure_employee_after_formalize_apply` once with the locks above, then open slice 3 as a separate brief/PR. Slice 4 (ESO-5 enforcement + remove mint-on-confirm) remains later. Full Spine stays closed.
+- ESA2 = machine / portable seam PASS  
+- production Formalize wire = **pending**  
+- Slice 3 = **closed**  
+- Full Spine = **NOT PASS**  
+- mixed SHA `0c8b337f` is **not** a pure ESA2 diff  
+- ignore `hostflow-frontend/dummy-non-existing-folder/`
+
+### Integration parity (required before slice 3)
+
+After a real **ESO-4 → ensure** wire exists on the working line, prove separately (named proof / gate extension — not slice 3):
+
+1. Formalize **apply** mints the **linked** Employee for this handoff  
+2. Formalize **evaluate / read** does **not** write  
+3. `meta.internal_hr_handoff_id` (handoff linkage) is preserved  
+
+**Only after** that integration parity proof may **slice 3** (HR host binding) open as a separate brief/PR. Slice 4 and Full Spine remain later / closed.
