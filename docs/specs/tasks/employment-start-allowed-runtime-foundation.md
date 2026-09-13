@@ -1,8 +1,9 @@
 # Employment start_allowed — runtime foundation (slice 1)
 
-**Status:** **OPEN** — machine foundation only; not HR UI; not Full Spine  
+**Status:** **PASS** — machine foundation (slice 1) @ `TBD_SHA`  
 **Phase class:** product  
 **Opened:** 2026-09-13  
+**PASS stamp:** local gate `employment-start-allowed-gate` **17 passed** (derived-state replay included); no mint / UI / ESO-5 changes  
 **Depends on:**  
 - [`../architecture/employment-start-allowed.md`](../architecture/employment-start-allowed.md) (**Accepted**)  
 - [`../../analysis/employment-start-allowed-adaptation-design.md`](../../analysis/employment-start-allowed-adaptation-design.md) (**Accepted**)  
@@ -121,12 +122,12 @@ normalized read views
 
 ## Deliverables checklist
 
-- [ ] Contract / Medical / BHP normalized **read** views (no new evidence tables)  
-- [ ] Exception store + allowlist + succession proof  
-- [ ] `evaluate` / narrow `apply`  
-- [ ] `employment-start-allowed-gate` green (incl. derived-state replay)  
-- [ ] Docs linkage + PASS stamp when green  
-- [ ] Proof: `handoff_from_candidate` / ESO-5 semantics untouched in diff  
+- [x] Contract / Medical / BHP normalized **read** views (no new evidence tables)  
+- [x] Exception store + allowlist + succession proof  
+- [x] `evaluate` / narrow `apply`  
+- [x] `employment-start-allowed-gate` green (incl. derived-state replay)  
+- [x] Docs linkage + CI job + PASS stamp  
+- [x] Proof: slice-1 modules do not import/call `handoff_from_candidate`  
 
 ---
 
@@ -134,8 +135,10 @@ normalized read views
 
 Machine authority reproducibly answers `start_allowed` / `missing` / `blocked` / `unsupported_context`; gate green; **Employee mint, HR UI, and ESO-5 semantics unchanged**.
 
+**PASS (slice 1 machine):** reference `employment_start_allowed.v1` + evidence projections + typed exception model/service + named CI gate (17 proofs).
+
 ---
 
 ## Next after slice 1 PASS
 
-Open **slice 2** (mint timing cutover) only when gate is green. Full Spine stays closed.
+Open **slice 2** (mint timing cutover) only when this PASS is committed. Full Spine stays closed.
