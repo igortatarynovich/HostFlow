@@ -103,6 +103,31 @@ async def resolve_ready_for_employment_package(
     return dict(stored) if isinstance(stored, Mapping) else None
 
 
+async def apply_employment_accept_after_transfer(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    handoff_id: str,
+    actor_id: str | None,
+    destination: str | None = None,
+) -> dict[str, Any] | None:
+    """RSO-2C: Employment-owned post-Transfer auto-init.
+
+    Call **after** successful ``create_handoff`` for ``internal_hr`` — never from
+    inside Recruitment ``create_handoff``. Returns ``None`` when destination is
+    not internal_hr (no Employment accept step).
+    """
+    dest = _text(destination).lower() or "internal_hr"
+    if dest != "internal_hr":
+        return None
+    return await apply_employment_accept_policy(
+        db,
+        tenant_id=tenant_id,
+        handoff_id=handoff_id,
+        actor_id=actor_id,
+    )
+
+
 async def apply_employment_accept_policy(
     db: AsyncSession,
     *,
@@ -211,5 +236,6 @@ async def apply_employment_accept_policy(
 __all__ = [
     "EmploymentAcceptError",
     "resolve_ready_for_employment_package",
+    "apply_employment_accept_after_transfer",
     "apply_employment_accept_policy",
 ]

@@ -9,12 +9,10 @@ import {
   type HrHandoffInboxItem,
   type HrOperationalQueue,
 } from '../../api/hrWorkspace'
-import { acceptHandoff } from '../../api/handoffs'
 import { HrTransferSummaryChips, type HrTransferSummary } from '../../components/hr/HrTransferSummaryChips'
 import { HrVerificationProgressBadge } from '../../components/hr/HrVerificationProgressBadge'
 import { Toolbar } from '../../components/layout'
 import { useI18n } from '../../i18n'
-import { useToast } from '../../components/Toast'
 
 const tabBtn = (active: boolean) =>
   clsx('tab cursor-pointer border-0 bg-transparent', active && 'tab-active')
@@ -29,7 +27,6 @@ const TERMINAL_QUEUES = new Set<HrOperationalQueue>([
 
 export default function HrInboxPage() {
   const { t } = useI18n()
-  const { notify } = useToast()
   const [tab, setTab] = useState<InboxTab>('all')
   const [queueFilter, setQueueFilter] = useState<HrOperationalQueue | 'all'>('all')
   const [pending, setPending] = useState<{ total: number; items: HrHandoffInboxItem[] } | null>(null)
@@ -38,7 +35,6 @@ export default function HrInboxPage() {
   const [err, setErr] = useState<string | null>(null)
   const [acceptedUnavailable, setAcceptedUnavailable] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [acceptingId, setAcceptingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -108,26 +104,6 @@ export default function HrInboxPage() {
     const key = `app.nav.hr.inbox.queue_${q}`
     const tr = t(key, { defaultValue: '' })
     return tr && tr !== key ? tr : q.replace(/_/g, ' ')
-  }
-
-  const handleAcceptPickup = async (handoffId: string) => {
-    setAcceptingId(handoffId)
-    try {
-      await acceptHandoff(handoffId)
-      notify({
-        variant: 'success',
-        title: t('app.nav.hr.inbox.accept_pickup', { defaultValue: 'Take into HR review' }),
-      })
-      await load()
-    } catch (e: unknown) {
-      const ex = e as { response?: { data?: { detail?: string } }; message?: string }
-      notify({
-        variant: 'error',
-        title: ex?.response?.data?.detail || ex?.message || t('common.errors.request_failed'),
-      })
-    } finally {
-      setAcceptingId(null)
-    }
   }
 
   const empHref = (id: string) => `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}#hr-verification`
@@ -322,16 +298,6 @@ export default function HrInboxPage() {
                                 {id ? <div className="mt-0.5 font-mono text-[10px] text-slate-400">handoff:{id.slice(0, 8)}…</div> : null}
                               </div>
                               <div className="flex flex-col items-end gap-1">
-                                {isPickup && id ? (
-                                  <button
-                                    type="button"
-                                    className="btn-primary btn-sm text-left"
-                                    disabled={acceptingId === id}
-                                    onClick={() => void handleAcceptPickup(id)}
-                                  >
-                                    {t('app.nav.hr.inbox.accept_pickup', { defaultValue: 'Take into HR review' })}
-                                  </button>
-                                ) : null}
                                 {primaryCaseHref(row) ? (
                                   <Link className="text-sm font-medium text-brand-700 hover:underline" to={primaryCaseHref(row)!}>
                                     {row.workforce_employee_id

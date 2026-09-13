@@ -221,6 +221,31 @@ async def create_handoff_route(
     )
     if err:
         raise _handoff_create_http_exception(err)
+    # RSO-2C: Employment-owned post-Transfer auto-init — outside create_handoff.
+    if (dest or "").strip().lower() == "internal_hr":
+        from backend.app.services.employment_accept_orchestrator import (
+            EmploymentAcceptError,
+            apply_employment_accept_after_transfer,
+        )
+
+        try:
+            await apply_employment_accept_after_transfer(
+                db,
+                tenant_id=str(tenant_id),
+                handoff_id=str(handoff.id),
+                actor_id=str(current_user.sub or "").strip() or None,
+                destination=dest,
+            )
+        except EmploymentAcceptError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": exc.code,
+                    "message": exc.message,
+                    **({"details": exc.details} if exc.details else {}),
+                },
+            ) from exc
+        await db.refresh(handoff)
     await db.commit()
     await db.refresh(handoff)
     return HandoffOut.model_validate(handoff)
