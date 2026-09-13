@@ -245,6 +245,60 @@ export async function formalizeEmployment(
   return data
 }
 
+/** ESO-5: physical start evaluate/confirm (`employment_started.v1`). Employee ≠ Started. */
+export type EmploymentStartedOut = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: 'started' | 'already_started' | 'not_started' | 'blocked' | 'rejected_confirm' | string
+  employee_id?: string | null
+  employee_created?: boolean
+  mint_employee?: boolean
+  ready_to_create_employee?: boolean
+  started: boolean
+  start_date?: string | null
+  employment_context?: Record<string, unknown> | null
+  active_missing?: Array<{ code?: string; kind?: string; message?: string } | Record<string, unknown>>
+  primary_item?: { code?: string; kind?: string; message?: string } | null
+  start_event_emitted?: boolean
+  idempotent_replay?: boolean
+  audit_event_type?: string | null
+  formalization_complete_implies_started?: boolean
+  employee_created_implies_started?: boolean
+  llm_start?: boolean
+  blockers?: Array<{ code?: string; message?: string } | Record<string, unknown>>
+  reuse_violations?: string[]
+  rejection_reason?: string | null
+  hr_employee_card?: boolean
+  spine?: string | null
+}
+
+export async function confirmEmploymentStarted(
+  handoffId: string,
+  body?: {
+    package?: Record<string, unknown>
+    employment_context?: Record<string, unknown>
+    start_confirmation?:
+      | boolean
+      | string
+      | {
+          confirmed?: boolean
+          start_date?: string
+          employment_context?: Record<string, unknown>
+          confirm_physical_start?: boolean
+        }
+    known_start_date?: string
+    employment_missing?: Array<Record<string, unknown>>
+    require_confirm_when_not_started?: boolean
+    ensure_employee?: boolean
+  },
+): Promise<EmploymentStartedOut> {
+  const { data } = await api.post<EmploymentStartedOut>(
+    `${HANDOFFS}/${encodeURIComponent(handoffId)}/employment-started`,
+    body ?? {},
+  )
+  return data
+}
+
 export async function fetchHandoffHrReview(handoffId: string): Promise<HrReviewPanel> {
   const { data } = await api.get<HrReviewPanel>(`${HANDOFFS}/${encodeURIComponent(handoffId)}/hr-review`)
   return data
