@@ -108,4 +108,4 @@ On successful patch apply, HostFlow **must** re-run `evaluate_early_employabilit
 
 **PASS (machine):** this document + `employment_missing_resolution.v1` + gate tests exist, the ESO brief names Missing / Resolution, and HostFlow can take blocker → minimal patch → auto re-eval → `ready_to_formalize` or updated active items — **without** Employee create and **without** a full legal checklist.
 
-**PASS (HR Decision Surface, with ESO-2):** same `/app/hr/handoffs/:id` surface; supply current gap → automatic employability re-eval; no ritual “check again”; stops at ready-for-Formalize without Formalize UI.
+**PASS (HR Decision Surface, with ESO-2):** **PASS** @ `fb61a7b1` — same `/app/hr/handoffs/:id` surface; supply current gap → automatic employability re-eval; no ritual “check again”; stops at ready-for-Formalize without Formalize UI.

@@ -116,7 +116,7 @@ For `employment_country=PL` (default when context omits country but package `tar
 
 **PASS (machine):** this document + `early_employability.v1` + gate tests exist, the ESO brief names early employability, and after `employment_started` HostFlow can answer **employable / blocked / insufficient_facts** with concrete blockers and one next step — **without** creating Employee and **without** requiring operator knowledge of the internal legal model.
 
-**PASS (HR Decision Surface, with ESO-3):** accepted HR case evaluates employability on `/app/hr/handoffs/:id`; unique pathway is never a menu; `insufficient_facts` shows one current gap; resolution apply auto re-evals (ESO-3). Formalize UI remains out of scope.
+**PASS (HR Decision Surface, with ESO-3):** **PASS** @ `fb61a7b1` — accepted HR case evaluates employability on `/app/hr/handoffs/:id`; unique pathway is never a menu; `insufficient_facts` shows one current gap; resolution apply auto re-evals (ESO-3). Formalize UI remains out of scope.
 
 ---
 
