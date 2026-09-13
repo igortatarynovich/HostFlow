@@ -596,6 +596,20 @@
         "return_reason": "Return reason",
         "send_corrections": "Send correction request"
       },
+      "employment_accept": {
+        "applying": "Applying employment accept policy…",
+        "accepted_title": "Employment case accepted",
+        "employment_started": "Employment started",
+        "already_accepted": "Employment case already accepted",
+        "next_employability": "Next: employability / employment missing (ESO-2–3). Approve for employment is not the Employment happy path.",
+        "blocked_title": "Employment accept needs attention",
+        "blocked_fallback": "Concrete employment blockers must be resolved before accept.",
+        "retry": "Retry employment accept policy",
+        "no_ritual": "Ritual “Take into HR review” is not used when Employment policy owns accept.",
+        "case_open": "Employment case is open on this HR handoff. ESO-2/3 decision surface is next.",
+        "legacy_review_summary": "Legacy document verification (not ESO accept / Formalize)",
+        "legacy_not_path": "Document verification / Approve for employment remains available elsewhere for legacy cases — it is not the ESO accept path."
+      },
       "review_case": {
         "badge": "HR review case",
         "profile_badge": "Employee profile",
@@ -1320,6 +1334,7 @@
           "col_employee": "Workforce",
           "col_actions": "Actions",
           "accept_pickup": "Take into HR review",
+          "open_employment_case": "Open employment case",
           "stat_pending": "Awaiting pickup: {n}",
           "stat_accepted": "In review: {n}",
           "stat_tab": "This tab: {n}",
