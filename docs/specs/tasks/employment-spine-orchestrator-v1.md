@@ -91,5 +91,5 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 3.
 RSO-1 package shape is frozen (`ready_for_employment.v1`). **ESO-1:** accept policy that **reuses** package facts (gate 2) + auto-init when Employment gates pass. Then ESO-2 employability SoT (ownership card if Rule 3 requires).
 
 **Locked product sequence after ESO-5 binding (L3 baseline):**  
-ESO-5 [#372](https://github.com/igortatarynovich/HostFlow/pull/372) → [Employment Formalization Coverage Audit](../../analysis/employment-formalization-coverage-audit.md) (`b88a6168`) → [Production Employment Minimum / Blocking Boundary](../../analysis/production-employment-minimum.md) (**PEM-1 Accepted**) → [Employment start_allowed](../architecture/employment-start-allowed.md) (**Accepted**; inventory before runtime) → only Minimum-blocking gaps → Three-host Full Spine Gate.  
-Do **not** expand ESO-4 into Contract/Medical/BHP; do **not** invent parallel evidence stores; do **not** open Full Spine or write runtime before mint/evidence inventory.
+ESO-5 [#372](https://github.com/igortatarynovich/HostFlow/pull/372) → Coverage Audit (`b88a6168`) → PEM-1 Accepted → `employment_start_allowed.v1` Accepted → inventory (`466016b6`) → [adaptation design](../../analysis/employment-start-allowed-adaptation-design.md) (**Accepted**) → [runtime foundation slice 1](employment-start-allowed-runtime-foundation.md) (**OPEN**) → mint cutover → HR host bind → ESO-5 enforcement → Three-host Full Spine Gate.  
+Do **not** collapse slices; do **not** operator-set `start_allowed`; Full Spine stays closed.
