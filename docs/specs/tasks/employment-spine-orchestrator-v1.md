@@ -1,11 +1,11 @@
 # Employment Spine Orchestrator v1
 
-**Status:** **ESO-5 in progress** (Employment Started Gate) — ESO-1…4 SoTs linked; Started: [employment-started.md](../architecture/employment-started.md) (`employment_started.v1`).  
+**Status:** **Machine ESO-1…5 PASS** — contracts + orchestrators + named CI on tip; **HR operator UI next** (ESO-1 host binding). Inventory: [`../../analysis/hr-employment-eso-inventory.md`](../../analysis/hr-employment-eso-inventory.md).  
 **Phase class:** product  
 **Module owner:** **Employment / HR** (independent of Recruitment)  
 **Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Recruitment Architecture CLOSED](../gates/recruitment-architecture-closed.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) · [Employment accept policy](../architecture/employment-accept-policy.md) · [Early employability](../architecture/early-employability.md) · [Employment missing resolution](../architecture/employment-missing-resolution.md) · [Employment formalize](../architecture/employment-formalize.md) · [Employment started](../architecture/employment-started.md) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock  
-**Machine:** accept / employability / missing-resolution / formalize / started · gates ESO-1…ESO-5 · CI `eso1`…`eso5-started-gate`  
-**Estimate:** TBD after RSO-1 handoff package shape freezes  
+**Machine:** accept / employability / missing-resolution / formalize / started · gates ESO-1…ESO-5 · CI `eso1`…`eso5-started-gate` — **runtime machine complete** (ESO-5 Started Gate sealed; see [employment-started.md](../architecture/employment-started.md)).  
+**Estimate:** TBD for HR UI ladder after ESO-1 host binding  
 
 > Recruitment ends when the **Ready for employment contract** (handoff package) is emitted from the **Candidate**. This program **starts** there.  
 > **Recruitment Architecture = CLOSED** ([`../gates/recruitment-architecture-closed.md`](../gates/recruitment-architecture-closed.md) @ `61cbc3eb`). Formalize → Started is **HR/Employment scope**, not Recruitment debt.  
@@ -13,7 +13,8 @@
 > **Host ([`ADR-042`](../architecture/ADR-042-operator-host-boundary.md)):** after **Передать**, the operator continues in **HR**. Formalize / confirm start / Started are not Application Workspace chrome.  
 > Full product spine remains **NOT PASS / BLOCKED BY HR UI** until Employment operator surfaces exist.  
 > Seamless handoff = prepared Employment case with known context. Not “same screen forever”.  
-> **Seamless UX ≠ shared ownership.**
+> **Seamless UX ≠ shared ownership.**  
+> **Inventory (L3):** machine ESO-1…5 ready; HR UI still on a **legacy parallel path** (ritual accept → hr-review → Approve for employment) — not the ESO ladder ([`../../analysis/hr-employment-eso-inventory.md`](../../analysis/hr-employment-eso-inventory.md)).
 
 ---
 
@@ -92,6 +93,9 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 2�
 
 ## Next
 
-1. **ESO-5 in progress** — physical start SoT + apply (`POST /handoffs/{id}/employment-started`); Employee created ≠ Started; closes spine Employee → Started.  
-2. RSO-2 Transfer remains Recruitment-owned (Candidate, after Ready for employment) and must **not** call Employment accept / employability / resolution / formalize / started. After Transfer the operator continues in HR ([`ADR-042`](../architecture/ADR-042-operator-host-boundary.md)). Do not pursue [#359](https://github.com/igortatarynovich/HostFlow/pull/359) one-card PASS.  
-3. **Canonical Facts Completeness** — [`canonical-facts-completeness.md`](canonical-facts-completeness.md): Employment consumers (ESO-1…2 identity/citizenship) stay on one Person/package projection read path; no Employment-local copy of Recruitment facts.
+1. **ESO-1 HR host binding** — adapt existing `/app/hr/handoffs/:id` to `employment_accept_policy.v1` (auto_accept → no ritual Accept; else concrete blocker + one action). Named proof: valid RFE handoff → HR case → ESO-1 → accepted Employment state. Do **not** invent a new HR module or a third Employment workflow.  
+2. **ESO-2 + ESO-3** as one Employment decision surface (employability → current missing → resolve → auto re-eval) — after ESO-1 host PASS; avoid an extra UI step.  
+3. **ESO-4 Formalize** → **ESO-5 Started** operator surfaces on the same HR host.  
+4. New Full Spine Gate (three-host) after HR UI ladder — do **not** retune the withdrawn one-card Full Spine Gate.  
+5. RSO-2 Transfer remains Recruitment-owned (Candidate, after Ready for employment) and must **not** call Employment accept / employability / resolution / formalize / started. After Transfer the operator continues in HR ([`ADR-042`](../architecture/ADR-042-operator-host-boundary.md)). Do not pursue [#359](https://github.com/igortatarynovich/HostFlow/pull/359) one-card PASS.  
+6. **Canonical Facts Completeness** — [`canonical-facts-completeness.md`](canonical-facts-completeness.md): Employment consumers (ESO-1…2 identity/citizenship) stay on one Person/package projection read path; no Employment-local copy of Recruitment facts.
