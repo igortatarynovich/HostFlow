@@ -123,6 +123,128 @@ export async function applyEmploymentAcceptPolicy(
   return data
 }
 
+/** ESO-2: early employability evaluate (`early_employability.v1`) — no Employee. */
+export type EarlyEmployabilityOut = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: 'employable' | 'blocked' | 'insufficient_facts' | string
+  package_valid?: boolean | null
+  handoff_accepted?: boolean | null
+  employment_country?: string | null
+  citizenship?: string | null
+  citizenship_group?: string | null
+  legal_pathway?: { pathway_id?: string; selection_required?: boolean } | null
+  pathway_selection_required?: boolean
+  blockers?: Array<{ code?: string; message?: string } | Record<string, unknown>>
+  requirements?: Array<{ code?: string; message?: string } | Record<string, unknown>>
+  reuse_violations?: string[]
+  next_step?: { code?: string; label?: string } | null
+  employee_created?: boolean
+  employee_id?: string | null
+  llm_eligibility?: boolean
+  message?: string | null
+}
+
+export async function evaluateEarlyEmployability(
+  handoffId: string,
+  body?: {
+    package?: Record<string, unknown>
+    employment_context?: Record<string, unknown>
+    canonical_facts?: Record<string, unknown>
+    employment_missing?: Array<Record<string, unknown>>
+  },
+): Promise<EarlyEmployabilityOut> {
+  const { data } = await api.post<EarlyEmployabilityOut>(
+    `${HANDOFFS}/${encodeURIComponent(handoffId)}/early-employability`,
+    body ?? {},
+  )
+  return data
+}
+
+/** ESO-3: missing resolution + auto re-eval (`employment_missing_resolution.v1`). */
+export type EmploymentMissingResolutionOut = {
+  policy_id: string
+  handoff_id?: string | null
+  resolution_decision: 'ready_to_formalize' | 'awaiting_input' | 'still_blocked' | 'rejected_patch' | string
+  active_items?: Array<{ code?: string; kind?: string; message?: string } | Record<string, unknown>>
+  primary_item?: { code?: string; kind?: string; message?: string } | null
+  universal_checklist_forbidden?: boolean
+  employee_created?: boolean
+  employee_id?: string | null
+  package_merged?: boolean | null
+  reuse_violations?: string[]
+  employability?: EarlyEmployabilityOut | Record<string, unknown> | null
+  plan?: Record<string, unknown> | null
+  rejection_reason?: string | null
+}
+
+export async function resolveEmploymentMissing(
+  handoffId: string,
+  body?: {
+    package?: Record<string, unknown>
+    employment_context?: Record<string, unknown>
+    resolution_patch?: {
+      facts?: Record<string, unknown>
+      evidence?: Record<string, unknown>
+      actions?: unknown[]
+    }
+    employment_missing?: Array<Record<string, unknown>>
+    require_patch_when_not_ready?: boolean
+  },
+): Promise<EmploymentMissingResolutionOut> {
+  const { data } = await api.post<EmploymentMissingResolutionOut>(
+    `${HANDOFFS}/${encodeURIComponent(handoffId)}/employment-missing-resolution`,
+    body ?? {},
+  )
+  return data
+}
+
+/** ESO-4: formalize evaluate/apply (`employment_formalize.v1`) — allow-create threshold only; no Employee mint. */
+export type EmploymentFormalizeOut = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: 'formalization_complete' | 'missing' | 'blocked' | 'rejected_patch' | string
+  required_actions?: Array<{ code?: string; kind?: string; message?: string } | Record<string, unknown>>
+  active_missing?: Array<{ code?: string; kind?: string; message?: string } | Record<string, unknown>>
+  primary_item?: { code?: string; kind?: string; message?: string } | null
+  ready_to_formalize?: boolean | null
+  ready_to_create_employee: boolean
+  employee_created?: boolean
+  employee_id?: string | null
+  hr_employee_card?: boolean
+  universal_checklist_forbidden?: boolean
+  llm_formalize?: boolean
+  pathway_id?: string | null
+  blockers?: Array<{ code?: string; message?: string } | Record<string, unknown>>
+  reuse_violations?: string[]
+  confirmed_actions?: string[]
+  package_merged?: boolean | null
+  rejection_reason?: string | null
+}
+
+export async function formalizeEmployment(
+  handoffId: string,
+  body?: {
+    package?: Record<string, unknown>
+    employment_context?: Record<string, unknown>
+    formalize_patch?: {
+      facts?: Record<string, unknown>
+      evidence?: Record<string, unknown>
+      confirmed_actions?: string[] | Record<string, boolean>
+      actions?: unknown[]
+    }
+    confirmed_actions?: string[] | Record<string, boolean> | unknown[]
+    employment_missing?: Array<Record<string, unknown>>
+    require_patch_when_missing?: boolean
+  },
+): Promise<EmploymentFormalizeOut> {
+  const { data } = await api.post<EmploymentFormalizeOut>(
+    `${HANDOFFS}/${encodeURIComponent(handoffId)}/employment-formalize`,
+    body ?? {},
+  )
+  return data
+}
+
 export async function fetchHandoffHrReview(handoffId: string): Promise<HrReviewPanel> {
   const { data } = await api.get<HrReviewPanel>(`${HANDOFFS}/${encodeURIComponent(handoffId)}/hr-review`)
   return data

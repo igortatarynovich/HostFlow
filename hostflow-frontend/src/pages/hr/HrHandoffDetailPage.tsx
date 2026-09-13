@@ -3,25 +3,33 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
   applyEmploymentAcceptPolicy,
+  evaluateEarlyEmployability,
   fetchHandoffHrReview,
   fetchHrHandoffInboxRow,
+  formalizeEmployment,
+  resolveEmploymentMissing,
+  type EarlyEmployabilityOut,
   type EmploymentAcceptPolicyOut,
+  type EmploymentFormalizeOut,
   type HrHandoffInboxItem,
 } from '../../api/hrWorkspace'
 import HrEmploymentAcceptPanel from '../../components/hr/HrEmploymentAcceptPanel'
+import HrEmploymentDecisionSurface from '../../components/hr/HrEmploymentDecisionSurface'
+import HrEmploymentFormalizePanel from '../../components/hr/HrEmploymentFormalizePanel'
 import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary'
 import HrDataVerificationWorkspace from '../../components/hr/HrDataVerificationWorkspace'
 import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import { shouldApplyEmploymentAcceptPolicyOnOpen } from '../../utils/employmentAcceptUi'
+import { decisionSurfaceMode, employabilityFromResolution } from '../../utils/employmentDecisionUi'
+import { shouldEnterFormalizeFromEmployability } from '../../utils/employmentFormalizeUi'
 import { useI18n } from '../../i18n'
 import { PageHeader } from '../../components/nav/PageHeader'
 import { useToast } from '../../components/Toast'
 import type { HrReviewPanel } from '../../api/workforce'
 
 /**
- * ESO-1 host: existing HR handoff case binds employment_accept_policy.v1.
- * Ritual «Take into HR review» is never shown. Legacy Approve chrome may remain
- * for delayed-HR cases but is not the Employment accept happy path.
+ * HR handoff case host: ESO-1 accept + ESO-2/3 Decision Surface + ESO-4 Formalize.
+ * Employee mint / Started are out of scope. Recruitment untouched.
  */
 export default function HrHandoffDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -29,12 +37,22 @@ export default function HrHandoffDetailPage() {
   const { notify } = useToast()
   const [row, setRow] = useState<HrHandoffInboxItem | null>(null)
   const [policy, setPolicy] = useState<EmploymentAcceptPolicyOut | null>(null)
+  const [employability, setEmployability] = useState<EarlyEmployabilityOut | null>(null)
+  const [formalize, setFormalize] = useState<EmploymentFormalizeOut | null>(null)
   const [hrReview, setHrReview] = useState<HrReviewPanel | null>(null)
+  const [legacyOpen, setLegacyOpen] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [policyError, setPolicyError] = useState<string | null>(null)
+  const [decisionError, setDecisionError] = useState<string | null>(null)
+  const [formalizeError, setFormalizeError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState(false)
+  const [evaluating, setEvaluating] = useState(false)
+  const [resolving, setResolving] = useState(false)
+  const [formalizeEvaluating, setFormalizeEvaluating] = useState(false)
+  const [formalizeConfirming, setFormalizeConfirming] = useState(false)
   const applyOnceRef = useRef<string | null>(null)
+  const evalOnceRef = useRef<string | null>(null)
 
   const loadRow = useCallback(async () => {
     if (!id) return null
@@ -43,21 +61,54 @@ export default function HrHandoffDetailPage() {
     return inboxRow
   }, [id])
 
-  const loadHrReviewIfAccepted = useCallback(
-    async (inboxRow: HrHandoffInboxItem) => {
-      if (!id) return
-      if (String(inboxRow.handoff?.status || '').toLowerCase() !== 'accepted') {
-        setHrReview(null)
-        return
+  const runFormalize = useCallback(async () => {
+    if (!id) return
+    setFormalizeEvaluating(true)
+    setFormalizeError(null)
+    try {
+      const result = await formalizeEmployment(id)
+      setFormalize(result)
+    } catch (e: unknown) {
+      const ex = e as { response?: { data?: { detail?: unknown } }; message?: string }
+      const detail = ex?.response?.data?.detail
+      let message = ex?.message || t('common.errors.request_failed')
+      if (typeof detail === 'string') message = detail
+      else if (detail && typeof detail === 'object') {
+        const d = detail as { message?: string; code?: string }
+        message = d.message || d.code || message
       }
-      try {
-        setHrReview(await fetchHandoffHrReview(id))
-      } catch {
-        setHrReview(null)
+      setFormalizeError(message)
+    } finally {
+      setFormalizeEvaluating(false)
+    }
+  }, [id, t])
+
+  const runEmployability = useCallback(async () => {
+    if (!id) return
+    setEvaluating(true)
+    setDecisionError(null)
+    try {
+      const result = await evaluateEarlyEmployability(id)
+      setEmployability(result)
+      if (shouldEnterFormalizeFromEmployability(result)) {
+        await runFormalize()
+      } else {
+        setFormalize(null)
       }
-    },
-    [id],
-  )
+    } catch (e: unknown) {
+      const ex = e as { response?: { data?: { detail?: unknown } }; message?: string }
+      const detail = ex?.response?.data?.detail
+      let message = ex?.message || t('common.errors.request_failed')
+      if (typeof detail === 'string') message = detail
+      else if (detail && typeof detail === 'object') {
+        const d = detail as { message?: string; code?: string }
+        message = d.message || d.code || message
+      }
+      setDecisionError(message)
+    } finally {
+      setEvaluating(false)
+    }
+  }, [id, runFormalize, t])
 
   const runAcceptPolicy = useCallback(async () => {
     if (!id) return
@@ -73,8 +124,9 @@ export default function HrHandoffDetailPage() {
             result.message ||
             t('app.hr.employment_accept.employment_started', { defaultValue: 'Employment started' }),
         })
-        const inboxRow = await loadRow()
-        if (inboxRow) await loadHrReviewIfAccepted(inboxRow)
+        await loadRow()
+        evalOnceRef.current = null
+        await runEmployability()
       }
     } catch (e: unknown) {
       const ex = e as { response?: { data?: { detail?: unknown } }; message?: string }
@@ -90,7 +142,75 @@ export default function HrHandoffDetailPage() {
     } finally {
       setApplying(false)
     }
-  }, [id, loadHrReviewIfAccepted, loadRow, notify, t])
+  }, [id, loadRow, notify, runEmployability, t])
+
+  const runResolve = useCallback(
+    async (patch: { facts?: Record<string, unknown>; evidence?: Record<string, unknown> }) => {
+      if (!id) return
+      setResolving(true)
+      setDecisionError(null)
+      try {
+        const result = await resolveEmploymentMissing(id, {
+          resolution_patch: patch,
+          require_patch_when_not_ready: true,
+        })
+        const next = employabilityFromResolution(result, employability)
+        if (next) setEmployability(next as EarlyEmployabilityOut)
+        if (result.rejection_reason) {
+          setDecisionError(result.rejection_reason)
+        }
+        if (shouldEnterFormalizeFromEmployability(next) || result.resolution_decision === 'ready_to_formalize') {
+          await runFormalize()
+        }
+      } catch (e: unknown) {
+        const ex = e as { response?: { data?: { detail?: unknown } }; message?: string }
+        const detail = ex?.response?.data?.detail
+        let message = ex?.message || t('common.errors.request_failed')
+        if (typeof detail === 'string') message = detail
+        else if (detail && typeof detail === 'object') {
+          const d = detail as { message?: string; code?: string }
+          message = d.message || d.code || message
+        }
+        setDecisionError(message)
+        notify({ variant: 'error', title: message })
+      } finally {
+        setResolving(false)
+      }
+    },
+    [employability, id, notify, runFormalize, t],
+  )
+
+  const runFormalizeConfirm = useCallback(
+    async (patch: { confirmed_actions: string[] }) => {
+      if (!id) return
+      setFormalizeConfirming(true)
+      setFormalizeError(null)
+      try {
+        const result = await formalizeEmployment(id, {
+          formalize_patch: patch,
+          require_patch_when_missing: true,
+        })
+        setFormalize(result)
+        if (result.rejection_reason) {
+          setFormalizeError(result.rejection_reason)
+        }
+      } catch (e: unknown) {
+        const ex = e as { response?: { data?: { detail?: unknown } }; message?: string }
+        const detail = ex?.response?.data?.detail
+        let message = ex?.message || t('common.errors.request_failed')
+        if (typeof detail === 'string') message = detail
+        else if (detail && typeof detail === 'object') {
+          const d = detail as { message?: string; code?: string }
+          message = d.message || d.code || message
+        }
+        setFormalizeError(message)
+        notify({ variant: 'error', title: message })
+      } finally {
+        setFormalizeConfirming(false)
+      }
+    },
+    [id, notify, t],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -122,7 +242,10 @@ export default function HrHandoffDetailPage() {
                 defaultValue: 'Employment case already accepted',
               }),
             })
-            await loadHrReviewIfAccepted(inboxRow)
+            if (evalOnceRef.current !== id) {
+              evalOnceRef.current = id
+              await runEmployability()
+            }
           }
         }
       } catch (e: unknown) {
@@ -137,7 +260,17 @@ export default function HrHandoffDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id, loadHrReviewIfAccepted, loadRow, runAcceptPolicy, t])
+  }, [id, loadRow, runAcceptPolicy, runEmployability, t])
+
+  const loadLegacyReview = useCallback(async () => {
+    if (!id || !row) return
+    if (String(row.handoff?.status || '').toLowerCase() !== 'accepted') return
+    try {
+      setHrReview(await fetchHandoffHrReview(id))
+    } catch {
+      setHrReview(null)
+    }
+  }, [id, row])
 
   const empId = row?.workforce_employee_id || hrReview?.employee_id || undefined
   const displayName = row?.candidate_display_name || undefined
@@ -147,6 +280,8 @@ export default function HrHandoffDetailPage() {
   })
   const accepted =
     Boolean(policy?.accepted) || String(row?.handoff?.status || '').toLowerCase() === 'accepted'
+  const readyForFormalize = decisionSurfaceMode(employability).readyForFormalize
+  const showFormalize = accepted && (readyForFormalize || Boolean(formalize) || formalizeEvaluating)
 
   if (empId) {
     return <Navigate to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(empId)}#hr-verification`} replace />
@@ -163,16 +298,7 @@ export default function HrHandoffDetailPage() {
         title={displayName || t('app.nav.hr.handoff.title', { defaultValue: 'Handoff' })}
         kind="browse"
         secondaryActions={
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => {
-              void (async () => {
-                const inboxRow = await loadRow()
-                if (inboxRow) await loadHrReviewIfAccepted(inboxRow)
-              })()
-            }}
-          >
+          <button type="button" className="btn-secondary btn-sm" onClick={() => void loadRow()}>
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
           </button>
         }
@@ -192,48 +318,67 @@ export default function HrHandoffDetailPage() {
             onRetry={pendingOpen ? () => void runAcceptPolicy() : undefined}
           />
 
-          {/* Named negative proof: no ritual Accept control on this host. */}
           <div data-testid="hr-employment-accept-no-ritual" hidden aria-hidden="true" />
 
           {accepted ? (
-            <p className="text-sm text-slate-600" data-testid="hr-employment-accepted-state">
-              {t('app.hr.employment_accept.case_open', {
-                defaultValue: 'Employment case is open on this HR handoff. ESO-2/3 decision surface is next.',
-              })}
-            </p>
+            <HrEmploymentDecisionSurface
+              employability={employability}
+              evaluating={evaluating}
+              resolving={resolving}
+              error={decisionError}
+              formalizeBound={showFormalize}
+              onResolve={(patch) => void runResolve(patch)}
+            />
+          ) : null}
+
+          {showFormalize ? (
+            <HrEmploymentFormalizePanel
+              formalize={formalize}
+              evaluating={formalizeEvaluating}
+              confirming={formalizeConfirming}
+              error={formalizeError}
+              onConfirm={(patch) => void runFormalizeConfirm(patch)}
+            />
           ) : null}
 
           <HrHandoffContextSummary row={row} />
 
-          {accepted && hrReview ? (
-            <details className="rounded-lg border border-slate-200 bg-white">
+          {accepted ? (
+            <details
+              className="rounded-lg border border-slate-200 bg-white"
+              onToggle={(e) => {
+                const open = (e.target as HTMLDetailsElement).open
+                setLegacyOpen(open)
+                if (open && !hrReview) void loadLegacyReview()
+              }}
+            >
               <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-800">
                 {t('app.hr.employment_accept.legacy_review_summary', {
-                  defaultValue: 'Legacy document verification (not ESO accept / Formalize)',
+                  defaultValue: 'Legacy document verification (not Employment Formalize)',
                 })}
               </summary>
-              <div className="space-y-4 border-t border-slate-100 px-4 py-4">
-                <HrDataVerificationWorkspace
-                  panel={hrReview}
-                  handoffId={id}
-                  employeeId={empId}
-                  manage
-                  onPanelUpdated={(next) => {
-                    setHrReview(next)
-                  }}
-                />
-                <HrReviewPanelCard
-                  handoffId={id!}
-                  employeeId={empId}
-                  panel={hrReview}
-                  hideDocuments
-                  caseDecisionMode
-                  manage
-                  onUpdated={(next) => {
-                    setHrReview(next)
-                  }}
-                />
-              </div>
+              {legacyOpen && hrReview ? (
+                <div className="space-y-4 border-t border-slate-100 px-4 py-4">
+                  <HrDataVerificationWorkspace
+                    panel={hrReview}
+                    handoffId={id}
+                    employeeId={empId}
+                    manage
+                    onPanelUpdated={(next) => setHrReview(next)}
+                  />
+                  <HrReviewPanelCard
+                    handoffId={id!}
+                    employeeId={empId}
+                    panel={hrReview}
+                    hideDocuments
+                    caseDecisionMode
+                    manage
+                    onUpdated={(next) => setHrReview(next)}
+                  />
+                </div>
+              ) : legacyOpen ? (
+                <p className="border-t border-slate-100 px-4 py-3 text-sm text-slate-500">{t('common.loading')}</p>
+              ) : null}
             </details>
           ) : null}
         </>
