@@ -20,29 +20,91 @@
 Admit-to-work has no reproducible machine authority: evidence exists in Hub but no PEM-1 predicates, no typed exceptions, no gate that ESO-5 can later require.
 
 **Completion proof (named consumer):**  
-`employment_start_allowed.v1` reference + evaluate/apply (or equivalent) + `employment-start-allowed-gate` green against adaptation-design predicates (Contract normalized view, Medical vs `planned_start_date`, BHP + succession-proven exception). **No** HR host binding required for this slice PASS.
+`employment_start_allowed.v1` reference + evaluate/apply + `employment-start-allowed-gate` green against adaptation-design predicates. Machine reproducibly returns `start_allowed` / `missing` / `blocked` / `unsupported_context`. **No** HR host binding, mint change, or ESO-5 semantic change required for this slice PASS.
 
-**False close (reject):** UI-only panel; `employee.start_allowed` PATCH; document-exists = satisfied; validity vs “today”; trusting `successive=true` alone; mint or ESO-5 cutover claimed as this slice.
+**False close (reject):** UI-only panel; `employee.start_allowed` PATCH; document-exists = satisfied; validity vs “today”; trusting `successive=true` alone; mint or ESO-5 cutover claimed as this slice; new Contract/Medical/BHP persistence tables.
+
+---
+
+## Execution locks (slice 1)
+
+### 1. Normalized views = read-only adapters
+
+- Contract / Medical / BHP views are **DTO / projection / service reads** over existing data.  
+- **Forbidden:** new Employment evidence persistence models for those domains.  
+- If medical/BHP need new meta fields → **Documents schema** errata on existing types — not a new Employment evidence table.  
+- Slice 1 may project optional meta when present; absence → `missing`, not invent a write path.
+
+### 2. `apply` write scope (narrow)
+
+`apply` may **only**:
+
+- create / revoke a **typed exception** resolution (allowlisted);  
+- attach an **already existing** evidence reference to an exception **if** that bind mechanic already exists in-product.
+
+`apply` must **not**:
+
+- become a universal write command;  
+- invent Contract / Medical / BHP upload or meta-write paths;  
+- set `start_allowed` as stored authority.
+
+If evidence is missing: evaluator returns `missing`; UI/write adaptation = **slice 3** or Documents-owned errata — **not** slice 1.
+
+### 3. Gate must prove derived-state replay
+
+In addition to architecture gate proofs, CI must include:
+
+1. Evidence satisfies → decision `start_allowed`.  
+2. Authority evidence changes / becomes invalid → next `evaluate` no longer returns `start_allowed`.  
+3. A prior **snapshot** must **not** keep permission after evidence invalidation.
+
+```text
+snapshot = audit
+evaluator = authority
+```
+
+### 4. Do not touch mint
+
+**Forbidden in slice 1:** any change to `handoff_from_candidate` / Employee create timing — even if convenient. That is **slice 2**.
+
+### 5. No frontend / no ESO-5 semantics
+
+No HR UI. No ESO-5 confirm gating. No Formalize thin-table expansion.
+
+---
+
+## Implementation sequence (slice 1)
+
+```text
+normalized read views
+  → typed exception store / allowlist
+  → pure reference evaluator
+  → apply resolution semantics (exceptions only)
+  → employment-start-allowed-gate
+  → regression proofs (incl. derived-state replay)
+  → PASS stamp
+```
 
 ---
 
 ## In scope
 
-1. **Normalized evidence views** (read adapters) for Contract / Medical / BHP — Documents/HR remain write authorities.  
-2. **Predicates** per Accepted adaptation design.  
-3. **Typed exception authority** (narrow store + allowlist + succession proof for BHP).  
-4. **Reference evaluator** `employment_start_allowed.v1` (LLM-OFF; derived decision).  
-5. **Named CI gate** `employment-start-allowed-gate` (proofs from architecture Accept).  
-6. Optional decision **snapshot** for audit — not source of truth.
+1. Read-only normalized evidence views (Contract / Medical / BHP).  
+2. Predicates per Accepted adaptation design.  
+3. Typed exception authority (narrow store + allowlist + succession proof).  
+4. Reference evaluator `employment_start_allowed.v1` (LLM-OFF; **derived** decision).  
+5. `apply` limited to exception create/revoke (+ existing-ref bind only if already available).  
+6. Named CI gate `employment-start-allowed-gate` including derived-state replay.  
+7. Optional decision snapshot for audit — not source of truth.
 
-## Out of scope (later slices)
+## Out of scope
 
 | Slice | Deferred |
 |-------|----------|
-| **2** | ESO-4 → `handoff_from_candidate` mint timing cutover |
-| **3** | HR host binding on `/app/hr/handoffs/:id` |
+| **2** | ESO-4 → `handoff_from_candidate` mint timing cutover (**do not touch mint here**) |
+| **3** | HR host binding / evidence write UX |
 | **4** | ESO-5 requires `start_allowed`; remove PEM-1 mint-on-confirm |
-| — | Full Spine Gate; ZUS/A1/delegation; expanding ESO-4 Formalize |
+| — | Full Spine; ZUS/A1/delegation; expanding ESO-4 Formalize |
 
 ---
 
@@ -51,7 +113,7 @@ Admit-to-work has no reproducible machine authority: evidence exists in Hub but 
 - Evaluator reads views; does not own Contract/Medical/BHP data.  
 - `start_allowed` is **derived**, never operator-set authority.  
 - `planned_start_date` required for date-bounded medical/BHP validity; unknown → `missing`.  
-- Contract: `written_instrument_confirmed` from Documents view only.  
+- Contract: `written_instrument_confirmed` from Documents-normalized view only.  
 - No “Allow anyway”.  
 - Non-PEM-1 → `unsupported_context`.
 
@@ -59,23 +121,21 @@ Admit-to-work has no reproducible machine authority: evidence exists in Hub but 
 
 ## Deliverables checklist
 
-- [ ] Contract / Medical / BHP normalized read views (minimal fields)  
-- [ ] Exception store + write/read for allowlisted codes only  
-- [ ] `evaluate` / `apply` (apply = exception/evidence bind then re-eval; no force flag)  
-- [ ] `employment-start-allowed-gate` green  
-- [ ] Docs linkage: architecture + adaptation design + this brief  
+- [ ] Contract / Medical / BHP normalized **read** views (no new evidence tables)  
+- [ ] Exception store + allowlist + succession proof  
+- [ ] `evaluate` / narrow `apply`  
+- [ ] `employment-start-allowed-gate` green (incl. derived-state replay)  
+- [ ] Docs linkage + PASS stamp when green  
+- [ ] Proof: `handoff_from_candidate` / ESO-5 semantics untouched in diff  
 
 ---
 
-## Non-goals
+## PASS criterion
 
-- Frontend Formalize/Started panels for start_allowed  
-- Employee mint service or mint timing change  
-- Full Spine  
-- Płatnik / ePUAP / government API  
+Machine authority reproducibly answers `start_allowed` / `missing` / `blocked` / `unsupported_context`; gate green; **Employee mint, HR UI, and ESO-5 semantics unchanged**.
 
 ---
 
 ## Next after slice 1 PASS
 
-Open **slice 2** (mint timing cutover) only when gate is green and foundation is on the Employment line. Full Spine stays closed.
+Open **slice 2** (mint timing cutover) only when gate is green. Full Spine stays closed.
