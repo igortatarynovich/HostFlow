@@ -255,6 +255,6 @@ Full Spine remains **NOT PASS** until slices prove PEM-1 admit-to-work in produc
 
 ## Next
 
-1. **Slice 1 OPEN:** [`../specs/tasks/employment-start-allowed-runtime-foundation.md`](../specs/tasks/employment-start-allowed-runtime-foundation.md).  
-2. Do **not** open Full Spine.  
-3. Slices 2–4 only after slice 1 machine gate green.
+1. **Slice 1 PASS** @ `d5767488`.  
+2. **Slice 2 OPEN:** [`../specs/tasks/employment-start-allowed-mint-cutover.md`](../specs/tasks/employment-start-allowed-mint-cutover.md) — ESO-4 → `handoff_from_candidate` → Employee exists before `start_allowed`; no ESO-5 enforcement.  
+3. **STOP** before slice 3 until slice 2 PASS. Full Spine closed.

@@ -141,4 +141,8 @@ Machine authority reproducibly answers `start_allowed` / `missing` / `blocked` /
 
 ## Next after slice 1 PASS
 
-Open **slice 2** (mint timing cutover) only when this PASS is committed. Full Spine stays closed.
+Slice 1 **PASS** @ `d5767488`.  
+
+**Next:** [`employment-start-allowed-mint-cutover.md`](employment-start-allowed-mint-cutover.md) — **slice 2 OPEN** (mint timing only).  
+
+**STOP before slice 3** until slice 2 PASS. Full Spine stays closed.
