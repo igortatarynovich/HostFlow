@@ -153,7 +153,7 @@ Same-tenant auto-accept, if any, is **Employment module policy** after receiving
 | Slice | Name | Gate | Depends |
 |-------|------|------|---------|
 | **RSO-1** | Recruitment orchestrator **contract** (this brief + package SoT) | **Recruitment Orchestrator Contract Gate** — **PASS** (`ready_for_employment.v1` + `test_ready_for_employment_contract_gate.py`) | — |
-| **RSO-2** | Runtime `fits` → package → `offer_handoff` | **Fits → Handoff Gate** — no Create candidate / vacancy bind / stage menu on happy path | RSO-1 |
+| **RSO-2** | Cutover: emit `ready_for_employment.v1` manifest + scope transition + auto accept-policy + HR live authorities | **Fits → Handoff / Manifest Cutover Gate** — see [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md) | RSO-1 + boundary ownership Accepted |
 | **RSO-3** | Call triad + My Work (Recruitment card states) | **Call / My Work Gate** | RSO-2 (or FE parallel after contract types stable) |
 
 **Not in this program (Employment brief):** early employability SoT, formalize gate, Employee create, Started. See [employment-spine-orchestrator-v1.md](employment-spine-orchestrator-v1.md).
@@ -203,7 +203,8 @@ FAIL if Recruitment UI creates Employee or asks for zezwolenie type.
 ## Next
 
 1. **RSO-1 PASS** — package contract + three acceptance gates frozen.  
-2. **RSO-2** runtime: `fits` → validate/emit `ready_for_employment.v1` → `offer_handoff` (cut over from legacy snapshot later).  
-3. ESO-1 accept policy on [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — must enforce gate 2 (no re-ask).
+2. **Boundary ownership Accepted** — [`../architecture/recruitment-employment-boundary-ownership.md`](../architecture/recruitment-employment-boundary-ownership.md).  
+3. **RSO-2 cutover** — [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md): inventory first, then emit manifest + scope transition + auto accept-policy + HR live reads (legacy snapshot cutover).  
+4. ESO-1 accept policy — must enforce gate 2 (no re-ask). Slice 4 still closed.
 
 Canvas: `meta-to-started-target-journey` (visual; not L2 canon).

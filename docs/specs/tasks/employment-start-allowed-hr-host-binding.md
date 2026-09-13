@@ -112,11 +112,12 @@ Contract missing → resolve → Medical missing → resolve → BHP missing/all
 
 ```text
 Handoff Reality Audit
-  → Boundary Ownership decision (REQUIRED_AT_TRANSFER / PASS_IF_KNOWN / EMPLOYMENT_OWNED)
-  → after Accept: RSO-2 cutover (CandidateHandoff → ready_for_employment.v1 + auto-init)
-  → only then Slice 4 (or narrower boundary fix if decision says so)
+  → Boundary Ownership Accepted (dual-axis)
+  → RSO-2 cutover inventory/brief OPEN
+  → after cutover gate: Slice 4 may open
 ```
 
 - Reality audit: [`../../analysis/recruitment-employment-handoff-reality-audit.md`](../../analysis/recruitment-employment-handoff-reality-audit.md)  
-- Ownership decision (**Proposed**): [`../architecture/recruitment-employment-boundary-ownership.md`](../architecture/recruitment-employment-boundary-ownership.md)  
-- Do **not** open RSO-2 or Slice 4 until that decision is Accepted.
+- Ownership (**Accepted**): [`../architecture/recruitment-employment-boundary-ownership.md`](../architecture/recruitment-employment-boundary-ownership.md)  
+- RSO-2 cutover: [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md)  
+- Slice 4 / Full Spine remain closed until cutover proves live + manifest path.

@@ -111,23 +111,20 @@ RSO-1 contract text already states: legacy `build_handoff_snapshot_payload_v1` i
 
 ---
 
-## Next decision (required before RSO-2 / Slice 4)
+## Next after audit
 
-Opened: [`../specs/architecture/recruitment-employment-boundary-ownership.md`](../specs/architecture/recruitment-employment-boundary-ownership.md) (**Proposed**) — categories `REQUIRED_AT_TRANSFER` / `PASS_IF_KNOWN` / `EMPLOYMENT_OWNED`, Transfer semantics, Accept≠button, HR verification split.
+Boundary ownership **Accepted:** [`../specs/architecture/recruitment-employment-boundary-ownership.md`](../specs/architecture/recruitment-employment-boundary-ownership.md) (dual-axis + locks 6–7).
+
+RSO-2 cutover **OPEN** (inventory first): [`../specs/tasks/recruitment-employment-handoff-rso2-cutover.md`](../specs/tasks/recruitment-employment-handoff-rso2-cutover.md).
 
 ```text
-known Recruitment facts
-  → frozen canonical package (ready_for_employment.v1)
-  → Employment-only missing (HR may collect after Transfer)
+immutable manifest + access/write transition (reuse existing access)
+  → Employment auto-init from live authorities + manifest decisions
+  → only Employment-owned missing
 ```
 
-Until that decision is **Accepted**:
-
-- Do **not** open RSO-2 implementation.  
-- Do **not** open Slice 4 or Full Spine.  
-- Slice 1–3 `start_allowed` remain closed correctly as downstream mechanics.
-
-After Accept: RSO-2 = cutover existing `CandidateHandoff` to `ready_for_employment.v1` + auto-init; Slice 4 only after that cutover.
+Still closed: Slice 4 · Full Spine · greenfield ACL without inventory.  
+Slice 1–3 `start_allowed` remain valid downstream.
 
 ---
 

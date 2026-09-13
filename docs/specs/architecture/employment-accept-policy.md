@@ -3,7 +3,7 @@
 **Status:** **Accepted** (L2 contract — Employment Accept Policy Gate / ESO-1)  
 **Date:** 2026-09-09  
 **Trusted base:** `integration/release-product-a-b`  
-**Related:** [`ready-for-employment-contract.md`](ready-for-employment-contract.md) (`ready_for_employment.v1`) · [`recruitment-employment-boundary-ownership.md`](recruitment-employment-boundary-ownership.md) (Accept policy ≠ Accept button; ownership split — Proposed) · [`../tasks/employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) · [`../tasks/recruitment-spine-orchestrator-v1.md`](../tasks/recruitment-spine-orchestrator-v1.md)
+**Related:** [`ready-for-employment-contract.md`](ready-for-employment-contract.md) (`ready_for_employment.v1`) · [`recruitment-employment-boundary-ownership.md`](recruitment-employment-boundary-ownership.md) (**Accepted** — Accept≠button; dual-axis) · [`../tasks/recruitment-employment-handoff-rso2-cutover.md`](../tasks/recruitment-employment-handoff-rso2-cutover.md) · [`../tasks/employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) · [`../tasks/recruitment-spine-orchestrator-v1.md`](../tasks/recruitment-spine-orchestrator-v1.md)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (Employment owns accept/employ) and the three RSO/ESO acceptance gates. Does not rewrite L0. Does not mint Employee from Recruitment.
 
