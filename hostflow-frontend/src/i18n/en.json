@@ -1065,6 +1065,22 @@
         "pending_list": "Not confirmed yet: {list}",
         "progress": "{verified} of {total} required documents confirmed",
         "title": "Verify documents and data"
+      },
+      "start_allowed": {
+        "title": "Admit to work (start allowed)",
+        "subtitle": "Derived from Contract, Medical, and BHP evidence — not an operator switch.",
+        "unsupported": "This start policy does not apply to this employment context.",
+        "allowed": "Admit-to-work is allowed. Physical start still requires Started confirm.",
+        "current_work": "Current work",
+        "open_documents": "Open existing documents surface",
+        "open_employee_docs": "Employee linked documents",
+        "bhp_hint": "Supply BHP via existing documents, or record the allowlisted successive-same-employer exception. No local upload here.",
+        "prior_contract_ref": "Prior contract ref",
+        "prior_end": "Prior contract end",
+        "current_start": "Current contract start",
+        "submit_exception": "Record allowlisted BHP exception & re-evaluate",
+        "reevaluated": "Start allowance re-evaluated",
+        "waiting_employee": "Admit-to-work evaluation needs a linked Employee on this handoff."
       }
     },
     "api_errors": {

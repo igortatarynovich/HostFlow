@@ -1047,6 +1047,22 @@
         "pending_list": "Ещё не подтверждено: {list}",
         "progress": "{verified} из {total} обязательных документов подтверждено",
         "title": "Проверить документы и данные"
+      },
+      "start_allowed": {
+        "title": "Допуск к работе (start allowed)",
+        "subtitle": "Выводится из Contract / Medical / BHP — не переключатель оператора.",
+        "unsupported": "Эта политика допуска не применяется к данному контексту занятости.",
+        "allowed": "Допуск к работе разрешён. Физический старт по-прежнему требует Started confirm.",
+        "current_work": "Текущая работа",
+        "open_documents": "Открыть существующую поверхность документов",
+        "open_employee_docs": "Документы, связанные с сотрудником",
+        "bhp_hint": "Предоставьте BHP через существующие документы или зафиксируйте allowlisted exception. Без локальной загрузки.",
+        "prior_contract_ref": "Реф. предыдущего договора",
+        "prior_end": "Конец предыдущего договора",
+        "current_start": "Старт текущего договора",
+        "submit_exception": "Записать BHP exception и переоценить",
+        "reevaluated": "Допуск переоценён",
+        "waiting_employee": "Оценка допуска требует связанного Employee на этом handoff."
       }
     },
     "api_errors": {

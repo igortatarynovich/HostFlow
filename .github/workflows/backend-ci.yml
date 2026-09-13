@@ -112,6 +112,7 @@ jobs:
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
+      esa3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa3 == 'true' }}
       eso1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso1 == 'true' }}
       eso2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso2 == 'true' }}
       eso3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso3 == 'true' }}
@@ -381,6 +382,14 @@ jobs:
               - 'docs/specs/tasks/employment-start-allowed-mint-cutover.md'
               - 'backend/app/services/workforce_employees.py'
               - 'backend/app/services/workforce_hr_operational_context.py'
+            esa3:
+              - 'backend/app/services/employment_start_allowed_orchestrator.py'
+              - 'backend/tests/platform/test_employment_start_allowed_hr_host_gate.py'
+              - 'docs/specs/tasks/employment-start-allowed-hr-host-binding.md'
+              - 'backend/app/api/v1/handoffs.py'
+              - 'hostflow-frontend/src/components/hr/HrStartAllowedPanel.tsx'
+              - 'hostflow-frontend/src/pages/hr/HrHandoffDetailPage.tsx'
+              - 'hostflow-frontend/src/api/employmentStartAllowed.ts'
             eso1:
               - 'backend/app/reference/employment_accept_policy.py'
               - 'backend/app/services/employment_accept_orchestrator.py'
@@ -1013,6 +1022,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_employment_start_allowed_mint_cutover_gate.py') != ''
         with:
           tests: tests/platform/test_employment_start_allowed_mint_cutover_gate.py
+
+  employment-start-allowed-hr-host-gate:
+    name: Employment Start Allowed HR Host Gate
+    needs: changes
+    if: needs.changes.outputs.esa3 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when HR host gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_employment_start_allowed_hr_host_gate.py') == ''
+        run: echo "Employment Start Allowed HR host gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_employment_start_allowed_hr_host_gate.py') != ''
+        with:
+          tests: tests/platform/test_employment_start_allowed_hr_host_gate.py
 
   eso1-accept-policy-gate:
     name: Employment Accept Policy Gate

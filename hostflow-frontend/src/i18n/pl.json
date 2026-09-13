@@ -1047,6 +1047,22 @@
         "pending_list": "Jeszcze niepotwierdzone: {list}",
         "progress": "{verified} z {total} wymaganych dokumentów potwierdzonych",
         "title": "Zweryfikuj dokumenty i dane"
+      },
+      "start_allowed": {
+        "title": "Dopuszczenie do pracy (start allowed)",
+        "subtitle": "Wynika z Contract / Medical / BHP — nie jest przełącznikiem operatora.",
+        "unsupported": "Ta polityka startu nie dotyczy tego kontekstu zatrudnienia.",
+        "allowed": "Dopuszczenie do pracy dozwolone. Fizyczny start nadal wymaga Started confirm.",
+        "current_work": "Bieżąca praca",
+        "open_documents": "Otwórz istniejącą powierzchnię dokumentów",
+        "open_employee_docs": "Dokumenty powiązane z pracownikiem",
+        "bhp_hint": "Dostarcz BHP przez istniejące dokumenty albo zapisz dozwolony wyjątek successive. Bez lokalnego uploadu.",
+        "prior_contract_ref": "Ref. poprzedniej umowy",
+        "prior_end": "Koniec poprzedniej umowy",
+        "current_start": "Start bieżącej umowy",
+        "submit_exception": "Zapisz wyjątek BHP i przeoceń",
+        "reevaluated": "Ponowna ocena dopuszczenia",
+        "waiting_employee": "Ocena dopuszczenia wymaga powiązanego Employee na tym handoff."
       }
     },
     "api_errors": {

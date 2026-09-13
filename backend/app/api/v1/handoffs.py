@@ -853,6 +853,91 @@ async def employment_formalize_route(
     return EmploymentFormalizeOut.model_validate(result)
 
 
+class EmploymentStartAllowedIn(BaseModel):
+    """ESA-3: evaluate (empty) or apply typed exception resolution on handoff host."""
+
+    employment_context: Optional[dict[str, Any]] = None
+    resolution_patch: Optional[dict[str, Any]] = None
+
+
+class EmploymentStartAllowedOut(BaseModel):
+    policy_id: str
+    handoff_id: Optional[str] = None
+    employee_id: Optional[str] = None
+    linked_handoff_id: Optional[str] = None
+    decision: str
+    start_allowed: bool = False
+    required_actions: List[dict[str, Any]] = Field(default_factory=list)
+    active_missing: List[dict[str, Any]] = Field(default_factory=list)
+    primary_item: Optional[dict[str, Any]] = None
+    ui_primary_item: Optional[dict[str, Any]] = None
+    blockers: List[dict[str, Any]] = Field(default_factory=list)
+    rejection_reason: Optional[str] = None
+    exceptions: List[dict[str, Any]] = Field(default_factory=list)
+    employment_context: Optional[dict[str, Any]] = None
+    evidence_nav: Optional[dict[str, Any]] = None
+    authority_write_confirmed: Optional[bool] = None
+    planned_start_date: Optional[str] = None
+    manual_override: bool = False
+    llm_start_allowed: bool = False
+    started: bool = False
+
+
+@router.post(
+    "/{handoff_id}/employment-start-allowed",
+    response_model=EmploymentStartAllowedOut,
+    dependencies=[Depends(require_hr_workforce_module_access)],
+)
+async def employment_start_allowed_route(
+    handoff_id: UUID,
+    payload: Optional[EmploymentStartAllowedIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+):
+    """ESA-3: evaluate/apply start_allowed on existing HR handoff host.
+
+    Empty body = evaluate. resolution_patch = typed exception create/revoke only.
+    Does not upload Contract/Medical/BHP. Does not set start_allowed as stored authority.
+    """
+    from backend.app.services.employment_start_allowed_orchestrator import (
+        EmploymentStartAllowedHostError,
+        apply_start_allowed_for_handoff,
+        evaluate_start_allowed_for_handoff,
+    )
+
+    db, tenant_id = db_tenant
+    body = payload or EmploymentStartAllowedIn()
+    try:
+        if body.resolution_patch:
+            await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(
+                db, str(tenant_id)
+            )
+            result = await apply_start_allowed_for_handoff(
+                db,
+                tenant_id=str(tenant_id),
+                handoff_id=str(handoff_id),
+                actor_user_id=str(current_user.sub or "").strip() or None,
+                employment_context=body.employment_context,
+                resolution_patch=body.resolution_patch,
+            )
+            if result.get("authority_write_confirmed"):
+                await db.commit()
+        else:
+            result = await evaluate_start_allowed_for_handoff(
+                db,
+                tenant_id=str(tenant_id),
+                handoff_id=str(handoff_id),
+                employment_context=body.employment_context,
+            )
+    except EmploymentStartAllowedHostError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    return EmploymentStartAllowedOut.model_validate(result)
+
+
 @router.get("/candidates/{candidate_id}/handoff-status")
 async def get_handoff_status(
     candidate_id: UUID,

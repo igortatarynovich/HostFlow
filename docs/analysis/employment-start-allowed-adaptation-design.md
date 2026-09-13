@@ -257,4 +257,4 @@ Full Spine remains **NOT PASS** until slices prove PEM-1 admit-to-work in produc
 
 1. **Slice 1 PASS** @ `d5767488`.  
 2. **Slice 2 PASS (machine/portable seam) + Formalize→ensure integration parity PASS:** [`../specs/tasks/employment-start-allowed-mint-cutover.md`](../specs/tasks/employment-start-allowed-mint-cutover.md) @ `322d0148` under test for wire; portable ESA2 @ `0c8b337f` (mixed SHA — candidate-missing excluded).
-3. **Slice 3 OPEN:** [`../specs/tasks/employment-start-allowed-hr-host-binding.md`](../specs/tasks/employment-start-allowed-hr-host-binding.md) — `/app/hr/handoffs/:id` bind; one active missing → evidence/exception → re-eval → `start_allowed`. **STOP** before slice 4. Full Spine closed.
+3. **Slice 3 PASS:** [`../specs/tasks/employment-start-allowed-hr-host-binding.md`](../specs/tasks/employment-start-allowed-hr-host-binding.md) — `/app/hr/handoffs/:id` bind; primary_item only; Documents navigate / typed exception → fresh re-eval. **STOP** before slice 4. Full Spine closed.
