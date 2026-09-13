@@ -528,6 +528,23 @@
         "return_reason": "Powód zwrotu",
         "send_corrections": "Wyślij prośbę o poprawkę"
       },
+      "employment_decision": {
+        "title": "Decyzja o zatrudnieniu",
+        "evaluating": "Ocena możliwości zatrudnienia…",
+        "employable_title": "Można zatrudnić — gotowe do Formalize",
+        "employable_next": "Następna granica produktu to ESO-4 Formalize (nieotwarte na tej powierzchni).",
+        "formalize_deferred": "UI Formalize jest poza zakresem. Pracownik nie jest tworzony.",
+        "insufficient_title": "Potrzebny jest jeden fakt lub dowód",
+        "citizenship_label": "Obywatelstwo (ISO alpha-2)",
+        "country_label": "Kraj zatrudnienia",
+        "work_auth_label": "Dostępny jest dowód uprawnienia do pracy dla tej sprawy",
+        "resolve": "Uzupełnij i kontynuuj",
+        "auto_reeval": "Po uzupełnieniu zatrudnialność jest ponownie oceniana automatycznie — bez kroku „sprawdź ponownie”.",
+        "blocked_title": "Zatrudnienie zablokowane",
+        "blocked_fallback": "Konkretne blokady zatrudnienia uniemożliwiają zatrudnienie teraz.",
+        "no_fake_action": "Nie oferujemy działania operatora, gdy blokady nie da się tu usunąć.",
+        "pathway_set": "Ścieżka prawna (system): {id}"
+      },
       "review_case": {
         "badge": "Sprawa HR",
         "next_action": "Następna akcja HR",

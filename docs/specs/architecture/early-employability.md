@@ -114,4 +114,20 @@ For `employment_country=PL` (default when context omits country but package `tar
 
 ## Completion of ESO-2
 
-**PASS** when this document + `early_employability.v1` + gate tests exist, the ESO brief names early employability, and after `employment_started` HostFlow can answer **employable / blocked / insufficient_facts** with concrete blockers and one next step — **without** creating Employee and **without** requiring operator knowledge of the internal legal model.
+**PASS (machine):** this document + `early_employability.v1` + gate tests exist, the ESO brief names early employability, and after `employment_started` HostFlow can answer **employable / blocked / insufficient_facts** with concrete blockers and one next step — **without** creating Employee and **without** requiring operator knowledge of the internal legal model.
+
+**PASS (HR Decision Surface, with ESO-3):** **PASS** @ `fb61a7b1` — accepted HR case evaluates employability on `/app/hr/handoffs/:id`; unique pathway is never a menu; `insufficient_facts` shows one current gap; resolution apply auto re-evals (ESO-3). Formalize UI remains out of scope.
+
+---
+
+## Delivery UX (HR Decision Surface)
+
+Host = existing `/app/hr/handoffs/:id` (same as ESO-1). ESO-2 evaluate and ESO-3 resolve share **one** operator surface — not two screens.
+
+| Decision | Operator UI |
+|----------|-------------|
+| `employable` | Ready for Formalize (next boundary) — no Formalize controls here |
+| `insufficient_facts` | Only current `next_step` fact/evidence + one supply action → auto re-eval |
+| `blocked` | Concrete reason; no fake action when operator cannot clear the blocker here |
+
+Zero-choice: no pathway / status / permit-type dropdown; no re-ask of package-authoritative facts already known.
