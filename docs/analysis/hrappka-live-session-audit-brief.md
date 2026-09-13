@@ -154,4 +154,6 @@ Use as **competitive evidence**, not as HostFlow scorecard. HostFlow scorecard =
 1. Brief: **Vacancy Recruitment Requirements SoT** (contract + UI surface at vacancy create)  
 2. Spike note: **Canonical facts leak inventory** (citizenship and peers)  
 3. Audit table: **Configuration runtime dependencies** (stage / flight / mapping / …)  
-4. **Done (L3 baseline):** [Employment Formalization Coverage Audit](employment-formalization-coverage-audit.md) — allow-create ≠ formalization complete; next product step = Production Employment Minimum / blocking-boundary (not Full Spine Gate)
+4. **Done (L3 baseline):** [Employment Formalization Coverage Audit](employment-formalization-coverage-audit.md) @ `b88a6168` — allow-create ≠ formalization complete  
+5. **Accepted (product decision):** [Production Employment Minimum — PEM-1](production-employment-minimum.md) — domestic PL EU/EEA; `start_allowed` before ESO-5; ZUS lifecycle  
+6. **Open / STOP:** [Employment start_allowed](../specs/architecture/employment-start-allowed.md) — architecture only; no code; not Full Spine Gate
