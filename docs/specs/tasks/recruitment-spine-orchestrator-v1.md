@@ -204,7 +204,7 @@ FAIL if Recruitment UI creates Employee or asks for zezwolenie type.
 
 1. **RSO-1 PASS** — package contract + three acceptance gates frozen.  
 2. **Boundary ownership Accepted** — [`../architecture/recruitment-employment-boundary-ownership.md`](../architecture/recruitment-employment-boundary-ownership.md).  
-3. **RSO-2 cutover** — parent [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md); **RSO-2B PASS** [`recruitment-employment-handoff-rso2b-emit.md`](recruitment-employment-handoff-rso2b-emit.md) @ `ab864e86` (emit; STOP before 2C).  
+3. **RSO-2 cutover** — parent [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md); **RSO-2B PASS** [`recruitment-employment-handoff-rso2b-emit.md`](recruitment-employment-handoff-rso2b-emit.md) @ `ab864e86`; **RSO-2C PASS** [`recruitment-employment-handoff-rso2c-auto-init.md`](recruitment-employment-handoff-rso2c-auto-init.md) @ `5c9da75c` (`rso2-auto-init-gate` 7 passed; STOP before 2D).  
 4. ESO-1 accept policy — must enforce gate 2 (no re-ask). Slice 4 still closed.
 
 Canvas: `meta-to-started-target-journey` (visual; not L2 canon).

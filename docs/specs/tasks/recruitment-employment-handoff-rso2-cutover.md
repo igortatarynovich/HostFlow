@@ -1,11 +1,12 @@
 # RSO-2 — Recruitment → Employment handoff cutover
 
-**Status:** **OPEN** — inventory filled; RSO-2A docs **CLOSED**; **RSO-2B PASS** ([`recruitment-employment-handoff-rso2b-emit.md`](recruitment-employment-handoff-rso2b-emit.md)); **STOP before RSO-2C**  
+**Status:** **OPEN** — inventory filled; RSO-2A docs **CLOSED**; **RSO-2B PASS**; **RSO-2C PASS** ([`recruitment-employment-handoff-rso2c-auto-init.md`](recruitment-employment-handoff-rso2c-auto-init.md) @ `5c9da75c`); **STOP before RSO-2D**  
 **Phase class:** product  
 **Opened:** 2026-09-13  
 **Inventory stamp:** 2026-09-13 (runtime read-only)  
 **RSO-2A closed:** 2026-09-13 — persist = RFE-only; compat = temporary read-shim  
-**RSO-2B PASS:** 2026-09-13 · under test `ab864e86` · `rso2-emit-manifest-gate` **10 passed** · STOP before RSO-2C  
+**RSO-2B PASS:** 2026-09-13 · under test `ab864e86` · `rso2-emit-manifest-gate` **10 passed**  
+**RSO-2C PASS:** 2026-09-13 · under test `5c9da75c` · `rso2-auto-init-gate` **7 passed** · STOP before RSO-2D  
 **Depends on:**  
 - RSO-1 PASS: [`ready-for-employment-contract.md`](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`)  
 - Boundary ownership **Accepted:** [`recruitment-employment-boundary-ownership.md`](../architecture/recruitment-employment-boundary-ownership.md) (dual-axis)  
@@ -276,7 +277,7 @@ Operational identity/docs/eligibility already lean live. Remaining snapshot depe
 |---|-------|---------|---------|
 | **RSO-2A** | Persist/read compatibility + Vacancy/Employer pre-mint proof | **Docs CLOSED**; feat = RFE-only persist + deprecated read-shim + access proof | Inventory |
 | **RSO-2B** | Emit validated `ready_for_employment.v1` on Transfer | **PASS** — [`recruitment-employment-handoff-rso2b-emit.md`](recruitment-employment-handoff-rso2b-emit.md); gate `rso2-emit-manifest-gate` **10 passed** | 2A |
-| **RSO-2C** | Employment auto-init (`apply_employment_accept_policy`); drop ritual Accept as default | Gate 3; Accept **not** inlined in `create_handoff` | 2B |
+| **RSO-2C** | Employment auto-init (`apply_employment_accept_policy`); drop ritual Accept as default | **PASS** — [`recruitment-employment-handoff-rso2c-auto-init.md`](recruitment-employment-handoff-rso2c-auto-init.md) @ `5c9da75c`; gate `rso2-auto-init-gate` **7 passed**; Accept **not** inlined in `create_handoff` | 2B |
 | **RSO-2D** | Consumer / read-model cutover: live + manifest decisions; lock 6 | Legacy consumers stop needing shim for operational current-values | 2C |
 | **RSO-2E** | **Delete compat shim** + named cutover gate | Final PASS = working manifest **and** no eternal compatibility layer | 2D |
 
@@ -298,6 +299,6 @@ Operational identity/docs/eligibility already lean live. Remaining snapshot depe
 
 ## Next
 
-1. **RSO-2B PASS** — STOP. Do not open RSO-2C in the emit change.  
-2. Next separate: RSO-2C → 2D → **2E delete shim**.  
+1. **RSO-2C PASS** @ `5c9da75c` — STOP. Do not open RSO-2D in the auto-init change.  
+2. Next separate: RSO-2D → **2E delete shim**.  
 3. Slice 4 remains closed.

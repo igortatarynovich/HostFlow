@@ -1,8 +1,9 @@
 # RSO-2C — Employment auto-init after Transfer
 
-**Status:** **OPEN** — implementation landed; machine gate green; PASS-stamp pending  
+**Status:** **PASS**  
 **Phase class:** product  
 **Opened:** 2026-09-13  
+**PASS stamp:** 2026-09-13 · implementation `5c9da75c` · `rso2-auto-init-gate` **7 passed** · STOP before RSO-2D  
 **Parent:** [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md)  
 **Depends on:**  
 - RSO-1 PASS: [`../architecture/ready-for-employment-contract.md`](../architecture/ready-for-employment-contract.md)  
@@ -15,6 +16,22 @@
 > **Init only.** After Transfer emits a validated `ready_for_employment.v1` and leaves a pending `CandidateHandoff`, Employment-owned `apply_employment_accept_policy` decides and, on `auto_accept`, runs the Employment initializer (`accept_handoff` side effects).  
 > Drop ritual Accept **button** as the default happy path.  
 > Do **not** inline Accept inside `create_handoff`. Do **not** cut over HR live read-model (2D) or delete the compat shim (2E).
+
+---
+
+## PASS evidence
+
+| Proof | Evidence |
+|-------|----------|
+| Implementation SHA | `5c9da75c` |
+| Gate | `rso2-auto-init-gate` **7 passed** |
+| No Accept in `create_handoff` | service body has no `accept_handoff` / policy apply / after-transfer helper |
+| Post-Transfer Ownership | `create_handoff_route` → `apply_employment_accept_after_transfer` → `apply_employment_accept_policy` → `accept_handoff` (Employment-owned) |
+| Ritual Accept | not default operator step (detail = policy/blockers; inbox = Open case only) |
+| Shim | `handoff_manifest_compat` remains (RSO-2E) |
+| Out of slice | RSO-2D · RSO-2E · Slice 4 · Full Spine **not touched** |
+
+**STOP.** Do **not** open RSO-2D in this stamp. Next = RSO-2D (separate brief/PR).
 
 ---
 
@@ -108,7 +125,7 @@ Actor for auto-init: Transfer actor is acceptable as `reviewed_by` / policy acto
 
 ## After machine PASS
 
-1. **PASS stamped** on this brief.  
+1. **PASS stamped** @ `5c9da75c`.  
 2. **STOP.** Do not open RSO-2D in the same change.  
 3. Next separate: RSO-2D → RSO-2E delete shim.
 
