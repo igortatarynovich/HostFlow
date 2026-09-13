@@ -3,7 +3,7 @@
 **Status:** **PASS** — HR host binding on existing `/app/hr/handoffs/:id`  
 **Phase class:** product  
 **Opened:** 2026-09-13  
-**PASS stamp:** 2026-09-13 · implementation under test *(this commit)* · named gate `employment-start-allowed-hr-host-gate` **9 passed** (+ FE primaryWorkItem **2 passed**)  
+**PASS stamp:** 2026-09-13 · implementation under test `cf68f150` · named gate `employment-start-allowed-hr-host-gate` **9 passed** (+ FE primaryWorkItem **2 passed**)  
 **Depends on:**  
 - Slice 1 PASS: [`employment-start-allowed-runtime-foundation.md`](employment-start-allowed-runtime-foundation.md) @ `d5767488`  
 - Slice 2 portable PASS + Formalize→ensure integration parity PASS: [`employment-start-allowed-mint-cutover.md`](employment-start-allowed-mint-cutover.md) (under test `322d0148`; parity gate **6 passed**)  
