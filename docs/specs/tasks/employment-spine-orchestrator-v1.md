@@ -3,7 +3,8 @@
 **Status:** **BRIEF** — package SoT frozen on RSO-1 (**PASS**); ESO runtime not started. Contract: [ready-for-employment-contract.md](../architecture/ready-for-employment-contract.md).  
 **Phase class:** product  
 **Module owner:** **Employment / HR** (independent of Recruitment)  
-**Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock  
+**Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock · [HRappka live session audit brief](../../analysis/hrappka-live-session-audit-brief.md) (research — validates ESO direction; not a reopen)  
+**L3 baseline (not a gate stamp):** [Employment Formalization Coverage Audit](../../analysis/employment-formalization-coverage-audit.md) — `ready_to_create_employee=true` is allow-create, not completed formalization; Full Spine **NOT PASS** for that reason. Separate from any ESO-5 PASS-stamp.  
 **Estimate:** TBD after RSO-1 handoff package shape freezes  
 
 > Recruitment ends when the **Ready for employment contract** (handoff package) is emitted. This program **starts** there.  
@@ -88,3 +89,7 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 3.
 ## Next
 
 RSO-1 package shape is frozen (`ready_for_employment.v1`). **ESO-1:** accept policy that **reuses** package facts (gate 2) + auto-init when Employment gates pass. Then ESO-2 employability SoT (ownership card if Rule 3 requires).
+
+**Locked product sequence after ESO-5 binding (L3 baseline):**  
+ESO-5 [#372](https://github.com/igortatarynovich/HostFlow/pull/372) → [Employment Formalization Coverage Audit](../../analysis/employment-formalization-coverage-audit.md) → **Production Employment Minimum / blocking-boundary decision** → only Minimum-blocking gaps → Three-host Full Spine Gate.  
+Do **not** open Full Spine from Started UI alone; do **not** close all eight formalization domains without the Minimum.
