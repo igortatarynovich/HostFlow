@@ -1,9 +1,10 @@
 # Employment Spine Orchestrator v1
 
-**Status:** **BRIEF** — package SoT frozen on RSO-1 (**PASS**); ESO runtime not started. Contract: [ready-for-employment-contract.md](../architecture/ready-for-employment-contract.md).  
+**Status:** **ESO-1…4 machine on integration** — Formalize HTTP wired to ESA2 ensure-seam; Full Spine **NOT PASS**. Contract: [ready-for-employment-contract.md](../architecture/ready-for-employment-contract.md).  
 **Phase class:** product  
 **Module owner:** **Employment / HR** (independent of Recruitment)  
-**Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock · [HRappka live session audit brief](../../analysis/hrappka-live-session-audit-brief.md) (research — validates ESO direction; not a reopen)  
+**Parents:** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`) · [Employment accept policy](../architecture/employment-accept-policy.md) · [Early employability](../architecture/early-employability.md) · [Employment missing resolution](../architecture/employment-missing-resolution.md) · [Employment formalize](../architecture/employment-formalize.md) (`employment_formalize.v1`) · [Recruitment → HR minimal handoff](recruitment-hr-minimal-handoff.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md) · Strategy Lock · [HRappka live session audit brief](../../analysis/hrappka-live-session-audit-brief.md) (research — validates ESO direction; not a reopen)  
+**Machine:** accept / employability / missing-resolution / formalize · gates ESO-1…ESO-4 · CI `eso1`…`eso4-formalize-gate` · ESA2 ensure integration parity  
 **L3 baseline (not a gate stamp):** [Employment Formalization Coverage Audit](../../analysis/employment-formalization-coverage-audit.md) — `ready_to_create_employee=true` is allow-create, not completed formalization; Full Spine **NOT PASS** for that reason. Separate from any ESO-5 PASS-stamp.  
 **Estimate:** TBD after RSO-1 handoff package shape freezes  
 
@@ -58,23 +59,24 @@ From **Передать на трудоустройство**, Employment receiv
 ## Employment orchestrator pipeline (sketch)
 
 1. **accept_handoff** (Employment policy: auto when gates satisfied vs review).  
-2. **evaluate_employment_missing** — only employment/legalization/contract needs.  
-3. **evaluate_employability** — can / cannot / options (before or at formalize; LLM-OFF for pathway).  
-4. **formalize** — Employee when gates pass; else blockers.  
-5. **confirm_start** → Started.  
+2. **evaluate_employability** — employable / blocked / insufficient_facts (LLM-OFF; unique pathway).  
+3. **resolve employment missing** — minimal active path → patch → auto re-eval → ready_to_formalize.  
+4. **formalize** — required formal actions → `ready_to_create_employee`; authoritative apply composes ESA2 `ensure_employee_after_formalize_apply` (not HR card / not Started).  
+5. **confirm_start** → Started (physical start).  
 
-ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 3.
+ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 2–3.
 
 ---
 
-## Ladder (placeholder until RSO-1 package frozen)
+## Ladder
 
-| Slice | Gate (named later) | Depends |
-|-------|--------------------|---------|
-| **ESO-1** | Employment orchestrator contract + accept policy | RSO-1 handoff package |
-| **ESO-2** | Early employability SoT (Employment-owned) | ESO-1 |
-| **ESO-3** | Formalize gate (auto materialize **or** blockers) | ESO-2 |
-| **ESO-4** | Started confirm | ESO-3 |
+| Slice | Gate | Depends |
+|-------|------|---------|
+| **ESO-1** | **Employment Accept Policy Gate** — `employment_accept_policy.v1` + auto-accept via `accept_handoff` when gates pass | RSO-1 package |
+| **ESO-2** | **Early Employability Gate** — `early_employability.v1` (no Employee) | ESO-1 |
+| **ESO-3** | **Employment Missing / Resolution Gate** — `employment_missing_resolution.v1` → ready_to_formalize | ESO-2 |
+| **ESO-4** | **Employment Formalize Gate** — `employment_formalize.v1` → `ready_to_create_employee`; mint via ESA2 ensure on authoritative apply only | ESO-3 |
+| **ESO-5** | Started confirm (physical start — not mere Employee existence) | ESO-4 |
 
 ---
 
@@ -91,5 +93,5 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 3.
 RSO-1 package shape is frozen (`ready_for_employment.v1`). **ESO-1:** accept policy that **reuses** package facts (gate 2) + auto-init when Employment gates pass. Then ESO-2 employability SoT (ownership card if Rule 3 requires).
 
 **Locked product sequence after ESO-5 binding (L3 baseline):**  
-ESO-5 [#372](https://github.com/igortatarynovich/HostFlow/pull/372) → Coverage Audit (`b88a6168`) → PEM-1 Accepted → `employment_start_allowed.v1` Accepted → inventory (`466016b6`) → adaptation design (**Accepted**) → [runtime foundation slice 1](employment-start-allowed-runtime-foundation.md) (**PASS** `d5767488`) → [mint cutover slice 2](employment-start-allowed-mint-cutover.md) (**OPEN**) → HR host bind (slice 3) → ESO-5 enforcement (slice 4) → Three-host Full Spine Gate.  
-Do **not** collapse slices; do **not** operator-set `start_allowed`; Full Spine stays closed.
+ESO-5 [#372](https://github.com/igortatarynovich/HostFlow/pull/372) → Coverage Audit (`b88a6168`) → PEM-1 Accepted → `employment_start_allowed.v1` Accepted → inventory (`466016b6`) → adaptation design (**Accepted**) → [runtime foundation slice 1](employment-start-allowed-runtime-foundation.md) (**PASS** `d5767488`) → [mint cutover slice 2](employment-start-allowed-mint-cutover.md) (**ESA2 portable PASS**; Formalize→ensure integration wire in progress) → integration parity → HR host bind (slice 3) → ESO-5 enforcement (slice 4) → Three-host Full Spine Gate.  
+Do **not** collapse slices; do **not** operator-set `start_allowed`; Full Spine stays closed. Slice 3 stays **closed** until Formalize→ensure integration parity is proven.
