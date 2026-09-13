@@ -209,19 +209,20 @@ Proven:
 2. Formalize **evaluate/read** + ready → no mint / no write  
 3. Handoff linkage (`employee_linked_handoff_id` / `meta.internal_hr_handoff_id`) preserved on repeat apply  
 
-**STOP.** Slice 3 remains closed until explicitly opened in a separate brief after this parity.
+**STOP.** Slice 3 was closed until explicitly opened after this parity.
 
 ---
 
 ## Next after this PASS
 
-**Integration wire:** done on this line (`322d0148`). ESA2 portable seam PASS remains valid.
+**Integration wire:** done (`322d0148`). Integration parity: **PASS** (`8b3ef00c`). ESA2 portable seam PASS remains valid.
 
-Still locked:
+**Next:** [`employment-start-allowed-hr-host-binding.md`](employment-start-allowed-hr-host-binding.md) — **Slice 3 OPEN**.
 
-- Slice 3 = **closed** (do not open in this change)  
+Still locked until Slice 3 PASS then Slice 4:
+
 - Full Spine = **NOT PASS**  
 - mixed SHA `0c8b337f` is **not** a pure ESA2 diff  
 - ignore `hostflow-frontend/dummy-non-existing-folder/`
 
-Slice 4 and Full Spine remain later / closed.
+Slice 4 and Full Spine remain later / closed. Do **not** implement Slice 4 in the Slice 3 PR.
