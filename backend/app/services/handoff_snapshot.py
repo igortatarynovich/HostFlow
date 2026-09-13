@@ -265,7 +265,11 @@ async def persist_handoff_create_snapshot(
     handoff: CandidateHandoff,
     candidate: Candidate,
 ) -> CandidateHandoffSnapshot:
-    """Insert immutable snapshot row for this handoff (caller must commit)."""
+    """Insert immutable snapshot/manifest row for this handoff (caller must commit).
+
+    internal_hr: persist validated ``ready_for_employment.v1`` only (RSO-2B).
+    other destinations: legacy snapshot v1 until a later cutover.
+    """
     existing = (
         await db.execute(
             select(CandidateHandoffSnapshot).where(
@@ -277,7 +281,19 @@ async def persist_handoff_create_snapshot(
         return existing
 
     now = datetime.now(timezone.utc)
-    payload = await build_handoff_snapshot_payload_v1(db, handoff=handoff, candidate=candidate, now=now)
+    dest = str(getattr(handoff, "destination", "") or "").strip().lower()
+    if dest == "internal_hr":
+        from backend.app.services.ready_for_employment_emit import (
+            build_and_validate_ready_for_employment_package_v1,
+        )
+
+        payload = await build_and_validate_ready_for_employment_package_v1(
+            db, handoff=handoff, candidate=candidate, now=now
+        )
+    else:
+        payload = await build_handoff_snapshot_payload_v1(
+            db, handoff=handoff, candidate=candidate, now=now
+        )
     # Deep-freeze shape for tests / API consumers (JSON round-trip stable).
     payload = json.loads(json.dumps(payload, default=str))
 

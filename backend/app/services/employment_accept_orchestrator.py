@@ -58,9 +58,25 @@ async def resolve_ready_for_employment_package(
     handoff: CandidateHandoff,
     package: Mapping[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    """Prefer explicit package; else RSO prep on application/lead if present."""
+    """Prefer explicit package; else persisted Transfer manifest; else RSO prep on lead."""
     if isinstance(package, Mapping) and package:
         return dict(package)
+
+    # RSO-2B: CandidateHandoffSnapshot.payload is the boundary manifest when contract_id matches.
+    from sqlalchemy import select
+
+    from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
+    from backend.app.services.handoff_manifest_compat import is_ready_for_employment_manifest
+
+    snap = (
+        await db.execute(
+            select(CandidateHandoffSnapshot).where(
+                CandidateHandoffSnapshot.handoff_id == str(handoff.id)
+            )
+        )
+    ).scalar_one_or_none()
+    if snap is not None and isinstance(snap.payload, dict) and is_ready_for_employment_manifest(snap.payload):
+        return dict(snap.payload)
 
     app_id = _text(getattr(handoff, "application_id", None))
     cand_id = _text(getattr(handoff, "candidate_id", None))
@@ -68,9 +84,6 @@ async def resolve_ready_for_employment_package(
     if app_id:
         lead = await db.get(Lead, app_id)
     if lead is None and cand_id:
-        # Best-effort: lead linked by candidate_id
-        from sqlalchemy import select
-
         res = await db.execute(
             select(Lead)
             .where(

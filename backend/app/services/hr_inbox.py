@@ -42,11 +42,17 @@ QUEUE_REJECTED = "rejected_by_hr"
 
 
 def _candidate_display_from_snapshot(snapshot: dict[str, Any] | None) -> str | None:
+    from backend.app.services.handoff_manifest_compat import coerce_snapshot_payload_for_legacy_readers
+
+    snapshot = coerce_snapshot_payload_for_legacy_readers(snapshot)
     if not isinstance(snapshot, dict):
         return None
     cand = snapshot.get("candidate")
     if isinstance(cand, dict):
-        parts = [str(cand.get("first_name") or "").strip(), str(cand.get("last_name") or "").strip()]
+        parts = [
+            str(cand.get("first_name") or (cand.get("name") or {}).get("first_name") or "").strip(),
+            str(cand.get("last_name") or (cand.get("name") or {}).get("last_name") or "").strip(),
+        ]
         name = " ".join(p for p in parts if p).strip()
         if name:
             return name
@@ -62,6 +68,9 @@ def _candidate_display_from_snapshot(snapshot: dict[str, Any] | None) -> str | N
 
 
 def _transfer_summary_from_snapshot(snapshot: dict[str, Any] | None) -> dict[str, Any] | None:
+    from backend.app.services.handoff_manifest_compat import coerce_snapshot_payload_for_legacy_readers
+
+    snapshot = coerce_snapshot_payload_for_legacy_readers(snapshot)
     if not isinstance(snapshot, dict):
         return None
     cand = snapshot.get("candidate")
@@ -70,16 +79,23 @@ def _transfer_summary_from_snapshot(snapshot: dict[str, Any] | None) -> dict[str
         summary = snapshot.get("candidate_snapshot_summary")
         base = summary if isinstance(summary, dict) else snapshot
     vacancy = snapshot.get("vacancy") if isinstance(snapshot.get("vacancy"), dict) else {}
+    app = snapshot.get("application") if isinstance(snapshot.get("application"), dict) else {}
+    name = base.get("name") if isinstance(base.get("name"), dict) else {}
+    contacts = base.get("contacts") if isinstance(base.get("contacts"), dict) else {}
+    docs = snapshot.get("documents") if isinstance(snapshot.get("documents"), list) else []
     out = {
-        "first_name": base.get("first_name"),
-        "last_name": base.get("last_name"),
-        "email": base.get("email"),
-        "phone": base.get("phone"),
+        "first_name": base.get("first_name") or name.get("first_name"),
+        "last_name": base.get("last_name") or name.get("last_name"),
+        "email": base.get("email") or contacts.get("email"),
+        "phone": base.get("phone") or contacts.get("phone"),
         "citizenship": base.get("citizenship") or snapshot.get("citizenship"),
         "work_country": base.get("work_country") or snapshot.get("work_country"),
         "position_category": base.get("position_category") or snapshot.get("position_category"),
-        "vacancy_title": vacancy.get("title") or base.get("vacancy_title"),
-        "documents_count": snapshot.get("documents_count") or base.get("documents_count"),
+        "vacancy_title": vacancy.get("title")
+        or app.get("vacancy_title")
+        or base.get("vacancy_title")
+        or snapshot.get("vacancy_title"),
+        "documents_count": snapshot.get("documents_count") or base.get("documents_count") or len(docs) or None,
     }
     cleaned = {k: v for k, v in out.items() if v not in (None, "")}
     return cleaned or None

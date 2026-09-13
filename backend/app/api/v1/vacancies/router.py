@@ -271,7 +271,26 @@ async def get_vacancy(
         raise HTTPException(status_code=404, detail="Vacancy not found")
     acl = await resolve_restricted_acl(db, str(tenant_id), current_user)
     if not is_client and not _vacancy_allowed(vacancy.id, vacancy.company_id, acl):
-        raise HTTPException(status_code=403, detail="Forbidden")
+        # RSO-2B narrow ADAPT: HR with active internal_hr handoff may read target vacancy
+        # before Employee mint (reuse handoff lane — not a new permission product).
+        from backend.app.auth.trust_roles import is_hr_workspace_actor
+        from backend.app.services.ready_for_employment_emit import vacancy_is_handoff_target_for_hr_lane
+
+        role_l = str(getattr(current_user, "role", "") or "").strip().lower()
+        prefs = getattr(current_user, "preferences", None)
+        preset = getattr(current_user, "preset_id", None)
+        hr_ok = is_hr_workspace_actor(
+            role_l,
+            preset_id=preset,
+            preferences=prefs if isinstance(prefs, dict) else None,
+        )
+        if not (
+            hr_ok
+            and await vacancy_is_handoff_target_for_hr_lane(
+                db, agency_tenant_id=str(tenant_id), vacancy_id=str(vacancy.id)
+            )
+        ):
+            raise HTTPException(status_code=403, detail="Forbidden")
     return vacancy
 
 @router.post("/", response_model=VacancyOut, dependencies=[Depends(require_trust_write())])

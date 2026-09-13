@@ -766,7 +766,20 @@ async def create_handoff(
             assigned_to_user_id=handoff.assigned_to_user_id,
             created_by_user_id=requested_by_user_id,
         )
-        await persist_handoff_create_snapshot(db, handoff=handoff, candidate=cand)
+        try:
+            await persist_handoff_create_snapshot(db, handoff=handoff, candidate=cand)
+        except Exception as exc:
+            from backend.app.services.ready_for_employment_emit import HandoffManifestValidationError
+
+            if isinstance(exc, HandoffManifestValidationError):
+                await db.delete(handoff)
+                await db.flush()
+                return None, {
+                    "code": "ready_for_employment_invalid",
+                    "message": "ready_for_employment.v1 validation failed",
+                    "errors": list(exc.errors),
+                }
+            raise
         return handoff, None
 
     if handoff.assigned_to_user_id:

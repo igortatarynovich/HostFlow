@@ -27,14 +27,17 @@ _DOC_TYPE_ALIASES: dict[str, str] = {
 
 
 def build_handoff_profile_namespace(payload: dict[str, Any] | None) -> dict[str, Any]:
-    """Flatten handoff snapshot v1 into paths used by ``_dig(..., 'handoff.*')``."""
+    """Flatten handoff snapshot / RFE compat projection into paths used by ``_dig(..., 'handoff.*')``."""
+    from backend.app.services.handoff_manifest_compat import coerce_snapshot_payload_for_legacy_readers
+
+    payload = coerce_snapshot_payload_for_legacy_readers(payload)
     if not isinstance(payload, dict):
         return {}
     cand = payload.get("candidate") if isinstance(payload.get("candidate"), dict) else {}
     name = cand.get("name") if isinstance(cand.get("name"), dict) else {}
     contacts = cand.get("contacts") if isinstance(cand.get("contacts"), dict) else {}
-    first = str(name.get("first_name") or "").strip()
-    last = str(name.get("last_name") or "").strip()
+    first = str(name.get("first_name") or cand.get("first_name") or "").strip()
+    last = str(name.get("last_name") or cand.get("last_name") or "").strip()
     full = f"{first} {last}".strip() or None
     citizenship = cand.get("citizenship")
     if citizenship is not None:
@@ -48,8 +51,8 @@ def build_handoff_profile_namespace(payload: dict[str, Any] | None) -> dict[str,
         "last_name": last or None,
         "citizenship": citizenship,
         "birth_date": birth_date,
-        "email": contacts.get("email"),
-        "phone": contacts.get("phone"),
+        "email": contacts.get("email") or cand.get("email"),
+        "phone": contacts.get("phone") or cand.get("phone"),
         "phone_country_code": contacts.get("phone_country_code") or cand.get("phone_country_code"),
     }
     addr_raw = cand.get("address")
@@ -222,13 +225,22 @@ async def load_handoff_profile_namespace(
             )
         ).scalar_one_or_none()
         payload = row.payload if row and isinstance(row.payload, dict) else None
-    ns = build_handoff_profile_namespace(payload)
 
     extra, personal, flat = await _load_live_candidate_fields(db, candidate_id)
+    # Live person wins for current values; shim uses flat as live_person when projecting RFE.
+    from backend.app.services.handoff_manifest_compat import (
+        coerce_snapshot_payload_for_legacy_readers,
+        is_ready_for_employment_manifest,
+    )
+
+    if is_ready_for_employment_manifest(payload):
+        payload = coerce_snapshot_payload_for_legacy_readers(payload, live_person=flat)
+
+    ns = build_handoff_profile_namespace(payload)
     ns = merge_flat_into_handoff_candidate(ns, flat)
     return merge_recruiter_transport_fields(
         ns,
-        snapshot_payload=payload,
+        snapshot_payload=payload if isinstance(payload, dict) else None,
         candidate_extra=extra,
         candidate_personal=personal,
     )
