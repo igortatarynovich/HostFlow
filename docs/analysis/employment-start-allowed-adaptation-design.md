@@ -256,5 +256,5 @@ Full Spine remains **NOT PASS** until slices prove PEM-1 admit-to-work in produc
 ## Next
 
 1. **Slice 1 PASS** @ `d5767488`.  
-2. **Slice 2 OPEN:** [`../specs/tasks/employment-start-allowed-mint-cutover.md`](../specs/tasks/employment-start-allowed-mint-cutover.md) — ESO-4 → `handoff_from_candidate` → Employee exists before `start_allowed`; no ESO-5 enforcement.  
-3. **STOP** before slice 3 until slice 2 PASS. Full Spine closed.
+2. **Slice 2 PASS (machine/portable seam):** [`../specs/tasks/employment-start-allowed-mint-cutover.md`](../specs/tasks/employment-start-allowed-mint-cutover.md) @ `0c8b337f` under test — ensure seam + gate; **Formalize HTTP wire pending ESO-4** on integration; not fully production-wired.
+3. **STOP** before slice 3 until ESO-4 → ensure wire exists on the working line. Full Spine closed.
