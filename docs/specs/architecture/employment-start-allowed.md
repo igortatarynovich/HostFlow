@@ -272,6 +272,6 @@ Applicability: derive from employment/post context — not a static dump on ever
 
 ## Next (after this Accept)
 
-1. **Inventory (mandatory before runtime)** — existing Employee mint paths (ESO-5 legacy mint-on-confirm vs accept/handoff); Documents / contract / `medical_certificate` / BHP evidence authorities and structured fields; handoff host extension points. **Do not** invent parallel stores/workflows.  
-2. Thin runtime slice only after inventory: reference module + orchestrator + `employment-start-allowed-gate` + bind on `/app/hr/handoffs/:id`.  
+1. **Inventory (done as L3):** [`../../analysis/employment-start-allowed-runtime-inventory.md`](../../analysis/employment-start-allowed-runtime-inventory.md) — mint = **adapt** `handoff_from_candidate`; Contract/Medical/BHP = **adapt**; Exception = **missing authority**.  
+2. Runtime still **closed** until an explicit thin slice is opened after adapt/missing design choices.  
 3. Full Spine remains **NOT PASS** until PEM-1 `start_allowed` is proven in product with ESO-5 gated on it.
