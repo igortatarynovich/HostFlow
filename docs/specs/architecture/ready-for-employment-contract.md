@@ -3,7 +3,7 @@
 **Status:** **Accepted** (L2 contract — Recruitment Orchestrator Contract Gate / RSO-1)  
 **Date:** 2026-09-09  
 **Trusted base:** `integration/release-product-a-b`  
-**Related:** [`../tasks/recruitment-spine-orchestrator-v1.md`](../tasks/recruitment-spine-orchestrator-v1.md) · [`../tasks/employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) · [`../tasks/recruitment-hr-minimal-handoff.md`](../tasks/recruitment-hr-minimal-handoff.md) · [`../tasks/hiring-workflow-e2e.md`](../tasks/hiring-workflow-e2e.md)
+**Related:** [`recruitment-employment-boundary-ownership.md`](recruitment-employment-boundary-ownership.md) (fact ownership at Transfer — Proposed) · [`../tasks/recruitment-spine-orchestrator-v1.md`](../tasks/recruitment-spine-orchestrator-v1.md) · [`../tasks/employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) · [`../tasks/recruitment-hr-minimal-handoff.md`](../tasks/recruitment-hr-minimal-handoff.md) · [`../tasks/hiring-workflow-e2e.md`](../tasks/hiring-workflow-e2e.md)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (Recruitment owns emit; Employment owns accept/employ) and **INV-16** (contract before a second handoff shape). Does not rewrite L0. Does not mint Employee from Recruitment.
 

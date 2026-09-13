@@ -108,5 +108,15 @@ Contract missing → resolve → Medical missing → resolve → BHP missing/all
 
 ## Next after this PASS
 
-**STOP.** Do **not** open Slice 4 in this change.  
-Next separate brief/PR: Slice 4 (ESO-5 Confirm requires `start_allowed`; remove PEM-1 mint-on-confirm). Full Spine stays closed.
+**STOP.** Do **not** open Slice 4 or Full Spine automatically.
+
+```text
+Handoff Reality Audit
+  → Boundary Ownership decision (REQUIRED_AT_TRANSFER / PASS_IF_KNOWN / EMPLOYMENT_OWNED)
+  → after Accept: RSO-2 cutover (CandidateHandoff → ready_for_employment.v1 + auto-init)
+  → only then Slice 4 (or narrower boundary fix if decision says so)
+```
+
+- Reality audit: [`../../analysis/recruitment-employment-handoff-reality-audit.md`](../../analysis/recruitment-employment-handoff-reality-audit.md)  
+- Ownership decision (**Proposed**): [`../architecture/recruitment-employment-boundary-ownership.md`](../architecture/recruitment-employment-boundary-ownership.md)  
+- Do **not** open RSO-2 or Slice 4 until that decision is Accepted.
