@@ -195,3 +195,20 @@ export async function getCandidateRecruitmentPackage(candidateId: string): Promi
   )
   return data
 }
+
+export type RecreateCandidateFromApplicationResponse = {
+  candidate_id: string
+  application_id: string
+}
+
+export async function recreateCandidateFromApplication(
+  candidateId: string,
+): Promise<RecreateCandidateFromApplicationResponse> {
+  if (!candidateId) {
+    throw new Error('candidateId is required')
+  }
+  const { data } = await api.post<RecreateCandidateFromApplicationResponse>(
+    `/candidates/${encodeURIComponent(candidateId)}/recreate-from-application`,
+  )
+  return data
+}

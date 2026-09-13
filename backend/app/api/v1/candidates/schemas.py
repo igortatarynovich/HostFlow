@@ -499,3 +499,8 @@ class RecruitmentApplicationStatusPatch(BaseModel):
 class RecruitmentApplicationVacancySwitchRequest(BaseModel):
     to_vacancy_id: str = Field(..., min_length=1)
     close_previous: bool = True
+
+
+class CandidateRecreateFromApplicationOut(BaseModel):
+    candidate_id: str
+    application_id: str

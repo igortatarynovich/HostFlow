@@ -6818,6 +6818,19 @@
         "short_id_failed": "Short id failed",
         "short_id_generated": "Short id generated"
       },
+      "missing": {
+        "not_found_title": "Candidate does not exist",
+        "not_found_hint": "This candidate does not exist or is not available in the current workspace.",
+        "deleted_title": "Candidate was deleted",
+        "deleted_hint": "This candidate was deleted and is no longer available.",
+        "deleted_with_application_hint": "This candidate was deleted. The original application is still available — you can create the candidate again.",
+        "recreate": "Create again",
+        "recreating": "Creating…",
+        "recreate_ok": "Candidate created again",
+        "recreate_failed": "Could not create the candidate again.",
+        "open_application": "Open application",
+        "back_to_list": "Back to candidates"
+      },
       "validation": {
         "poland_basis_required": "Provide basis of stay when in Poland",
         "email_invalid_format": "Invalid email format.",

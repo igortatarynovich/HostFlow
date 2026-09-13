@@ -60,45 +60,75 @@ Machine proofs (named gate green) must show the bullets in § Proofs. **No** HR 
 ## Execution locks
 
 1. **Only** `handoff_from_candidate` for Employment-spine mint after ESO-4. No new mint service. Manual `create_employee` stays out of happy path.  
-2. **Idempotent:** second call with same candidate returns existing Employee; no duplicate rows.  
-3. **Do not** implement slice 4 enforcement in the same PR.  
-4. **Do not** change HR frontend.  
-5. **Do not** open Full Spine.  
-6. ESO-5 changes, if any, must be **narrow** (e.g. tolerate pre-existing Employee) — not a semantic rewrite of Started.
+2. **Authoritative transition only (no evaluate-side mint):**  
+   `ready_to_create_employee=true` on a **read / evaluate** Formalize response **MUST NOT** create Employee.  
+   Mint runs **only** on the authoritative Formalize **apply / complete** seam that records the transition into materialized Employee:
+
+   ```text
+   Formalize apply/complete → ready_to_create_employee=true → ensure Employee via handoff_from_candidate
+   ```
+
+   Forbidden:
+
+   ```text
+   Formalize evaluate / GET → ready_to_create_employee=true → mint
+   ```
+
+3. **Idempotency is handoff / employment-context scoped:**  
+   Re-apply of the **same** handoff must return the **same** `employee_id`.  
+   Gate must prove that another employment/handoff context cannot silently reuse an unsuitable Employee link merely because `candidate_id` matches — unless existing `handoff_from_candidate` already encodes that guarantee (then prove by test; **do not** invent a second mint authority).  
+4. **Employee for start_allowed = this handoff’s Employee:** after mint, `employment_start_allowed.v1` must evaluate the Employee **linked to this handoff / employment case**, not an arbitrary Employee that happens to share the Candidate.  
+5. **Do not** implement slice 4 enforcement in the same PR.  
+6. **Do not** change HR frontend.  
+7. **Do not** open Full Spine.  
+8. ESO-5 changes, if any, must be **narrow** (e.g. tolerate pre-existing Employee) — not a semantic rewrite of Started; Confirm still does **not** require `start_allowed`.
 
 ---
 
 ## Proofs (gate must show)
 
-- [ ] `ready_to_create_employee=true` → canonical Employee mint via `handoff_from_candidate`  
-- [ ] Repeat call idempotent (same `employee_id`)  
-- [ ] Operational context parity preserved (HR case / links / review helpers as designed — no weaker mint than accept path without documented constraint)  
-- [ ] `start_allowed` evaluate can run with existing `employee_id` **before** any ESO-5 physical confirm  
-- [ ] ESO-5 not rewritten beyond narrow necessity; Confirm still does **not** require `start_allowed` in this slice  
-- [ ] No new mint services / employee authorities in diff  
-- [ ] No HR UI file changes in diff  
-- [ ] Full Spine not claimed  
+- [x] Authoritative Formalize **apply/complete** with `ready_to_create_employee=true` → canonical Employee mint via `handoff_from_candidate`  
+- [x] Formalize **evaluate** (or equivalent read) with `ready_to_create_employee=true` → **no** mint / no write side effect  
+- [x] Repeat apply on the **same handoff** → same `employee_id` (idempotent)  
+- [x] Cross-context safety: unsuitable reuse across distinct employment/handoff contexts is prevented **or** proven impossible by existing `handoff_from_candidate` semantics (test evidence)  
+- [x] Operational context parity preserved (compose `ensure_hr_operational_context` as designed)  
+- [x] `start_allowed` evaluate runs with the Employee **linked to this handoff**, **before** any ESO-5 physical confirm  
+- [x] ESO-5 not rewritten beyond narrow necessity; Confirm still does **not** require `start_allowed` in this slice  
+- [x] No new mint services / employee authorities in diff  
+- [x] No HR UI file changes in diff  
+- [x] Full Spine not claimed  
+
+---
+
+## Completion proof (strict)
+
+```text
+authoritative ESO-4 completion (apply/complete)
+  → canonical idempotent mint for this employment/handoff context
+  → Employee ↔ handoff linkage proven
+  → start_allowed evaluate works on that employee_id before physical confirm
+```
+
+**PASS stops exactly at:** Employee exists before `start_allowed`.  
+**No** ESO-5 semantic changes until slice 4.
 
 ---
 
 ## Implementation sequence (slice 2)
 
 ```text
-locate Formalize complete / allow-create runtime seam
-  → compose handoff_from_candidate (+ operational context helpers)
-  → wire employee_id into start_allowed evaluate inputs
-  → named mint-cutover gate proofs
+ensure seam (authoritative apply only; evaluate = read-only)
+  → compose handoff_from_candidate + handoff linkage + ensure_hr_operational_context
+  → named mint-cutover gate proofs (incl. evaluate≠mint, linkage, start_allowed)
+  → Formalize apply/complete caller wires ensure when ESO-4 Formalize is on tree
   → PASS stamp
   → STOP (do not open slice 3 in the same change)
 ```
 
----
+**Caller contract (Formalize):** HTTP evaluate / empty-read Formalize calls pass `authoritative_apply=False`. Formalize **apply/complete** that records allow-create completion passes `authoritative_apply=True` and only then may mint when `ready_to_create_employee=true`.
 
-## PASS criterion
-
-After ESO-4 allow-create, Employee exists via `handoff_from_candidate` without ESO-5 physical confirm; foundation evaluator can use that `employee_id`; gate green; UI / Full Spine / slice-4 enforcement untouched.
-
-**After PASS:** STOP before slice 3 HR binding.
+**Canonical runtime seam on this tree:** `ensure_employee_after_formalize_apply` in `backend/app/services/employment_formalize_employee_ensure.py`.  
+If `employment_formalize_orchestrator` is not yet merged onto the working tree, Formalize HTTP wire is deferred to the Formalize merge PR — it must call this seam with the locks above. Slice 2 PASS is the ensure seam + named gate; it does **not** require inventing a parallel Formalize stack on integration.
 
 ---
 

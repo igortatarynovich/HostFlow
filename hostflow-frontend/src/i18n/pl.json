@@ -6102,6 +6102,19 @@
         "short_id_failed": "Krótki identyfikator nie powiódł się",
         "short_id_generated": "Wygenerowano krótki identyfikator"
       },
+      "missing": {
+        "not_found_title": "Kandydat nie istnieje",
+        "not_found_hint": "Taki kandydat nie istnieje albo jest niedostępny w bieżącym obszarze roboczym.",
+        "deleted_title": "Kandydat został usunięty",
+        "deleted_hint": "Kandydat został usunięty i nie jest już dostępny.",
+        "deleted_with_application_hint": "Kandydat został usunięty. Oryginalne zgłoszenie nadal istnieje — możesz utworzyć kandydata ponownie.",
+        "recreate": "Utwórz ponownie",
+        "recreating": "Tworzenie…",
+        "recreate_ok": "Kandydat został utworzony ponownie",
+        "recreate_failed": "Nie udało się ponownie utworzyć kandydata.",
+        "open_application": "Otwórz zgłoszenie",
+        "back_to_list": "Wróć do listy kandydatów"
+      },
       "control": {
         "title": "Kontrola",
         "inbox_title": "Skrzynka",
