@@ -42,7 +42,7 @@ PROBLEM_STATUSES: Set[str] = {
 }
 
 EQUIVALENT_SATISFACTION: Dict[str, List[str]] = {
-    "driver_license_code95": ["driver_license", "code95"],
+    "driver_license_code95": ["driver_license", "code95", "driver_qualification_card"],
 }
 
 

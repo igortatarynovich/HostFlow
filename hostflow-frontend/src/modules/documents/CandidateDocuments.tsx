@@ -72,6 +72,10 @@ import {
   isProbablyHtmlBlob,
   computeTodayIso,
   normalizeDocTypeCode,
+  coverageKeysForStoredDocType,
+  prefersCombinedLicenseUpload,
+  isPlainLicenseWithoutCode95,
+  persistRecruitmentDocType,
   resolveDocTypeLabel,
   documentHasFiles,
 } from "./documentUtils";
@@ -736,20 +740,27 @@ export default function CandidateDocuments({
 
       const defaultType = (() => {
         if (!displayTypes.length) return "";
-        const readyCodes = new Set(
-          summaryDocs
-            .filter((doc) => READY_STATUSES.has(doc.status))
-            .map((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || ""))
-        );
-        // Проверяем required из профиля или из типа документа
-        const firstRequired = displayTypes.find((t) => {
-          if (profileFilterActive) {
-            const docConfig = profileConfigByTypeCode.get(t.code);
-            const isRequired = docConfig?.required || t.required;
-            return Boolean(isRequired) && !readyCodes.has(t.code);
-          }
-          return t.required && !readyCodes.has(t.code);
-        });
+        const readyCodes = new Set<string>();
+        summaryDocs
+          .filter((doc) => READY_STATUSES.has(doc.status))
+          .forEach((doc) => {
+            coverageKeysForStoredDocType(doc.type_code || doc.doc_type || "").forEach((code) => readyCodes.add(code));
+          });
+        const outstandingCodes = displayTypes
+          .filter((t) => {
+            if (profileFilterActive) {
+              const docConfig = profileConfigByTypeCode.get(t.code);
+              const isRequired = docConfig?.required || t.required;
+              return Boolean(isRequired) && !readyCodes.has(t.code) && !readyCodes.has(normalizeDocTypeCode(t.code));
+            }
+            return t.required && !readyCodes.has(t.code) && !readyCodes.has(normalizeDocTypeCode(t.code));
+          })
+          .map((t) => t.code);
+        if (prefersCombinedLicenseUpload(outstandingCodes)) {
+          const combined = displayTypes.find((t) => persistRecruitmentDocType(t.code) === "driver_license_code95");
+          if (combined && !readyCodes.has("driver_license_code95")) return combined.code;
+        }
+        const firstRequired = displayTypes.find((t) => outstandingCodes.includes(t.code));
         return firstRequired?.code || displayTypes[0].code;
       })();
       setSelectedType((prev) => {
@@ -1045,9 +1056,11 @@ useEffect(() => {
 
     docs.forEach((doc) => {
       const statusValue = primaryStatus(doc);
-      const coverage = new Set<string>([doc.type_code]);
-      const extra = coverageMap.get(doc.type_code);
-      if (extra) extra.forEach((c) => coverage.add(c));
+      const coverage = new Set<string>(coverageKeysForStoredDocType(doc.type_code || doc.doc_type));
+      for (const storedKey of [...coverage]) {
+        const groupExtra = coverageMap.get(storedKey);
+        if (groupExtra) groupExtra.forEach((c) => coverage.add(c));
+      }
       coverage.forEach((type) => {
         if (READY_STATUSES.has(statusValue)) readyTypes.add(type);
         else if (NEGATIVE_STATUSES.has(statusValue)) problemTypes.add(type);
@@ -1061,9 +1074,12 @@ useEffect(() => {
     const finalProblem: string[] = [];
 
     requiredTypes.forEach((type) => {
-      if (readyTypes.has(type)) finalReady.push(type);
-      else if (problemTypes.has(type)) finalProblem.push(type);
-      else if (inProgressTypes.has(type)) finalInProgress.push(type);
+      const aliases = coverageKeysForStoredDocType(type);
+      const hit = (bucket: Set<string>) =>
+        bucket.has(type) || aliases.some((code) => bucket.has(code)) || bucket.has(normalizeDocTypeCode(type));
+      if (hit(readyTypes)) finalReady.push(type);
+      else if (hit(problemTypes)) finalProblem.push(type);
+      else if (hit(inProgressTypes)) finalInProgress.push(type);
       else missingTypes.push(type);
     });
 
@@ -1103,7 +1119,10 @@ useEffect(() => {
       const typeCode = normalizeDocTypeCode(String(rawType));
       const typeInfo = typeByCode.get(typeCode);
       const label = getDocTypeLabel(typeCode, typeInfo?.name);
-      const documentsForType = docs.filter((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || "") === typeCode);
+      const documentsForType = docs.filter((doc) => {
+        const keys = coverageKeysForStoredDocType(doc.type_code || doc.doc_type || "");
+        return keys.includes(typeCode) || keys.includes(String(rawType));
+      });
       const instanceWithFile = documentsForType.find((doc) => documentHasFiles(doc));
       const badge = instanceWithFile
         ? runtimeBadgeFromDocument(instanceWithFile)
@@ -1113,6 +1132,27 @@ useEffect(() => {
       return { type: typeCode, label, badge, documents: documentsForType };
     });
   }, [checklist, summaryResponse, docs, typeByCode, getDocTypeLabel]);
+
+  const combinedLicenseHint = useMemo(() => {
+    const required = Array.isArray(checklist?.requiredTypes)
+      ? checklist!.requiredTypes.map((item: unknown) => String(item))
+      : [];
+    const missing = Array.isArray(summary?.required?.missing)
+      ? (summary!.required!.missing as string[])
+      : [];
+    if (!prefersCombinedLicenseUpload(required) && !prefersCombinedLicenseUpload(missing)) {
+      return false;
+    }
+    const hasReadyCombined = docs.some((doc) => {
+      return (
+        persistRecruitmentDocType(doc.type_code || doc.doc_type) === "driver_license_code95" &&
+        READY_STATUSES.has(primaryStatus(doc))
+      );
+    });
+    if (hasReadyCombined) return false;
+    if (isPlainLicenseWithoutCode95(selectedType)) return true;
+    return missing.length > 0 || prefersCombinedLicenseUpload(required);
+  }, [checklist, summary, docs, selectedType]);
 
 
   const handleOrderType = useCallback(
@@ -1205,7 +1245,7 @@ useEffect(() => {
     const { meta_json: overridesMeta, ...restOverrides } = overrides;
     const base: CreateCandidateDocumentPayload = {
       owner_id: candidateId,
-      doc_type: selectedType,
+      doc_type: persistRecruitmentDocType(selectedType),
       status: creationStatus,
     };
 
@@ -1849,6 +1889,14 @@ useEffect(() => {
               </span>
             </span>
           ))}
+        </div>
+      ) : null}
+      {combinedLicenseHint ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {t("admin.documents.hints.combined_license_code95", {
+            defaultValue:
+              "If Code 95 is printed on the driver license, upload it as “EU driver license with Code 95”. That one file covers both the license and Code 95 — a separate Code 95 card is only needed when it is a distinct document.",
+          })}
         </div>
       ) : null}
 

@@ -1,5 +1,8 @@
 import { api } from '../../../api/client'
-import { DOC_TYPE_LEGACY_ALIASES } from '../../../data/documentTypeAliases'
+import {
+  DOC_TYPE_LEGACY_ALIASES,
+  MODULE_PERSIST_DOC_TYPE_ALIASES,
+} from '../../../data/documentTypeAliases'
 import type { WorkspaceCapabilityRenderContext } from '../../workspace-capability/renderContext'
 
 export const DOCUMENTS_PUBLIC_CONTRACT_ID = 'documents.public_contract.v1'
@@ -73,6 +76,8 @@ export function persistCanonicalDocumentType(raw: string): string {
     .toLowerCase()
     .replace(/-/g, '_')
   if (!key) return ''
+  const modulePersist = MODULE_PERSIST_DOC_TYPE_ALIASES[key]
+  if (modulePersist) return modulePersist
   const mapped = DOC_TYPE_LEGACY_ALIASES[key]
   if (mapped) return mapped
   const canonical = new Set(Object.values(DOC_TYPE_LEGACY_ALIASES))

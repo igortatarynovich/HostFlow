@@ -1,5 +1,5 @@
 {
-  "aliases_version": "1.0.0",
+  "aliases_version": "1.1.0",
   "effective_from": "2026-07-13",
   "adr": "ADR-018",
   "description": "Legacy document type strings → canonical registry codes. Used ONLY for input normalization and data migration. FORBIDDEN in Requirement Evaluation runtime logic.",
@@ -25,9 +25,6 @@
     "drivers_license": "driver_license",
     "driver_licence": "driver_license",
     "drivers_license_ce": "driver_license",
-    "driver_license_with_code95": "driver_license",
-    "driver_license_code95": "driver_license",
-    "eu_license_code95": "driver_license",
     "code95": "driver_qualification_card",
     "code_95": "driver_qualification_card",
     "qualification_code95": "driver_qualification_card",
@@ -74,11 +71,25 @@
     "code_95": "driver_qualification_card",
     "id_card": "national_identity_card"
   },
+  "module_persist_aliases": {
+    "driver_license_code95": "driver_license_code95",
+    "driver_license_with_code95": "driver_license_code95",
+    "eu_license_code95": "driver_license_code95"
+  },
+  "module_slot_satisfaction": {
+    "driver_license_code95": [
+      "driver_license",
+      "code95",
+      "driver_qualification_card",
+      "qualification_code95",
+      "code_95"
+    ]
+  },
   "ambiguous_notes": [
     {
-      "codes": ["driver_license_code95", "driver_license_with_code95"],
-      "canonical": "driver_license",
-      "note": "Combined EU license module code maps to driver_license; Code 95 may be on same document or separate driver_qualification_card."
+      "codes": ["driver_license_code95", "driver_license_with_code95", "eu_license_code95"],
+      "canonical": "driver_license_code95",
+      "note": "Combined EU license is a module persist identity, not a registry alias of driver_license. Collapsing it to driver_license leaves Code 95 / driver_qualification_card outstanding. Runtime slot satisfaction fills both license and Code 95; registry normalize_input_doc_type may still map the module code to driver_license for reference sync only."
     },
     {
       "codes": ["additional_document", "other"],

@@ -33,22 +33,58 @@ def build_alias_map() -> dict[str, str]:
     registry_payload = _load_json(_REGISTRY_JSON)
     canonical = _canonical_codes(registry_payload)
     out: dict[str, str] = {}
+    module_persist = {
+        _norm(legacy): _norm(target)
+        for legacy, target in (aliases_payload.get("module_persist_aliases") or {}).items()
+        if _norm(legacy) and _norm(target)
+    }
 
     for legacy, target in (aliases_payload.get("aliases") or {}).items():
         key = _norm(legacy)
         value = _norm(target)
+        if key in module_persist:
+            continue
         if value in canonical and key != value:
             out[key] = value
 
     for deprecated, replacement in (aliases_payload.get("deprecated_canonical_codes") or {}).items():
         key = _norm(deprecated)
         value = _norm(replacement)
+        if key in module_persist:
+            continue
         if value in canonical and key != value:
             out[key] = value
 
     for code in sorted(canonical):
         out.setdefault(code, code)
 
+    return dict(sorted(out.items()))
+
+
+def build_module_persist_aliases() -> dict[str, str]:
+    aliases_payload = _load_json(_ALIASES_JSON)
+    out: dict[str, str] = {}
+    for legacy, target in (aliases_payload.get("module_persist_aliases") or {}).items():
+        key = _norm(legacy)
+        value = _norm(target)
+        if key and value:
+            out[key] = value
+    return dict(sorted(out.items()))
+
+
+def build_module_slot_satisfaction() -> dict[str, list[str]]:
+    aliases_payload = _load_json(_ALIASES_JSON)
+    out: dict[str, list[str]] = {}
+    raw = aliases_payload.get("module_slot_satisfaction") or {}
+    if not isinstance(raw, dict):
+        return out
+    for stored, slots in raw.items():
+        key = _norm(stored)
+        if not key or not isinstance(slots, list):
+            continue
+        values = [_norm(item) for item in slots if _norm(item)]
+        if values:
+            out[key] = list(dict.fromkeys(values))
     return dict(sorted(out.items()))
 
 
@@ -62,15 +98,36 @@ def build_equivalent_groups(alias_map: dict[str, str]) -> list[list[str]]:
     return groups
 
 
-def render_ts(alias_map: dict[str, str], groups: list[list[str]]) -> str:
+def render_ts(
+    alias_map: dict[str, str],
+    groups: list[list[str]],
+    module_persist: dict[str, str],
+    slot_satisfaction: dict[str, list[str]],
+) -> str:
     alias_lines = ",\n".join(f'  "{k}": "{v}"' for k, v in alias_map.items())
     group_lines = ",\n".join("  [" + ", ".join(f'"{code}"' for code in group) + "]" for group in groups)
+    persist_lines = ",\n".join(f'  "{k}": "{v}"' for k, v in module_persist.items())
+    slot_lines = ",\n".join(
+        '  "{k}": [{items}]'.format(
+            k=k,
+            items=", ".join(f'"{code}"' for code in values),
+        )
+        for k, values in slot_satisfaction.items()
+    )
     return f"""/**
  * Generated from docs/specs/platform/document-type-legacy-aliases-v1.json.
  * Regenerate: python3 scripts/codegen/generate_document_type_aliases.py
  */
 export const DOC_TYPE_LEGACY_ALIASES: Record<string, string> = {{
 {alias_lines}
+}};
+
+export const MODULE_PERSIST_DOC_TYPE_ALIASES: Record<string, string> = {{
+{persist_lines}
+}};
+
+export const COMBINED_LICENSE_SATISFIES: Record<string, string[]> = {{
+{slot_lines}
 }};
 
 export const EQUIVALENT_TYPE_GROUPS: string[][] = [
@@ -82,7 +139,9 @@ export const EQUIVALENT_TYPE_GROUPS: string[][] = [
 def generate() -> str:
     alias_map = build_alias_map()
     groups = build_equivalent_groups(alias_map)
-    return render_ts(alias_map, groups)
+    module_persist = build_module_persist_aliases()
+    slot_satisfaction = build_module_slot_satisfaction()
+    return render_ts(alias_map, groups, module_persist, slot_satisfaction)
 
 
 def main() -> int:
