@@ -15844,6 +15844,9 @@
         "notify_candidate_failed": "Failed to send email",
         "file_deleted": "File deleted"
       },
+      "hints": {
+        "combined_license_code95": "If Code 95 is printed on the driver license, upload it as “EU driver license with Code 95”. That one file covers both the license and Code 95 — a separate Code 95 card is only needed when it is a distinct document."
+      },
       "errors": {
         "type_missing": "Select a document type",
         "custom_name_missing": "Enter the custom document name",

@@ -15844,6 +15844,9 @@
         "notify_candidate_failed": "Nie udało się wysłać e-maila",
         "file_deleted": "Plik usunięty"
       },
+      "hints": {
+        "combined_license_code95": "Jeśli kod 95 jest nadrukowany na prawie jazdy, wgraj dokument jako „Prawo jazdy UE z kodem 95”. Jeden plik pokrywa prawo jazdy i Code 95 — osobna karta jest potrzebna tylko wtedy, gdy to osobny dokument."
+      },
       "errors": {
         "type_missing": "Wybierz typ dokumentu",
         "custom_name_missing": "Podaj własną nazwę dokumentu",

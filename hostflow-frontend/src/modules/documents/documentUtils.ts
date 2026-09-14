@@ -3,6 +3,7 @@
  */
 
 import { docsApi } from "../../api/client";
+import { COMBINED_LICENSE_SATISFIES, MODULE_PERSIST_DOC_TYPE_ALIASES } from "../../data/documentTypeAliases";
 import {
   MAX_FILE_BYTES,
   DOCUMENT_STATUS_META,
@@ -169,7 +170,43 @@ export const normalizeDocTypeCode = (value?: string | null): string => {
   const raw = String(value || "").trim();
   if (!raw) return "";
   const key = raw.toLowerCase().replace(/-/g, "_");
-  return DOC_TYPE_CODE_ALIASES[key] || key;
+  return MODULE_PERSIST_DOC_TYPE_ALIASES[key] || DOC_TYPE_CODE_ALIASES[key] || key;
+};
+
+export const persistRecruitmentDocType = (value?: string | null): string => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const key = raw.toLowerCase().replace(/-/g, "_");
+  return MODULE_PERSIST_DOC_TYPE_ALIASES[key] || raw;
+};
+
+export const coverageKeysForStoredDocType = (value?: string | null): string[] => {
+  const normalized = normalizeDocTypeCode(value);
+  if (!normalized) return [];
+  const extra = COMBINED_LICENSE_SATISFIES[normalized] || [];
+  return Array.from(new Set([normalized, ...extra]));
+};
+
+const CODE95_SLOT_TYPES = new Set([
+  "code95",
+  "code_95",
+  "driver_qualification_card",
+  "qualification_code95",
+  "qualification_card",
+]);
+const LICENSE_SLOT_TYPES = new Set(["driver_license", "driver_licence", "prawo_jazdy"]);
+const COMBINED_LICENSE_TYPE = "driver_license_code95";
+
+export const prefersCombinedLicenseUpload = (requiredOrMissing: Iterable<string>): boolean => {
+  const codes = new Set(Array.from(requiredOrMissing, (item) => normalizeDocTypeCode(item)));
+  const needsLicense = [...codes].some((code) => LICENSE_SLOT_TYPES.has(code) || code === COMBINED_LICENSE_TYPE);
+  const needsCode95 = [...codes].some((code) => CODE95_SLOT_TYPES.has(code) || code === COMBINED_LICENSE_TYPE);
+  return needsLicense && needsCode95;
+};
+
+export const isPlainLicenseWithoutCode95 = (value?: string | null): boolean => {
+  const normalized = normalizeDocTypeCode(value);
+  return LICENSE_SLOT_TYPES.has(normalized) && normalized !== COMBINED_LICENSE_TYPE;
 };
 
 export const resolveDocTypeLabel = (
