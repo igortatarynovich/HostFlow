@@ -63,27 +63,6 @@ def _parse_extra(candidate: Candidate) -> dict[str, Any]:
     return {}
 
 
-def _snapshot_summary(payload: dict[str, Any] | None) -> dict[str, Any]:
-    """Deprecated residual helper — prefer live_candidate_summary (RSO-2D)."""
-    if not payload:
-        return {}
-    from backend.app.services.handoff_manifest_compat import is_ready_for_employment_manifest
-
-    if is_ready_for_employment_manifest(payload):
-        return {}
-    c = payload.get("candidate") or {}
-    if not isinstance(c, dict):
-        return {}
-    name = c.get("name") or {}
-    if not isinstance(name, dict):
-        name = {}
-    return {
-        "candidate_id": c.get("id"),
-        "first_name": name.get("first_name") or c.get("first_name"),
-        "last_name": name.get("last_name") or c.get("last_name"),
-    }
-
-
 def _snapshot_doc_status(payload: dict[str, Any] | None, doc_type: str) -> str | None:
     from backend.app.services.hr_handoff_read_model import manifest_doc_status_as_of
 

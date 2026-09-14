@@ -130,6 +130,3 @@ def test_out_of_slice_not_opened() -> None:
     assert "RSO-2D" in brief
     assert "RSO-2E" in brief
     assert "Slice 4" in brief
-    # Shim must remain (2E not this slice).
-    compat = _REPO_ROOT / "backend" / "app" / "services" / "handoff_manifest_compat.py"
-    assert compat.is_file()

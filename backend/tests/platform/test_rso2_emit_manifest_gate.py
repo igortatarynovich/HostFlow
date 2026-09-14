@@ -17,12 +17,6 @@ from backend.app.reference.ready_for_employment import (
     is_valid_ready_for_employment_package_v1,
     validate_ready_for_employment_package_v1,
 )
-from backend.app.services.handoff_manifest_compat import (
-    COMPAT_MARKER,
-    coerce_snapshot_payload_for_legacy_readers,
-    is_ready_for_employment_manifest,
-    project_manifest_to_legacy_snapshot_shape,
-)
 from backend.app.services import handoff as handoff_service
 from backend.app.services.ready_for_employment_emit import (
     HandoffManifestValidationError,
@@ -32,7 +26,6 @@ from backend.app.services.ready_for_employment_emit import (
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _BRIEF = _REPO_ROOT / "docs" / "specs" / "tasks" / "recruitment-employment-handoff-rso2b-emit.md"
 _EMIT = _REPO_ROOT / "backend" / "app" / "services" / "ready_for_employment_emit.py"
-_COMPAT = _REPO_ROOT / "backend" / "app" / "services" / "handoff_manifest_compat.py"
 _SNAPSHOT = _REPO_ROOT / "backend" / "app" / "services" / "handoff_snapshot.py"
 _HANDOFF = _REPO_ROOT / "backend" / "app" / "services" / "handoff.py"
 _VAC_ROUTER = _REPO_ROOT / "backend" / "app" / "api" / "v1" / "vacancies" / "router.py"
@@ -66,70 +59,6 @@ def test_no_accept_or_employment_init_in_emit_path() -> None:
     assert "accept_handoff(" not in create_fn
     assert "apply_employment_accept_policy" not in create_fn
     assert "persist_handoff_create_snapshot" in create_fn
-
-
-def test_compat_shim_prefers_live_over_manifest_current() -> None:
-    manifest = {
-        "contract_id": CONTRACT_ID,
-        "tenant_id": "t1",
-        "person": {
-            "candidate_id": "c1",
-            "person_id": "c1",
-            "identity_facts": {"citizenship": "UA", "first_name": "Old", "last_name": "Name"},
-            "contacts": {"email": "old@example.com"},
-        },
-        "target_work": {"vacancy_id": "v1", "employer_id": "e1"},
-        "recruitment_facts": {},
-        "evidence": {"document_refs": []},
-        "fits_decision": {
-            "decision": "fits",
-            "decided_at": "2026-09-13T12:00:00+00:00",
-            "actor_id": "u1",
-        },
-        "context_refs": {"application_id": "a1", "handoff_id": "h1"},
-    }
-    assert is_ready_for_employment_manifest(manifest)
-    projected = project_manifest_to_legacy_snapshot_shape(
-        manifest,
-        live_person={
-            "citizenship": "PL",
-            "first_name": "Live",
-            "last_name": "Person",
-            "email": "live@example.com",
-        },
-    )
-    assert projected.get(COMPAT_MARKER) is True
-    assert projected["candidate"]["citizenship"] == "PL"
-    assert projected["candidate"]["first_name"] == "Live"
-    assert projected["candidate"]["as_of"]["citizenship"] == "UA"
-    again = coerce_snapshot_payload_for_legacy_readers(projected)
-    assert again["candidate"]["citizenship"] == "PL"
-
-
-def test_compat_shim_marks_deprecated_and_keeps_refs_not_files() -> None:
-    manifest = {
-        "contract_id": CONTRACT_ID,
-        "person": {"candidate_id": "c1", "identity_facts": {"first_name": "A", "last_name": "B"}},
-        "target_work": {"employer_id": "e1"},
-        "recruitment_facts": {},
-        "evidence": {
-            "document_refs": [
-                {
-                    "document_id": "d1",
-                    "doc_type": "passport",
-                    "canonical_code": "passport",
-                    "status": "approved",
-                }
-            ]
-        },
-        "fits_decision": {"decision": "fits", "decided_at": "t", "actor_id": "u"},
-        "context_refs": {"application_id": "a1"},
-    }
-    out = project_manifest_to_legacy_snapshot_shape(manifest)
-    assert out["compat_deprecated"] is True
-    assert out["documents"][0]["document_id"] == "d1"
-    assert "files" not in out["documents"][0]
-    assert "url" not in out["documents"][0]
 
 
 def test_vacancy_router_has_handoff_lane_adapt() -> None:
@@ -221,13 +150,6 @@ def test_persist_internal_hr_uses_rfe_not_legacy_builder() -> None:
     assert 'if dest == "internal_hr"' in src
     assert "build_and_validate_ready_for_employment_package_v1" in src
     assert "build_handoff_snapshot_payload_v1" in src
-
-
-def test_shim_module_exists_and_is_temporary() -> None:
-    src = _COMPAT.read_text(encoding="utf-8")
-    assert "Deprecated" in src or "temporary" in src.lower()
-    assert "MUST NOT" in src or "must not" in src.lower()
-    assert "live_person" in src
 
 
 def test_handoff_manifest_validation_error_shape() -> None:

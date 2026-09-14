@@ -32,9 +32,9 @@ def build_handoff_profile_namespace(payload: dict[str, Any] | None) -> dict[str,
     """
     if not isinstance(payload, dict):
         return {}
-    from backend.app.services.handoff_manifest_compat import is_ready_for_employment_manifest
+    from backend.app.reference.ready_for_employment import is_ready_for_employment_manifest
 
-    # RFE manifests are handled by live Person + why_ready; do not project via shim here.
+    # RFE manifests are handled by live Person + why_ready; do not project currents from payload.
     if is_ready_for_employment_manifest(payload):
         return {"candidate": {}, "application": None, "documents": []}
     cand = payload.get("candidate") if isinstance(payload.get("candidate"), dict) else {}
@@ -217,9 +217,8 @@ async def load_handoff_profile_namespace(
     *,
     candidate_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """RSO-2D: current identity from live Person; Why Ready / as-of from manifest (no shim coerce)."""
+    """RSO-2E: current identity from live Person; Why Ready / as-of from manifest."""
     from backend.app.models.candidate_handoff import CandidateHandoff
-    from backend.app.services.handoff_manifest_compat import is_ready_for_employment_manifest
     from backend.app.services.hr_handoff_read_model import (
         apply_live_person_to_profile_namespace,
         build_why_ready_from_manifest,
@@ -260,40 +259,20 @@ async def load_handoff_profile_namespace(
                 db, candidate=cand_row, handoff=handoff, manifest=payload
             )
 
-    if is_ready_for_employment_manifest(payload):
-        as_of = why_ready.get("as_of") if why_ready else None
-        ns: dict[str, Any] = {
-            "candidate": {},
-            "application": profile_application_from_manifest_and_live(
-                live_target=live_target, why_ready=why_ready
-            ),
-            # Operational docs = Hub elsewhere; evidence refs stay on why_ready, not current profile docs.
-            "documents": [],
-            "why_ready": why_ready,
-            "live_target_work": live_target or None,
-        }
-        ns = apply_live_person_to_profile_namespace(ns, flat, as_of=as_of)
-        return merge_recruiter_transport_fields(
-            ns,
-            snapshot_payload=None,
-            candidate_extra=extra,
-            candidate_personal=personal,
-        )
-
-    # Residual legacy snapshot (migration window only).
-    ns = build_handoff_profile_namespace(payload)
-    ns = apply_live_person_to_profile_namespace(ns, flat)
-    if live_target:
-        app = dict(ns.get("application") or {})
-        if live_target.get("vacancy_id"):
-            app["vacancy_id"] = live_target.get("vacancy_id")
-        if live_target.get("vacancy_title"):
-            app["vacancy_title"] = live_target.get("vacancy_title")
-        ns["application"] = app or ns.get("application")
-        ns["live_target_work"] = live_target
+    as_of = why_ready.get("as_of") if why_ready else None
+    ns: dict[str, Any] = {
+        "candidate": {},
+        "application": profile_application_from_manifest_and_live(
+            live_target=live_target, why_ready=why_ready
+        ),
+        "documents": [],
+        "why_ready": why_ready,
+        "live_target_work": live_target or None,
+    }
+    ns = apply_live_person_to_profile_namespace(ns, flat, as_of=as_of)
     return merge_recruiter_transport_fields(
         ns,
-        snapshot_payload=payload if isinstance(payload, dict) else None,
+        snapshot_payload=None,
         candidate_extra=extra,
         candidate_personal=personal,
     )

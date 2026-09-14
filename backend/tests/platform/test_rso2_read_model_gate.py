@@ -23,7 +23,6 @@ _READ_MODEL = _REPO_ROOT / "backend" / "app" / "services" / "hr_handoff_read_mod
 _INBOX = _REPO_ROOT / "backend" / "app" / "services" / "hr_inbox.py"
 _PROFILE = _REPO_ROOT / "backend" / "app" / "services" / "hr_handoff_profile_context.py"
 _DOCS_Q = _REPO_ROOT / "backend" / "app" / "services" / "hr_documents_queue.py"
-_COMPAT = _REPO_ROOT / "backend" / "app" / "services" / "handoff_manifest_compat.py"
 _CONTEXT_FE = (
     _REPO_ROOT / "hostflow-frontend" / "src" / "components" / "hr" / "HrHandoffContextSummary.tsx"
 )
@@ -118,8 +117,7 @@ def test_display_name_from_live_person_unit() -> None:
     assert live_person_flat is not None
 
 
-def test_shim_remains_until_rso2e() -> None:
-    assert _COMPAT.is_file()
+def test_shim_successor_is_rso2e() -> None:
     brief = _BRIEF.read_text(encoding="utf-8")
     assert "RSO-2E" in brief
     assert "handoff_manifest_compat" in brief or "shim" in brief.lower()

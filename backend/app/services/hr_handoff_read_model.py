@@ -1,9 +1,7 @@
-"""RSO-2D — HR host read-model: live authorities + manifest Why Ready.
+"""HR host read-model: live authorities + manifest Why Ready.
 
 Operational currents come from live Person / Vacancy / Employer / Hub.
 Manifest supplies Why Ready (fits / verdicts / evidence refs / as-of) only.
-
-Does not delete handoff_manifest_compat (RSO-2E). Does not retouch emit/init.
 """
 
 from __future__ import annotations
@@ -14,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.services.handoff_manifest_compat import is_ready_for_employment_manifest
+from backend.app.reference.ready_for_employment import is_ready_for_employment_manifest
 from backend.app.services.hr_recruitment_transfer import flatten_recruitment_candidate_fields
 
 
@@ -217,38 +215,22 @@ def live_candidate_summary(candidate: Candidate | None) -> dict[str, Any]:
 
 
 def manifest_doc_status_as_of(payload: Mapping[str, Any] | None, doc_type: str) -> str | None:
-    """Historical/as-of document status from RFE evidence refs or legacy documents list.
+    """Historical/as-of document status from RFE evidence refs only.
 
     Not an operational Hub status — callers must prefer Hub for current.
     """
     from backend.app.services.document_catalog import normalize_doc_type
 
-    if not payload:
+    if not is_ready_for_employment_manifest(payload):
         return None
     canon = normalize_doc_type(doc_type)
-    if is_ready_for_employment_manifest(payload):
-        evidence = payload.get("evidence") if isinstance(payload.get("evidence"), Mapping) else {}
-        for ref in evidence.get("document_refs") or []:
-            if not isinstance(ref, Mapping):
-                continue
-            t = normalize_doc_type(str(ref.get("canonical_code") or ref.get("doc_type") or ""))
-            if t == canon:
-                return str(ref.get("status") or "").strip() or None
-        return None
-    # Residual legacy shape (no coerce / no shim dependency for RSO-2D operational path).
-    for d in payload.get("expected_documents") or []:
-        if not isinstance(d, Mapping):
+    evidence = payload.get("evidence") if isinstance(payload.get("evidence"), Mapping) else {}
+    for ref in evidence.get("document_refs") or []:
+        if not isinstance(ref, Mapping):
             continue
-        t = normalize_doc_type(str(d.get("document_code") or ""))
+        t = normalize_doc_type(str(ref.get("canonical_code") or ref.get("doc_type") or ""))
         if t == canon:
-            return str(d.get("status") or "").strip() or None
-    for d in payload.get("documents") or []:
-        if not isinstance(d, Mapping):
-            continue
-        canonical = d.get("canonical") if isinstance(d.get("canonical"), Mapping) else {}
-        t = normalize_doc_type(str(canonical.get("code") or d.get("type") or ""))
-        if t == canon:
-            return str(d.get("status") or "").strip() or None
+            return str(ref.get("status") or "").strip() or None
     return None
 
 

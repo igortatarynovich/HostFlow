@@ -66,7 +66,7 @@ async def resolve_ready_for_employment_package(
     from sqlalchemy import select
 
     from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
-    from backend.app.services.handoff_manifest_compat import is_ready_for_employment_manifest
+    from backend.app.reference.ready_for_employment import is_ready_for_employment_manifest
 
     snap = (
         await db.execute(

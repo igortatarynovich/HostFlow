@@ -113,6 +113,7 @@ jobs:
       rso2b: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rso2b == 'true' }}
       rso2c: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rso2c == 'true' }}
       rso2d: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rso2d == 'true' }}
+      rso2e: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rso2e == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
       esa3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa3 == 'true' }}
@@ -372,7 +373,6 @@ jobs:
               - 'docs/specs/tasks/hiring-workflow-e2e.md'
             rso2b:
               - 'backend/app/services/ready_for_employment_emit.py'
-              - 'backend/app/services/handoff_manifest_compat.py'
               - 'backend/app/services/handoff_snapshot.py'
               - 'backend/app/services/handoff.py'
               - 'backend/app/services/hr_handoff_profile_context.py'
@@ -401,6 +401,19 @@ jobs:
               - 'docs/specs/tasks/recruitment-employment-handoff-rso2-cutover.md'
               - 'hostflow-frontend/src/components/hr/HrHandoffContextSummary.tsx'
               - 'hostflow-frontend/src/api/hrWorkspace.ts'
+            rso2e:
+              - 'backend/app/reference/ready_for_employment.py'
+              - 'backend/app/services/hr_handoff_read_model.py'
+              - 'backend/app/services/hr_inbox.py'
+              - 'backend/app/services/hr_handoff_profile_context.py'
+              - 'backend/app/services/hr_documents_queue.py'
+              - 'backend/app/services/employment_accept_orchestrator.py'
+              - 'backend/tests/platform/test_rso2_cutover_gate.py'
+              - 'backend/tests/platform/test_rso2_emit_manifest_gate.py'
+              - 'backend/tests/platform/test_rso2_auto_init_gate.py'
+              - 'backend/tests/platform/test_rso2_read_model_gate.py'
+              - 'docs/specs/tasks/recruitment-employment-handoff-rso2e-shim-delete.md'
+              - 'docs/specs/tasks/recruitment-employment-handoff-rso2-cutover.md'
             esa1:
               - 'backend/app/reference/employment_start_allowed.py'
               - 'backend/app/services/employment_start_allowed_evidence.py'
@@ -1116,6 +1129,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_rso2_read_model_gate.py') != ''
         with:
           tests: tests/platform/test_rso2_read_model_gate.py
+
+  rso2-cutover-gate:
+    name: RSO-2E Manifest Cutover Gate
+    needs: changes
+    if: needs.changes.outputs.rso2e == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RSO-2E cutover gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_rso2_cutover_gate.py') == ''
+        run: echo "RSO-2E cutover gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_rso2_cutover_gate.py') != ''
+        with:
+          tests: tests/platform/test_rso2_cutover_gate.py
 
   eso1-accept-policy-gate:
     name: Employment Accept Policy Gate
