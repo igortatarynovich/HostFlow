@@ -1,8 +1,9 @@
 # RSO-2D — HR host read-model cutover
 
-**Status:** **OPEN**  
+**Status:** **PASS**  
 **Phase class:** product  
 **Opened:** 2026-09-13  
+**PASS stamp:** 2026-09-13 · implementation `aa0461d2` · `rso2-read-model-gate` **9 passed** · 2B/2C regression **26 passed** · STOP before RSO-2E  
 **Parent:** [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md)  
 **Depends on:**  
 - RSO-1 PASS: [`../architecture/ready-for-employment-contract.md`](../architecture/ready-for-employment-contract.md)  
@@ -14,6 +15,23 @@
 
 > **Read-model only.** Cut over HR host operational reads so current values come from live authorities (Person / Documents Hub / Employer / Vacancy) and the manifest supplies Why Ready (fits / requirement verdicts / evidence refs) + as-of audit only.  
 > Do **not** delete `handoff_manifest_compat` (RSO-2E). Do **not** retouch Transfer emit or Employment auto-init. Do **not** open Slice 4.
+
+---
+
+## PASS evidence
+
+| Proof | Evidence |
+|-------|----------|
+| Implementation SHA | `aa0461d2` |
+| Gate | `rso2-read-model-gate` **9 passed** |
+| Regression | 2B + 2C + 2D together **26 passed** |
+| Operational currents | live Person / Hub / Vacancy / Employer — inbox/profile/queue do **not** call `coerce_snapshot_payload_for_legacy_readers` |
+| Manifest | Why Ready / fits / verdicts / evidence refs / as-of only (`why_ready`) |
+| Frontend | `HrHandoffContextSummary` displays backend `why_ready` — does **not** reconstruct context from snapshot |
+| Compat shim | `handoff_manifest_compat.py` still present; **not** deleted (RSO-2E) |
+| Out of slice | RSO-2E · Slice 4 · Full Spine **not touched** |
+
+**STOP.** Do **not** open RSO-2E in this stamp. Next = RSO-2E delete shim (separate brief/PR).
 
 ---
 
@@ -77,22 +95,22 @@ HR opens /app/hr/handoffs/:id (post Transfer + auto-init)
 
 ## PASS criteria (machine)
 
-- [ ] Inbox `candidate_display_name` for RFE handoffs comes from **live Person**  
-- [ ] HR verification profile **current** identity prefers **live Person** without `coerce_snapshot_payload_for_legacy_readers`  
-- [ ] Document verification / queue operational statuses prefer **Hub**; names from live Person  
-- [ ] Vacancy / employer current labels resolve from **live entities** when refs exist  
-- [ ] Why Ready readable from **backend** `why_ready` (manifest-derived)  
-- [ ] Operational helpers in `hr_inbox` / `hr_handoff_profile_context` / `hr_documents_queue` do **not** call coerce  
-- [ ] `handoff_manifest_compat.py` still present  
-- [ ] RSO-2B emit + RSO-2C auto-init regression green  
-- [ ] Slice 4 / Full Spine / new ACL untouched  
-- [ ] Named gate `rso2-read-model-gate` green  
+- [x] Inbox `candidate_display_name` for RFE handoffs comes from **live Person**  
+- [x] HR verification profile **current** identity prefers **live Person** without `coerce_snapshot_payload_for_legacy_readers`  
+- [x] Document verification / queue operational statuses prefer **Hub**; names from live Person  
+- [x] Vacancy / employer current labels resolve from **live entities** when refs exist  
+- [x] Why Ready readable from **backend** `why_ready` (manifest-derived)  
+- [x] Operational helpers in `hr_inbox` / `hr_handoff_profile_context` / `hr_documents_queue` do **not** call coerce  
+- [x] `handoff_manifest_compat.py` still present  
+- [x] RSO-2B emit + RSO-2C auto-init regression green  
+- [x] Slice 4 / Full Spine / new ACL untouched  
+- [x] Named gate `rso2-read-model-gate` green (**9 passed**)  
 
 ---
 
 ## After machine PASS
 
-1. **PASS stamped** on this brief with implementation SHA.  
+1. **PASS stamped** @ `aa0461d2`.  
 2. **STOP.** Do **not** open RSO-2E in the same change.  
 3. Next separate: RSO-2E delete compat shim + named cutover gate.
 
