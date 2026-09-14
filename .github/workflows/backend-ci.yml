@@ -112,6 +112,7 @@ jobs:
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       rso2b: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rso2b == 'true' }}
       rso2c: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rso2c == 'true' }}
+      rso2d: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rso2d == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
       esa3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa3 == 'true' }}
@@ -388,6 +389,18 @@ jobs:
               - 'hostflow-frontend/src/pages/hr/HrHandoffDetailPage.tsx'
               - 'hostflow-frontend/src/pages/hr/HrInboxPage.tsx'
               - 'hostflow-frontend/src/api/handoffs.ts'
+            rso2d:
+              - 'backend/app/services/hr_handoff_read_model.py'
+              - 'backend/app/services/hr_inbox.py'
+              - 'backend/app/services/hr_handoff_profile_context.py'
+              - 'backend/app/services/hr_documents_queue.py'
+              - 'backend/app/services/hr_documents_hub.py'
+              - 'backend/app/api/v1/hr_inbox.py'
+              - 'backend/tests/platform/test_rso2_read_model_gate.py'
+              - 'docs/specs/tasks/recruitment-employment-handoff-rso2d-read-model.md'
+              - 'docs/specs/tasks/recruitment-employment-handoff-rso2-cutover.md'
+              - 'hostflow-frontend/src/components/hr/HrHandoffContextSummary.tsx'
+              - 'hostflow-frontend/src/api/hrWorkspace.ts'
             esa1:
               - 'backend/app/reference/employment_start_allowed.py'
               - 'backend/app/services/employment_start_allowed_evidence.py'
@@ -1088,6 +1101,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_rso2_auto_init_gate.py') != ''
         with:
           tests: tests/platform/test_rso2_auto_init_gate.py
+
+  rso2-read-model-gate:
+    name: RSO-2D Read-Model Gate
+    needs: changes
+    if: needs.changes.outputs.rso2d == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RSO-2D read-model gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_rso2_read_model_gate.py') == ''
+        run: echo "RSO-2D read-model gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_rso2_read_model_gate.py') != ''
+        with:
+          tests: tests/platform/test_rso2_read_model_gate.py
 
   eso1-accept-policy-gate:
     name: Employment Accept Policy Gate

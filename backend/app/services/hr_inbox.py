@@ -41,66 +41,6 @@ QUEUE_RETURNED = "returned_to_recruitment"
 QUEUE_REJECTED = "rejected_by_hr"
 
 
-def _candidate_display_from_snapshot(snapshot: dict[str, Any] | None) -> str | None:
-    from backend.app.services.handoff_manifest_compat import coerce_snapshot_payload_for_legacy_readers
-
-    snapshot = coerce_snapshot_payload_for_legacy_readers(snapshot)
-    if not isinstance(snapshot, dict):
-        return None
-    cand = snapshot.get("candidate")
-    if isinstance(cand, dict):
-        parts = [
-            str(cand.get("first_name") or (cand.get("name") or {}).get("first_name") or "").strip(),
-            str(cand.get("last_name") or (cand.get("name") or {}).get("last_name") or "").strip(),
-        ]
-        name = " ".join(p for p in parts if p).strip()
-        if name:
-            return name
-        email = str(cand.get("email") or "").strip()
-        if email:
-            return email
-    summary = snapshot.get("candidate_snapshot_summary")
-    if isinstance(summary, dict):
-        dn = str(summary.get("display_name") or summary.get("name") or "").strip()
-        if dn:
-            return dn
-    return None
-
-
-def _transfer_summary_from_snapshot(snapshot: dict[str, Any] | None) -> dict[str, Any] | None:
-    from backend.app.services.handoff_manifest_compat import coerce_snapshot_payload_for_legacy_readers
-
-    snapshot = coerce_snapshot_payload_for_legacy_readers(snapshot)
-    if not isinstance(snapshot, dict):
-        return None
-    cand = snapshot.get("candidate")
-    base: dict[str, Any] = cand if isinstance(cand, dict) else {}
-    if not base:
-        summary = snapshot.get("candidate_snapshot_summary")
-        base = summary if isinstance(summary, dict) else snapshot
-    vacancy = snapshot.get("vacancy") if isinstance(snapshot.get("vacancy"), dict) else {}
-    app = snapshot.get("application") if isinstance(snapshot.get("application"), dict) else {}
-    name = base.get("name") if isinstance(base.get("name"), dict) else {}
-    contacts = base.get("contacts") if isinstance(base.get("contacts"), dict) else {}
-    docs = snapshot.get("documents") if isinstance(snapshot.get("documents"), list) else []
-    out = {
-        "first_name": base.get("first_name") or name.get("first_name"),
-        "last_name": base.get("last_name") or name.get("last_name"),
-        "email": base.get("email") or contacts.get("email"),
-        "phone": base.get("phone") or contacts.get("phone"),
-        "citizenship": base.get("citizenship") or snapshot.get("citizenship"),
-        "work_country": base.get("work_country") or snapshot.get("work_country"),
-        "position_category": base.get("position_category") or snapshot.get("position_category"),
-        "vacancy_title": vacancy.get("title")
-        or app.get("vacancy_title")
-        or base.get("vacancy_title")
-        or snapshot.get("vacancy_title"),
-        "documents_count": snapshot.get("documents_count") or base.get("documents_count") or len(docs) or None,
-    }
-    cleaned = {k: v for k, v in out.items() if v not in (None, "")}
-    return cleaned or None
-
-
 async def _document_verification_counts_by_review(
     db: AsyncSession,
     *,
@@ -217,7 +157,12 @@ def enrich_handoff_inbox_row(
     delayed_workforce: bool,
     documents_verified_count: int | None = None,
     documents_total_count: int | None = None,
+    candidate_display_name: str | None = None,
+    transfer_summary: dict[str, Any] | None = None,
+    why_ready: dict[str, Any] | None = None,
+    live_target_work: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Build inbox row. Current identity/target must be supplied from live authorities (RSO-2D)."""
     review_status = review.status if review else None
     emp_id = workforce_employee_id or (str(review.employee_id) if review and review.employee_id else None)
     employment_approved = review_status == HR_REVIEW_STATUS_APPROVED
@@ -234,7 +179,7 @@ def enrich_handoff_inbox_row(
         "hr_review_id": str(review.id) if review else None,
         "hr_review_status": review_status,
         "operational_queue": operational_queue,
-        "candidate_display_name": _candidate_display_from_snapshot(snapshot),
+        "candidate_display_name": candidate_display_name,
         "delayed_hr_workforce_creation": delayed_workforce,
         "can_approve_for_employment": bool(
             review
@@ -248,10 +193,70 @@ def enrich_handoff_inbox_row(
             and not employment_approved
             and operational_queue not in (QUEUE_RETURNED, QUEUE_REJECTED)
         ),
-        "transfer_summary": _transfer_summary_from_snapshot(snapshot),
+        "transfer_summary": transfer_summary,
+        "why_ready": why_ready,
+        "live_target_work": live_target_work,
         "documents_verified_count": documents_verified_count,
         "documents_total_count": documents_total_count,
     }
+
+
+async def _candidates_by_ids(
+    db: AsyncSession,
+    candidate_ids: list[str],
+) -> dict[str, Candidate]:
+    ids = [str(c).strip() for c in candidate_ids if str(c or "").strip()]
+    if not ids:
+        return {}
+    rows = (await db.execute(select(Candidate).where(Candidate.id.in_(ids)))).scalars().all()
+    return {str(c.id): c for c in rows}
+
+
+async def _enrich_row_with_live_read_model(
+    db: AsyncSession,
+    *,
+    handoff: CandidateHandoff,
+    snapshot: dict[str, Any] | None,
+    candidate: Candidate | None,
+    workforce_employee_id: str | None,
+    review: WorkforceHrReview | None,
+    delayed_workforce: bool,
+    documents_verified_count: int | None = None,
+    documents_total_count: int | None = None,
+) -> dict[str, Any]:
+    from backend.app.services.hr_handoff_read_model import (
+        build_transfer_summary_live,
+        build_why_ready_from_manifest,
+        display_name_from_live_person,
+        live_person_flat,
+        load_live_target_work,
+    )
+
+    flat = live_person_flat(candidate)
+    live_target = await load_live_target_work(
+        db, candidate=candidate, handoff=handoff, manifest=snapshot
+    )
+    why_ready = build_why_ready_from_manifest(snapshot)
+    docs_count = documents_total_count
+    if docs_count is None and why_ready and isinstance(why_ready.get("evidence_refs"), list):
+        docs_count = len(why_ready["evidence_refs"]) or None
+    return enrich_handoff_inbox_row(
+        handoff=handoff,
+        snapshot=snapshot,
+        workforce_employee_id=workforce_employee_id,
+        review=review,
+        delayed_workforce=delayed_workforce,
+        documents_verified_count=documents_verified_count,
+        documents_total_count=documents_total_count,
+        candidate_display_name=display_name_from_live_person(flat),
+        transfer_summary=build_transfer_summary_live(
+            live_person=flat,
+            live_target=live_target,
+            documents_count=docs_count,
+        ),
+        why_ready=why_ready,
+        live_target_work=live_target or None,
+    )
 
 
 async def _workforce_employee_id_by_handoff(
@@ -347,6 +352,9 @@ async def list_internal_hr_handoffs_for_hr_inbox(
     review_ids = [str(r.id) for r in reviews_by_hid.values() if r and r.id]
     doc_counts = await _document_verification_counts_by_review(db, tenant_id=tid, review_ids=review_ids)
 
+    cand_ids = [str(h.candidate_id) for h in handoffs_only if h.candidate_id]
+    candidates = await _candidates_by_ids(db, cand_ids)
+
     items: list[dict[str, Any]] = []
     for handoff, snap in pairs:
         snap_dict = dict(snap.payload) if snap is not None else None
@@ -357,10 +365,13 @@ async def list_internal_hr_handoffs_for_hr_inbox(
             counts = doc_counts.get(str(review.id))
             if counts:
                 verified_n, total_n = counts
+        cand = candidates.get(str(handoff.candidate_id)) if handoff.candidate_id else None
         items.append(
-            enrich_handoff_inbox_row(
+            await _enrich_row_with_live_read_model(
+                db,
                 handoff=handoff,
                 snapshot=snap_dict,
+                candidate=cand,
                 workforce_employee_id=wf_by_hid.get(hid),
                 review=review,
                 delayed_workforce=delayed_workforce,
@@ -411,9 +422,14 @@ async def get_internal_hr_handoff_inbox_row(
         counts = doc_counts.get(str(review.id))
         if counts:
             verified_n, total_n = counts
-    return enrich_handoff_inbox_row(
+    cand = None
+    if handoff.candidate_id:
+        cand = await db.get(Candidate, str(handoff.candidate_id))
+    return await _enrich_row_with_live_read_model(
+        db,
         handoff=handoff,
         snapshot=snap_dict,
+        candidate=cand,
         workforce_employee_id=wf_map.get(hid),
         review=review,
         delayed_workforce=delayed_workforce,
