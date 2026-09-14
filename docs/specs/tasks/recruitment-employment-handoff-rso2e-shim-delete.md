@@ -1,8 +1,9 @@
 # RSO-2E — Delete compat shim + Manifest Cutover Gate
 
-**Status:** **OPEN**  
+**Status:** **PASS**  
 **Phase class:** product  
 **Opened:** 2026-09-14  
+**PASS stamp:** 2026-09-14 · implementation `909ce8a5` · `rso2-cutover-gate` **10 passed** · combined RSO-2B/C/D/E **33 passed** · STOP before Slice 4  
 **Parent:** [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md)  
 **Depends on:**  
 - **RSO-2D PASS** ([`recruitment-employment-handoff-rso2d-read-model.md`](recruitment-employment-handoff-rso2d-read-model.md) @ `aa0461d2`)  
@@ -15,6 +16,24 @@
 > Persist remains `ready_for_employment.v1` on `CandidateHandoffSnapshot.payload` for `internal_hr`.  
 > Live currents stay on domain authorities; manifest stays Why Ready / as-of.  
 > Do **not** open Slice 4.
+
+---
+
+## PASS evidence
+
+| Proof | Evidence |
+|-------|----------|
+| Implementation SHA | `909ce8a5` |
+| Gate | `rso2-cutover-gate` **10 passed** |
+| Regression | combined RSO-2B/C/D/E **33 passed** |
+| Compat shim | `handoff_manifest_compat.py` **deleted** |
+| Runtime | no `coerce_*` / `project_manifest_to_legacy_*` in `backend/app` |
+| Current HR reads | live Person / Hub / Vacancy / Employer |
+| Manifest | immutable boundary / Why Ready / as-of only |
+| Persist | `internal_hr` `CandidateHandoffSnapshot.payload` = `ready_for_employment.v1` only |
+| Out of slice | Slice 4 · Full Spine **not opened** |
+
+**STOP.** Recruitment → Employment **boundary cutover closed**. Slice 4 is a separate decision.
 
 ---
 
@@ -71,22 +90,22 @@ HR host / inbox / verification profile / document queues
 
 ## PASS criteria (machine)
 
-- [ ] `handoff_manifest_compat.py` does not exist  
-- [ ] No `coerce_snapshot_payload_for_legacy_readers` / `project_manifest_to_legacy_snapshot_shape` in `backend/app`  
-- [ ] Operational HR consumers do not project current identity from legacy `payload["candidate"]`  
-- [ ] `internal_hr` persist path still writes RFE only  
-- [ ] Why Ready still from `build_why_ready_from_manifest`  
-- [ ] Named gate `rso2-cutover-gate` green  
-- [ ] `rso2-emit-manifest-gate` / `rso2-auto-init-gate` / `rso2-read-model-gate` green  
-- [ ] Slice 4 / Full Spine untouched  
+- [x] `handoff_manifest_compat.py` does not exist  
+- [x] No `coerce_snapshot_payload_for_legacy_readers` / `project_manifest_to_legacy_snapshot_shape` in `backend/app`  
+- [x] Operational HR consumers do not project current identity from legacy `payload["candidate"]`  
+- [x] `internal_hr` persist path still writes RFE only  
+- [x] Why Ready still from `build_why_ready_from_manifest`  
+- [x] Named gate `rso2-cutover-gate` green (**10 passed**)  
+- [x] `rso2-emit-manifest-gate` / `rso2-auto-init-gate` / `rso2-read-model-gate` green (combined 2B–2E **33 passed**)  
+- [x] Slice 4 / Full Spine untouched  
 
 ---
 
 ## After machine PASS
 
-1. **PASS stamped** with implementation SHA.  
+1. **PASS stamped** @ `909ce8a5`.  
 2. **STOP.** Do not open Slice 4 in this change.  
-3. Recruitment → Employment **boundary cutover** may be closed; Slice 4 is a separate decision.
+3. Recruitment → Employment **boundary cutover closed**; Slice 4 is a separate decision.
 
 ---
 
