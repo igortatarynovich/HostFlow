@@ -1,7 +1,7 @@
 # ADR-042: Spine / Policy Separation (platform workflow kernel)
 
-**Status:** **Proposed** (Awaiting Accept)  
-**Date:** 2026-09-15  
+**Status:** **Accepted**  
+**Accepted:** 2026-09-15  
 **Trusted base:** `integration/release-product-a-b`  
 **Does not supersede:** [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md) · [`ADR-016`](ADR-016-requirement-evidence-document-separation.md) · [`ADR-018`](ADR-018-requirement-policy-evaluation-model.md) · [`ADR-037`](ADR-037-lifecycle-identity-canon.md) · RSO/ESO/ESA named gate PASSes · [`recruitment-employment-boundary-ownership.md`](recruitment-employment-boundary-ownership.md)  
 **Related:** [`employment-start-allowed.md`](employment-start-allowed.md) · [`three-host-full-spine-gate-pem1.md`](../tasks/three-host-full-spine-gate-pem1.md) · inventory [`spine-policy-separation-inventory.md`](../tasks/spine-policy-separation-inventory.md) · [`architecture-invariants.md`](architecture-invariants.md)
@@ -78,11 +78,17 @@ This path is designed **without** thinking about Code95, BHP, citizenship, or va
 
 After this table, the **platform skeleton is largely defined**. Each process then deepens **independently**.
 
-| Process outward contract (example) | Must remain true |
-|------------------------------------|------------------|
-| Recruitment | Person **ready / not ready** for Transfer — Recruitment internals (scoring, packs, language) stay inside |
-| Employment | Employment case progresses; admit and start decisions Employment-owned — Recruitment must not know Contract/Medical/BHP machinery |
-| Workforce | Post-start lifecycle — not a Recruitment/Employment topology fork |
+### 2a. Module publishes process contract — not policy internals
+
+A module **exposes** the process result and allowed actions. A neighbour **must not** know which rules produced that result.
+
+| Module | Outward process contract | Hidden inside |
+|--------|--------------------------|---------------|
+| Recruitment | Ready / not ready; Transfer package (`ready_for_employment.v1` decisions) | Scoring, packs, Code95, language, recruiter exceptions |
+| Employment | Process state; admit/start verdicts + allowed actions | Contract/Medical/BHP rule machinery, formalize depth |
+| Workforce | Active-employee state + allowed ops | Internal workforce policies |
+
+**Consequence:** Full Spine can be stabilized **once**. Recruitment, Employment, Legalization, Posting deepen independently without rebuilding the person path.
 
 ### 3. Layers inside a process
 
@@ -111,6 +117,26 @@ Facts / Evidence / Actions → Rules → Policy → Transition permission → St
 
 Warehouse, office, EU driver, third-country, B2B, posted worker → **one каркас**, different process policies — not six spines.
 
+Walks 1–4 remain **useful evidence** of past kernel/policy/evidence conflation. They are **not** criteria for Spine existence.
+
+### 4a. Neutral policy ≠ bypass (hard lock)
+
+Baseline Full Spine proves **existence and composition** of the каркас. It does **not** prove that production policy can be switched off.
+
+**Allowed:** a normal **policy contract** whose configuration may contain **no additional requirements**. Then `allowed` is returned **by the same policy engine** — штатно, not around it.
+
+**Forbidden for kernel proof:**
+
+| Bypass form | Why rejected |
+|-------------|--------------|
+| `if test` / env / CI-only short-circuit of production policy | Not the product path |
+| Special tenant flag that disables admit/Ready engines | Shadow spine |
+| Direct call of internal APIs that skip evaluate → verdict | Not a process contract |
+| Operator-set `start_allowed` / forged Ready | False continuity |
+| Seed helpers that mint Started without hosts | Not three-host composition |
+
+Neutral/minimal = **empty or zero-requirement ruleset on the real policy surface**. Same hosts, same evaluate path, same verdict shape (`allowed|blocked|missing|unsupported_context` + `next_action`).
+
 ### 5. Hard bans
 
 | Ban | Meaning |
@@ -119,14 +145,37 @@ Warehouse, office, EU driver, third-country, B2B, posted worker → **one кар
 | **No condition-as-route-infrastructure** | Missing Hub type/evidence ≠ “spine cannot exist” |
 | **No bottom-up architecture** | Do not start from documents/rules and invent the person route |
 | **No Walk-as-kernel** | Continuous Started under PEM-1 document load ≠ Full Spine PASS |
+| **No neutral-as-bypass** | Kernel proof must not disable or skip the policy engine |
 
-### 6. Remediation posture (after Accept)
+### 6. Defect classification (before any fix)
 
-1. **Map restore** ([inventory](../tasks/spine-policy-separation-inventory.md)): life path → processes → modules → boundaries → process I/O.  
-2. **Second layer:** overlay RSO/ESO/ESA, requirements, documents, policies — mark **leaks** (process logic into каркас).  
-3. Remediate **only** leaks. Keep working RSO/ESO/ESA; re-bind as process/policy surfaces where needed.  
-4. **Do not** open further Contract/BHP/Code95 fixes **as Full Spine topology**.  
-5. Baseline lifecycle proof, then PEM-1 policy composition separately.
+Every later STOP / defect is classified **before** remediation:
+
+| Class | Means | Example |
+|-------|-------|---------|
+| **kernel defect** | Transition, ownership, handoff, identity, or host composition broken | Transfer does not create Employment case; IDs diverge |
+| **policy / rule defect** | Wrong or incomplete ruleset for a context | PEM-1 admit missing BHP rule |
+| **evidence / authority defect** | Proof exists but wrong SoT / Hub identity / alias | approved `code95` not seen as DQC |
+| **integration defect** | Boundary/API/host wiring wrong while process and policy are sound | wrong host path; ACL scope miss |
+
+A Code95 hole is **not** “Full Spine broken” unless classified as kernel.
+
+### 7. Ordered program (after Accept)
+
+| Step | Work | Proves / produces | Status |
+|------|------|-------------------|--------|
+| **1** | **Accept ADR-042** | Design rule: life path → processes → modules → policies/rules | **DONE** 2026-09-15 |
+| **2** | Finish inventory I/O | Six-field cards P1–P6 | **DONE** |
+| **3a** | Baseline Kernel proof attempt | Preflight: zero-requirement expressible? | **STOP** — Admit not a composable policy engine ([brief](../tasks/baseline-full-spine-kernel-proof.md)) |
+| **3b** | **Admit policy / ruleset separation** | `employment_start_allowed.v1` = process-policy + pluggable ruleset (PEM-1 = one ruleset; `[]` → allowed штатно) | **OPEN** — [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) |
+| **3c** | Dual zero-policy preflight | Full Ready evaluator + Admit evaluator each → `allowed` under `[]` | After 3b PASS |
+| **3d** | **Baseline Full Spine Kernel proof** (new person P1→P6) | Continuity, ownership, handoffs, identity; neutral ≠ bypass | After 3c |
+| **4** | **PEM-1 Policy Composition proof** | Same каркас + PEM-1 ruleset may block | After kernel PASS |
+| **5** | Ongoing defects | Classify per §6 before fix | Ongoing |
+
+**Corollary (from Kernel preflight STOP):** zero-requirement is **not** a kernel special-case. It is a **mandatory property** of a composable policy engine. If empty composition cannot be evaluated correctly, rules are still embedded in topology.
+
+Do **not** change architecture or write runtime for spine topology between steps 1–3. Do **not** open Contract/BHP/Code95 fixes **as Full Spine topology**.
 
 ---
 
@@ -135,19 +184,21 @@ Warehouse, office, EU driver, third-country, B2B, posted worker → **one кар
 ### Positive
 
 - Top-down platform that scales contexts without N spines.  
-- Clear Full Spine vs PEM-1 proof split.  
-- STOP diagnosis: kernel vs process policy vs evidence.
+- Clear Full Spine vs PEM-1 proof split; neutral ≠ bypass.  
+- Modules publish process contracts; neighbours stay ignorant of rule internals.  
+- STOP diagnosis: kernel / policy-rule / evidence-authority / integration.
 
 ### Negative / cost
 
 - Reclassify recent walks/gates.  
-- Inventory before Full Spine PASS.  
-- Resist “add Hub type to green Walk N” as architecture.
+- Inventory I/O before kernel proof.  
+- Resist “add Hub type to green Walk N” and “disable policy for kernel” as architecture.
 
 ### Compatibility
 
 - Does not void RSO-2 / ESO-4 / ESA / ESO-5 PASSes.  
-- Hub identity fixes remain valid **inside Employment/Recruitment policy evidence**, not as kernel substitutes.
+- Hub identity fixes remain valid **inside Employment/Recruitment policy evidence**, not as kernel substitutes.  
+- Walks 1–4 retained as historical evidence — not Spine existence criteria.
 
 ---
 
@@ -159,19 +210,21 @@ Warehouse, office, EU driver, third-country, B2B, posted worker → **one кар
 | Per-vacancy / per-nationality spines | Forks life path; INV-07 |
 | Equate Full Spine with PEM-1 | Confuses kernel with one policy composition |
 | Treat Walk 4 Started as Full Spine PASS | Policy-laden ≠ kernel |
+| Kernel proof via tenant flag / `if test` / internal skip | Neutral-as-bypass |
 
 ---
 
 ## Accept criteria
 
-| # | Criterion |
-|---|-----------|
-| A1 | Accepted by Architecture canon owner |
-| A2 | Full Spine brief **NOT PASS** until baseline kernel proof; PEM-1 named separately |
-| A3 | Inventory holds life-path → process → module map + leak overlay |
-| A4 | Catalog / domain-map cross-refs |
+| # | Criterion | Status |
+|---|-----------|--------|
+| A1 | Accepted by Architecture canon owner | **MET** 2026-09-15 |
+| A2 | Full Spine brief **NOT PASS** until baseline kernel proof; PEM-1 named separately | **MET** (hold) |
+| A3 | Inventory holds life-path → process → module map + leak overlay; I/O excludes document types as topology | **MET** (P1–P6 cards CLOSED 2026-09-15) |
+| A4 | Catalog / domain-map cross-refs | **MET** |
+| A5 | Neutral ≠ bypass lock (§4a); defect classes (§6) are the remediation taxonomy | **MET** |
 
-**Runtime / migrations:** not required for Accept.
+**Runtime / migrations:** not required for Accept. Not opened by Accept.
 
 ---
 
@@ -179,8 +232,10 @@ Warehouse, office, EU driver, third-country, B2B, posted worker → **one кар
 
 | Doc | Role |
 |-----|------|
-| [`spine-policy-separation-inventory.md`](../tasks/spine-policy-separation-inventory.md) | Map + leak overlay |
-| [`three-host-full-spine-gate-pem1.md`](../tasks/three-host-full-spine-gate-pem1.md) | NOT PASS; Full Spine ≠ PEM-1 |
+| [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) | Classified **policy/rule** fix — Admit process-policy vs PEM-1 ruleset |
+| [`baseline-full-spine-kernel-proof.md`](../tasks/baseline-full-spine-kernel-proof.md) | Kernel proof **NOT PASS** (preflight STOP) |
+| [`spine-policy-separation-inventory.md`](../tasks/spine-policy-separation-inventory.md) | P1–P6 six-field map **CLOSED** |
+| [`three-host-full-spine-gate-pem1.md`](../tasks/three-host-full-spine-gate-pem1.md) | PEM-1-laden walks — historical |
 | [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) | ADR index |
 | [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md) | Domain linkage |
 
@@ -189,4 +244,8 @@ Warehouse, office, EU driver, third-country, B2B, posted worker → **one кар
 ## Changelog
 
 - 2026-09-15: Proposed — Spine/Policy Separation.  
-- 2026-09-15: Amended — top-down **path → process → module → policy**; explicit **Full Spine ≠ PEM-1**.
+- 2026-09-15: Amended — top-down **path → process → module → policy**; explicit **Full Spine ≠ PEM-1**.  
+- 2026-09-15: Amended — **neutral ≠ bypass**; module process contracts; ordered Accept→inventory→kernel→PEM-1; defect classes.  
+- 2026-09-15: **Accepted** — no architecture/runtime change on Accept; next = inventory six-field I/O.  
+- 2026-09-15: Inventory P1–P6 cards **CLOSED**; Baseline Kernel proof opened — [`../tasks/baseline-full-spine-kernel-proof.md`](../tasks/baseline-full-spine-kernel-proof.md).  
+- 2026-09-15: Kernel preflight STOP → Admit is PEM-1 composition as evaluator; program inserts **Admit policy/ruleset separation** before retry — [`../tasks/admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md).

@@ -6,11 +6,11 @@
 **Opened:** 2026-09-15  
 **Closed:** *reopened as NOT PASS 2026-09-15* — Walk 4 continuous Started is **not** accepted as baseline lifecycle kernel proof  
 **Walk attempted:** walk 1–3 STOP · walk 4 continuous under **policy-laden** PEM-1 config (reclassified)  
-**Architecture parent:** [`ADR-042-spine-policy-separation.md`](../architecture/ADR-042-spine-policy-separation.md) (**Proposed**) — path → process → module → policy  
-**STOP / hold:** Full Spine remains **NOT PASS** until **baseline lifecycle kernel proof** (minimal/neutral policy) exists per ADR-042  
-**Critical split:** **Full Spine ≠ PEM-1** — Full Spine proves каркас Lead → Recruitment → Handoff → Employment → Start → Workforce; PEM-1 separately proves one worker-context policy composition  
-**Scenario (historical walks):** [`../../analysis/production-employment-minimum.md`](../../analysis/production-employment-minimum.md) — **PEM-1** (policy composition only; not kernel)  
-**Map / leaks:** [`spine-policy-separation-inventory.md`](spine-policy-separation-inventory.md)  
+**Architecture parent:** [`ADR-042-spine-policy-separation.md`](../architecture/ADR-042-spine-policy-separation.md) (**Accepted** 2026-09-15) — path → process → module → policy  
+**STOP / hold:** Full Spine remains **NOT PASS** until **baseline lifecycle kernel proof** (minimal/neutral policy, neutral ≠ bypass)  
+**Critical split:** **Full Spine ≠ PEM-1** — Full Spine proves каркас; PEM-1 separately proves one worker-context policy composition  
+**Walks 1–4:** retained as historical evidence of kernel/policy/evidence conflation — **not** Spine existence criteria  
+**Map / I/O:** [`spine-policy-separation-inventory.md`](spine-policy-separation-inventory.md) (six-field process cards)  
 **Parents:**  
 - [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) (Spine / Policy Separation)  
 - [`employment-spine-orchestrator-v1.md`](employment-spine-orchestrator-v1.md)  
@@ -32,8 +32,10 @@
 
 | Proof | Must prove | Must not prove |
 |-------|------------|----------------|
-| **Full Spine (kernel)** | Continuous каркас Lead/Apply → Recruitment → Handoff → Employment → Start → Workforce under **minimal/neutral** policy | Driver packs, Contract/Medical/BHP, Code95, citizenship |
+| **Full Spine (kernel)** | Continuous каркас Lead/Apply → Recruitment → Handoff → Employment → Start → Workforce under **штатная** minimal/neutral policy | Driver packs, Contract/Medical/BHP, Code95, citizenship |
 | **PEM-1 (policy composition)** | For PL domestic EU/EEA, correct policies wire (Recruitment quals + admit Contract/Medical/BHP) | That the каркас only exists when those documents are known |
+
+**Neutral ≠ bypass (ADR-042 §4a):** kernel `allowed` must come from the **real policy contract** configured with **no additional requirements** — same evaluate path and verdict shape. Reject: `if test`, tenant disable-policy flags, internal API skips, operator-set `start_allowed`, seed Started.
 
 Walks 1–4 in this file are **PEM-1-laden** artifacts. Walk 4 Started ≠ Full Spine PASS.
 
@@ -55,15 +57,17 @@ One continuous composition witness for **one** person through Lead → Recruitme
 
 ```text
 Lead / Apply
-  → Recruitment Ready (neutral / minimal readiness policy)
+  → Recruitment Ready (штатная Ready policy with zero extra requirements)
   → Transfer / RFE (ready_for_employment.v1)
   → Employment auto-init
   → Employee (Formalize→ensure; not Confirm-mint)
-  → start_allowed under neutral/minimal admit policy (or explicit unsupported_context→exception path that still proves the transition exists)
+  → start_allowed via штатная admit policy (zero extra requirements → allowed on evaluate)
   → human Confirm physical start
   → Started
   → Workforce handoff identity recoverable
 ```
+
+Same product hosts and policy engines as production. Empty/zero-requirement **ruleset** ≠ engine bypass.
 
 **Historical PEM-1 walk (policy composition — not kernel):**
 
@@ -110,8 +114,11 @@ ZUS / Insurance may appear **after** Started as lifecycle — not part of kernel
 | CI-only / seeded shortcut walk | Not a product composition witness |
 | Claiming Hiring E2E / RS-7 | Different program; remains closed |
 | Any new feature work “to enable” Full Spine inside this brief | This brief **forbids** code |
+| PEM-1 document walk as kernel PASS | Full Spine ≠ PEM-1 |
+| `if test` / tenant disable-policy / internal API skip of evaluate | Neutral-as-bypass |
+| Operator-set `start_allowed` / forged Ready / seed Started | Not process contract |
 
-**Hard rule:** Full Spine PASS is **not** arithmetic. It requires **one** composition witness.
+**Hard rule:** Full Spine PASS is **not** arithmetic and **not** a policy bypass. It requires **one** composition witness on real hosts through the real policy engine.
 
 ---
 
@@ -121,8 +128,9 @@ ZUS / Insurance may appear **after** Started as lifecycle — not part of kernel
 |------|------|
 | Code / migrations / UI / new APIs from this brief | **Forbidden** |
 | New Formalize / evidence / ACL / Hiring E2E scope | **Forbidden** |
-| Walk succeeds with invariants | **PASS** — stamp this brief + record witness ids |
-| Walk fails | **STOP** — name the concrete hole; only then open a **separate** gap-fix brief |
+| Neutral implemented as policy bypass | **Forbidden** |
+| Kernel walk succeeds with invariants + ADR-042 §4a | **PASS** — stamp kernel; record witness ids |
+| Walk fails | **STOP** — classify defect (kernel / policy-rule / evidence-authority / integration); only then open a **separate** gap-fix brief |
 
 Do **not** invent functionality from a STOP. The gap-fix is a later, explicit open.
 
@@ -132,10 +140,11 @@ Do **not** invent functionality from a STOP. The gap-fix is a later, explicit op
 
 | Outcome | When |
 |---------|------|
-| **PASS** | One continuous PEM-1 witness across three hosts; invariants held; ids traced; no false-close path used |
-| **STOP** | Witness breaks at a named step/host/invariant — record the hole; Full Spine remains **NOT PASS** |
+| **PASS (kernel)** | One continuous каркас witness across three hosts under штатная minimal policy (neutral ≠ bypass); invariants held; ids traced |
+| **STOP** | Witness breaks — record hole + **defect class**; Full Spine remains **NOT PASS** |
+| PEM-1 composition | Separate proof after kernel; not this stamp |
 
-**Full Spine Gate = NOT PASS.** Walks 1–3 remain STOP witnesses (policy/evidence holes mistaken for route infrastructure). Walk 4 is retained as a **policy-laden composition artifact** only — **not** kernel PASS. See [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md).
+**Full Spine Gate = NOT PASS.** Walks 1–3 remain STOP witnesses (evidence/authority holes mistaken for route infrastructure). Walk 4 is retained as a **policy-laden composition artifact** only — **not** kernel PASS. See [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md).
 
 ---
 
@@ -154,7 +163,7 @@ Life path → Processes → Modules → Boundaries/I/O → Policies/rules inside
 | Policy | May this action run **now**? (`allowed` / `blocked` / `missing` / … + `next_action`) |
 | Evidence | Inputs to rules (Code95, Contract, Medical, BHP, …) — never create a new route |
 
-**Do not** open further Contract/BHP/Code95 gap-fixes **as Full Spine topology**. Restore map + leak overlay: [`spine-policy-separation-inventory.md`](spine-policy-separation-inventory.md). Accept ADR-042 → baseline **kernel** proof → PEM-1 **policy composition** separately.
+**Do not** open further Contract/BHP/Code95 gap-fixes **as Full Spine topology**. Close six-field I/O: [`spine-policy-separation-inventory.md`](spine-policy-separation-inventory.md). Then baseline **kernel** proof → PEM-1 composition. Walks 1–4 retained as conflation evidence only.
 
 ---
 
@@ -304,9 +313,7 @@ Life path → Processes → Modules → Boundaries/I/O → Policies/rules inside
 
 ## Next
 
-1. **Accept** [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) (path → process → module → policy).  
-2. Complete Layer 1+2 in [`spine-policy-separation-inventory.md`](spine-policy-separation-inventory.md) — remediation = leaks only.  
-3. Open **baseline Full Spine kernel** proof (minimal/neutral policy).  
-4. PEM-1 policy composition proof only after kernel exists (Walk 4 may seed that proof — not this stamp).  
-5. Full Spine remains **NOT PASS**. Does **not** claim Release Readiness / Hiring E2E / RS-7.  
-6. Walks 1–3 gap PASSes remain valid as **evidence/policy** fixes, not as каркас topology.
+1. Execute [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) (P1→P6; neutral ≠ bypass; P5→P6 explicit).  
+2. Inventory cards **CLOSED** — P1 Ready leak classified (no auto-fix); Walks 1–4 evidence only.  
+3. **PEM-1 policy composition** only after kernel **PASS**.  
+4. Full Spine / kernel remains **NOT PASS** until baseline proof PASSes.

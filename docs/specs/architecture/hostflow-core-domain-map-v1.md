@@ -236,6 +236,6 @@ flowchart LR
 
 - **v1 (2026-05):** первая каноническая карта: flow Platform Core → Cross-company, GLOBAL/TENANT/COMPANY/MODULE scopes, bounded contexts, ownership matrix, module interaction rules, запреты.
 - **v1.1 (2026-05):** §6.4 порядок внедрения в код; старт P1b (enforcement recruitment на candidate API).
-- **2026-09-15:** [`ADR-042`](ADR-042-spine-policy-separation.md) (Proposed) — path → process → module → policy; Full Spine kernel ≠ PEM-1 composition; inventory leak overlay drives remediation.
+- **2026-09-15:** [`ADR-042`](ADR-042-spine-policy-separation.md) (**Accepted**) — Kernel STOP: Admit embeds PEM-1 as evaluator topology; next = [`../tasks/admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md).
 - **2026-09-03:** [`ADR-041`](ADR-041-verified-self-service-signup.md) — SignupIntent is GLOBAL; User/Tenant/trial appear only at complete; OwnCompany ≠ Tenant.
 - **2026-08-23:** [`ADR-037`](ADR-037-lifecycle-identity-canon.md) — lifecycle identity; stage existence is not `funnel_stages` / Candidate.stage HR lane.

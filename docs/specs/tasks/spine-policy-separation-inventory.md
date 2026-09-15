@@ -1,154 +1,230 @@
-# Inventory: Life path → Processes → Modules → Leaks
+# Inventory: Life path → Processes → Modules → Six-field cards
 
-**Status:** **OPEN** (map seeded; leak overlay in progress) — Accept of [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) still required to promote remediation  
-**Layer:** L3 inventory — not Full Spine PASS · not a document catalog gap-fix  
+**Status:** **CLOSED** (P1–P6 six-field architectural map) — 2026-09-15  
+**Layer:** L3 inventory — not Full Spine PASS · not a gap-fix · **no runtime**  
 **Phase class:** platform  
-**Opened:** 2026-09-15  
-**Parent:** [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) (**Proposed**)  
-**Does not open:** Walk 4 Continuations · Contract/BHP as spine topology · Hiring E2E · Release Readiness
+**Opened:** 2026-09-15 · **Cards closed:** 2026-09-15  
+**Parent:** [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) (**Accepted**)  
+**Unlocks:** [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md)  
+**Does not open:** Feature/gap-fix · architecture rewrite · PEM-1 as Spine · Hiring E2E · Release Readiness
 
-> **Layer 1:** restore the map — life path → processes → modules → boundaries → process I/O.  
-> **Layer 2:** overlay RSO/ESO/ESA / requirements / documents / policies — mark where internals leaked into the каркас.  
-> That leak list **is** the remediation plan.
+> Cards define the **kernel map**. They do **not** prove the kernel.  
+> Walks 1–4 = conflation evidence only — **not** Spine existence criteria.  
+> Classified leaks stay **classified**; no automatic fix from this close.
 
 ---
 
 ## Original Goal → Completion Proof
 
-**Problem this inventory must permanently remove:**  
-Ambiguity between “platform каркас broken” and “policy correctly blocks an action,” plus bottom-up document fixes mistaken for Full Spine architecture.
+**Problem removed by closing cards:**  
+Ambiguous process boundaries that let document lists masquerade as topology.
 
-**Completion proof (named consumer):**
+**Completion proof (this file):**
 
 ```text
-Published map: life path → process → module → I/O / boundary
-  → overlay classifies each major transition (clean | leak | unclear)
-  → remediation queue = leaks only
-  → Full Spine kernel proof brief can open (minimal/neutral policy)
-  → PEM-1 remains a separate policy-composition proof
+P1–P6 each have locked six fields (process contracts, not document lists)
+  → P1 Ready leak classified (do not auto-fix)
+  → P5→P6 contract stated; continuity proof deferred to kernel brief
+  → Baseline Full Spine Kernel proof may open
 ```
 
 ---
 
-## Layer 1 — Life path (person)
+## Program status (ADR-042 §7)
+
+| Step | Item | Status |
+|------|------|--------|
+| 1 | Accept ADR-042 | **DONE** |
+| 2 | Six-field I/O cards P1–P6 | **CLOSED** (this file) |
+| 3a | Baseline Kernel preflight | **STOP** — Admit embeds PEM-1 as evaluator |
+| 3b | Admit policy / ruleset separation | **OPEN** — [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) |
+| 3c | Dual zero-policy preflight (full Ready + Admit) | After 3b |
+| 3d | Baseline Kernel P1→P6 witness | After 3c — [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) |
+| 4 | PEM-1 Policy Composition proof | After kernel **PASS** |
+| 5 | Classified fixes only | Ongoing — no auto-fix from inventory |
+
+**Corollary:** zero-requirement = property of composable policy engine, not a kernel special-case. `r5_required_set=∅` alone ≠ neutral Recruitment Ready.
+
+---
+
+## Field semantics (locked — every card)
+
+| # | Field | Means | Must not mean |
+|---|-------|-------|----------------|
+| 1 | **Input** | Which **process contract** this module accepts | Which documents / requirements it demands |
+| 2 | **State / work** | What the process **does with the person** | Checklist of evidence types |
+| 3 | **Output** | Stable result **published outward** | Internal scoring / rule trace |
+| 4 | **Transition owner** | **Single** owner of the transition into/out of this process step | Shared / ambiguous ownership |
+| 5 | **Policy point** | Where policy/evaluator is invoked + **standard verdict shape** | Ruleset contents (Code95, BHP, …) |
+| 6 | **Next contract** | What the **next** process receives **without** knowing prior rules | Copy of prior internals |
+
+**Verdict shape (all policy points):** `allowed` | `blocked` | `missing` | `unsupported_context` (+ `next_action` where applicable). Neutral kernel uses the **same** shape with a **zero-requirement ruleset** (ADR-042 §4a — neutral ≠ bypass).
+
+---
+
+## Life path (каркас)
 
 ```text
-Отклик → Отбор → Передача → Трудоустройство → Выход на работу → Работа → завершение / изменение
-Lead/Apply → Recruitment → Handoff → Employment → Start → Workforce → …
+Lead/Apply → Recruitment (P1) → Handoff (P2) → Employment formalize (P3)
+  → Admit-to-work (P4) → Start (P5) → Workforce (P6) → …
 ```
 
-Designed **without** Code95, BHP, citizenship, vacancy packs.
+---
+
+## P1 — Recruitment
+
+| Field | Locked value |
+|-------|----------------|
+| **Input** | Process contract: **person entered Recruitment** (Lead/Application/Candidate bound to a role/vacancy target). Not a document pack. |
+| **State / work** | Selects and qualifies the person for Transfer: Fits decision, recruitment-missing resolution, Ready eligibility. |
+| **Output** | Stable outward result: **Ready** or **not Ready** for Transfer (eligibility to leave Recruitment). |
+| **Transition owner** | **Recruitment** alone. |
+| **Policy point** | Transfer-readiness / recruitment-missing **evaluate** → standard verdict (`allowed`/`blocked`/`missing`/`unsupported_context` + `next_action`). Ruleset contents are **not** topology. |
+| **Next contract** | Handoff (P2) receives: **Ready person + authority to emit** `ready_for_employment.v1` decisions. Handoff does not see Recruitment scoring/packs/rules. |
+
+**Surfaces:** RSO-1 · transfer-readiness · Evidence as **inputs to policy only**.
+
+### P1 Ready — classified leak (do not auto-fix)
+
+| Item | Value |
+|------|--------|
+| **Observation** | Absence of a requirement (e.g. Code95 / any pack item) historically behaved as if **Recruitment topology could not be walked**, instead of штатный policy returning `blocked`/`missing` + `next_action` while the Ready **transition still exists**. |
+| **Class** | **policy → topology leak** (evidence/authority defects on Walks 1–2 aggravated the symptom) |
+| **Inventory action** | **Classify only.** Do **not** open a feature/gap-fix from this close. |
+| **Kernel implication** | Baseline Kernel proof must use **zero-requirement** Ready ruleset on the **real** evaluator so `allowed` is штатно — proving topology without curing the leak by bypass. Leak remediation remains a later **classified** fix if still present under non-zero rulesets. |
 
 ---
 
-## Layer 1 — Processes → Modules → I/O
+## P2 — Handoff / boundary
 
-| # | Life-path segment | Process | Module | In (expects) | Out (produces) | Must not own |
-|---|-------------------|---------|--------|--------------|----------------|--------------|
-| 1 | Отклик → решение / отбор | **Recruitment** | Recruitment | Lead/Candidate, vacancy target, recruiter actions | Ready / not ready for Transfer; Fits + requirement verdicts as Recruitment SoT | Employee lifecycle; admit Medical/BHP sufficiency; ZUS |
-| 2 | Передача | **Handoff / boundary** | Boundary (RSO transport) | Recruitment Ready package / RFE | Immutable manifest + scope transition; Employment case init trigger | Copying Person/Docs; inventing Employment admit decisions |
-| 3 | Подготовка к найму | **Employment formalize** | HR / Employment | Live Person/Docs + manifest decisions | `ready_to_create_employee` / Employee ensure | Recruitment qualification packs as Employment topology |
-| 4 | Проверка допуска | **Admit-to-work** | Employment | Employee + evidence views | `start_allowed` verdict + next_action | New person spine; Recruitment Ready rules |
-| 5 | Фактический выход | **Start** | Employment | `start_allowed` + human Confirm | Started | Mint-on-confirm; auto-start from documents alone |
-| 6 | Работа | **Workforce** | Workforce | Employee Started | Post-start ops | Re-opening Recruitment topology |
-| 7 | Легализация* | **Legalization** | Separate (later) | Employment context | Legalization outcomes | Second Full Spine |
-| 8 | Командирование* | **Posting / Delegation** | Separate (later) | Employment/Workforce context | Posting outcomes | Second Full Spine |
+| Field | Locked value |
+|-------|----------------|
+| **Input** | Process contract from P1: **Ready + emit authority** for Transfer package decisions. |
+| **State / work** | Moves ownership across the Recruitment→Employment boundary: immutable manifest, scope/write transition, Employment auto-init trigger. |
+| **Output** | Stable outward result: **accepted boundary** — Employment may proceed on live Person/Docs + frozen decisions (no dossier copy). |
+| **Transition owner** | **Split by axis (Accepted boundary):** Recruitment **owns emit**; Employment **owns accept**. No third owner. |
+| **Policy point** | `employment_accept_policy.v1` (ESO-1) evaluate → standard verdict. Admit packs are **not** this policy. |
+| **Next contract** | Employment formalize (P3) receives: **live authorities + manifest decisions + accepted case**. Does not receive Recruitment rule internals. |
 
-\* Applicable processes — attach by policy/context, not by forking the life path.
-
-### Boundary canon already on tree (reuse)
-
-| Boundary | Canon |
-|----------|--------|
-| Recruitment ↛ Employee lifecycle | [`ADR-002`](../architecture/ADR-002-modular-recruitment-hr-boundary.md) · [`ADR-037`](../architecture/ADR-037-lifecycle-identity-canon.md) |
-| Transfer dual model (live + frozen) | [`recruitment-employment-boundary-ownership.md`](../architecture/recruitment-employment-boundary-ownership.md) |
-| RFE package | [`ready-for-employment-contract.md`](../architecture/ready-for-employment-contract.md) |
-| Admit-to-work | [`employment-start-allowed.md`](../architecture/employment-start-allowed.md) |
-| Employment Accept policy | [`employment-accept-policy.md`](../architecture/employment-accept-policy.md) |
-
-### Process I/O detail (seeded from Accepted boundary)
-
-**Handoff / Transfer (process #2)** — from boundary ownership:
-
-| Axis | Rule |
-|------|------|
-| Manifest | `ready_for_employment.v1` = immutable boundary proof + decision basis — **not** live Person/Docs SoT |
-| Live after Transfer | Same Person / Documents Hub / Vacancy authorities |
-| Write after Transfer | Scope transition reuses existing access; Employment collects only Employment-owned missing |
-| Forbidden | Candidate copy → handoff copy → Employee copy → HR verifies copies |
-
-**Recruitment Ready outward (process #1):**
-
-| Outward signal | Meaning |
-|----------------|---------|
-| Ready / Transfer allowed | Person may leave Recruitment process |
-| Not ready + blockers / next_action | Policy verdict — **path still exists** |
-| Fits / requirement packs | Internal Recruitment policy sets (driver_ce ≠ warehouse ≠ office) — **one process** |
-
-**Employment admit outward (process #4):**
-
-| Outward signal | Meaning |
-|----------------|---------|
-| `start_allowed=true` | Admit policy satisfied for this context |
-| `missing` / `blocked` + next_action | Evidence/policy gap — **Start transition still exists** |
-| PEM-1 pack (Contract+Medical+BHP) | One ruleset under admit policy — not a second Employment spine |
+**Surfaces:** RSO-2 / RSO-2C · boundary E2E **PASS** (piecewise).
 
 ---
 
-## Layer 2 — Overlay (RSO / ESO / ESA / requirements / documents)
+## P3 — Employment formalize / ensure
 
-**Rubric**
+| Field | Locked value |
+|-------|----------------|
+| **Input** | Process contract from P2: **accepted Employment case** on live Person/Docs + frozen Transfer decisions. |
+| **State / work** | Prepares the person for employment identity: early employability → employment-missing resolution → formalize → Employee ensure. |
+| **Output** | Stable outward result: **Employee exists** (employment identity), **not** Started. |
+| **Transition owner** | **Employment** alone. |
+| **Policy point** | `early_employability.v1` · `employment_missing_resolution.v1` · `employment_formalize.v1` (ESO-2…4) → standard verdicts. Thin formalize depth = policy/product depth, **not** a second spine. |
+| **Next contract** | Admit-to-work (P4) receives: **Employee identity** available for admit evaluate. Does not receive Recruitment packs. |
 
-| Class | Meaning |
-|-------|---------|
-| **clean** | Process transition exists; policy returns allowed/blocked/missing/unsupported + next_action; evidence is input only |
-| **leak** | Missing document/type/pack/nationality prevents the **route** from existing, or process internals dictate каркас topology |
-| **unclear** | Needs Architecture owner call |
-
-### Transition overlay (seeded 2026-09-15)
-
-| Transition | Surfaces today | Class | Leak / note |
-|------------|----------------|-------|-------------|
-| → Recruitment Ready | `transfer-readiness`, requirement_engine, document packs, Candidate Evidence | **leak** (observed Walks 1–2) | Pack/R5 codes + Hub storage identity acted as **route existence** (DQC / `doc_index` exact match). Should be: Ready transition exists; policy says missing/blocked + next_action |
-| Ready → Transfer / RFE | RSO-2 emit / create handoff | **clean** (boundary E2E PASS) | Transport + manifest; not document topology |
-| Transfer → Employment auto-init | RSO-2C / ESO accept-after-transfer | **clean** | Employment owns accept; no ritual Accept happy path |
-| → Formalize / Employee ensure | ESO-4 | **clean** (thin table) | Pathway actions; not pack-driven spine |
-| Employee → `start_allowed` | ESA / `employment_start_allowed.v1` | **leak→remediated as evidence** (Walk 3) | Hub missing `employment_contract`/`bhp` types collapsed storage → picker could not see evidence. **Policy surface itself is correct**; leak was evidence identity, framed wrongly as Full Spine topology. Do not reopen as spine work |
-| Confirm → Started | ESO-5 | **clean** (slice 4 PASS) | Confirm requires `start_allowed`; mint-on-confirm retired |
-| Full Spine Gate brief | PEM-1 walks 1–4 | **leak (framing)** | Equated PEM-1 document composition with platform каркас; Walk 4 Started reclassified — not kernel PASS |
-
-### Known non-leaks (keep)
-
-- RSO-2 cutover / boundary E2E — boundary process, not vacancy-pack spine.  
-- ESO-4 / ESA / ESO-5 named gates — Employment process policies.  
-- ADR-016/018 — evidence vs requirement evaluation (aligns with this inventory).
+**Surfaces:** ESO-2…4 machine **PASS**.
 
 ---
 
-## Remediation plan (derived from leaks only)
+## P4 — Admit-to-work
 
-| Priority | Item | Kind | Not |
-|----------|------|------|-----|
-| P0 | Accept ADR-042 | Architecture | Runtime rewrite |
-| P1 | Finish this map (I/O columns, Legalization/Posting stubs) | Inventory | New Hub types “for Walk” |
-| P2 | **Baseline Full Spine kernel proof** brief — minimal/neutral policy | Proof | PEM-1 packs as topology |
-| P3 | Re-bind Recruitment Ready evaluate so missing docs = policy `missing` + next_action, not “path absent” | Process policy hygiene | Second Recruitment spine |
-| P4 | PEM-1 **policy composition** proof (separate from kernel) | Proof | Equating with Full Spine |
-| — | Contract/BHP Hub identity PASS | Done as **evidence** | Further Walk-4 document chasing as spine |
+| Field | Locked value |
+|-------|----------------|
+| **Input** | Process contract from P3: **Employee identity** (+ evidence views as **policy inputs**, not as Input contract). |
+| **State / work** | Decides whether physical start is permitted **now**. |
+| **Output** | Stable outward result: admit **verdict** (`allowed` / `blocked` / `missing` / `unsupported_context` + `next_action`). |
+| **Transition owner** | **Employment** alone. |
+| **Policy point** | `employment_start_allowed.v1` (ESA) evaluate → standard verdict. PEM-1 Contract/Medical/BHP = **ruleset**, not topology. |
+| **Next contract** | Start (P5) receives: **admit `allowed`** (or must not Confirm). Start does not see admit rule internals. |
+
+**Surfaces:** ESA · evidence authority (Walk 3 = evidence class, not topology).
+
+---
+
+## P5 — Start
+
+| Field | Locked value |
+|-------|----------------|
+| **Input** | Process contract from P4: **admit `allowed`** + explicit human Confirm intent. |
+| **State / work** | Records physical first day: Confirm → Started; **no** mint-on-confirm. |
+| **Output** | Stable outward result: **`employment_started.v1` decision** with `started=true` (or `already_started`), `employee_id`, start fact/audit (`employee_physical_start`), continuous person linkage. |
+| **Transition owner** | **Employment** alone (Confirm / Started). |
+| **Policy point** | `employment_started.v1` evaluate/apply; first Confirm requires admit `allowed` (ESO-5 / slice 4) → standard decisions (`started` / `already_started` / `not_started` / `blocked` / …). |
+| **Next contract** | Workforce (P6) receives the **Started Employee process contract** defined below — **not** “Employee somewhere exists.” |
+
+**Surfaces:** ESO-5 slice 4 **PASS** (Employment spine closes Employee→Started). **P5→P6 continuity is not thereby proved.**
+
+---
+
+## P6 — Workforce
+
+| Field | Locked value |
+|-------|----------------|
+| **Input** | Process contract from P5: **Started Employee** — see P5→P6 contract. |
+| **State / work** | Operates the **active** employee after physical start (eligibility, assignments, post-start lifecycle). |
+| **Output** | Stable outward result: **active-employee state + allowed Workforce ops**. |
+| **Transition owner** | **Workforce** alone for post-start process transitions. |
+| **Policy point** | Workforce process / operational-eligibility policies → standard verdict shape. Post-Start rules (e.g. ZUS timing) are **policy**, not pre-Start topology. |
+| **Next contract** | Applicable later processes (Legalization / Posting) attach by context on the **same** person path — no second spine. |
+
+### P5 → P6 — contract (must not be masked)
+
+Kernel may **not** treat “`workforce_employees` row exists” as proof of Started→Workforce.
+
+| Question | Architectural answer (card) | Kernel proof must show |
+|----------|----------------------------|-------------------------|
+| **What P5 Output is P6 Input?** | `employment_started.v1` **Started** result: `employee_id` + `started=true` (+ start fact/audit), same person continuity (candidate/handoff/employee ids recoverable). | One continuous witness: Confirm → Started → **Workforce product surface** accepts that same `employee_id` / person as **active** input |
+| **Who owns identity after Start?** | **Employment identity materialization** remains the Employee record; **Workforce owns** post-start **operational** lifecycle/status for that Employee ([ownership card](../../modules/workforce/module_ownership_card.md)). | Owner of the **transition into Workforce work** is Workforce; Employment does not keep owning post-start ops |
+| **What transition proves Started → Workforce?** | Process edge: **Started Employee contract published → Workforce accepts it as Input** (product host, not DB row peek). | Named step on real Workforce host/API in kernel proof — **until then: proof gap** |
+
+| Item | Status |
+|------|--------|
+| Card definition | **CLOSED** (above) |
+| Continuity proof | **OPEN** — required for Baseline Kernel **PASS**; absence blocks “kernel proved” |
+| Auto gap-fix | **Forbidden** from this inventory close |
+
+---
+
+## Chain (process contracts only)
+
+```text
+P1 Output (Ready)                    → P2 Input
+P2 Output (accepted boundary)        → P3 Input
+P3 Output (Employee exists)          → P4 Input
+P4 Output (admit allowed)            → P5 Input
+P5 Output (Started Employee contract)→ P6 Input
+```
+
+---
+
+## Layer 2 — Overlay summary
+
+| Edge | Class | Action now |
+|------|-------|------------|
+| P4 Admit zero-requirement | **policy / rule** (preflight 2026-09-15) | `employment_start_allowed.v1` hardcodes PEM-1 triad; empty ruleset not expressible — kernel walk not started |
+| P1 Ready (requirement miss → route absent) | **policy → topology leak** | Classified; **do not auto-fix** |
+| P1 R5 empty via overlay remove | **note** | Empty R5 **expressible** via штатный remove overlay; full Ready surface not exercised |
+| P1 → P2 → P3 → P4 → P5 (named RSO/ESO/ESA) | **clean** (piecewise) | Compose in kernel proof |
+| P3 → P4 evidence holes (Walk 3) | **evidence / authority** | Not topology; not auto-fix as spine |
+| P5 → P6 | **proof gap** (contract defined; continuity unproved) | Must be witnessed in kernel proof |
+| Walks 1–4 as Spine criteria | **framing leak** | Retained as evidence only |
+
+**Composition verdict:** Process cards **compose one intended kernel**. Piecewise gates exist through P5. **Kernel is not proved** until Baseline proof walks P1→P6 under neutral ≠ bypass, including P5→P6.
 
 ---
 
 ## Explicit non-goals
 
-- Continuing Walk 4 / opening Contract/BHP gap-fixes as Full Spine topology  
-- Six spines for warehouse / office / EU / third-country / B2B / posting  
-- Claiming Release Readiness or Hiring E2E  
+- New feature / gap-fix from this close  
+- Fixing P1 Ready leak automatically  
+- Declaring kernel PASS because Employee exists  
+- PEM-1 as Spine existence proof  
+- Runtime / architecture change  
 
 ---
 
 ## Next
 
-1. **Accept** ADR-042.  
-2. Complete Layer 1 I/O detail from module-scope / ownership cards.  
-3. Open baseline **Full Spine kernel** proof (minimal policy).  
-4. Keep PEM-1 as separate policy-composition proof.
+1. [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) — process-policy vs PEM-1 ruleset.  
+2. Dual zero-policy preflight (full Ready + Admit).  
+3. [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) new-person P1→P6.  
+4. PEM-1 composition after kernel PASS.

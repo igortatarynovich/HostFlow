@@ -1,17 +1,18 @@
 # Employment start_allowed
 
-**Status:** **Accepted** (L2 contract — Employment Start Allowed / PEM-1 admit-to-work)  
+**Status:** **Accepted** (L2 contract — Employment Start Allowed / admit-to-work)  
 **Accepted:** 2026-09-13  
-**Policy id:** `employment_start_allowed.v1` (contract sealed; **runtime not started**)  
-**Parent product decision:** [`../../analysis/production-employment-minimum.md`](../../analysis/production-employment-minimum.md) — **PEM-1 Accepted**  
+**Policy id:** `employment_start_allowed.v1`  
+**Parent product decision:** [`../../analysis/production-employment-minimum.md`](../../analysis/production-employment-minimum.md) — **PEM-1 Accepted** (as a **ruleset composition**, not as evaluator topology — see ADR-042)  
+**Open amend (policy/rule):** [`../tasks/admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) — separate process-policy contract from PEM-1 ruleset  
 **Baseline inventory:** [`../../analysis/employment-formalization-coverage-audit.md`](../../analysis/employment-formalization-coverage-audit.md) @ `b88a6168`  
-**Adjacent contracts:** ESO-4 `employment_formalize.v1` (allow-create) · ESO-5 `employment_started.v1` (physical start)  
+**Adjacent contracts:** ESO-4 `employment_formalize.v1` (allow-create) · ESO-5 `employment_started.v1` (physical start) · [`ADR-042`](ADR-042-spine-policy-separation.md)  
 **Named gate (required before runtime PASS):** `employment-start-allowed-gate`  
 **Does not amend:** L0 · ESO-1…5 PASS stamps · Full Spine Gate  
 
-> Seals the **pre-Start admit-to-work** authority for PEM-1.  
+> Seals the **pre-Start admit-to-work** authority.  
+> **2026-09-15 note:** Kernel preflight proved the runtime evaluator currently **embeds PEM-1 requirements as topology**. Target (open work item): `start_allowed = active Admit policy evaluated to allowed`; PEM-1 = one ruleset. Empty ruleset `[]` must yield `allowed` on the **same** pipeline — not via kernel/neutral bypass.  
 > **ESO-4 stays thin.** Employee mint happens **before** this policy. ESO-5 Confirm requires `start_allowed=true`.  
-> **No runtime / HTTP freeze / UI build in this Accept** — next step is **inventory** of Employee mint path + evidence authorities, then a thin runtime slice.  
 > **Do not** open Full Spine from this Accept. **No** “Allow anyway” override.
 
 ---
