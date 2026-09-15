@@ -89,6 +89,22 @@ def _documents_index(documents: list[Any]) -> dict[str, dict[str, Any]]:
     return index
 
 
+def _lookup_document_for_requirement(
+    doc_index: dict[str, dict[str, Any]],
+    requirement_code: str,
+) -> dict[str, Any] | None:
+    """Resolve DOCUMENT_REQUIRED code to a Hub row via canonical mapping authority."""
+    from backend.app.services.document_type_canonical_bridge import (
+        hub_storage_keys_for_requirement_code,
+    )
+
+    for key in hub_storage_keys_for_requirement_code(requirement_code):
+        row = doc_index.get(key)
+        if row is not None:
+            return row
+    return None
+
+
 def evaluate_requirement_rules(
     profile_view: dict[str, Any],
     *,
@@ -177,7 +193,7 @@ def evaluate_requirement_rules(
                 "source_ref": rule.get("source_ref"),
             }
             required_documents.append(entry)
-            doc_row = doc_index.get(doc_code)
+            doc_row = _lookup_document_for_requirement(doc_index, doc_code)
             runtime = (
                 doc_row.get("document_runtime")
                 if isinstance(doc_row, dict) and isinstance(doc_row.get("document_runtime"), dict)

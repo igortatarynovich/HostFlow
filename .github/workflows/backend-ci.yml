@@ -118,6 +118,9 @@ jobs:
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
       esa3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa3 == 'true' }}
       esa4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa4 == 'true' }}
+      dqc_bridge: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dqc_bridge == 'true' }}
+      doc_req_alias: ${{ github.event_name != 'pull_request' || steps.filter.outputs.doc_req_alias == 'true' }}
+      start_allowed_hub: ${{ github.event_name != 'pull_request' || steps.filter.outputs.start_allowed_hub == 'true' }}
       eso1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso1 == 'true' }}
       eso2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso2 == 'true' }}
       eso3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.eso3 == 'true' }}
@@ -449,6 +452,30 @@ jobs:
               - 'docs/specs/architecture/employment-start-allowed.md'
               - 'backend/app/api/v1/handoffs.py'
               - 'backend/app/core/audit_events.py'
+            dqc_bridge:
+              - 'backend/app/document_types/definitions.py'
+              - 'backend/app/document_runtime/delivery_contract.py'
+              - 'backend/app/services/document_catalog.py'
+              - 'backend/app/services/document_type_canonical_bridge.py'
+              - 'backend/tests/platform/test_dqc_catalog_pack_bridge_gate.py'
+              - 'docs/specs/tasks/dqc-catalog-pack-bridge-gap.md'
+              - 'docs/specs/tasks/three-host-full-spine-gate-pem1.md'
+            doc_req_alias:
+              - 'backend/app/requirement_rules/evaluator.py'
+              - 'backend/app/document_runtime/delivery_contract.py'
+              - 'backend/app/services/document_type_canonical_bridge.py'
+              - 'backend/tests/platform/test_document_required_hub_alias_gate.py'
+              - 'docs/specs/tasks/document-required-hub-alias-gap.md'
+              - 'docs/specs/tasks/three-host-full-spine-gate-pem1.md'
+            start_allowed_hub:
+              - 'backend/app/document_types/definitions.py'
+              - 'backend/app/services/document_type_canonical_bridge.py'
+              - 'backend/app/services/employment_start_allowed_orchestrator.py'
+              - 'backend/tests/platform/test_start_allowed_contract_bhp_hub_identity_gate.py'
+              - 'docs/specs/tasks/start-allowed-contract-bhp-hub-identity-gap.md'
+              - 'docs/specs/platform/document-type-registry-v1.json'
+              - 'docs/specs/platform/document-type-legacy-aliases-v1.json'
+              - 'docs/specs/tasks/three-host-full-spine-gate-pem1.md'
             eso1:
               - 'backend/app/reference/employment_accept_policy.py'
               - 'backend/app/services/employment_accept_orchestrator.py'
@@ -1136,6 +1163,51 @@ jobs:
         if: hashFiles('backend/tests/platform/test_employment_start_allowed_eso5_enforcement_gate.py') != ''
         with:
           tests: tests/platform/test_employment_start_allowed_eso5_enforcement_gate.py
+
+  dqc-catalog-pack-bridge-gate:
+    name: DQC Catalog Pack Bridge Gate
+    needs: changes
+    if: needs.changes.outputs.dqc_bridge == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when DQC catalog pack bridge gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_dqc_catalog_pack_bridge_gate.py') == ''
+        run: echo "DQC catalog pack bridge gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_dqc_catalog_pack_bridge_gate.py') != ''
+        with:
+          tests: tests/platform/test_dqc_catalog_pack_bridge_gate.py
+
+  document-required-hub-alias-gate:
+    name: Document Required Hub Alias Gate
+    needs: changes
+    if: needs.changes.outputs.doc_req_alias == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Document Required Hub Alias gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_document_required_hub_alias_gate.py') == ''
+        run: echo "Document Required Hub Alias gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_document_required_hub_alias_gate.py') != ''
+        with:
+          tests: tests/platform/test_document_required_hub_alias_gate.py
+
+  start-allowed-contract-bhp-hub-identity-gate:
+    name: Start Allowed Contract BHP Hub Identity Gate
+    needs: changes
+    if: needs.changes.outputs.start_allowed_hub == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Start Allowed Contract BHP Hub Identity gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_start_allowed_contract_bhp_hub_identity_gate.py') == ''
+        run: echo "Start Allowed Contract BHP Hub Identity gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_start_allowed_contract_bhp_hub_identity_gate.py') != ''
+        with:
+          tests: tests/platform/test_start_allowed_contract_bhp_hub_identity_gate.py
 
   rso2-emit-manifest-gate:
     name: RSO-2B Emit Manifest Gate

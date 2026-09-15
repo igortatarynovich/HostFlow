@@ -64,7 +64,13 @@
     "translation": "unclassified",
     "contract": "employment_contract",
     "employment_contract": "employment_contract",
+    "umowa_o_prace": "employment_contract",
     "civil_contract": "civil_contract",
+    "bhp": "bhp",
+    "szkolenia_bhp": "bhp",
+    "bhp_instruction": "bhp",
+    "introductory_bhp": "bhp",
+    "bhp_training": "bhp",
     "zus_zua": "zus_zua",
     "zus_zza": "zus_zza",
     "tax_declaration": "tax_declaration"

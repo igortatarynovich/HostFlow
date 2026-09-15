@@ -86,8 +86,8 @@ Employee exists (handoff-linked; Formalize→ensure)
 ## After PASS
 
 1. ~~Stamp this brief.~~ **Done** (2026-09-15).  
-2. **STOP.** Do not open Full Spine in the same change.  
-3. Separate decision: Three-host Full Spine Gate.
+2. **STOP** before claiming Full Spine from Slice 4 alone.  
+3. Proof brief: [`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) — **STOP** 2026-09-15 / **NOT PASS** (Ready / DQC catalog hole); no code from that brief.
 
 ---
 

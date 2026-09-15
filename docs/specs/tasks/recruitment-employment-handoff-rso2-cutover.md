@@ -1,6 +1,6 @@
 # RSO-2 — Recruitment → Employment handoff cutover
 
-**Status:** **PASS** — RSO-2A docs **CLOSED**; **RSO-2B PASS**; **RSO-2C PASS**; **RSO-2D PASS**; **RSO-2E PASS** ([`recruitment-employment-handoff-rso2e-shim-delete.md`](recruitment-employment-handoff-rso2e-shim-delete.md) @ `909ce8a5`); boundary cutover **closed**; boundary E2E **PASS** ([`recruitment-employment-handoff-boundary-e2e-proof.md`](recruitment-employment-handoff-boundary-e2e-proof.md) · handoff `e9ef16f2-1ab6-49d0-91dd-aa7676995081`); Slice 4 **PASS** ([`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md) @ `b8c9dd04`); **STOP** — Full Spine still a separate decision  
+**Status:** **PASS** — RSO-2A docs **CLOSED**; **RSO-2B PASS**; **RSO-2C PASS**; **RSO-2D PASS**; **RSO-2E PASS** ([`recruitment-employment-handoff-rso2e-shim-delete.md`](recruitment-employment-handoff-rso2e-shim-delete.md) @ `909ce8a5`); boundary cutover **closed**; boundary E2E **PASS** ([`recruitment-employment-handoff-boundary-e2e-proof.md`](recruitment-employment-handoff-boundary-e2e-proof.md) · handoff `e9ef16f2-1ab6-49d0-91dd-aa7676995081`); Slice 4 **PASS** ([`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md) @ `b8c9dd04`); Full Spine proof brief **STOP** ([`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) — **NOT PASS**; Ready / DQC hole)  
 **Phase class:** product  
 **Opened:** 2026-09-13  
 **Inventory stamp:** 2026-09-13 (runtime read-only)  
@@ -290,7 +290,7 @@ Operational identity/docs/eligibility already lean live. Remaining snapshot depe
 ## Out of scope (at RSO-2 open; later slices may land separately)
 
 - ~~Slice 4 (`start_allowed` on Confirm)~~ → **PASS** [`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md)  
-- Full Spine  
+- Full Spine — proof brief [`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) **STOP** / **NOT PASS** (Ready / DQC hole; no code from that brief)  
 - New ACL product (B: no gap for Person/Documents pre-mint read)  
 - Mapping Authority / Forms Publish  
 - Expanding Recruitment to collect Employment lifecycle facts “just in case”  
@@ -304,4 +304,4 @@ Operational identity/docs/eligibility already lean live. Remaining snapshot depe
 1. **RSO-2E PASS** @ `909ce8a5` — Recruitment → Employment **boundary cutover closed**.  
 2. **Boundary E2E proof PASS** — [`recruitment-employment-handoff-boundary-e2e-proof.md`](recruitment-employment-handoff-boundary-e2e-proof.md) (handoff `e9ef16f2-1ab6-49d0-91dd-aa7676995081`; one person; not Hiring E2E).  
 3. **Slice 4 PASS** — [`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md) @ `b8c9dd04` (Confirm requires `start_allowed=true`; mint-on-confirm retired).  
-4. **STOP.** Three-host Full Spine Gate = **separate decision** (not auto-opened).
+4. **Three-host Full Spine Gate (PEM-1)** — [`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) **STOP** 2026-09-15 (proof walk; **NOT PASS**; Ready / DQC catalog hole).

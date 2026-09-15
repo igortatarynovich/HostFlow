@@ -222,6 +222,18 @@
       "entity_applicability": ["employee", "contract"]
     },
     {
+      "code": "bhp",
+      "public_name": "BHP / occupational safety training",
+      "category_code": "employment",
+      "subcategory_code": "bhp",
+      "criticality": "required",
+      "driver_ce_contour": false,
+      "schema_version": "v1",
+      "participates_in_requirements": true,
+      "business_purposes": ["employment_admit_to_work"],
+      "entity_applicability": ["employee"]
+    },
+    {
       "code": "zus_zua",
       "public_name": "ZUS ZUA",
       "category_code": "social_security",
@@ -331,6 +343,16 @@
     {
       "module_code": "medical_certificate",
       "canonical_code": "medical_certificate",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "employment_contract",
+      "canonical_code": "employment_contract",
+      "source": "backend.app.document_types.definitions"
+    },
+    {
+      "module_code": "bhp",
+      "canonical_code": "bhp",
       "source": "backend.app.document_types.definitions"
     },
     {

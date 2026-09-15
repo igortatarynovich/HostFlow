@@ -66,10 +66,13 @@ def _doc_mapping(doc: Any) -> dict[str, Any]:
 
 
 def _pick_doc(docs: list[dict[str, Any]], *type_tokens: str) -> dict[str, Any] | None:
-    tokens = {_norm(t) for t in type_tokens}
+    from backend.app.services.document_type_canonical_bridge import (
+        document_storage_type_matches,
+    )
+
     for d in docs:
-        dtype = _norm(d.get("type") or d.get("doc_type") or (_record(d.get("meta")).get("type")))
-        if dtype in tokens or any(t in dtype for t in tokens if t):
+        dtype = d.get("type") or d.get("doc_type") or (_record(d.get("meta")).get("type"))
+        if document_storage_type_matches(dtype, *type_tokens):
             return d
     return None
 

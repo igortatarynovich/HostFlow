@@ -164,7 +164,7 @@ For **PEM-1** (PL employer, `umowa o pracę`, EU/EEA free-movement worker, domes
 3. **PEM-1 Accepted** (this file).  
 4. **`start_allowed` architecture** — [`employment-start-allowed.md`](../specs/architecture/employment-start-allowed.md) **Accepted**; next = **inventory** (mint path + evidence authorities), then thin runtime.  
 5. Only then: implement Minimum-blocking gaps for PEM-1.  
-6. Three-host Full Spine Gate — later.
+6. Three-host Full Spine Gate — [`../specs/tasks/three-host-full-spine-gate-pem1.md`](../specs/tasks/three-host-full-spine-gate-pem1.md) **STOP** 2026-09-15 (proof walk; **NOT PASS**; Ready / DQC hole).
 
 ---
 

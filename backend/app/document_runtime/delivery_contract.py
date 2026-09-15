@@ -203,12 +203,20 @@ def resolve_required_type_runtime_via_contract(
     *,
     instances_by_type: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
-    """Canonical runtime for a required document type — best instance or missing."""
-    code = _norm_doc(doc_code)
-    runtime = instances_by_type.get(code)
-    if isinstance(runtime, dict):
-        return runtime
-    return evaluate_snapshot_via_contract(None, document_type_code=code)
+    """Canonical runtime for a required document type — best instance or missing.
+
+    Looks up the required pack/R5 code and Hub storage aliases via
+    ``hub_storage_keys_for_requirement_code`` (shared mapping authority).
+    """
+    from backend.app.services.document_type_canonical_bridge import (
+        hub_storage_keys_for_requirement_code,
+    )
+
+    for key in hub_storage_keys_for_requirement_code(doc_code):
+        runtime = instances_by_type.get(key)
+        if isinstance(runtime, dict):
+            return runtime
+    return evaluate_snapshot_via_contract(None, document_type_code=_norm_doc(doc_code))
 
 
 def legacy_status_from_runtime_via_contract(runtime: dict[str, Any]) -> str:

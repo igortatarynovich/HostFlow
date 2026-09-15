@@ -185,7 +185,7 @@ Do **not** jump from ESO-5 to closing all eight gaps or to Full Spine Gate.
    - what may complete **after Employee create but before Started**;
    - what is a **separate lifecycle** (post-Started satellites).  
 4. Close **only** gaps that the Minimum marks blocking.  
-5. **Three-host Full Spine Gate** — only after Formalize semantics match that Minimum.
+5. **Three-host Full Spine Gate** — [`../specs/tasks/three-host-full-spine-gate-pem1.md`](../specs/tasks/three-host-full-spine-gate-pem1.md) **OPEN** (proof only; only after Formalize/`start_allowed` semantics match PEM-1 Minimum).
 
 **Risk if skipped:** turning HostFlow into a full Polish HR / legalization suite (A1 + delegacja + Płatnik + …) before naming the first production employment context.
 
@@ -197,7 +197,7 @@ Do **not** jump from ESO-5 to closing all eight gaps or to Full Spine Gate.
 
 | Claim | Status |
 |-------|--------|
-| Full Spine Gate | **NOT PASS** |
+| Full Spine Gate | **NOT PASS** — proof brief [`../specs/tasks/three-host-full-spine-gate-pem1.md`](../specs/tasks/three-host-full-spine-gate-pem1.md) **STOP** 2026-09-15 (Ready / DQC hole) |
 | Reason (precise) | Formalize allow-create is not proven completion of the кадровый minimum required for lawful/operational start in context |
 | Reason (rejected) | “Started UI missing” — addressed as ESO-5 binding slice; not the Full Spine blocker |
 | ESO-5 PASS-stamp | **Separate artifact** — must not be rewritten by or merged into this audit |
