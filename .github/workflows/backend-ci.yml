@@ -118,6 +118,8 @@ jobs:
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
       esa3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa3 == 'true' }}
       esa4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa4 == 'true' }}
+      admit_ruleset: ${{ github.event_name != 'pull_request' || steps.filter.outputs.admit_ruleset == 'true' }}
+      dual_zero: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dual_zero == 'true' }}
       dqc_bridge: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dqc_bridge == 'true' }}
       doc_req_alias: ${{ github.event_name != 'pull_request' || steps.filter.outputs.doc_req_alias == 'true' }}
       start_allowed_hub: ${{ github.event_name != 'pull_request' || steps.filter.outputs.start_allowed_hub == 'true' }}
@@ -428,6 +430,20 @@ jobs:
               - 'docs/specs/architecture/employment-start-allowed.md'
               - 'docs/specs/tasks/employment-start-allowed-runtime-foundation.md'
               - 'docs/analysis/employment-start-allowed-adaptation-design.md'
+            admit_ruleset:
+              - 'backend/app/reference/employment_start_allowed.py'
+              - 'backend/tests/platform/test_admit_policy_ruleset_separation_gate.py'
+              - 'docs/specs/tasks/admit-policy-ruleset-separation.md'
+              - 'docs/specs/architecture/employment-start-allowed.md'
+              - 'docs/specs/architecture/ADR-042-spine-policy-separation.md'
+            dual_zero:
+              - 'backend/tests/platform/test_dual_zero_policy_preflight_gate.py'
+              - 'docs/specs/tasks/dual-zero-policy-preflight.md'
+              - 'backend/app/reference/employment_start_allowed.py'
+              - 'backend/app/services/transfer_policy_resolver.py'
+              - 'backend/app/services/recruitment_package_readiness.py'
+              - 'backend/app/reference/requirement_policy_consumer_parity.py'
+              - 'docs/specs/architecture/ADR-042-spine-policy-separation.md'
             esa2:
               - 'backend/app/services/employment_formalize_employee_ensure.py'
               - 'backend/tests/platform/test_employment_start_allowed_mint_cutover_gate.py'
@@ -1092,7 +1108,7 @@ jobs:
   employment-start-allowed-gate:
     name: Employment Start Allowed Gate
     needs: changes
-    if: needs.changes.outputs.esa1 == 'true' || needs.changes.outputs.ci == 'true'
+    if: needs.changes.outputs.esa1 == 'true' || needs.changes.outputs.admit_ruleset == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -1103,6 +1119,36 @@ jobs:
         if: hashFiles('backend/tests/platform/test_employment_start_allowed_gate.py') != ''
         with:
           tests: tests/platform/test_employment_start_allowed_gate.py
+
+  admit-policy-ruleset-separation-gate:
+    name: Admit Policy Ruleset Separation Gate
+    needs: changes
+    if: needs.changes.outputs.admit_ruleset == 'true' || needs.changes.outputs.esa1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Admit ruleset separation gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_admit_policy_ruleset_separation_gate.py') == ''
+        run: echo "Admit policy ruleset separation gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_admit_policy_ruleset_separation_gate.py') != ''
+        with:
+          tests: tests/platform/test_admit_policy_ruleset_separation_gate.py
+
+  dual-zero-policy-preflight-gate:
+    name: Dual Zero-Policy Preflight Gate
+    needs: changes
+    if: needs.changes.outputs.dual_zero == 'true' || needs.changes.outputs.admit_ruleset == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when dual zero-policy preflight gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_dual_zero_policy_preflight_gate.py') == ''
+        run: echo "Dual zero-policy preflight gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_dual_zero_policy_preflight_gate.py') != ''
+        with:
+          tests: tests/platform/test_dual_zero_policy_preflight_gate.py
 
   employment-start-allowed-mint-cutover-gate:
     name: Employment Start Allowed Mint Cutover Gate

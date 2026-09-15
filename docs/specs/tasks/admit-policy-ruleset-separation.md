@@ -1,158 +1,142 @@
 # Admit policy / ruleset separation (`employment_start_allowed.v1`)
 
-**Status:** **OPEN** (classified fix — **policy / rule**)  
+**Status:** **PASS** (2026-09-15)  
 **Layer:** L3 work item — **not** Full Spine PASS · **not** evidence/Hub gap · **not** kernel bypass  
 **Phase class:** platform  
 **Opened:** 2026-09-15  
+**Closed:** 2026-09-15  
 **Defect class (ADR-042 §6):** **policy / rule**  
 **Parent STOP:** [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) — preflight STOP 2026-09-15  
 **Architecture:** [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) (**Accepted**) · inventory [`spine-policy-separation-inventory.md`](spine-policy-separation-inventory.md)  
-**Amends (when done):** [`employment-start-allowed.md`](../architecture/employment-start-allowed.md) — process-policy contract vs PEM-1 ruleset  
-**Does not open:** Kernel walk · PEM-1 composition proof · Hub type spam · Hiring E2E · Release Readiness
+**Amends:** [`employment-start-allowed.md`](../architecture/employment-start-allowed.md) — process-policy contract vs PEM-1 ruleset  
+**Named gate:** `admit-policy-ruleset-separation-gate`  
+**Does not open:** Kernel walk · PEM-1 composition proof · Hub type spam · Hiring E2E · Release Readiness · P1 Ready changes
 
-> Goal is **not** “make Full Spine green.”  
-> Goal is remove an **ADR-042 violation**: Admit today is a PEM-1 policy dressed as a general process evaluator.
+> Goal was **not** “make Full Spine green.”  
+> Goal was remove an **ADR-042 violation**: Admit was a PEM-1 policy dressed as a general process evaluator.
 
 ---
 
 ## Original Goal → Completion Proof
 
-**Problem this fix must permanently remove:**
+**Problem this fix permanently removed:**
 
-`employment_start_allowed.v1` mixes two levels:
+`employment_start_allowed.v1` mixed two levels:
 
-| Level | Should be | Today |
-|-------|-----------|--------|
+| Level | Should be | Was |
+|-------|-----------|-----|
 | **Process contract** | Employment answers: may this person transition to Start? | Collapsed into PEM-1 checklist |
 | **Policy composition** | Ruleset for a given employment context (PEM-1 = Contract + Medical + BHP + facts) | **Hardcoded** as the evaluator body |
 
-Current semantics (wrong):
-
-```text
-start_allowed = PEM-1 requirements satisfied
-```
-
-Required semantics (ADR-042):
+**Required semantics (ADR-042) — now runtime:**
 
 ```text
 start_allowed = active Admit policy evaluated to allowed
 ```
 
-PEM-1 becomes **one ruleset** of that policy — not the structure of the evaluator.
+PEM-1 is **one ruleset** — not the structure of the evaluator.
 
 **Architectural conclusion (preserve):**  
-Zero-requirement policy is **not** a special kernel feature. It is a **mandatory property** of a composable policy engine. If the engine cannot correctly evaluate an empty composition, rules are still part of its topology.
+Zero-requirement policy is **not** a special kernel feature. It is a **mandatory property** of a composable policy engine.
 
-**Completion proof (named consumer):**
+**Completion proof (machine — PASS):**
 
 ```text
 employment_start_allowed.v1 = process-policy contract
-  → policy context → resolve ruleset → evaluate rules → aggregate verdict
-  → allowed | blocked | missing | unsupported_context (+ next_action)
-  → start_allowed derived from verdict
-
-ruleset []     → same pipeline → allowed (no rule forbids transition)
-ruleset PEM-1  → same pipeline → Contract + Medical + BHP rules → same verdict contract
-
-machine gate: empty ruleset + PEM-1 ruleset on one evaluator
-  → no neutral=true / skip_requirements / kernel_mode / test-only path
-```
-
----
-
-## What is broken (evidence)
-
-| Fact | Source |
-|------|--------|
-| Evaluator has **no** ruleset / configuration parameter | `evaluate_employment_start_allowed_v1` signature |
-| PEM-1 triad inline hardcoded | `REQ_CONTRACT` / `REQ_MEDICAL` / `REQ_BHP` list inside evaluate |
-| Non-PEM-1 → `unsupported_context`, not empty-ruleset `allowed` | preflight 2026-09-15 |
-| Kernel proof STOP | Cannot express zero-requirement on Admit without bypass |
-
-P4 Admit is therefore **not** a policy engine in the ADR-042 sense — it is a **PEM-1 policy composition** presented as the general process evaluator.
-
----
-
-## Hard bans (this slice)
-
-| Ban | Why |
-|-----|-----|
-| `neutral=true` / `kernel_mode` / `skip_requirements` | Second path; violates ADR-042 §4a |
-| Separate test-only Admit evaluator | Shadow spine |
-| Tenant flag “no BHP for kernel” | Bypass |
-| Optional flags on Contract/Medical/BHP inside current function | Leaves PEM-1 as architectural skeleton with switches |
-| Opening Kernel walk mid-slice | Premature |
-| Framing as Hub/evidence fix | Wrong class |
-
----
-
-## Target design (minimal)
-
-```text
-policy context
-  → resolve active Admit ruleset (by employment context / authority)
-  → evaluate each rule
-  → aggregate → allowed | blocked | missing | unsupported_context
+  → Employment context
+  → resolve_admit_ruleset_v1  (separate authority)
+  → resolved ruleset
+  → rule evaluators + aggregator → verdict
   → start_allowed = (verdict == allowed)
+
+Three compositions — one evaluate path:
+  []              → allowed / start_allowed=true
+  PEM-1 + missing → missing
+  PEM-1 + satisfied → allowed / start_allowed=true
+
+Gate: admit-policy-ruleset-separation-gate
+  + employment-start-allowed-gate (regression)
 ```
 
-| Ruleset | Contents | Same evaluator? |
-|---------|----------|-----------------|
-| `[]` (empty) | No rules | **Yes** → `allowed` because nothing forbids |
-| `PEM-1` | Contract + Medical + BHP (+ listed exceptions / planned_start facts as today) | **Yes** → same verdict contract |
-
-Process contract remains Employment-owned admit-to-work. PEM-1 product decision stays valid as **composition**, not as evaluator topology.
-
 ---
 
-## Out of scope for this slice
+## Technical lock (sealed) — resolver ≠ evaluator
 
-- Full Ready (P1) multi-layer zero-policy (separate preflight after this)  
-- P1→P6 Kernel witness  
-- PEM-1 Policy Composition proof  
-- Changing ESO-5 Confirm semantics (still requires `start_allowed=true`)  
-- Evidence Hub identity work (already classified elsewhere)
+**Hard lock:** ruleset **resolution** is a **separate authority** from evaluation.
 
----
+`evaluate_employment_start_allowed_v1` does **not** decide “this is a driver → therefore PEM-1.”
 
-## Sequence lock (after this OPEN)
+### Pipeline (frozen)
 
 ```text
-Kernel NOT PASS
-  → THIS: Admit policy / ruleset separation (policy/rule)
-  → Short dual preflight: full Ready evaluator + Admit evaluator
-       each with zero-requirement composition → штатный allowed
-  → New person P1→P6 Baseline Kernel witness
-  → PEM-1 composition proof
+Employment context
+  → Admit policy / ruleset resolver
+  → resolved ruleset
+  → rule evaluators
+  → aggregator → verdict
+  → start_allowed   (derivative only: verdict == allowed)
 ```
 
-Do **not** jump from this fix straight to Kernel walk.
+### Responsibilities
 
-### P1 reminder (not this slice)
+| Authority | Owns | Must not own |
+|-----------|------|----------------|
+| **Resolver** (`resolve_admit_ruleset_v1`) | Which Admit composition applies — including штатный `[]` via `admit_ruleset_id=empty` | Evidence checks; verdict aggregation |
+| **Ruleset** | Requirement set (PEM-1 = Contract + Medical + BHP + facts/exceptions) | Process topology |
+| **Rule evaluators** | Individual rule satisfaction | Selecting the ruleset |
+| **Aggregator** | `allowed` / `blocked` / `missing` / `unsupported_context` + `next_action` | Ruleset selection |
+| **`start_allowed`** | Pure derivative of verdict (`== allowed`) | Independent policy decision |
 
-`r5_required_set = ∅` via overlay remove is **not** yet neutral Recruitment policy. Ready aggregates multiple layers (eligibility, package, field requirements, requirement engine). After Admit separation: **short policy preflight** must prove:
+### `unsupported_context`
 
-1. **Recruitment:** full Ready evaluator (not R5 alone) + zero-requirement composition → `allowed`  
-2. **Employment:** Admit evaluator + zero-requirement composition → `allowed` / `start_allowed=true`
+| Meaning | Forbidden meaning |
+|---------|-------------------|
+| Resolver **cannot determine** an applicable Admit policy | “We don’t have PEM-1” / empty composition |
+| | штатный `[]` treated as unsupported |
 
-Only then spend a new person on P1→P6.
+If the resolver returns `[]`, result is **`allowed`**.
+
+---
+
+## Runtime surface
+
+| Symbol | Role |
+|--------|------|
+| `resolve_admit_ruleset_v1` | Separate authority |
+| `evaluate_employment_start_allowed_v1` | resolve → evaluate → aggregate |
+| `admit_ruleset_id` | Context key for explicit composition (`empty` / `PEM-1`); else PEM-1 axes inference |
+| Evidence / typed exceptions / ESO-5 Confirm | **Unchanged** |
+
+---
+
+## Hard bans (honoured)
+
+| Ban | Status |
+|-----|--------|
+| `neutral=true` / `kernel_mode` / `skip_requirements` | Absent |
+| Evaluator chooses ruleset | AST-enforced: evaluate calls resolve; does not call `is_pem1_context` |
+| Treating `[]` as `unsupported_context` | Gate proves `[]` → allowed |
+| Opening Kernel walk | **Not opened** |
+| Touching P1 Ready | **Not touched** |
 
 ---
 
 ## PASS / STOP
 
-| Outcome | When |
-|---------|------|
-| **PASS** | Process-policy contract + ruleset resolve on one evaluator; `[]` → allowed штатно; PEM-1 ruleset → same pipeline; machine gate; no banned bypass; L2 `employment-start-allowed` amended accordingly |
-| **STOP** | Named hole + keep class **policy / rule** (or reclassify if evidence shows otherwise) |
+| Outcome | Evidence |
+|---------|----------|
+| **PASS** | Gate green; L2 amended; three compositions on one path; resolver ≠ evaluator |
+| **STOP** | n/a — closed PASS |
 
-**Current:** **OPEN** / not PASS.
+**Current:** **PASS** — dual zero-policy preflight is **next** (not auto-started).
 
 ---
 
-## Next
+## Next (STOP here for this item)
 
-1. Implement / seal Admit process-policy + ruleset boundary (this brief).  
-2. Dual zero-policy preflight (P1 full Ready + P4 Admit).  
-3. Resume [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md).  
+1. Dual zero-policy preflight — [`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md) (**STOP** 2026-09-15: P4 PASS · P1 STOP).  
+2. Classified Ready composability (separate) until dual preflight **PASS**.  
+3. Resume [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) only after dual **PASS**.  
 4. PEM-1 composition only after kernel PASS.
+
+**Do not** jump from Admit PASS straight to Kernel walk.

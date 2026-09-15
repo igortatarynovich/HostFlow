@@ -167,9 +167,9 @@ A Code95 hole is **not** “Full Spine broken” unless classified as kernel.
 | **1** | **Accept ADR-042** | Design rule: life path → processes → modules → policies/rules | **DONE** 2026-09-15 |
 | **2** | Finish inventory I/O | Six-field cards P1–P6 | **DONE** |
 | **3a** | Baseline Kernel proof attempt | Preflight: zero-requirement expressible? | **STOP** — Admit not a composable policy engine ([brief](../tasks/baseline-full-spine-kernel-proof.md)) |
-| **3b** | **Admit policy / ruleset separation** | `employment_start_allowed.v1` = process-policy + pluggable ruleset (PEM-1 = one ruleset; `[]` → allowed штатно) | **OPEN** — [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) |
-| **3c** | Dual zero-policy preflight | Full Ready evaluator + Admit evaluator each → `allowed` under `[]` | After 3b PASS |
-| **3d** | **Baseline Full Spine Kernel proof** (new person P1→P6) | Continuity, ownership, handoffs, identity; neutral ≠ bypass | After 3c |
+| **3b** | **Admit policy / ruleset separation** | `employment_start_allowed.v1` = process-policy + pluggable ruleset; **resolver ≠ evaluator**; PEM-1 = one ruleset; `[]` → allowed штатно | **PASS** 2026-09-15 — [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) |
+| **3c** | Dual zero-policy preflight | Full Ready evaluator + Admit evaluator each → `allowed` under `[]` | **STOP** 2026-09-15 — P4 PASS · P1 STOP — [`dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md) |
+| **3d** | **Baseline Full Spine Kernel proof** (new person P1→P6) | Continuity, ownership, handoffs, identity; neutral ≠ bypass | **Blocked** until 3c PASS |
 | **4** | **PEM-1 Policy Composition proof** | Same каркас + PEM-1 ruleset may block | After kernel PASS |
 | **5** | Ongoing defects | Classify per §6 before fix | Ongoing |
 
@@ -232,7 +232,8 @@ Do **not** change architecture or write runtime for spine topology between steps
 
 | Doc | Role |
 |-----|------|
-| [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) | Classified **policy/rule** fix — Admit process-policy vs PEM-1 ruleset |
+| [`dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md) | §3c dual zero-policy — **STOP** (P4 PASS · P1 STOP) |
+| [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) | Classified **policy/rule** fix — Admit process-policy vs PEM-1 ruleset **PASS** |
 | [`baseline-full-spine-kernel-proof.md`](../tasks/baseline-full-spine-kernel-proof.md) | Kernel proof **NOT PASS** (preflight STOP) |
 | [`spine-policy-separation-inventory.md`](../tasks/spine-policy-separation-inventory.md) | P1–P6 six-field map **CLOSED** |
 | [`three-host-full-spine-gate-pem1.md`](../tasks/three-host-full-spine-gate-pem1.md) | PEM-1-laden walks — historical |
@@ -248,4 +249,7 @@ Do **not** change architecture or write runtime for spine topology between steps
 - 2026-09-15: Amended — **neutral ≠ bypass**; module process contracts; ordered Accept→inventory→kernel→PEM-1; defect classes.  
 - 2026-09-15: **Accepted** — no architecture/runtime change on Accept; next = inventory six-field I/O.  
 - 2026-09-15: Inventory P1–P6 cards **CLOSED**; Baseline Kernel proof opened — [`../tasks/baseline-full-spine-kernel-proof.md`](../tasks/baseline-full-spine-kernel-proof.md).  
-- 2026-09-15: Kernel preflight STOP → Admit is PEM-1 composition as evaluator; program inserts **Admit policy/ruleset separation** before retry — [`../tasks/admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md).
+- 2026-09-15: Kernel preflight STOP → Admit is PEM-1 composition as evaluator; program inserts **Admit policy/ruleset separation** before retry — [`../tasks/admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md).  
+- 2026-09-15: Work item lock — **resolver ≠ evaluator**; `unsupported_context` = resolve failure only; `[]` → allowed.  
+- 2026-09-15: Admit policy/ruleset separation **PASS** — runtime pipeline + gate; next = dual zero-policy preflight (not Kernel walk).  
+- 2026-09-15: Dual zero-policy preflight **STOP** — Admit empty **PASS**; full Ready has no empty composition (policy→topology in Recruitment) — [`../tasks/dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md). Kernel still blocked.

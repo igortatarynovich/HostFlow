@@ -37,9 +37,9 @@ P1–P6 each have locked six fields (process contracts, not document lists)
 | 1 | Accept ADR-042 | **DONE** |
 | 2 | Six-field I/O cards P1–P6 | **CLOSED** (this file) |
 | 3a | Baseline Kernel preflight | **STOP** — Admit embeds PEM-1 as evaluator |
-| 3b | Admit policy / ruleset separation | **OPEN** — [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) |
-| 3c | Dual zero-policy preflight (full Ready + Admit) | After 3b |
-| 3d | Baseline Kernel P1→P6 witness | After 3c — [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) |
+| 3b | Admit policy / ruleset separation | **PASS** — [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) (resolver ≠ evaluator; `[]` → allowed) |
+| 3c | Dual zero-policy preflight (full Ready + Admit) | **STOP** — [`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md) (P4 PASS · P1 STOP) |
+| 3d | Baseline Kernel P1→P6 witness | **Blocked** until 3c PASS — [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) |
 | 4 | PEM-1 Policy Composition proof | After kernel **PASS** |
 | 5 | Classified fixes only | Ongoing — no auto-fix from inventory |
 
@@ -200,9 +200,9 @@ P5 Output (Started Employee contract)→ P6 Input
 
 | Edge | Class | Action now |
 |------|-------|------------|
-| P4 Admit zero-requirement | **policy / rule** (preflight 2026-09-15) | `employment_start_allowed.v1` hardcodes PEM-1 triad; empty ruleset not expressible — kernel walk not started |
-| P1 Ready (requirement miss → route absent) | **policy → topology leak** | Classified; **do not auto-fix** |
-| P1 R5 empty via overlay remove | **note** | Empty R5 **expressible** via штатный remove overlay; full Ready surface not exercised |
+| P4 Admit zero-requirement | **policy / rule** — **PASS** 2026-09-15 | Admit ruleset separation; `[]` → allowed; PEM-1 = ruleset |
+| P1 Ready (requirement miss → route absent) | **policy → topology leak** | Classified; dual preflight **STOP** localizes remaining leak inside Recruitment |
+| P1 R5 empty via overlay remove | **note** | Empty R5 **expressible**; full Ready surface **not** zero-composable (no Ready empty ruleset) |
 | P1 → P2 → P3 → P4 → P5 (named RSO/ESO/ESA) | **clean** (piecewise) | Compose in kernel proof |
 | P3 → P4 evidence holes (Walk 3) | **evidence / authority** | Not topology; not auto-fix as spine |
 | P5 → P6 | **proof gap** (contract defined; continuity unproved) | Must be witnessed in kernel proof |
@@ -224,7 +224,10 @@ P5 Output (Started Employee contract)→ P6 Input
 
 ## Next
 
-1. [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) — process-policy vs PEM-1 ruleset.  
-2. Dual zero-policy preflight (full Ready + Admit).  
-3. [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) new-person P1→P6.  
+1. Classified Ready composability fix (separate) — full Ready empty composition → `transfer_allowed=true`.  
+2. Re-run [`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md) until **PASS**.  
+3. [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) new-person P1→P6 — after 3c PASS.  
 4. PEM-1 composition after kernel PASS.
+
+Admit separation **PASS:** [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md).  
+Dual preflight **STOP:** [`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md).

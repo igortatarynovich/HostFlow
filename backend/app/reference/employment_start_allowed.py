@@ -1,9 +1,20 @@
-"""Employment start_allowed — frozen contract machine (PEM-1 foundation).
+"""Employment start_allowed — Admit process-policy + pluggable ruleset.
 
 Policy id: ``employment_start_allowed.v1``.
 
-Derived admit-to-work decision from normalized evidence views + allowlisted
-typed exceptions. Does not mint Employee. Does not set Started.
+Pipeline (ADR-042 / admit-policy-ruleset-separation):
+
+  Employment context
+    → resolve_admit_ruleset_v1  (separate authority)
+    → resolved ruleset (may be [])
+    → rule evaluators + aggregate
+    → verdict → start_allowed = (verdict == allowed)
+
+PEM-1 Contract/Medical/BHP is one ruleset, not evaluator topology.
+Empty ruleset ``[]`` yields ``allowed`` on the same path.
+``unsupported_context`` = resolver cannot determine applicable Admit policy.
+
+Does not mint Employee. Does not set Started.
 Does not own Contract/Medical/BHP persistence.
 
 LLM-OFF.
@@ -17,10 +28,11 @@ from typing import Any, Final, Mapping, Sequence
 POLICY_ID: Final[str] = "employment_start_allowed.v1"
 
 OPERATOR_QUESTION: Final[str] = (
-    "given an Employee already created after ESO-4 allow-create, for a PEM-1 "
-    "employment context, may this person be admitted to work — i.e. is "
-    "start_allowed=true — based only on proven Contract + applicable Medical* + "
-    "applicable BHP* (or a policy-listed typed exception), before any human "
+    "given an Employee already created after ESO-4 allow-create, for the "
+    "active Admit policy composition, may this person be admitted to work — "
+    "i.e. is start_allowed=true — based on the resolved ruleset (PEM-1 = "
+    "Contract + applicable Medical* + applicable BHP* or a policy-listed "
+    "typed exception; empty ruleset = no requirements), before any human "
     "Confirm physical start?"
 )
 
@@ -51,11 +63,20 @@ PEM1_EXCEPTION_ALLOWLIST: Final[dict[str, str]] = {
 FACT_PLANNED_START: Final[str] = "planned_start_date"
 
 CONTEXT_PEM1: Final[str] = "PEM-1"
+CONTEXT_EMPTY: Final[str] = "empty"
+
+RULESET_EMPTY: Final[str] = "empty"
+RULESET_PEM1: Final[str] = "PEM-1"
+
+# Employment-context key owned by Admit ruleset resolver (not an evaluate switch).
+ADMIT_RULESET_ID_KEY: Final[str] = "admit_ruleset_id"
 
 ARCH_REL: Final[str] = "docs/specs/architecture/employment-start-allowed.md"
 ADAPT_REL: Final[str] = "docs/analysis/employment-start-allowed-adaptation-design.md"
 FOUNDATION_REL: Final[str] = "docs/specs/tasks/employment-start-allowed-runtime-foundation.md"
+SEPARATION_REL: Final[str] = "docs/specs/tasks/admit-policy-ruleset-separation.md"
 EVALUATE_API: Final[str] = "evaluate_employment_start_allowed_v1"
+RESOLVE_API: Final[str] = "resolve_admit_ruleset_v1"
 APPLY_API: Final[str] = "apply_employment_start_allowed_v1"
 
 FORBIDDEN_REQUIREMENT_CODES: Final[frozenset[str]] = frozenset(
@@ -68,6 +89,24 @@ FORBIDDEN_REQUIREMENT_CODES: Final[frozenset[str]] = frozenset(
         "legalization",
         "work_permit",
     }
+)
+
+_PEM1_RULE_SPECS: Final[tuple[dict[str, str], ...]] = (
+    {
+        "code": REQ_CONTRACT,
+        "kind": "evidence",
+        "message": "Written employment contract or confirmation of terms",
+    },
+    {
+        "code": REQ_MEDICAL,
+        "kind": "evidence",
+        "message": "Valid occupational medical fit for post/conditions",
+    },
+    {
+        "code": REQ_BHP,
+        "kind": "evidence",
+        "message": "Introductory BHP before admit (or allowlisted exception)",
+    },
 )
 
 
@@ -100,7 +139,10 @@ def _parse_date(value: Any) -> date | None:
 
 
 def is_pem1_context(employment_context: Mapping[str, Any] | None) -> bool:
-    """Deterministic PEM-1 applicability (domestic PL EU/EEA, no posting)."""
+    """Deterministic PEM-1 applicability (domestic PL EU/EEA, no posting).
+
+    Used by the Admit ruleset **resolver** only — not by evaluate for routing.
+    """
     ctx = _record(employment_context)
     country = _norm(ctx.get("employment_country") or ctx.get("country") or "pl")
     if country not in {"pl", "pol", "poland"}:
@@ -131,6 +173,78 @@ def is_pem1_context(employment_context: Mapping[str, Any] | None) -> bool:
         return False
     # Default: treat as PEM-1 when country PL and not posting / not third-country
     return True
+
+
+def _normalize_ruleset_id(value: Any) -> str | None:
+    raw = _norm(value)
+    if not raw:
+        return None
+    if raw in {"empty", "zero", "zero_requirement", "none", "[]"}:
+        return RULESET_EMPTY
+    if raw in {"pem1", "pem_1", "pem-1"}:
+        return RULESET_PEM1
+    return _text(value) or None
+
+
+def _rules_for_ruleset_id(ruleset_id: str) -> list[dict[str, str]]:
+    if ruleset_id == RULESET_EMPTY:
+        return []
+    if ruleset_id == RULESET_PEM1:
+        rules = [dict(r) for r in _PEM1_RULE_SPECS]
+        for code in FORBIDDEN_REQUIREMENT_CODES:
+            assert code not in {r["code"] for r in rules}
+        return rules
+    return []
+
+
+def resolve_admit_ruleset_v1(
+    employment_context: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Admit ruleset resolver — separate authority from evaluate.
+
+    Returns a resolved composition (rules may be empty) or resolve failure.
+    Does not inspect evidence. Does not emit start_allowed.
+    """
+    ctx = _record(employment_context)
+    explicit = _normalize_ruleset_id(ctx.get(ADMIT_RULESET_ID_KEY) or ctx.get("admit_ruleset"))
+    if explicit == RULESET_EMPTY:
+        return {
+            "resolved": True,
+            "ruleset_id": RULESET_EMPTY,
+            "context_policy": CONTEXT_EMPTY,
+            "rules": [],
+        }
+    if explicit == RULESET_PEM1:
+        return {
+            "resolved": True,
+            "ruleset_id": RULESET_PEM1,
+            "context_policy": CONTEXT_PEM1,
+            "rules": _rules_for_ruleset_id(RULESET_PEM1),
+        }
+    if explicit is not None:
+        # Unknown explicit composition id — resolver cannot map it.
+        return {
+            "resolved": False,
+            "ruleset_id": None,
+            "context_policy": None,
+            "rules": [],
+            "reason": "unknown_admit_ruleset_id",
+            "requested_ruleset_id": _text(ctx.get(ADMIT_RULESET_ID_KEY) or ctx.get("admit_ruleset")),
+        }
+    if is_pem1_context(ctx):
+        return {
+            "resolved": True,
+            "ruleset_id": RULESET_PEM1,
+            "context_policy": CONTEXT_PEM1,
+            "rules": _rules_for_ruleset_id(RULESET_PEM1),
+        }
+    return {
+        "resolved": False,
+        "ruleset_id": None,
+        "context_policy": None,
+        "rules": [],
+        "reason": "admit_policy_not_determined",
+    }
 
 
 def resolve_planned_start_date(
@@ -281,6 +395,121 @@ def _exception_satisfies(
     return False
 
 
+def _evaluate_rule_missing(
+    rule: Mapping[str, str],
+    *,
+    employment_context: Mapping[str, Any],
+    contract_view: Mapping[str, Any] | None,
+    medical_view: Mapping[str, Any] | None,
+    bhp_view: Mapping[str, Any] | None,
+    exceptions: Sequence[Mapping[str, Any]] | None,
+    planned_start: date | None,
+) -> dict[str, str] | None:
+    """Return a missing item for this rule, or None if satisfied."""
+    code = rule["code"]
+    ctx = _record(employment_context)
+    employer_id = _text(ctx.get("employer_id"))
+    post_key = _text(ctx.get("post_key") or ctx.get("position") or ctx.get("post"))
+
+    if code == REQ_CONTRACT:
+        if _contract_satisfied(contract_view):
+            return None
+        return dict(rule)
+
+    if code == REQ_MEDICAL:
+        ok, miss = _medical_satisfied(medical_view, planned_start=planned_start, post_key=post_key)
+        if ok:
+            return None
+        if miss == FACT_PLANNED_START:
+            return {
+                "code": FACT_PLANNED_START,
+                "kind": "fact",
+                "message": "Canonical planned_start_date required for medical validity",
+            }
+        return dict(rule)
+
+    if code == REQ_BHP:
+        if _exception_satisfies(REQ_BHP, exceptions=exceptions, employment_context=ctx):
+            return None
+        ok, miss = _bhp_evidence_satisfied(
+            bhp_view,
+            planned_start=planned_start,
+            employer_id=employer_id,
+            post_key=post_key,
+        )
+        if ok:
+            return None
+        if miss == FACT_PLANNED_START:
+            return {
+                "code": FACT_PLANNED_START,
+                "kind": "fact",
+                "message": "Canonical planned_start_date required for BHP validity",
+            }
+        return dict(rule)
+
+    # Unknown rule code in a resolved ruleset → treat as missing evidence gap.
+    return dict(rule)
+
+
+def _dedupe_missing(items: list[dict[str, str]]) -> list[dict[str, str]]:
+    seen: set[str] = set()
+    out: list[dict[str, str]] = []
+    for row in items:
+        c = row["code"]
+        if c in seen:
+            continue
+        seen.add(c)
+        out.append(row)
+    return out
+
+
+def _aggregate_admit_verdict(
+    *,
+    base: dict[str, Any],
+    rules: Sequence[Mapping[str, str]],
+    active_missing: Sequence[Mapping[str, str]],
+    context_policy: str | None,
+    ruleset_id: str | None,
+    planned: date | None,
+) -> dict[str, Any]:
+    required = [dict(r) for r in rules]
+    missing = [dict(m) for m in active_missing]
+    if missing:
+        primary = missing[0]
+        return {
+            **base,
+            "decision": DECISION_MISSING,
+            "start_allowed": False,
+            "context_policy": context_policy,
+            "ruleset_id": ruleset_id,
+            "required_actions": required,
+            "active_missing": missing,
+            "primary_item": {
+                "code": primary["code"],
+                "kind": primary.get("kind") or "formal_action",
+                "message": primary.get("message") or primary["code"],
+            },
+            "planned_start_date": planned.isoformat() if planned else None,
+            "blockers": [],
+        }
+    return {
+        **base,
+        "decision": DECISION_START_ALLOWED,
+        "start_allowed": True,
+        "context_policy": context_policy,
+        "ruleset_id": ruleset_id,
+        "required_actions": required,
+        "active_missing": [],
+        "primary_item": {
+            "code": DECISION_START_ALLOWED,
+            "kind": "threshold",
+            "message": "Admit-to-work allowed — physical start still requires ESO-5 confirm",
+        },
+        "planned_start_date": planned.isoformat() if planned else None,
+        "blockers": [],
+    }
+
+
 def evaluate_employment_start_allowed_v1(
     *,
     employee_id: str | None,
@@ -291,7 +520,7 @@ def evaluate_employment_start_allowed_v1(
     exceptions: Sequence[Mapping[str, Any]] | None = None,
     planned_start_date: Any = None,
 ) -> dict[str, Any]:
-    """Pure evaluate. Does not write. Does not mint. LLM-OFF."""
+    """Pure evaluate via resolve → evaluate rules → aggregate. Does not write/mint. LLM-OFF."""
     emp = _text(employee_id)
     ctx = _record(employment_context)
 
@@ -304,6 +533,7 @@ def evaluate_employment_start_allowed_v1(
         "manual_override": False,
         "llm_start_allowed": False,
         "context_policy": None,
+        "ruleset_id": None,
         "decision_snapshot_is_authority": False,
     }
 
@@ -322,123 +552,57 @@ def evaluate_employment_start_allowed_v1(
             "blockers": [{"code": "employee_required", "message": "Employee must exist before start_allowed"}],
         }
 
-    if not is_pem1_context(ctx):
+    resolution = resolve_admit_ruleset_v1(ctx)
+    if not resolution.get("resolved"):
         return {
             **base,
             "decision": DECISION_UNSUPPORTED,
             "start_allowed": False,
             "context_policy": None,
+            "ruleset_id": None,
             "required_actions": [],
             "active_missing": [],
             "primary_item": {
                 "code": "unsupported_context",
                 "kind": "policy_routing",
-                "message": "employment_start_allowed.v1 has no authority for this employment context",
+                "message": "Admit ruleset resolver could not determine an applicable Admit policy",
             },
+            "resolve_reason": resolution.get("reason"),
             "blockers": [],
         }
+
+    rules = [dict(r) for r in (resolution.get("rules") or [])]
+    context_policy = resolution.get("context_policy")
+    ruleset_id = resolution.get("ruleset_id")
 
     planned = resolve_planned_start_date(
         planned_start_date=planned_start_date,
         employment_context=ctx,
     )
-    employer_id = _text(ctx.get("employer_id"))
-    post_key = _text(ctx.get("post_key") or ctx.get("position") or ctx.get("post"))
-
-    required = [
-        {"code": REQ_CONTRACT, "kind": "evidence", "message": "Written employment contract or confirmation of terms"},
-        {"code": REQ_MEDICAL, "kind": "evidence", "message": "Valid occupational medical fit for post/conditions"},
-        {"code": REQ_BHP, "kind": "evidence", "message": "Introductory BHP before admit (or allowlisted exception)"},
-    ]
-    for code in FORBIDDEN_REQUIREMENT_CODES:
-        assert code not in {r["code"] for r in required}
 
     active_missing: list[dict[str, str]] = []
-
-    if not _contract_satisfied(contract_view):
-        active_missing.append(dict(required[0]))
-
-    med_ok, med_miss = _medical_satisfied(medical_view, planned_start=planned, post_key=post_key)
-    if not med_ok:
-        if med_miss == FACT_PLANNED_START:
-            active_missing.append(
-                {
-                    "code": FACT_PLANNED_START,
-                    "kind": "fact",
-                    "message": "Canonical planned_start_date required for medical validity",
-                }
-            )
-        else:
-            active_missing.append(dict(required[1]))
-
-    bhp_ok = False
-    if _exception_satisfies(REQ_BHP, exceptions=exceptions, employment_context=ctx):
-        bhp_ok = True
-    else:
-        bhp_ok, bhp_miss = _bhp_evidence_satisfied(
-            bhp_view,
+    for rule in rules:
+        miss = _evaluate_rule_missing(
+            rule,
+            employment_context=ctx,
+            contract_view=contract_view,
+            medical_view=medical_view,
+            bhp_view=bhp_view,
+            exceptions=exceptions,
             planned_start=planned,
-            employer_id=employer_id,
-            post_key=post_key,
         )
-        if not bhp_ok:
-            if bhp_miss == FACT_PLANNED_START and not any(
-                m.get("code") == FACT_PLANNED_START for m in active_missing
-            ):
-                active_missing.append(
-                    {
-                        "code": FACT_PLANNED_START,
-                        "kind": "fact",
-                        "message": "Canonical planned_start_date required for BHP validity",
-                    }
-                )
-            elif bhp_miss != FACT_PLANNED_START:
-                active_missing.append(dict(required[2]))
+        if miss is not None:
+            active_missing.append(miss)
+    active_missing = _dedupe_missing(active_missing)
 
-    # Deduplicate by code preserving order
-    seen: set[str] = set()
-    deduped: list[dict[str, str]] = []
-    for row in active_missing:
-        c = row["code"]
-        if c in seen:
-            continue
-        seen.add(c)
-        deduped.append(row)
-    active_missing = deduped
-
-    if active_missing:
-        primary = active_missing[0]
-        return {
-            **base,
-            "decision": DECISION_MISSING,
-            "start_allowed": False,
-            "context_policy": CONTEXT_PEM1,
-            "required_actions": required,
-            "active_missing": active_missing,
-            "primary_item": {
-                "code": primary["code"],
-                "kind": primary.get("kind") or "formal_action",
-                "message": primary.get("message") or primary["code"],
-            },
-            "planned_start_date": planned.isoformat() if planned else None,
-            "blockers": [],
-        }
-
-    return {
-        **base,
-        "decision": DECISION_START_ALLOWED,
-        "start_allowed": True,
-        "context_policy": CONTEXT_PEM1,
-        "required_actions": required,
-        "active_missing": [],
-        "primary_item": {
-            "code": DECISION_START_ALLOWED,
-            "kind": "threshold",
-            "message": "Admit-to-work allowed — physical start still requires ESO-5 confirm",
-        },
-        "planned_start_date": planned.isoformat() if planned else None,
-        "blockers": [],
-    }
+    return _aggregate_admit_verdict(
+        base=base,
+        rules=rules,
+        active_missing=active_missing,
+        context_policy=context_policy if isinstance(context_policy, str) else None,
+        ruleset_id=ruleset_id if isinstance(ruleset_id, str) else None,
+        planned=planned,
+    )
 
 
 def apply_employment_start_allowed_v1(
@@ -577,13 +741,20 @@ __all__ = [
     "PEM1_EXCEPTION_ALLOWLIST",
     "FACT_PLANNED_START",
     "CONTEXT_PEM1",
+    "CONTEXT_EMPTY",
+    "RULESET_EMPTY",
+    "RULESET_PEM1",
+    "ADMIT_RULESET_ID_KEY",
     "ARCH_REL",
     "ADAPT_REL",
     "FOUNDATION_REL",
+    "SEPARATION_REL",
     "EVALUATE_API",
+    "RESOLVE_API",
     "APPLY_API",
     "FORBIDDEN_REQUIREMENT_CODES",
     "is_pem1_context",
+    "resolve_admit_ruleset_v1",
     "resolve_planned_start_date",
     "prove_bhp_successive_exception",
     "evaluate_employment_start_allowed_v1",

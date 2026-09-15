@@ -90,7 +90,7 @@ P1 Recruitment Ready     (zero-requirement Ready ruleset → evaluate → allowe
 | **PASS** | One continuous P1→P6 witness; invariants held; P5→P6 shown; neutral ≠ bypass held |
 | **STOP** | Named break + **defect class**; kernel remains **NOT PASS** |
 
-**Current:** **NOT PASS** — **STOP at preflight** (2026-09-15). Product walk P1→P6 **not started** (would be artificial under non-zero / bypass).
+**Current:** **NOT PASS** — Admit separation **PASS**; dual zero-policy preflight **STOP** ([`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md) — P4 PASS · P1 STOP). Kernel walk **blocked**.
 
 ---
 
@@ -103,70 +103,44 @@ P1 Recruitment Ready     (zero-requirement Ready ruleset → evaluate → allowe
 | Check | Result |
 |-------|--------|
 | Empty owner context → `r5_required_set({})` | **Non-empty** default: `passport`, `driver_license`, `driver_qualification_card`, `tachograph_card` |
-| Штатный overlay `candidate.overrides[].remove` of those four | **`r5_required_set` → ∅** — empty required-set **is expressible** on the R5 merge contract |
-| Caveat | Transfer readiness also layers workforce eligibility, recruitment_package, field_requirements, requirement_engine — empty R5 alone is not the full Ready surface; not exercised because Admit already blocks kernel walk |
+| Штатный overlay `candidate.overrides[].remove` of those four (+ residency) | **`r5_required_set` → ∅** — empty required-set **is expressible** on the R5 merge contract |
+| Full Ready zero-composition | **Not expressible** — no Ready analog of `admit_ruleset_id=empty`; `recruitment_package` / confirmations / fields / slots / ops still gate `transfer_allowed` |
 
 ### P4 / Admit (`employment_start_allowed.v1`)
 
 | Check | Result |
 |-------|--------|
-| Evaluator signature | **No** `ruleset` / requirement-list parameter — Contract + Medical + BHP are **inline hardcoded** for PEM-1 |
-| PEM-1 context, no evidence | `decision=missing`, `start_allowed=false`, active_missing includes contract (+ planned_start as fact) |
-| Non-PEM-1 context | `decision=unsupported_context`, `start_allowed=false` — **not** `allowed` with zero requirements |
-| Zero-requirement config on same evaluator | **Impossible to express** in current model |
+| Empty composition | **PASS** — `admit_ruleset_id=empty` → `[]` → `allowed` |
+| Pipeline | resolve → evaluate → aggregate |
 
-### STOP stamp
+### Dual preflight (§3c)
 
 | Field | Value |
 |-------|--------|
-| **Transition** | Preflight — policy configuration before P1 walk |
-| **Input contract expected** | Штатная policy configuration with **zero requirements** on real Ready + Admit evaluators → `allowed` |
-| **Output expected** | Both evaluators can return штатный `allowed` under that config (neutral ≠ bypass) |
-| **Output actual** | **Admit cannot.** Ready can reach empty R5 via overlay remove; Admit has no configuration axis for empty ruleset |
-| **Defect class (ADR-042 §6)** | **policy / rule** |
-| **Not** | kernel (transitions not disproved) · evidence/authority · integration · reason to add bypass/kernel mode |
-
-**Decision:** Do **not** start P1→P6 product walk. Loading PEM-1 evidence or inventing a neutral runtime would falsify the kernel proof. Per ADR-042: inability to express zero-requirement **is** the proof result.
-
-**Fix posture:** separate classified work later — make Admit (and Ready surface end-to-end) accept a **configurable ruleset including empty** on the **same** evaluate path. **Not** opened as gap-fix from this STOP. **Not** mid-walk repair.
+| Outcome | **STOP** — [`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md) |
+| P4 | **PASS** |
+| P1 | **STOP** — policy→topology / non-composition layers inside Recruitment |
+| Kernel | **Not opened** |
 
 ---
 
 ## Out of scope
 
 - PEM-1 composition (separate proof after PASS)  
-- Auto-fixing inventory P1 Ready leak  
+- Auto-fixing inventory P1 Ready leak without classified Ready composability work  
 - Inventing kernel/test/neutral evaluator mode to green this proof  
 - Hiring E2E / Release Readiness  
-- Architecture/runtime changes from this brief  
 
 ---
 
-## Architectural reading of this STOP
+## Next
 
-P4 Admit is **not** failing because “kernel needs an empty mode.”  
-It fails because `employment_start_allowed.v1` is a **PEM-1 policy composition** presented as a general process evaluator:
+1. Classified **Ready composability** fix (separate) — full Ready empty composition.  
+2. Re-run dual zero-policy preflight until **PASS**.  
+3. Then new-person P1→P6 on **this** brief.  
+4. PEM-1 composition only after kernel PASS.
 
-```text
-wrong:  start_allowed = PEM-1 requirements satisfied
-right:  start_allowed = active Admit policy evaluated to allowed
-```
-
-PEM-1 (Contract + Medical + BHP) must become a **ruleset**, not the evaluator’s structure.
-
-**Corollary:** zero-requirement is a mandatory property of a **composable** policy engine — not a kernel special function.
-
----
-
-## Next after this STOP
-
-1. **Do not** retry Kernel walk.  
-2. Execute classified fix: [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) (**policy / rule**).  
-3. Dual zero-policy preflight: **full** Ready evaluator (not R5 alone) + Admit → `allowed` under `[]`.  
-4. Then new-person P1→P6 on **this** brief.  
-5. PEM-1 composition only after kernel PASS.
-
-Banned still: `neutral=true` · `skip_requirements` · `kernel_mode` · test-only evaluator · optional flags on PEM-1 triad inside the current function.
+Banned still: `neutral=true` · `skip_requirements` · `kernel_mode` · test-only evaluator · evaluator-chooses-ruleset · stuffing candidate data to green Ready.
 
 ## Next after PASS
 

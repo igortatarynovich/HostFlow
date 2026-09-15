@@ -4,22 +4,29 @@
 **Accepted:** 2026-09-13  
 **Policy id:** `employment_start_allowed.v1`  
 **Parent product decision:** [`../../analysis/production-employment-minimum.md`](../../analysis/production-employment-minimum.md) — **PEM-1 Accepted** (as a **ruleset composition**, not as evaluator topology — see ADR-042)  
-**Open amend (policy/rule):** [`../tasks/admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) — separate process-policy contract from PEM-1 ruleset  
+**Amend (policy/rule):** [`../tasks/admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) — **PASS** (resolver ≠ evaluator; `[]` → allowed)  
 **Baseline inventory:** [`../../analysis/employment-formalization-coverage-audit.md`](../../analysis/employment-formalization-coverage-audit.md) @ `b88a6168`  
 **Adjacent contracts:** ESO-4 `employment_formalize.v1` (allow-create) · ESO-5 `employment_started.v1` (physical start) · [`ADR-042`](ADR-042-spine-policy-separation.md)  
-**Named gate (required before runtime PASS):** `employment-start-allowed-gate`  
-**Does not amend:** L0 · ESO-1…5 PASS stamps · Full Spine Gate  
+**Named gates:** `employment-start-allowed-gate` · `admit-policy-ruleset-separation-gate`  
+**Does not amend:** L0 · ESO-1…5 PASS stamps · Full Spine Gate / Kernel walk  
 
 > Seals the **pre-Start admit-to-work** authority.  
-> **2026-09-15 note:** Kernel preflight proved the runtime evaluator currently **embeds PEM-1 requirements as topology**. Target (open work item): `start_allowed = active Admit policy evaluated to allowed`; PEM-1 = one ruleset. Empty ruleset `[]` must yield `allowed` on the **same** pipeline — not via kernel/neutral bypass.  
+> **2026-09-15:** Admit process-policy vs ruleset separation — [`../tasks/admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md).  
+> Pipeline: Employment context → **Admit ruleset resolver** → ruleset → evaluate → aggregate → `start_allowed` (derivative).  
+> PEM-1 = one ruleset (Contract + Medical + BHP). Empty ruleset `[]` → `allowed` on the **same** path.  
+> `unsupported_context` = resolver cannot determine applicable Admit policy (not “non-PEM-1 checklist”).  
 > **ESO-4 stays thin.** Employee mint happens **before** this policy. ESO-5 Confirm requires `start_allowed=true`.  
-> **Do not** open Full Spine from this Accept. **No** “Allow anyway” override.
+> **Do not** open Full Spine / Kernel walk from this Amend. **No** “Allow anyway” override.  
+> **No** `neutral` / `kernel_mode` / `skip_requirements` bypass.
 
 ---
 
 ## Operator question (one)
 
-Given an **Employee** already created (after ESO-4 `ready_to_create_employee`), for a **PEM-1** employment context, **may this person be admitted to work** — i.e. is `start_allowed=true` — based only on proven Contract + applicable Medical\* + applicable BHP\* (or a **policy-listed** typed exception), before any human Confirm physical start?
+Given an **Employee** already created (after ESO-4 `ready_to_create_employee`), under the **resolved Admit ruleset** for this employment context, **may this person be admitted to work** — i.e. is `start_allowed=true` — before any human Confirm physical start?
+
+- **PEM-1 ruleset:** based only on proven Contract + applicable Medical\* + applicable BHP\* (or a **policy-listed** typed exception).  
+- **Empty ruleset (`[]`):** no requirements — `allowed` штатно on the same evaluate path.
 
 No second question is this contract. Physical start remains ESO-5. ZUS/Insurance remain post-Started lifecycle.
 
@@ -153,20 +160,23 @@ Minimum proofs:
 6. `start_allowed` never creates Started / never emits physical-start event.  
 7. ESO-5 physical confirm is impossible without `start_allowed=true`.  
 8. Replay / idempotency of evaluate/apply.  
-9. Non-PEM-1 context does not silently pass as PEM-1 (`unsupported_context`).  
-10. No override path yields `start_allowed=true` without evidence/exception satisfaction.
+9. Resolve failure does not silently pass (`unsupported_context`); empty composition `[]` is **not** resolve failure — it yields `allowed`.  
+10. No override path yields `start_allowed=true` without evidence/exception satisfaction (PEM-1) or without empty ruleset resolution.
 
-### 6. Non-PEM-1 → `unsupported_context`
+### 6. Resolve failure → `unsupported_context`
 
-Do **not** reuse ordinary business `blocked` for “this policy does not apply.”
+Do **not** reuse ordinary business `blocked` for “Admit policy could not be determined.”
 
 | Decision | Meaning |
 |----------|---------|
-| `unsupported_context` | `employment_start_allowed.v1` has **no authority** for this employment context (e.g. third-country international driver). Person may still be employable under a future PEM-N contract. |
-| `blocked` | PEM-1 context applies, but hard preconditions fail (e.g. no Employee, reuse/gate violation inside PEM-1). |
-| `missing` | PEM-1 applies; required pre-Start items outstanding. |
+| `unsupported_context` | Admit **ruleset resolver** could not determine an applicable Admit policy for this employment context (e.g. third-country pathway with no registered composition). Person may still be employable under a future PEM-N ruleset. |
+| `blocked` | Policy applies (or would), but hard preconditions fail (e.g. no Employee). |
+| `missing` | Ruleset resolved (e.g. PEM-1); required pre-Start items outstanding. |
+| `start_allowed` / allowed | Ruleset resolved and satisfied — including **empty ruleset `[]`**. |
 
-Future PEM-2 / PEM-3 route via **policy selection**, not operator bypasses.
+**Not** `unsupported_context`: resolver штатно returns `[]` (zero-requirement composition).
+
+Future PEM-2 / PEM-3 route via **ruleset resolution / policy selection**, not operator bypasses. Evaluate must **not** itself decide “driver → PEM-1.”
 
 ---
 
@@ -177,9 +187,9 @@ Future PEM-2 / PEM-3 route via **policy selection**, not operator bypasses.
 | Input | Role |
 |-------|------|
 | `employee_id` | **Required** — Employee already minted |
-| Employment context | Must match PEM-1 axes or → `unsupported_context` |
-| Contract / Medical / BHP evidence views | From existing authorities + structured facts |
-| Exception resolutions | Allowlisted typed facts only |
+| Employment context | Input to **Admit ruleset resolver** (`admit_ruleset_id` may select `empty` / `PEM-1`; else infer PEM-1 axes or resolve failure) |
+| Contract / Medical / BHP evidence views | From existing authorities + structured facts (PEM-1 rules) |
+| Exception resolutions | Allowlisted typed facts only (PEM-1 BHP successive, …) |
 | Resolution patch | Minimal evidence bind / exception for **current** `primary_item` only |
 
 ### Output
@@ -188,16 +198,16 @@ Future PEM-2 / PEM-3 route via **policy selection**, not operator bypasses.
 
 | Decision | Meaning |
 |----------|---------|
-| `start_allowed` | All applicable PEM-1 pre-Start items satisfied → ESO-5 may accept confirm |
-| `missing` | Applicable items outstanding (`active_missing` / one `primary_item`) |
-| `blocked` | PEM-1 applies but hard preconditions fail |
-| `unsupported_context` | Policy has no authority for this context (not a business “cannot employ” verdict) |
+| `start_allowed` | Resolved ruleset satisfied (incl. empty `[]`) → ESO-5 may accept confirm |
+| `missing` | Ruleset resolved; applicable items outstanding (`active_missing` / one `primary_item`) |
+| `blocked` | Hard preconditions fail (e.g. no Employee) |
+| `unsupported_context` | Resolver could not determine applicable Admit policy |
 | `rejected_patch` | Empty/invalid patch when input required, or non-allowlisted exception |
 
 Every decision MUST include:
 
 - `start_allowed` — `true` only when decision is `start_allowed`  
-- `required_actions` — PEM-1 applicable set only  
+- `required_actions` — resolved ruleset applicable set only (empty when ruleset `[]`)  
 - `active_missing` — unsatisfied applicable items only  
 - `primary_item` — one next step when `missing`  
 - `started=false`  
@@ -205,7 +215,8 @@ Every decision MUST include:
 - `employee_minted_by_this_policy=false`  
 - `zus_required_for_start=false`  
 - `manual_override=false` (always)  
-- `context_policy` — e.g. `PEM-1` or null when unsupported  
+- `context_policy` — e.g. `PEM-1`, `empty`, or null when unsupported  
+- `ruleset_id` — e.g. `PEM-1`, `empty`, or null when unsupported  
 
 ### Checklist ban
 
