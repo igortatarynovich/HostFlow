@@ -121,5 +121,5 @@ Handoff Reality Audit
 
 - Cutover **PASS:** [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md) @ `909ce8a5`  
 - E2E proof **PASS:** [`recruitment-employment-handoff-boundary-e2e-proof.md`](recruitment-employment-handoff-boundary-e2e-proof.md) · handoff `e9ef16f2-1ab6-49d0-91dd-aa7676995081`  
-- Slice 4 **PASS:** [`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md)  
+- Slice 4 **PASS:** [`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md) @ `b8c9dd04`  
 - Full Spine remains closed until an explicit open.

@@ -3,7 +3,7 @@
 **Status:** **PASS**  
 **Phase class:** product  
 **Opened:** 2026-09-15  
-**PASS stamp:** 2026-09-15 · implementation under test *(this commit)* · machine gates `employment-start-allowed-eso5-enforcement-gate` **10 passed** + `employment-started-gate` **14 passed** (+ mint-cutover regression; combined **40 passed**) · **STOP** before Full Spine  
+**PASS stamp:** 2026-09-15 · implementation under test `b8c9dd04` · machine gates `employment-start-allowed-eso5-enforcement-gate` **10 passed** + `employment-started-gate` **14 passed** (+ mint-cutover regression; combined **40 passed**) · Confirm blocked when `start_allowed != true` · `start_allowed=true` ≠ Started · human Confirm remains · mint-on-confirm retired · Full Spine **CLOSED** · **STOP** before Full Spine  
 **Depends on:**  
 - Slice 3 PASS: [`employment-start-allowed-hr-host-binding.md`](employment-start-allowed-hr-host-binding.md)  
 - Boundary E2E PASS: [`recruitment-employment-handoff-boundary-e2e-proof.md`](recruitment-employment-handoff-boundary-e2e-proof.md) · handoff `e9ef16f2-1ab6-49d0-91dd-aa7676995081`  
