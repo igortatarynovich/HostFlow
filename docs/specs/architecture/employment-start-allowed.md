@@ -70,7 +70,7 @@ Candidate → Employment case → Employee → eligible to start (start_allowed)
 | **start_allowed** | **Admit-to-work** (pre-Start) |
 | ESO-5 Started | **Physical start** confirm |
 
-**Transitional note:** Any ESO-5 path that still mints Employee on physical confirm is **legacy composition** for PEM-1. Do not move mint into `start_allowed`. Runtime cutover must mint on/after ESO-4 allow-create and **before** start_allowed evaluation.
+**Transitional note:** ESO-5 mint-on-confirm is **retired** for PEM-1 (Slice 4 **PASS**). Mint remains on/after ESO-4 allow-create via Formalize→ensure, **before** start_allowed evaluation.
 
 ---
 
@@ -136,7 +136,7 @@ ESO-4 allow-create → mint Employee → start_allowed → ESO-5
 
 - Employee **must exist** before `start_allowed` evaluation.  
 - **Do not** mint inside `start_allowed`.  
-- ESO-5 mint-on-confirm = **transitional legacy** for PEM-1; cutover retires it for this path.
+- ESO-5 mint-on-confirm = **retired** (Slice 4 PASS); Confirm requires `start_allowed=true` and an existing Employee.
 
 ### 5. Named gate / CI
 

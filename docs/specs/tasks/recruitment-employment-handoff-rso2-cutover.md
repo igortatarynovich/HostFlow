@@ -1,6 +1,6 @@
 # RSO-2 — Recruitment → Employment handoff cutover
 
-**Status:** **PASS** — RSO-2A docs **CLOSED**; **RSO-2B PASS**; **RSO-2C PASS**; **RSO-2D PASS**; **RSO-2E PASS** ([`recruitment-employment-handoff-rso2e-shim-delete.md`](recruitment-employment-handoff-rso2e-shim-delete.md) @ `909ce8a5`); boundary cutover **closed**; **STOP before Slice 4**  
+**Status:** **PASS** — RSO-2A docs **CLOSED**; **RSO-2B PASS**; **RSO-2C PASS**; **RSO-2D PASS**; **RSO-2E PASS** ([`recruitment-employment-handoff-rso2e-shim-delete.md`](recruitment-employment-handoff-rso2e-shim-delete.md) @ `909ce8a5`); boundary cutover **closed**; boundary E2E **PASS** ([`recruitment-employment-handoff-boundary-e2e-proof.md`](recruitment-employment-handoff-boundary-e2e-proof.md) · handoff `e9ef16f2-1ab6-49d0-91dd-aa7676995081`); Slice 4 **PASS** ([`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md)); **STOP** — Full Spine still a separate decision  
 **Phase class:** product  
 **Opened:** 2026-09-13  
 **Inventory stamp:** 2026-09-13 (runtime read-only)  
@@ -287,9 +287,9 @@ Operational identity/docs/eligibility already lean live. Remaining snapshot depe
 
 ---
 
-## Out of scope
+## Out of scope (at RSO-2 open; later slices may land separately)
 
-- Slice 4 (`start_allowed` on Confirm)  
+- ~~Slice 4 (`start_allowed` on Confirm)~~ → **PASS** [`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md)  
 - Full Spine  
 - New ACL product (B: no gap for Person/Documents pre-mint read)  
 - Mapping Authority / Forms Publish  
@@ -302,5 +302,6 @@ Operational identity/docs/eligibility already lean live. Remaining snapshot depe
 ## Next
 
 1. **RSO-2E PASS** @ `909ce8a5` — Recruitment → Employment **boundary cutover closed**.  
-2. **STOP.** Slice 4 is a **separate decision** — do not auto-open.  
-3. Full Spine remains closed.
+2. **Boundary E2E proof PASS** — [`recruitment-employment-handoff-boundary-e2e-proof.md`](recruitment-employment-handoff-boundary-e2e-proof.md) (handoff `e9ef16f2-1ab6-49d0-91dd-aa7676995081`; one person; not Hiring E2E).  
+3. **Slice 4 PASS** — [`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md) (Confirm requires `start_allowed=true`; mint-on-confirm retired).  
+4. **STOP.** Three-host Full Spine Gate = **separate decision** (not auto-opened).

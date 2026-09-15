@@ -152,14 +152,11 @@ def test_ensure_seam_forbids_evaluate_side_mint_in_source() -> None:
 
 
 def test_no_eso5_start_allowed_enforcement_in_this_slice() -> None:
-    """Slice 2 must not rewrite ESO-5 Confirm to require start_allowed."""
-    if _STARTED_REF.is_file():
-        text = _STARTED_REF.read_text(encoding="utf-8")
-        assert "start_allowed" not in text or "require_start_allowed" not in text.lower()
-    # Ensure module itself must not gate ESO-5.
+    """Slice 2 ensure seam must not gate ESO-5 Confirm (enforcement is Slice 4)."""
     ensure_src = _ENSURE.read_text(encoding="utf-8")
     assert "employment_started" not in ensure_src
     assert "confirm_employment_started" not in ensure_src
+    assert "start_allowed_required" not in ensure_src
 
 
 def test_no_hr_frontend_in_mint_cutover_module_scope() -> None:

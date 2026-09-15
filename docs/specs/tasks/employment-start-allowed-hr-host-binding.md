@@ -113,11 +113,13 @@ Contract missing → resolve → Medical missing → resolve → BHP missing/all
 ```text
 Handoff Reality Audit
   → Boundary Ownership Accepted (dual-axis)
-  → RSO-2A CLOSED → RSO-2B PASS @ ab864e86 (emit only)
-  → STOP before RSO-2C; Slice 4 after cutover gate
+  → RSO-2A CLOSED → RSO-2B…2E PASS (cutover closed @ 909ce8a5)
+  → [boundary E2E proof](recruitment-employment-handoff-boundary-e2e-proof.md) PASS
+  → [Slice 4 ESO-5 Confirm↔start_allowed](employment-start-allowed-eso5-enforcement.md) PASS
+  → Full Spine = separate decision (not auto-opened)
 ```
 
-- Reality audit: [`../../analysis/recruitment-employment-handoff-reality-audit.md`](../../analysis/recruitment-employment-handoff-reality-audit.md)  
-- Ownership (**Accepted**): [`../architecture/recruitment-employment-boundary-ownership.md`](../architecture/recruitment-employment-boundary-ownership.md)  
-- RSO-2B PASS: [`recruitment-employment-handoff-rso2b-emit.md`](recruitment-employment-handoff-rso2b-emit.md) @ `ab864e86`  
-- Slice 4 / Full Spine remain closed until cutover proves live + manifest path.
+- Cutover **PASS:** [`recruitment-employment-handoff-rso2-cutover.md`](recruitment-employment-handoff-rso2-cutover.md) @ `909ce8a5`  
+- E2E proof **PASS:** [`recruitment-employment-handoff-boundary-e2e-proof.md`](recruitment-employment-handoff-boundary-e2e-proof.md) · handoff `e9ef16f2-1ab6-49d0-91dd-aa7676995081`  
+- Slice 4 **PASS:** [`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md)  
+- Full Spine remains closed until an explicit open.

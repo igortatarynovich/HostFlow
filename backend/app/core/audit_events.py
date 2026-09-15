@@ -24,6 +24,8 @@ class AuditEventType(str, Enum):
     handoff_cancelled = "handoff_cancelled"
     # ESO-1: Employment started only after Employment accept policy auto/manual accept
     employment_started = "employment_started"
+    # ESO-5: physical first day at work (Employee created ≠ this event)
+    employee_physical_start = "employee_physical_start"
     # RODO
     rodo_sent = "rodo_sent"
     rodo_sent_failed = "rodo_sent_failed"
