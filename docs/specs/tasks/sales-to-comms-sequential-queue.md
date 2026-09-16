@@ -31,7 +31,7 @@
 | Track | Active work | Rule |
 |-------|-------------|------|
 | **Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. Not MA-4. Not External Intake. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
-| **Engineering** | **[PMI-0](platform-modularization-isolation-cutover.md)** complete map; then freeze + one-module cutovers. Spine Ready/Kernel **PARKED**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background | Second track |
+| **Engineering** | **PMI-0 PASS** — map complete; **PMI-1** freeze queued (own PR). Spine Ready/Kernel **PARKED**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background | Second track |
 | **Launch-ops** | **Parked** — OL-1 `PASS_WITH_CONSTRAINTS`; OL-2 queued until PMI **PASS** or a later amendment. Not Billing | Parked |
 
 ---
@@ -48,8 +48,8 @@ Reaching the program horizon of this section is **not** a release. Release-ready
 |------|--------|
 | **Active Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. External Intake / Hiring / min HR remain queued. |
 | **Queued Product successor** | **MA-4** Consumer cutover after Mapping Operator Gate PASS — [brief](mapping-authority.md). Do not start MA-4 / External Intake / Forms Publish / Hiring in the MA-3 feat. Hiring is unlocked by RPM close, **not** scheduled. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
-| **Active Engineering** | **[PMI-0](platform-modularization-isolation-cutover.md)** — complete map in progress (baseline write). Named gate `module-isolation-pmi0-map-gate`. Not ISOLATED. Not Ready. Not Kernel. |
-| **Queued Engineering after Exit** | PMI-1 freeze after PMI-0 stamp, then PMI-R…W — [brief](platform-modularization-isolation-cutover.md). Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
+| **Active Engineering** | **PMI-0 PASS** ([platform-modularization-isolation-cutover.md](platform-modularization-isolation-cutover.md)). Next named slice **PMI-1** not started (invariant 6). Not Ready. Not Kernel. |
+| **Queued Engineering after Exit** | **PMI-1** freeze (baseline = `module_isolation_pmi0_baseline.json`), then PMI-R…W — [brief](platform-modularization-isolation-cutover.md). Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
 | **Active Launch-ops** | **Parked** this amendment (second slot occupied by Engineering PMI). OL-1 remains `PASS_WITH_CONSTRAINTS`. OL-2 stays queued, **not started** |
 | **Queued Launch-ops** | **OL-2** after PMI program **PASS** or a later amendment that parks Engineering — [brief](operate-and-launch.md) |
 | **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **RPM program = DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). **MA-1 Contract Gate = PASS**. **Mapping Resolution Gate = PASS**. **Product = MA-3** (not a Phase E leftover) |
@@ -649,6 +649,7 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-09-16: **PMI-0 map PASS.** Deterministic owner\|UNASSIGNED for all `backend/app/**/*.py`; spine required prefixes; committed reproducible leak baseline (2006 cross-owner edges, no manual public filter). Active Engineering holds PMI-0 PASS; **PMI-1** queued in its own PR. Ready/Kernel remain parked. Product stays **MA-3**.
 - 2026-09-16: **Engineering revived = PMI-0.** [Platform Modularization & Isolation Cutover](platform-modularization-isolation-cutover.md) is Active Engineering (fact map + named `module-isolation-pmi0-map-gate`). Launch-ops **parked** (two-track rule). Ready composition **PARKED**. Kernel remains blocked. Product stays **MA-3** (disjoint write-set). MIP `CERTIFIED` ≠ ISOLATED.
 
 - 2026-09-04: **MA-3 Operator Surface feat opened.** Branch `feat/mapping-authority-ma3-operator-gate` from `4073f3a7` ([#350](https://github.com/igortatarynovich/HostFlow/pull/350)). Close path = source → schema → explicit bindings/options → Ready → projection → real submission → applied evidence, plus leftover writer retirement. Mapping Operator Gate **not PASS**. An existing page is not PASS. Not MA-4 / External Intake / Forms Publish / Hiring.

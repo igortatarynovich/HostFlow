@@ -1,6 +1,6 @@
 # Platform Modularization & Isolation Cutover Gate
 
-**Status:** **OPEN** (PMI-0 map complete — stamp pending)  
+**Status:** **OPEN** (PMI-0 **PASS**; PMI-1 not started)  
 **Date:** 2026-09-16  
 **Parents:** [`platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) · [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) · [`module-ownership-coverage.md`](module-ownership-coverage.md)  
 **Decision ID (when closed):** `PLATFORM_MODULARIZATION_ISOLATION_CUTOVER`  
@@ -12,7 +12,7 @@
 
 | Slice | Gate job / test | Status |
 |-------|-----------------|--------|
-| **PMI-0** Fact map | `test_module_isolation_pmi0_map_gate.py` + `check_module_isolation_map.py --check` | map complete — stamp pending |
+| **PMI-0** Fact map | `test_module_isolation_pmi0_map_gate.py` + `check_module_isolation_map.py --check` | **PASS** 2026-09-16 |
 | PMI-1 Freeze | (own PR; baseline = PMI-0 `module_isolation_pmi0_baseline.json`) | queued |
 | PMI-R…W ISOLATED | eight-row card + shrinking allowlist; foreign internals = OPEN | — |
 | PMI-UI | primitives + **CI forbid parallel primitives** | — |

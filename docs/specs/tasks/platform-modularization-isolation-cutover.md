@@ -1,6 +1,6 @@
 # Platform Modularization & Isolation Cutover
 
-**Status:** **OPEN** (Active Engineering = **PMI-0** — map complete, stamp pending)  
+**Status:** **OPEN** (PMI-0 map **PASS** 2026-09-16; Active Engineering waits for **PMI-1** start in its own PR)  
 **Layer:** L2 operating program — **not** an ADR · **not** Full Spine PASS · **not** Module Independence recertification  
 **Phase class:** platform  
 **Opened:** 2026-09-16  
@@ -104,8 +104,8 @@ Not created here: Legalization, Posting, Compliance-as-domain, Billing, Fleet.
 ## Locked sequence
 
 ```text
-PMI-0  Fact map (code + imports + UNASSIGNED paths)     ← map complete, stamp pending
-PMI-1  Enforcement freeze (new leaks illegal)
+PMI-0  Fact map (code + imports + UNASSIGNED paths)     ← PASS 2026-09-16
+PMI-1  Enforcement freeze (new leaks illegal)           ← next (own PR)
 PMI-R  Recruitment → ISOLATED
 PMI-B  Boundary → ISOLATED
 PMI-E  Employment → ISOLATED
@@ -201,3 +201,4 @@ After **PASS**, Full Spine unparks as: each transition calls the owning module�
 ## История
 
 - **2026-09-16** — Program opened. Ready composition **PARKED**. Kernel remains blocked.
+- **2026-09-16** — PMI-0 map **PASS**: deterministic owner|UNASSIGNED for all `backend/app/**/*.py`; spine `required_prefixes`; committed reproducible `module_isolation_pmi0_baseline.json` (1275 files; 574 UNASSIGNED; 2006 cross-owner edges = full leak set, no manual public filter). PMI-1 not started.
