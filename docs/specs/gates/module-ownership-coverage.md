@@ -80,7 +80,7 @@ There is **no** test, lint rule, or CI check that verifies a module has an owner
 
 Adjacent enforcement that does exist and must not be confused with it: `backend/app/modules/http_module_ownership.py` + `backend/app/auth/module_gate.py` (path → product-module HTTP gates, ADR-023), `backend/tests/services/test_phase1a_enforcement_guards.py` (import boundaries), `backend/tests/api/test_hr_handoff_module_gates_g3.py`.
 
-Under Rule 7 the Module Independence Program is therefore **documentation only** on the coverage dimension. Closing that needs one check — «every domain listed in this record as a domain has a card» — which is a Launch-ops candidate, **not** a v1 blocker: it prevents future drift, it does not make v1 launchable. Registered as such.
+Under Rule 7 the Module Independence Program is therefore **documentation only** on the coverage dimension. Closing isolation is **not** a Launch-ops card-existence check. Runtime cutover: [`platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) (ISOLATED cards + CI). MIP `CERTIFIED` ≠ ISOLATED.
 
 ---
 
@@ -96,4 +96,4 @@ Under Rule 7 the Module Independence Program is therefore **documentation only**
 ## История
 
 - **2026-08-28** — record introduced. Corrects the scope of the 2026-05-29 closeout outcome sentence; names three cards (MOC-1…MOC-3, 1.5 slices) as required before the Release Readiness Gate; records the Rule 7 enforcement gap.
-- **2026-08-28** — MOC-1…MOC-3 **delivered**: ownership cards for Sales, Forms and Acquisition, with the `leads` triple claim adjudicated per concern in the Acquisition card. RR1 unblocked on the ownership dimension. Certification (contract map / dependency audit / test boundary) deliberately not attempted; the Rule 7 enforcement gap stays open as a Launch-ops candidate.
+- **2026-09-16** — Rule 7 gap owner moved to [`platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) (runtime ISOLATED, not card existence). MIP closeout not reopened.

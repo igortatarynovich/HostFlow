@@ -1,7 +1,8 @@
 # Transfer Policy — canonical handoff readiness
 
 **Status:** Implemented (resolver + API + settings hub). **Strategic layer:** [`process-engine.md`](../platform/process-engine.md) — Transfer Policy is the **tactical Recruitment slice** of Process Engine runtime; migrate to platform evaluator without changing product semantics.  
-**Related:** [PR16](../../PR16-recruitment-package-pre-hr.md), [handoff-contract.md](../architecture/handoff-contract.md), [hr-verification-plan.md](hr-verification-plan.md).
+**Parked amend (policy/rule):** [`../tasks/recruitment-ready-policy-composition-separation.md`](../tasks/recruitment-ready-policy-composition-separation.md) — process-policy vs pluggable Ready composition; unpark only after [`../tasks/platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) **PASS**.  
+**Related:** [PR16](../../PR16-recruitment-package-pre-hr.md), [handoff-contract.md](../architecture/handoff-contract.md), [hr-verification-plan.md](hr-verification-plan.md), [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md).
 
 ---
 

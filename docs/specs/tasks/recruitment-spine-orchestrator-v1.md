@@ -208,6 +208,6 @@ FAIL if Recruitment UI creates Employee or asks for zezwolenie type.
 4. **Boundary E2E proof PASS** — [`recruitment-employment-handoff-boundary-e2e-proof.md`](recruitment-employment-handoff-boundary-e2e-proof.md) (handoff `e9ef16f2-1ab6-49d0-91dd-aa7676995081`).  
 5. **Slice 4 PASS** — [`employment-start-allowed-eso5-enforcement.md`](employment-start-allowed-eso5-enforcement.md) @ `b8c9dd04` (Confirm requires `start_allowed=true`; mint-on-confirm retired).  
 6. **Three-host Full Spine (PEM-1 walks)** — [`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) **NOT PASS** (historical evidence only).
-7. **Platform next:** [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) (Admit process-policy vs PEM-1 ruleset) → dual zero-policy preflight → [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md). Hiring E2E not opened.
+7. **Platform next:** [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md). Ready composition **PARKED**. Kernel blocked. Hiring E2E not opened.
 
 Canvas: `meta-to-started-target-journey` (visual; not L2 canon).

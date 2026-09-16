@@ -120,6 +120,7 @@ jobs:
       esa4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa4 == 'true' }}
       admit_ruleset: ${{ github.event_name != 'pull_request' || steps.filter.outputs.admit_ruleset == 'true' }}
       dual_zero: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dual_zero == 'true' }}
+      pmi0: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi0 == 'true' }}
       dqc_bridge: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dqc_bridge == 'true' }}
       doc_req_alias: ${{ github.event_name != 'pull_request' || steps.filter.outputs.doc_req_alias == 'true' }}
       start_allowed_hub: ${{ github.event_name != 'pull_request' || steps.filter.outputs.start_allowed_hub == 'true' }}
@@ -444,6 +445,13 @@ jobs:
               - 'backend/app/services/recruitment_package_readiness.py'
               - 'backend/app/reference/requirement_policy_consumer_parity.py'
               - 'docs/specs/architecture/ADR-042-spine-policy-separation.md'
+            pmi0:
+              - 'scripts/architecture/check_module_isolation_map.py'
+              - 'scripts/architecture/module_isolation_owners.json'
+              - 'scripts/architecture/module_isolation_pmi0_baseline.json'
+              - 'backend/tests/platform/test_module_isolation_pmi0_map_gate.py'
+              - 'docs/specs/tasks/platform-modularization-isolation-cutover.md'
+              - 'docs/specs/gates/platform-modularization-isolation-cutover-gate.md'
             esa2:
               - 'backend/app/services/employment_formalize_employee_ensure.py'
               - 'backend/tests/platform/test_employment_start_allowed_mint_cutover_gate.py'
@@ -573,6 +581,8 @@ jobs:
         run: python3 backend/scripts/check_adr014_document_access.py
       - name: REF-3.1 facade boundary guard scan
         run: python3 scripts/architecture/check_reference_facade_boundary.py
+      - name: PMI-0 module isolation fact map
+        run: python3 scripts/architecture/check_module_isolation_map.py --check
 
   alembic:
     name: alembic
@@ -1134,6 +1144,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_admit_policy_ruleset_separation_gate.py') != ''
         with:
           tests: tests/platform/test_admit_policy_ruleset_separation_gate.py
+
+  module-isolation-pmi0-map-gate:
+    name: Module Isolation PMI-0 Map Gate
+    needs: changes
+    if: needs.changes.outputs.pmi0 == 'true' || needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when PMI-0 map gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi0_map_gate.py') == ''
+        run: echo "PMI-0 map gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi0_map_gate.py') != ''
+        with:
+          tests: tests/platform/test_module_isolation_pmi0_map_gate.py
 
   dual-zero-policy-preflight-gate:
     name: Dual Zero-Policy Preflight Gate

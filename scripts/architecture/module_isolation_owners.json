@@ -1,0 +1,151 @@
+{
+  "schema": "pmi0.v1",
+  "spine_owners": [
+    "recruitment",
+    "boundary",
+    "employment",
+    "documents",
+    "workforce"
+  ],
+  "owners": {
+    "recruitment": {
+      "required_prefixes": [
+        "backend/app/modules/recruitment",
+        "backend/app/modules/applications",
+        "backend/app/modules/vacancies",
+        "backend/app/services/recruitment_",
+        "backend/app/api/v1/candidates"
+      ],
+      "prefixes": [
+        "backend/app/modules/recruitment",
+        "backend/app/modules/applications",
+        "backend/app/modules/vacancies",
+        "backend/app/services/recruitment_",
+        "backend/app/services/recruiter_",
+        "backend/app/services/transfer_policy_resolver.py",
+        "backend/app/api/v1/candidates",
+        "backend/app/api/v1/candidates.py",
+        "backend/app/api/v1/candidates_delete.py",
+        "backend/app/api/v1/recruiters",
+        "backend/app/api/v1/vacancies",
+        "backend/app/api/v1/vacancies.py",
+        "hostflow-frontend/src/modules/recruitment",
+        "hostflow-frontend/src/modules/candidates",
+        "hostflow-frontend/src/modules/candidate-card",
+        "hostflow-frontend/src/modules/pipeline"
+      ]
+    },
+    "boundary": {
+      "required_prefixes": [
+        "backend/app/reference/ready_for_employment.py",
+        "backend/app/services/handoff.py",
+        "backend/app/api/v1/handoffs.py"
+      ],
+      "prefixes": [
+        "backend/app/reference/ready_for_employment.py",
+        "backend/app/services/ready_for_employment_emit.py",
+        "backend/app/services/handoff.py",
+        "backend/app/services/handoff_snapshot.py",
+        "backend/app/services/handoff_snapshot_acl.py",
+        "backend/app/services/candidate_handoff_routing.py",
+        "backend/app/api/v1/handoffs.py",
+        "backend/app/models/candidate_handoff.py",
+        "backend/app/models/candidate_handoff_snapshot.py"
+      ]
+    },
+    "employment": {
+      "required_prefixes": [
+        "backend/app/services/hr_",
+        "backend/app/services/employment_",
+        "backend/app/reference/employment_start_allowed.py"
+      ],
+      "prefixes": [
+        "backend/app/reference/employment_accept_policy.py",
+        "backend/app/reference/employment_formalize.py",
+        "backend/app/reference/employment_missing_resolution.py",
+        "backend/app/reference/employment_start_allowed.py",
+        "backend/app/reference/employment_started.py",
+        "backend/app/services/employment_",
+        "backend/app/services/hr_",
+        "backend/app/process_engine/manifests/hr.py",
+        "backend/app/api/v1/hr_inbox.py",
+        "backend/app/api/v1/hr_dashboard.py",
+        "backend/app/api/v1/candidate_employments.py"
+      ]
+    },
+    "documents": {
+      "required_prefixes": [
+        "backend/app/modules/documents"
+      ],
+      "prefixes": [
+        "backend/app/modules/documents",
+        "backend/app/document_hub",
+        "backend/app/document_runtime",
+        "backend/app/document_types",
+        "backend/app/document_expiry_notifications",
+        "backend/app/services/document_",
+        "backend/app/services/document_hub_delivery_contract.py",
+        "backend/app/api/v1/documents.py",
+        "backend/app/api/v1/document_policies.py",
+        "backend/app/api/v1/document_merge",
+        "backend/app/api/v1/candidate_documents.py",
+        "backend/app/api/v1/legal_documents.py",
+        "backend/app/models/document",
+        "hostflow-frontend/src/modules/documents"
+      ]
+    },
+    "workforce": {
+      "required_prefixes": [
+        "backend/app/services/workforce_",
+        "backend/app/api/v1/workforce",
+        "backend/app/models/workforce_"
+      ],
+      "prefixes": [
+        "backend/app/services/workforce_",
+        "backend/app/api/v1/workforce",
+        "backend/app/models/workforce_"
+      ]
+    },
+    "sales": {
+      "prefixes": [
+        "backend/app/modules/sales",
+        "backend/app/modules/sales_orders",
+        "backend/app/modules/client_accounts",
+        "hostflow-frontend/src/modules/services"
+      ]
+    },
+    "forms": {
+      "prefixes": [
+        "backend/app/forms_platform"
+      ]
+    },
+    "acquisition": {
+      "prefixes": [
+        "backend/app/acquisition",
+        "backend/app/modules/intake_routing",
+        "backend/app/modules/outcome_rules"
+      ]
+    },
+    "integrations": {
+      "prefixes": [
+        "backend/app/modules/leads"
+      ]
+    },
+    "communications": {
+      "prefixes": [
+        "backend/app/communications",
+        "backend/app/api/v1/communications"
+      ]
+    },
+    "platform": {
+      "prefixes": [
+        "backend/app/reference",
+        "backend/app/process_engine",
+        "backend/app/requirement_rules",
+        "backend/app/entity_profile",
+        "backend/app/platform",
+        "backend/app/field_registry"
+      ]
+    }
+  }
+}

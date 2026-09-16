@@ -90,7 +90,7 @@ P1 Recruitment Ready     (zero-requirement Ready ruleset → evaluate → allowe
 | **PASS** | One continuous P1→P6 witness; invariants held; P5→P6 shown; neutral ≠ bypass held |
 | **STOP** | Named break + **defect class**; kernel remains **NOT PASS** |
 
-**Current:** **NOT PASS** — Admit separation **PASS**; dual zero-policy preflight **STOP** ([`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md) — P4 PASS · P1 STOP). Kernel walk **blocked**.
+**Current:** **NOT PASS** — Admit separation **PASS**; dual preflight **STOP**; Ready composition **PARKED**; Kernel walk **blocked** until [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) **PASS**.
 
 ---
 
@@ -135,10 +135,11 @@ P1 Recruitment Ready     (zero-requirement Ready ruleset → evaluate → allowe
 
 ## Next
 
-1. Classified **Ready composability** fix (separate) — full Ready empty composition.  
-2. Re-run dual zero-policy preflight until **PASS**.  
-3. Then new-person P1→P6 on **this** brief.  
-4. PEM-1 composition only after kernel PASS.
+1. [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) — **OPEN**.  
+2. After PMI **PASS**, unpark [`recruitment-ready-policy-composition-separation.md`](recruitment-ready-policy-composition-separation.md).  
+3. Re-run dual zero-policy preflight until **PASS**.  
+4. Then new-person P1→P6 on **this** brief.  
+5. PEM-1 composition only after kernel PASS.
 
 Banned still: `neutral=true` · `skip_requirements` · `kernel_mode` · test-only evaluator · evaluator-chooses-ruleset · stuffing candidate data to green Ready.
 

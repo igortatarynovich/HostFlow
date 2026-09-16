@@ -156,6 +156,14 @@ paths-qa:
 docs-lint:
 	python3 scripts/docs/check_doc_governance.py
 
+.PHONY: module-isolation-map
+module-isolation-map:
+	python3 scripts/architecture/check_module_isolation_map.py --check
+
+.PHONY: module-isolation-map-write
+module-isolation-map-write:
+	python3 scripts/architecture/check_module_isolation_map.py --write
+
 .PHONY: docs-lint-strict
 docs-lint-strict:
 	python3 scripts/docs/check_doc_governance.py --strict --check-orphans

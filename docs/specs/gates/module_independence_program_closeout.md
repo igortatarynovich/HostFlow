@@ -38,6 +38,8 @@ Related:
 
 ## Next Expansion Readiness
 
+Isolation of certified modules is **not** implied by this closeout. Runtime cutover: [`../tasks/platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md). `CERTIFIED` ≠ `ISOLATED`.
+
 With this closeout, HostFlow has:
 1. Platform Core (`PASS`);
 2. Reference Layer adoption (`PASS_WITH_BASELINE_NOTES`);

@@ -169,7 +169,10 @@ A Code95 hole is **not** “Full Spine broken” unless classified as kernel.
 | **3a** | Baseline Kernel proof attempt | Preflight: zero-requirement expressible? | **STOP** — Admit not a composable policy engine ([brief](../tasks/baseline-full-spine-kernel-proof.md)) |
 | **3b** | **Admit policy / ruleset separation** | `employment_start_allowed.v1` = process-policy + pluggable ruleset; **resolver ≠ evaluator**; PEM-1 = one ruleset; `[]` → allowed штатно | **PASS** 2026-09-15 — [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) |
 | **3c** | Dual zero-policy preflight | Full Ready evaluator + Admit evaluator each → `allowed` under `[]` | **STOP** 2026-09-15 — P4 PASS · P1 STOP — [`dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md) |
-| **3d** | **Baseline Full Spine Kernel proof** (new person P1→P6) | Continuity, ownership, handoffs, identity; neutral ≠ bypass | **Blocked** until 3c PASS |
+| **3c2** | **Recruitment Ready policy / composition separation** | Local evaluator fix — **not** module isolation | **PARKED** — [`recruitment-ready-policy-composition-separation.md`](../tasks/recruitment-ready-policy-composition-separation.md) until PMI **PASS** |
+| **PMI** | **Platform Modularization & Isolation Cutover** | Spine modules **ISOLATED** + CI freeze; contracts not internals | **OPEN** — [`platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) (**before** 3c2/3c3/3d) |
+| **3c3** | Dual zero-policy preflight **retry** | Full Ready `[]` + Admit `[]` on real evaluators | After PMI **PASS** and 3c2 PASS |
+| **3d** | **Baseline Full Spine Kernel proof** (new person P1→P6) | Continuity, ownership, handoffs, identity; neutral ≠ bypass | **Blocked** until PMI **PASS** and 3c3 PASS |
 | **4** | **PEM-1 Policy Composition proof** | Same каркас + PEM-1 ruleset may block | After kernel PASS |
 | **5** | Ongoing defects | Classify per §6 before fix | Ongoing |
 
@@ -232,7 +235,9 @@ Do **not** change architecture or write runtime for spine topology between steps
 
 | Doc | Role |
 |-----|------|
-| [`dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md) | §3c dual zero-policy — **STOP** (P4 PASS · P1 STOP) |
+| [`platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) | Runtime isolation program — **OPEN** (blocks 3c2 / Kernel) |
+| [`recruitment-ready-policy-composition-separation.md`](../tasks/recruitment-ready-policy-composition-separation.md) | Classified **policy/rule** fix — Ready process-policy vs pluggable composition (**PARKED**) |
+| [`dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md) | §3c dual zero-policy — **STOP** (P4 PASS · P1 STOP); retry after PMI **PASS** and 3c2 |
 | [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) | Classified **policy/rule** fix — Admit process-policy vs PEM-1 ruleset **PASS** |
 | [`baseline-full-spine-kernel-proof.md`](../tasks/baseline-full-spine-kernel-proof.md) | Kernel proof **NOT PASS** (preflight STOP) |
 | [`spine-policy-separation-inventory.md`](../tasks/spine-policy-separation-inventory.md) | P1–P6 six-field map **CLOSED** |
@@ -252,4 +257,5 @@ Do **not** change architecture or write runtime for spine topology between steps
 - 2026-09-15: Kernel preflight STOP → Admit is PEM-1 composition as evaluator; program inserts **Admit policy/ruleset separation** before retry — [`../tasks/admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md).  
 - 2026-09-15: Work item lock — **resolver ≠ evaluator**; `unsupported_context` = resolve failure only; `[]` → allowed.  
 - 2026-09-15: Admit policy/ruleset separation **PASS** — runtime pipeline + gate; next = dual zero-policy preflight (not Kernel walk).  
-- 2026-09-15: Dual zero-policy preflight **STOP** — Admit empty **PASS**; full Ready has no empty composition (policy→topology in Recruitment) — [`../tasks/dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md). Kernel still blocked.
+- 2026-09-15: Dual zero-policy preflight **STOP** — Admit empty **PASS**; full Ready has no empty composition (policy→topology in Recruitment) — [`../tasks/dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md). Kernel still blocked.  
+- 2026-09-16: Dual STOP classified as **one** Ready composition-authority defect (not five layer gap-fixes) — [`../tasks/recruitment-ready-policy-composition-separation.md`](../tasks/recruitment-ready-policy-composition-separation.md) then **PARKED**. Isolation is the missing foundation — [`../tasks/platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) **OPEN** before 3c2 / Kernel.

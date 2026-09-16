@@ -92,5 +92,5 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 2�
 RSO-1 package shape is frozen (`ready_for_employment.v1`). **ESO-1:** accept policy that **reuses** package facts (gate 2) + auto-init when Employment gates pass. Then ESO-2 employability SoT (ownership card if Rule 3 requires).
 
 **Locked product sequence after ESO-5 binding (L3 baseline):**  
-Coverage Audit → … → ESO-5 slice 4 **PASS** → ADR-042 **Accepted** → inventory P1–P6 **CLOSED** → Kernel preflight **STOP** (Admit = PEM-1-as-evaluator) → [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) **OPEN** → dual zero-policy preflight → [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) → PEM-1 composition.
+Coverage Audit → … → ESO-5 slice 4 **PASS** → ADR-042 **Accepted** → inventory P1–P6 **CLOSED** → Kernel preflight **STOP** → Admit ruleset separation **PASS** → dual zero-policy **STOP** → Ready composition **PARKED** → [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) **OPEN** → (after PMI **PASS**) Ready composition → dual preflight retry → [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) → PEM-1 composition.
 Do **not** add neutral/kernel bypass; do **not** retry Kernel walk before Admit ruleset separation PASSes.

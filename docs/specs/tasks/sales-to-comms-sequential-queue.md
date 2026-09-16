@@ -31,8 +31,8 @@
 | Track | Active work | Rule |
 |-------|-------------|------|
 | **Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. Not MA-4. Not External Intake. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
-| **Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` — [brief](platform-reference-identity-sot.md). No named Engineering successor this amendment. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background — **not** Active Engineering |
-| **Launch-ops** | **[Operate & Launch](operate-and-launch.md)** — v1 blocker 6 (brief this amendment; **not scheduled**, no Active Launch-ops slice yet). Write-set: `deploy/`, `docs/runbooks/`, infra defaults, tenant-lifecycle surfaces. Occupies the second-track slot left free by Engineering DONE. Not an SRE programme. Not Billing | Second track, small share of capacity |
+| **Engineering** | **[PMI-0](platform-modularization-isolation-cutover.md)** complete map; then freeze + one-module cutovers. Spine Ready/Kernel **PARKED**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background | Second track |
+| **Launch-ops** | **Parked** — OL-1 `PASS_WITH_CONSTRAINTS`; OL-2 queued until PMI **PASS** or a later amendment. Not Billing | Parked |
 
 ---
 
@@ -48,20 +48,37 @@ Reaching the program horizon of this section is **not** a release. Release-ready
 |------|--------|
 | **Active Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. External Intake / Hiring / min HR remain queued. |
 | **Queued Product successor** | **MA-4** Consumer cutover after Mapping Operator Gate PASS — [brief](mapping-authority.md). Do not start MA-4 / External Intake / Forms Publish / Hiring in the MA-3 feat. Hiring is unlocked by RPM close, **not** scheduled. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
-| **Active Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` (`ref-id-exit`). No named successor. |
-| **Queued Engineering after Exit** | none this amendment. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
-| **Active Launch-ops** | **[OL-1](operate-and-launch.md) DONE** — [Launch Ownership Gate](../gates/launch-ownership-gate.md) `PASS_WITH_CONSTRAINTS` 2026-08-31. Production target for v1: **one dedicated host, one compose stack**. RR3 / RR4 / RR7 owner: **igortatarynovich** for all three, recorded as a named residual (OL1-C1), not as a solved question |
-| **Queued Launch-ops** | **OL-2** Deploy, migrate & rollback — named successor, **starts in its own PR** (invariant 6), then OL-3…OL-7 — [brief](operate-and-launch.md). The migration blocker is **withdrawn** — measured 2026-08-31, `alembic upgrade heads` applies to a fresh DB in one command ([§ Correction](operate-and-launch.md)). CI has been proving the same on every push (`backend-ci.yml` job `alembic`, green). OL-2 still owns what replaced it: the **written** deploy/migrate procedure RC condition 4 asks for, a fresh instance that starts with no admin user, and a rollback whose first release is a **baseline**, not a predecessor ([OL-2D](operate-launch-ol2d-predecessor.md)) |
+| **Active Engineering** | **[PMI-0](platform-modularization-isolation-cutover.md)** — complete map in progress (baseline write). Named gate `module-isolation-pmi0-map-gate`. Not ISOLATED. Not Ready. Not Kernel. |
+| **Queued Engineering after Exit** | PMI-1 freeze after PMI-0 stamp, then PMI-R…W — [brief](platform-modularization-isolation-cutover.md). Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
+| **Active Launch-ops** | **Parked** this amendment (second slot occupied by Engineering PMI). OL-1 remains `PASS_WITH_CONSTRAINTS`. OL-2 stays queued, **not started** |
+| **Queued Launch-ops** | **OL-2** after PMI program **PASS** or a later amendment that parks Engineering — [brief](operate-and-launch.md) |
 | **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **RPM program = DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). **MA-1 Contract Gate = PASS**. **Mapping Resolution Gate = PASS**. **Product = MA-3** (not a Phase E leftover) |
-| **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1) |
+| **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1). **Recruitment/Employment spine:** Ready composition, dual-preflight retry, Kernel walk, PEM-1 — parked until PMI **PASS** |
 
 Historical markers (A2 active, Meta Intake next, Phase E active = E7 feat) live only in §8 History. They are **not** current execution instructions.
 
 ### Invariants (mandatory)
 
 1. **One Active Product slice**, **or Product DONE with no named successor until amendment**. This amendment names **MA-3** after Mapping Resolution Gate PASS. Unlock ≠ silent schedule of Intake / Hiring. Do not open MA-3 editor in this PR.  
-2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor**. After Exit PASS with no successor, Engineering is DONE — do not promote pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) to Active Engineering.  
-3. **Two named tracks maximum.** A track exists only when this section names it with an owner and a write-set; unlocked work never creates a stream by itself. Engineering is **DONE with no successor**, so this amendment assigns the second slot to **Launch-ops** ([Operate & Launch](operate-and-launch.md), v1 blocker 6). Reviving Engineering would require closing or parking Launch-ops first — never three concurrent tracks.  
+2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor**. This amendment names **PMI-0**. Do not promote pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) to Active Engineering. Do not start PMI-R in the PMI-0 PR.  
+3. **Two named tracks maximum.** This amendment: Product **MA-3** ∥ Engineering **PMI**. Launch-ops is **parked** (OL-2 not started). Never three concurrent tracks.  
+4. **Unlock ≠ schedule.** A satisfied unlock condition does **not** auto-start the slice. Only the owning track’s queue may activate it.  
+5. **One work = one unlock condition.** Two independent unlocks ⇒ two named slices.  
+6. **Do not skip a named gate.** Do not start the next slice in the same PR as its predecessor.  
+7. **Park, don’t substitute.** If the next *scheduled* Product slice waits on an Engineering gate, Product waits. Do not jump to Billing / Forms P3 / OCR / CL8. Do not jump to Ready composition or Kernel while PMI is OPEN.  
+8. **Write-set guard.** Product CL and Reference R may run in parallel **only while write sets do not overlap.**  
+   - CL0 docs-only ∥ Reference R1 — allowed.  
+   - CL1 observe ∥ Reference R3 — allowed (CL1 does not canonize).  
+   - CL runtime country fields ∥ Reference R2 — forbidden.  
+   - CL document identity ∥ Reference R3 — forbidden.  
+   - CL required-doc policy ∥ Reference R5 — forbidden.  
+   - Vacancy Overlay ∥ Reference R5 pack / `tenant_delta` merge — forbidden. Overlay is vacancy-specific delta over Profile / Screening Pack, not R5 policy merge.  
+   - Product ∥ **Launch-ops** OL-1…OL-5 / OL-7 — allowed (docs, `deploy/`, infra config, runbooks; no product-module writes).  
+   - Product ∥ **Launch-ops OL-6** (tenant lifecycle as product) — allowed **only** while the Active Product slice writes a different module; OL-6 touches tenant / superadmin / export surfaces.  
+   - Any Launch-ops slice ∥ a Product slice editing the same file — forbidden, as for every other track.  
+   - **MA-3** ∥ **PMI-0** — allowed (mapping operator vs `scripts/architecture` isolation map).  
+   - **MA-3** ∥ **PMI-R / PMI-E** — forbidden if both write Recruitment or Employment internals.  
+   - MA-3 must not add a third UI primitive kit (PMI-UI owns that lock).  
 4. **Unlock ≠ schedule.** A satisfied unlock condition does **not** auto-start the slice. Only the owning track’s queue may activate it.  
 5. **One work = one unlock condition.** Two independent unlocks ⇒ two named slices.  
 6. **Do not skip a named gate.** Do not start the next slice in the same PR as its predecessor.  
@@ -608,6 +625,7 @@ Next branch only after:
 5. One dedicated worktree  
 
 **Do not** start C2.4 (frozen; **Epic C residual R1** — not Reference R1).  
+**Do not** start Recruitment Ready composition, dual-preflight retry, Kernel walk, or PEM-1 while [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) is OPEN.  
 **Do not** skip a named gate in § Locked execution sequence.  
 **Do not** treat unlock as schedule. Unlocked work is not Active until the owning track queues it.  
 **Do not** give one named slice two independent unlock conditions — split it.  
@@ -630,6 +648,8 @@ Next branch only after:
 ---
 
 ## 8. History
+
+- 2026-09-16: **Engineering revived = PMI-0.** [Platform Modularization & Isolation Cutover](platform-modularization-isolation-cutover.md) is Active Engineering (fact map + named `module-isolation-pmi0-map-gate`). Launch-ops **parked** (two-track rule). Ready composition **PARKED**. Kernel remains blocked. Product stays **MA-3** (disjoint write-set). MIP `CERTIFIED` ≠ ISOLATED.
 
 - 2026-09-04: **MA-3 Operator Surface feat opened.** Branch `feat/mapping-authority-ma3-operator-gate` from `4073f3a7` ([#350](https://github.com/igortatarynovich/HostFlow/pull/350)). Close path = source → schema → explicit bindings/options → Ready → projection → real submission → applied evidence, plus leftover writer retirement. Mapping Operator Gate **not PASS**. An existing page is not PASS. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-04: **Mapping Resolution Gate PASS.** One resolver (`resolve_mapping_authority`) over `intake_source_profiles.mapping_rules`. Leftover Meta stores read-through / migrated. Precedence chain removed. SoT: [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md). Active Product → **MA-3** (operator surface; not started this PR). External Intake / Hiring E2E / min HR remain queued. Not CL8. Foundation stays 🔄.

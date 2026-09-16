@@ -8,7 +8,7 @@
 **Architecture:** [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) §7 step **3c**  
 **Depends on:** [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) **PASS**  
 **Named gate:** `dual-zero-policy-preflight-gate`  
-**Does not open:** Baseline Kernel P1→P6 · PEM-1 composition · candidate mint · evidence upload · Ready architecture rewrite
+**Does not open:** Baseline Kernel P1→P6 · PEM-1 composition · candidate mint · evidence upload · five Ready layer gap-fixes
 
 > Answers two questions only.  
 > **No** new person. **No** Kernel walk.  
@@ -132,9 +132,10 @@ Plus PE transition gate / field_requirements / requirement_engine pack slots whe
 
 ## Next
 
-1. **Classified Ready work** (separate item): make full Recruitment Ready a composable policy engine — empty composition → `transfer_allowed=true` without topology leaks (`recruitment_package` / confirmations / slots / fields / ops).  
-2. Re-run **this** dual preflight until **PASS**.  
-3. Only then: [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) new-person P1→P6.  
-4. PEM-1 composition only after kernel PASS.
+1. [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) — **OPEN**. Ready composition and Kernel stay parked.  
+2. After PMI **PASS**, unpark [`recruitment-ready-policy-composition-separation.md`](recruitment-ready-policy-composition-separation.md) (still **not** five gap-fixes).  
+3. Re-run **this** dual preflight until **PASS**.  
+4. Only then: [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) new-person P1→P6.  
+5. PEM-1 composition only after kernel PASS.
 
 **Do not** open Kernel walk from this STOP.

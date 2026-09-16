@@ -39,7 +39,10 @@ P1–P6 each have locked six fields (process contracts, not document lists)
 | 3a | Baseline Kernel preflight | **STOP** — Admit embeds PEM-1 as evaluator |
 | 3b | Admit policy / ruleset separation | **PASS** — [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) (resolver ≠ evaluator; `[]` → allowed) |
 | 3c | Dual zero-policy preflight (full Ready + Admit) | **STOP** — [`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md) (P4 PASS · P1 STOP) |
-| 3d | Baseline Kernel P1→P6 witness | **Blocked** until 3c PASS — [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) |
+| 3c2 | Recruitment Ready policy / composition separation | **PARKED** — [`recruitment-ready-policy-composition-separation.md`](recruitment-ready-policy-composition-separation.md) until PMI **PASS** |
+| PMI | Platform Modularization & Isolation Cutover | **OPEN** — [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) |
+| 3c3 | Dual zero-policy preflight retry | After PMI **PASS** and 3c2 PASS |
+| 3d | Baseline Kernel P1→P6 witness | **Blocked** until PMI **PASS** and 3c3 PASS — [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) |
 | 4 | PEM-1 Policy Composition proof | After kernel **PASS** |
 | 5 | Classified fixes only | Ongoing — no auto-fix from inventory |
 
@@ -79,7 +82,7 @@ Lead/Apply → Recruitment (P1) → Handoff (P2) → Employment formalize (P3)
 | **State / work** | Selects and qualifies the person for Transfer: Fits decision, recruitment-missing resolution, Ready eligibility. |
 | **Output** | Stable outward result: **Ready** or **not Ready** for Transfer (eligibility to leave Recruitment). |
 | **Transition owner** | **Recruitment** alone. |
-| **Policy point** | Transfer-readiness / recruitment-missing **evaluate** → standard verdict (`allowed`/`blocked`/`missing`/`unsupported_context` + `next_action`). Ruleset contents are **not** topology. |
+| **Policy point** | Transfer-readiness **evaluate** → standard verdict. Active **composition** selected by Ready resolver (not AND of every capability). Ruleset contents are **not** topology. |
 | **Next contract** | Handoff (P2) receives: **Ready person + authority to emit** `ready_for_employment.v1` decisions. Handoff does not see Recruitment scoring/packs/rules. |
 
 **Surfaces:** RSO-1 · transfer-readiness · Evidence as **inputs to policy only**.
@@ -90,7 +93,7 @@ Lead/Apply → Recruitment (P1) → Handoff (P2) → Employment formalize (P3)
 |------|--------|
 | **Observation** | Absence of a requirement (e.g. Code95 / any pack item) historically behaved as if **Recruitment topology could not be walked**, instead of штатный policy returning `blocked`/`missing` + `next_action` while the Ready **transition still exists**. |
 | **Class** | **policy → topology leak** (evidence/authority defects on Walks 1–2 aggravated the symptom) |
-| **Inventory action** | **Classify only.** Do **not** open a feature/gap-fix from this close. |
+| **Inventory action** | **Classify only** from inventory close. Dual preflight STOP classified Ready composition; that item is **PARKED** behind [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md). |
 | **Kernel implication** | Baseline Kernel proof must use **zero-requirement** Ready ruleset on the **real** evaluator so `allowed` is штатно — proving topology without curing the leak by bypass. Leak remediation remains a later **classified** fix if still present under non-zero rulesets. |
 
 ---
@@ -201,8 +204,8 @@ P5 Output (Started Employee contract)→ P6 Input
 | Edge | Class | Action now |
 |------|-------|------------|
 | P4 Admit zero-requirement | **policy / rule** — **PASS** 2026-09-15 | Admit ruleset separation; `[]` → allowed; PEM-1 = ruleset |
-| P1 Ready (requirement miss → route absent) | **policy → topology leak** | Classified; dual preflight **STOP** localizes remaining leak inside Recruitment |
-| P1 R5 empty via overlay remove | **note** | Empty R5 **expressible**; full Ready surface **not** zero-composable (no Ready empty ruleset) |
+| P1 Ready (requirement miss → route absent) | **policy → topology leak** | Dual preflight **STOP**; Ready composition **PARKED** behind PMI — [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) |
+| P1 R5 empty via overlay remove | **note** | Empty R5 **expressible**; full Ready surface **not** zero-composable until 3c2 |
 | P1 → P2 → P3 → P4 → P5 (named RSO/ESO/ESA) | **clean** (piecewise) | Compose in kernel proof |
 | P3 → P4 evidence holes (Walk 3) | **evidence / authority** | Not topology; not auto-fix as spine |
 | P5 → P6 | **proof gap** (contract defined; continuity unproved) | Must be witnessed in kernel proof |
@@ -224,10 +227,11 @@ P5 Output (Started Employee contract)→ P6 Input
 
 ## Next
 
-1. Classified Ready composability fix (separate) — full Ready empty composition → `transfer_allowed=true`.  
-2. Re-run [`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md) until **PASS**.  
-3. [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) new-person P1→P6 — after 3c PASS.  
-4. PEM-1 composition after kernel PASS.
+1. [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) — isolate spine modules before another evaluator fix.  
+2. After PMI **PASS**, unpark [`recruitment-ready-policy-composition-separation.md`](recruitment-ready-policy-composition-separation.md).  
+3. Re-run [`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md) until **PASS**.  
+4. [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) new-person P1→P6 — after 3c3 PASS.  
+5. PEM-1 composition after kernel PASS.
 
 Admit separation **PASS:** [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md).  
 Dual preflight **STOP:** [`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md).
