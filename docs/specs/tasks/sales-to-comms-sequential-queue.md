@@ -31,7 +31,7 @@
 | Track | Active work | Rule |
 |-------|-------------|------|
 | **Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. Not MA-4. Not External Intake. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
-| **Engineering** | **PMI-0 PASS** — map complete; **PMI-1** freeze queued (own PR). Spine Ready/Kernel **PARKED**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background | Second track |
+| **Engineering** | **PMI-1 PASS** — freeze ratchet live; **PMI-R** Recruitment ISOLATED queued (own PR). Spine Ready/Kernel **PARKED**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background | Second track |
 | **Launch-ops** | **Parked** — OL-1 `PASS_WITH_CONSTRAINTS`; OL-2 queued until PMI **PASS** or a later amendment. Not Billing | Parked |
 
 ---
@@ -48,8 +48,8 @@ Reaching the program horizon of this section is **not** a release. Release-ready
 |------|--------|
 | **Active Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. External Intake / Hiring / min HR remain queued. |
 | **Queued Product successor** | **MA-4** Consumer cutover after Mapping Operator Gate PASS — [brief](mapping-authority.md). Do not start MA-4 / External Intake / Forms Publish / Hiring in the MA-3 feat. Hiring is unlocked by RPM close, **not** scheduled. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
-| **Active Engineering** | **PMI-0 PASS** ([platform-modularization-isolation-cutover.md](platform-modularization-isolation-cutover.md)). Next named slice **PMI-1** not started (invariant 6). Not Ready. Not Kernel. |
-| **Queued Engineering after Exit** | **PMI-1** freeze (baseline = `module_isolation_pmi0_baseline.json`), then PMI-R…W — [brief](platform-modularization-isolation-cutover.md). Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
+| **Active Engineering** | **PMI-1 PASS** ([platform-modularization-isolation-cutover.md](platform-modularization-isolation-cutover.md)). Next named slice **PMI-R** not started (invariant 6). Not Ready. Not Kernel. |
+| **Queued Engineering after Exit** | **PMI-R** Recruitment → ISOLATED, then PMI-B…W — [brief](platform-modularization-isolation-cutover.md). Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
 | **Active Launch-ops** | **Parked** this amendment (second slot occupied by Engineering PMI). OL-1 remains `PASS_WITH_CONSTRAINTS`. OL-2 stays queued, **not started** |
 | **Queued Launch-ops** | **OL-2** after PMI program **PASS** or a later amendment that parks Engineering — [brief](operate-and-launch.md) |
 | **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **RPM program = DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). **MA-1 Contract Gate = PASS**. **Mapping Resolution Gate = PASS**. **Product = MA-3** (not a Phase E leftover) |
@@ -60,7 +60,7 @@ Historical markers (A2 active, Meta Intake next, Phase E active = E7 feat) live 
 ### Invariants (mandatory)
 
 1. **One Active Product slice**, **or Product DONE with no named successor until amendment**. This amendment names **MA-3** after Mapping Resolution Gate PASS. Unlock ≠ silent schedule of Intake / Hiring. Do not open MA-3 editor in this PR.  
-2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor**. This amendment names **PMI-0**. Do not promote pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) to Active Engineering. Do not start PMI-R in the PMI-0 PR.  
+2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor**. This amendment names **PMI-1 PASS** with **PMI-R** queued. Do not promote pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) to Active Engineering. Do not start PMI-R in the PMI-1 PR.  
 3. **Two named tracks maximum.** This amendment: Product **MA-3** ∥ Engineering **PMI**. Launch-ops is **parked** (OL-2 not started). Never three concurrent tracks.  
 4. **Unlock ≠ schedule.** A satisfied unlock condition does **not** auto-start the slice. Only the owning track’s queue may activate it.  
 5. **One work = one unlock condition.** Two independent unlocks ⇒ two named slices.  
@@ -649,6 +649,7 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-09-16: **PMI-1 freeze PASS.** Authority `module_isolation_pmi0_baseline.json` @ `844900d6` pinned; debt = 2006 structural edges; new edge / debt growth / ownership hide → CI FAIL. No remediation. Active Engineering holds PMI-1 PASS; **PMI-R** queued in its own PR. Ready/Kernel remain parked. Product stays **MA-3**.
 - 2026-09-16: **PMI-0 map PASS.** Deterministic owner\|UNASSIGNED for all `backend/app/**/*.py`; spine required prefixes; committed reproducible leak baseline (2006 cross-owner edges, no manual public filter). Active Engineering holds PMI-0 PASS; **PMI-1** queued in its own PR. Ready/Kernel remain parked. Product stays **MA-3**.
 - 2026-09-16: **Engineering revived = PMI-0.** [Platform Modularization & Isolation Cutover](platform-modularization-isolation-cutover.md) is Active Engineering (fact map + named `module-isolation-pmi0-map-gate`). Launch-ops **parked** (two-track rule). Ready composition **PARKED**. Kernel remains blocked. Product stays **MA-3** (disjoint write-set). MIP `CERTIFIED` ≠ ISOLATED.
 

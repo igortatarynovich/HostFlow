@@ -1,6 +1,6 @@
 # Platform Modularization & Isolation Cutover
 
-**Status:** **OPEN** (PMI-0 map **PASS** 2026-09-16; Active Engineering waits for **PMI-1** start in its own PR)  
+**Status:** **OPEN** (PMI-0 map **PASS**; PMI-1 freeze **PASS** 2026-09-16; Active Engineering waits for **PMI-R** start in its own PR)  
 **Layer:** L2 operating program — **not** an ADR · **not** Full Spine PASS · **not** Module Independence recertification  
 **Phase class:** platform  
 **Opened:** 2026-09-16  
@@ -105,8 +105,8 @@ Not created here: Legalization, Posting, Compliance-as-domain, Billing, Fleet.
 
 ```text
 PMI-0  Fact map (code + imports + UNASSIGNED paths)     ← PASS 2026-09-16
-PMI-1  Enforcement freeze (new leaks illegal)           ← next (own PR)
-PMI-R  Recruitment → ISOLATED
+PMI-1  Enforcement freeze (new leaks illegal)           ← PASS 2026-09-16
+PMI-R  Recruitment → ISOLATED                           ← next (own PR)
 PMI-B  Boundary → ISOLATED
 PMI-E  Employment → ISOLATED
 PMI-D  Documents → ISOLATED
@@ -116,6 +116,35 @@ PMI-X  Program exit gate
 ```
 
 Unlock ≠ schedule. Do not start PMI-R in the PMI-0 PR. Do not start PMI-B before Recruitment ISOLATED. **PMI-UI** is not a component library drop: it locks platform primitives (layout, nav, entity card, status/verdict, actions, forms, evidence) **and** CI/architecture enforcement that **rejects new parallel primitives** where a platform primitive already exists. Module compositions consume those primitives. Without that forbid rule, backend isolation still leaves product reinvented on the frontend. ADR-011 remains the UI standard; the gap is **runtime kit + parallel-primitive enforcement** ([`PRIMITIVES_AUDIT.md`](../frontend/PRIMITIVES_AUDIT.md)).
+
+### PMI-1 — enforcement freeze (PASS criteria)
+
+**Narrow contract.** PMI-1 remediates nothing and moves no code between modules. It installs a ratchet.
+
+| Rule | Machine meaning |
+|------|-----------------|
+| Baseline authority | `module_isolation_pmi0_baseline.json` content from commit **`844900d6`** (sha256 pinned in `module_isolation_pmi1_freeze.json`) |
+| Frozen debt | All **2006** structural cross-owner edges `(from_file, import, to_file)` — debt, not architectural permission |
+| New cross-owner edge vs debt | **FAIL** |
+| Edge removal (import gone) | **PASS**; debt may shrink via `--shrink-debt` |
+| Add edge to debt/authority | **FAIL** (not “update snapshot”) |
+| Ownership/prefix remap that hides a still-present debt import | **FAIL** |
+| Move code to `UNASSIGNED` to drop a forbidden edge from the cross-owner set while import remains | **FAIL** (hide rule) |
+| PMI-0 `--write` after freeze | **FAIL** — authority immutable |
+
+| Deliverable | Path |
+|-------------|------|
+| Freeze lock | `scripts/architecture/module_isolation_pmi1_freeze.json` |
+| Debt allowlist (shrink-only) | `scripts/architecture/module_isolation_pmi1_debt.json` |
+| Checker | `scripts/architecture/check_module_isolation_freeze.py` |
+| Gate | `backend/tests/platform/test_module_isolation_pmi1_freeze_gate.py` |
+
+**Platform invariant after PMI-1 PASS:**
+
+> Architectural debt may only shrink. New cross-module coupling is rejected.
+
+**PMI-1 PASS:** freeze checker green; authority sha matches `844900d6`; debt ⊆ authority; current ⊆ debt; no hide; no Ready/Kernel/policy work in the freeze PR.  
+**Next:** PMI-R Recruitment → ISOLATED (first real debt reduction + eight-row card).
 
 ### PMI-0 — complete map (PASS criteria)
 
@@ -143,15 +172,9 @@ Unlock ≠ schedule. Do not start PMI-R in the PMI-0 PR. Do not start PMI-B befo
 **PMI-0 PASS:** three properties above green; CI `--check` green; **no ISOLATED claim**; Ready/Kernel still parked.  
 **PMI-0 STOP:** incomplete classification, missing spine roots, baseline drift, or hand-curated leak exceptions.
 
-### PMI-1 — freeze (separate slice; not this commit)
+### PMI-1 — freeze (CLOSED — do not reopen as remediation)
 
-Freeze **exactly** the PMI-0 baseline leak set:
-
-- current cross-owner edges = technical debt  
-- **new** cross-owner edge = CI failure  
-- **allowlist growth** = CI failure  
-
-Do not remediate the 2000+ edges in PMI-1. Do not mix PMI-1 into the PMI-0 stamp commit.
+See **PMI-1 — enforcement freeze** above. Do not mix remediation into the freeze PR.
 
 ---
 
@@ -201,4 +224,5 @@ After **PASS**, Full Spine unparks as: each transition calls the owning module�
 ## История
 
 - **2026-09-16** — Program opened. Ready composition **PARKED**. Kernel remains blocked.
-- **2026-09-16** — PMI-0 map **PASS**: deterministic owner|UNASSIGNED for all `backend/app/**/*.py`; spine `required_prefixes`; committed reproducible `module_isolation_pmi0_baseline.json` (1275 files; 574 UNASSIGNED; 2006 cross-owner edges = full leak set, no manual public filter). PMI-1 not started.
+- **2026-09-16** — PMI-0 map **PASS**: deterministic owner|UNASSIGNED for all `backend/app/**/*.py`; spine `required_prefixes`; committed reproducible `module_isolation_pmi0_baseline.json` (1275 files; 574 UNASSIGNED; 2006 cross-owner edges = full leak set, no manual public filter).
+- **2026-09-16** — PMI-1 freeze **PASS**: authority `844900d6` pinned; debt = 2006 structural edges; new edge / debt growth / ownership hide / UNASSIGNED hide / authority mutate → FAIL. No remediation. PMI-R not started.

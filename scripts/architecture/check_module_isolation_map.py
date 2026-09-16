@@ -211,11 +211,22 @@ def dump(data: dict) -> str:
     return json.dumps(data, indent=2, sort_keys=True) + "\n"
 
 
+FREEZE_LOCK_PATH = REPO_ROOT / "scripts" / "architecture" / "module_isolation_pmi1_freeze.json"
+
+
+def authority_is_frozen() -> bool:
+    return FREEZE_LOCK_PATH.is_file()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="print summary JSON (not the full file lists)")
-    parser.add_argument("--write", action="store_true", help="write committed PMI-0 baseline")
-    parser.add_argument("--check", action="store_true", help="require baseline to match scanner output")
+    parser.add_argument("--write", action="store_true", help="write committed PMI-0 baseline (forbidden after PMI-1 freeze)")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="after PMI-1: verify authority immutable + map completeness; before PMI-1: exact baseline match",
+    )
     args = parser.parse_args(argv)
 
     if not OWNERS_PATH.is_file():
@@ -235,22 +246,50 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     baseline = canonical_baseline(report)
+    frozen = authority_is_frozen()
+
     if args.write:
-        BASELINE_PATH.write_text(dump(baseline), encoding="utf-8")
-        print(f"wrote {BASELINE_PATH.relative_to(REPO_ROOT)}")
-    if args.check:
-        if not BASELINE_PATH.is_file():
-            print(f"missing baseline (run --write): {BASELINE_PATH}", file=sys.stderr)
-            return 1
-        existing = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
-        if existing != baseline:
+        if frozen:
             print(
-                "PMI-0 baseline drift: scanner output != "
-                "scripts/architecture/module_isolation_pmi0_baseline.json "
-                "(re-run with --write in the PMI-0 slice only; PMI-1 freeze is a later slice)",
+                "PMI-0 --write FORBIDDEN after PMI-1 freeze "
+                f"({FREEZE_LOCK_PATH.relative_to(REPO_ROOT)}). "
+                "Authority baseline is immutable; shrink debt via "
+                "check_module_isolation_freeze.py --shrink-debt only after real import removals.",
                 file=sys.stderr,
             )
             return 1
+        BASELINE_PATH.write_text(dump(baseline), encoding="utf-8")
+        print(f"wrote {BASELINE_PATH.relative_to(REPO_ROOT)}")
+
+    if args.check:
+        if not BASELINE_PATH.is_file():
+            print(f"missing baseline: {BASELINE_PATH}", file=sys.stderr)
+            return 1
+        if frozen:
+            freeze = json.loads(FREEZE_LOCK_PATH.read_text(encoding="utf-8"))
+            import hashlib
+
+            actual = hashlib.sha256(BASELINE_PATH.read_bytes()).hexdigest()
+            expected = freeze.get("authority_sha256")
+            if actual != expected:
+                print(
+                    "PMI-0 authority baseline mutated after freeze "
+                    f"(expected {expected}, got {actual})",
+                    file=sys.stderr,
+                )
+                return 1
+            if freeze.get("authority_commit") != "844900d6":
+                print("PMI-0 freeze lock authority_commit must stay 844900d6", file=sys.stderr)
+                return 1
+        else:
+            existing = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
+            if existing != baseline:
+                print(
+                    "PMI-0 baseline drift: scanner output != "
+                    "scripts/architecture/module_isolation_pmi0_baseline.json",
+                    file=sys.stderr,
+                )
+                return 1
 
     summary = {
         "backend_file_count": report["backend_file_count"],
@@ -258,6 +297,7 @@ def main(argv: list[str] | None = None) -> int:
         "unassigned_count": report["unassigned_count"],
         "cross_owner_edge_count": report["cross_owner_edge_count"],
         "spine_file_counts": {name: report["file_counts"].get(name, 0) for name in SPINE_OWNERS},
+        "authority_frozen": frozen,
     }
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
@@ -268,8 +308,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  spine_file_counts: {summary['spine_file_counts']}")
         print(f"  unassigned_count: {summary['unassigned_count']}")
         print(f"  cross_owner_edge_count: {summary['cross_owner_edge_count']}")
+        print(f"  authority_frozen: {frozen}")
         print("  leak set = full cross_owner_edges (no manual public filter)")
-        print("  (map only — not ISOLATED, not PMI-1 freeze)")
     return 0
 
 

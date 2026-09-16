@@ -1,0 +1,9 @@
+{
+  "schema": "pmi1.v1",
+  "authority_commit": "844900d6",
+  "authority_path": "scripts/architecture/module_isolation_pmi0_baseline.json",
+  "authority_sha256": "f0556d8514d0a77c8f623012f2b5cedd8f931dff8125aec129523bc0e3496e61",
+  "authority_edge_count": 2006,
+  "debt_path": "scripts/architecture/module_isolation_pmi1_debt.json",
+  "invariant": "Architectural debt may only shrink. New cross-module coupling is rejected."
+}

@@ -164,6 +164,14 @@ module-isolation-map:
 module-isolation-map-write:
 	python3 scripts/architecture/check_module_isolation_map.py --write
 
+.PHONY: module-isolation-freeze
+module-isolation-freeze:
+	python3 scripts/architecture/check_module_isolation_freeze.py
+
+.PHONY: module-isolation-freeze-shrink
+module-isolation-freeze-shrink:
+	python3 scripts/architecture/check_module_isolation_freeze.py --shrink-debt
+
 .PHONY: docs-lint-strict
 docs-lint-strict:
 	python3 scripts/docs/check_doc_governance.py --strict --check-orphans

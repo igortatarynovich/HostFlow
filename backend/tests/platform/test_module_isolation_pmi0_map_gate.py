@@ -50,7 +50,13 @@ def test_pmi0_scanner_check_matches_baseline() -> None:
     summary = json.loads(proc.stdout)
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     assert summary["backend_file_count"] == baseline["backend_file_count"]
-    assert summary["cross_owner_edge_count"] == len(baseline["cross_owner_edges"])
     assert "ISOLATED" not in proc.stdout
     # No manual public-import whitelist in the leak set.
     assert "public_name_markers" not in json.loads(OWNERS.read_text(encoding="utf-8"))
+    freeze = REPO / "scripts" / "architecture" / "module_isolation_pmi1_freeze.json"
+    if freeze.is_file():
+        assert summary["authority_frozen"] is True
+        # After PMI-1, live edge count may shrink; authority file stays immutable.
+    else:
+        assert summary["cross_owner_edge_count"] == len(baseline["cross_owner_edges"])
+        assert summary.get("authority_frozen") is False
