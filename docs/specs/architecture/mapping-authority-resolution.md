@@ -70,5 +70,6 @@ Reject: documenting the old chain as “still how ingest works”; a second reso
 
 ## History
 
+- 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Mapping Consumer Cutover Gate **not PASS**.
 - 2026-09-18: Mapping Operator Gate **PASS**. Active Product → MA-4 (brief; feat locked).
 - 2026-09-04: Mapping Resolution Gate **PASS**. One resolver over `intake_source_profiles.mapping_rules`. Active Product → MA-3 (brief; feat locked).

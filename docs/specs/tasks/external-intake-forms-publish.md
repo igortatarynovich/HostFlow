@@ -12,7 +12,7 @@
 > **Not** P4 Themes. **Not** P5 Analytics. **Not** FormTemplate SoT migration. **Not** a second submit engine. **Not** Mapping Authority (consumed, not rebuilt).
 >
 > **Amended 2026-08-28 (U-2 decision):** accepting [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) *is* in FP-1 scope. v1 does not ship intake acceptance over a `Proposed` contract whose backend already runs.
-> Opening this brief does **not** schedule it. Mapping Operator Gate is PASS; Active Product is MA-4 (feat locked). Intake stays behind Mapping close. The queue’s Active Product is [MA-4](mapping-authority.md).
+> Opening this brief does **not** schedule it. Mapping Operator Gate is PASS; Active Product is MA-4 (feat `feat/mapping-authority-ma4-consumer-cutover` open; Mapping Consumer Cutover Gate not PASS). Intake stays behind Mapping close. The queue’s Active Product is [MA-4](mapping-authority.md).
 
 ---
 
