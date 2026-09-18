@@ -1,6 +1,6 @@
 # Hiring workflow E2E
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [MA-3](mapping-authority.md)
+**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [MA-4](mapping-authority.md)
 **Phase class:** platform
 **Branch (docs):** `docs/v1-blocker-briefs`
 **Branch (code):** none — later slices `feat/hiring-e2e-heN-…`
@@ -10,7 +10,7 @@
 > v1 blocker 4: **one candidate walks `stage → requirements/docs → eligibility → transfer`.**
 > Acceptance **over existing** funnels, gates, policy authority and transfer — explicitly **not a new Hiring Product**, not a funnel builder, not a workflow engine.
 > **Not** Requirement Policy Management (consumed). **Not** min HR handoff (that is [the next node](recruitment-hr-minimal-handoff.md)). **Not** LI-2+ Lifecycle cutover. **Not** CL8.
-> Opening this brief does **not** schedule it. RPM program close **unlocks** Hiring (policy-authority edge). Unlock ≠ schedule. The queue’s Active Product is [MA-3](mapping-authority.md).
+> Opening this brief does **not** schedule it. RPM program close **unlocks** Hiring (policy-authority edge). Unlock ≠ schedule. The queue’s Active Product is [MA-4](mapping-authority.md).
 >
 > **Related (not a schedule):** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) (Recruitment → Ready for employment) · [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) (handoff → Started) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`). Separate module ownership; seamless user handoff — not one mega-orchestrator creating Employee from Recruitment.
 

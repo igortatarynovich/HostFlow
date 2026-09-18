@@ -161,5 +161,6 @@ Reject: a fourth store; renaming C-5 as “the authority” while Meta admin sti
 
 ## History
 
+- 2026-09-18: Mapping Operator Gate **PASS**. Active Product → MA-4 (brief; feat locked).
 - 2026-09-04: MA-2 Resolution Gate **PASS**. Row 4 retired into the one resolver. Active Product → MA-3 (brief; feat locked).
 - 2026-09-04: Accepted as MA-1 Authority contract. Twelve-row classification frozen. Feat locked until a later MA-2 branch. Active Product → MA-2 (brief; feat locked).
