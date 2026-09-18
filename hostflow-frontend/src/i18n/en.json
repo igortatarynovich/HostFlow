@@ -11745,7 +11745,8 @@
           "unmapped": "Unmapped"
         },
         "destination": {
-          "none": "Not used yet",
+          "none": "Choose a HostFlow field",
+          "ignore": "Don't use this question",
           "invalid": "HostFlow field is no longer valid",
           "groups": {
             "candidate": "Candidate",
@@ -11814,8 +11815,9 @@
           "action": "Use"
         },
         "action": {
+          "unset": "Not set",
           "map": "Map",
-          "ignore": "Ignore"
+          "ignore": "Don't use"
         }
       },
       "test_lead": {

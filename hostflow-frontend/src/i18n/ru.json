@@ -11745,7 +11745,8 @@
           "unmapped": "Unmapped"
         },
         "destination": {
-          "none": "Пока не использовать",
+          "none": "Выберите поле HostFlow",
+          "ignore": "Не использовать этот вопрос",
           "invalid": "Поле HostFlow больше не действует",
           "groups": {
             "candidate": "Кандидат",
@@ -11814,8 +11815,9 @@
           "action": "Использовать"
         },
         "action": {
+          "unset": "Не задано",
           "map": "Сопоставить",
-          "ignore": "Игнорировать"
+          "ignore": "Не использовать"
         }
       },
       "test_lead": {

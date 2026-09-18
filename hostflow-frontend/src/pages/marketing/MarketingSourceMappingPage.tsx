@@ -25,6 +25,13 @@ import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
+import {
+  DESTINATION_IGNORE,
+  actionSelectValue,
+  bindingFromActionSelect,
+  bindingFromDestinationSelect,
+  destinationSelectValue,
+} from './mappingDestinationSelect'
 
 const OPTION_IGNORE_VALUE = '__ignore__'
 
@@ -527,18 +534,23 @@ export default function MarketingSourceMappingPage() {
                           <td className="px-3 py-2 align-top">
                             <select
                               className="w-full rounded border border-slate-300 px-2 py-1 text-sm disabled:bg-slate-50"
-                              value={row.destination_code}
-                              disabled={row.binding === 'ignored' || busy}
+                              value={destinationSelectValue(row.binding, row.destination_code)}
+                              disabled={busy}
                               data-testid={`marketing-mapping-target-${row.source}`}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const next = bindingFromDestinationSelect(e.target.value)
                                 updateDraft(index, {
-                                  destination_code: e.target.value,
-                                  binding: e.target.value ? 'mapped' : 'unmapped',
+                                  destination_code: next.destination_code,
+                                  binding: next.binding,
+                                  ...(next.binding === 'ignored' ? { option_map: {} } : {}),
                                 })
-                              }
+                              }}
                             >
                               <option value="">
                                 {t('app.marketing.mapping.destination.none')}
+                              </option>
+                              <option value={DESTINATION_IGNORE}>
+                                {t('app.marketing.mapping.destination.ignore')}
                               </option>
                               {destinationGroups.map((group) => (
                                 <optgroup
@@ -615,15 +627,26 @@ export default function MarketingSourceMappingPage() {
                           <td className="px-3 py-2 align-top">
                             <select
                               className="rounded border border-slate-300 px-2 py-1 text-sm"
-                              value={row.binding === 'ignored' ? 'ignore' : 'map'}
+                              value={actionSelectValue(row.binding)}
                               disabled={busy}
                               data-testid={`marketing-mapping-action-${row.source}`}
                               onChange={(e) =>
                                 updateDraft(index, {
-                                  binding: e.target.value === 'ignore' ? 'ignored' : row.destination_code ? 'mapped' : 'unmapped',
+                                  binding: bindingFromActionSelect(
+                                    e.target.value,
+                                    row.destination_code,
+                                  ),
+                                  ...(e.target.value === 'ignore'
+                                    ? { destination_code: '', option_map: {} }
+                                    : {}),
                                 })
                               }
                             >
+                              {row.binding === 'unmapped' ? (
+                                <option value="unset">
+                                  {t('app.marketing.mapping.action.unset')}
+                                </option>
+                              ) : null}
                               <option value="map">{t('app.marketing.mapping.action.map')}</option>
                               <option value="ignore">{t('app.marketing.mapping.action.ignore')}</option>
                             </select>
