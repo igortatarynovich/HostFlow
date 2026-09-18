@@ -11711,6 +11711,19 @@
         "title": "Mapowanie źródła",
         "title_named": "Formularz: {name}",
         "subtitle": "Pytania formularza pozostają kompletne, nawet gdy w przykładzie brakuje części odpowiedzi.",
+        "path": {
+          "title": "Jak ustawić ten formularz",
+          "schema": "Pytania formularza",
+          "example": "Przykładowe odpowiedzi",
+          "map": "Gdzie trafi każda odpowiedź",
+          "projection": "Co zapisze następny wniosek",
+          "applied": "Co zapisał ostatni wniosek",
+          "state": {
+            "done": "Gotowe",
+            "current": "Teraz",
+            "upcoming": "Dalej"
+          }
+        },
         "errors": {
           "load": "Nie udało się wczytać mapowania źródła",
           "action": "Nie udało się wykonać działania"
@@ -11775,7 +11788,8 @@
           "ignore": "Ignoruj tę odpowiedź"
         },
         "projection": {
-          "title": "Co zapisze następny wniosek"
+          "title": "Co zapisze następny wniosek",
+          "empty": "Zapisz mapowanie, żeby zobaczyć, co zapisze następny wniosek."
         },
         "applied": {
           "title": "Co zapisał ostatni wniosek",

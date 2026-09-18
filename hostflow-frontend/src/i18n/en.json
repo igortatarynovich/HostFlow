@@ -11711,6 +11711,19 @@
         "title": "Source mapping",
         "title_named": "Form: {name}",
         "subtitle": "The form’s questions stay complete even if an example is missing some answers.",
+        "path": {
+          "title": "How this form is set",
+          "schema": "Questions from the form",
+          "example": "Example answers",
+          "map": "Where each answer lands",
+          "projection": "What the next application will write",
+          "applied": "What the last application wrote",
+          "state": {
+            "done": "Done",
+            "current": "Now",
+            "upcoming": "Next"
+          }
+        },
         "errors": {
           "load": "Failed to load mapping for the source",
           "action": "Failed to run the action"
@@ -11775,7 +11788,8 @@
           "ignore": "Ignore this answer"
         },
         "projection": {
-          "title": "What the next application will write"
+          "title": "What the next application will write",
+          "empty": "Save mapping to see what the next application will write."
         },
         "applied": {
           "title": "What the last application wrote",

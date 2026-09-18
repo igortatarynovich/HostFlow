@@ -32,6 +32,10 @@ import {
   bindingFromDestinationSelect,
   destinationSelectValue,
 } from './mappingDestinationSelect'
+import {
+  mappingClosePath,
+  type MappingClosePathStepState,
+} from './mappingClosePath'
 
 const OPTION_IGNORE_VALUE = '__ignore__'
 
@@ -147,6 +151,12 @@ function formatEvidenceWhen(iso: string | null | undefined, locale: string): str
   }
 }
 
+const CLOSE_PATH_STEP_TONE: Record<MappingClosePathStepState, string> = {
+  done: 'bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200',
+  current: 'bg-sky-50 text-sky-950 ring-2 ring-sky-400',
+  upcoming: 'bg-slate-50 text-slate-500 ring-1 ring-slate-200',
+}
+
 function sampleHeadline(
   evidence: MappingSampleEvidence | undefined,
   questionCount: number,
@@ -244,6 +254,7 @@ export default function MarketingSourceMappingPage() {
   const hasSample = Boolean(mapping?.has_sample)
   const waitPrimary = Boolean(mappingReady && !appliedPresent)
   const latestPrimary = isMeta && !hasSample && !waitPrimary
+  const closePath = useMemo(() => (mapping ? mappingClosePath(mapping) : []), [mapping])
 
   const title = useMemo(() => {
     const name = mapping?.display_name || source?.display_name
@@ -368,6 +379,32 @@ export default function MarketingSourceMappingPage() {
         </p>
       ) : mapping ? (
         <div className="space-y-6">
+          <section
+            className="rounded-lg border border-slate-200 bg-white p-4"
+            data-testid="marketing-mapping-close-path"
+          >
+            <h2 className="text-base font-semibold text-slate-900">
+              {t('app.marketing.mapping.path.title')}
+            </h2>
+            <ol className="mt-3 grid gap-2 sm:grid-cols-5">
+              {closePath.map((step, index) => (
+                <li
+                  key={step.id}
+                  className={`rounded-lg px-3 py-2 text-sm ${CLOSE_PATH_STEP_TONE[step.state]}`}
+                  data-testid={`marketing-mapping-close-path-${step.id}`}
+                  data-state={step.state}
+                >
+                  <div className="text-xs font-semibold uppercase tracking-wide">
+                    {index + 1}. {t(`app.marketing.mapping.path.state.${step.state}`)}
+                  </div>
+                  <div className="mt-1 font-medium">
+                    {t(`app.marketing.mapping.path.${step.id}`)}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
           <section
             className="rounded-lg border border-slate-200 bg-white p-4"
             data-testid="marketing-mapping-summary"
@@ -660,21 +697,25 @@ export default function MarketingSourceMappingPage() {
             )}
           </section>
 
-          {mapping.projection && mapping.projection.length > 0 ? (
-            <section
-              className="rounded-lg border border-slate-200 bg-white p-4"
-              data-testid="marketing-mapping-projection"
-            >
-              <h2 className="mb-2 text-base font-semibold text-slate-900">
-                {t('app.marketing.mapping.projection.title')}
-              </h2>
+          <section
+            className="rounded-lg border border-slate-200 bg-white p-4"
+            data-testid="marketing-mapping-projection"
+          >
+            <h2 className="mb-2 text-base font-semibold text-slate-900">
+              {t('app.marketing.mapping.projection.title')}
+            </h2>
+            {mapping.projection && mapping.projection.length > 0 ? (
               <ul className="space-y-1 text-sm text-slate-800">
                 {mapping.projection.map((item) => (
                   <li key={`${item.source}-${item.destination_label}`}>{item.sentence}</li>
                 ))}
               </ul>
-            </section>
-          ) : null}
+            ) : (
+              <p className="text-sm text-slate-500" data-testid="marketing-mapping-projection-empty">
+                {t('app.marketing.mapping.projection.empty')}
+              </p>
+            )}
+          </section>
 
           <section
             className="rounded-lg border border-slate-200 bg-white p-4"
