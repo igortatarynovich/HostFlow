@@ -41,6 +41,8 @@
 |--------|-----|-------------|
 | `GET /api/v1/candidates?filters=...` | Получить список кандидатов (с учетом ACL) |
 | `POST /api/v1/candidates` | Создать нового кандидата (admin/supervisor/recruiter) |
+| `GET /api/v1/candidates/{id}` | Карточка кандидата. `404` с телом `{code, message, application_id, can_recreate}`: `candidate_not_found` (нет записи / нет в scope) или `candidate_deleted` (soft-delete). Если отклик (Lead / Application) ещё указывает на удалённого кандидата, `can_recreate=true` и `application_id` — id отклика. |
+| `POST /api/v1/candidates/{id}/recreate-from-application` | После soft-delete: создать нового живого кандидата из сохранившегося отклика и перепривязать Lead + `recruitment_applications`. Удалённая карточка остаётся удалённой. `409` если кандидат жив (`candidate_exists`) или отклика нет (`no_surviving_application`). |
 | `PATCH /api/v1/candidates/{id}` | Обновить данные в рамках ACL |
 | `POST /api/v1/candidates/{id}/status` | Изменить статус (валидация правил) |
 | `GET /api/v1/candidates/{id}/documents` | Получить документы кандидата |
@@ -76,7 +78,7 @@
 
 ## UI
 - **CandidatesPage** — канбан-счётчики по статусам и таблица с фильтрами (статус, менеджер, дата создания, компания, статус документов); рекрутер видит только доступные компании/вакансии.  
-- **CandidateCard** — вкладки: Overview, Documents, Vacancies, Notes/Tasks.  
+- **CandidateCard** — вкладки: Overview, Documents, Vacancies, Notes/Tasks. Если `GET /candidates/{id}` вернул 404, карточка **не** редиректит молча в список: показывается явное состояние «кандидат не существует» или «кандидат удалён». Если отклик сохранился, кнопка **Создать повторно** (`POST .../recreate-from-application`).  
 - **CandidateForm** — создание и редактирование.  
 - Отображается цветовая индикация по срокам действия документов.  
 - Канбан-пайплайн и карточка стадий доступны рекрутёру только для кандидатов из его ACL (компания, вакансия или `manager_id`), остальные кандидаты не отображаются.

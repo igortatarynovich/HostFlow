@@ -1065,6 +1065,22 @@
         "pending_list": "Not confirmed yet: {list}",
         "progress": "{verified} of {total} required documents confirmed",
         "title": "Verify documents and data"
+      },
+      "start_allowed": {
+        "title": "Admit to work (start allowed)",
+        "subtitle": "Derived from Contract, Medical, and BHP evidence — not an operator switch.",
+        "unsupported": "This start policy does not apply to this employment context.",
+        "allowed": "Admit-to-work is allowed. Physical start still requires Started confirm.",
+        "current_work": "Current work",
+        "open_documents": "Open existing documents surface",
+        "open_employee_docs": "Employee linked documents",
+        "bhp_hint": "Supply BHP via existing documents, or record the allowlisted successive-same-employer exception. No local upload here.",
+        "prior_contract_ref": "Prior contract ref",
+        "prior_end": "Prior contract end",
+        "current_start": "Current contract start",
+        "submit_exception": "Record allowlisted BHP exception & re-evaluate",
+        "reevaluated": "Start allowance re-evaluated",
+        "waiting_employee": "Admit-to-work evaluation needs a linked Employee on this handoff."
       }
     },
     "api_errors": {
@@ -6818,6 +6834,19 @@
         "short_id_failed": "Short id failed",
         "short_id_generated": "Short id generated"
       },
+      "missing": {
+        "not_found_title": "Candidate does not exist",
+        "not_found_hint": "This candidate does not exist or is not available in the current workspace.",
+        "deleted_title": "Candidate was deleted",
+        "deleted_hint": "This candidate was deleted and is no longer available.",
+        "deleted_with_application_hint": "This candidate was deleted. The original application is still available — you can create the candidate again.",
+        "recreate": "Create again",
+        "recreating": "Creating…",
+        "recreate_ok": "Candidate created again",
+        "recreate_failed": "Could not create the candidate again.",
+        "open_application": "Open application",
+        "back_to_list": "Back to candidates"
+      },
       "validation": {
         "poland_basis_required": "Provide basis of stay when in Poland",
         "email_invalid_format": "Invalid email format.",
@@ -11561,7 +11590,30 @@
         "destination": "Goes to: {value}",
         "launch": "Launch: {when}",
         "not_launched": "not launched yet",
-        "open": "Open"
+        "active_no_schedule": "active (no start date)",
+        "open": "Open",
+        "search_placeholder": "Search campaigns…",
+        "empty_filtered": "No campaigns match the current filters.",
+        "footer_visible": "{count} campaigns",
+        "aria": "Campaigns",
+        "price_not_loaded": "Not imported",
+        "columns": {
+          "campaign": "Campaign",
+          "status": "Status",
+          "applications": "Applications",
+          "form": "Form",
+          "source": "Source",
+          "destination": "Goes to",
+          "launch": "Launch",
+          "price": "Price",
+          "actions": "Actions"
+        },
+        "filters": {
+          "all": "All campaigns",
+          "active": "Active",
+          "paused": "On hold",
+          "completed": "Completed"
+        }
       },
       "title": "Marketing",
       "subtitle": "Campaigns, forms, and Flight launch — from the idea to inbound applications.",
@@ -11578,6 +11630,14 @@
         "title": "Portfolio KPI",
         "subtitle": "Company campaign summary (read-only).",
         "capped": " List is capped."
+      },
+      "meta_insights": {
+        "title": "Meta Ad Account (last 7 days)",
+        "subtitle": "Live Insights from the connected advertising account (ads_read).",
+        "connect_hint": "Connect Meta and select an Ad Account in Settings → Integrations → Meta to see spend here.",
+        "open_settings": "Open Meta integration",
+        "impressions": "Impressions",
+        "clicks": "Clicks"
       },
       "diagnostics": {
         "subtitle": "Operations on inbound applications: route, timeline, payload. Sources is for setup.",
@@ -12013,6 +12073,7 @@
         "bind_search": "Bind to search",
         "bound": "Search bound",
         "bind_failed": "Could not bind the search",
+        "stage": "Stage",
         "reject_title": "Reject application",
         "comment_placeholder": "Comment",
         "reject": "Reject",
@@ -15790,6 +15851,9 @@
         "notify_candidate_failed": "Failed to send email",
         "file_deleted": "File deleted"
       },
+      "hints": {
+        "combined_license_code95": "If Code 95 is printed on the driver license, upload it as “EU driver license with Code 95”. That one file covers both the license and Code 95 — a separate Code 95 card is only needed when it is a distinct document."
+      },
       "errors": {
         "type_missing": "Select a document type",
         "custom_name_missing": "Enter the custom document name",
@@ -16642,16 +16706,31 @@
         "oauth_server_env_hint": "Facebook Login is allowed for your plan but disabled here: the operator must configure META_LEADS_APP_ID, META_LEADS_SHARED_APP_SECRET, and the OAuth redirect on the server.",
         "oauth_redirect_label": "OAuth redirect URI (add to Meta app)",
         "oauth_connect": "Connect with Meta",
-        "oauth_connect_hint": "Sign in with Facebook, pick a Page, and save a credential — webhook setup above still applies.",
-        "oauth_pick_title": "Choose Page and label",
+        "oauth_connect_hint": "Sign in with Facebook, pick a Page and Ad Account, and save a credential — webhook setup above still applies.",
+        "oauth_pick_title": "Choose Page, Ad Account, and label",
         "oauth_pick_page": "Facebook Page",
+        "oauth_pick_ad_account": "Ad Account",
+        "oauth_pick_ad_account_hint": "Used for Marketing spend, impressions, and clicks (ads_read).",
+        "oauth_no_ad_accounts": "No Ad Accounts were returned for this Facebook user. You can still connect the Page for leads; add an Ad Account later under Credentials for Marketing insights.",
         "oauth_pick_label": "Credential label",
         "oauth_subscribe_leadgen": "Subscribe Page to leadgen (recommended)",
         "oauth_confirm": "Save credential",
-        "oauth_pages_ready": "Facebook session OK — choose a Page and save.",
+        "oauth_pages_ready": "Facebook session OK — choose a Page and Ad Account, then save.",
         "oauth_done": "Meta credential saved.",
         "oauth_error_title": "Meta OAuth failed",
         "oauth_warning": "Warning: {{message}}"
+      },
+      "insights": {
+        "title": "Meta Ad Account (last 7 days)",
+        "load_failed": "Could not load Ad Account insights",
+        "empty": "Connect an Ad Account to see spend, impressions, and clicks here.",
+        "account_named": "{{name}} ({{id}})",
+        "account_id": "Ad Account {{id}}",
+        "period_7d": "Last 7 days",
+        "spend": "Spend",
+        "impressions": "Impressions",
+        "clicks": "Clicks",
+        "open_marketing": "Open Marketing"
       },
       "guided": {
         "title_setup": "Connect Meta in 3 steps",

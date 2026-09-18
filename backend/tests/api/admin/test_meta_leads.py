@@ -883,6 +883,28 @@ async def test_meta_oauth_complete_and_finalize_mocked(client, manager_headers, 
         AsyncMock(return_value=None),
     )
 
+    async def _fake_ad_accounts(_token: str, *, limit: int = 50):
+        return [
+            {"id": "act_987654321", "name": "Test Ad Account", "account_id": "987654321", "currency": "USD"},
+        ]
+
+    monkeypatch.setattr(
+        "backend.app.modules.leads.meta_marketing_graph.fetch_user_ad_accounts",
+        _fake_ad_accounts,
+    )
+    monkeypatch.setattr(
+        "backend.app.modules.leads.admin_service.ensure_meta_lead_credential_create_allowed",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "backend.app.modules.leads.admin_service.ensure_lead_source_limit",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "backend.app.modules.leads.admin_service.count_tenant_lead_sources",
+        AsyncMock(return_value=0),
+    )
+
     st_resp = await client.post("/api/v1/settings/leads/meta/oauth/start", headers=manager_headers)
     assert st_resp.status_code == 200, st_resp.text
     state = st_resp.json()["state"]
@@ -895,6 +917,7 @@ async def test_meta_oauth_complete_and_finalize_mocked(client, manager_headers, 
     assert co_resp.status_code == 200, co_resp.text
     pending_id = co_resp.json()["pending_id"]
     assert co_resp.json()["pages"] == [{"id": "123456789", "name": "Test Page"}]
+    assert co_resp.json()["ad_accounts"] == [{"id": "987654321", "name": "Test Ad Account"}]
 
     fin_resp = await client.post(
         "/api/v1/settings/leads/meta/oauth/finalize",
@@ -902,6 +925,7 @@ async def test_meta_oauth_complete_and_finalize_mocked(client, manager_headers, 
         json={
             "pending_id": pending_id,
             "page_id": "123456789",
+            "ad_account_id": "987654321",
             "label": "OAuth Page",
             "subscribe_leadgen": True,
         },
@@ -910,6 +934,8 @@ async def test_meta_oauth_complete_and_finalize_mocked(client, manager_headers, 
     body = fin_resp.json()
     assert body.get("subscribed_leadgen") is True
     assert body.get("credential", {}).get("label") == "OAuth Page"
+    assert body.get("credential", {}).get("ad_account_id") == "987654321"
+    assert body.get("credential", {}).get("page_id") == "123456789"
 
 
 @pytest.mark.anyio

@@ -46,6 +46,15 @@ def test_p5_enrich_mapping_rule_infers_qualified_from_legacy_target() -> None:
     assert enriched["qualified_field_code"] == "recruitment.candidate.contacts.email"
 
 
+def test_enrich_mapping_rule_accepts_legacy_from_to_shape() -> None:
+    enriched = enrich_mapping_rule_for_storage({"from": "phone_number", "to": "phone"})
+    assert enriched.get("source") == "phone_number"
+    assert enriched.get("target") == "phone"
+    rule = MetaLeadFieldMappingRule.model_validate({"from": "full_name", "to": "full_name"})
+    assert rule.source == "full_name"
+    assert rule.target == "full_name"
+
+
 def test_p5_meta_lead_mapping_rule_model_coerces_qualified() -> None:
     rule = MetaLeadFieldMappingRule.model_validate(
         {

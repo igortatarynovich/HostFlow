@@ -14,6 +14,8 @@ def test_unattached_compliance_shell_clause_targets_extra_json_text() -> None:
     sql = str(unattached_compliance_shell_clause().compile(compile_kwargs={"literal_binds": True}))
     assert "compliance_candidate_shell_v1" in sql
     assert "compliance_shell_attached_at_process" in sql
+    assert "candidate_id" in sql
+    assert "leads" in sql.lower()
 
 
 def test_candidate_list_conditions_exclude_unattached_shells() -> None:
@@ -24,3 +26,4 @@ def test_candidate_list_conditions_exclude_unattached_shells() -> None:
     )
     assert "compliance_candidate_shell_v1" in sql
     assert "compliance_shell_attached_at_process" in sql
+    assert "leads" in sql.lower()

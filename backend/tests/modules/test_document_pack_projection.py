@@ -123,6 +123,47 @@ def test_owner_summary_candidate_without_documents_shows_pack_gaps() -> None:
     assert any(row["reason"] == "missing" for row in out["reminder_candidates"])
 
 
+def test_owner_summary_legacy_code95_satisfies_qualification_card() -> None:
+    """Stored Hub type ``code95`` must count as R5 ``driver_qualification_card``.
+
+    Without alias expansion the docs_wait forward gate 409s on candidates
+    who already have Code 95 (CND1007432).
+    """
+    ctx = {
+        "citizenship": "UZ",
+        "work_country": "PL",
+        "position_category": "driver",
+        "has_adr": False,
+    }
+    out = compute_owner_summary(
+        ctx,
+        RULESET,
+        [{"type": "code95", "status": "received"}],
+    )
+    missing = set(out["required"]["missing"] or [])
+    ready = set(out["required"]["ready_types"] or [])
+    assert "driver_qualification_card" not in missing
+    assert "code95" not in missing
+    assert "driver_qualification_card" in ready or "code95" in ready
+
+
+def test_owner_summary_combined_license_satisfies_qualification_card() -> None:
+    ctx = {
+        "citizenship": "PL",
+        "work_country": "PL",
+        "position_category": "driver",
+    }
+    out = compute_owner_summary(
+        ctx,
+        RULESET,
+        [{"type": "driver_license_code95", "status": "approved"}],
+    )
+    missing = set(out["required"]["missing"] or [])
+    assert "driver_qualification_card" not in missing
+    assert "code95" not in missing
+    assert "driver_license" not in missing
+
+
 def test_project_from_expected_documents_uses_required_flags() -> None:
     expected = [
         {

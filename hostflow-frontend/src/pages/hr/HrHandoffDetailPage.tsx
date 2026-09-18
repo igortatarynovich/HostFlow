@@ -15,6 +15,7 @@ import HrContractPreviewPanel from '../../components/hr/HrContractPreviewPanel'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import HrHandoffContextSummary from '../../components/hr/HrHandoffContextSummary'
 import HrCurrentTaskPanel, { HrCurrentTaskPanelFromReview } from '../../components/hr/HrCurrentTaskPanel'
+import HrStartAllowedPanel from '../../components/hr/HrStartAllowedPanel'
 import { isEmployeeOperationalProfile } from '../../utils/hrEmploymentCaseMode'
 import { useI18n } from '../../i18n'
 import { PageHeader } from '../../components/nav/PageHeader'
@@ -92,9 +93,8 @@ export default function HrHandoffDetailPage() {
     document.querySelector(sel)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  if (empId) {
-    return <Navigate to={`${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(empId)}#hr-verification`} replace />
-  }
+  // Slice 3: keep /app/hr/handoffs/:id as host when Employee exists (start_allowed binding).
+  // Optional deep-link to employee profile remains available below — no auto-redirect workflow.
 
   return (
     <div className="space-y-4">
@@ -154,6 +154,13 @@ export default function HrHandoffDetailPage() {
                     <HrContractPreviewPanel employeeId={empId} manage />
                   </div>
                 </details>
+              ) : null}
+              {empId ? (
+                <HrStartAllowedPanel
+                  handoffId={id!}
+                  employeeId={empId}
+                  reloadToken={loading ? undefined : `${empId}:${hrReview?.review_id || ''}:${row.handoff.status}`}
+                />
               ) : null}
               {empId ? (
                 <HrWorkEligibilityCompact panel={hrReview} employeeId={empId} manage onRefresh={() => void load()} />

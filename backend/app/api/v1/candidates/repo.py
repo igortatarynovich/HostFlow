@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from backend.app.models.candidate import Candidate
+from backend.app.models.lead import Lead
 from backend.app.models.risk_intel import RiskIntelEntityShadow
 from backend.app.models.candidate_stage_history import CandidateStageHistory
 from backend.app.models.candidate_handoff import CandidateHandoff
@@ -40,6 +41,7 @@ from backend.app.models.user import User
 from backend.app.models.company import Company
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.document import Document
+from backend.app.models.document_entity_link import DocumentEntityLink
 from backend.app.models.tenant import TenantLink
 from backend.app.models.enums import DocumentStatus
 from backend.app.services.tenant_visibility import TenantVisibility
@@ -78,6 +80,63 @@ AWAITING_REVIEW_STATUSES = (DocumentStatus.submitted,)
 IN_PROGRESS_STATUSES = (DocumentStatus.in_progress,)
 ORDERED_STATUSES = (DocumentStatus.requested,)
 
+# Hub primary candidate link. Do **not** filter on ``Document.candidate_id``:
+# that attribute is a correlated scalar subquery on ``document_entity_links``,
+# and wrapping it in EXISTS/aggregates makes GET /candidates scan documents
+# once per candidate (list + insights become multi-second).
+_PRIMARY_CANDIDATE_LINK = (
+    DocumentEntityLink.linked_entity_type == "candidate",
+    DocumentEntityLink.relation_type == "primary",
+)
+
+
+def _candidate_primary_document_select(*extra_conditions):
+    """Documents linked to ``Candidate`` as Hub primary (correlates on Candidate.id)."""
+    return (
+        select(literal(1))
+        .select_from(DocumentEntityLink)
+        .join(
+            Document,
+            and_(
+                Document.id == DocumentEntityLink.document_id,
+                Document.tenant_id == DocumentEntityLink.tenant_id,
+            ),
+        )
+        .where(
+            DocumentEntityLink.linked_entity_id == Candidate.id,
+            DocumentEntityLink.tenant_id == Candidate.tenant_id,
+            *_PRIMARY_CANDIDATE_LINK,
+            Document.deleted_at.is_(None),
+            *extra_conditions,
+        )
+    )
+
+
+def _candidate_document_exists(*extra_conditions):
+    return exists(_candidate_primary_document_select(*extra_conditions))
+
+
+def _candidate_document_scalar(expr, *extra_conditions):
+    return (
+        select(expr)
+        .select_from(DocumentEntityLink)
+        .join(
+            Document,
+            and_(
+                Document.id == DocumentEntityLink.document_id,
+                Document.tenant_id == DocumentEntityLink.tenant_id,
+            ),
+        )
+        .where(
+            DocumentEntityLink.linked_entity_id == Candidate.id,
+            DocumentEntityLink.tenant_id == Candidate.tenant_id,
+            *_PRIMARY_CANDIDATE_LINK,
+            Document.deleted_at.is_(None),
+            *extra_conditions,
+        )
+        .scalar_subquery()
+    )
+
 # --- helpers to pack/unpack profile fields into extra ------------------------
 
 def unattached_compliance_shell_clause():
@@ -87,6 +146,10 @@ def unattached_compliance_shell_clause():
     an inbox application. Hide them from Candidates until the operator processes
     the application (``compliance_shell_attached_at_process`` is stamped then).
     ``Candidate.extra`` is JSON text.
+
+    Converted rows (``leads.candidate_id`` points at the shell) must stay visible
+    even when the stamp is missing — Process used to skip the stamp because extra
+    is stored as a JSON string, not a dict.
     """
     extra = func.coalesce(Candidate.extra, "")
     is_shell = or_(
@@ -94,7 +157,12 @@ def unattached_compliance_shell_clause():
         extra.like('%"compliance_candidate_shell_v1":true%'),
     )
     attached = extra.like('%"compliance_shell_attached_at_process"%')
-    return and_(is_shell, ~attached)
+    linked_from_lead = exists().where(
+        Lead.candidate_id == Candidate.id,
+        Lead.tenant_id == Candidate.tenant_id,
+        Lead.candidate_id.isnot(None),
+    )
+    return and_(is_shell, ~attached, ~linked_from_lead)
 
 
 def _parse_extra(raw: Any) -> dict:
@@ -620,16 +688,10 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
 
     docs_ordered = str(filters.get("documents_ordered") or "").strip().lower()
     if docs_ordered in {"ordered", "not_ordered"}:
-        ordered_exists = (
-            exists()
-            .where(Document.candidate_id == Candidate.id)
-            .where(Document.tenant_id == Candidate.tenant_id)
-            .where(Document.deleted_at.is_(None))
-            .where(
-                or_(
-                    Document.ordered_at.isnot(None),
-                    Document.status.in_(ORDERED_STATUSES),
-                )
+        ordered_exists = _candidate_document_exists(
+            or_(
+                Document.ordered_at.isnot(None),
+                Document.status.in_(ORDERED_STATUSES),
             )
         )
         if docs_ordered == "ordered":
@@ -792,20 +854,11 @@ async def count_candidates_insights(
     """
     conds = _build_conditions(tenant_id, filters, visibility)
 
-    def _doc_exists(*extra_conditions):
-        return (
-            exists()
-            .where(Document.candidate_id == Candidate.id)
-            .where(Document.tenant_id == Candidate.tenant_id)
-            .where(Document.deleted_at.is_(None))
-            .where(*extra_conditions)
-        )
-
-    ready_exists = _doc_exists(Document.status.in_(READY_STATUSES))
-    problem_exists = _doc_exists(Document.status.in_(PROBLEM_STATUSES))
-    awaiting_exists = _doc_exists(Document.status.in_(AWAITING_REVIEW_STATUSES))
-    in_progress_exists = _doc_exists(Document.status.in_(IN_PROGRESS_STATUSES))
-    ordered_exists = _doc_exists(
+    ready_exists = _candidate_document_exists(Document.status.in_(READY_STATUSES))
+    problem_exists = _candidate_document_exists(Document.status.in_(PROBLEM_STATUSES))
+    awaiting_exists = _candidate_document_exists(Document.status.in_(AWAITING_REVIEW_STATUSES))
+    in_progress_exists = _candidate_document_exists(Document.status.in_(IN_PROGRESS_STATUSES))
+    ordered_exists = _candidate_document_exists(
         or_(
             Document.ordered_at.isnot(None),
             Document.status.in_(ORDERED_STATUSES),
@@ -1036,20 +1089,11 @@ async def fetch_candidates_with_labels(
         func.nullif(Candidate.recruiter_id, ""),
     )
 
-    def _doc_exists(*extra_conditions):
-        return (
-            exists()
-            .where(Document.candidate_id == Candidate.id)
-            .where(Document.tenant_id == Candidate.tenant_id)
-            .where(Document.deleted_at.is_(None))
-            .where(*extra_conditions)
-        )
-
-    ready_exists = _doc_exists(Document.status.in_(READY_STATUSES))
-    problem_exists = _doc_exists(Document.status.in_(PROBLEM_STATUSES))
-    awaiting_exists = _doc_exists(Document.status.in_(AWAITING_REVIEW_STATUSES))
-    in_progress_exists = _doc_exists(Document.status.in_(IN_PROGRESS_STATUSES))
-    ordered_exists = _doc_exists(
+    ready_exists = _candidate_document_exists(Document.status.in_(READY_STATUSES))
+    problem_exists = _candidate_document_exists(Document.status.in_(PROBLEM_STATUSES))
+    awaiting_exists = _candidate_document_exists(Document.status.in_(AWAITING_REVIEW_STATUSES))
+    in_progress_exists = _candidate_document_exists(Document.status.in_(IN_PROGRESS_STATUSES))
+    ordered_exists = _candidate_document_exists(
         or_(
             Document.ordered_at.isnot(None),
             Document.status.in_(ORDERED_STATUSES),
@@ -1060,7 +1104,7 @@ async def fetch_candidates_with_labels(
         func.length(func.coalesce(Document.filename, literal(""))) > 0,
         func.length(func.coalesce(Document.path, literal(""))) > 0,
     )
-    has_files_exists = _doc_exists(files_condition)
+    has_files_exists = _candidate_document_exists(files_condition)
 
     readiness_expr = case(
         (problem_exists, literal("problem")),
@@ -1080,26 +1124,13 @@ async def fetch_candidates_with_labels(
         else_=literal(0),
     )
 
-    docs_last_ordered = (
-        select(func.max(Document.ordered_at))
-        .where(
-            Document.candidate_id == Candidate.id,
-            Document.tenant_id == Candidate.tenant_id,
-            Document.deleted_at.is_(None),
-            Document.ordered_at.isnot(None),
-        )
-        .scalar_subquery()
+    docs_last_ordered = _candidate_document_scalar(
+        func.max(Document.ordered_at),
+        Document.ordered_at.isnot(None),
     )
-
-    docs_next_valid = (
-        select(func.min(Document.valid_from))
-        .where(
-            Document.candidate_id == Candidate.id,
-            Document.tenant_id == Candidate.tenant_id,
-            Document.deleted_at.is_(None),
-            Document.valid_from.isnot(None),
-        )
-        .scalar_subquery()
+    docs_next_valid = _candidate_document_scalar(
+        func.min(Document.valid_from),
+        Document.valid_from.isnot(None),
     )
 
     stmt = (

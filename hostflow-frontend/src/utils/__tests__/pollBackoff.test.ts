@@ -25,8 +25,15 @@ describe('isTransientRequestError', () => {
     expect(isTransientRequestError({ message: 'Network Error' })).toBe(true)
   })
 
-  it('does not treat HTTP 4xx/5xx as transient', () => {
+  it('does not treat HTTP 4xx or 500 as transient', () => {
     expect(isTransientRequestError({ response: { status: 500 }, message: 'Request failed' })).toBe(false)
+    expect(isTransientRequestError({ response: { status: 409 }, message: 'Request failed' })).toBe(false)
+  })
+
+  it('treats gateway 502/503/504 as transient', () => {
+    expect(isTransientRequestError({ response: { status: 502 }, message: 'Request failed' })).toBe(true)
+    expect(isTransientRequestError({ response: { status: 503 }, message: 'Request failed' })).toBe(true)
+    expect(isTransientRequestError({ response: { status: 504 }, message: 'Request failed' })).toBe(true)
   })
 })
 

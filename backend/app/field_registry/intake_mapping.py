@@ -82,8 +82,16 @@ def resolve_intake_mapping_target(rule: dict[str, Any]) -> str:
 
 
 def enrich_mapping_rule_for_storage(rule: dict[str, Any]) -> dict[str, Any]:
-    """Ensure legacy ``target`` is populated when only qualified_field_code is set."""
+    """Ensure legacy ``target`` is populated when only qualified_field_code is set.
+
+    Also accepts the older Meta preset shape ``{"from": “…”, "to": “…"}`` and
+    rewrites it to ``source`` / ``target`` so settings reads do not 500.
+    """
     out = dict(rule)
+    if not str(out.get("source") or "").strip() and out.get("from") is not None:
+        out["source"] = out.get("from")
+    if not str(out.get("target") or "").strip() and out.get("to") is not None:
+        out["target"] = out.get("to")
     qualified = str(out.get("qualified_field_code") or "").strip()
     target = str(out.get("target") or "").strip()
     if qualified and not target:

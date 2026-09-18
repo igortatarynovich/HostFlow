@@ -26,7 +26,7 @@ import { sendRodo } from '../api/legalDocuments'
 import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
 import { exportCandidateBundle } from '../api/documents'
-import { createCandidateUploadLink, type CandidateUploadLinkResponse } from '../api/candidates'
+import { createCandidateUploadLink, recreateCandidateFromApplication, type CandidateUploadLinkResponse } from '../api/candidates'
 import { useCandidateNextAction } from '../components/candidate/useCandidateNextAction'
 import {
   approveCandidatePipelineOverride,
@@ -87,6 +87,7 @@ import { useHiringPipelineGates } from '../contexts/HiringPipelineGatesContext'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
+import { parseCandidateMissingError, type CandidateMissingState } from '../utils/candidateMissing'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageShell, PageShellHeader, PageShellBody } from '../components/layout'
 import { PageHeader } from '../components/nav/PageHeader'
@@ -95,6 +96,7 @@ import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { getFriendlyErrorInfo } from '../utils/friendlyError'
 import CandidateHeader from '../components/candidate/CandidateHeader'
+import CandidateMissingPanel from '../components/candidate/CandidateMissingPanel'
 import CandidateApplicationsSection from '../components/candidate/CandidateApplicationsSection'
 import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
 import CandidateBasicSection from '../components/candidate/CandidateBasicSection'
@@ -251,6 +253,15 @@ function stripCandidateOverrideFields(payload: Record<string, any>): Record<stri
     if (CANDIDATE_OVERRIDE_KEYS.has(key)) continue
     out[key] = value
   }
+  return out
+}
+
+/** Stage is persisted only via onStageChangePersist — autosave must not re-PATCH it. */
+function stripAutosaveStageFields(payload: Record<string, any>): Record<string, any> {
+  const out = { ...payload }
+  delete out.stage
+  delete out.status
+  delete out.status_reason
   return out
 }
 
@@ -765,6 +776,8 @@ export default function CandidateCard(){
   const [isHandoffEnabledForCurrentCompany, setIsHandoffEnabledForCurrentCompany] = useState(false)
   const [companyHandoffLink, setCompanyHandoffLink] = useState<TenantLink | null>(null)
   const [model, setModel] = useState<Candidate | null>(null)
+  const [missing, setMissing] = useState<CandidateMissingState | null>(null)
+  const [recreating, setRecreating] = useState(false)
   const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
   const [stageSinceAt, setStageSinceAt] = useState<string | null>(null)
   useEffect(() => {
@@ -947,6 +960,8 @@ export default function CandidateCard(){
     setCandidateEditPhase('idle')
     setCandidateOverrideReason('')
     setActivityModalOpen(false)
+    setMissing(null)
+    setRecreating(false)
   }, [id])
 
   // каталоги
@@ -1577,9 +1592,11 @@ export default function CandidateCard(){
             }
           } catch (err: any) {
             if (cancelled) return
-            if (err?.response?.status === 404) {
+            const missingState = parseCandidateMissingError(err)
+            if (missingState) {
               outcome = 'not_found'
-              nav(CRM_APP_PATHS.candidates)
+              setMissing(missingState)
+              setModel(null)
               return
             }
             outcome = 'error'
@@ -1863,10 +1880,10 @@ export default function CandidateCard(){
   const computeAutosaveFingerprint = (m: Candidate | null, phase: CandidateEditPhase, reason: string) => {
     if (!m) return ''
     const { payload } = buildCandidatePayload(m, meta?.reason_choices ?? {})
-    const stripped = stripCandidateOverrideFields(payload)
+    const stripped = stripAutosaveStageFields(stripCandidateOverrideFields(payload))
     const ov = getCandidateOverrideFields(payload)
     if (phase === 'editing' && ov.length > 0 && reason.trim()) {
-      return JSON.stringify({ payload, override_reason: reason.trim() })
+      return JSON.stringify({ payload: stripAutosaveStageFields(payload), override_reason: reason.trim() })
     }
     return JSON.stringify(stripped)
   }
@@ -1903,7 +1920,7 @@ export default function CandidateCard(){
         const nextFp = computeAutosaveFingerprint(m, phase, trimmed)
         if (lastSavedPayloadRef.current === nextFp) return
         try {
-          await api.patch(`/candidates/${m.id}`, { ...p, override_reason: trimmed })
+          await api.patch(`/candidates/${m.id}`, { ...stripAutosaveStageFields(p), override_reason: trimmed })
           lastSavedPayloadRef.current = nextFp
           setRodoSentTrigger((x) => x + 1)
           setSavedOk(true)
@@ -1923,7 +1940,7 @@ export default function CandidateCard(){
         return
       }
 
-      const pAuto = stripCandidateOverrideFields(p)
+      const pAuto = stripAutosaveStageFields(stripCandidateOverrideFields(p))
       if (Object.keys(pAuto).length === 0) {
         return
       }
@@ -3292,6 +3309,29 @@ export default function CandidateCard(){
     }
   }, [model?.id, planLimitModal, t, notify, loadTimelineReminders, bumpNextActionTick])
 
+  const handleRecreateFromApplication = useCallback(async () => {
+    if (!id || isNew || recreating) return
+    setRecreating(true)
+    try {
+      const result = await recreateCandidateFromApplication(String(id))
+      notify({
+        title: t('app.candidate_card.missing.recreate_ok', { defaultValue: 'Candidate created again' }),
+        variant: 'success',
+      })
+      nav(`${CRM_APP_PATHS.candidates}/${encodeURIComponent(result.candidate_id)}`, { replace: true })
+    } catch (err: unknown) {
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.missing.recreate_failed'))) {
+        const info = getFriendlyErrorInfo(err, t('app.candidate_card.missing.recreate_failed'), t)
+        notify({
+          title: [info.title, info.detail].filter(Boolean).join(' — ') || info.title,
+          variant: 'error',
+        })
+      }
+    } finally {
+      setRecreating(false)
+    }
+  }, [id, isNew, nav, notify, planLimitModal, recreating, t])
+
   const handleDelete = useCallback(async () => {
     if (!model?.id) return
     if (!window.confirm(t('app.candidate_card.confirm.delete'))) return
@@ -4447,7 +4487,50 @@ export default function CandidateCard(){
     ]
   }, [candidateDisplayName, isNew, originPath, t])
 
-  if (loading || !model) {
+  if (loading) {
+    return (
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader breadcrumbCurrentLabel={t('common.loading')} kind="browse" />
+        </PageShellHeader>
+        <PageShellBody className="flex items-center justify-center">
+          <div className="pb-4 text-slate-500">{t('common.loading')}</div>
+        </PageShellBody>
+      </PageShell>
+    )
+  }
+
+  if (missing && !isNew) {
+    const missingBreadcrumb = [
+      {
+        label: t('app.nav.items.candidates', { defaultValue: 'Candidates' }),
+        to: originPath.includes('/recruitment/') ? originPath : CRM_APP_PATHS.candidates,
+      },
+      {
+        label:
+          missing.code === 'candidate_deleted'
+            ? t('app.candidate_card.missing.deleted_title', { defaultValue: 'Candidate was deleted' })
+            : t('app.candidate_card.missing.not_found_title', { defaultValue: 'Candidate does not exist' }),
+      },
+    ]
+    return (
+      <PageShell>
+        <PageShellHeader>
+          <PageHeader breadcrumbItems={missingBreadcrumb} kind="browse" />
+        </PageShellHeader>
+        <PageShellBody className="flex items-center justify-center">
+          <CandidateMissingPanel
+            missing={missing}
+            recreating={recreating}
+            onRecreate={() => void handleRecreateFromApplication()}
+            backTo={originPath.includes('/recruitment/') ? originPath : CRM_APP_PATHS.candidates}
+          />
+        </PageShellBody>
+      </PageShell>
+    )
+  }
+
+  if (!model) {
     return (
       <PageShell>
         <PageShellHeader>

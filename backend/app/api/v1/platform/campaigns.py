@@ -500,6 +500,7 @@ class PortfolioOut(BaseModel):
     series_by_campaign: List[PortfolioDayCampaignPointOut] = Field(default_factory=list)
     impressions: Optional[int] = None
     reach: Optional[int] = None
+    ad_metrics_provenance: Optional[Literal["meta_live", "manual"]] = None
 
 
 class OutcomeCommercialValueIn(BaseModel):
@@ -1185,6 +1186,62 @@ async def get_campaign_portfolio_endpoint(
     except KpiAggregateError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return PortfolioOut.model_validate(bundle.to_dict())
+
+
+class MetaSpendSyncIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount: float = Field(..., ge=0)
+    currency: str = Field(..., min_length=3, max_length=3)
+    date_preset: str = Field(default="last_7d", max_length=32)
+    ad_account_id: str = Field(..., min_length=1, max_length=64)
+    impressions: Optional[int] = Field(default=None, ge=0)
+    reach: Optional[int] = Field(default=None, ge=0)
+
+
+class MetaSpendSyncOut(BaseModel):
+    synced: bool
+    reason: Optional[str] = None
+    campaign_count: Optional[int] = None
+    campaign_id: Optional[str] = None
+    flight_id: Optional[str] = None
+    amount: Optional[str] = None
+    currency: Optional[str] = None
+    note: Optional[str] = None
+
+
+@router.post(
+    "/analytics/sync-meta-spend",
+    response_model=MetaSpendSyncOut,
+    dependencies=_WRITE,
+)
+async def sync_meta_spend_to_portfolio_endpoint(
+    payload: MetaSpendSyncIn,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    """Bridge Meta Ad Account Insights spend into Flight spend ledger (portfolio Wydatek)."""
+    from backend.app.acquisition.meta_spend_sync import upsert_meta_insights_spend_for_company
+
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        result = await upsert_meta_insights_spend_for_company(
+            db,
+            tenant_id=str(tenant_uuid),
+            own_company_id=own_company_id,
+            amount=payload.amount,
+            currency=payload.currency,
+            date_preset=payload.date_preset,
+            ad_account_id=payload.ad_account_id,
+            impressions=payload.impressions,
+            reach=payload.reach,
+        )
+    except KpiAggregateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    await db.commit()
+    return MetaSpendSyncOut.model_validate(result)
 
 
 @router.post("", response_model=CampaignOut, status_code=201, dependencies=_WRITE)

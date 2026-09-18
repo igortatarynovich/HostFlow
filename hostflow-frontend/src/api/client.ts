@@ -2,6 +2,7 @@ import axios, { AxiosHeaders } from "axios";
 import type { Lead } from "./types";
 import { isCandidateRecruiterIdCanonEnabled } from "../utils/featureFlags";
 import { CSRF_HEADER, readCsrfToken } from "./csrf";
+import { isJwtExpiredOrExpiring } from "../utils/jwtExpiry";
 
 const API_BASE_STORAGE_KEY = "hf_api_base";
 export const OWN_COMPANY_STORAGE_KEY = "hf_own_company_id";
@@ -394,6 +395,53 @@ export function applyAuthIsolationWipeOnce(): boolean {
   }
 }
 
+function isAuthHandshakeUrl(url: string): boolean {
+  return (
+    url.includes("/auth/login") ||
+    url.includes("/auth/refresh") ||
+    url.includes("/auth/session/sync") ||
+    url.includes("/auth/logout") ||
+    url.includes("/auth/register")
+  );
+}
+
+function dispatchAuthUnauthorized(): void {
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function applyBearerHeader(config: { headers?: unknown }, token: string | null): void {
+  if (!config.headers) config.headers = new AxiosHeaders();
+  if (token) {
+    if (config.headers instanceof AxiosHeaders) {
+      config.headers.set("Authorization", `Bearer ${token}`);
+    } else {
+      (config.headers as Record<string, string>).Authorization = `Bearer ${token}`;
+    }
+  } else if (config.headers instanceof AxiosHeaders) {
+    config.headers.delete("Authorization");
+  } else {
+    delete (config.headers as Record<string, unknown>).Authorization;
+  }
+}
+
+async function ensureFreshAccessToken(): Promise<string | null> {
+  const token = getStoredAccessToken();
+  if (!token) return null;
+  if (!isJwtExpiredOrExpiring(token)) return token;
+  if (!_refreshInFlight) {
+    _refreshInFlight = refreshAccessTokenViaCookie().finally(() => {
+      _refreshInFlight = null;
+    });
+  }
+  return _refreshInFlight;
+}
+
 async function refreshAccessTokenViaCookie(): Promise<string | null> {
   try {
     // Never revive a session the user just revoked (logout / wipe bounce).
@@ -417,8 +465,12 @@ async function refreshAccessTokenViaCookie(): Promise<string | null> {
       setToken(token);
     }
     return token;
-  } catch {
-    setToken(null);
+  } catch (err) {
+    const status = (err as { response?: { status?: number } } | null)?.response?.status;
+    if (status === 401 || status === 403) {
+      setToken(null);
+      dispatchAuthUnauthorized();
+    }
     return null;
   }
 }
@@ -562,9 +614,10 @@ export async function reconcileBearerWithSharedCookie(): Promise<void> {
 }
 
 function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: string) {
-  inst.interceptors.request.use((config) => {
+  inst.interceptors.request.use(async (config) => {
     const tid = tenantId ?? settings.get();
     const skipBearer = Boolean((config as { __hfSkipBearer?: boolean }).__hfSkipBearer);
+    const url = String(config.url || "");
 
     // ensure default headers
     if (!config.headers) config.headers = new AxiosHeaders();
@@ -595,21 +648,13 @@ function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: st
       if (ownId) (config.headers as any)["X-Own-Company-Id"] = ownId;
     }
 
-    if (skipBearer) {
-      if (config.headers instanceof AxiosHeaders) {
-        config.headers.delete("Authorization");
-      } else {
-        delete (config.headers as any).Authorization;
-      }
+    if (skipBearer || isAuthHandshakeUrl(url)) {
+      applyBearerHeader(config, skipBearer ? null : getStoredAccessToken());
     } else {
-      const token = getStoredAccessToken();
-      if (token) {
-        if (config.headers instanceof AxiosHeaders) {
-          config.headers.set("Authorization", `Bearer ${token}`);
-        } else {
-          (config.headers as any).Authorization = `Bearer ${token}`;
-        }
-      }
+      // Refresh an expired Bearer before the request so Chrome never logs a 401
+      // that the interceptor would immediately recover via /auth/refresh.
+      const token = await ensureFreshAccessToken();
+      applyBearerHeader(config, token);
     }
 
     // Stage 6B: double-submit CSRF for cookie session (and dual-write Bearer + cookie).
@@ -638,13 +683,7 @@ function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: st
         return Promise.reject(error);
       }
       const url = String(original.url || "");
-      if (
-        url.includes("/auth/login") ||
-        url.includes("/auth/refresh") ||
-        url.includes("/auth/session/sync") ||
-        url.includes("/auth/logout") ||
-        url.includes("/auth/register")
-      ) {
+      if (isAuthHandshakeUrl(url)) {
         return Promise.reject(error);
       }
       if (!_refreshInFlight) {

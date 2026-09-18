@@ -117,6 +117,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   })
   const logoutInFlightRef = useRef(false)
+  const sessionExpiredRef = useRef(false)
   const meRef = useRef(me)
   meRef.current = me
 
@@ -138,7 +139,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return
     }
     // Explicit logout / wipe bounce must not be rehydrated from leftover cookies.
-    if (!opts?.force && (logoutInFlightRef.current || isSessionRevoked())) {
+    if (!opts?.force && (logoutInFlightRef.current || isSessionRevoked() || sessionExpiredRef.current)) {
       setLoading(false)
       setMe(null)
       return
@@ -248,6 +249,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (status === 401) {
         rememberLoginNotice('expired')
         clearLocalAuthState()
+        sessionExpiredRef.current = true
         setMe(null)
         setPreferences(null)
         setSecurity(null)
@@ -268,6 +270,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     try {
       clearSessionRevoked()
       logoutInFlightRef.current = false
+      sessionExpiredRef.current = false
       // New login must not inherit another account's tenant / Bearer leftovers.
       clearLocalAuthState()
       const { data } = await api.post('/auth/login', { email, password })
@@ -354,6 +357,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [refresh])
 
   useEffect(() => {
+    const onUnauthorized = () => {
+      if (logoutInFlightRef.current || sessionExpiredRef.current) return
+      const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
+      if (isPublicAuthPath(path)) return
+      sessionExpiredRef.current = true
+      rememberLoginNotice('expired')
+      clearLocalAuthState()
+      setMe(null)
+      setPreferences(null)
+      setSecurity(null)
+      setSessionId(null)
+      setLoading(false)
+    }
+    window.addEventListener('auth:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('auth:unauthorized', onUnauthorized)
+  }, [])
+
+  useEffect(() => {
     const path = location.pathname || ''
     const loginWithLiveCookie =
       (path === '/login' || path.startsWith('/login/')) && hasSharedSessionCookieHint()
@@ -361,7 +382,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setLoading(false)
       return
     }
-    if (logoutInFlightRef.current || isSessionRevoked()) {
+    if (logoutInFlightRef.current || isSessionRevoked() || sessionExpiredRef.current) {
       setLoading(false)
       return
     }

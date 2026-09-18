@@ -159,10 +159,17 @@ from backend.app.api.v1.candidates.schemas import (
     CandidateTimelineResponse,
     CandidateChangeLogItemOut,
     CandidateChangeLogResponse,
+    CandidateRecreateFromApplicationOut,
     CandidateWorkPanelResponse,
     RecruitmentApplicationOut,
     RecruitmentApplicationStatusPatch,
     RecruitmentApplicationVacancySwitchRequest,
+)
+from backend.app.api.v1.candidates.missing import (
+    describe_candidate_absence,
+    load_tenant_candidate,
+    raise_candidate_absence,
+    recreate_candidate_from_application,
 )
 from backend.app.services.recruitment_application_lifecycle import (
     InvalidRecruitmentApplicationStatus,
@@ -1033,34 +1040,8 @@ async def list_candidates(
             scope_source,
             total,
         )
-    # For agency/superadmin: log linked tenants/companies to diagnose scope issues
-    if not client_tenant and current_user.role in (Role.admin.value, Role.administrator.value, Role.superadmin.value):
-        linked_tenants = await db.execute(
-            select(TenantLink.client_tenant_id)
-            .where(
-                TenantLink.agency_tenant_id == scope_tenant,
-                TenantLink.client_tenant_id.isnot(None),
-            )
-            .distinct()
-        )
-        linked_tenant_ids = [str(tid) for (tid,) in linked_tenants.all() if tid]
-        linked_companies = await db.execute(
-            select(TenantLink.client_company_id)
-            .where(
-                TenantLink.agency_tenant_id == scope_tenant,
-                TenantLink.client_company_id.isnot(None),
-            )
-            .distinct()
-        )
-        linked_company_ids = [str(cid) for (cid,) in linked_companies.all() if cid]
-        logging.getLogger(__name__).info(
-            "Candidates agency scope: tenant=%s total=%s linked_client_tenants=%s linked_companies=%s",
-            scope_tenant,
-            total,
-            linked_tenant_ids,
-            linked_company_ids,
-        )
-    # Log when list is empty to diagnose client/scope issues
+    # Agency-scope diagnostic queries used to run on every list request for
+    # admin/superadmin (two extra DISTINCT scans). Keep them off the hot path.
     if total == 0:
         logging.getLogger(__name__).info(
             "Candidates list total=0 scope_tenant=%s scope_source=%s client_tenant=%s",
@@ -2001,6 +1982,15 @@ async def get_candidate(
     )
     tenant_id_str = str(scope_tenant)
     visibility = get_tenant_visibility(db, tenant_id_str)
+    deleted_probe = await load_tenant_candidate(
+        db, tenant_id=tenant_id_str, candidate_id=str(candidate_id)
+    )
+    if deleted_probe is not None and getattr(deleted_probe, "deleted_at", None) is not None:
+        raise_candidate_absence(
+            await describe_candidate_absence(
+                db, tenant_id=tenant_id_str, candidate_id=str(candidate_id)
+            )
+        )
     await ensure_candidate_access(
         db,
         tenant_id_str,
@@ -2040,7 +2030,11 @@ async def get_candidate(
         is_client_tenant=client_tenant,
     )
     if row is None:
-        raise HTTPException(status_code=404, detail="Candidate not found")
+        raise_candidate_absence(
+            await describe_candidate_absence(
+                db, tenant_id=tenant_id_str, candidate_id=str(candidate_id)
+            )
+        )
 
     out = _serialize_candidate_row(row)
     if apply_client_view:
@@ -2112,6 +2106,31 @@ async def get_candidate(
         logging.getLogger(__name__).exception("risk enrich failed for candidate %s", candidate_id)
 
     return out
+
+
+@router.post(
+    "/{candidate_id}/recreate-from-application",
+    response_model=CandidateRecreateFromApplicationOut,
+    dependencies=[Depends(require_trust_write())],
+    summary="Recreate a live candidate from a surviving application after soft-delete",
+)
+async def recreate_candidate_from_surviving_application(
+    candidate_id: UUID,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> CandidateRecreateFromApplicationOut:
+    db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
+    result = await recreate_candidate_from_application(
+        db,
+        tenant_id=str(tenant_id),
+        candidate_id=str(candidate_id),
+        actor_id=current_user.sub,
+    )
+    return CandidateRecreateFromApplicationOut(
+        candidate_id=result["candidate_id"],
+        application_id=result["application_id"],
+    )
 
 
 @router.get(

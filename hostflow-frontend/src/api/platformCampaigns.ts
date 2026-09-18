@@ -549,6 +549,8 @@ export type CampaignPortfolio = {
   series_by_campaign?: PortfolioCampaignDayPoint[]
   impressions?: number | null
   reach?: number | null
+  /** meta_live = Graph Insights sync; manual = CSV/hand import snapshot. */
+  ad_metrics_provenance?: 'meta_live' | 'manual' | null
 }
 
 export type OutcomeCommercialValue = {
@@ -597,6 +599,32 @@ export async function getCampaignPortfolio(
       },
     },
   )
+  return data
+}
+
+/** Push Meta Ad Account Insights spend into portfolio Flight spend ledger. */
+export async function syncMetaSpendToPortfolio(payload: {
+  amount: number
+  currency: string
+  date_preset?: string
+  ad_account_id: string
+  impressions?: number
+  reach?: number
+}): Promise<{
+  synced: boolean
+  reason?: string | null
+  campaign_id?: string | null
+  amount?: string | null
+  currency?: string | null
+}> {
+  const { data } = await api.post('/platform/campaigns/analytics/sync-meta-spend', {
+    amount: payload.amount,
+    currency: payload.currency,
+    date_preset: payload.date_preset || 'last_7d',
+    ad_account_id: payload.ad_account_id,
+    ...(payload.impressions != null ? { impressions: payload.impressions } : {}),
+    ...(payload.reach != null ? { reach: payload.reach } : {}),
+  })
   return data
 }
 

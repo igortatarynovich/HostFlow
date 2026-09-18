@@ -1047,6 +1047,22 @@
         "pending_list": "Ещё не подтверждено: {list}",
         "progress": "{verified} из {total} обязательных документов подтверждено",
         "title": "Проверить документы и данные"
+      },
+      "start_allowed": {
+        "title": "Допуск к работе (start allowed)",
+        "subtitle": "Выводится из Contract / Medical / BHP — не переключатель оператора.",
+        "unsupported": "Эта политика допуска не применяется к данному контексту занятости.",
+        "allowed": "Допуск к работе разрешён. Физический старт по-прежнему требует Started confirm.",
+        "current_work": "Текущая работа",
+        "open_documents": "Открыть существующую поверхность документов",
+        "open_employee_docs": "Документы, связанные с сотрудником",
+        "bhp_hint": "Предоставьте BHP через существующие документы или зафиксируйте allowlisted exception. Без локальной загрузки.",
+        "prior_contract_ref": "Реф. предыдущего договора",
+        "prior_end": "Конец предыдущего договора",
+        "current_start": "Старт текущего договора",
+        "submit_exception": "Записать BHP exception и переоценить",
+        "reevaluated": "Допуск переоценён",
+        "waiting_employee": "Оценка допуска требует связанного Employee на этом handoff."
       }
     },
     "api_errors": {
@@ -6745,6 +6761,19 @@
         "short_id_failed": "Короткий идентификатор не удалось",
         "short_id_generated": "Сгенерирован короткий идентификатор"
       },
+      "missing": {
+        "not_found_title": "Кандидат не существует",
+        "not_found_hint": "Такого кандидата нет, либо он недоступен в текущем рабочем пространстве.",
+        "deleted_title": "Кандидат удалён",
+        "deleted_hint": "Кандидат был удалён и больше недоступен.",
+        "deleted_with_application_hint": "Кандидат был удалён. Отклик сохранился — можно создать кандидата повторно.",
+        "recreate": "Создать повторно",
+        "recreating": "Создаём…",
+        "recreate_ok": "Кандидат создан повторно",
+        "recreate_failed": "Не удалось создать кандидата повторно.",
+        "open_application": "Открыть отклик",
+        "back_to_list": "К списку кандидатов"
+      },
       "validation": {
         "poland_basis_required": "Укажите основу пребывания при нахождении в Польше",
         "email_invalid_format": "Неверный формат электронной почты.",
@@ -11561,7 +11590,30 @@
         "destination": "Куда: {value}",
         "launch": "Запуск: {when}",
         "not_launched": "ещё не запускали",
-        "open": "Открыть"
+        "active_no_schedule": "активна (без даты старта)",
+        "open": "Открыть",
+        "search_placeholder": "Поиск кампаний…",
+        "empty_filtered": "Нет кампаний по текущим фильтрам.",
+        "footer_visible": "{count} кампаний",
+        "aria": "Кампании",
+        "price_not_loaded": "Не загружено",
+        "columns": {
+          "campaign": "Кампания",
+          "status": "Статус",
+          "applications": "Заявки",
+          "form": "Форма",
+          "source": "Источник",
+          "destination": "Куда",
+          "launch": "Запуск",
+          "price": "Цена",
+          "actions": "Действия"
+        },
+        "filters": {
+          "all": "Все кампании",
+          "active": "Активные",
+          "paused": "На паузе",
+          "completed": "Завершённые"
+        }
       },
       "title": "Маркетинг",
       "subtitle": "Кампании, формы и запуск Flight — от идеи до входящих заявок.",
@@ -11578,6 +11630,14 @@
         "title": "KPI портфеля",
         "subtitle": "Сводка по кампаниям компании (только чтение).",
         "capped": " Список ограничен."
+      },
+      "meta_insights": {
+        "title": "Рекламный аккаунт Meta (7 дней)",
+        "subtitle": "Живая статистика подключённого рекламного аккаунта (ads_read).",
+        "connect_hint": "Подключите Meta и выберите рекламный аккаунт в Настройки → Интеграции → Meta.",
+        "open_settings": "Открыть интеграцию Meta",
+        "impressions": "Показы",
+        "clicks": "Клики"
       },
       "diagnostics": {
         "subtitle": "Операции по поступившим заявкам: маршрут, timeline, payload. Sources — настройка.",
@@ -12013,6 +12073,7 @@
         "bind_search": "Привязать к подбору",
         "bound": "Подбор привязан",
         "bind_failed": "Не удалось привязать подбор",
+        "stage": "Этап",
         "reject_title": "Отклонить отклик",
         "comment_placeholder": "Комментарий",
         "reject": "Отклонить",
@@ -15790,6 +15851,9 @@
         "notify_candidate_failed": "Не удалось отправить письмо",
         "file_deleted": "Файл удален"
       },
+      "hints": {
+        "combined_license_code95": "Если код 95 напечатан на правах, загрузите документ как «Права ЕС с кодом 95». Один файл закрывает и права, и Code 95 — отдельная карта нужна, только если это другой документ."
+      },
       "errors": {
         "type_missing": "Выберите тип документа",
         "custom_name_missing": "Введите собственное название документа",
@@ -16642,16 +16706,31 @@
         "oauth_server_env_hint": "Facebook Login разрешён вашим тарифом, но здесь не включён: оператор должен настроить на сервере META_LEADS_APP_ID, META_LEADS_SHARED_APP_SECRET и redirect для OAuth.",
         "oauth_redirect_label": "OAuth redirect URI (добавьте в приложение Meta)",
         "oauth_connect": "Подключить через Meta",
-        "oauth_connect_hint": "Войдите через Facebook, выберите страницу и сохраните подключение — настройка вебхука выше всё равно нужна.",
-        "oauth_pick_title": "Страница и название подключения",
+        "oauth_connect_hint": "Войдите через Facebook, выберите страницу и рекламный аккаунт и сохраните подключение — настройка вебхука выше всё равно нужна.",
+        "oauth_pick_title": "Страница, рекламный аккаунт и название",
         "oauth_pick_page": "Страница Facebook",
+        "oauth_pick_ad_account": "Рекламный аккаунт",
+        "oauth_pick_ad_account_hint": "Нужен для расходов, показов и кликов в Marketing (ads_read).",
+        "oauth_no_ad_accounts": "Для этого пользователя Facebook не вернулись рекламные аккаунты. Страницу для лидов можно подключить; аккаунт для статистики добавьте позже в «Учётные данные».",
         "oauth_pick_label": "Название подключения",
         "oauth_subscribe_leadgen": "Подписать страницу на leadgen (рекомендуется)",
         "oauth_confirm": "Сохранить подключение",
-        "oauth_pages_ready": "Сессия Facebook подтверждена — выберите страницу и сохраните.",
+        "oauth_pages_ready": "Сессия Facebook подтверждена — выберите страницу и рекламный аккаунт, затем сохраните.",
         "oauth_done": "Подключение Meta сохранено.",
         "oauth_error_title": "Ошибка OAuth Meta",
         "oauth_warning": "Внимание: {{message}}"
+      },
+      "insights": {
+        "title": "Рекламный аккаунт Meta (7 дней)",
+        "load_failed": "Не удалось загрузить статистику рекламного аккаунта",
+        "empty": "Подключите рекламный аккаунт, чтобы видеть расходы, показы и клики.",
+        "account_named": "{{name}} ({{id}})",
+        "account_id": "Рекламный аккаунт {{id}}",
+        "period_7d": "Последние 7 дней",
+        "spend": "Расход",
+        "impressions": "Показы",
+        "clicks": "Клики",
+        "open_marketing": "Открыть Marketing"
       },
       "guided": {
         "title_setup": "Подключите Meta за 3 шага",

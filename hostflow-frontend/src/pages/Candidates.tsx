@@ -1032,6 +1032,7 @@ export default function Candidates(){
     restoredScrollRef,
     operationalQueue,
     recruiterUnassignedFilter: recruiterUnassignedOnly,
+    includeRisk: Boolean(visibleCols.risk) || sortKey === 'risk_score',
   })
 
   useCandidatesUrlSync({
@@ -1912,12 +1913,6 @@ export default function Candidates(){
 
   useEffect(() => {
     if (!filtersHydrated) return
-    load()
-  }, [filtersHydrated, load]) // первый запуск и при смене tenant (me)
-
-  // дебаунс загрузки при изменении фильтров/поиска, чтобы не спамить API
-  useEffect(() => {
-    if (!filtersHydrated) return
     if (loadDebounceRef.current) {
       clearTimeout(loadDebounceRef.current)
     }
@@ -1927,38 +1922,7 @@ export default function Candidates(){
     return () => {
       if (loadDebounceRef.current) clearTimeout(loadDebounceRef.current)
     }
-  }, [
-    filtersHydrated,
-    q,
-    stageFilter,
-    vacancyFilter,
-    managerFilter,
-    statusReasonFilter,
-    docsStatusFilter,
-    docsOrderedFilter,
-    preferredChannelFilter,
-    inPolandFilter,
-    polandBasisFilter,
-    trailerTypesFilter,
-    createdRange.from,
-    createdRange.to,
-    firstContactRange.from,
-    firstContactRange.to,
-    docsValidRange.from,
-    docsValidRange.to,
-    docsHasFilesFilter,
-    handoffStatusFilter,
-    contactAttemptsFilter,
-    processorFilter,
-    intakeApplicationKindFilter,
-    textFilters.name,
-    textFilters.email,
-    textFilters.phone,
-    textFilters.citizenship,
-    textFilters.short,
-    sortKey,
-    sortDir,
-  ])
+  }, [filtersHydrated, load])
 
   useEffect(() => {
     const el = document.querySelector(APP_SCROLL_SELECTOR) as HTMLElement | null

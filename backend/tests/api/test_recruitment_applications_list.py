@@ -279,3 +279,54 @@ async def test_recruitment_application_call_result_persists_and_lists(
     assert row is not None
     assert row["status"] == "in_progress"
     assert row["extensions"]["call_result_v1"]["note"] == note
+
+
+@pytest.mark.anyio
+async def test_patch_recruitment_application_lost_does_not_stay_new(
+    client,
+    manager_headers,
+    tenant_id: str,
+) -> None:
+    async with async_session_maker() as db:
+        company_id = await _ensure_company(db, tenant_id)
+        own_company_id = await _ensure_own_company(db, tenant_id)
+        lead_id = str(uuid.uuid4())
+        db.add(
+            Lead(
+                id=lead_id,
+                tenant_id=tenant_id,
+                own_company_id=str(own_company_id),
+                company_id=str(company_id),
+                source="meta",
+                status="processed",
+                stage="new",
+                lead_type="candidate",
+                payload={},
+                normalized={
+                    "full_name": "Lost Stage Candidate",
+                    "phone": "+48500888000",
+                    "intake_resolution_v1": {"status": "new"},
+                },
+            )
+        )
+        await db.commit()
+
+    patched = await client.patch(
+        f"/api/v1/recruitment/applications/{lead_id}",
+        headers=manager_headers,
+        json={"stage": "lost", "lost_reason_code": "other"},
+    )
+    assert patched.status_code == 200, patched.text
+    body = patched.json()
+    assert body["status"] == "rejected"
+    assert body["tab_bucket"] == "completed"
+    assert body["extensions"]["stage"] == "lost"
+
+    listed = await client.get(
+        "/api/v1/recruitment/applications",
+        headers=manager_headers,
+        params={"tab": "new", "limit": 200},
+    )
+    assert listed.status_code == 200, listed.text
+    new_ids = {item["id"] for item in listed.json().get("items", [])}
+    assert lead_id not in new_ids

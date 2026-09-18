@@ -1047,6 +1047,22 @@
         "pending_list": "Jeszcze niepotwierdzone: {list}",
         "progress": "{verified} z {total} wymaganych dokumentów potwierdzonych",
         "title": "Zweryfikuj dokumenty i dane"
+      },
+      "start_allowed": {
+        "title": "Dopuszczenie do pracy (start allowed)",
+        "subtitle": "Wynika z Contract / Medical / BHP — nie jest przełącznikiem operatora.",
+        "unsupported": "Ta polityka startu nie dotyczy tego kontekstu zatrudnienia.",
+        "allowed": "Dopuszczenie do pracy dozwolone. Fizyczny start nadal wymaga Started confirm.",
+        "current_work": "Bieżąca praca",
+        "open_documents": "Otwórz istniejącą powierzchnię dokumentów",
+        "open_employee_docs": "Dokumenty powiązane z pracownikiem",
+        "bhp_hint": "Dostarcz BHP przez istniejące dokumenty albo zapisz dozwolony wyjątek successive. Bez lokalnego uploadu.",
+        "prior_contract_ref": "Ref. poprzedniej umowy",
+        "prior_end": "Koniec poprzedniej umowy",
+        "current_start": "Start bieżącej umowy",
+        "submit_exception": "Zapisz wyjątek BHP i przeoceń",
+        "reevaluated": "Ponowna ocena dopuszczenia",
+        "waiting_employee": "Ocena dopuszczenia wymaga powiązanego Employee na tym handoff."
       }
     },
     "api_errors": {
@@ -6101,6 +6117,19 @@
         "note_added": "Uwaga dodana",
         "short_id_failed": "Krótki identyfikator nie powiódł się",
         "short_id_generated": "Wygenerowano krótki identyfikator"
+      },
+      "missing": {
+        "not_found_title": "Kandydat nie istnieje",
+        "not_found_hint": "Taki kandydat nie istnieje albo jest niedostępny w bieżącym obszarze roboczym.",
+        "deleted_title": "Kandydat został usunięty",
+        "deleted_hint": "Kandydat został usunięty i nie jest już dostępny.",
+        "deleted_with_application_hint": "Kandydat został usunięty. Oryginalne zgłoszenie nadal istnieje — możesz utworzyć kandydata ponownie.",
+        "recreate": "Utwórz ponownie",
+        "recreating": "Tworzenie…",
+        "recreate_ok": "Kandydat został utworzony ponownie",
+        "recreate_failed": "Nie udało się ponownie utworzyć kandydata.",
+        "open_application": "Otwórz zgłoszenie",
+        "back_to_list": "Wróć do listy kandydatów"
       },
       "control": {
         "title": "Kontrola",
@@ -11561,7 +11590,30 @@
         "destination": "Dokąd: {value}",
         "launch": "Start: {when}",
         "not_launched": "jeszcze nie uruchomiono",
-        "open": "Otwórz"
+        "active_no_schedule": "aktywna (bez daty startu)",
+        "open": "Otwórz",
+        "search_placeholder": "Szukaj kampanii…",
+        "empty_filtered": "Brak kampanii dla bieżących filtrów.",
+        "footer_visible": "{count} kampanii",
+        "aria": "Kampanie",
+        "price_not_loaded": "Nie zaimportowano",
+        "columns": {
+          "campaign": "Kampania",
+          "status": "Status",
+          "applications": "Zgłoszenia",
+          "form": "Formularz",
+          "source": "Źródło",
+          "destination": "Dokąd",
+          "launch": "Start",
+          "price": "Cena",
+          "actions": "Akcje"
+        },
+        "filters": {
+          "all": "Wszystkie kampanie",
+          "active": "Aktywne",
+          "paused": "Wstrzymane",
+          "completed": "Zakończone"
+        }
       },
       "title": "Marketing",
       "subtitle": "Kampanie, formularze i start Flight — od pomysłu do przychodzących zgłoszeń.",
@@ -11578,6 +11630,14 @@
         "title": "KPI portfela",
         "subtitle": "Podsumowanie kampanii firmy (tylko odczyt).",
         "capped": " Lista jest ograniczona."
+      },
+      "meta_insights": {
+        "title": "Konto reklamowe Meta (7 dni)",
+        "subtitle": "Na żywo Insights z podłączonego konta reklamowego (ads_read).",
+        "connect_hint": "Połącz Meta i wybierz konto reklamowe w Ustawienia → Integracje → Meta.",
+        "open_settings": "Otwórz integrację Meta",
+        "impressions": "Wyświetlenia",
+        "clicks": "Kliknięcia"
       },
       "diagnostics": {
         "subtitle": "Operacje na przychodzących zgłoszeniach: trasa, oś czasu, payload. Sources służy do konfiguracji.",
@@ -12013,6 +12073,7 @@
         "bind_search": "Powiąż z naborem",
         "bound": "Nabór powiązany",
         "bind_failed": "Nie udało się powiązać naboru",
+        "stage": "Etap",
         "reject_title": "Odrzuć zgłoszenie",
         "comment_placeholder": "Komentarz",
         "reject": "Odrzuć",
@@ -15790,6 +15851,9 @@
         "notify_candidate_failed": "Nie udało się wysłać e-maila",
         "file_deleted": "Plik usunięty"
       },
+      "hints": {
+        "combined_license_code95": "Jeśli kod 95 jest nadrukowany na prawie jazdy, wgraj dokument jako „Prawo jazdy UE z kodem 95”. Jeden plik pokrywa prawo jazdy i Code 95 — osobna karta jest potrzebna tylko wtedy, gdy to osobny dokument."
+      },
       "errors": {
         "type_missing": "Wybierz typ dokumentu",
         "custom_name_missing": "Podaj własną nazwę dokumentu",
@@ -16642,16 +16706,31 @@
         "oauth_server_env_hint": "Facebook Login jest dozwolony w Twoim planie, ale tu jest wyłączony: operator musi skonfigurować na serwerze META_LEADS_APP_ID, META_LEADS_SHARED_APP_SECRET i redirect OAuth.",
         "oauth_redirect_label": "OAuth redirect URI (dodaj w aplikacji Meta)",
         "oauth_connect": "Połącz z Meta",
-        "oauth_connect_hint": "Zaloguj się przez Facebook, wybierz stronę i zapisz połączenie — konfiguracja webhooka powyżej nadal jest potrzebna.",
-        "oauth_pick_title": "Wybierz stronę i etykietę",
+        "oauth_connect_hint": "Zaloguj się przez Facebook, wybierz stronę i konto reklamowe, zapisz połączenie — konfiguracja webhooka powyżej nadal jest potrzebna.",
+        "oauth_pick_title": "Wybierz stronę, konto reklamowe i etykietę",
         "oauth_pick_page": "Strona Facebook",
+        "oauth_pick_ad_account": "Konto reklamowe",
+        "oauth_pick_ad_account_hint": "Potrzebne do wydatków, wyświetleń i kliknięć w Marketing (ads_read).",
+        "oauth_no_ad_accounts": "Dla tego użytkownika Facebook nie zwrócono kont reklamowych. Stronę do leadów można połączyć; konto do statystyk dodaj później w Poświadczeniach.",
         "oauth_pick_label": "Etykieta połączenia",
         "oauth_subscribe_leadgen": "Subskrybuj stronę do leadgen (zalecane)",
         "oauth_confirm": "Zapisz połączenie",
-        "oauth_pages_ready": "Sesja Facebook potwierdzona — wybierz stronę i zapisz.",
+        "oauth_pages_ready": "Sesja Facebook potwierdzona — wybierz stronę i konto reklamowe, potem zapisz.",
         "oauth_done": "Zapisano połączenie Meta.",
         "oauth_error_title": "Błąd OAuth Meta",
         "oauth_warning": "Uwaga: {{message}}"
+      },
+      "insights": {
+        "title": "Konto reklamowe Meta (7 dni)",
+        "load_failed": "Nie udało się wczytać statystyk konta reklamowego",
+        "empty": "Połącz konto reklamowe, aby zobaczyć wydatki, wyświetlenia i kliknięcia.",
+        "account_named": "{{name}} ({{id}})",
+        "account_id": "Konto reklamowe {{id}}",
+        "period_7d": "Ostatnie 7 dni",
+        "spend": "Wydatki",
+        "impressions": "Wyświetlenia",
+        "clicks": "Kliknięcia",
+        "open_marketing": "Otwórz Marketing"
       },
       "guided": {
         "title_setup": "Podłącz Meta w 3 krokach",

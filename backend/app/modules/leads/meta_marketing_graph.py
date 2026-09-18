@@ -188,9 +188,29 @@ async def fetch_ad_insights(
     *,
     date_preset: str = "last_7d",
 ) -> dict[str, Any]:
-    fields = "spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type"
+    fields = "spend,impressions,reach,clicks,ctr,cpc,actions,cost_per_action_type"
     data = await _graph_get(
         f"{ad_id}/insights",
+        access_token=access_token,
+        params={"fields": fields, "date_preset": date_preset},
+    )
+    rows = data.get("data")
+    if isinstance(rows, list) and rows:
+        row = rows[0]
+        return row if isinstance(row, dict) else {}
+    return {}
+
+
+async def fetch_ad_account_insights(
+    ad_account_id: str,
+    access_token: str,
+    *,
+    date_preset: str = "last_7d",
+) -> dict[str, Any]:
+    """Account-level Insights (spend / impressions / reach / clicks) for Marketing + App Review demo."""
+    fields = "spend,impressions,reach,clicks,ctr,cpc,actions,cost_per_action_type"
+    data = await _graph_get(
+        f"{_ad_account_path(ad_account_id)}/insights",
         access_token=access_token,
         params={"fields": fields, "date_preset": date_preset},
     )
@@ -220,6 +240,7 @@ def _lead_count_from_actions(actions: Any) -> int:
 def normalize_insights_row(row: dict[str, Any]) -> dict[str, Any]:
     spend = float(row.get("spend") or 0)
     impressions = int(float(row.get("impressions") or 0))
+    reach = int(float(row.get("reach") or 0))
     clicks = int(float(row.get("clicks") or 0))
     ctr = float(row.get("ctr") or 0)
     cpc = float(row.get("cpc") or 0)
@@ -228,6 +249,7 @@ def normalize_insights_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "spend": round(spend, 2),
         "impressions": impressions,
+        "reach": reach,
         "clicks": clicks,
         "ctr": round(ctr, 4) if ctr else 0,
         "cpc": round(cpc, 2) if cpc else None,

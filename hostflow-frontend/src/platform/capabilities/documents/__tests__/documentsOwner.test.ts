@@ -86,6 +86,12 @@ describe('documentsOwner', () => {
     expect(persistCanonicalDocumentType('passport')).toBe('passport')
   })
 
+  it('keeps combined EU license as module persist identity', () => {
+    expect(persistCanonicalDocumentType('driver_license_code95')).toBe('driver_license_code95')
+    expect(persistCanonicalDocumentType('driver_license_with_code95')).toBe('driver_license_code95')
+    expect(persistCanonicalDocumentType('eu_license_code95')).toBe('driver_license_code95')
+  })
+
   it('migrates stored alias identity on Candidate resolve', async () => {
     get.mockResolvedValue({
       data: {

@@ -1,5 +1,6 @@
 import type { AcquisitionActivityEvent } from '../../api/acquisitionActivity'
 import type { Campaign, CampaignFlight } from '../../api/platformCampaigns'
+import type { StatusBadgeSemantic } from '../../components/ui/statusBadgeSemantics'
 
 export type MarketingFlowKind = 'candidates' | 'clients' | 'service'
 
@@ -75,6 +76,16 @@ export function statusTone(status: string): string {
   if (s === 'draft' || s === 'planned') return 'bg-slate-100 text-slate-700 ring-slate-200'
   if (s === 'completed') return 'bg-sky-50 text-sky-800 ring-sky-200'
   return 'bg-slate-100 text-slate-600 ring-slate-200'
+}
+
+/** STATUS_BADGE_V1 semantics for campaign / Flight lifecycle (IA roster). */
+export function statusSemantic(status: string): StatusBadgeSemantic {
+  const s = String(status || '').toLowerCase()
+  if (s === 'active') return 'brand'
+  if (s === 'paused') return 'warning'
+  if (s === 'completed') return 'info'
+  if (s === 'failed') return 'danger'
+  return 'neutral'
 }
 
 export function formPublicUrl(slug: string | null | undefined): string | null {

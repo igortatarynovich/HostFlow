@@ -139,7 +139,7 @@ def project_recruitment_intake_lifecycle(lead: Lead) -> str:
     lead_status = str(getattr(lead, "status", "") or "").strip().lower()
     stage = str(getattr(lead, "stage", "") or "").strip().lower()
 
-    if ir_st == "rejected" or lead_status == "rejected":
+    if ir_st == "rejected" or lead_status == "rejected" or stage == "lost":
         return "rejected"
     if ir_st in {"pooled", "pool"} or n.get("recruitment_pool_intent_v1") is True:
         if not getattr(lead, "candidate_id", None):
@@ -257,6 +257,38 @@ def stamp_recruitment_intake_converted(
     lead.stage = "converted"
 
 
+def stamp_recruitment_intake_rejected(
+    lead: Lead,
+    *,
+    actor: Optional[str] = None,
+    reason_code: Optional[str] = None,
+    note: Optional[str] = None,
+) -> None:
+    """Terminal reject — IR authority + CRM stage compatibility.
+
+    PATCH stage=lost used to update ``Lead.stage`` only. Inbox status is
+    projected from IR, so the application stayed ``new``.
+    """
+    n = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    ir = _ir_block(n)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    actor_s = str(actor).strip() if actor else None
+    n["intake_resolution_v1"] = {
+        "status": "rejected",
+        "reason_code": reason_code or ir.get("reason_code"),
+        "decided_at": now_iso,
+        "decided_by": actor_s or ir.get("decided_by"),
+        "note": note or ir.get("note"),
+        "last_decision": "reject",
+        "last_action": "stage_lost",
+    }
+    lead.normalized = n
+    lead.stage = "lost"
+    current_status = str(getattr(lead, "status", "") or "").strip().lower()
+    if current_status not in TERMINAL_IR_STATUS:
+        lead.status = "rejected"
+
+
 __all__ = [
     "INTAKE_LANE_ALIASES",
     "INTAKE_LIFECYCLE_FILTER_WHITELIST",
@@ -268,4 +300,5 @@ __all__ = [
     "project_recruitment_intake_lifecycle",
     "resolve_intake_lifecycle_filter",
     "stamp_recruitment_intake_converted",
+    "stamp_recruitment_intake_rejected",
 ]

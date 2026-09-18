@@ -386,6 +386,7 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
             "vacancy_id": vacancy_id,
             "vacancy_title": _text(getattr(lead, "vacancy_title", None)) or _text(normalized.get("vacancy_title")) or None,
             "fit_status": _text(getattr(lead, "fit_status", None)) or None,
+            "stage": _text(getattr(lead, "stage", None)).lower() or "new",
             "transport_lead_id": str(lead.id),
             "application_comments_v1": _application_comments(normalized),
             "meta_form_answers": field_answers,

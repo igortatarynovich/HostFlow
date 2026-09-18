@@ -565,6 +565,27 @@ async def process_normalized_lead(
     )
     await db.flush()
 
+    # Meta → Marketing: Activity last_lead + portfolio lead attribution (idempotent).
+    if str(source or "").strip().lower() == "meta":
+        try:
+            from backend.app.acquisition.meta_lead_projections import (
+                project_meta_lead_into_acquisition,
+            )
+
+            await project_meta_lead_into_acquisition(
+                db,
+                tenant_id=tenant_id,
+                lead=lead,
+                normalized=normalized,
+            )
+            await db.flush()
+        except Exception:  # pragma: no cover - never block Meta ingest
+            logging.getLogger(__name__).exception(
+                "meta_lead_projection_hook_failed tenant=%s lead=%s",
+                tenant_id,
+                getattr(lead, "id", None),
+            )
+
     if created_new:
         from backend.app.services.lead_rodo_auto import apply_lead_rodo_on_ingest
 

@@ -150,8 +150,13 @@ async def create_candidate_from_lead_conversion(
         )
         existing = res.scalar_one_or_none()
         if existing is not None:
+            from backend.app.modules.recruitment.services.compliance_outbound_ensure import (
+                stamp_compliance_shell_attached_if_needed,
+            )
             from backend.app.services.lead_context_carry import carry_lead_context_on_conversion
 
+            if stamp_compliance_shell_attached_if_needed(existing):
+                await db.flush()
             await carry_lead_context_on_conversion(
                 db,
                 tenant_id=tenant_id,

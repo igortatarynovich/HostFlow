@@ -69,6 +69,9 @@ def test_r4_frontend_aliases_generated_from_json() -> None:
     assert '"residence_permit": "residence_card"' in aliases_ts
     assert "residence_card: \"residence_permit\"" not in constants
     assert '["passport", "national_id", "eu_driver_license_code95"]' not in constants
+    assert '"driver_license_code95": "driver_license"' not in aliases_ts
+    assert "MODULE_PERSIST_DOC_TYPE_ALIASES" in aliases_ts
+    assert '"driver_license_code95": "driver_license_code95"' in aliases_ts
 
 
 def test_r4_alias_codegen_script() -> None:

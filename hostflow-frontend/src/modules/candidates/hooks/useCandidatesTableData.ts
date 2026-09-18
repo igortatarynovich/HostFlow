@@ -3,6 +3,10 @@ import type { MutableRefObject } from 'react'
 import { api, listCandidatesNoNextAction, withTenant } from '../../../api/client'
 import { recordPerfMeasurement } from '../../../api/analytics'
 import { isCandidateRecruiterIdCanonEnabled } from '../../../utils/featureFlags'
+import { getErrorInfo } from '../../../utils/errorHandling'
+import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../../utils/friendlyError'
+import { usePlanLimitModal } from '../../../contexts/PlanLimitModalContext'
+import { CANDIDATE_CACHE_TTL_MS } from '../constants'
 import type { CandidatesListInsights, DateRangeFilter, ListResp, UICandidate, CandidateListCacheEntry } from '../types'
 
 function mapNoNextActionRowToUICandidate(row: Record<string, unknown>): UICandidate {
@@ -24,10 +28,6 @@ function mapNoNextActionRowToUICandidate(row: Record<string, unknown>): UICandid
     intake_application_kind,
   }
 }
-import { getErrorInfo } from '../../../utils/errorHandling'
-import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../../utils/friendlyError'
-import { usePlanLimitModal } from '../../../contexts/PlanLimitModalContext'
-import { CANDIDATE_CACHE_TTL_MS } from '../constants'
 
 type TFn = (key: string, opts?: any) => string
 
@@ -81,6 +81,31 @@ function normalizeListInsights(raw: unknown): CandidatesListInsights | null {
   }
 }
 
+function extractListBatch(dataAny: any): UICandidate[] {
+  let batch: UICandidate[] =
+    Array.isArray(dataAny?.items)
+      ? dataAny.items
+      : Array.isArray(dataAny?.data)
+        ? dataAny.data
+        : Array.isArray((dataAny?.data as any)?.items)
+          ? (dataAny.data as { items: UICandidate[] }).items
+          : Array.isArray(dataAny?.results)
+            ? dataAny.results
+            : Array.isArray(dataAny)
+              ? dataAny
+              : []
+
+  if (batch.length === 0 && typeof dataAny?.total === 'number' && dataAny.total > 0 && typeof dataAny?.items === 'string') {
+    try {
+      const parsed = JSON.parse(dataAny.items as string) as UICandidate[]
+      if (Array.isArray(parsed)) batch = parsed
+    } catch {
+      /* ignore */
+    }
+  }
+  return batch
+}
+
 type UseCandidatesTableDataArgs = {
   candidateListCache: Map<string, CandidateListCacheEntry>
   cacheKey: string
@@ -126,6 +151,11 @@ type UseCandidatesTableDataArgs = {
   operationalQueue?: 'no_next_action' | null
   /** GET /candidates recruiter_unassigned=true */
   recruiterUnassignedFilter?: boolean
+  /**
+   * Risk scores are off the default list (column hidden). Only request them when
+   * the risk column is visible or the table is sorted by risk.
+   */
+  includeRisk?: boolean
 }
 
 export function useCandidatesTableData({
@@ -160,6 +190,7 @@ export function useCandidatesTableData({
   disableAutoRetryAndPrevLoadingEffects,
   operationalQueue = null,
   recruiterUnassignedFilter = false,
+  includeRisk = false,
 }: UseCandidatesTableDataArgs) {
   const planLimitModal = usePlanLimitModal()
   const [items, setItems] = useState<UICandidate[]>([])
@@ -255,24 +286,53 @@ export function useCandidatesTableData({
       loadIdRef.current += 1
       const myLoadId = loadIdRef.current
 
-      setLoading(true)
+      const hadVisibleRows = Boolean(cacheValid && cached && cached.items.length > 0)
+      if (!hadVisibleRows) setLoading(true)
       setErrorText(null)
 
       const perfT0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
       let perfOk = true
 
+      const persistList = (
+        rows: UICandidate[],
+        tot: number,
+        insights?: CandidatesListInsights | null,
+      ) => {
+        if (!(tot === 0 || rows.length > 0)) return
+        const cachedEntry: CandidateListCacheEntry = {
+          items: rows,
+          total: tot,
+          timestamp: Date.now(),
+          ...(insights ? { insights } : {}),
+        }
+        candidateListCache.set(cacheKey, cachedEntry)
+        try {
+          localStorage.setItem(listStorageKey, JSON.stringify(cachedEntry))
+        } catch {
+          /* ignore storage errors */
+        }
+        if (rows.length > 0) {
+          lastSuccessfulListRef.current = {
+            items: rows,
+            total: tot,
+            ...(insights ? { insights } : {}),
+          }
+        }
+      }
+
+      const stillCurrent = () => myLoadId === loadIdRef.current
+
       try {
         if (operationalQueue === 'no_next_action') {
-          let nextOffset = 0
           let accumulated: UICandidate[] = []
           let totalCount: number | null = null
           const scopeTid = currentTenantId ?? meTenantId
           const scopeTenantIdStr = scopeTid != null ? String(scopeTid) : undefined
 
-          while (true) {
+          const fetchNoNextPage = async (offset: number) => {
             const res = await listCandidatesNoNextAction({
               limit,
-              offset: nextOffset,
+              offset,
               stages: stageFilter.length > 0 ? stageFilter : undefined,
               managerId: managerFilter.length === 1 ? managerFilter[0] : undefined,
               scopeTenantId: scopeTenantIdStr,
@@ -285,73 +345,63 @@ export function useCandidatesTableData({
             const batchRaw = Array.isArray(dataAny?.items) ? (dataAny.items as Record<string, unknown>[]) : []
             const batch = batchRaw.map((r) => mapNoNextActionRowToUICandidate(r))
             if (typeof dataAny?.total === 'number') totalCount = dataAny.total
-
-            accumulated = accumulated.concat(batch)
-            nextOffset += batch.length
-
-            if (myLoadId === loadIdRef.current && accumulated.length > 0) {
-              setItems(accumulated)
-              setTotal(totalCount ?? accumulated.length)
-            }
-
-            const reachedEnd =
-              batch.length < limit || (totalCount !== null && accumulated.length >= totalCount) || batch.length === 0
-            if (reachedEnd) break
+            return batch
           }
 
-          const finalTotal = totalCount ?? accumulated.length
-          const persistOk = finalTotal === 0 || accumulated.length > 0
-
-          if (persistOk) {
-            const cachedEntry: CandidateListCacheEntry = {
-              items: accumulated,
-              total: finalTotal,
-              timestamp: Date.now(),
-            }
-            candidateListCache.set(cacheKey, cachedEntry)
-            try {
-              localStorage.setItem(listStorageKey, JSON.stringify(cachedEntry))
-            } catch {
-              /* ignore storage errors */
-            }
-          }
-
-          if (myLoadId === loadIdRef.current) {
-            setTotal(finalTotal)
+          const firstBatch = await fetchNoNextPage(0)
+          accumulated = firstBatch
+          if (stillCurrent()) {
             setItems(accumulated)
+            setTotal(totalCount ?? accumulated.length)
             setListInsights(null)
+            setLoading(false)
           }
+          persistList(accumulated, totalCount ?? accumulated.length)
 
-          if (accumulated.length > 0) {
-            lastSuccessfulListRef.current = {
-              items: accumulated,
-              total: finalTotal,
-            }
-            const toApply = accumulated.slice()
-            const tot = finalTotal
-            queueMicrotask(() => {
-              setItems(toApply)
-              setTotal(tot)
-              setListInsights(null)
-            })
+          const needMore =
+            firstBatch.length >= limit && (totalCount === null || accumulated.length < totalCount)
+          if (needMore) {
+            void (async () => {
+              let nextOffset = accumulated.length
+              while (stillCurrent()) {
+                const batch = await fetchNoNextPage(nextOffset)
+                accumulated = accumulated.concat(batch)
+                nextOffset += batch.length
+                if (stillCurrent() && accumulated.length > 0) {
+                  setItems(accumulated)
+                  setTotal(totalCount ?? accumulated.length)
+                }
+                const reachedEnd =
+                  batch.length < limit ||
+                  (totalCount !== null && accumulated.length >= totalCount) ||
+                  batch.length === 0
+                if (reachedEnd) break
+              }
+              if (stillCurrent()) {
+                persistList(accumulated, totalCount ?? accumulated.length)
+              }
+            })()
           }
         } else {
-          let nextOffset = 0
           let accumulated: UICandidate[] = []
           let totalCount: number | null = null
-
-          // Aggregates from server — only first page
           let normalizedInsights: CandidatesListInsights | null = null
 
-          while (true) {
+          const scopeTid = currentTenantId ?? meTenantId
+          const scopeTidStr = scopeTid != null ? String(scopeTid) : undefined
+
+          const buildParams = (
+            offset: number,
+            extras: { includeInsights?: boolean; includeRisk?: boolean; pageLimit?: number },
+          ) => {
             const params: Record<string, any> = {
-              limit,
-              offset: nextOffset,
+              limit: extras.pageLimit ?? limit,
+              offset,
               order_by: 'created_at',
               desc: true,
               compact: true,
-              include_risk: true,
-              include_insights: nextOffset === 0,
+              include_risk: Boolean(extras.includeRisk),
+              include_insights: Boolean(extras.includeInsights),
               q: q || undefined,
               stage: stageFilter.length === 1 ? stageFilter[0] : undefined,
               stages: stageFilter.length > 0 ? stageFilter.join(',') : undefined,
@@ -360,9 +410,6 @@ export function useCandidatesTableData({
               tags: tagsFilter.length > 0 ? tagsFilter : undefined,
               vacancy_id: vacancyFilter.length > 0 ? vacancyFilter[0] : undefined,
               vacancy: vacancyFilter.length > 0 ? vacancyFilter.join(',') : undefined,
-              // Phase 2.6.G-5 Stage F — canonical filter param is
-              // `recruiter_id`; keep `manager_id` as rollback alias
-              // (backend accepts both for one release cycle).
               ...(managerFilter.length === 1
                 ? isCandidateRecruiterIdCanonEnabled()
                   ? { recruiter_id: managerFilter[0] }
@@ -376,11 +423,7 @@ export function useCandidatesTableData({
             if (shadowBucketFilter && String(shadowBucketFilter).trim()) {
               params.shadow_bucket_start = String(shadowBucketFilter).trim()
               const mb = String(shadowBucketMinBand || 'high').trim().toLowerCase()
-              if (['low', 'medium', 'high', 'critical'].includes(mb)) {
-                params.shadow_bucket_min_band = mb
-              } else {
-                params.shadow_bucket_min_band = 'high'
-              }
+              params.shadow_bucket_min_band = ['low', 'medium', 'high', 'critical'].includes(mb) ? mb : 'high'
             }
             if (createdRange.from) params.created_from = createdRange.from
             if (createdRange.to) params.created_to = createdRange.to
@@ -388,113 +431,86 @@ export function useCandidatesTableData({
             if (intakeApplicationKindFilter === 'client' || intakeApplicationKindFilter === 'candidate') {
               params.intake_application_kind = intakeApplicationKindFilter
             }
-            if (recruiterUnassignedFilter) {
-              params.recruiter_unassigned = true
-            }
-
-            const scopeTid = currentTenantId ?? meTenantId
+            if (recruiterUnassignedFilter) params.recruiter_unassigned = true
             if (scopeTid) params.scope_tenant_id = typeof scopeTid === 'string' ? scopeTid : String(scopeTid)
-            const scopeTidStr = scopeTid != null ? String(scopeTid) : undefined
+            return params
+          }
 
-            const { data } = await getWithFallbacks<ListResp>('/candidates', params, scopeTidStr ?? undefined)
-
+          const fetchListPage = async (offset: number) => {
+            const { data } = await getWithFallbacks<ListResp>(
+              '/candidates',
+              buildParams(offset, { includeInsights: false, includeRisk }),
+              scopeTidStr,
+            )
             const dataAny = data as any
-            let batch: UICandidate[] =
-              Array.isArray(dataAny?.items)
-                ? dataAny.items
-                : Array.isArray(dataAny?.data)
-                  ? dataAny.data
-                  : Array.isArray((dataAny?.data as any)?.items)
-                    ? (dataAny.data as { items: UICandidate[] }).items
-                    : Array.isArray(dataAny?.results)
-                      ? dataAny.results
-                      : Array.isArray(dataAny)
-                        ? dataAny
-                        : []
-
-            if (batch.length === 0 && typeof dataAny?.total === 'number' && dataAny.total > 0 && typeof dataAny?.items === 'string') {
-              try {
-                const parsed = JSON.parse(dataAny.items as string) as UICandidate[]
-                if (Array.isArray(parsed)) batch = parsed
-              } catch {
-                /* ignore */
-              }
-            }
-
+            const batch = extractListBatch(dataAny)
             const effectiveBatch =
               limit > 1 && typeof dataAny?.total === 'number' && dataAny.total > 1 && batch.length === 1
                 ? []
                 : batch
-
-            if (nextOffset === 0) {
-              normalizedInsights = normalizeListInsights(dataAny?.insights)
-            }
-
-            accumulated = accumulated.concat(effectiveBatch)
-            if (typeof dataAny?.total === 'number') {
-              totalCount = dataAny.total
-            }
-
-            // advance offset
-            nextOffset += effectiveBatch.length === 0 && batch.length === 1 ? limit : effectiveBatch.length
-
-            // Keep behavior: apply intermediate progress while loading.
-            if (myLoadId === loadIdRef.current && accumulated.length > 0) {
-              setItems(accumulated)
-              setTotal(totalCount ?? accumulated.length)
-            }
-
-            // stop condition
-            const ignoredOneItem = effectiveBatch.length === 0 && batch.length === 1
-            const reachedEnd = ignoredOneItem
-              ? false
-              : effectiveBatch.length < limit ||
-                (totalCount !== null && accumulated.length >= totalCount) ||
-                effectiveBatch.length === 0
-
-            if (reachedEnd) break
+            if (typeof dataAny?.total === 'number') totalCount = dataAny.total
+            const offsetAdvance = effectiveBatch.length === 0 && batch.length === 1 ? limit : effectiveBatch.length
+            return { effectiveBatch, batch, offsetAdvance }
           }
 
-          const finalTotal = totalCount ?? accumulated.length
-          const persistOk = finalTotal === 0 || accumulated.length > 0
-
-          if (persistOk) {
-            const cachedEntry: CandidateListCacheEntry = {
-              items: accumulated,
-              total: finalTotal,
-              timestamp: Date.now(),
-              ...(normalizedInsights ? { insights: normalizedInsights } : {}),
-            }
-            candidateListCache.set(cacheKey, cachedEntry)
+          void (async () => {
             try {
-              localStorage.setItem(listStorageKey, JSON.stringify(cachedEntry))
-            } catch {
-              /* ignore storage errors */
-            }
-          }
-
-          if (myLoadId === loadIdRef.current) {
-            setTotal(finalTotal)
-            setItems(accumulated)
-            setListInsights(normalizedInsights)
-          }
-
-          if (accumulated.length > 0) {
-            lastSuccessfulListRef.current = {
-              items: accumulated,
-              total: finalTotal,
-              ...(normalizedInsights ? { insights: normalizedInsights } : {}),
-            }
-
-            // keep existing behavior: if later state becomes empty, apply from ref.
-            const toApply = accumulated.slice()
-            const tot = finalTotal
-            const ins = normalizedInsights
-            queueMicrotask(() => {
-              setItems(toApply)
-              setTotal(tot)
+              const { data } = await getWithFallbacks<ListResp>(
+                '/candidates',
+                buildParams(0, { includeInsights: true, includeRisk: false, pageLimit: 1 }),
+                scopeTidStr,
+              )
+              const ins = normalizeListInsights((data as any)?.insights)
+              if (!ins || !stillCurrent()) return
+              normalizedInsights = ins
               setListInsights(ins)
-            })
+              if (accumulated.length > 0 || (totalCount ?? 0) > 0) {
+                persistList(accumulated, totalCount ?? accumulated.length, ins)
+              }
+            } catch {
+              /* insights are optional; list rows still render */
+            }
+          })()
+
+          const first = await fetchListPage(0)
+          accumulated = first.effectiveBatch
+          if (stillCurrent()) {
+            setItems(accumulated)
+            setTotal(totalCount ?? accumulated.length)
+            setLoading(false)
+          }
+          persistList(accumulated, totalCount ?? accumulated.length, normalizedInsights)
+
+          const ignoredOneItem = first.effectiveBatch.length === 0 && first.batch.length === 1
+          const firstReachedEnd = ignoredOneItem
+            ? false
+            : first.effectiveBatch.length < limit ||
+              (totalCount !== null && accumulated.length >= totalCount) ||
+              first.effectiveBatch.length === 0
+
+          if (!firstReachedEnd) {
+            void (async () => {
+              let nextOffset = first.offsetAdvance
+              while (stillCurrent()) {
+                const page = await fetchListPage(nextOffset)
+                accumulated = accumulated.concat(page.effectiveBatch)
+                nextOffset += page.offsetAdvance
+                if (stillCurrent() && accumulated.length > 0) {
+                  setItems(accumulated)
+                  setTotal(totalCount ?? accumulated.length)
+                }
+                const ignored = page.effectiveBatch.length === 0 && page.batch.length === 1
+                const reachedEnd = ignored
+                  ? false
+                  : page.effectiveBatch.length < limit ||
+                    (totalCount !== null && accumulated.length >= totalCount) ||
+                    page.effectiveBatch.length === 0
+                if (reachedEnd) break
+              }
+              if (stillCurrent()) {
+                persistList(accumulated, totalCount ?? accumulated.length, normalizedInsights)
+              }
+            })()
           }
         }
       } catch (e: any) {
@@ -530,7 +546,7 @@ export function useCandidatesTableData({
               ok: perfOk,
               limit,
               cache: !willRefetch ? 'fresh' : 'refetch',
-              include_risk: operationalQueue !== 'no_next_action',
+              include_risk: operationalQueue !== 'no_next_action' && includeRisk,
               shadow_cohort: shadowCohort,
               shadow_min_band: shadowCohort ? String(shadowBucketMinBand || 'high').toLowerCase() : undefined,
               operational_queue: operationalQueue ?? undefined,
@@ -572,6 +588,7 @@ export function useCandidatesTableData({
       restoredScrollRef,
       operationalQueue,
       recruiterUnassignedFilter,
+      includeRisk,
     ],
   )
 

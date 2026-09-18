@@ -18,15 +18,12 @@ export const DOC_TYPE_LEGACY_ALIASES: Record<string, string> = {
   "driver_certificate": "driver_attestation",
   "driver_licence": "driver_license",
   "driver_license": "driver_license",
-  "driver_license_code95": "driver_license",
-  "driver_license_with_code95": "driver_license",
   "driver_qualification_card": "driver_qualification_card",
   "drivers_license": "driver_license",
   "drivers_license_ce": "driver_license",
   "employment_contract": "employment_contract",
   "entry_permit": "visa",
   "entry_permit_or_visa": "visa",
-  "eu_license_code95": "driver_license",
   "eu_residence_registration": "eu_residence_registration",
   "id": "national_identity_card",
   "id_card": "national_identity_card",
@@ -77,6 +74,16 @@ export const DOC_TYPE_LEGACY_ALIASES: Record<string, string> = {
   "zus_zza": "zus_zza"
 };
 
+export const MODULE_PERSIST_DOC_TYPE_ALIASES: Record<string, string> = {
+  "driver_license_code95": "driver_license_code95",
+  "driver_license_with_code95": "driver_license_code95",
+  "eu_license_code95": "driver_license_code95"
+};
+
+export const COMBINED_LICENSE_SATISFIES: Record<string, string[]> = {
+  "driver_license_code95": ["driver_license", "code95", "driver_qualification_card", "qualification_code95", "code_95"]
+};
+
 export const EQUIVALENT_TYPE_GROUPS: string[][] = [
   ["additional_document", "translation", "unclassified", "voivodeship_decision"],
   ["adr", "adr_card", "adr_certificate"],
@@ -86,7 +93,7 @@ export const EQUIVALENT_TYPE_GROUPS: string[][] = [
   ["contract", "employment_contract"],
   ["dowod_osobisty", "id", "id_card", "identity_document", "national_id", "national_identity_card"],
   ["driver_attestation", "driver_certificate", "swiadectwo_kierowcy"],
-  ["driver_licence", "driver_license", "driver_license_code95", "driver_license_with_code95", "drivers_license", "drivers_license_ce", "eu_license_code95", "prawo_jazdy"],
+  ["driver_licence", "driver_license", "drivers_license", "drivers_license_ce", "prawo_jazdy"],
   ["entry_permit", "entry_permit_or_visa", "visa", "visa_c", "visa_d"],
   ["karta_pobytu", "residence_card", "residence_permit"],
   ["oswiadczenie", "work_permit", "work_permit_support", "zezwolenie_a"],

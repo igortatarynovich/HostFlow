@@ -557,6 +557,387 @@ async def return_handoff_route(
     return HandoffOut.model_validate(handoff)
 
 
+class EmploymentAcceptPolicyIn(BaseModel):
+    """Optional package override + employment_missing for ESO-1 evaluate/apply."""
+
+    package: Optional[dict[str, Any]] = None
+    employment_missing: Optional[List[dict[str, Any]]] = None
+
+
+class EmploymentAcceptPolicyOut(BaseModel):
+    policy_id: str
+    handoff_id: Optional[str] = None
+    decision: str
+    ritual_accept_forbidden: Optional[bool] = None
+    blockers: List[dict[str, Any]] = Field(default_factory=list)
+    employment_missing: List[dict[str, Any]] = Field(default_factory=list)
+    reuse_violations: List[str] = Field(default_factory=list)
+    package_valid: Optional[bool] = None
+    accepted: bool = False
+    employment_started: bool = False
+    employee_id: Optional[str] = None
+    message: Optional[str] = None
+
+
+@router.post(
+    "/{handoff_id}/employment-accept-policy",
+    response_model=EmploymentAcceptPolicyOut,
+    dependencies=[Depends(require_hr_workforce_module_access)],
+)
+async def employment_accept_policy_route(
+    handoff_id: UUID,
+    payload: Optional[EmploymentAcceptPolicyIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+):
+    """ESO-1: Employment-owned accept policy apply (auto-accept when gates pass).
+
+    Must not be used by Recruitment Transfer as its completion.
+    """
+    from backend.app.services.employment_accept_orchestrator import (
+        EmploymentAcceptError,
+        apply_employment_accept_policy,
+    )
+
+    db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
+    body = payload or EmploymentAcceptPolicyIn()
+    try:
+        result = await apply_employment_accept_policy(
+            db,
+            tenant_id=str(tenant_id),
+            handoff_id=str(handoff_id),
+            actor_id=str(current_user.sub or "").strip() or None,
+            package=body.package,
+            employment_missing=body.employment_missing,
+        )
+    except EmploymentAcceptError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    await db.commit()
+    return EmploymentAcceptPolicyOut.model_validate(result)
+
+
+class EarlyEmployabilityIn(BaseModel):
+    """ESO-2 evaluate inputs (optional overrides; evaluate-only)."""
+
+    package: Optional[dict[str, Any]] = None
+    employment_context: Optional[dict[str, Any]] = None
+    canonical_facts: Optional[dict[str, Any]] = None
+    employment_missing: Optional[List[dict[str, Any]]] = None
+
+
+class EarlyEmployabilityOut(BaseModel):
+    policy_id: str
+    handoff_id: Optional[str] = None
+    decision: str
+    package_valid: Optional[bool] = None
+    handoff_accepted: Optional[bool] = None
+    employment_country: Optional[str] = None
+    citizenship: Optional[str] = None
+    citizenship_group: Optional[str] = None
+    legal_pathway: Optional[dict[str, Any]] = None
+    pathway_selection_required: bool = False
+    blockers: List[dict[str, Any]] = Field(default_factory=list)
+    requirements: List[dict[str, Any]] = Field(default_factory=list)
+    reuse_violations: List[str] = Field(default_factory=list)
+    next_step: Optional[dict[str, Any]] = None
+    employee_created: bool = False
+    employee_id: Optional[str] = None
+    llm_eligibility: bool = False
+    message: Optional[str] = None
+
+
+@router.post(
+    "/{handoff_id}/early-employability",
+    response_model=EarlyEmployabilityOut,
+    dependencies=[Depends(require_hr_workforce_module_access)],
+)
+async def early_employability_route(
+    handoff_id: UUID,
+    payload: Optional[EarlyEmployabilityIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+):
+    """ESO-2: Employment-owned early employability evaluate (no Employee create).
+
+    Must not be used by Recruitment Transfer as its completion.
+    """
+    from backend.app.services.early_employability_orchestrator import (
+        EarlyEmployabilityError,
+        evaluate_early_employability_for_handoff,
+    )
+
+    db, tenant_id = db_tenant
+    body = payload or EarlyEmployabilityIn()
+    try:
+        result = await evaluate_early_employability_for_handoff(
+            db,
+            tenant_id=str(tenant_id),
+            handoff_id=str(handoff_id),
+            package=body.package,
+            employment_context=body.employment_context,
+            canonical_facts=body.canonical_facts,
+            employment_missing=body.employment_missing,
+        )
+    except EarlyEmployabilityError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    return EarlyEmployabilityOut.model_validate(result)
+
+
+class EmploymentMissingResolutionIn(BaseModel):
+    """ESO-3: optional package/context + minimal resolution patch."""
+
+    package: Optional[dict[str, Any]] = None
+    employment_context: Optional[dict[str, Any]] = None
+    resolution_patch: Optional[dict[str, Any]] = None
+    employment_missing: Optional[List[dict[str, Any]]] = None
+    require_patch_when_not_ready: bool = False
+
+
+class EmploymentMissingResolutionOut(BaseModel):
+    policy_id: str
+    handoff_id: Optional[str] = None
+    resolution_decision: str
+    active_items: List[dict[str, Any]] = Field(default_factory=list)
+    primary_item: Optional[dict[str, Any]] = None
+    universal_checklist_forbidden: bool = True
+    employee_created: bool = False
+    employee_id: Optional[str] = None
+    package_merged: Optional[bool] = None
+    reuse_violations: List[str] = Field(default_factory=list)
+    employability: Optional[dict[str, Any]] = None
+    plan: Optional[dict[str, Any]] = None
+    rejection_reason: Optional[str] = None
+
+
+@router.post(
+    "/{handoff_id}/employment-missing-resolution",
+    response_model=EmploymentMissingResolutionOut,
+    dependencies=[Depends(require_hr_workforce_module_access)],
+)
+async def employment_missing_resolution_route(
+    handoff_id: UUID,
+    payload: Optional[EmploymentMissingResolutionIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+):
+    """ESO-3: minimal resolution patch → auto re-eval employability (no Employee).
+
+    Must not be used by Recruitment Transfer as its completion.
+    """
+    from backend.app.services.employment_missing_resolution_orchestrator import (
+        EmploymentMissingResolutionError,
+        resolve_employment_missing_for_handoff,
+    )
+
+    db, tenant_id = db_tenant
+    body = payload or EmploymentMissingResolutionIn()
+    try:
+        result = await resolve_employment_missing_for_handoff(
+            db,
+            tenant_id=str(tenant_id),
+            handoff_id=str(handoff_id),
+            package=body.package,
+            employment_context=body.employment_context,
+            resolution_patch=body.resolution_patch,
+            employment_missing=body.employment_missing,
+            require_patch_when_not_ready=body.require_patch_when_not_ready,
+        )
+    except EmploymentMissingResolutionError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    return EmploymentMissingResolutionOut.model_validate(result)
+
+
+class EmploymentFormalizeIn(BaseModel):
+    """ESO-4: formalize evaluate/apply. Mint only on authoritative apply + ready."""
+
+    package: Optional[dict[str, Any]] = None
+    employment_context: Optional[dict[str, Any]] = None
+    formalize_patch: Optional[dict[str, Any]] = None
+    confirmed_actions: Optional[List[Any]] = None
+    employment_missing: Optional[List[dict[str, Any]]] = None
+    require_patch_when_missing: bool = False
+
+
+class EmploymentFormalizeOut(BaseModel):
+    policy_id: str
+    handoff_id: Optional[str] = None
+    decision: str
+    required_actions: List[dict[str, Any]] = Field(default_factory=list)
+    active_missing: List[dict[str, Any]] = Field(default_factory=list)
+    primary_item: Optional[dict[str, Any]] = None
+    ready_to_formalize: Optional[bool] = None
+    ready_to_create_employee: bool = False
+    employee_created: bool = False
+    employee_id: Optional[str] = None
+    hr_employee_card: bool = False
+    universal_checklist_forbidden: bool = True
+    llm_formalize: bool = False
+    pathway_id: Optional[str] = None
+    blockers: List[dict[str, Any]] = Field(default_factory=list)
+    reuse_violations: List[str] = Field(default_factory=list)
+    confirmed_actions: List[str] = Field(default_factory=list)
+    package_merged: Optional[bool] = None
+    rejection_reason: Optional[str] = None
+    employee_ensure_wrote: Optional[bool] = None
+    employee_ensure_skipped: Optional[str] = None
+    employee_linked_handoff_id: Optional[str] = None
+    authoritative_apply: Optional[bool] = None
+
+
+@router.post(
+    "/{handoff_id}/employment-formalize",
+    response_model=EmploymentFormalizeOut,
+    dependencies=[Depends(require_hr_workforce_module_access)],
+)
+async def employment_formalize_route(
+    handoff_id: UUID,
+    payload: Optional[EmploymentFormalizeIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+):
+    """ESO-4: formalize → ready_to_create_employee; mint only on authoritative apply.
+
+    Empty evaluate/read must not mint. Must not be used by Recruitment Transfer as its completion.
+    """
+    from backend.app.services.employment_formalize_orchestrator import (
+        EmploymentFormalizeError,
+        formalize_employment_for_handoff,
+        formalize_request_is_authoritative_apply,
+    )
+
+    db, tenant_id = db_tenant
+    body = payload or EmploymentFormalizeIn()
+    authoritative = formalize_request_is_authoritative_apply(
+        formalize_patch=body.formalize_patch,
+        confirmed_actions=body.confirmed_actions,
+    )
+    if authoritative:
+        await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(
+            db, str(tenant_id)
+        )
+    try:
+        result = await formalize_employment_for_handoff(
+            db,
+            tenant_id=str(tenant_id),
+            handoff_id=str(handoff_id),
+            package=body.package,
+            employment_context=body.employment_context,
+            formalize_patch=body.formalize_patch,
+            confirmed_actions=body.confirmed_actions,
+            employment_missing=body.employment_missing,
+            require_patch_when_missing=body.require_patch_when_missing,
+            authoritative_apply=authoritative,
+            actor_user_id=str(current_user.sub or "").strip() or None,
+        )
+    except EmploymentFormalizeError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    if result.get("employee_ensure_wrote"):
+        await db.commit()
+    return EmploymentFormalizeOut.model_validate(result)
+
+
+class EmploymentStartAllowedIn(BaseModel):
+    """ESA-3: evaluate (empty) or apply typed exception resolution on handoff host."""
+
+    employment_context: Optional[dict[str, Any]] = None
+    resolution_patch: Optional[dict[str, Any]] = None
+
+
+class EmploymentStartAllowedOut(BaseModel):
+    policy_id: str
+    handoff_id: Optional[str] = None
+    employee_id: Optional[str] = None
+    linked_handoff_id: Optional[str] = None
+    decision: str
+    start_allowed: bool = False
+    required_actions: List[dict[str, Any]] = Field(default_factory=list)
+    active_missing: List[dict[str, Any]] = Field(default_factory=list)
+    primary_item: Optional[dict[str, Any]] = None
+    ui_primary_item: Optional[dict[str, Any]] = None
+    blockers: List[dict[str, Any]] = Field(default_factory=list)
+    rejection_reason: Optional[str] = None
+    exceptions: List[dict[str, Any]] = Field(default_factory=list)
+    employment_context: Optional[dict[str, Any]] = None
+    evidence_nav: Optional[dict[str, Any]] = None
+    authority_write_confirmed: Optional[bool] = None
+    planned_start_date: Optional[str] = None
+    manual_override: bool = False
+    llm_start_allowed: bool = False
+    started: bool = False
+
+
+@router.post(
+    "/{handoff_id}/employment-start-allowed",
+    response_model=EmploymentStartAllowedOut,
+    dependencies=[Depends(require_hr_workforce_module_access)],
+)
+async def employment_start_allowed_route(
+    handoff_id: UUID,
+    payload: Optional[EmploymentStartAllowedIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+):
+    """ESA-3: evaluate/apply start_allowed on existing HR handoff host.
+
+    Empty body = evaluate. resolution_patch = typed exception create/revoke only.
+    Does not upload Contract/Medical/BHP. Does not set start_allowed as stored authority.
+    """
+    from backend.app.services.employment_start_allowed_orchestrator import (
+        EmploymentStartAllowedHostError,
+        apply_start_allowed_for_handoff,
+        evaluate_start_allowed_for_handoff,
+    )
+
+    db, tenant_id = db_tenant
+    body = payload or EmploymentStartAllowedIn()
+    try:
+        if body.resolution_patch:
+            await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(
+                db, str(tenant_id)
+            )
+            result = await apply_start_allowed_for_handoff(
+                db,
+                tenant_id=str(tenant_id),
+                handoff_id=str(handoff_id),
+                actor_user_id=str(current_user.sub or "").strip() or None,
+                employment_context=body.employment_context,
+                resolution_patch=body.resolution_patch,
+            )
+            if result.get("authority_write_confirmed"):
+                await db.commit()
+        else:
+            result = await evaluate_start_allowed_for_handoff(
+                db,
+                tenant_id=str(tenant_id),
+                handoff_id=str(handoff_id),
+                employment_context=body.employment_context,
+            )
+    except EmploymentStartAllowedHostError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    return EmploymentStartAllowedOut.model_validate(result)
+
+
 @router.get("/candidates/{candidate_id}/handoff-status")
 async def get_handoff_status(
     candidate_id: UUID,
