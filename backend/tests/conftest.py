@@ -56,10 +56,11 @@ import os
 # Must run before any backend import or .env load — blocks RODO/invite SMTP during pytest.
 os.environ["EMAIL_DELIVERY_MODE"] = "mock"
 
+import json
 import subprocess
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Dict
+from typing import Any, Dict
 from urllib.parse import urlsplit
 
 import pytest
@@ -128,14 +129,10 @@ def _pytest_localize_postgres_host() -> None:
 _pytest_localize_postgres_host()
 
 
-def _alembic_executable(repo_root: Path) -> str | None:
-    for rel in (".venv/bin/alembic", ".venv312/bin/alembic"):
-        p = repo_root / rel
-        if p.is_file():
-            return str(p)
-    import shutil
+def _alembic_executable(_repo_root: Path) -> str | None:
+    from backend.tests.test_support.repo_paths import alembic_executable
 
-    return shutil.which("alembic")
+    return alembic_executable()
 
 
 def _env_with_local_db_host(base: dict[str, str]) -> dict[str, str]:
@@ -217,6 +214,11 @@ from backend.app.models.user import Role as UserRole  # noqa: E402
 from backend.app.models.user import User  # noqa: E402
 from backend.app.models import Candidate  # noqa: E402
 from backend.app.models.tenant import TenantLicense  # noqa: E402
+from backend.app.services.billing_pack_addons import (  # noqa: E402
+    MONTHLY_LEADS_CAP,
+    PACK_ADDONS_KEY,
+    USAGE_ROOT,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -302,6 +304,36 @@ async def _set_tenant(session, tenant_id: str) -> None:
         )
     except Exception:
         pass
+
+
+TEST_TENANT_MONTHLY_LEADS_ADDON = 10_000_000
+"""Monthly inbound-lead cap for the test tenant, granted through the product's pack-addon field.
+
+The cap counts `leads` rows created in the current calendar month and the suite never deletes
+them, so a second run against the same database inherits the first run's total and reports
+extra failures (measured 371 → 467, 152 of them `monthly_leads_limit_reached`). Granting quota
+instead of bypassing the check keeps `resolve_monthly_leads_cap` exercised as in production.
+"""
+
+
+async def _grant_test_tenant_lead_quota(session) -> None:
+    """Idempotently raise the test tenant's monthly lead cap (see the constant above)."""
+    current = await session.scalar(
+        sa.text("SELECT settings FROM tenants WHERE id = :id"),
+        {"id": DEFAULT_TENANT_ID},
+    )
+    settings_payload: Dict[str, Any] = dict(current) if isinstance(current, dict) else {}
+    usage = dict(settings_payload.get(USAGE_ROOT) or {})
+    packs = dict(usage.get(PACK_ADDONS_KEY) or {})
+    if int(packs.get(MONTHLY_LEADS_CAP) or 0) >= TEST_TENANT_MONTHLY_LEADS_ADDON:
+        return
+    packs[MONTHLY_LEADS_CAP] = TEST_TENANT_MONTHLY_LEADS_ADDON
+    usage[PACK_ADDONS_KEY] = packs
+    settings_payload[USAGE_ROOT] = usage
+    await session.execute(
+        sa.text("UPDATE tenants SET settings = CAST(:settings AS jsonb) WHERE id = :id"),
+        {"settings": json.dumps(settings_payload), "id": DEFAULT_TENANT_ID},
+    )
 
 
 async def _init_data() -> Dict[str, str]:
@@ -652,6 +684,8 @@ async def _init_data() -> Dict[str, str]:
                 lic.max_candidates_active = 0
                 # Shared dev DB often exceeds finite document caps; access-policy tests must not flake on 402.
                 lic.max_documents = 0
+
+            await _grant_test_tenant_lead_quota(session)
 
             await session.commit()
 

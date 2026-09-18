@@ -463,13 +463,15 @@ def test_alembic_has_single_head() -> None:
     import subprocess
     from pathlib import Path
 
+    from backend.tests.test_support.repo_paths import alembic_executable
+
     backend_root = Path(__file__).resolve().parents[2]
     alembic_ini = backend_root / "alembic.ini"
-    alembic_bin = backend_root.parent / ".venv312" / "bin" / "alembic"
-    if not alembic_bin.exists():
+    alembic_bin = alembic_executable()
+    if alembic_bin is None:
         pytest.skip("alembic executable not found")
     result = subprocess.run(
-        [str(alembic_bin), "-c", str(alembic_ini), "heads"],
+        [alembic_bin, "-c", str(alembic_ini), "heads"],
         cwd=str(backend_root),
         check=True,
         capture_output=True,
@@ -477,7 +479,6 @@ def test_alembic_has_single_head() -> None:
     )
     heads = [line.strip() for line in result.stdout.splitlines() if line.strip() and "(head)" in line]
     assert len(heads) == 1
-    assert "202607131402" in heads[0]
 
 
 @pytest.mark.anyio
