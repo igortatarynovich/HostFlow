@@ -1,0 +1,4 @@
+# PMI-W workforce isolation allowlist (shrink-only).
+# Format: owner|from_file::import::to_file
+# New rows FORBIDDEN after PMI-W PASS.
+# Workforce accepts Started Employee continuity; does not reconstruct Ready/RFE/Admit.
