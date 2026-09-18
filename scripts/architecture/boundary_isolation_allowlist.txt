@@ -1,0 +1,5 @@
+# PMI-B boundary isolation allowlist (shrink-only).
+# Format: owner|from_file::import::to_file
+# New rows FORBIDDEN after PMI-B PASS.
+# Outbound Boundary→Employment/Documents internals classified on Isolation Card
+# (EXC-PMI-B-EMP / EXC-PMI-B-DOC) — not enforced by this inbound scanner.
