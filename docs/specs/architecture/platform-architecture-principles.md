@@ -6,7 +6,52 @@
 
 Документ фиксирует **главную архитектурную логику** продукта: HostFlow — **modular multi-company SaaS platform**, а не одна монолитная CRM. Детали по подсистемам — в ADR и scope-файлах; здесь — **согласованная картина** и **формула** для принятия решений.
 
-**Связанные нормативные документы:** [`L0-platform-architecture.md`](L0-platform-architecture.md), [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), [`ADR-026`](ADR-026-capability-ownership.md), [`ADR-027`](ADR-027-capability-composition.md), [`ADR-028`](ADR-028-configuration-ownership.md), [`ADR-029`](ADR-029-settings-contract.md), [`ADR-030`](ADR-030-l0-platform-architecture-closure.md), [`ADR-038`](ADR-038-shell-observability-diagnostics.md), [`platform-capability-catalog.md`](platform-capability-catalog.md), [`capability-settings-manifest.md`](capability-settings-manifest.md), [`architecture-review-checklist.md`](architecture-review-checklist.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
+**Связанные нормативные документы:** [`L0-platform-architecture.md`](L0-platform-architecture.md), [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), [`ADR-026`](ADR-026-capability-ownership.md), [`ADR-027`](ADR-027-capability-composition.md), [`ADR-028`](ADR-028-configuration-ownership.md), [`ADR-029`](ADR-029-settings-contract.md), [`ADR-030`](ADR-030-l0-platform-architecture-closure.md), [`ADR-038`](ADR-038-shell-observability-diagnostics.md), [`platform-capability-catalog.md`](platform-capability-catalog.md), [`capability-settings-manifest.md`](capability-settings-manifest.md), [`architecture-review-checklist.md`](architecture-review-checklist.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md), [`hostflow-v1-release-goal.md`](../gates/hostflow-v1-release-goal.md).
+
+---
+
+## Target architecture vs release criteria
+
+HostFlow is **modular by architectural direction** and **unified as a product**. **Commercial independence** is not required for v1. **Full technical module independence** is also **not** a release requirement and may be completed **incrementally after launch**.
+
+**Formula:** **Sell unified. Ship the Spine. Modularize deliberately. Preserve boundaries where costly to recover.**
+
+Do **not** read an older «Build modular…» slogan as «fully cut every module before launch.» **ADR-004** describes **target architecture direction**, not a market-entry prerequisite — it must **not** be treated as a v1 release gate.
+
+**Default GTM:** **Unified by default, modular by design.** Commercial unbundling is an **option**, not a v1 requirement. Do **not** read this as «HostFlow will never sell modules separately.»
+
+### What must hold before launch (release-critical boundaries)
+
+Только границы, нарушение которых создаёт **непосредственный риск для продукта** — иначе запуск не удерживается:
+
+| Keep for v1 | Why |
+|-------------|-----|
+| Data integrity / tenant isolation | Corruption or cross-tenant leakage is product-fatal |
+| Ownership of critical Spine states | Ambiguous SoT on hire / handoff / employment / employee breaks the path |
+| Contracts on the main Spine | Unsafe evolution and silent breakage of the sold journey |
+| No dangerous cyclic module dependencies | Blocks safe change after launch |
+| Ability to evolve without rewriting the sold path | Costly to recover if missing |
+
+### What must not hold the launch (post-launch architecture debt)
+
+If the customer does not experience it on the sold unified product, it is **not** a v1 stop:
+
+| Defer after launch | Examples |
+|--------------------|----------|
+| Full physical / logical module cut | Perfect isolation proofs, complete import-boundary freeze |
+| Standalone runtime proofs | Turn off Recruitment and leave HR (or Fleet-alone) as a proven deploy mode |
+| Ideal PMI-style isolation completeness | Remaining debt that does not break Spine E2E or data integrity |
+| Commercial SKU / a-la-carte storefront | Module marketplace, per-block sellable products |
+
+| Layer | Meaning | v1 role |
+|-------|---------|---------|
+| **Commercial SKU independence** | Separate sellable products on the storefront | **Not required** |
+| **Full technical module independence** | Standalone runtime, perfect isolation, every `enabled_modules` combo proven | **Target architecture** — incremental after launch; **not** a release gate |
+| **Release-critical boundaries** | Integrity, critical ownership, Spine contracts, no dangerous cycles, evolvability | **Required** for launch |
+
+**Pricing default:** one product (HostFlow), one subscription story; differentiate by **scale of use** (seats, active employees, placements, companies/branches, automation volume) — not by forcing the buyer to assemble Spine blocks as separate goods.
+
+**Release criterion (simple):** can a client run the main HostFlow Spine end-to-end reliably and receive the claimed value? If yes, incomplete technical independence of an internal module is **not** by itself grounds to delay launch — see [`hostflow-v1-release-goal.md`](../gates/hostflow-v1-release-goal.md).
 
 ---
 
@@ -44,7 +89,7 @@ HostFlow — **платформа capabilities**. Поведение и конф
 |---------|------|
 | **Tenant** | **Workspace**, граница **subscription** и **billing**; не владелец рабочих операционных данных. |
 | **Company** | **Владелец данных, процессов**, включённых модулей и политик для своего контура; главная **operational / data boundary**. |
-| **Module** | **Независимый продуктовый блок** (лицензируется отдельно или в bundle). |
+| **Module** | **Ownership / bounded-context блок** (`enabled_modules`, handoffs). **Целевая** архитектура допускает независимую лицензию или bundle; **v1** не требует полной technical independence каждого модуля до запуска (см. [Target architecture vs release criteria](#target-architecture-vs-release-criteria)). |
 | **Shared Platform Layer** | Общие возможности, которыми пользуются модули (Forms, Acquisition/Campaigns, Document Hub, Process Engine, …). |
 | **User** | Доступ через **role + company scope + module scope**; не через «уникальные роли под каждого клиента». |
 
@@ -102,7 +147,7 @@ Tenant **не** является владельцем рабочих сущно�
 2. **Company** определяет, **какие модули реально используются** (`enabled_modules` ∩ tenant).  
 3. **User role assignment** определяет, что пользователь может делать **внутри конкретной company** и **конкретного модуля** (scope).
 
-Клиент может купить **любую комбинацию** из пяти модулей: только Recruitment, только HR, только Fleet, только Services, только Finance — или смесь.
+**Архитектурно (направление):** tenant/company **в перспективе** могут включать допустимые комбинации из пяти модулей (`enabled_modules`). Это **target optionality**, не v1 release proof и не обязательный storefront SKU-каталог. Default commercial offer — **unified HostFlow**. Полные доказательства standalone runtime (например, HR при выключенном Recruitment) — **после запуска**, если не ломают Spine E2E (см. [Target architecture vs release criteria](#target-architecture-vs-release-criteria) и errata в [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md)).
 
 ---
 

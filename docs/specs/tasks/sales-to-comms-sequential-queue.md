@@ -31,7 +31,7 @@
 | Track | Active work | Rule |
 |-------|-------------|------|
 | **Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. Not MA-4. Not External Intake. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
-| **Engineering** | **Active** = [`pem1-policy-composition.md`](pem1-policy-composition.md) **PASS** 2026-09-18 (dual-boundary). Kernel **PASS**. No PEM-2 auto-opened. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background | Second track |
+| **Engineering** | **DONE** — ADR-042 chain closed: PMI → public-contract preflight → dual-zero → Kernel P1→P6 → PEM-1 **PASS**. No PEM-2 auto-opened. Next Engineering only by product-goal amendment. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background | Second track idle until amendment |
 | **Launch-ops** | **Parked** — OL-1 `PASS_WITH_CONSTRAINTS`; OL-2 queued until PMI **PASS** or a later amendment. Not Billing | Parked |
 
 ---
@@ -48,9 +48,9 @@ Reaching the program horizon of this section is **not** a release. Release-ready
 |------|--------|
 | **Active Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. External Intake / Hiring / min HR remain queued. |
 | **Queued Product successor** | **MA-4** Consumer cutover after Mapping Operator Gate PASS — [brief](mapping-authority.md). Do not start MA-4 / External Intake / Forms Publish / Hiring in the MA-3 feat. Hiring is unlocked by RPM close, **not** scheduled. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
-| **Active Engineering** | [`pem1-policy-composition.md`](pem1-policy-composition.md) **PASS** 2026-09-18. Spine Kernel + first production composition closed. No PEM-2 auto-scheduled. |
-| **Queued Engineering after Active** | PEM-N / classified STOP items only by amendment. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
-| **Active Launch-ops** | **Parked** this amendment (second slot occupied by Engineering PMI). OL-1 remains `PASS_WITH_CONSTRAINTS`. OL-2 stays queued, **not started** |
+| **Active Engineering** | **DONE** — no named successor until amendment. Closed chain: ADR-042 → PMI → public-contract preflight → dual-zero → Kernel P1→P6 → [`pem1-policy-composition.md`](pem1-policy-composition.md) **PASS**. Walks 1–4 = historical only. |
+| **Queued Engineering after Active** | None auto-scheduled. PEM-N / classified STOP / further isolation only by amendment from the **next product goal**. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
+| **Active Launch-ops** | **Parked** (may unpark by amendment now that Engineering slot is free). OL-1 remains `PASS_WITH_CONSTRAINTS`. OL-2 stays queued, **not started** |
 | **Queued Launch-ops** | **OL-2** after PMI program **PASS** or a later amendment that parks Engineering — [brief](operate-and-launch.md) |
 | **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **RPM program = DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). **MA-1 Contract Gate = PASS**. **Mapping Resolution Gate = PASS**. **Product = MA-3** (not a Phase E leftover) |
 | **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1). **Spine:** Kernel **PASS** · PEM-1 **PASS**. |
@@ -60,12 +60,12 @@ Historical markers (A2 active, Meta Intake next, Phase E active = E7 feat) live 
 ### Invariants (mandatory)
 
 1. **One Active Product slice**, **or Product DONE with no named successor until amendment**. This amendment names **MA-3** after Mapping Resolution Gate PASS. Unlock ≠ silent schedule of Intake / Hiring. Do not open MA-3 editor in this PR.  
-2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor**. This amendment names **post-PMI Kernel public-contract preflight** as the sole Active Engineering successor after **PMI-X PASS**. Do not promote pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) to Active Engineering. Ready is not auto-unfrozen. External proof: policy composition → `*.public.*` → verdict/permission only — not recruitment_package / VERIFICATION_SLOT_DEFS / requirement_engine from outside Recruitment.
-3. **Two named tracks maximum.** This amendment: Product **MA-3** ∥ Engineering **PMI**. Launch-ops is **parked** (OL-2 not started). Never three concurrent tracks.  
+2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor**. **Now: Engineering DONE** after PEM-1 PASS — next Engineering only by product-goal amendment (no auto PEM-2). Do not promote pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) to Active Engineering.  
+3. **Two named tracks maximum.** This amendment: Product **MA-3** ∥ Engineering **DONE** (idle). Launch-ops is **parked** (OL-2 not started; may unpark by amendment). Never three concurrent tracks.  
 4. **Unlock ≠ schedule.** A satisfied unlock condition does **not** auto-start the slice. Only the owning track’s queue may activate it.  
 5. **One work = one unlock condition.** Two independent unlocks ⇒ two named slices.  
 6. **Do not skip a named gate.** Do not start the next slice in the same PR as its predecessor.  
-7. **Park, don’t substitute.** If the next *scheduled* Product slice waits on an Engineering gate, Product waits. Do not jump to Billing / Forms P3 / OCR / CL8. Do not jump to Ready composition or Kernel while PMI is OPEN.  
+7. **Park, don’t substitute.** If the next *scheduled* Product slice waits on an Engineering gate, Product waits. Do not jump to Billing / Forms P3 / OCR / CL8. Do not invent a new composition program as a substitute for product work.  
 8. **Write-set guard.** Product CL and Reference R may run in parallel **only while write sets do not overlap.**  
    - CL0 docs-only ∥ Reference R1 — allowed.  
    - CL1 observe ∥ Reference R3 — allowed (CL1 does not canonize).  
@@ -412,7 +412,7 @@ A reader who has only this section can answer every item **yes**:
 
 **C0–C2.3** ✅. **C2.4 frozen (Epic C residual R1).** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
 **Active (Product):** **[MA-3](mapping-authority.md)** (UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open) after Mapping Resolution Gate **PASS**. SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping Operator Gate PASS. **Not** MA-4. **Not** External Intake. **Not** Hiring E2E. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
-**Active (Engineering):** **DONE** — Reference Program Exit Gate PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. No named successor. Legacy full-repo pytest does **not** become Active Engineering.
+**Active (Engineering):** **DONE** — ADR-042 chain closed (PMI → preflight → dual-zero → Kernel **PASS** → PEM-1 **PASS**). No named successor until product-goal amendment. PEM-2 not opened. Walks 1–4 historical. Legacy full-repo pytest does **not** become Active Engineering.
 
 ---
 
@@ -649,6 +649,7 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-09-18: **ADR-042 engineering chain CLOSED** (Accept → inventory → PMI → public-contract preflight → dual-zero → Kernel P1→P6 → PEM-1). Two properties proved separately and must not be mixed: Kernel (empty Ready+Admit) ≠ PEM-1 (production composition permissions). Walks 1–4 = [`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) **HISTORICAL** — not an open Full Spine gate. **Active Engineering → DONE** (no successor until product-goal amendment). PEM-2 **not** opened. Product stays **MA-3**.
 - 2026-09-18: **PEM-1 Policy Composition PASS** (dual-boundary Ready `driver` + Admit `PEM-1`; blocking + satisfied + composition-driven `next_action`; same identity → Started → Workforce). No unexpected STOP. PEM-2 not auto-opened. Product stays **MA-3**.
 - 2026-09-18: **PEM-1 Policy Composition OPEN** ([`pem1-policy-composition.md`](pem1-policy-composition.md)). Hard locks: not Kernel / not Walks 1–4; blocking + satisfied; classify before fix; Kernel immutability. Product stays **MA-3**.
 - 2026-09-18: **Baseline Full Spine Kernel Proof PASS** (single continuous new-person P1→P6 via `*.public.*`; public-contract continuity; empty Ready + empty Admit; P5→P6 Workforce public). Active Engineering → **PEM-1 Policy Composition**. No second kernel walk. Product stays **MA-3**.

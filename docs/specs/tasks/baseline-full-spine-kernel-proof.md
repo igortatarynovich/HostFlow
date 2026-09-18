@@ -15,7 +15,8 @@
 
 > **Meaning of this proof:** HostFlow’s **каркас exists independently** of any particular HR policy.  
 > One continuous witness under zero-requirement Ready + empty Admit.  
-> Public-contract continuity held. PEM-1 may now open as the first production composition.
+> Public-contract continuity held. **Do not mix with PEM-1:** composition permissions are a **separate** stamp ([`pem1-policy-composition.md`](pem1-policy-composition.md) **PASS** 2026-09-18).  
+> ADR-042 chain through PEM-1 is **closed**; next Engineering is product-goal driven (no auto PEM-2).
 
 ---
 

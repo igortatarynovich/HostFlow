@@ -4,9 +4,23 @@
 
 Accepted (architecture). **Имплементация поэтапная.** Текущий код частично смешивает Recruitment с услугами/счетами — это **технический долг**; новая разработка и рефакторинг должны следовать этому ADR.
 
+### Clarification / errata (target architecture vs release, 2026-09-18)
+
+Этот ADR — **направление целевой архитектуры** (пять модулей, Billing Events, ownership, возможность независимого включения). Он **не** является v1 **release gate** и **не** должен задерживать выход на рынок.
+
+| Не является v1 release requirement | Остаётся направлением / долгом после запуска |
+|------------------------------------|---------------------------------------------|
+| Commercial SKU independence (a-la-carte / module marketplace) | Storefront unbundling when product chooses |
+| Full technical module independence (perfect isolation, proven standalone runtime, every `enabled_modules` combo) | Incremental modularization after launch |
+| Proof that Fleet/HR/… run with sibling modules off | Preserved as **target** autonomy below — not a launch blocker |
+
+**До запуска** обязательны только **release-critical** границы (целостность данных, ownership критических состояний Spine, contracts основного пути, отсутствие опасных циклов, безопасная эволюция). Формула и критерии: [`platform-architecture-principles.md`](platform-architecture-principles.md) § Target architecture vs release criteria · [`hostflow-v1-release-goal.md`](../gates/hostflow-v1-release-goal.md).
+
+**GTM default:** **Unified by default, modular by design.** Commercial unbundling remains an **option**, not a v1 obligation.
+
 ## Context
 
-HostFlow продаёт возможности как **независимые продукты** (отдельно, addons, bundle). При этом **Recruitment не является «главным» модулем**: услуги, заказы и финансы не должны жить «внутри» рекрутинга как вторичные функции.
+HostFlow **проектирует** модули так, чтобы их **можно** лицензировать независимо (отдельно, addons, bundle) и включать через `enabled_modules`. **Default GTM for v1** — **unified HostFlow** (одна система / одна подписка), а не обязательный модульный ассортимент на витрине. При этом **Recruitment не является «главным» модулем**: услуги, заказы и финансы не должны жить «внутри» рекрутинга как вторичные функции.
 
 Границы **Tenant / Company / Module / User assignment** — см. [`ADR-003-tenant-company-module-data-boundaries.md`](ADR-003-tenant-company-module-data-boundaries.md). Здесь фиксируется **каталог из пяти модулей** и **единое правило выставления счетов**. Сводная карта **Core / Platform** **vs** пять бизнес-модулей — [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) §0 и **[`platform-architecture-principles.md`](platform-architecture-principles.md)**.
 
@@ -27,10 +41,14 @@ HostFlow продаёт возможности как **независимые �
 
 ### Независимость и автономия
 
+**Target architecture** (направление; **не** v1 release proof):
+
 - **Fleet** может работать при выключенных Recruitment и HR (ручной ввод, import/API, ссылки опциональны).
 - **HR** может работать без Recruitment (employee из import/API/ручного создания).
 - **Services** и **Finance** не обязаны требовать Recruitment.
 - Модули интегрируются через **ссылки, события, handoffs**, а не через обязательный монолитный UI или единый pipeline.
+
+Незавершённость этих доказательств **сама по себе** не блокирует v1, если основной Spine E2E надёжен (см. errata выше).
 
 ### Платформенный слой ввода: Forms (не шестой модуль каталога)
 
@@ -86,9 +104,12 @@ Recruitment **может** инициировать **Billing Event** (напр�
 2. UI и маршруты «Услуги / Заказы / Счета» должны в перспективе жить под **своими** product boundaries и проверками модуля, а не только под Recruitment.
 3. Ввод **таблицы/шины Billing Event** и запрет прямых `invoice` из Recruitment/Services/Fleet — отдельная серия задач (схема БД + сервисный слой).
 4. Документы модулей (`docs/hr/…`, `docs/fleet/…`) и будущий `docs/recruitment/`, `docs/services/`, `docs/finance/` должны ссылаться на этот ADR.
+5. Этот ADR **не** определяет v1 release gate. Roadmap не требует ни commercial standalone, ни полной technical independence каждого модуля до запуска; требует release-critical границы + unified Spine E2E. Полная modularization — **incremental after launch**.
 
 ## References
 
+- [`platform-architecture-principles.md`](platform-architecture-principles.md) — **Target architecture vs release criteria** (Sell unified / Ship the Spine; ADR-004 ≠ release gate).  
+- [`../gates/hostflow-v1-release-goal.md`](../gates/hostflow-v1-release-goal.md) — v1 = unified Spine E2E value; full module independence not a launch blocker.  
 - [`ADR-005-three-level-settings-hierarchy.md`](ADR-005-three-level-settings-hierarchy.md) — tenant / company / module settings; **Tenant = что куплено**, **Company = кто работает**, **Module Settings = как работает модуль у company**.  
 - [`ADR-006-marketplace-and-integration-platform.md`](ADR-006-marketplace-and-integration-platform.md) — **пять модулей** как *paid business modules* внутри слоёв платформы; интеграции и Marketplace — отдельно от ADR-004.  
 - [`ADR-007-forms-platform-capability.md`](ADR-007-forms-platform-capability.md) — **Forms** как платформенный ввод данных; не шестой ключ `enabled_modules` ADR-004.  

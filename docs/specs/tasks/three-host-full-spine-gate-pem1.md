@@ -1,15 +1,14 @@
 # Three-host Full Spine Gate (kernel) — PEM-1 walks reclassified
 
-**Status:** **NOT PASS** (proof brief; architectural reclassification)  
+**Status:** **HISTORICAL** (2026-09-18) — Walks 1–4 retained as evidence of kernel/policy conflation only. **Not** an open Full Spine gate. Kernel existence proved by [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) **PASS**; first production composition by [`pem1-policy-composition.md`](pem1-policy-composition.md) **PASS**. Do **not** reopen this brief to “finish” Walks 1–4.  
 **Layer:** L3 proof context — **not** L2 design/feature specification · **not** a release gate  
 **Phase class:** product  
 **Opened:** 2026-09-15  
-**Closed:** *reopened as NOT PASS 2026-09-15* — Walk 4 continuous Started is **not** accepted as baseline lifecycle kernel proof  
-**Walk attempted:** walk 1–3 STOP · walk 4 continuous under **policy-laden** PEM-1 config (reclassified)  
+**Closed as open gate:** 2026-09-18 (superseded by independent Kernel + PEM-1 proofs)  
+**Walk attempted:** walk 1–3 STOP · walk 4 continuous under **policy-laden** PEM-1 config (reclassified — historical)  
 **Architecture parent:** [`ADR-042-spine-policy-separation.md`](../architecture/ADR-042-spine-policy-separation.md) (**Accepted** 2026-09-15) — path → process → module → policy  
-**STOP / hold:** Full Spine remains **NOT PASS** until **baseline lifecycle kernel proof** (minimal/neutral policy, neutral ≠ bypass)  
-**Critical split:** **Full Spine ≠ PEM-1** — Full Spine proves каркас; PEM-1 separately proves one worker-context policy composition  
-**Walks 1–4:** retained as historical evidence of kernel/policy/evidence conflation — **not** Spine existence criteria  
+**Critical split (proved separately):** **Kernel ≠ PEM-1** — Kernel = каркас under empty Ready+Admit; PEM-1 = production composition on that каркас  
+**Walks 1–4:** historical evidence only — **not** Spine existence criteria and **not** an unclosed Full Spine obligation  
 **Map / I/O:** [`spine-policy-separation-inventory.md`](spine-policy-separation-inventory.md) (six-field process cards)  
 **Parents:**  
 - [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) (Spine / Policy Separation)  
@@ -21,10 +20,9 @@
 **Does not amend:** L0 · ESO/ESA/RSO named gate PASS stamps · Hiring E2E · Formalize thin table · Release Readiness Gate  
 
 
-> **Proof brief only.** Full Spine = platform каркас. PEM-1 = one policy set on that каркас.  
-> **No code** from this brief. No new capability. No redesign.  
-> Do **not** continue Contract/BHP/Code95 fixes as Full Spine topology — inventory first.  
-> Prerequisites (boundary E2E, Start Allowed 1–4, Confirm↔`start_allowed`, Hub identity) are **inputs**, not substitutes for kernel PASS.
+> **Proof brief only — now historical.** Full Spine каркас = [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md). PEM-1 = [`pem1-policy-composition.md`](pem1-policy-composition.md).  
+> **No code** from this brief. Do **not** continue Contract/BHP/Code95 fixes as “open Full Spine.”  
+> Prerequisites (boundary E2E, Start Allowed 1–4, Confirm↔`start_allowed`, Hub identity) are **inputs**, not substitutes for the independent Kernel / PEM-1 stamps.
 
 ---
 
@@ -144,7 +142,7 @@ Do **not** invent functionality from a STOP. The gap-fix is a later, explicit op
 | **STOP** | Witness breaks — record hole + **defect class**; Full Spine remains **NOT PASS** |
 | PEM-1 composition | Separate proof after kernel; not this stamp |
 
-**Full Spine Gate = NOT PASS.** Walks 1–3 remain STOP witnesses (evidence/authority holes mistaken for route infrastructure). Walk 4 is retained as a **policy-laden composition artifact** only — **not** kernel PASS. See [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md).
+**Full Spine Gate (this brief) = HISTORICAL.** Walks 1–3 remain STOP witnesses (evidence/authority holes mistaken for route infrastructure). Walk 4 is retained as a **policy-laden composition artifact** only — **not** kernel PASS. Kernel каркас PASS = [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md). PEM-1 PASS = [`pem1-policy-composition.md`](pem1-policy-composition.md). See [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md).
 
 ---
 

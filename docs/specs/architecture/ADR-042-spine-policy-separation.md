@@ -166,15 +166,17 @@ A Code95 hole is **not** “Full Spine broken” unless classified as kernel.
 |------|------|-------------------|--------|
 | **1** | **Accept ADR-042** | Design rule: life path → processes → modules → policies/rules | **DONE** 2026-09-15 |
 | **2** | Finish inventory I/O | Six-field cards P1–P6 | **DONE** |
-| **3a** | Baseline Kernel proof attempt | Preflight: zero-requirement expressible? | **STOP** — Admit not a composable policy engine ([brief](../tasks/baseline-full-spine-kernel-proof.md)) |
+| **3a** | Baseline Kernel proof attempt | Preflight: zero-requirement expressible? | **STOP** historical — Admit not composable ([brief](../tasks/baseline-full-spine-kernel-proof.md) journal) |
 | **3b** | **Admit policy / ruleset separation** | `employment_start_allowed.v1` = process-policy + pluggable ruleset; **resolver ≠ evaluator**; PEM-1 = one ruleset; `[]` → allowed штатно | **PASS** 2026-09-15 — [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) |
-| **3c** | Dual zero-policy preflight | Full Ready evaluator + Admit evaluator each → `allowed` under `[]` | **STOP** 2026-09-15 — P4 PASS · P1 STOP — [`dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md) |
-| **3c2** | **Recruitment Ready policy / composition separation** | Local evaluator fix — **not** module isolation | **PARKED** — [`recruitment-ready-policy-composition-separation.md`](../tasks/recruitment-ready-policy-composition-separation.md) until PMI **PASS** |
-| **PMI** | **Platform Modularization & Isolation Cutover** | Spine modules **ISOLATED** + CI freeze; contracts not internals | **OPEN** — [`platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) (**before** 3c2/3c3/3d) |
-| **3c3** | Dual zero-policy preflight **retry** | Full Ready `[]` + Admit `[]` on real evaluators | After PMI **PASS** and 3c2 PASS |
-| **3d** | **Baseline Full Spine Kernel proof** (new person P1→P6) | Continuity, ownership, handoffs, identity; neutral ≠ bypass | **Blocked** until PMI **PASS** and 3c3 PASS |
+| **3c** | Dual zero-policy preflight | Full Ready evaluator + Admit evaluator each → `allowed` under `[]` | **STOP** historical 2026-09-15 — P4 PASS · P1 STOP — then retry **PASS** |
+| **3c2** | **Recruitment Ready policy / composition separation** | Local evaluator fix — **not** module isolation | **PASS** 2026-09-17 — [`recruitment-ready-policy-composition-separation.md`](../tasks/recruitment-ready-policy-composition-separation.md) |
+| **PMI** | **Platform Modularization & Isolation Cutover** | Spine modules **ISOLATED** + CI freeze; contracts not internals | **PASS** (PMI-X CLOSED) — [`platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) |
+| **3c3** | Dual zero-policy preflight **retry** | Full Ready `[]` + Admit `[]` on real evaluators | **PASS** 2026-09-17 — [`dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md) |
+| **3d** | **Baseline Full Spine Kernel proof** (new person P1→P6) | Continuity, ownership, handoffs, identity; neutral ≠ bypass | **PASS** 2026-09-18 — [`baseline-full-spine-kernel-proof.md`](../tasks/baseline-full-spine-kernel-proof.md) |
 | **4** | **PEM-1 Policy Composition proof** | Same каркас + PEM-1 ruleset may block | **PASS** 2026-09-18 — [`../tasks/pem1-policy-composition.md`](../tasks/pem1-policy-composition.md) |
-| **5** | Ongoing defects | Classify per §6 before fix | Ongoing |
+| **5** | Ongoing defects | Classify per §6 before fix | **Not auto-scheduled** — product-goal amendment only; **no PEM-2 auto-open** |
+
+**Program close (2026-09-18):** steps 1–4 **CLOSED**. Kernel PASS and PEM-1 PASS are **independent** properties — do not mix. Walks 1–4 ([`three-host-full-spine-gate-pem1.md`](../tasks/three-host-full-spine-gate-pem1.md)) remain **HISTORICAL** and are **not** an open Full Spine gate. Further policy architecture is **not** the default next Engineering item.
 
 **Corollary (from Kernel preflight STOP):** zero-requirement is **not** a kernel special-case. It is a **mandatory property** of a composable policy engine. If empty composition cannot be evaluated correctly, rules are still embedded in topology.
 
@@ -222,7 +224,7 @@ Do **not** change architecture or write runtime for spine topology between steps
 | # | Criterion | Status |
 |---|-----------|--------|
 | A1 | Accepted by Architecture canon owner | **MET** 2026-09-15 |
-| A2 | Full Spine brief **NOT PASS** until baseline kernel proof; PEM-1 named separately | **MET** (hold) |
+| A2 | Full Spine brief **NOT PASS** until baseline kernel proof; PEM-1 named separately | **MET** — Kernel **PASS**; Walks brief **HISTORICAL**; PEM-1 **PASS** separately |
 | A3 | Inventory holds life-path → process → module map + leak overlay; I/O excludes document types as topology | **MET** (P1–P6 cards CLOSED 2026-09-15) |
 | A4 | Catalog / domain-map cross-refs | **MET** |
 | A5 | Neutral ≠ bypass lock (§4a); defect classes (§6) are the remediation taxonomy | **MET** |
@@ -235,14 +237,14 @@ Do **not** change architecture or write runtime for spine topology between steps
 
 | Doc | Role |
 |-----|------|
-| [`platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) | Runtime isolation program — **OPEN** (blocks 3c2 / Kernel) |
-| [`recruitment-ready-policy-composition-separation.md`](../tasks/recruitment-ready-policy-composition-separation.md) | Classified **policy/rule** fix — Ready process-policy vs pluggable composition (**PARKED**) |
-| [`dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md) | §3c dual zero-policy — **STOP** (P4 PASS · P1 STOP); retry after PMI **PASS** and 3c2 |
-| [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) | Classified **policy/rule** fix — Admit process-policy vs PEM-1 ruleset **PASS** |
-| [`baseline-full-spine-kernel-proof.md`](../tasks/baseline-full-spine-kernel-proof.md) | Kernel proof **NOT PASS** (preflight STOP) |
+| [`platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) | Runtime isolation program — **PASS** (PMI-X CLOSED) |
+| [`recruitment-ready-policy-composition-separation.md`](../tasks/recruitment-ready-policy-composition-separation.md) | Ready process-policy vs pluggable composition — **PASS** |
+| [`dual-zero-policy-preflight.md`](../tasks/dual-zero-policy-preflight.md) | §3c dual zero-policy — **PASS** (retry 2026-09-17) |
+| [`admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md) | Admit process-policy vs PEM-1 ruleset — **PASS** |
+| [`baseline-full-spine-kernel-proof.md`](../tasks/baseline-full-spine-kernel-proof.md) | Kernel proof P1→P6 — **PASS** 2026-09-18 |
 | [`spine-policy-separation-inventory.md`](../tasks/spine-policy-separation-inventory.md) | P1–P6 six-field map **CLOSED** |
 | [`pem1-policy-composition.md`](../tasks/pem1-policy-composition.md) | PEM-1 Policy Composition proof **PASS** |
-| [`three-host-full-spine-gate-pem1.md`](../tasks/three-host-full-spine-gate-pem1.md) | PEM-1-laden walks — historical |
+| [`three-host-full-spine-gate-pem1.md`](../tasks/three-host-full-spine-gate-pem1.md) | Walks 1–4 — **HISTORICAL** (not an open Full Spine gate) |
 | [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) | ADR index |
 | [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md) | Domain linkage |
 
@@ -254,6 +256,7 @@ Do **not** change architecture or write runtime for spine topology between steps
 - 2026-09-15: Amended — top-down **path → process → module → policy**; explicit **Full Spine ≠ PEM-1**.  
 - 2026-09-15: Amended — **neutral ≠ bypass**; module process contracts; ordered Accept→inventory→kernel→PEM-1; defect classes.  
 - 2026-09-15: **Accepted** — no architecture/runtime change on Accept; next = inventory six-field I/O.  
+- 2026-09-18: **Program close** through step 4 — Kernel ≠ PEM-1 both **PASS**; Walks 1–4 **HISTORICAL**; Engineering returns to product-goal scheduling; PEM-2 not auto-opened.  
 - 2026-09-18: Kernel P1→P6 **PASS**; PEM-1 Policy Composition **PASS** — [`../tasks/pem1-policy-composition.md`](../tasks/pem1-policy-composition.md).
 - 2026-09-15: Inventory P1–P6 cards **CLOSED**; Baseline Kernel proof opened — [`../tasks/baseline-full-spine-kernel-proof.md`](../tasks/baseline-full-spine-kernel-proof.md).  
 - 2026-09-15: Kernel preflight STOP → Admit is PEM-1 composition as evaluator; program inserts **Admit policy/ruleset separation** before retry — [`../tasks/admit-policy-ruleset-separation.md`](../tasks/admit-policy-ruleset-separation.md).  

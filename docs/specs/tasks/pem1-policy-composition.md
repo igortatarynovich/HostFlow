@@ -5,10 +5,10 @@
 **Phase class:** platform  
 **Opened:** 2026-09-18  
 **Closed:** 2026-09-18  
-**Named gate:** `pem1-policy-composition-gate`  
-**Architecture parent:** [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) (**Accepted**) §4 / §7 step 4  
-**Kernel prerequisite (PASS):** [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) — continuous P1→P6 under empty Ready + empty Admit  
-**Historical walks (not this proof):** [`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) — Walks 1–4 reclassified; **not continued**  
+**Named gate:** `pem1-policy-composition-gate` (`test_pem1_policy_composition_gate.py` — 4 passed)  
+**Architecture parent:** [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) (**Accepted**) §4 / §7 step 4 — **program closed through this stamp**  
+**Kernel prerequisite (PASS):** [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) — continuous P1→P6 under empty Ready + empty Admit (**do not mix with this stamp**)  
+**Historical walks (not this proof):** [`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) — Walks 1–4 **HISTORICAL**; not an open Full Spine gate  
 **Inventory:** [`spine-policy-separation-inventory.md`](spine-policy-separation-inventory.md) step 4  
 **Composition ids:** Ready `driver` · Admit `PEM-1` (Contract / Medical / BHP)  
 **Evidence:** `backend/tests/platform/test_pem1_policy_composition_gate.py`
@@ -140,6 +140,7 @@ PEM-1 did **not** change Kernel topology.
 
 ## Next
 
-1. Further compositions (PEM-N) are **separate** items — not auto-opened.  
-2. Classified residual debt only via new work items.  
-3. Do **not** reopen Kernel or re-run PEM-1 “for confidence.”
+1. **ADR-042 ordered program closed** through step 4 (Kernel + PEM-1). Do **not** auto-open PEM-2 / further compositions / policy DSL.  
+2. **Engineering track returns to product-driven scheduling:** next Engineering item only by queue amendment from the **next HostFlow product goal** — not “another composition as pretext for foundational refactoring.”  
+3. Walks 1–4 stay [`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) **HISTORICAL** — not an open Full Spine gate.  
+4. Classified residual debt only via new work items. Do **not** reopen Kernel or re-run PEM-1 “for confidence.”
