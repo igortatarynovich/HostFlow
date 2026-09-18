@@ -172,7 +172,7 @@ async def test_p2b_evaluator_legacy_fallback_without_profile(monkeypatch: pytest
         }
 
     monkeypatch.setattr(
-        "backend.app.process_engine.evaluator_adapter.TransferPolicyResolver.resolve",
+        "backend.app.services.transfer_policy_resolver.TransferPolicyResolver.resolve",
         _resolve,
     )
     monkeypatch.setattr(
@@ -240,7 +240,7 @@ async def test_p2b_evaluator_blocks_missing_documents(monkeypatch: pytest.Monkey
     }
 
     monkeypatch.setattr(
-        "backend.app.process_engine.evaluator_adapter.TransferPolicyResolver.resolve",
+        "backend.app.services.transfer_policy_resolver.TransferPolicyResolver.resolve",
         _resolve,
     )
     monkeypatch.setattr(

@@ -41,9 +41,9 @@ P1–P6 each have locked six fields (process contracts, not document lists)
 | 3c | Dual zero-policy preflight (full Ready + Admit) | **STOP** — [`dual-zero-policy-preflight.md`](dual-zero-policy-preflight.md) (P4 PASS · P1 STOP) |
 | 3c2 | Recruitment Ready policy / composition separation | **PARKED** — [`recruitment-ready-policy-composition-separation.md`](recruitment-ready-policy-composition-separation.md) until PMI **PASS** |
 | PMI | Platform Modularization & Isolation Cutover | **OPEN** — [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) |
-| 3c3 | Dual zero-policy preflight retry | After PMI **PASS** and 3c2 PASS |
-| 3d | Baseline Kernel P1→P6 witness | **Blocked** until PMI **PASS** and 3c3 PASS — [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) |
-| 4 | PEM-1 Policy Composition proof | After kernel **PASS** |
+| 3c3 | Dual zero-policy preflight retry | **PASS** 2026-09-17 |
+| 3d | Baseline Kernel P1→P6 witness | **PASS** 2026-09-18 — [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) |
+| 4 | PEM-1 Policy Composition proof | **OPEN** — Active Engineering ([`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md)) |
 | 5 | Classified fixes only | Ongoing — no auto-fix from inventory |
 
 **Corollary:** zero-requirement = property of composable policy engine, not a kernel special-case. `r5_required_set=∅` alone ≠ neutral Recruitment Ready.

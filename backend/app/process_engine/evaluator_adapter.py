@@ -18,12 +18,17 @@ from backend.app.process_engine.pipeline_mapping import (
     infer_pe_system_stage_code,
     resolve_qualified_system_stage_for_candidate,
 )
-from backend.app.services.transfer_policy_resolver import TransferPolicyResolver
 
 
 class TransitionEvaluatorAdapter:
     """Process Engine runtime facade — API/service layer must call this, not TransferPolicyResolver."""
 
+    @staticmethod
+    def _transfer_policy_resolver():
+        # Import from services (not recruitment.public.ready) to avoid import cycles.
+        from backend.app.services.transfer_policy_resolver import TransferPolicyResolver
+
+        return TransferPolicyResolver
     @classmethod
     async def _apply_ready_for_handoff_requirement_gate(
         cls,
@@ -61,7 +66,7 @@ class TransitionEvaluatorAdapter:
         target_stage: str | None,
         require_destination: bool,
     ) -> dict[str, Any]:
-        report = await TransferPolicyResolver.resolve(
+        report = await cls._transfer_policy_resolver().resolve(
             db,
             tenant_id=tenant_id,
             candidate_id=candidate_id,

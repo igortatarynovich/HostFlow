@@ -16,8 +16,23 @@ _ELIGIBILITY_PATCH = (
 _EXPECTED_DOCS_PATCH = (
     "backend.app.services.transfer_policy_resolver.ReferenceServiceFacade.get_applicable_documents"
 )
-_PKG_PATCH = "backend.app.services.transfer_policy_resolver.evaluate_recruitment_package"
-_FIELD_REQ_PATCH = "backend.app.services.transfer_policy_resolver.evaluate_field_requirements_for_candidate"
+_PKG_PATCH = "backend.app.services.recruitment_package_readiness.evaluate_recruitment_package"
+_FIELD_REQ_PATCH = (
+    "backend.app.field_registry.requirement_evaluator.evaluate_field_requirements_for_candidate"
+)
+_OPS_PATCH = (
+    "backend.app.services.operational_requirements_service."
+    "evaluate_operational_requirements_for_candidate"
+)
+_OPS_BLOCKERS_PATCH = (
+    "backend.app.services.operational_requirements_service."
+    "operational_requirement_blocking_reasons"
+)
+_ENTITY_PROFILE_PATCH = (
+    "backend.app.requirement_rules.readiness_bridge.resolve_entity_profile_code_for_candidate"
+)
+_R5_PATCH = "backend.app.reference.requirement_policy_consumer_parity.r5_required_set"
+_DELTA_PATCH = "backend.app.reference.document_policy_overlay_store.load_persisted_tenant_delta"
 _OVERRIDES_PATCH = (
     "backend.app.api.v1.candidates.pipeline_overrides_service.approved_handoff_relaxed_types"
 )
@@ -181,6 +196,11 @@ def patch_transfer_policy_dependencies(
         _OVERRIDES_PATCH,
         AsyncMock(return_value=overrides or set()),
     )
+    monkeypatch.setattr(_OPS_PATCH, AsyncMock(return_value=[]))
+    monkeypatch.setattr(_OPS_BLOCKERS_PATCH, lambda _rows: [])
+    monkeypatch.setattr(_ENTITY_PROFILE_PATCH, AsyncMock(return_value=None))
+    monkeypatch.setattr(_R5_PATCH, lambda *_a, **_k: frozenset())
+    monkeypatch.setattr(_DELTA_PATCH, AsyncMock(return_value={}))
     dest = destinations if destinations is not None else (["internal_hr", "client"], tenant_link())
     if len(dest) == 2:
         dest_list, link = dest

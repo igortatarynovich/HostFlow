@@ -76,7 +76,7 @@ async def test_p4_evaluator_resolves_legacy_stage_before_transfer_policy(
         return {"transfer_allowed": True, "handoff_create_allowed": True, "blocking_reasons": [], "source_layers": []}
 
     monkeypatch.setattr(
-        "backend.app.process_engine.evaluator_adapter.TransferPolicyResolver.resolve",
+        "backend.app.services.transfer_policy_resolver.TransferPolicyResolver.resolve",
         _resolve,
     )
     monkeypatch.setattr(

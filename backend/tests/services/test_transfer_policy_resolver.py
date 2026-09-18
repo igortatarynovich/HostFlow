@@ -117,12 +117,32 @@ async def test_transfer_policy_blocked_by_unconfirmed_blocks(monkeypatch: pytest
         _expected_docs,
     )
     monkeypatch.setattr(
-        "backend.app.services.transfer_policy_resolver.evaluate_recruitment_package",
+        "backend.app.services.recruitment_package_readiness.evaluate_recruitment_package",
         _pkg,
     )
     monkeypatch.setattr(
-        "backend.app.services.transfer_policy_resolver.evaluate_field_requirements_for_candidate",
+        "backend.app.field_registry.requirement_evaluator.evaluate_field_requirements_for_candidate",
         AsyncMock(return_value={"missing_fields": [], "blocking_reasons": []}),
+    )
+    monkeypatch.setattr(
+        "backend.app.services.operational_requirements_service.evaluate_operational_requirements_for_candidate",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "backend.app.services.operational_requirements_service.operational_requirement_blocking_reasons",
+        lambda _rows: [],
+    )
+    monkeypatch.setattr(
+        "backend.app.requirement_rules.readiness_bridge.resolve_entity_profile_code_for_candidate",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "backend.app.reference.requirement_policy_consumer_parity.r5_required_set",
+        lambda *_a, **_k: frozenset(),
+    )
+    monkeypatch.setattr(
+        "backend.app.reference.document_policy_overlay_store.load_persisted_tenant_delta",
+        AsyncMock(return_value={}),
     )
     monkeypatch.setattr(
         "backend.app.api.v1.candidates.pipeline_overrides_service.approved_handoff_relaxed_types",
@@ -188,7 +208,7 @@ async def test_transfer_policy_allowed_when_complete(monkeypatch: pytest.MonkeyP
         AsyncMock(return_value=[{"document_code": "passport", "required": True}]),
     )
     monkeypatch.setattr(
-        "backend.app.services.transfer_policy_resolver.evaluate_recruitment_package",
+        "backend.app.services.recruitment_package_readiness.evaluate_recruitment_package",
         AsyncMock(
             return_value={
                 "ready": True,
@@ -199,8 +219,28 @@ async def test_transfer_policy_allowed_when_complete(monkeypatch: pytest.MonkeyP
         ),
     )
     monkeypatch.setattr(
-        "backend.app.services.transfer_policy_resolver.evaluate_field_requirements_for_candidate",
+        "backend.app.field_registry.requirement_evaluator.evaluate_field_requirements_for_candidate",
         AsyncMock(return_value={"missing_fields": [], "blocking_reasons": []}),
+    )
+    monkeypatch.setattr(
+        "backend.app.services.operational_requirements_service.evaluate_operational_requirements_for_candidate",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "backend.app.services.operational_requirements_service.operational_requirement_blocking_reasons",
+        lambda _rows: [],
+    )
+    monkeypatch.setattr(
+        "backend.app.requirement_rules.readiness_bridge.resolve_entity_profile_code_for_candidate",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "backend.app.reference.requirement_policy_consumer_parity.r5_required_set",
+        lambda *_a, **_k: frozenset(),
+    )
+    monkeypatch.setattr(
+        "backend.app.reference.document_policy_overlay_store.load_persisted_tenant_delta",
+        AsyncMock(return_value={}),
     )
     monkeypatch.setattr(
         "backend.app.api.v1.candidates.pipeline_overrides_service.approved_handoff_relaxed_types",

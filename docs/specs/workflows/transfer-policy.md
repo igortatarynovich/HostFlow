@@ -1,27 +1,41 @@
 # Transfer Policy — canonical handoff readiness
 
-**Status:** Implemented (resolver + API + settings hub). **Strategic layer:** [`process-engine.md`](../platform/process-engine.md) — Transfer Policy is the **tactical Recruitment slice** of Process Engine runtime; migrate to platform evaluator without changing product semantics.  
-**Parked amend (policy/rule):** [`../tasks/recruitment-ready-policy-composition-separation.md`](../tasks/recruitment-ready-policy-composition-separation.md) — process-policy vs pluggable Ready composition; unpark only after [`../tasks/platform-modularization-isolation-cutover.md`](../tasks/platform-modularization-isolation-cutover.md) **PASS**.  
+**Status:** Implemented (resolver + Ready composition authority + API + settings hub). **Strategic layer:** [`process-engine.md`](../platform/process-engine.md) — Transfer Policy is the **tactical Recruitment slice** of Process Engine runtime; migrate to platform evaluator without changing product semantics.  
+**Ready composition (ADR-042):** [`../tasks/recruitment-ready-policy-composition-separation.md`](../tasks/recruitment-ready-policy-composition-separation.md) — **PASS** (process-policy vs pluggable Ready composition).  
 **Related:** [PR16](../../PR16-recruitment-package-pre-hr.md), [handoff-contract.md](../architecture/handoff-contract.md), [hr-verification-plan.md](hr-verification-plan.md), [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md).
 
 ---
 
 ## Problem
 
-Handoff rules were spread across document packs, ruleset, candidate profiles, pipeline gates, tenant links, recruiter confirmations, and pipeline overrides. Each layer was correct in isolation but product-risky: UI, stage change, and handoff create could disagree.
+Handoff rules were spread across document packs, ruleset, candidate profiles, pipeline gates, tenant links, recruiter confirmations, and pipeline overrides. Each layer was correct in isolation but product-risky: UI, stage change, and handoff create could disagree. Ready also AND-ed every capability as topology with **no** composition authority.
 
 ## Solution
 
 **Transfer Policy** is the aggregation layer — not a replacement storage for underlying rules.
 
-| Concern | Canonical resolver field | Underlying storage (unchanged) |
-|---------|--------------------------|--------------------------------|
-| What is required | `required_documents`, `missing_documents`, `missing_data_fields` | `ref_packs`, overrides, PR16 dossier blocks |
-| Who confirms | `required_confirmations` | `candidate.extra.recruitment_dossier_confirmed_blocks` |
-| Where to transfer | `destinations_allowed` | `tenant_links.features_json` |
-| When allowed | `transfer_allowed`, `stage_gate` | eligibility + package + confirmations |
-| Exceptions | `approved_overrides` | `candidate_pipeline_overrides` (scope `both`) |
-| Why blocked | `blocking_reasons`, `source_layers` | computed |
+### Ready composition pipeline (normative)
+
+```text
+public context / policy selection (ready_composition_id)
+  → resolve_ready_composition_v1     # separate authority
+  → private composition (may be [])
+  → applicable evaluators only
+  → aggregate_ready_verdict_v1       # canonical Ready verdict
+  → transfer_allowed = (decision == allowed)
+```
+
+| Concern | Canonical field | Notes |
+|---------|-----------------|-------|
+| Process verdict | `decision` (`allowed` \| `missing` \| `blocked` \| `unsupported_context`) | Sole Ready process authority |
+| Actionable next step | `next_action` | When `missing` / blocked |
+| When allowed | `transfer_allowed` | **Derived only** from `decision == allowed` |
+| Composition | `composition_id` | Selected privately; contents not public input |
+| Evidence lists | `missing_documents`, `missing_data_fields`, `required_confirmations`, `blocking_reasons`, … | Aggregator inputs — not peer process authorities |
+| Where to transfer | `destinations_allowed` | Topology / routing (not Ready policy) |
+| Exceptions | `approved_overrides` | `candidate_pipeline_overrides` |
+
+Public selector: `ready_composition_id` (`empty` \| `driver` \| …). Kernel must **not** pass internal capability lists. Empty composition `[]` is a **registered** policy composition on the same path — not `kernel_mode` / `skip_requirements`.
 
 **Legacy ruleset** (`document_ruleset_versions`) remains for recruitment checklist compatibility only — **not** a handoff-gate source of truth.
 
@@ -29,16 +43,30 @@ Handoff rules were spread across document packs, ruleset, candidate profiles, pi
 
 ## Backend
 
+### Composition authority
+
+- Path: `backend/app/reference/recruitment_ready_policy.py`
+- `resolve_ready_composition_v1(ready_context)` — separate from evaluate
+- `aggregate_ready_verdict_v1(...)` — canonical Ready verdict
+
 ### `TransferPolicyResolver`
 
 - Path: `backend/app/services/transfer_policy_resolver.py`
-- Entry: `TransferPolicyResolver.resolve(db, tenant_id=..., candidate_id=..., require_destination=False|True)`
+- Entry: `TransferPolicyResolver.resolve(db, tenant_id=..., candidate_id=..., ready_context=..., require_destination=False|True)`
 
-Returns:
+### Public contract
 
-- `transfer_allowed` — stage move to `ready_for_handoff` (documents + package + recruiter confirmations)
-- `handoff_create_allowed` — same + enabled tenant-link destination
-- `blocking_reasons[]` — each with `code`, `message`, `source_layer`
+- Path: `backend/app/modules/recruitment/public/ready.py`
+- `evaluate_ready_transfer(...)` — public context → canonical verdict
+- Cold-process import of this module must succeed without `process_engine` pre-import
+
+Returns (process authority):
+
+- `decision` — Ready verdict
+- `next_action` — where applicable
+- `transfer_allowed` — derivative of `decision == allowed`
+- `handoff_create_allowed` — same + enabled destination (routing)
+- `blocking_reasons[]` — evidence
 - `warnings[]` — non-blocking (e.g. missing destination when checking stage only)
 
 ### API

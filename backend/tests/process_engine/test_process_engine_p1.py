@@ -124,7 +124,7 @@ async def test_transition_evaluator_adapter_delegates_to_transfer_policy(monkeyp
     expected = {"transfer_allowed": False, "policy_version": "transfer_policy_v1", "blocking_reasons": []}
 
     with patch(
-        "backend.app.process_engine.evaluator_adapter.TransferPolicyResolver.resolve",
+        "backend.app.services.transfer_policy_resolver.TransferPolicyResolver.resolve",
         new=AsyncMock(return_value=expected),
     ) as resolve_mock, patch.object(
         TransitionEvaluatorAdapter,
