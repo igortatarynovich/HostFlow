@@ -313,7 +313,7 @@ Life path → Processes → Modules → Boundaries/I/O → Policies/rules inside
 
 ## Next
 
-1. Execute [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) (P1→P6; neutral ≠ bypass; P5→P6 explicit).  
-2. Inventory cards **CLOSED** — P1 Ready leak classified (no auto-fix); Walks 1–4 evidence only.  
-3. **PEM-1 policy composition** only after kernel **PASS**.  
-4. Full Spine / kernel remains **NOT PASS** until baseline proof PASSes.
+1. **Kernel PASS 2026-09-18** — [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md).  
+2. **PEM-1 Policy Composition** is now **OPEN / Active Engineering** — first production composition (driver Recruitment + admit Contract/Medical/BHP) on the proved kernel. Walks 1–4 here remain **historical composition evidence**, not Kernel criteria.  
+3. Do **not** reopen Kernel “for confidence.” Classified STOP items only.  
+4. Full Spine **kernel** claim is met by the baseline proof; this file stays the PEM-1 composition artifact (NOT kernel re-stamp).

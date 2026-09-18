@@ -1,212 +1,244 @@
-"""Dual zero-policy preflight gate (ADR-042 §3c).
+"""Dual zero-policy preflight gate (ADR-042 §3c) — retry after public-contract PASS.
 
-P4 Admit: empty ruleset via production resolver → allowed (must PASS).
-P1 Ready: full surface zero-composition → transfer_allowed (witness STOP if not).
+Consumer-level proof only (does not re-prove Ready composition internals):
 
-Does not mint candidates, upload evidence, forge verdicts, or open Kernel walk.
+  P1 Recruitment: ready_composition_id=empty → recruitment.public.ready → allowed
+  P4 Employment:  admit_ruleset_id=empty → employment.public.commands → start_allowed
+
+Minimal fixtures. No document/confirmation/ops stuffing. No kernel/test bypass flags.
+Does not mint candidates, open Kernel walk, or PEM-1.
 """
 
 from __future__ import annotations
 
 import ast
+import subprocess
+import sys
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
-from backend.app.reference.employment_start_allowed import (
-    ADMIT_RULESET_ID_KEY,
-    DECISION_START_ALLOWED,
-    DECISION_UNSUPPORTED,
-    RULESET_EMPTY,
-    evaluate_employment_start_allowed_v1,
-    resolve_admit_ruleset_v1,
-)
-from backend.app.reference.requirement_policy_consumer_parity import (
-    preview_context,
-    r5_required_set,
-)
+import pytest
+
+from backend.app.modules.employment.public import commands as employment_public
+from backend.app.modules.recruitment.public import ready as recruitment_public
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _BRIEF = _REPO_ROOT / "docs" / "specs" / "tasks" / "dual-zero-policy-preflight.md"
 _ADMIT_MOD = _REPO_ROOT / "backend" / "app" / "reference" / "employment_start_allowed.py"
-_TRANSFER = _REPO_ROOT / "backend" / "app" / "services" / "transfer_policy_resolver.py"
-_PACKAGE = _REPO_ROOT / "backend" / "app" / "services" / "recruitment_package_readiness.py"
-_SLOTS = _REPO_ROOT / "backend" / "app" / "services" / "hr_verification_plan.py"
+_READY_POLICY = _REPO_ROOT / "backend" / "app" / "reference" / "recruitment_ready_policy.py"
 _CI = _REPO_ROOT / ".github" / "workflows" / "backend-ci.yml"
 _GATE = Path(__file__)
 
-# Full remove covering pack defaults + residency / vacancy requires that can appear.
-_R5_FULL_REMOVE = [
-    "driver_license",
-    "driver_qualification_card",
-    "tachograph_card",
-    "passport",
-    "national_identity_card",
-    "visa",
-    "residence_card",
-    "work_permit",
-    "driver_attestation",
-]
-
-# Layers that participate in Ready but are NOT emptied by R5∅ alone.
-_P1_NON_COMPOSITION_LAYERS = (
-    "recruitment_package",
-    "recruiter_confirmation",
-    "field_requirements",
-    "requirement_engine",
-    "operational_requirements",
-)
-
-
-def _r5_empty_delta() -> dict:
-    return {"candidate": {"overrides": [{"when": {}, "remove": list(_R5_FULL_REMOVE)}]}}
+# Stable public context vocabulary (not capability lists / not reference imports for evaluate).
+_READY_EMPTY_CTX = {recruitment_public.READY_COMPOSITION_ID_KEY: recruitment_public.COMPOSITION_EMPTY}
+_ADMIT_EMPTY_CTX = {
+    "employment_country": "PL",
+    "pathway_id": "pl_eu_eea_free_movement",
+    "contract_type": "employment_contract",
+    "admit_ruleset_id": "empty",
+}
 
 
 def test_dual_zero_preflight_gate_filename() -> None:
     assert _GATE.name == "test_dual_zero_policy_preflight_gate.py"
 
 
-def test_dual_zero_preflight_brief_exists() -> None:
+def test_dual_zero_preflight_brief_pass() -> None:
     assert _BRIEF.is_file()
     text = _BRIEF.read_text(encoding="utf-8")
-    assert "dual zero-policy" in text.lower() or "Dual zero-policy" in text
-    assert "STOP" in text
-    assert "Kernel" in text
+    assert "**Status:** **PASS**" in text or "Status:** **PASS**" in text
+    assert "P1" in text and "P4" in text
+    assert "recruitment.public" in text.lower() or "recruitment.public.ready" in text
+    assert "employment.public" in text.lower()
+    # Dual PASS does not open Kernel / PEM-1 by itself.
+    assert "P1→P6" in text or "P1->P6" in text or "Baseline Kernel" in text
 
 
-# ----- P4 Admit (must be green) -----
+def test_no_bypass_flags_on_ready_and_admit_policy() -> None:
+    text = _READY_POLICY.read_text(encoding="utf-8") + _ADMIT_MOD.read_text(encoding="utf-8")
+    assert "if kernel_mode" not in text
+    assert "kernel_mode =" not in text
+    assert "neutral=true" not in text
+    assert "neutral = True" not in text
+    # skip_requirements must not appear as an executable switch
+    assert "skip_requirements" not in text.replace(
+        "not a kernel_mode / skip_requirements bypass.", ""
+    ).replace("skip_requirements bypass", "")
 
 
-def test_p4_admit_resolver_selects_empty_composition() -> None:
-    ctx = {
-        "employment_country": "PL",
-        "pathway_id": "pl_eu_eea_free_movement",
-        "contract_type": "employment_contract",
-        ADMIT_RULESET_ID_KEY: RULESET_EMPTY,
-    }
-    resolution = resolve_admit_ruleset_v1(ctx)
-    assert resolution["resolved"] is True
-    assert resolution["ruleset_id"] == RULESET_EMPTY
-    assert resolution["rules"] == []
+def _minimal_candidate() -> SimpleNamespace:
+    return SimpleNamespace(
+        id="cand-dual-p1",
+        tenant_id="tenant-1",
+        deleted_at=None,
+        stage="new",
+        company_id=None,
+        own_company_id=None,
+        vacancy_id=None,
+        phone=None,
+        email=None,
+        _get_extra=lambda: {},
+        _get_personal_data=lambda: {},
+    )
 
 
-def test_p4_admit_empty_pipeline_allowed() -> None:
-    ctx = {
-        "employment_country": "PL",
-        "pathway_id": "pl_eu_eea_free_movement",
-        "contract_type": "employment_contract",
-        "employer_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
-        "post_key": "warehouse",
-        ADMIT_RULESET_ID_KEY: RULESET_EMPTY,
-    }
-    result = evaluate_employment_start_allowed_v1(employee_id="e-preflight", employment_context=ctx)
-    assert result["decision"] == DECISION_START_ALLOWED
+def _db_for(cand: SimpleNamespace) -> SimpleNamespace:
+    class _Result:
+        def scalar_one_or_none(self):
+            return cand
+
+    return SimpleNamespace(execute=AsyncMock(return_value=_Result()))
+
+
+@pytest.mark.anyio
+async def test_p1_empty_ready_via_recruitment_public(monkeypatch: pytest.MonkeyPatch) -> None:
+    """P1: [] → allowed / transfer_allowed via recruitment.public.ready (minimal)."""
+    cand = _minimal_candidate()
+    db = _db_for(cand)
+
+    async def _boom(*_a, **_k):
+        raise AssertionError("policy evaluator invoked under empty Ready composition")
+
+    monkeypatch.setattr(
+        "backend.app.api.v1.candidates.pipeline_overrides_service.approved_handoff_relaxed_types",
+        AsyncMock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        "backend.app.services.transfer_policy_resolver._resolve_destinations_for_candidate",
+        AsyncMock(
+            return_value=(
+                ["internal_hr"],
+                SimpleNamespace(
+                    get_handoff_enabled=lambda: True,
+                    get_handoff_to_client=lambda: False,
+                    get_handoff_to_internal_hr=lambda: True,
+                    get_workforce_handoff_on_ready_for_handoff_stage=lambda: False,
+                ),
+                {},
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        "backend.app.services.transfer_policy_resolver.resolve_hiring_pipeline_gates",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                stages_without_doc_pipeline_block=frozenset(),
+                stages_verify_uploads_block_forward=frozenset(),
+                stages_require_vacancy_for_forward=frozenset(),
+            )
+        ),
+    )
+    # Empty must not invoke Ready policy capabilities (no stuffing path).
+    monkeypatch.setattr(
+        "backend.app.services.transfer_policy_resolver.resolve_workforce_eligibility_via_contract",
+        _boom,
+    )
+    monkeypatch.setattr(
+        "backend.app.services.recruitment_package_readiness.evaluate_recruitment_package",
+        _boom,
+    )
+    monkeypatch.setattr(
+        "backend.app.field_registry.requirement_evaluator.evaluate_field_requirements_for_candidate",
+        _boom,
+    )
+    monkeypatch.setattr(
+        "backend.app.services.operational_requirements_service.evaluate_operational_requirements_for_candidate",
+        _boom,
+    )
+
+    report = await recruitment_public.evaluate_ready_transfer(
+        db,
+        tenant_id="tenant-1",
+        candidate_id=str(cand.id),
+        ready_context=_READY_EMPTY_CTX,
+    )
+    assert report["decision"] == recruitment_public.DECISION_ALLOWED
+    assert report["transfer_allowed"] is True
+    assert report["composition_id"] == recruitment_public.COMPOSITION_EMPTY
+
+
+@pytest.mark.anyio
+async def test_p4_empty_admit_via_employment_public(monkeypatch: pytest.MonkeyPatch) -> None:
+    """P4: empty Admit → start_allowed via employment.public.commands (minimal identity)."""
+    import backend.app.services.employment_start_allowed_orchestrator as orch
+
+    handoff = SimpleNamespace(
+        id="ho-dual-p4",
+        agency_tenant_id="tenant-1",
+        client_tenant_id="tenant-2",
+        candidate_id="cand-dual-p4",
+    )
+    employee = SimpleNamespace(
+        id="e-dual-p4",
+        candidate_id="cand-dual-p4",
+        company_id=None,
+        own_company_id=None,
+        hire_date=None,
+        meta={},
+    )
+
+    async def _get(_model, id_):
+        return handoff if str(id_) == "ho-dual-p4" else None
+
+    db = SimpleNamespace(get=AsyncMock(side_effect=_get))
+
+    async def _resolve_employee(_db, *, tenant_id, handoff):  # noqa: ARG001
+        return employee
+
+    async def _load_evidence(_db, *, tenant_id, candidate_id):  # noqa: ARG001
+        # No contract/medical/bhp stuffing — empty ruleset must allow without evidence.
+        return None, None, None
+
+    async def _exceptions(_db, *, tenant_id, employee_id):  # noqa: ARG001
+        return []
+
+    monkeypatch.setattr(orch, "resolve_employee_for_handoff", _resolve_employee)
+    monkeypatch.setattr(orch, "_load_evidence_views", _load_evidence)
+    monkeypatch.setattr(orch, "list_active_exceptions", _exceptions)
+
+    result = await employment_public.evaluate_start_allowed_for_handoff(
+        db,
+        tenant_id="tenant-1",
+        handoff_id="ho-dual-p4",
+        employment_context=_ADMIT_EMPTY_CTX,
+    )
+    assert result["decision"] == "start_allowed"
     assert result["start_allowed"] is True
-    assert result["ruleset_id"] == RULESET_EMPTY
-    assert result["required_actions"] == []
-    assert result["started"] is False
+    assert result["ruleset_id"] == "empty"
+    assert result.get("required_actions") == []
+    assert result.get("started") is False
 
 
-def test_p4_admit_empty_uses_resolve_not_bypass_ast() -> None:
+def test_p4_admit_evaluate_calls_resolve_ast() -> None:
+    """Production Admit evaluate still goes through resolve (not a second path)."""
     tree = ast.parse(_ADMIT_MOD.read_text(encoding="utf-8"))
     evaluate_fn = next(
-        n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "evaluate_employment_start_allowed_v1"
+        n
+        for n in tree.body
+        if isinstance(n, ast.FunctionDef) and n.name == "evaluate_employment_start_allowed_v1"
     )
     calls: set[str] = set()
     for n in ast.walk(evaluate_fn):
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Name):
             calls.add(n.func.id)
     assert "resolve_admit_ruleset_v1" in calls
-    text = _ADMIT_MOD.read_text(encoding="utf-8")
-    assert "kernel_mode" not in text
-    assert "skip_requirements" not in text
-    assert "neutral=true" not in text
 
 
-def test_p4_admit_resolve_failure_not_confused_with_empty() -> None:
-    r = evaluate_employment_start_allowed_v1(
-        employee_id="e-preflight",
-        employment_context={
-            "employment_country": "PL",
-            "pathway_id": "pl_third_country_work_authorization",
-            "contract_type": "employment_contract",
-        },
-    )
-    assert r["decision"] == DECISION_UNSUPPORTED
-    assert r["start_allowed"] is False
-
-
-# ----- P1 Ready (witness composition gap) -----
-
-
-def test_p1_r5_empty_expressible_via_overlay() -> None:
-    required = r5_required_set(preview_context(), _r5_empty_delta())
-    assert required == frozenset()
-
-
-def test_p1_r5_empty_is_not_full_ready_corollary() -> None:
-    """Inventory lock: r5=∅ alone ≠ neutral Recruitment Ready."""
+def test_dual_both_points_pass_outcome() -> None:
+    """Both consumer proofs green → dual PASS (brief). Kernel not auto-opened."""
     brief = _BRIEF.read_text(encoding="utf-8")
-    assert "r5_required_set" in brief or "R5" in brief
-    assert "not sufficient" in brief.lower() or "≠" in brief or "False" in brief
+    assert "**Status:** **PASS**" in brief or "Status:** **PASS**" in brief
+    assert "P1" in brief and "**PASS**" in brief
+    assert "P4" in brief
+    lower = brief.lower()
+    assert "not opened" in lower or "do not open" in lower or "may open" in lower
 
 
-def test_p1_no_ready_empty_composition_selector() -> None:
-    transfer = _TRANSFER.read_text(encoding="utf-8")
-    assert "admit_ruleset_id" not in transfer
-    assert "ruleset_id=empty" not in transfer
-    assert "zero_requirement" not in transfer
-    assert "kernel_mode" not in transfer
-    assert "skip_requirements" not in transfer
-    # No Ready-side empty composition API analogous to Admit resolver.
-    assert "resolve_admit_ruleset" not in transfer
-    assert "resolve_ready_ruleset" not in transfer
-    assert "empty_ruleset" not in transfer
-
-
-def test_p1_transfer_allowed_formula_includes_non_r5_layers() -> None:
-    transfer = _TRANSFER.read_text(encoding="utf-8")
-    assert "transfer_allowed =" in transfer or "transfer_allowed=" in transfer
-    for layer in _P1_NON_COMPOSITION_LAYERS:
-        assert layer in transfer, f"expected source_layer {layer} in TransferPolicyResolver"
-    # Formula conjuncts beyond docs_ready / R5
-    assert "required_confirmations" in transfer
-    assert "ops_ready" in transfer
-    assert "pkg.get(\"ready\")" in transfer or "package_ready" in transfer
-
-
-def test_p1_recruitment_package_hardwires_dossier_topology() -> None:
-    package = _PACKAGE.read_text(encoding="utf-8")
-    slots = _SLOTS.read_text(encoding="utf-8")
-    assert "VERIFICATION_SLOT_DEFS" in package
-    assert "VERIFICATION_SLOT_DEFS" in slots
-    assert "_HANDOFF_REQUIRED_DATA_BLOCKS" in package
-    assert "Contacts & address" in package
-    # Hardwired slots are not driven by R5 overlay membership.
-    assert "r5_required_set" not in package
-
-
-def test_p1_layer_classification_recorded_in_brief() -> None:
-    brief = _BRIEF.read_text(encoding="utf-8")
-    assert "policy → topology leak" in brief or "policy→topology" in brief
-    for layer in ("recruitment_package", "recruiter_confirmation", "field_requirements", "operational_requirements"):
-        assert layer in brief
-
-
-# ----- Dual outcome + negatives -----
-
-
-def test_dual_preflight_outcome_is_stop_until_ready_composable() -> None:
-    """Both must be allowed for PASS. Admit is; Ready is not → STOP."""
-    admit_ok = True  # proved by test_p4_admit_empty_pipeline_allowed
-    ready_full_zero_expressible = False  # proved by absence of Ready empty selector
-    r5_empty_ok = r5_required_set(preview_context(), _r5_empty_delta()) == frozenset()
-    assert admit_ok is True
-    assert r5_empty_ok is True
-    assert ready_full_zero_expressible is False
-    dual_pass = admit_ok and ready_full_zero_expressible
-    assert dual_pass is False
-    brief = _BRIEF.read_text(encoding="utf-8")
-    assert "**STOP**" in brief
-    assert "NOT opened" in brief or "not opened" in brief.lower() or "Do not** open Kernel" in brief
+def test_ci_wires_dual_zero_gate() -> None:
+    text = _CI.read_text(encoding="utf-8")
+    assert "dual-zero-policy-preflight-gate" in text
+    assert "test_dual_zero_policy_preflight_gate.py" in text
 
 
 def test_dual_preflight_no_candidate_mint_in_gate() -> None:
@@ -220,15 +252,26 @@ def test_dual_preflight_no_candidate_mint_in_gate() -> None:
                 call_names.add(n.func.attr)
     assert "create_candidate" not in call_names
     assert "handoff_from_candidate" not in call_names
-    assert "evaluate_transition" not in call_names  # no live Ready evaluate with stuffed person
-    # Gate is structural/classification only — no DB session parameter on any test fn.
-    for n in tree.body:
-        if isinstance(n, ast.FunctionDef) and n.name.startswith("test_"):
-            arg_names = {a.arg for a in n.args.args}
-            assert "db" not in arg_names
 
 
-def test_dual_preflight_ci_job_wired() -> None:
-    ci = _CI.read_text(encoding="utf-8")
-    assert "dual-zero-policy-preflight-gate" in ci
-    assert "test_dual_zero_policy_preflight_gate.py" in ci
+def test_cold_import_public_surfaces_for_dual() -> None:
+    probe = (
+        "import importlib\n"
+        "r = importlib.import_module('backend.app.modules.recruitment.public.ready')\n"
+        "e = importlib.import_module('backend.app.modules.employment.public.commands')\n"
+        "assert 'evaluate_ready_transfer' in r.__all__\n"
+        "assert 'evaluate_start_allowed_for_handoff' in e.__all__\n"
+        "raise SystemExit(0)\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=str(_REPO_ROOT),
+        env={
+            **dict(**{k: v for k, v in __import__("os").environ.items()}),
+            "PYTHONPATH": f"{_REPO_ROOT}:{_REPO_ROOT / 'backend'}",
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr

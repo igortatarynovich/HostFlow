@@ -1,18 +1,21 @@
 # Dual zero-policy preflight (P1 Ready + P4 Admit)
 
-**Status:** **STOP** (2026-09-15) — P4 Admit **PASS**; P1 full Ready **STOP** (policy→topology / non-composition layers)  
+**Status:** **PASS** (retry 2026-09-17) — P1 Ready **PASS** · P4 Admit **PASS**  
 **Layer:** L3 preflight — **not** Kernel walk · **not** new-person witness · **not** PEM-1 composition  
 **Phase class:** platform  
 **Opened:** 2026-09-15  
-**Closed:** 2026-09-15 (STOP — do not open P1→P6)  
+**Closed (prior):** 2026-09-15 (**STOP** — P4 PASS · P1 STOP)  
+**Closed (this retry):** 2026-09-17 (**PASS**)  
 **Architecture:** [`ADR-042`](../architecture/ADR-042-spine-policy-separation.md) §7 step **3c**  
-**Depends on:** [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) **PASS**  
+**Depends on:** [`admit-policy-ruleset-separation.md`](admit-policy-ruleset-separation.md) **PASS** · [`recruitment-ready-policy-composition-separation.md`](recruitment-ready-policy-composition-separation.md) **PASS** · [`post-pmi-kernel-public-contract-preflight.md`](post-pmi-kernel-public-contract-preflight.md) **PASS**  
 **Named gate:** `dual-zero-policy-preflight-gate`  
-**Does not open:** Baseline Kernel P1→P6 · PEM-1 composition · candidate mint · evidence upload · five Ready layer gap-fixes
+**Next:** [`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) — PEM-1 Policy Composition (**OPEN** after Kernel **PASS** 2026-09-18)  
+**Does not open:** PEM-1 composition · candidate mint as dual proof · five Ready layer gap-fixes · re-litigation of Ready composition internals
 
 > Answers two questions only.  
-> **No** new person. **No** Kernel walk.  
-> Green `transfer_allowed` by stuffing a candidate with data/docs is **forbidden**.
+> **No** new person. **No** Kernel walk in this artifact.  
+> Green by stuffing documents / confirmations / ops facts is **forbidden**.  
+> Ready composition authority is already **PASS** — this retry is **consumer-level** only.
 
 ---
 
@@ -21,89 +24,79 @@
 **Problem this preflight must permanently remove (before Kernel):**  
 Uncertainty whether **both** process-policy surfaces can return штатный `allowed` under a **zero-requirement composition** on the **real** evaluate path (neutral ≠ bypass).
 
-**Completion proof (named consumer):**
+**Completion proof (named consumer — retry):**
 
 ```text
-P1 Recruitment — FULL Ready surface (all layers)
-  → zero-requirement composition selected штатно
-  → ordinary evaluate → allowed / transfer_allowed=true
+P1 Recruitment
+  → ready_composition_id=empty  (штатная registered composition)
+  → recruitment.public.ready.evaluate_ready_transfer
+  → decision=allowed / transfer_allowed=true
+  → policy capabilities NOT invoked (minimal fixture)
 
-P4 Admit
-  → resolve_admit_ruleset_v1 selects empty (admit_ruleset_id=empty)
-  → same resolve → evaluate → aggregate → allowed / start_allowed=true
+P4 Employment
+  → admit_ruleset_id=empty  (штатный registered ruleset)
+  → employment.public.commands.evaluate_start_allowed_for_handoff
+  → decision=start_allowed / start_allowed=true
+  → no contract/medical/bhp stuffing
 
 Negative: no test/env bypass, forged Ready/start_allowed, seed helpers, kernel branches
 
-BOTH green → preflight PASS → may open Baseline Kernel witness
+BOTH green → preflight PASS → may open Baseline Kernel witness (separate artifact)
 EITHER red → preflight STOP → classify; do not open Kernel
 ```
 
 ---
 
-## Results (2026-09-15)
+## Results (prior 2026-09-15 — STOP)
 
 | Policy point | Result | Evidence |
 |--------------|--------|----------|
-| **P4 Admit** | **PASS** | `admit_ruleset_id=empty` → resolver `rules=[]` → evaluate → `start_allowed=true` (same pipeline as PEM-1) |
-| **P1 Ready** | **STOP** | `r5_required_set=∅` expressible; **full** Ready has **no** empty-composition authority; layers outside R5 still participate in `transfer_allowed` |
-| **Dual preflight** | **STOP** | Admit fixed; Ready still embeds non-composition requirements as process topology |
+| **P4 Admit** | **PASS** | `admit_ruleset_id=empty` → resolve → evaluate → `start_allowed=true` |
+| **P1 Ready** | **STOP** | No empty-composition authority on full Ready; non-R5 layers still gated `transfer_allowed` |
+| **Dual preflight** | **STOP** | Admit fixed; Ready not composable |
 
 **Kernel walk:** **NOT opened.**
 
 ---
 
-## P4 Admit — PASS detail
+## Results (retry 2026-09-17 — PASS)
 
-| Check | Result |
-|-------|--------|
-| Resolver authority | `resolve_admit_ruleset_v1` |
-| Composition | `admit_ruleset_id=empty` → `ruleset_id=empty`, `rules=[]` |
-| Pipeline | resolve → evaluate → aggregate (no short-circuit) |
-| Verdict | `decision=start_allowed`, `start_allowed=true` |
-| Resolve failure still distinct | third-country pathway → `unsupported_context` (not empty) |
+| Policy point | Result | Evidence |
+|--------------|--------|----------|
+| **P1 Ready** | **PASS** | `recruitment.public.ready` + `ready_composition_id=empty` → `decision=allowed` / `transfer_allowed=true` on minimal candidate; package/fields/ops/eligibility **not** invoked |
+| **P4 Admit** | **PASS** | `employment.public.commands.evaluate_start_allowed_for_handoff` + `admit_ruleset_id=empty` → `decision=start_allowed` / `start_allowed=true`; evidence views `None` (no stuffing) |
+| **Dual preflight** | **PASS** | Both independent zero-policy configurations green on production pipelines via `*.public.*` |
+
+**Evidence:** `backend/tests/platform/test_dual_zero_policy_preflight_gate.py`.
+
+**Not re-proved here:** Ready composition resolver internals / capability table (closed by Ready composition separation **PASS**).
+
+**Kernel walk:** still **NOT opened** by this PASS — opens only via separate Baseline Kernel witness artifact.
 
 ---
 
-## P1 Ready — STOP classification
+## P1 Ready — PASS detail (retry)
 
-**Critical criterion:** after R5 requirements are removed, any remaining obligation must be classified — **why that layer does not obey the chosen Recruitment policy composition**. Do **not** add candidate data/docs to green the preflight.
+| Check | Result |
+|-------|--------|
+| Public contract | `recruitment.public.ready.evaluate_ready_transfer` |
+| Composition | `ready_composition_id=empty` (registered; same pipeline as driver) |
+| Fixture | Minimal candidate (no phone/email/docs/confirmations) |
+| Non-invocation | document_packs / package / fields / ops **not** called under `[]` |
+| Verdict | `decision=allowed`, `transfer_allowed=true` |
+| Bypass flags | Absent (`kernel_mode` / `skip_requirements` / `neutral`) |
 
-### What R5∅ proves
+---
 
-| Fact | Status |
-|------|--------|
-| Full remove overlay → `r5_required_set(preview_context(), delta) == ∅` | **Expressible** (штатный overlay) |
-| R5∅ alone = neutral Recruitment Ready | **False** (inventory corollary) |
+## P4 Admit — PASS detail (retry)
 
-### What still participates in `transfer_allowed` (outside R5 composition)
-
-From `TransferPolicyResolver.resolve` (`transfer_policy_v1`):
-
-```text
-transfer_allowed =
-    handoff_allowed          # workforce eligibility / document_packs ops
-  ∧ readiness_ok             # eligibility profiles
-  ∧ docs_ready               # missing/pending docs (R5-linked — emptiable)
-  ∧ pkg.ready                # recruitment_package (PR16 dossier / slots)
-  ∧ ¬required_confirmations  # recruiter_confirmation
-  ∧ ops_ready                # operational_requirements (e.g. first_contact)
-```
-
-Plus PE transition gate / field_requirements / requirement_engine pack slots when `target_stage=ready_for_handoff`.
-
-| Layer (`source_layer`) | Obeys R5∅ / Ready empty composition? | Class | Notes |
-|------------------------|--------------------------------------|-------|-------|
-| `document_packs` / R5 | **Yes** (emptiable via overlay) | **policy / rule** | Necessary but not sufficient |
-| `recruitment_package` | **No** — hardcoded `VERIFICATION_SLOT_DEFS` + Contacts block | **policy → topology leak** | Dossier topology not a pluggable ruleset |
-| `recruiter_confirmation` | **No** — hardwired confirmation machine | **policy → topology leak** | After R5∅, blocks flip to `ready` → *more* unconfirmed_block pressure |
-| `field_requirements` | **No** — PE seeded phone/email/address | **policy / rule** | No Ready `ruleset_id=empty` lever |
-| `requirement_engine` pack slots | **No** — pack manifests / slots not emptied by R5∅ | **policy / rule** | Composition incomplete |
-| `operational_requirements` | **No** — catalog (`first_contact_completed`) | **policy / rule** | Not under R5 overlay |
-| `process_engine_handoff_rules` / destinations | Routing | routing | `require_destination=False` → warning only for `transfer_allowed` |
-
-**No** Ready analog of Admit `admit_ruleset_id=empty` exists on `TransferPolicyResolver` / PE adapter.
-
-**Why STOP (not a candidate defect):** zero-requirement was selected only for **R5 membership**. Remaining layers are **not subordinate** to that composition — they still act as route infrastructure for Ready. Stuffing contacts/docs/confirmations would **mask** the leak, not prove composition.
+| Check | Result |
+|-------|--------|
+| Public contract | `employment.public.commands.evaluate_start_allowed_for_handoff` |
+| Composition | `admit_ruleset_id=empty` → host → resolve → evaluate → aggregate |
+| Fixture | Minimal handoff + employee identity; evidence views empty |
+| Verdict | `decision=start_allowed`, `start_allowed=true`, `ruleset_id=empty` |
+| Resolve failure still distinct | third-country pathway → `unsupported_context` (unchanged Admit property) |
 
 ---
 
@@ -111,11 +104,13 @@ Plus PE transition gate / field_requirements / requirement_engine pack slots whe
 
 | Banned | Held |
 |--------|------|
-| `neutral=true` / `kernel_mode` / `skip_requirements` | Absent on Admit path; Ready has no such green path either |
+| `neutral=true` / `kernel_mode` / `skip_requirements` | Absent |
 | Forged `transfer_allowed` / `start_allowed` | Not used |
 | Seed helpers minting Ready/Started | Not used |
 | Test-only / env short-circuit evaluators | Not used |
+| Stuffing docs / confirmations / ops to green empty | Forbidden; P1 spies enforce non-invocation |
 | New person / Kernel walk | **Not opened** |
+| Re-opening Ready composition internals proof | Out of scope (already PASS) |
 
 ---
 
@@ -123,19 +118,15 @@ Plus PE transition gate / field_requirements / requirement_engine pack slots whe
 
 | Outcome | When |
 |---------|------|
-| **PASS** | P1 full Ready **and** P4 Admit both штатный `allowed` under zero-composition on real evaluators |
-| **STOP** | Named hole + class — **this close** |
+| **PASS** | P1 and P4 both штатный `allowed` under empty composition via `*.public.*` on real pipelines |
+| **STOP** | Named hole + module owner — do not open Kernel |
 
-**Current:** **STOP** (P4 PASS · P1 STOP).
+**Current:** **PASS** (2026-09-17 retry).
 
 ---
 
 ## Next
 
-1. [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) — **OPEN**. Ready composition and Kernel stay parked.  
-2. After PMI **PASS**, unpark [`recruitment-ready-policy-composition-separation.md`](recruitment-ready-policy-composition-separation.md) (still **not** five gap-fixes).  
-3. Re-run **this** dual preflight until **PASS**.  
-4. Only then: [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) new-person P1→P6.  
-5. PEM-1 composition only after kernel PASS.
-
-**Do not** open Kernel walk from this STOP.
+1. Open [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) — **new** P1→P6 Baseline Kernel witness on a new person/application (continuous path across isolated modules).  
+2. PEM-1 composition only after Kernel witness **PASS**.  
+3. Do **not** treat this dual PASS as Kernel PASS.
