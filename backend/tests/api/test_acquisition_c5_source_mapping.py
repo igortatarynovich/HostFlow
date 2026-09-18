@@ -818,6 +818,101 @@ def test_drift_taxonomy_names_all_six_classes() -> None:
     assert summary["headline"] == DRIFT_DESTINATION_INVALID
 
 
+def test_choice_to_reference_code_or_integer_is_not_type_changed() -> None:
+    from backend.app.acquisition.mapping_workspace import build_workspace_rows
+
+    rows, summary = build_workspace_rows(
+        schema_fields=[
+            {
+                "source": "основание_для_пребывания_в_польше",
+                "label": "Основание для пребывания в Польше",
+                "options": ["Виза", "Карта побыта"],
+                "field_type": "choice",
+            },
+            {
+                "source": "опыт_работы_с/се_в_европе",
+                "label": "Опыт работы С/СЕ в Европе",
+                "options": ["Более 2 лет", "До 6 месяцев"],
+                "field_type": "choice",
+            },
+        ],
+        mapping_rules=[
+            {
+                "source": "основание_для_пребывания_в_польше",
+                "qualified_field_code": "recruitment.candidate.personal.residency_status",
+                "option_map": {"Виза": "Wiza", "Карта побыта": "Karta Pobytu"},
+            },
+            {
+                "source": "опыт_работы_с/се_в_европе",
+                "qualified_field_code": "recruitment.candidate.experience.years_ce",
+                "option_map": {"Более 2 лет": "2+", "До 6 месяцев": "0.5"},
+            },
+        ],
+        sample_by_source={},
+        destinations=[
+            {
+                "code": "recruitment.candidate.personal.residency_status",
+                "label": "Residency status",
+                "field_type": "reference_code",
+                "choice": False,
+                "aliases": [],
+                "options": [],
+            },
+            {
+                "code": "recruitment.candidate.experience.years_ce",
+                "label": "Years CE",
+                "field_type": "integer",
+                "choice": False,
+                "aliases": [],
+                "options": [],
+            },
+        ],
+        has_schema=True,
+    )
+    by_source = {r["source"]: r for r in rows}
+    assert by_source["основание_для_пребывания_в_польше"]["drift"] is None
+    assert by_source["опыт_работы_с/се_в_европе"]["drift"] is None
+    assert summary["headline"] == "all_set"
+    assert summary["contract_health"] == "valid"
+
+
+def test_option_map_matches_graph_snake_case_keys() -> None:
+    from backend.app.acquisition.mapping_workspace import build_workspace_rows
+
+    rows, summary = build_workspace_rows(
+        schema_fields=[
+            {
+                "source": "опыт",
+                "label": "Опыт",
+                "options": ["более_2_лет", "до_6_месяцев"],
+                "field_type": "choice",
+            }
+        ],
+        mapping_rules=[
+            {
+                "source": "опыт",
+                "qualified_field_code": "recruitment.candidate.experience.years_ce",
+                "option_map": {"Более 2 лет": "2+", "До 6 месяцев": "0.5"},
+            }
+        ],
+        sample_by_source={"опыт": "более_2_лет"},
+        destinations=[
+            {
+                "code": "recruitment.candidate.experience.years_ce",
+                "label": "Years CE",
+                "field_type": "integer",
+                "choice": False,
+                "aliases": [],
+                "options": [],
+            }
+        ],
+        has_schema=True,
+    )
+    assert rows[0]["incomplete_options"] is False
+    assert rows[0]["drift"] is None
+    assert summary["headline"] == "all_set"
+
+
 def test_option_removed_and_field_added_are_named() -> None:
     from backend.app.acquisition.mapping_workspace import build_workspace_rows
 

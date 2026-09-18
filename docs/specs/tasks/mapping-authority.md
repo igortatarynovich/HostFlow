@@ -284,6 +284,7 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 
 ## History
 
+- 2026-09-18: Choice Graph questions mapped to `reference_code` / integer HostFlow fields are not `type_changed`; conversion fills reused ADR-031 shells; option-map matches Graph snake_case keys. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-18: Destination “don’t use” is explicit Ignore, not Unmapped. Empty picker copy is “choose a HostFlow field”. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-05: Sources inventory groups by destination type (Candidate / Sales / Service), not vacancy. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-05: Mapping HostFlow-field picker is scoped to the source destination (Candidate vs Client vs hiring products) and grouped in sections. Short Field Registry names are not flattened across modules. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.

@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
 from backend.app.acquisition.mapping_applied_stamp import read_mapping_applied_stamp
+from backend.app.field_registry.option_map import OPTION_IGNORE_VALUE, lookup_option_map
 from backend.app.field_registry.intake_mapping import (
     LEAD_INTAKE_QUALIFIED_TO_NORMALIZED,
     resolve_intake_mapping_target,
@@ -147,6 +148,15 @@ def compact_executable_rules(rules: Sequence[Mapping[str, Any]] | None) -> list[
             item["normalized_target"] = target
         if label:
             item["label"] = label
+        raw_map = raw.get("option_map")
+        if isinstance(raw_map, dict):
+            cleaned = {
+                str(k): str(v)
+                for k, v in raw_map.items()
+                if str(k).strip() and str(v).strip()
+            }
+            if cleaned:
+                item["option_map"] = cleaned
         out.append(item)
     return out
 
@@ -219,37 +229,56 @@ def _value_from_field_answers(normalized: Mapping[str, Any], source: str) -> Any
     return None
 
 
+def _apply_option_map(value: Any, option_map: Mapping[str, Any] | None) -> Any:
+    if not option_map or value is None:
+        return value
+    looked = lookup_option_map(option_map, value)
+    if looked is None:
+        return value
+    if looked == OPTION_IGNORE_VALUE:
+        return None
+    return looked
+
+
 def _apply_write(
     dest: Mapping[str, str],
     value: Any,
     out: ConversionFieldWrite,
+    *,
+    overwrite: bool = False,
 ) -> None:
     if value is None or value == "":
         return
     col = dest.get("column")
-    if col and col not in out.columns:
+    if col and (overwrite or col not in out.columns):
         out.columns[col] = value
     extra = dest.get("extra")
-    if extra and extra not in out.extra:
+    if extra and (overwrite or extra not in out.extra):
         out.extra[extra] = value
     personal = dest.get("personal")
-    if personal and personal not in out.personal:
+    if personal and (overwrite or personal not in out.personal):
         out.personal[personal] = value
     contacts = dest.get("contacts")
-    if contacts and contacts not in out.contacts:
+    if contacts and (overwrite or contacts not in out.contacts):
         out.contacts[contacts] = value
 
 
-def _write_qualified(qualified: str, value: Any, out: ConversionFieldWrite) -> bool:
+def _write_qualified(
+    qualified: str,
+    value: Any,
+    out: ConversionFieldWrite,
+    *,
+    overwrite: bool = False,
+) -> bool:
     if value is None or value == "":
         return False
     dest = CANDIDATE_WRITE_BY_QUALIFIED.get(qualified)
     if dest:
-        _apply_write(dest, value, out)
+        _apply_write(dest, value, out, overwrite=overwrite)
         return True
     if qualified.startswith("recruitment.candidate.") or qualified.startswith("platform.identity."):
         key = qualified.rsplit(".", 1)[-1]
-        if key and key not in out.extra:
+        if key and (overwrite or key not in out.extra):
             out.extra[key] = value
         return True
     return False
@@ -258,16 +287,30 @@ def _write_qualified(qualified: str, value: Any, out: ConversionFieldWrite) -> b
 def _executable_rules_from_normalized(normalized: Mapping[str, Any]) -> list[dict[str, Any]]:
     stamp = read_mapping_applied_stamp(normalized)
     raw = stamp.get("executable_rules")
-    if isinstance(raw, list) and raw:
-        return [dict(r) for r in raw if isinstance(r, Mapping)]
+    rules = [dict(r) for r in raw if isinstance(r, Mapping)] if isinstance(raw, list) else []
+    envelope_maps: dict[str, dict[str, str]] = {}
+    envelope_rules: list[dict[str, Any]] = []
     envelope = normalized.get("ingest_envelope_v1")
     if isinstance(envelope, Mapping):
         mapping_result = envelope.get("mapping_result")
         if isinstance(mapping_result, Mapping):
-            rules = mapping_result.get("rules")
-            if isinstance(rules, list):
-                return compact_executable_rules(rules)
-    return []
+            accepted = mapping_result.get("accepted_rules")
+            extra_rules = mapping_result.get("rules")
+            blob = accepted if isinstance(accepted, list) else extra_rules
+            envelope_rules = compact_executable_rules(blob if isinstance(blob, list) else [])
+            for rule in envelope_rules:
+                source = str(rule.get("source") or "").strip().lower()
+                option_map = rule.get("option_map")
+                if source and isinstance(option_map, dict):
+                    envelope_maps[source] = option_map
+    if rules:
+        if envelope_maps:
+            for rule in rules:
+                source = str(rule.get("source") or "").strip().lower()
+                if source and "option_map" not in rule and source in envelope_maps:
+                    rule["option_map"] = envelope_maps[source]
+        return rules
+    return envelope_rules
 
 
 def apply_executable_intake_mapping(normalized: Mapping[str, Any] | None) -> ConversionFieldWrite:
@@ -288,16 +331,17 @@ def apply_executable_intake_mapping(normalized: Mapping[str, Any] | None) -> Con
             continue
         qualified = str(rule.get("qualified_field_code") or "").strip()
         target = str(rule.get("normalized_target") or rule.get("target") or "").strip()
-        value = _value_from_normalized(n, target) if target else None
-        if value is None and source:
-            value = _value_from_field_answers(n, source)
+        option_map = rule.get("option_map") if isinstance(rule.get("option_map"), dict) else None
+        value = _value_from_field_answers(n, source) if source else None
+        if value is None and target:
+            value = _value_from_normalized(n, target)
+        value = _apply_option_map(value, option_map)
         wrote = False
         if qualified:
-            wrote = _write_qualified(qualified, value, out)
+            wrote = _write_qualified(qualified, value, out, overwrite=True)
         elif target and target not in _LEAD_ONLY_TARGETS and value not in (None, ""):
-            if target not in out.extra and target not in out.columns:
-                out.extra[target] = value
-                wrote = True
+            out.extra[target] = value
+            wrote = True
         if wrote and source:
             out.mapped_sources.append(source)
 

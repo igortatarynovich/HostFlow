@@ -98,6 +98,51 @@ def test_compact_rules_skip_lead_hints() -> None:
     assert "phone" in sources
 
 
+def test_option_map_applies_graph_snake_case_to_candidate() -> None:
+    mapped = apply_executable_intake_mapping(
+        {
+            "poland_stay_basis": "виза",
+            "field_answers": [
+                {"name": "основание_для_пребывания_в_польше", "values": ["виза"]},
+                {"name": "опыт_работы_с/се_в_европе", "values": ["более_2_лет"]},
+            ],
+            "mapping_applied_v1": {
+                "executable_rules": [
+                    {
+                        "source": "основание_для_пребывания_в_польше",
+                        "normalized_target": "poland_stay_basis",
+                        "qualified_field_code": "recruitment.candidate.personal.residency_status",
+                    },
+                    {
+                        "source": "опыт_работы_с/се_в_европе",
+                        "normalized_target": "experience_eu_years",
+                        "qualified_field_code": "recruitment.candidate.experience.years_ce",
+                    },
+                ]
+            },
+            "ingest_envelope_v1": {
+                "mapping_result": {
+                    "accepted_rules": [
+                        {
+                            "source": "основание_для_пребывания_в_польше",
+                            "qualified_field_code": "recruitment.candidate.personal.residency_status",
+                            "option_map": {"Виза": "Wiza"},
+                        },
+                        {
+                            "source": "опыт_работы_с/се_в_европе",
+                            "qualified_field_code": "recruitment.candidate.experience.years_ce",
+                            "option_map": {"Более 2 лет": "Więcej niż 2 lata"},
+                        },
+                    ]
+                }
+            },
+        }
+    )
+    assert mapped.extra.get("poland_stay_basis") == "Wiza"
+    assert mapped.personal.get("residency_status") == "Wiza"
+    assert mapped.extra.get("experience_eu_years") == "Więcej niż 2 lata"
+
+
 def test_attach_labels_from_rules() -> None:
     answers = [{"name": "jaka_masz_kategorie", "values": ["C+E"]}]
     attach_field_answer_labels(

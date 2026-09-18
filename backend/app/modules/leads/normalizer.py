@@ -5,10 +5,11 @@ import re
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 from uuid import UUID
 
+from backend.app.field_registry.option_map import OPTION_IGNORE_VALUE, lookup_option_map
+from backend.app.field_registry.intake_mapping import resolve_intake_mapping_target
 from backend.app.services.integration_inbound_normalization import (
     normalize_inbound_country_alpha2,
 )
-from backend.app.field_registry.intake_mapping import resolve_intake_mapping_target
 
 VACANCY_PATTERN = re.compile(r"vacancy[_-]([0-9a-fA-F-]{6,})")
 
@@ -392,6 +393,17 @@ def _apply_custom_field_mapping(
         raw_values, has_values = _extract_source_values(source_mapping, rule.get("source"))
         if not has_values:
             continue
+        option_map = rule.get("option_map") if isinstance(rule.get("option_map"), dict) else None
+        if option_map:
+            remapped: List[str] = []
+            for raw in raw_values:
+                looked = lookup_option_map(option_map, raw)
+                if looked == OPTION_IGNORE_VALUE:
+                    continue
+                remapped.append(looked if looked is not None else raw)
+            raw_values = remapped
+            if not raw_values:
+                continue
         converted = _convert_mapped_value(raw_values, str(rule.get("format") or "string"))
         if converted is None:
             continue

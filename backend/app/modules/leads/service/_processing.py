@@ -303,6 +303,11 @@ async def process_normalized_lead(
                             if extra.get("experience_eu_years") != experience_eu_years:
                                 extra["experience_eu_years"] = experience_eu_years
                                 updated = True
+                        elif isinstance(experience_eu_years, str) and experience_eu_years.strip():
+                            years_val = experience_eu_years.strip()
+                            if extra.get("experience_eu_years") in (None, ""):
+                                extra["experience_eu_years"] = years_val
+                                updated = True
 
                         if updated:
                             candidate.extra = json.dumps(extra, ensure_ascii=False, separators=(",", ":"))
