@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Any, Optional
 
-from backend.app.models.workforce_hr_verified_field import (
+from backend.app.modules.workforce.public.models import (
     FIELD_STATUS_APPROVE_OK,
     FIELD_STATUS_CONFLICT,
     FIELD_STATUS_PENDING,

@@ -8,16 +8,16 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.document import Document
+from backend.app.modules.boundary.public.models import CandidateHandoff
+from backend.app.modules.documents.public.models import Document
 from backend.app.models.enums import DocumentStatus
-from backend.app.models.workforce_compliance_state import WorkforceComplianceState
-from backend.app.models.workforce_employee import WorkforceEmployee
-from backend.app.models.workforce_hr_document_context import WorkforceHrDocumentContext
-from backend.app.models.workforce_work_eligibility_payment_requirement import (
+from backend.app.modules.workforce.public.models import WorkforceComplianceState
+from backend.app.modules.workforce.public.models import WorkforceEmployee
+from backend.app.modules.workforce.public.models import WorkforceHrDocumentContext
+from backend.app.modules.workforce.public.models import (
     WorkforceWorkEligibilityPaymentRequirement,
 )
-from backend.app.services.document_catalog import normalize_doc_type
+from backend.app.modules.documents.public.types import normalize_doc_type
 from backend.app.services.hr_documents_queue import (
     HR_HIGH_RISK_DOC_TYPES,
     _expiring_recommended,
@@ -230,7 +230,7 @@ async def list_hr_documents_hub(
             "last_name": None,
         }
         if getattr(emp, "candidate_id", None):
-            from backend.app.models.candidate import Candidate
+            from backend.app.modules.recruitment.public.models import Candidate
 
             cand = await db.get(Candidate, str(emp.candidate_id))
             if cand:

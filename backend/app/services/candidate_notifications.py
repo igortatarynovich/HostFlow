@@ -7,7 +7,7 @@ from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.settings import settings
-from backend.app.services.document_catalog import get_doc_type_defaults
+from backend.app.modules.documents.public.types import get_doc_type_defaults
 from backend.app.services.tenant_email import send_email_for_tenant
 
 

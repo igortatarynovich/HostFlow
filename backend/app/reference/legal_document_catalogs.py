@@ -76,7 +76,7 @@ DOCUMENT_CATEGORIES_CANONICAL: Final[tuple[DocumentCategoryCatalogItem, ...]] = 
 )
 
 def _document_types_from_registry() -> tuple[DocumentTypeCatalogItem, ...]:
-    from backend.app.document_types.registry import registry_entries
+    from backend.app.modules.documents.public.types import registry_entries
 
     return tuple(
         DocumentTypeCatalogItem(

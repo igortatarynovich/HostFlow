@@ -15,11 +15,11 @@ from __future__ import annotations
 
 from typing import Any, Final, Mapping
 
-from backend.app.reference.employment_accept_policy import (
+from backend.app.modules.employment.public.accept_policy import (
     PACKAGE_AUTHORITATIVE_FIELD_CODES,
     assert_employment_missing_reuses_package,
 )
-from backend.app.reference.ready_for_employment import (
+from backend.app.modules.boundary.public.ready import (
     ACCEPTANCE_GATE_IDS,
     CONTRACT_ID as RFE_CONTRACT_ID,
     validate_ready_for_employment_package_v1,

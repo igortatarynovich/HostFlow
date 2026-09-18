@@ -64,7 +64,7 @@ async def resolve_position_category_for_review(
     """Best-effort position category for HR verification policy."""
     eid = str(employee_id or "").strip()
     if eid:
-        from backend.app.services import workforce_employees as we_svc
+        from backend.app.modules.workforce.public import employees as we_svc
 
         bundle = await we_svc.get_hr_bundle(db, tenant_id, eid)
         wel = bundle.get("work_eligibility_profile")
@@ -89,7 +89,7 @@ async def resolve_position_category_for_review(
 
     cid = str(candidate_id or "").strip()
     if cid:
-        from backend.app.models.candidate import Candidate
+        from backend.app.modules.recruitment.public.models import Candidate
 
         cand = await db.get(Candidate, cid)
         if cand is not None:

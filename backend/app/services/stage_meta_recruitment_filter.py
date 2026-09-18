@@ -22,7 +22,7 @@ from backend.app.constants.stages import (
     STAGES_BY_GROUP,
 )
 from backend.app.models.user import Role as UserRole
-from backend.app.services.handoff import is_client_tenant
+from backend.app.modules.boundary.public.handoff import is_client_tenant
 from backend.app.services.tenant_links import list_links_for_agency
 
 # Роли «рекрутинг» — воронка до передачи (+ исключения из констант скрытия).

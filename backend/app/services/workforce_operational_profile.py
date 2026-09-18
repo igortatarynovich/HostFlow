@@ -11,16 +11,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx
 from backend.app.models.audit import ActivityLog as ActivityLogModel
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.models.company import Company
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.user import User
-from backend.app.models.vacancy import Vacancy
-from backend.app.services.hr_documents_queue import list_hr_documents_expiring, list_hr_documents_missing
-from backend.app.services.hr_document_control_tasks import list_document_control_tasks
-from backend.app.services.hr_expected_documents import load_hr_expected_documents
+from backend.app.modules.recruitment.public.models import Vacancy
+from backend.app.modules.employment.public.review import list_hr_documents_expiring, list_hr_documents_missing
+from backend.app.modules.employment.public.review import list_document_control_tasks
+from backend.app.modules.employment.public.review import load_hr_expected_documents
 from backend.app.services.reference_service_facade import ReferenceContext, ReferenceServiceFacade
-from backend.app.services.hr_operational_risk import list_operational_risk_items
+from backend.app.modules.employment.public.review import list_operational_risk_items
 from backend.app.services.workforce_eligibility_delivery_contract import (
     WorkforceEligibilityContext,
     resolve_workforce_eligibility_via_contract,

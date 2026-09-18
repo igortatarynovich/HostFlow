@@ -9,12 +9,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.app.document_hub.document_data_contract import build_document_data_contract_from_hub_row
-from backend.app.document_types.registry import is_runtime_alias, normalize_input_doc_type
+from backend.app.modules.documents.public.evidence import build_document_data_contract_from_hub_row
+from backend.app.modules.documents.public.types import is_runtime_alias, normalize_input_doc_type
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_evidence import CandidateEvidence
 from backend.app.models.enums import CandidateEvidenceStatus
-from backend.app.modules.documents.crud import list_candidate_documents
+from backend.app.modules.documents.public.crud import list_candidate_documents
 from backend.app.requirement_rules.evaluation.candidate_bridge import evaluate_candidate_requirements_v2
 from backend.app.requirement_rules.migration.contracts import (
     CandidateApplyResult,
@@ -30,7 +30,7 @@ from backend.app.requirement_rules.migration.evidence_helpers import (
     ACTIVE_EVIDENCE_STATUSES,
     assess_evidence_supersede_eligibility,
 )
-from backend.app.services.document_type_version_assignment_resolver import (
+from backend.app.modules.documents.public.types import (
     DocumentTypeVersionAssignmentResolver,
 )
 from backend.app.services.requirement_policy_assignment import pin_requirement_policy

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any, Final, Mapping
 
-from backend.app.reference.ready_for_employment import (
+from backend.app.modules.boundary.public.ready import (
     ACCEPTANCE_GATE_IDS,
     CONTRACT_ID as RFE_CONTRACT_ID,
     FORBIDDEN_TOP_LEVEL_KEYS as RFE_FORBIDDEN_TOP_LEVEL_KEYS,

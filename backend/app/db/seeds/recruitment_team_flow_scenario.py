@@ -32,9 +32,9 @@ from backend.app.models.recruiter_availability_state import RecruiterAvailabilit
 from backend.app.models.tenant import Tenant, TenantLicense, TenantStatus, TenantType
 from backend.app.models.user import Role as UserRole, User
 from backend.app.models.vacancy import Vacancy
-from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.modules.workforce.public.models import WorkforceEmployee
 from backend.app.constants.spa_paths import CANDIDATES
-from backend.app.services.workforce_employees import ensure_hr_profiles_bundle
+from backend.app.modules.workforce.public.employees import ensure_hr_profiles_bundle
 
 # Namespace for deterministic ids (v5)
 _NS = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # DNS namespace — arbitrary fixed

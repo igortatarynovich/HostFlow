@@ -18,11 +18,11 @@ from typing import Any, Final
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
-from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.workforce_employee import WorkforceEmployee
-from backend.app.services import workforce_employees as we_svc
-from backend.app.services.workforce_hr_operational_context import ensure_hr_operational_context
+from backend.app.modules.recruitment.public.models import Candidate
+from backend.app.modules.boundary.public.models import CandidateHandoff
+from backend.app.modules.workforce.public.models import WorkforceEmployee
+from backend.app.modules.workforce.public import employees as we_svc
+from backend.app.modules.workforce.public.ops import ensure_hr_operational_context
 
 POLICY_ID: Final[str] = "employment_formalize_employee_ensure.v1"
 ENSURE_API: Final[str] = "ensure_employee_after_formalize_apply"

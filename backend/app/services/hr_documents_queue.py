@@ -9,13 +9,13 @@ from typing import Any, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.api.v1.candidates.pipeline_overrides_service import approved_handoff_relaxed_types
-from backend.app.models.candidate import Candidate
-from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
+from backend.app.modules.recruitment.public.pipeline import approved_handoff_relaxed_types
+from backend.app.modules.recruitment.public.models import Candidate
+from backend.app.modules.boundary.public.models import CandidateHandoff
+from backend.app.modules.boundary.public.models import CandidateHandoffSnapshot
 from backend.app.models.enums import DocumentStatus
-from backend.app.services.document_catalog import normalize_doc_type
-from backend.app.services.document_hub_delivery_contract import (
+from backend.app.modules.documents.public.types import normalize_doc_type
+from backend.app.modules.documents.public.evidence import (
     list_candidate_documents_via_contract,
 )
 from backend.app.services.reference_service_facade import ReferenceContext, ReferenceServiceFacade

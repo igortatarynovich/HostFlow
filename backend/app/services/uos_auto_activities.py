@@ -34,7 +34,7 @@ from backend.app.services.lead_first_contact_continuity import (
     candidate_past_cold_first_contact_sync,
     should_skip_default_first_contact_after_lead_conversion,
 )
-from backend.app.services.recruiter_assignment import resolve_vacancy_primary_recruiter
+from backend.app.modules.recruitment.public.assignment import resolve_vacancy_primary_recruiter
 from backend.app.services.reminder_tasks import create_reminder, refresh_open_typed_reminder_due
 
 _ACTIVE_STATUSES = (

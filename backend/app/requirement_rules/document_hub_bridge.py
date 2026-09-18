@@ -6,11 +6,11 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.document_runtime.delivery_contract import (
+from backend.app.modules.documents.public.evidence import (
     SOURCE_LAYER as RUNTIME_SOURCE_LAYER,
     build_required_documents_delivery_via_contract,
 )
-from backend.app.document_runtime.hub_bridge import apply_runtime_checklist_to_hub_section
+from backend.app.modules.documents.public.evidence import apply_runtime_checklist_to_hub_section
 from backend.app.models.candidate import Candidate
 from backend.app.requirement_rules.constants import REQUIREMENT_EVALUATION_V1
 from backend.app.requirement_rules.readiness_bridge import (

@@ -7,8 +7,8 @@ from typing import Any, Optional
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.constants.funnel_types import HR_MODULE_KEY
-from backend.app.models.funnel import Funnel
+from backend.app.modules.employment.hr_funnel_types import HR_MODULE_KEY
+from backend.app.modules.recruitment.public.models import Funnel
 from backend.app.services.hr_employee_funnel_bootstrap import HR_EMPLOYEE_BOOTSTRAP_STAGE_CODES
 from backend.app.services.hr_employee_funnel_resolver import (
     HrEmployeeFunnelForbiddenError,

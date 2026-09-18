@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.workforce_hr_document_control_task import WorkforceHrDocumentControlTask
+from backend.app.modules.workforce.public.models import WorkforceHrDocumentControlTask
 
 
 async def list_document_control_tasks(

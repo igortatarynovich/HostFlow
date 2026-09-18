@@ -10,7 +10,7 @@ from typing import Any, Mapping
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate_handoff import CandidateHandoff
+from backend.app.modules.boundary.public.models import CandidateHandoff
 from backend.app.reference.employment_missing_resolution import (
     POLICY_ID,
     apply_employment_resolution_v1,

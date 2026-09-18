@@ -97,7 +97,7 @@ def is_forward_pipeline_move(old_stage: Optional[str], new_stage: str) -> bool:
 
 
 def _norm_doc_type(value: str) -> str:
-    from backend.app.services.document_catalog import normalize_doc_type
+    from backend.app.modules.documents.public.types import normalize_doc_type
 
     raw = str(value or "").strip().lower().replace("-", "_")
     if not raw:
@@ -212,9 +212,9 @@ async def _legacy_document_type_blockers(
 ) -> Tuple[List[str], List[str], List[str]]:
     """Fallback: ruleset summary doc-type lists (diagnostic / profiles without requirement rules)."""
     from backend.app.modules.documents import crud as documents_crud
-    from backend.app.modules.documents.crud import get_last_document_checks_map
-    from backend.app.modules.documents.owner_summary import compute_owner_summary
-    from backend.app.services.document_ruleset import load_default_ruleset
+    from backend.app.modules.documents.public.crud import get_last_document_checks_map
+    from backend.app.modules.documents.public.summary import compute_owner_summary
+    from backend.app.modules.documents.public.evidence import load_default_ruleset
     from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 
     owner_ctx = _owner_context_for_docs(candidate_id=candidate_id, extra=extra, personal=personal)

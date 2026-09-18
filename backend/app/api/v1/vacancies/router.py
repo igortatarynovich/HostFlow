@@ -16,7 +16,7 @@ from backend.app.models.candidate_profile import CandidateProfile
 from backend.app.models.mixins import now_utc as _now_utc
 from backend.app.services.pipeline_sync import sync_candidate_links
 from backend.app.constants.stages import pipeline_for_stage_code, STAGES_BY_GROUP
-from backend.app.api.v1.candidate_documents import apply_template_to_candidate_impl
+from backend.app.modules.documents.public.summary import apply_template_to_candidate_impl
 
 from .schemas import VacancyIn, VacancyOut, VacancyPatch
 from .mappers import vacancy_to_out
@@ -25,7 +25,7 @@ from .repo import VacancyRepo
 from .service import VacancyService
 from backend.app.services import billing_restrictions
 from backend.app.services.tenant_visibility import get_tenant_visibility
-from backend.app.services.handoff import is_client_tenant_for_list, is_client_tenant, can_client_edit
+from backend.app.modules.boundary.public.handoff import is_client_tenant_for_list, is_client_tenant, can_client_edit
 from backend.app.services.recruitment_handoff_write_guard import require_agency_recruitment_write_allowed
 from backend.app.api.v1.utils.own_company import (
     resolve_active_own_company_id,
@@ -274,7 +274,7 @@ async def get_vacancy(
         # RSO-2B narrow ADAPT: HR with active internal_hr handoff may read target vacancy
         # before Employee mint (reuse handoff lane — not a new permission product).
         from backend.app.auth.trust_roles import is_hr_workspace_actor
-        from backend.app.services.ready_for_employment_emit import vacancy_is_handoff_target_for_hr_lane
+        from backend.app.modules.boundary.public.emit import vacancy_is_handoff_target_for_hr_lane
 
         role_l = str(getattr(current_user, "role", "") or "").strip().lower()
         prefs = getattr(current_user, "preferences", None)

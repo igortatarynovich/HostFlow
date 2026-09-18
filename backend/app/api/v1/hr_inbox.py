@@ -7,7 +7,7 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from backend.app.api.v1.handoffs import HandoffOut
+from backend.app.modules.boundary.public.dto import HandoffOut
 from backend.app.api.v1.reminders_v2 import ReminderListResponse, ReminderOut
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
 from backend.app.auth.deps import Role, UserCtx, get_current_user

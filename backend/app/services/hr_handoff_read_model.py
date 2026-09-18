@@ -10,9 +10,9 @@ from typing import Any, Mapping
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
-from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.reference.ready_for_employment import is_ready_for_employment_manifest
+from backend.app.modules.recruitment.public.models import Candidate
+from backend.app.modules.boundary.public.models import CandidateHandoff
+from backend.app.modules.boundary.public.ready import is_ready_for_employment_manifest
 from backend.app.services.hr_recruitment_transfer import flatten_recruitment_candidate_fields
 
 
@@ -126,7 +126,7 @@ async def load_live_target_work(
 ) -> dict[str, Any]:
     """Current vacancy/employer labels from live entities; fall back to as-of title only if needed."""
     from backend.app.models.company import Company
-    from backend.app.models.vacancy import Vacancy
+    from backend.app.modules.recruitment.public.models import Vacancy
 
     vac_id: str | None = None
     employer_id: str | None = None
@@ -219,7 +219,7 @@ def manifest_doc_status_as_of(payload: Mapping[str, Any] | None, doc_type: str) 
 
     Not an operational Hub status — callers must prefer Hub for current.
     """
-    from backend.app.services.document_catalog import normalize_doc_type
+    from backend.app.modules.documents.public.types import normalize_doc_type
 
     if not is_ready_for_employment_manifest(payload):
         return None

@@ -35,12 +35,12 @@ from backend.app.models.candidate import Candidate
 from backend.app.models.lead import Lead
 from backend.app.models.risk_intel import RiskIntelEntityShadow
 from backend.app.models.candidate_stage_history import CandidateStageHistory
-from backend.app.models.candidate_handoff import CandidateHandoff
+from backend.app.modules.boundary.public.models import CandidateHandoff
 from backend.app.models.contact_attempt import ContactAttempt
 from backend.app.models.user import User
 from backend.app.models.company import Company
 from backend.app.models.vacancy import Vacancy
-from backend.app.models.document import Document
+from backend.app.modules.documents.public.models import Document
 from backend.app.models.document_entity_link import DocumentEntityLink
 from backend.app.models.tenant import TenantLink
 from backend.app.models.enums import DocumentStatus

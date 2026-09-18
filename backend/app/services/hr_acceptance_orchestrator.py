@@ -6,18 +6,18 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
-from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.workforce_employee import WorkforceEmployee
-from backend.app.models.workforce_hr_review import WorkforceHrReview
-from backend.app.services import workforce_employees as we_svc
-from backend.app.services.handoff import (
-    _ensure_internal_hr_handoff_checklist_activities,
+from backend.app.modules.recruitment.public.models import Candidate
+from backend.app.modules.boundary.public.models import CandidateHandoff
+from backend.app.modules.workforce.public.models import WorkforceEmployee
+from backend.app.modules.workforce.public.models import WorkforceHrReview
+from backend.app.modules.workforce.public import employees as we_svc
+from backend.app.modules.boundary.public.handoff import (
+    ensure_internal_hr_handoff_checklist_activities,
 )
 from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
-from backend.app.services.workforce_hr_operational_context import ensure_hr_operational_context
-from backend.app.services.workforce_hr_operational_context import ensure_hr_document_links
-from backend.app.services.workforce_hr_review import (
+from backend.app.modules.workforce.public.ops import ensure_hr_operational_context
+from backend.app.modules.workforce.public.ops import ensure_hr_document_links
+from backend.app.modules.workforce.public.hr_review import (
     HR_REVIEW_STATUS_APPROVED,
     approve_hr_review_record,
     ensure_hr_review_for_handoff,
@@ -65,7 +65,7 @@ async def accept_internal_hr_handoff(
     emp.meta = md
     await db.flush()
     await ensure_hr_operational_context(db, tid, emp)
-    await _ensure_internal_hr_handoff_checklist_activities(
+    await ensure_internal_hr_handoff_checklist_activities(
         db,
         tenant_id=tid,
         candidate_id=str(handoff.candidate_id),
@@ -118,7 +118,7 @@ async def approve_employment_for_handoff(
             review.candidate_id = str(cand.id)
         await db.flush()
         await ensure_hr_operational_context(db, tid, emp)
-        await _ensure_internal_hr_handoff_checklist_activities(
+        await ensure_internal_hr_handoff_checklist_activities(
             db,
             tenant_id=tid,
             candidate_id=str(handoff.candidate_id),
@@ -129,7 +129,7 @@ async def approve_employment_for_handoff(
         await db.flush()
     else:
         await we_svc.ensure_hr_profiles_bundle(db, tid, emp.id)
-        from backend.app.services.workforce_zus_task_autocreate import sync_auto_tasks_after_employee_created
+        from backend.app.modules.workforce.public.ops import sync_auto_tasks_after_employee_created
 
         await sync_auto_tasks_after_employee_created(db, tid, emp.id)
 

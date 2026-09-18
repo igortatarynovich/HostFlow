@@ -113,7 +113,7 @@ async def load_candidate_work_panel(
         CandidateWorkPanelLinkedDocumentOut,
         CandidateWorkPanelResponse,
     )
-    from backend.app.modules.documents.router import fetch_candidate_documents_summary_response
+    from backend.app.modules.documents.public.summary import fetch_candidate_documents_summary_response
 
     aid = reminder_tasks.resolve_assignee_for_reminder_list(
         explicit_assignee_id=None,

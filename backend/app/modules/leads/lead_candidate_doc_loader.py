@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models import Document
-from backend.app.services.document_catalog import normalize_doc_type
+from backend.app.modules.documents.public.types import normalize_doc_type
 
 
 async def batch_candidate_document_status_sets(

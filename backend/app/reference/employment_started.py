@@ -22,7 +22,7 @@ from backend.app.reference.employment_formalize import (
     DECISION_COMPLETE as FORMALIZE_COMPLETE,
     evaluate_employment_formalize_v1,
 )
-from backend.app.reference.ready_for_employment import ACCEPTANCE_GATE_IDS
+from backend.app.modules.boundary.public.ready import ACCEPTANCE_GATE_IDS
 
 POLICY_ID: Final[str] = "employment_started.v1"
 

@@ -14,7 +14,7 @@ from backend.app.auth.deps import get_current_user, UserCtx
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import billing_restrictions
-from backend.app.api.v1.candidates.acl import ensure_candidate_access
+from backend.app.modules.recruitment.public.access import ensure_candidate_access
 from backend.app.services.handoff_snapshot_acl import assert_handoff_snapshot_readable
 from backend.app.auth.deps import Role
 from backend.app.schemas.workforce_hr_core import (
@@ -69,6 +69,9 @@ def _bulk_handoff_error_item(candidate_id: str, err: str | dict[str, Any]) -> di
     return {"candidate_id": candidate_id, "error": err}
 
 
+from backend.app.modules.boundary.public.dto import HandoffOut
+
+
 class HandoffCreate(BaseModel):
     client_company_id: Optional[UUID] = None
     client_tenant_id: Optional[UUID] = None
@@ -90,38 +93,6 @@ class HandoffBulkResult(BaseModel):
     created: int
     failed: int
     errors: List[dict] = Field(default_factory=list)
-
-
-class HandoffOut(BaseModel):
-    id: str
-    candidate_id: str
-    agency_tenant_id: str
-    destination: str = "client_portal"
-    handoff_type: str = "client_portal"
-    application_id: Optional[str] = None
-    from_company_id: Optional[str] = None
-    to_company_id: Optional[str] = None
-    locked_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    accepted_at: Optional[datetime] = None
-    accepted_by_user_id: Optional[str] = None
-    returned_by_user_id: Optional[str] = None
-    returned_reason: Optional[str] = None
-    client_company_id: Optional[str] = None
-    client_tenant_id: Optional[str] = None
-    requested_by_user_id: str
-    requested_at: datetime
-    assigned_to_user_id: Optional[str] = None
-    status: str
-    reviewed_by_user_id: Optional[str] = None
-    reviewed_at: Optional[datetime] = None
-    rejection_reason: Optional[str] = None
-    return_reason: Optional[str] = None
-    requested_by_user_name: Optional[str] = None
-    assigned_to_user_name: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
 
 class HandoffReject(BaseModel):
@@ -223,7 +194,7 @@ async def create_handoff_route(
         raise _handoff_create_http_exception(err)
     # RSO-2C: Employment-owned post-Transfer auto-init — outside create_handoff.
     if (dest or "").strip().lower() == "internal_hr":
-        from backend.app.services.employment_accept_orchestrator import (
+        from backend.app.modules.employment.public.commands import (
             EmploymentAcceptError,
             apply_employment_accept_after_transfer,
         )
@@ -620,7 +591,7 @@ async def employment_accept_policy_route(
 
     Must not be used by Recruitment Transfer as its completion.
     """
-    from backend.app.services.employment_accept_orchestrator import (
+    from backend.app.modules.employment.public.commands import (
         EmploymentAcceptError,
         apply_employment_accept_policy,
     )
@@ -759,7 +730,7 @@ async def employment_missing_resolution_route(
 
     Must not be used by Recruitment Transfer as its completion.
     """
-    from backend.app.services.employment_missing_resolution_orchestrator import (
+    from backend.app.modules.employment.public.commands import (
         EmploymentMissingResolutionError,
         resolve_employment_missing_for_handoff,
     )
@@ -838,7 +809,7 @@ async def employment_formalize_route(
 
     Empty evaluate/read must not mint. Must not be used by Recruitment Transfer as its completion.
     """
-    from backend.app.services.employment_formalize_orchestrator import (
+    from backend.app.modules.employment.public.commands import (
         EmploymentFormalizeError,
         formalize_employment_for_handoff,
         formalize_request_is_authoritative_apply,
@@ -925,7 +896,7 @@ async def employment_start_allowed_route(
     Empty body = evaluate. resolution_patch = typed exception create/revoke only.
     Does not upload Contract/Medical/BHP. Does not set start_allowed as stored authority.
     """
-    from backend.app.services.employment_start_allowed_orchestrator import (
+    from backend.app.modules.employment.public.commands import (
         EmploymentStartAllowedHostError,
         apply_start_allowed_for_handoff,
         evaluate_start_allowed_for_handoff,
@@ -1020,7 +991,7 @@ async def employment_started_route(
     Slice 4: requires start_allowed=true; must not mint Employee.
     Must not be used by Recruitment Transfer as its completion.
     """
-    from backend.app.services.employment_started_orchestrator import (
+    from backend.app.modules.employment.public.commands import (
         EmploymentStartedError,
         confirm_employment_started_for_handoff,
     )
@@ -1133,7 +1104,7 @@ async def get_handoff_status(
 
 
 def _hr_review_http_error(exc: Exception) -> HTTPException:
-    from backend.app.services.workforce_hr_review import HrReviewBlockedError
+    from backend.app.modules.workforce.public.hr_review import HrReviewBlockedError
 
     if isinstance(exc, HrReviewBlockedError):
         return HTTPException(
@@ -1525,7 +1496,7 @@ async def post_handoff_hr_review_approve(
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ):
-    from backend.app.services.hr_acceptance_orchestrator import approve_employment_for_handoff
+    from backend.app.modules.employment.public.commands import approve_employment_for_handoff
     from backend.app.services import workforce_hr_review as hr_review_svc
 
     db, tenant_id = db_tenant
@@ -1560,8 +1531,8 @@ async def get_handoff_document_file(
 ):
     """HR handoff review file open — workforce route when employee exists."""
     from backend.app.models.candidate_handoff import CandidateHandoff
-    from backend.app.models.workforce_employee import WorkforceEmployee
-    from backend.app.modules.documents.document_open_service import (
+    from backend.app.modules.workforce.public.models import WorkforceEmployee
+    from backend.app.modules.documents.public.open import (
         stream_workforce_employee_document_file,
     )
     from backend.app.services import workforce_hr_review as hr_review_svc

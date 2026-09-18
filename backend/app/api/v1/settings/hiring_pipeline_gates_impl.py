@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx
 from backend.app.api.v1.tenants import service as tenant_service
-from backend.app.services.document_catalog import normalize_doc_type
+from backend.app.modules.documents.public.types import normalize_doc_type
 from backend.app.services.hiring_pipeline_gates import (
     hiring_gates_from_tenant_settings,
     patch_settings_dict as patch_hiring_gates_settings_dict,

@@ -8,7 +8,7 @@ from uuid import uuid4
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.workforce_lifecycle_event import WorkforceLifecycleEvent
+from backend.app.modules.workforce.public.models import WorkforceLifecycleEvent
 
 log = logging.getLogger(__name__)
 

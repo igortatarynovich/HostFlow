@@ -29,7 +29,7 @@ from backend.app.services.lead_rodo import (
     ensure_lead_rodo_allows_action,
 )
 from backend.app.services.audit import log_activity
-from backend.app.services.recruitment_application_service import _explicit_pool_intent
+from backend.app.modules.recruitment.public.application import explicit_pool_intent
 
 INTAKE_DECISION_QUALIFY = "qualify"
 INTAKE_DECISION_REJECT = "reject"
@@ -153,7 +153,7 @@ def pool_intake_manual_convert_ready(lead: Lead, normalized: Dict[str, Any]) -> 
     """True when explicit pool intent + intake resolution allow conversion without a committed vacancy."""
     if getattr(lead, "vacancy_id", None):
         return False
-    if not _explicit_pool_intent(lead):
+    if not explicit_pool_intent(lead):
         return False
     ir = normalized.get("intake_resolution_v1")
     if not isinstance(ir, dict):
@@ -221,7 +221,7 @@ async def manual_process_block_code(
     lst = str(getattr(lead, "status", "") or "").strip().lower()
     if lst == "duplicate_review":
         return "DUPLICATE_REVIEW_PENDING"
-    pool = _explicit_pool_intent(lead)
+    pool = explicit_pool_intent(lead)
     has_vac = bool(getattr(lead, "vacancy_id", None))
 
     if pool and not has_vac:
@@ -348,7 +348,7 @@ async def apply_lead_intake_decision(
 
     elif dec == INTAKE_DECISION_POOL:
         norm["recruitment_pool_intent_v1"] = True
-        from backend.app.services.recruitment_funnel_assignment import assign_recruitment_funnel_to_lead
+        from backend.app.modules.recruitment.public.funnel import assign_recruitment_funnel_to_lead
 
         explicit_fid = str(funnel_id).strip() if funnel_id else None
         try:

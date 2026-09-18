@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.workforce_hr_review import HR_REVIEW_TERMINAL_STATUSES, WorkforceHrReview
+from backend.app.modules.workforce.public.models import HR_REVIEW_TERMINAL_STATUSES, WorkforceHrReview
 from backend.app.services.hr_verification_requirements import resolve_critical_field_codes
 from backend.app.services.hr_verified_field_catalog import FIELD_CATALOG
 _ITEM_SATISFIED = "satisfied"
@@ -284,9 +284,9 @@ async def sync_checklist_from_data_verification(
     if changed:
         cl["items"] = items
         review.checklist_json = cl
-        from backend.app.services.workforce_hr_review import _recompute_review_blockers_from_checklist
+        from backend.app.modules.workforce.public.hr_review import recompute_review_blockers_from_checklist
 
-        _recompute_review_blockers_from_checklist(review)
+        recompute_review_blockers_from_checklist(review)
         await db.flush()
 
 
@@ -311,7 +311,7 @@ async def rebuild_panel_checklists_after_data_verification(
     ]
     panel["blockers"] = blockers
     panel["failed_required_items"] = failed
-    from backend.app.services.workforce_hr_review import finalize_hr_review_can_approve
+    from backend.app.modules.workforce.public.hr_review import finalize_hr_review_can_approve
 
     panel["can_approve"] = finalize_hr_review_can_approve(panel)
     return panel

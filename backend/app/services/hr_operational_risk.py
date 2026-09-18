@@ -14,10 +14,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.constants.hr_task_types import HR_TASK_TYPES
-from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
+from backend.app.modules.boundary.public.models import CandidateHandoff
+from backend.app.modules.boundary.public.models import CandidateHandoffSnapshot
 from backend.app.models.reminder import Reminder, ReminderStatus
-from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.modules.workforce.public.models import WorkforceEmployee
 from backend.app.services import reminder_tasks
 from backend.app.services.hr_documents_queue import list_hr_documents_expiring, list_hr_documents_missing
 from backend.app.services.hr_inbox import list_internal_hr_handoffs_for_hr_inbox

@@ -5,12 +5,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from backend.app.document_runtime.evaluator import (
+from backend.app.modules.documents.public.evidence import (
     evaluate_document_runtime,
     map_runtime_to_requirement_items,
     runtime_precedence,
 )
-from backend.app.document_runtime.delivery_contract import (
+from backend.app.modules.documents.public.evidence import (
     build_instances_delivery_via_contract,
     enrich_documents_via_contract,
 )
@@ -94,7 +94,7 @@ def _lookup_document_for_requirement(
     requirement_code: str,
 ) -> dict[str, Any] | None:
     """Resolve DOCUMENT_REQUIRED code to a Hub row via canonical mapping authority."""
-    from backend.app.services.document_type_canonical_bridge import (
+    from backend.app.modules.documents.public.types import (
         hub_storage_keys_for_requirement_code,
     )
 

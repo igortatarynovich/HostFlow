@@ -8,11 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.entity_profile.vacancy_bridge import resolve_entity_profile_hints_from_vacancy
 from backend.app.models.candidate import Candidate
-from backend.app.modules.documents.crud import list_candidate_documents
-from backend.app.services.document_runtime_delivery_contract import (
+from backend.app.modules.documents.public.crud import list_candidate_documents
+from backend.app.modules.documents.public.evidence import (
     enrich_snapshot_via_contract,
 )
-from backend.app.services.document_workflow import document_has_stored_file
+from backend.app.modules.documents.public.summary import document_has_stored_file
 from backend.app.requirement_rules.constants import REQUIREMENT_EVALUATION_V1
 from backend.app.requirement_rules.registry import RequirementRulesNotFoundError
 

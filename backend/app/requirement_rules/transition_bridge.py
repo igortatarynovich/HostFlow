@@ -7,8 +7,8 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.document_runtime.delivery_contract import SOURCE_LAYER as RUNTIME_SOURCE_LAYER
-from backend.app.document_runtime.pe_bridge import build_transition_gate_from_evaluation
+from backend.app.modules.documents.public.evidence import SOURCE_LAYER as RUNTIME_SOURCE_LAYER
+from backend.app.modules.documents.public.evidence import build_transition_gate_from_evaluation
 from backend.app.models.candidate import Candidate
 from backend.app.requirement_rules.readiness_bridge import (
     build_requirement_engine_section,

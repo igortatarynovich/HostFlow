@@ -18,11 +18,11 @@ from fastapi import HTTPException
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.api.v1.candidates.service import create_candidate_full
+from backend.app.modules.recruitment.public.candidate import create_candidate_full
 from backend.app.models import Vacancy
 from backend.app.modules.leads import crud
 from backend.app.modules.leads.recruiter_validation import validate_tenant_recruiter_id
-from backend.app.services.recruiter_assignment import (
+from backend.app.modules.recruitment.public.assignment import (
     record_candidate_reassignment,
     resolve_vacancy_primary_recruiter,
 )

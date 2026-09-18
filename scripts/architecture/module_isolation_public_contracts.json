@@ -1,0 +1,45 @@
+{
+  "owners": {
+    "boundary": {
+      "note": "Foreign modules may import only Boundary public prefixes (ready / handoff / models / emit). Not Admit, not Documents, not Workforce.",
+      "prefixes": [
+        "backend/app/modules/boundary/public"
+      ]
+    },
+    "documents": {
+      "note": "Foreign modules may import only Documents public evidence prefixes. Hub/storage/ORM internals stay private. Not Ready/Admit/Workforce lifecycle.",
+      "prefixes": [
+        "backend/app/modules/documents/public"
+      ]
+    },
+    "employment": {
+      "note": "Foreign modules may import only Employment public prefixes. Admit rulesets and ESO-5 internals stay private.",
+      "prefixes": [
+        "backend/app/modules/employment/public"
+      ]
+    },
+    "platform": {
+      "note": "Platform session/persistence/settings surface. Module runtimes may depend on these without counting as architectural debt; they are not spine business contracts.",
+      "prefixes": [
+        "backend/app/auth",
+        "backend/app/db/deps.py",
+        "backend/app/db/session.py",
+        "backend/app/db/base.py",
+        "backend/app/core"
+      ]
+    },
+    "recruitment": {
+      "note": "Foreign modules may import only these Recruitment prefixes. Edges into them are published contracts, not debt.",
+      "prefixes": [
+        "backend/app/modules/recruitment/public"
+      ]
+    },
+    "workforce": {
+      "note": "Foreign modules may import only Workforce public prefixes. Post-start state belongs here. Accepts Started Employee continuity; does not reconstruct Ready/RFE/Admit/evidence.",
+      "prefixes": [
+        "backend/app/modules/workforce/public"
+      ]
+    }
+  },
+  "schema": "pmi.public_contracts.v1"
+}

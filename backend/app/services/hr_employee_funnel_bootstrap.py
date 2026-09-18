@@ -7,9 +7,9 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.constants.funnel_types import HR_EMPLOYEE_FUNNEL_TYPE, HR_MODULE_KEY
+from backend.app.modules.employment.hr_funnel_types import HR_EMPLOYEE_FUNNEL_TYPE, HR_MODULE_KEY
 from backend.app.models.company import Company
-from backend.app.models.funnel import Funnel, FunnelStage
+from backend.app.modules.recruitment.public.models import Funnel, FunnelStage
 from backend.app.models.tenant import Tenant
 from backend.app.process_engine.constants import HR_MODULE
 from backend.app.process_engine.manifests.hr import hr_module_manifest

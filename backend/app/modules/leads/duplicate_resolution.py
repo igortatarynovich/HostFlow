@@ -24,7 +24,7 @@ from backend.app.models.user import Role as UserRole
 from backend.app.services import events
 from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
 from backend.app.services.events import EventAudience
-from backend.app.services.handoff import get_accepted_handoff_for_agency
+from backend.app.modules.boundary.public.handoff import get_accepted_handoff_for_agency
 
 DuplicateMatchLevel = Literal["none", "exact", "probable"]
 

@@ -19,7 +19,7 @@ from backend.app.models.rodo_notification import RodoNotification
 from backend.app.legal.billing_terms_templates_v1 import ALL_LEGAL_DOC_TYPES, default_billing_template_items
 from backend.app.services.legal_documents import get_active_legal_document, list_active_for_tenant
 from backend.app.services.rodo import get_first_rodo_sent, rodo_lead_audit_satisfied_from_candidate, send_rodo_email
-from backend.app.api.v1.candidates.acl import ensure_candidate_access
+from backend.app.modules.recruitment.public.access import ensure_candidate_access
 
 router = APIRouter(prefix="/legal-documents", tags=["legal-documents"])
 
@@ -209,7 +209,7 @@ async def get_rodo_status(
     current_user: UserCtx = Depends(get_current_user),
 ):
     """Get RODO send status for candidate (for UI block)."""
-    from backend.app.models.candidate import Candidate
+    from backend.app.modules.recruitment.public.models import Candidate
 
     db, tenant_id = db_tenant
     await ensure_candidate_access(db, str(tenant_id), str(candidate_id), current_user)
@@ -271,7 +271,7 @@ async def send_rodo(
     current_user: UserCtx = Depends(get_current_user),
 ):
     """Send RODO info email to candidate (Wyślij informację RODO)."""
-    from backend.app.models.candidate import Candidate
+    from backend.app.modules.recruitment.public.models import Candidate
 
     db, tenant_id = db_tenant
     await ensure_candidate_access(db, str(tenant_id), str(candidate_id), current_user)

@@ -23,12 +23,12 @@ from backend.app.services.candidate_workforce_lock import (
     is_candidate_locked_by_workforce,
     observe_skipped_system_candidate_mutation_due_to_workforce_lock,
 )
-from backend.app.services.document_hub_delivery_contract import (
+from backend.app.modules.documents.public.evidence import (
     compute_owner_summary_via_contract,
     ensure_ruleset_seed_via_contract,
     list_candidate_documents_via_contract,
 )
-from backend.app.services.document_ruleset import load_default_ruleset
+from backend.app.modules.documents.public.evidence import load_default_ruleset
 from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 from backend.app.services.audit import log_activity
 from backend.app.services.user_notifications import create_notification

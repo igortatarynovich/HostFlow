@@ -18,7 +18,7 @@ from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.tenant import Tenant
 from backend.app.services.automation_rules import risk_band_at_least
 from backend.app.services.candidate_doc_pipeline_guard import is_forward_pipeline_move
-from backend.app.services.handoff import is_client_tenant
+from backend.app.modules.boundary.public.handoff import is_client_tenant
 from backend.app.services.risk_intel_v1 import compute_candidate_risk_map_for_ids, resolve_risk_config
 
 _ACTIVE_REMINDER_STATUSES = (

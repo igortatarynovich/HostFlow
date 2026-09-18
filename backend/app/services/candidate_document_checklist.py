@@ -12,7 +12,7 @@ from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_profile import CandidateProfile
 from backend.app.models.document_type import DocumentType
 from backend.app.models.vacancy import Vacancy
-from backend.app.services.document_catalog import normalize_doc_type
+from backend.app.modules.documents.public.types import normalize_doc_type
 
 DRIVER_CE_DEFAULT_PROFILE_CODE = "driver_ce_default"
 

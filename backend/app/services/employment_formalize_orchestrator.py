@@ -14,7 +14,7 @@ from typing import Any, Mapping
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate_handoff import CandidateHandoff
+from backend.app.modules.boundary.public.models import CandidateHandoff
 from backend.app.reference.employment_formalize import (
     POLICY_ID,
     apply_employment_formalize_v1,

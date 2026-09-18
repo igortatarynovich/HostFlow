@@ -12,8 +12,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-from backend.app.document_types.registry import canonical_codes, normalize_input_doc_type
-from backend.app.modules.documents.rules_engine import compute_candidate_checklist
+from backend.app.modules.documents.public.types import canonical_codes, normalize_input_doc_type
+from backend.app.modules.documents.public.summary import compute_candidate_checklist
 from backend.app.reference.country_registry import country_registry_alpha2_set
 
 _SPECS_ROOT = Path(__file__).resolve().parents[3] / "docs" / "specs" / "platform"

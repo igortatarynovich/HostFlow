@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.funnel import FunnelStage
 from backend.app.models.lead import Lead
 from backend.app.modules.leads.schemas import LeadStageContractOut
-from backend.app.services.recruitment_funnel_assignment import resolve_lead_funnel_id_for_display
+from backend.app.modules.recruitment.public.funnel import resolve_lead_funnel_id_for_display
 
 
 async def _default_lead_funnel_id(db: AsyncSession, *, tenant_id: str) -> Optional[str]:

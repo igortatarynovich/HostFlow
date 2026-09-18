@@ -31,7 +31,7 @@ from backend.app.reference.employment_missing_resolution import (
     RESOLUTION_READY,
     apply_employment_resolution_v1,
 )
-from backend.app.reference.ready_for_employment import ACCEPTANCE_GATE_IDS
+from backend.app.modules.boundary.public.ready import ACCEPTANCE_GATE_IDS
 
 POLICY_ID: Final[str] = "employment_formalize.v1"
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from backend.app.document_types.registry import normalize_input_doc_type
-from backend.app.document_types.schema_registry import normalize_raw_to_document_data
+from backend.app.modules.documents.public.types import normalize_input_doc_type
+from backend.app.modules.documents.public.types import normalize_raw_to_document_data
 from backend.app.requirement_rules.migration.iso_country import normalize_country_iso2
 
 _CODE95_LEGACY_KEYS = (

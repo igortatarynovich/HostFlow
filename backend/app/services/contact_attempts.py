@@ -21,7 +21,7 @@ from backend.app.services.tenant_email import send_email_for_tenant
 from backend.app.services.rodo import candidate_rodo_compliance_satisfied
 from backend.app.services.uos_auto_activities import ensure_candidate_stage_follow_up_task
 from backend.app.services.handoff import is_client_tenant
-from backend.app.services.recruitment_handoff_write_guard import (
+from backend.app.modules.recruitment.public.write_guard import (
     is_recruitment_recruiter_write_locked_by_handoff,
 )
 from backend.app.services.candidate_workforce_lock import (

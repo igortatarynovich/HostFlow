@@ -76,7 +76,7 @@ async def create_lead(
     if lt == "candidate" and company_id:
         from fastapi import HTTPException
 
-        from backend.app.services.recruitment_funnel_assignment import assign_recruitment_funnel_to_lead
+        from backend.app.modules.recruitment.public.funnel import assign_recruitment_funnel_to_lead
 
         try:
             await assign_recruitment_funnel_to_lead(

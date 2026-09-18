@@ -10,17 +10,17 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
-from backend.app.models.recruitment_application import RecruitmentApplication
+from backend.app.modules.recruitment.public.models import RecruitmentApplication
 from backend.app.models.user import User
-from backend.app.models.vacancy import Vacancy
-from backend.app.modules.documents.crud import list_candidate_documents
+from backend.app.modules.recruitment.public.models import Vacancy
+from backend.app.modules.documents.public.crud import list_candidate_documents
 from backend.app.services.reference_service_facade import ReferenceContext, ReferenceServiceFacade
-from backend.app.services.recruitment_application_service import get_application_for_handoff
-from backend.app.services.document_type_runtime_resolver import DocumentTypeRuntimeResolver
-from backend.app.services.hr_recruitment_transfer import (
+from backend.app.modules.recruitment.public.application import get_application_for_handoff
+from backend.app.modules.documents.public.types import DocumentTypeRuntimeResolver
+from backend.app.modules.employment.public.transfer import (
     enrich_snapshot_experience,
     flatten_recruitment_candidate_fields,
 )
@@ -210,7 +210,7 @@ async def build_handoff_snapshot_payload_v1(
             candidate_block[key] = flat.get(key)
     await enrich_snapshot_experience(db, agency_tid, candidate, candidate_block)
 
-    from backend.app.services.candidate_evidence_service import build_requirement_fulfillments_for_candidate
+    from backend.app.modules.recruitment.public.evidence import build_requirement_fulfillments_for_candidate
 
     requirement_fulfillments = await build_requirement_fulfillments_for_candidate(
         db,

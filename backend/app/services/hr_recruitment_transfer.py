@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.models.candidate_employment import CandidateEmployment
 from backend.app.services.hr_profile_address import promote_address_fields
 from backend.app.services.candidate_employments import list_employments

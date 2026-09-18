@@ -12,7 +12,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.workforce_hr_review import WorkforceHrReview
+from backend.app.modules.workforce.public.models import WorkforceHrReview
 from backend.app.services import hr_verified_fields as vf_svc
 from backend.app.services.employment_identity_projection import (
     PROJECTION_STATUS_COMPLETE,
@@ -239,8 +239,8 @@ async def get_trusted_employment_identity_for_employee(
     raise_on_denied: bool = True,
 ) -> TrustedEmploymentIdentityRead:
     """Resolve active HR review for employee, then delegate to ``get_trusted_employment_identity``."""
-    from backend.app.services import workforce_employees as we_svc
-    from backend.app.services.workforce_hr_review import ensure_hr_review_for_employee
+    from backend.app.modules.workforce.public import employees as we_svc
+    from backend.app.modules.workforce.public.hr_review import ensure_hr_review_for_employee
 
     emp = await we_svc.get_employee(db, tenant_id, employee_id)
     if not emp:

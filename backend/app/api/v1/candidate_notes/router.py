@@ -19,7 +19,7 @@ from backend.app.auth.deps import Role, get_current_user, UserCtx
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.db.session import async_session_maker
 from backend.app.services.audit import log_audit_event
-from backend.app.services.handoff import is_client_tenant
+from backend.app.modules.boundary.public.handoff import is_client_tenant
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
     can_override_recruitment_handoff_lock,

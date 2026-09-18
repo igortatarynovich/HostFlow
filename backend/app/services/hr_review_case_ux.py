@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from backend.app.models.workforce_hr_review import (
+from backend.app.modules.workforce.public.models import (
     HR_REVIEW_STATUS_APPROVED,
     HR_REVIEW_STATUS_REJECTED,
     HR_REVIEW_STATUS_RETURNED,

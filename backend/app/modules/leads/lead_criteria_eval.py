@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Collection, List, Mapping, Optional, Set, Tuple
 
-from backend.app.services.document_catalog import normalize_doc_type
+from backend.app.modules.documents.public.types import normalize_doc_type
 
 # Align with LeadFitStatus in schemas.py
 FitResult = Tuple[str, List[str]]

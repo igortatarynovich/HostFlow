@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.constants.hr_task_types import HR_TASK_TYPES
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.services import reminder_tasks
-from backend.app.services.candidate_lifecycle import exclude_completed_candidate_entities_clause
+from backend.app.modules.recruitment.public.evidence import exclude_completed_candidate_entities_clause
 from backend.app.services.hr_documents_queue import list_hr_documents_expiring, list_hr_documents_missing
 from backend.app.services.hr_inbox import list_internal_hr_handoffs_for_hr_inbox
 from backend.app.services.hr_operational_risk import (

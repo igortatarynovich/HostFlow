@@ -34,7 +34,7 @@ def r5_required_set(
     tenant_delta: Mapping[str, Any] | None = None,
 ) -> frozenset[str]:
     """Canonical required-set membership for the operator question."""
-    from backend.app.services.document_hub_delivery_contract import (
+    from backend.app.modules.documents.public.evidence import (
         APPLICABILITY_REQUIRED,
         evaluate_required_doc_applicability_via_contract,
     )
@@ -155,7 +155,7 @@ def pack_grouping_required_set(
     tenant_delta: Mapping[str, Any] | None = None,
 ) -> frozenset[str]:
     """Union of Hub pack `required` lists — must be ⊆ R5, never invent X."""
-    from backend.app.modules.documents.pack_definitions import (
+    from backend.app.modules.documents.public.summary import (
         DOCUMENT_PACK_DEFINITIONS,
         required_codes_for_pack,
     )
@@ -176,7 +176,7 @@ def owner_summary_required_set(
     leftover_ruleset: Mapping[str, Any] | None = None,
 ) -> frozenset[str]:
     """Policy answer from owner_summary even if a leftover ruleset payload is passed."""
-    from backend.app.modules.documents.owner_summary import compute_owner_summary
+    from backend.app.modules.documents.public.summary import compute_owner_summary
 
     ctx = dict(owner_context or {})
     if tenant_delta is not None:

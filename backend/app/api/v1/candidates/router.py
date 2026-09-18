@@ -115,7 +115,7 @@ from backend.app.models.recruitment_application import RecruitmentApplication
 from backend.app.models.audit import ActivityLog
 from backend.app.models.user import User
 from backend.app.models.reminder import Reminder, ReminderStatus
-from backend.app.models.candidate_handoff import CandidateHandoff
+from backend.app.modules.boundary.public.models import CandidateHandoff
 from backend.app.models.tenant import Tenant, TenantLicense, TenantLink
 from backend.app.api.v1.candidates.acl import (
     CandidateACL,
@@ -136,7 +136,7 @@ from backend.app.auth.hiring_workspace_roles import (
     HIRING_CANDIDATE_VIEW_ROLES,
 )
 from backend.app.services.tenant_visibility import get_tenant_visibility
-from backend.app.services.handoff import (
+from backend.app.modules.boundary.public.handoff import (
     is_client_tenant,
     is_client_tenant_for_list,
     get_pending_handoff,
@@ -153,7 +153,7 @@ from backend.app.core.settings import settings
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.services import candidate_notifications
 from backend.app.services.audit import log_audit_event
-from backend.app.services.document_hub_delivery_contract import list_candidate_documents_via_contract
+from backend.app.modules.documents.public.evidence import list_candidate_documents_via_contract
 from backend.app.services.risk_scoring import CandidateRisk, compute_candidate_risk_scores
 from backend.app.api.v1.candidates.schemas import (
     CandidateTimelineResponse,
@@ -2754,7 +2754,7 @@ async def patch_candidate(
         if not await can_client_edit(db, str(candidate_id), tenant_id_str):
             raise HTTPException(status_code=403, detail="Cannot edit: no accepted handoff")
     else:
-        from backend.app.services.handoff import get_pending_handoff_for_agency
+        from backend.app.modules.boundary.public.handoff import get_pending_handoff_for_agency
 
         recruitment_locked, recruitment_lock_reason = await is_recruitment_recruiter_write_locked_by_handoff(
             db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)

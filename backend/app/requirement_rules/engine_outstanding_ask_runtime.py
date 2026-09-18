@@ -22,7 +22,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 
-from backend.app.document_types.registry import (
+from backend.app.modules.documents.public.types import (
     is_canonical_code,
     load_legacy_aliases_payload,
 )
@@ -42,7 +42,7 @@ from backend.app.requirement_rules.engine_to_hub_outstanding_ask_contract import
     project_engine_evaluation_to_outstanding_asks,
     validate_outstanding_ask_row,
 )
-from backend.app.services.document_hub_delivery_contract import (
+from backend.app.modules.documents.public.evidence import (
     E4_LINKED_ENTITY_TYPE,
     persist_outstanding_asks_via_contract,
 )

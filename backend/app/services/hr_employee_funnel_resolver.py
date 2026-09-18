@@ -17,13 +17,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.app.constants.funnel_types import (
+from backend.app.modules.employment.hr_funnel_types import (
     HR_EMPLOYEE_FUNNEL_TYPE,
     HR_MODULE_KEY,
     PLATFORM_SEED_TENANT_ID,
 )
 from backend.app.models.company import Company
-from backend.app.models.funnel import Funnel
+from backend.app.modules.recruitment.public.models import Funnel
 from backend.app.models.tenant import Tenant
 from backend.app.services import company_module_settings_service as cms_svc
 from backend.app.services.company_module_access import company_allows_module

@@ -183,7 +183,7 @@ async def stream_workforce_employee_document_file(
 
     from backend.app.api.v1.candidate_documents import get_candidate_document_file
     from backend.app.models.document import Document
-    from backend.app.services import workforce_employees as we_svc
+    from backend.app.modules.workforce.public import employees as we_svc
 
     db, tid = db_tenant
     tenant_id = str(tid)

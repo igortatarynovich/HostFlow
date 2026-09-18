@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from backend.app.document_hub.document_data_contract import DocumentDataContract
-from backend.app.document_types.schema_registry import get_driver_ce_schema_bundle
+from backend.app.modules.documents.public.evidence import DocumentDataContract
+from backend.app.modules.documents.public.types import get_driver_ce_schema_bundle
 from backend.app.requirement_rules.evaluation.condition_evaluator import evaluate_all_conditions
 from backend.app.requirement_rules.evaluation.match_types import AlternativeMatchOutcome
 from backend.app.requirement_rules.evaluation.result_contract import MatchRole, MatchedDocumentReference

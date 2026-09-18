@@ -54,7 +54,7 @@ from backend.app.reference.requirement_policy_parallel_authority_retirement impo
 )
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.models.document import Document
 from backend.app.models.user import User
 from ...models.enums import (
@@ -1485,7 +1485,7 @@ async def api_create_candidate_document(
     current_user: UserCtx = Depends(get_current_user),
 ) -> DocumentOut:
     session, tenant_id = db_dep
-    from backend.app.services.candidate_operational_write import ensure_candidate_operational_write_allowed
+    from backend.app.modules.recruitment.public.evidence import ensure_candidate_operational_write_allowed
 
     await ensure_candidate_operational_write_allowed(
         session,

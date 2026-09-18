@@ -9,7 +9,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.workforce_start_allowed_exception import WorkforceStartAllowedException
+from backend.app.modules.workforce.public.models import WorkforceStartAllowedException
 from backend.app.reference.employment_start_allowed import (
     EXCEPTION_BHP_SUCCESSIVE,
     PEM1_EXCEPTION_ALLOWLIST,

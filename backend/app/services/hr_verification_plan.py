@@ -12,10 +12,10 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
-from backend.app.models.vacancy import Vacancy
-from backend.app.models.workforce_employee import WorkforceEmployee
-from backend.app.models.workforce_hr_review import WorkforceHrReview
+from backend.app.modules.recruitment.public.models import Candidate
+from backend.app.modules.recruitment.public.models import Vacancy
+from backend.app.modules.workforce.public.models import WorkforceEmployee
+from backend.app.modules.workforce.public.models import WorkforceHrReview
 from backend.app.services.reference_service_facade import ReferenceContext, ReferenceServiceFacade
 from backend.app.services.hr_review_document_resolution import DOC_KEY_CANDIDATE_TYPES
 from backend.app.services.hr_verified_field_catalog import OPTIONAL_FILE_VERIFICATION_KEYS
@@ -23,7 +23,7 @@ from backend.app.services.hr_verification_requirements import (
     is_driver_position,
     resolve_position_category_for_review,
 )
-from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
+from backend.app.modules.workforce.public.ops import build_work_eligibility_journey
 
 STEP_LEGAL_IDENTITY = "legal_identity"
 STEP_LEGAL_STAY = "legal_stay_eligibility"
@@ -469,7 +469,7 @@ async def build_hr_verification_plan(
     vacancy: Optional[Vacancy] = None
     profile = None
     if candidate:
-        from backend.app.services.candidate_document_checklist import (
+        from backend.app.modules.recruitment.public.evidence import (
             resolve_vacancy_profile_for_document_checklist,
         )
 

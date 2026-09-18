@@ -236,7 +236,7 @@ async def _search_candidates_slice(
     q: str,
     limit: int,
 ) -> list[dict[str, Any]]:
-    from backend.app.api.v1.candidates.acl import apply_agency_acl_filters
+    from backend.app.modules.recruitment.public.access import apply_agency_acl_filters
     from backend.app.api.v1.candidates.router import _apply_client_view_mask
 
     try:

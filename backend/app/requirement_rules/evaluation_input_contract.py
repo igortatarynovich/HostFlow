@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from backend.app.document_hub.document_data_contract import (
+from backend.app.modules.documents.public.evidence import (
     DocumentDataContract,
     RequirementEvaluationInputContract,
 )

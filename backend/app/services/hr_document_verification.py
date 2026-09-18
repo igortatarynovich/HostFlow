@@ -8,9 +8,9 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.document import Document
-from backend.app.models.workforce_employee import WorkforceEmployee
-from backend.app.models.workforce_hr_document_verification import (
+from backend.app.modules.documents.public.models import Document
+from backend.app.modules.workforce.public.models import WorkforceEmployee
+from backend.app.modules.workforce.public.models import (
     VERIFICATION_NEEDS_CORRECTION,
     VERIFICATION_NOT_REQUIRED,
     VERIFICATION_OPENED,
@@ -20,8 +20,8 @@ from backend.app.models.workforce_hr_document_verification import (
     VERIFICATION_VERIFIED,
     WorkforceHrDocumentVerification,
 )
-from backend.app.models.workforce_hr_document_context import WorkforceHrDocumentContext
-from backend.app.models.workforce_hr_review import WorkforceHrReview, HR_REVIEW_TERMINAL_STATUSES
+from backend.app.modules.workforce.public.models import WorkforceHrDocumentContext
+from backend.app.modules.workforce.public.models import WorkforceHrReview, HR_REVIEW_TERMINAL_STATUSES
 from backend.app.services.audit import log_activity
 from backend.app.services.hr_handoff_profile_context import load_handoff_profile_namespace
 from backend.app.services.hr_verified_field_catalog import (
@@ -421,9 +421,9 @@ async def sync_checklist_from_verifications(
     if changed:
         cl["items"] = items
         review.checklist_json = cl
-        from backend.app.services.workforce_hr_review import _recompute_review_blockers_from_checklist
+        from backend.app.modules.workforce.public.hr_review import recompute_review_blockers_from_checklist
 
-        _recompute_review_blockers_from_checklist(review)
+        recompute_review_blockers_from_checklist(review)
         await db.flush()
 
 
@@ -456,7 +456,7 @@ async def enrich_approval_rows_with_verification(
     _, _, candidate_flat = await _load_live_candidate_fields(db, cid or None)
     eligibility_full = dict(eligibility or {})
     if employee and review.employee_id:
-        from backend.app.services.workforce_employees import get_work_eligibility_profile
+        from backend.app.modules.workforce.public.employees import get_work_eligibility_profile
 
         wel = await get_work_eligibility_profile(db, tenant_id, str(review.employee_id))
         if wel is not None:
@@ -647,7 +647,7 @@ async def waive_document_requirement(
 
     from backend.app.services.hr_verification_plan import is_document_requirement_waivable
     from backend.app.services.hr_verification_requirements import resolve_position_category_for_review
-    from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
+    from backend.app.modules.workforce.public.ops import build_work_eligibility_journey
 
     journey: dict[str, Any] = {}
     if review.employee_id:

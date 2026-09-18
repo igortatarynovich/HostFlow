@@ -21,7 +21,7 @@ from backend.app.modules.leads.lead_client_conversion import create_client_from_
 from backend.app.modules.leads.lead_service_order_conversion import create_service_order_from_lead_conversion
 from backend.app.modules.leads.recruiter_validation import validate_tenant_recruiter_id
 from backend.app.services.lead_lifecycle import apply_lead_terminal_cleanup
-from backend.app.services.recruiter_assignment import record_candidate_reassignment
+from backend.app.modules.recruitment.public.assignment import record_candidate_reassignment
 
 
 @dataclass(frozen=True)

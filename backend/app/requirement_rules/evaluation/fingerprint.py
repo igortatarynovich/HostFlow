@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Optional
 
-from backend.app.document_types.registry import is_canonical_code, is_runtime_alias
+from backend.app.modules.documents.public.types import is_canonical_code, is_runtime_alias
 
 
 def _norm(value: Any) -> str:

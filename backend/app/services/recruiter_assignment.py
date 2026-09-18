@@ -16,7 +16,7 @@ from backend.app.models.vacancy import Vacancy
 from backend.app.models.vacancy_recruiter import VacancyRecruiter
 from backend.app.models.access import UserCompanyAccess
 from backend.app.models.user import Role as UserRole, User
-from backend.app.services.handoff import is_client_tenant
+from backend.app.modules.boundary.public.handoff import is_client_tenant
 from backend.app.services.recruitment_handoff_write_guard import (
     AgencyRecruitmentWriteBypass,
     require_agency_recruitment_write_allowed,

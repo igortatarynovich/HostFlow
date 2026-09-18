@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.auth.deps import get_current_user, UserCtx
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.api.v1.candidates.acl import ensure_candidate_access
+from backend.app.modules.recruitment.public.access import ensure_candidate_access
 from backend.app.services.contact_attempts import (
     create_attempt,
     get_effective_contact_policy,

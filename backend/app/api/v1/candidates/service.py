@@ -58,7 +58,7 @@ from backend.app.services.source_labels import normalize_candidate_source
 from backend.app.services.rodo import send_rodo_email as _send_rodo_email
 from backend.app.services.rodo import candidate_rodo_compliance_satisfied as _candidate_rodo_compliance_satisfied
 from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
-from backend.app.services.handoff import (
+from backend.app.modules.boundary.public.handoff import (
     is_client_tenant as _is_client_tenant,
     unlock_pending_handoff_for_recruitment_close,
 )

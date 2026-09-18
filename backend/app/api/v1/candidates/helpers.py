@@ -15,7 +15,7 @@ from backend.app.constants.stages_adapter import STAGES
 from backend.app.constants.stages import LABELS
 from backend.app.models import Candidate
 from backend.app.models.candidate import next_candidate_short_id
-from backend.app.models.document import Document
+from backend.app.modules.documents.public.models import Document
 
 
 def _utc_naive() -> datetime:

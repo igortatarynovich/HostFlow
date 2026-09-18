@@ -7,7 +7,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate_pipeline_override import CandidatePipelineOverride
-from backend.app.services.document_catalog import normalize_doc_type
+from backend.app.modules.documents.public.types import normalize_doc_type
 from backend.app.services.hiring_pipeline_gates import resolve_hiring_pipeline_gates
 from backend.app.services.pipeline_override_policy import (
     NON_OVERRIDABLE_REQUIREMENT_CODES,

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
 from backend.app.auth.trust_roles import is_hr_workspace_actor
-from backend.app.services.handoff import is_client_tenant
+from backend.app.modules.boundary.public.handoff import is_client_tenant
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
     can_override_recruitment_handoff_lock,

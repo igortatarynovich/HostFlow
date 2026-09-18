@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
 from backend.app.auth.deps import Role
 from backend.app.db.deps import get_db_with_tenant as get_db_with_tenant
-from backend.app.services.handoff import is_client_tenant, can_agency_edit, can_client_edit
+from backend.app.modules.boundary.public.handoff import is_client_tenant, can_agency_edit, can_client_edit
 from backend.app.models.candidate import Candidate
 from backend.app.services.audit import log_activity
 

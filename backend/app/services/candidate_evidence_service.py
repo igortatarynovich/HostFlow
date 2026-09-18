@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_evidence import CandidateEvidence, CandidateEvidenceDocument
-from backend.app.models.document import Document
+from backend.app.modules.documents.public.models import Document
 from backend.app.models.enums import CandidateEvidenceStatus
 from backend.app.requirement_rules.constants import RULE_TYPE_DOCUMENT_SLOT_REQUIRED
 from backend.app.requirement_rules.readiness_bridge import (
@@ -26,7 +26,7 @@ from backend.app.requirement_rules.slot_evaluator import (
     expand_type_codes_for_slot,
 )
 from backend.app.requirement_rules.slot_registry import get_slot_definition
-from backend.app.services.document_catalog import normalize_doc_type
+from backend.app.modules.documents.public.types import normalize_doc_type
 from backend.app.services.requirement_document_data import (
     enrich_document_snapshot_for_checklist,
     extraction_blockers_for_documents,

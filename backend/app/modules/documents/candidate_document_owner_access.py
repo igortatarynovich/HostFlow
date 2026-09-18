@@ -15,7 +15,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.services.tenant_visibility import TenantVisibility, get_tenant_visibility
 
 
@@ -64,11 +64,11 @@ async def load_candidate_documents_owner_context(
     accessible under owner rules (not due to workspace header alone).
     """
     visibility = get_tenant_visibility(session, tenant_id)
-    from backend.app.api.v1.candidates import repo as candidate_repo
-    from backend.app.services.handoff import is_client_tenant
+    from backend.app.modules.recruitment.public.candidate_repo import get_candidate_with_labels
+    from backend.app.modules.boundary.public.handoff import is_client_tenant
 
     client_tenant = await is_client_tenant(session, tenant_id)
-    row = await candidate_repo.get_candidate_with_labels(
+    row = await get_candidate_with_labels(
         session,
         tenant_id,
         str(candidate_id),

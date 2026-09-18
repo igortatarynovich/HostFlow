@@ -14,8 +14,8 @@ from typing import Any, Mapping
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
-from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.modules.boundary.public.models import CandidateHandoff
+from backend.app.modules.workforce.public.models import WorkforceEmployee
 from backend.app.reference.employment_formalize import evaluate_employment_formalize_v1
 from backend.app.reference.employment_started import (
     AUDIT_EVENT_PHYSICAL_START,
@@ -32,7 +32,7 @@ from backend.app.services.employment_formalize_employee_ensure import employee_l
 from backend.app.services.employment_start_allowed_orchestrator import (
     evaluate_start_allowed_for_handoff,
 )
-from backend.app.services import workforce_employees as we_svc
+from backend.app.modules.workforce.public import employees as we_svc
 
 
 class EmploymentStartedError(Exception):

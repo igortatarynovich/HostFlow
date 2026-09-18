@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.api.v1.candidates.acl import ensure_candidate_access
+from backend.app.modules.recruitment.public.access import ensure_candidate_access
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import WorkforceEmployee

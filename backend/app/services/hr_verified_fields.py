@@ -8,12 +8,12 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.workforce_hr_review import WorkforceHrReview, HR_REVIEW_TERMINAL_STATUSES
-from backend.app.models.workforce_hr_document_verification import (
+from backend.app.modules.workforce.public.models import WorkforceHrReview, HR_REVIEW_TERMINAL_STATUSES
+from backend.app.modules.workforce.public.models import (
     VERIFICATION_VERIFIED,
     WorkforceHrDocumentVerification,
 )
-from backend.app.models.workforce_hr_verified_field import (
+from backend.app.modules.workforce.public.models import (
     FIELD_STATUS_APPROVE_OK,
     FIELD_STATUS_CONFLICT,
     FIELD_STATUS_OVERRIDDEN,

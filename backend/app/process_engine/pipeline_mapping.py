@@ -263,7 +263,7 @@ async def _resolve_candidate_funnel_id(
     tenant_id: str,
     candidate: Candidate,
 ) -> Optional[str]:
-    from backend.app.services.recruitment_funnel_assignment import (
+    from backend.app.modules.recruitment.public.funnel import (
         resolve_candidate_funnel_id_for_runtime,
     )
 

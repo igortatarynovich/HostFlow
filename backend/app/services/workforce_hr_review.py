@@ -8,8 +8,8 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
-from backend.app.models.candidate_handoff import CandidateHandoff
+from backend.app.modules.recruitment.public.models import Candidate
+from backend.app.modules.boundary.public.models import CandidateHandoff
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_hr_review import (
     HR_REVIEW_STATUS_APPROVED,
@@ -24,39 +24,39 @@ from backend.app.models.workforce_hr_review import (
     WorkforceHrReview,
 )
 from backend.app.services import workforce_employees as we_svc
-from backend.app.services.handoff import return_handoff
+from backend.app.modules.boundary.public.handoff import return_handoff
 from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
 from backend.app.services.workforce_work_eligibility_payments import list_payment_requirements
 from backend.app.services.workforce_eligibility_delivery_contract import (
     WorkforceEligibilityContext,
     resolve_workforce_eligibility_via_contract,
 )
-from backend.app.services.document_hub_delivery_contract import (
+from backend.app.modules.documents.public.evidence import (
     list_candidate_documents_via_contract,
 )
-from backend.app.modules.documents.document_open_service import (
+from backend.app.modules.documents.public.open import (
     enrich_documents_for_approval_open_urls,
 )
-from backend.app.services.hr_review_document_resolution import merge_candidate_documents_into_approval_rows
-from backend.app.services.hr_verification_plan import (
+from backend.app.modules.employment.public.review import merge_candidate_documents_into_approval_rows
+from backend.app.modules.employment.public.review import (
     build_hr_verification_plan,
     documents_for_approval_from_plan,
     plan_blocks_approve,
     sync_verification_plan_with_enriched_docs,
 )
-from backend.app.services.hr_document_verification import (
+from backend.app.modules.employment.public.review import (
     VERIFICATION_GATED_CHECKLIST,
     enrich_approval_rows_with_verification,
     sync_checklist_from_verifications,
 )
-from backend.app.services.hr_data_verification import rebuild_panel_checklists_after_data_verification
-from backend.app.services.hr_verification_requirements import (
+from backend.app.modules.employment.public.review import rebuild_panel_checklists_after_data_verification
+from backend.app.modules.employment.public.review import (
     resolve_critical_field_codes,
     resolve_position_category_for_review,
 )
-from backend.app.services.hr_review_case_ux import enrich_hr_review_panel
+from backend.app.modules.employment.public.review import enrich_hr_review_panel
 from backend.app.services import hr_verified_fields as vf_svc
-from backend.app.services.employment_identity_read_adapter import (
+from backend.app.modules.employment.public.identity import (
     CONSUMER_HR_REVIEW_DISPLAY,
     get_trusted_employment_identity,
 )
@@ -1054,7 +1054,7 @@ async def approve_hr_review(
     review = await ensure_hr_review_for_employee(db, tenant_id, emp)
     hid = (review.handoff_id or _handoff_id_from_employee(emp) or "").strip()
     if hid:
-        from backend.app.services.hr_acceptance_orchestrator import approve_employment_for_handoff
+        from backend.app.modules.employment.public.commands import approve_employment_for_handoff
 
         _emp, review = await approve_employment_for_handoff(
             db,

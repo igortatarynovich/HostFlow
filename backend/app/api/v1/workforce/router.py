@@ -11,13 +11,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.api.v1.candidates.acl import ensure_candidate_access
-from backend.app.api.v1.candidate_documents import CandDoc
-from backend.app.modules.documents.document_open_service import (
+from backend.app.modules.recruitment.public.access import ensure_candidate_access
+from backend.app.modules.documents.public.summary import CandDoc
+from backend.app.modules.documents.public.open import (
     build_workforce_cand_doc,
     stream_workforce_employee_document_file,
 )
-from backend.app.api.v1.candidates.service import get_candidate
+from backend.app.modules.recruitment.public.candidate import get_candidate
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
@@ -2500,7 +2500,7 @@ async def get_employee_trusted_identity_prep_status(
 
 
 def _contract_generation_http_error(exc: Exception) -> HTTPException:
-    from backend.app.services.employment_identity_read_adapter import TrustedIdentityAccessError
+    from backend.app.modules.employment.public.identity import TrustedIdentityAccessError
 
     if isinstance(exc, TrustedIdentityAccessError):
         return HTTPException(

@@ -10,7 +10,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any, Optional
 
-from backend.app.document_types.registry import (
+from backend.app.modules.documents.public.types import (
     is_canonical_code,
     is_runtime_alias,
     registry_entry_for,

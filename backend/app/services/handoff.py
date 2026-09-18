@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.constants.hr_task_types import HANDOFF_HR_CHECKLIST, INTERNAL_HR_HANDOFF_PENDING
 from backend.app.models.access import UserCompanyAccess
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.tenant import TenantLink
 from backend.app.models import User
@@ -24,14 +24,13 @@ from backend.app.models.company import Company
 from backend.app.models.tenant import Tenant, TenantType
 from backend.app.services.tenant_links import get_tenant_link, list_links_for_agency
 from backend.app.models.activity import Activity, ActivityStatus
-from backend.app.services import workforce_employees as workforce_employees_service
-from backend.app.services.recruitment_application_service import get_application_for_handoff
-from backend.app.services.recruitment_application_lifecycle import (
+from backend.app.modules.recruitment.public.application import get_application_for_handoff
+from backend.app.modules.recruitment.public.application import (
     InvalidRecruitmentApplicationTransition,
     normalize_application_status,
     set_recruitment_application_status,
 )
-from backend.app.services.recruitment_handoff_write_guard import (
+from backend.app.modules.recruitment.public.write_guard import (
     is_recruitment_recruiter_write_locked_by_handoff,
 )
 from backend.app.services.handoff_snapshot import persist_handoff_create_snapshot
@@ -639,7 +638,7 @@ async def create_handoff(
     elif cand_stage != "ready_for_handoff":
         return None, "Only candidates at stage 'Gotowy do przekazania' (ready_for_handoff) can be transferred"
 
-    from backend.app.services.recruitment_package_readiness import assert_recruitment_package_ready_for_handoff
+    from backend.app.modules.recruitment.public.ready import assert_recruitment_package_ready_for_handoff
 
     pkg_err = await assert_recruitment_package_ready_for_handoff(
         db,
@@ -886,7 +885,7 @@ async def accept_handoff(
             if hasattr(cand, "status"):
                 cand.status = "processing_by_hr"
             await db.flush()
-            from backend.app.services.hr_acceptance_orchestrator import accept_internal_hr_handoff
+            from backend.app.modules.employment.public.commands import accept_internal_hr_handoff
 
             await accept_internal_hr_handoff(
                 db,

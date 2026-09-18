@@ -17,7 +17,7 @@ from backend.app.models.ref_document_type import (
     TenantDocumentPackEnablement,
     TenantDocumentTypeOverride,
 )
-from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.modules.workforce.public.models import WorkforceEmployee
 from backend.app.services.document_expiry_engine import evaluate_document_expiry
 from backend.app.services.document_type_runtime_resolver import DocumentTypeRuntimeResolver
 

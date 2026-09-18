@@ -9,12 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate import Candidate
 from backend.app.field_registry.requirement_evaluator import evaluate_field_requirements_for_candidate
-from backend.app.services.hr_verified_field_catalog import (
+from backend.app.modules.employment.public.review import (
     DATA_ONLY_VERIFICATION_KEYS,
     OPTIONAL_FILE_VERIFICATION_KEYS,
 )
-from backend.app.services.hr_verification_plan import CATALOG_TO_DOCUMENT_KEY, VERIFICATION_SLOT_DEFS
-from backend.app.services.workforce_eligibility_delivery_contract import (
+from backend.app.modules.employment.public.review import CATALOG_TO_DOCUMENT_KEY, VERIFICATION_SLOT_DEFS
+from backend.app.modules.workforce.public.ops import (
     WorkforceEligibilityContext,
     resolve_workforce_eligibility_via_contract,
 )
@@ -81,7 +81,7 @@ def _missing_contact_fields_legacy(candidate: Candidate) -> list[dict[str, str]]
     if isinstance(address_raw, str):
         address_ok = bool(address_raw.strip())
     elif isinstance(address_raw, dict):
-        from backend.app.services.hr_profile_address import address_dict_complete
+        from backend.app.modules.employment.public.review import address_dict_complete
 
         address_ok = address_dict_complete(address_raw)
     if not address_ok:

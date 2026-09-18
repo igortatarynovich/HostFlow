@@ -13,23 +13,23 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.recruitment_application import RecruitmentApplication
-from backend.app.models.vacancy import Vacancy
-from backend.app.modules.documents.crud import list_candidate_documents
+from backend.app.modules.recruitment.public.models import RecruitmentApplication
+from backend.app.modules.recruitment.public.models import Vacancy
+from backend.app.modules.documents.public.crud import list_candidate_documents
 from backend.app.reference.ready_for_employment import (
     CONTRACT_ID,
     validate_ready_for_employment_package_v1,
 )
-from backend.app.services.document_type_runtime_resolver import DocumentTypeRuntimeResolver
-from backend.app.services.hr_recruitment_transfer import flatten_recruitment_candidate_fields
-from backend.app.services.recruitment_application_lifecycle import (
+from backend.app.modules.documents.public.types import DocumentTypeRuntimeResolver
+from backend.app.modules.employment.public.transfer import flatten_recruitment_candidate_fields
+from backend.app.modules.recruitment.public.application import (
     InvalidRecruitmentApplicationTransition,
     normalize_application_status,
     set_recruitment_application_status,
 )
-from backend.app.services.recruitment_application_service import get_application_for_handoff
+from backend.app.modules.recruitment.public.application import get_application_for_handoff
 
 
 class HandoffManifestValidationError(Exception):
@@ -166,7 +166,7 @@ async def build_ready_for_employment_package_v1(
             }
         )
 
-    from backend.app.services.candidate_evidence_service import (
+    from backend.app.modules.recruitment.public.evidence import (
         build_requirement_fulfillments_for_candidate,
     )
 
@@ -252,7 +252,7 @@ async def vacancy_is_handoff_target_for_hr_lane(
     vacancy_id: str,
 ) -> bool:
     """True when vacancy is target of an active internal_hr handoff (pre- or post-accept)."""
-    from backend.app.services.recruitment_handoff_write_guard import _LOCK_HANDOFF_STATUSES
+    from backend.app.modules.recruitment.public.write_guard import LOCK_HANDOFF_STATUSES
 
     vac = str(vacancy_id).strip()
     tid = str(agency_tenant_id).strip()
@@ -269,7 +269,7 @@ async def vacancy_is_handoff_target_for_hr_lane(
         .where(
             CandidateHandoff.agency_tenant_id == tid,
             CandidateHandoff.destination == "internal_hr",
-            CandidateHandoff.status.in_(tuple(_LOCK_HANDOFF_STATUSES)),
+            CandidateHandoff.status.in_(tuple(LOCK_HANDOFF_STATUSES)),
             RecruitmentApplication.vacancy_id == vac,
         )
         .limit(1)
@@ -284,7 +284,7 @@ async def vacancy_is_handoff_target_for_hr_lane(
         .where(
             CandidateHandoff.agency_tenant_id == tid,
             CandidateHandoff.destination == "internal_hr",
-            CandidateHandoff.status.in_(tuple(_LOCK_HANDOFF_STATUSES)),
+            CandidateHandoff.status.in_(tuple(LOCK_HANDOFF_STATUSES)),
             Candidate.vacancy_id == vac,
             Candidate.deleted_at.is_(None),
         )
@@ -300,7 +300,7 @@ async def employer_is_handoff_target_for_hr_lane(
     company_id: str,
 ) -> bool:
     """True when company is client/employer on an active internal_hr handoff."""
-    from backend.app.services.recruitment_handoff_write_guard import _LOCK_HANDOFF_STATUSES
+    from backend.app.modules.recruitment.public.write_guard import LOCK_HANDOFF_STATUSES
 
     cid = str(company_id).strip()
     tid = str(agency_tenant_id).strip()
@@ -311,7 +311,7 @@ async def employer_is_handoff_target_for_hr_lane(
         .where(
             CandidateHandoff.agency_tenant_id == tid,
             CandidateHandoff.destination == "internal_hr",
-            CandidateHandoff.status.in_(tuple(_LOCK_HANDOFF_STATUSES)),
+            CandidateHandoff.status.in_(tuple(LOCK_HANDOFF_STATUSES)),
             (
                 (CandidateHandoff.client_company_id == cid)
                 | (CandidateHandoff.to_company_id == cid)

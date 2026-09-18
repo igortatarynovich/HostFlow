@@ -25,7 +25,7 @@ from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_o
 from backend.app.api.v1.vacancies.repo import VacancyRepo
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.services.handoff import is_client_tenant_for_list
+from backend.app.modules.boundary.public.handoff import is_client_tenant_for_list
 from backend.app.services.next_action import NextActionDTO, compute_vacancy_next_action
 from backend.app.services.tenant_visibility import get_tenant_visibility
 

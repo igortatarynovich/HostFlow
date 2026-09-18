@@ -12,7 +12,7 @@ from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
-from backend.app.services.handoff import is_client_tenant, can_client_edit
+from backend.app.modules.boundary.public.handoff import is_client_tenant, can_client_edit
 from backend.app.services.recruitment_handoff_write_guard import require_agency_recruitment_write_allowed
 
 router = APIRouter(prefix="/candidate-links", tags=["candidate-links"])

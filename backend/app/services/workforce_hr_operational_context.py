@@ -12,8 +12,8 @@ from backend.app.models.document_entity_link import DocumentEntityLink
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_hr_case import WorkforceHrCase
 from backend.app.modules.documents import crud as documents_crud
-from backend.app.modules.documents.crud import create_document_check
-from backend.app.services.document_hub_delivery_contract import (
+from backend.app.modules.documents.public.crud import create_document_check
+from backend.app.modules.documents.public.evidence import (
     list_candidate_documents_via_contract,
 )
 
@@ -24,7 +24,7 @@ async def _approved_fulfillment_document_ids(
     tenant_id: str,
     candidate_id: str,
 ) -> set[str]:
-    from backend.app.services.candidate_evidence_service import build_requirement_fulfillments_for_candidate
+    from backend.app.modules.recruitment.public.evidence import build_requirement_fulfillments_for_candidate
 
     fulfillments = await build_requirement_fulfillments_for_candidate(
         db,

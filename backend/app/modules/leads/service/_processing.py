@@ -43,12 +43,12 @@ from backend.app.modules.leads.lead_candidate_conversion import ensure_recruitme
 from backend.app.modules.leads.lead_criteria_eval import lead_fit_evaluation_effective
 from backend.app.services import billing_restrictions
 from backend.app.services.automation_rules import run_rules as run_automation_rules
-from backend.app.services.handoff import is_client_tenant
+from backend.app.modules.boundary.public.handoff import is_client_tenant
 from backend.app.services.lead_lifecycle import apply_lead_terminal_cleanup
-from backend.app.services.recruitment_handoff_write_guard import (
+from backend.app.modules.recruitment.public.write_guard import (
     is_recruitment_recruiter_write_locked_by_handoff,
 )
-from backend.app.services.recruiter_assignment import resolve_vacancy_primary_recruiter
+from backend.app.modules.recruitment.public.assignment import resolve_vacancy_primary_recruiter
 
 from ._helpers import (
     LeadProcessingError,
@@ -545,7 +545,7 @@ async def process_normalized_lead(
         lead.normalized = normalized_merging_lead_persisted_blocks(lead, normalized)
         lead.ad_id = normalized.get("ad_id")
         await db.flush()
-        from backend.app.services.recruitment_funnel_assignment import (
+        from backend.app.modules.recruitment.public.funnel import (
             reconcile_lead_funnel_on_company_change,
         )
 

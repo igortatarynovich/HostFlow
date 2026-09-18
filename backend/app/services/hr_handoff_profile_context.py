@@ -7,7 +7,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
+from backend.app.modules.boundary.public.models import CandidateHandoffSnapshot
 from backend.app.services.hr_profile_address import coerce_address_dict, promote_address_fields
 from backend.app.services.hr_recruitment_transfer import (
     flatten_recruitment_candidate_fields,
@@ -32,7 +32,7 @@ def build_handoff_profile_namespace(payload: dict[str, Any] | None) -> dict[str,
     """
     if not isinstance(payload, dict):
         return {}
-    from backend.app.reference.ready_for_employment import is_ready_for_employment_manifest
+    from backend.app.modules.boundary.public.ready import is_ready_for_employment_manifest
 
     # RFE manifests are handled by live Person + why_ready; do not project currents from payload.
     if is_ready_for_employment_manifest(payload):
@@ -159,7 +159,7 @@ async def _load_live_candidate_fields(
     cid = str(candidate_id or "").strip()
     if not cid:
         return None, None, {}
-    from backend.app.models.candidate import Candidate
+    from backend.app.modules.recruitment.public.models import Candidate
 
     cand = await db.get(Candidate, cid)
     if not cand:
@@ -218,7 +218,7 @@ async def load_handoff_profile_namespace(
     candidate_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """RSO-2E: current identity from live Person; Why Ready / as-of from manifest."""
-    from backend.app.models.candidate_handoff import CandidateHandoff
+    from backend.app.modules.boundary.public.models import CandidateHandoff
     from backend.app.services.hr_handoff_read_model import (
         apply_live_person_to_profile_namespace,
         build_why_ready_from_manifest,
@@ -251,7 +251,7 @@ async def load_handoff_profile_namespace(
     )
     # Prefer vacancy/employer from live candidate when available.
     if candidate_id:
-        from backend.app.models.candidate import Candidate
+        from backend.app.modules.recruitment.public.models import Candidate
 
         cand_row = await db.get(Candidate, str(candidate_id).strip())
         if cand_row:

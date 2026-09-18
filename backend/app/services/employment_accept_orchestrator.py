@@ -14,7 +14,7 @@ from typing import Any, Mapping, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
-from backend.app.models.candidate_handoff import CandidateHandoff
+from backend.app.modules.boundary.public.models import CandidateHandoff
 from backend.app.models.lead import Lead
 from backend.app.reference.employment_accept_policy import (
     DECISION_AUTO_ACCEPT,
@@ -22,7 +22,7 @@ from backend.app.reference.employment_accept_policy import (
     POLICY_ID,
     evaluate_employment_accept_policy_v1,
 )
-from backend.app.reference.ready_for_employment import (
+from backend.app.modules.boundary.public.ready import (
     CONTRACT_ID as RFE_CONTRACT_ID,
     is_valid_ready_for_employment_package_v1,
 )
@@ -65,8 +65,8 @@ async def resolve_ready_for_employment_package(
     # RSO-2B: CandidateHandoffSnapshot.payload is the boundary manifest when contract_id matches.
     from sqlalchemy import select
 
-    from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
-    from backend.app.reference.ready_for_employment import is_ready_for_employment_manifest
+    from backend.app.modules.boundary.public.models import CandidateHandoffSnapshot
+    from backend.app.modules.boundary.public.ready import is_ready_for_employment_manifest
 
     snap = (
         await db.execute(

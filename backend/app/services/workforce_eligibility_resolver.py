@@ -7,10 +7,10 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
-from backend.app.models.document import Document
+from backend.app.modules.recruitment.public.models import Candidate
+from backend.app.modules.documents.public.models import Document
 from backend.app.models.workforce_employee import WorkforceEmployee
-from backend.app.services.document_expiry_engine import (
+from backend.app.modules.documents.public.evidence import (
     aggregate_document_expiry_states,
     evaluate_document_expiry,
     owner_expiry_aggregate_to_dict,

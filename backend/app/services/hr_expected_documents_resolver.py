@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.document_policy import DocumentPolicy, RequirementLevel
 from backend.app.models.ref_document_type import RefDocumentType, RefDocumentTypeI18n, RefDocumentTypeVersion
-from backend.app.services.document_applicability_resolver import (
+from backend.app.modules.documents.public.evidence import (
     DocumentApplicabilityContext,
     DocumentApplicabilityResolver,
 )

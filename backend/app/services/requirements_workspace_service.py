@@ -19,7 +19,7 @@ from backend.app.services.candidate_evidence_service import build_requirements_c
 from backend.app.services.operational_requirements_service import (
     evaluate_operational_requirements_for_candidate,
 )
-from backend.app.services.recruitment_handoff_write_guard import (
+from backend.app.modules.recruitment.public.write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
     can_override_recruitment_handoff_lock,
     is_recruitment_recruiter_write_locked_by_handoff,

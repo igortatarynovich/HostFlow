@@ -10,8 +10,8 @@ from typing import Any, Mapping
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.modules.boundary.public.models import CandidateHandoff
+from backend.app.modules.workforce.public.models import WorkforceEmployee
 from backend.app.reference.employment_start_allowed import (
     POLICY_ID,
     apply_employment_start_allowed_v1,
@@ -29,7 +29,7 @@ from backend.app.services.employment_start_allowed_exceptions import (
     list_active_exceptions,
     revoke_exception,
 )
-from backend.app.services import workforce_employees as we_svc
+from backend.app.modules.workforce.public import employees as we_svc
 
 
 class EmploymentStartAllowedHostError(Exception):
@@ -66,7 +66,7 @@ def _doc_mapping(doc: Any) -> dict[str, Any]:
 
 
 def _pick_doc(docs: list[dict[str, Any]], *type_tokens: str) -> dict[str, Any] | None:
-    from backend.app.services.document_type_canonical_bridge import (
+    from backend.app.modules.documents.public.types import (
         document_storage_type_matches,
     )
 
@@ -149,7 +149,7 @@ async def _load_evidence_views(
     tenant_id: str,
     candidate_id: str,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
-    from backend.app.services.document_hub_delivery_contract import (
+    from backend.app.modules.documents.public.evidence import (
         list_candidate_documents_via_contract,
     )
 

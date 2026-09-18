@@ -14,11 +14,11 @@ from typing import Any, Dict, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.api.v1.candidates.service import create_candidate_full
+from backend.app.modules.recruitment.public.candidate import create_candidate_full
 from backend.app.core.audit_events import AuditEntityType
 from backend.app.models import Candidate, Lead, RecruitmentApplication
 from backend.app.services.audit import log_audit_event
-from backend.app.services.recruitment_application_service import (
+from backend.app.modules.recruitment.public.application import (
     ensure_recruitment_application_for_lead_intent,
 )
 

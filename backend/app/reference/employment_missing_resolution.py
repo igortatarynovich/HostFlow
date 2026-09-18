@@ -26,7 +26,7 @@ from backend.app.reference.employment_accept_policy import (
     PACKAGE_AUTHORITATIVE_FIELD_CODES,
     assert_employment_missing_reuses_package,
 )
-from backend.app.reference.ready_for_employment import ACCEPTANCE_GATE_IDS
+from backend.app.modules.boundary.public.ready import ACCEPTANCE_GATE_IDS
 
 POLICY_ID: Final[str] = "employment_missing_resolution.v1"
 

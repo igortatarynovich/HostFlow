@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_MUTATE_ROLES
 from backend.app.auth.trust_roles import is_hr_workspace_actor
 from backend.app.constants.stages import TERMINAL_STATUSES
-from backend.app.models.candidate_handoff import CandidateHandoff
+from backend.app.modules.boundary.public.models import CandidateHandoff
 from backend.app.models.recruitment_application import RecruitmentApplication
 
 _LOCK_HANDOFF_DESTINATIONS = ("internal_hr", "client_portal", "client_account")

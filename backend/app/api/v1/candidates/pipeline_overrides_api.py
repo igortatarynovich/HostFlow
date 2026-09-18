@@ -26,7 +26,7 @@ from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services.audit import log_audit_event
 from backend.app.services.tenant_visibility import get_tenant_visibility
-from backend.app.services.handoff import is_client_tenant_for_list
+from backend.app.modules.boundary.public.handoff import is_client_tenant_for_list
 
 router = APIRouter()
 

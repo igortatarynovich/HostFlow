@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from typing import Any, Optional
 
-from backend.app.document_hub.document_data_contract import DocumentDataContract
+from backend.app.modules.documents.public.evidence import DocumentDataContract
 from backend.app.requirement_rules.evaluation.alternative_matcher import match_alternative
 from backend.app.requirement_rules.evaluation.fingerprint import (
     EvaluationDocumentFact,

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from backend.app.document_runtime.evaluator import evaluate_document_runtime
-from backend.app.document_types.definitions import DOCUMENT_TYPE_DEFINITIONS
+from backend.app.modules.documents.public.evidence import evaluate_document_runtime
+from backend.app.modules.documents.public.types import DOCUMENT_TYPE_DEFINITIONS
 from backend.app.requirement_rules.slot_registry import get_slot_definition, slot_applies
 
 

@@ -26,7 +26,7 @@ from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_VIEW_ROLES
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
-from backend.app.services.handoff import is_client_tenant_for_list
+from backend.app.modules.boundary.public.handoff import is_client_tenant_for_list
 from backend.app.services.next_action import NextActionDTO, compute_candidate_next_action
 from sqlalchemy import select
 

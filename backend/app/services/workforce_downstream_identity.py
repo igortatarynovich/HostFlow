@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.services.employment_identity_read_adapter import (
+from backend.app.modules.employment.public.identity import (
     CONSUMER_CLIENT_FORM,
     CONSUMER_CONTRACT_GENERATION,
     CONSUMER_EXPORT,

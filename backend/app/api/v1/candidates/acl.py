@@ -23,7 +23,7 @@ from backend.app.models.vacancy import Vacancy
 from backend.app.models.user import User, Role as UserRole
 from backend.app.services.tenant_visibility import get_tenant_visibility
 from backend.app.services.recruitment_handoff_write_guard import agency_candidate_has_internal_hr_handoff_lane
-from backend.app.services.handoff import is_client_tenant_for_list
+from backend.app.modules.boundary.public.handoff import is_client_tenant_for_list
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause
 
 

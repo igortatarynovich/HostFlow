@@ -35,7 +35,7 @@ from backend.app.services.own_company_doc_scope import (
     ensure_document_own_company_matches,
     resolved_document_own_company_id,
 )
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.models.document import Document
 from backend.app.models.enums import (
     DocumentKind,
@@ -47,14 +47,14 @@ from backend.app.services.extractors import auto_fill_from_file
 from backend.app.services import billing_restrictions, candidate_notifications
 from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
 from backend.app.services import reminders as reminders_service
-from backend.app.api.v1.candidates.acl import ensure_candidate_access
-from backend.app.services.handoff import (
+from backend.app.modules.recruitment.public.access import ensure_candidate_access
+from backend.app.modules.boundary.public.handoff import (
     is_client_tenant,
     has_pending_handoff_for_client,
     client_has_accepted_handoff,
     can_client_edit,
 )
-from backend.app.services.recruitment_handoff_write_guard import (
+from backend.app.modules.recruitment.public.write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
     can_override_recruitment_handoff_lock,
     agency_candidate_has_internal_hr_handoff_lane,

@@ -19,7 +19,7 @@ from backend.app.process_engine.legacy_mapping import (
     ensure_recruitment_funnel_stages_mapped,
     sync_funnel_stages_from_pipeline_config,
 )
-from backend.app.process_engine.manifests.hr import HR_MODULE, hr_module_manifest
+from backend.app.modules.employment.public.manifest import HR_MODULE, hr_module_manifest
 from backend.app.process_engine.manifests.recruitment import (
     DEFAULT_PIPELINE_CODE,
     DEFAULT_PROFILE_CODE,

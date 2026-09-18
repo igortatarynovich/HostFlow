@@ -15,7 +15,7 @@ from backend.app.models import (
     WorkforceEmployee,
     WorkforceEmployment,
 )
-from backend.app.services.workforce_downstream_identity import (
+from backend.app.modules.workforce.public.ops import (
     apply_trusted_identity_merge_variables,
     evaluate_contract_merge_identity,
 )

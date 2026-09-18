@@ -7,8 +7,8 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.document import Document
-from backend.app.services.document_type_runtime_resolver import DocumentTypeRuntimeResolver
+from backend.app.modules.documents.public.models import Document
+from backend.app.modules.documents.public.types import DocumentTypeRuntimeResolver
 
 # document_key (HR verification card) -> candidate Document.doc_type aliases
 DOC_KEY_CANDIDATE_TYPES: dict[str, frozenset[str]] = {

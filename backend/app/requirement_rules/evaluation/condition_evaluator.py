@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Optional
 
-from backend.app.document_hub.document_data_contract import DocumentDataContract
+from backend.app.modules.documents.public.evidence import DocumentDataContract
 from backend.app.requirement_rules.citizenship import citizenship_segment, normalize_country_code
 from backend.app.requirement_rules.evaluation.result_contract import (
     EvaluationReason,

@@ -28,7 +28,7 @@ from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.user import Role as UserRole
 from backend.app.models.user import User
 from backend.app.models.vacancy_recruiter import VacancyRecruiter
-from backend.app.services.handoff import is_client_tenant_for_list
+from backend.app.modules.boundary.public.handoff import is_client_tenant_for_list
 from backend.app.services.tenant_visibility import get_tenant_visibility
 
 router = APIRouter()

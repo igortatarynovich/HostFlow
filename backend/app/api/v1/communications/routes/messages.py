@@ -27,7 +27,7 @@ from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_o
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.communication import CommunicationMessage
-from backend.app.modules.documents.storage import get_uploads_root, sanitize_filename
+from backend.app.modules.documents.public.storage import get_uploads_root, sanitize_filename
 from backend.app.services.communications_access import assert_comm_feature_access
 
 from .._helpers.access import (

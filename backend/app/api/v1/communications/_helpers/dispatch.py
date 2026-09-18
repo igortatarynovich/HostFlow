@@ -39,7 +39,7 @@ from backend.app.models.communication import (
 )
 from backend.app.models.tenant import Tenant
 from backend.app.models.user import User
-from backend.app.modules.documents.storage import get_uploads_root
+from backend.app.modules.documents.public.storage import get_uploads_root
 from backend.app.services.communications_email_oauth_send import (
     OAuthMailboxSendError,
     send_oauth_email_message,

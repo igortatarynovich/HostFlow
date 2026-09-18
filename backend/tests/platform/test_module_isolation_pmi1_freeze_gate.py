@@ -1,4 +1,4 @@
-"""PMI-1 gate: enforcement freeze ratchet over PMI-0 authority."""
+"""PMI-1 gate: enforcement freeze ratchet over PMI-0 authority (PMI-R shrink-aware)."""
 
 from __future__ import annotations
 
@@ -14,6 +14,9 @@ MAP_SCRIPT = REPO / "scripts" / "architecture" / "check_module_isolation_map.py"
 FREEZE = REPO / "scripts" / "architecture" / "module_isolation_pmi1_freeze.json"
 DEBT = REPO / "scripts" / "architecture" / "module_isolation_pmi1_debt.json"
 AUTHORITY = REPO / "scripts" / "architecture" / "module_isolation_pmi0_baseline.json"
+OWNERS_PMI1 = REPO / "scripts" / "architecture" / "module_isolation_owners_pmi1.json"
+
+PMI1_DEBT_COUNT = 2006
 
 
 def _run(script: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -30,19 +33,14 @@ def test_pmi1_freeze_lock_pins_844900d6_authority() -> None:
     lock = json.loads(FREEZE.read_text(encoding="utf-8"))
     assert lock["schema"] == "pmi1.v1"
     assert lock["authority_commit"] == "844900d6"
-    assert lock["authority_edge_count"] == 2006
+    assert lock["authority_edge_count"] == PMI1_DEBT_COUNT
     actual = hashlib.sha256(AUTHORITY.read_bytes()).hexdigest()
     assert actual == lock["authority_sha256"]
+    assert OWNERS_PMI1.is_file()
     debt = json.loads(DEBT.read_text(encoding="utf-8"))
     assert debt["schema"] == "pmi1.debt.v1"
-    assert len(debt["edges"]) == 2006
-    # Debt must not invent keys outside authority.
-    auth_keys = {
-        (e["from_file"], e["import"], e["to_file"])
-        for e in json.loads(AUTHORITY.read_text(encoding="utf-8"))["cross_owner_edges"]
-    }
-    debt_keys = {(e["from_file"], e["import"], e["to_file"]) for e in debt["edges"]}
-    assert debt_keys <= auth_keys
+    assert len(debt["edges"]) < PMI1_DEBT_COUNT
+    assert debt.get("ownership_reveal_admitted") is True
 
 
 def test_pmi1_freeze_gate_green() -> None:
@@ -53,7 +51,9 @@ def test_pmi1_freeze_gate_green() -> None:
     assert summary["new_leak_count"] == 0
     assert summary["debt_growth_count"] == 0
     assert summary["hidden_count"] == 0
-    assert summary["authority_edge_count"] == 2006
+    assert summary["pending_ownership_reveal_count"] == 0
+    assert summary["authority_edge_count"] == PMI1_DEBT_COUNT
+    assert summary["debt_edge_count"] < PMI1_DEBT_COUNT
 
 
 def test_pmi0_write_forbidden_after_freeze() -> None:
@@ -62,7 +62,7 @@ def test_pmi0_write_forbidden_after_freeze() -> None:
     assert "FORBIDDEN" in proc.stderr
 
 
-def test_pmi1_debt_growth_fails() -> None:
+def test_pmi1_invented_debt_growth_fails() -> None:
     original = DEBT.read_text(encoding="utf-8")
     try:
         debt = json.loads(original)
@@ -76,6 +76,6 @@ def test_pmi1_debt_growth_fails() -> None:
         DEBT.write_text(json.dumps(debt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         proc = _run(FREEZE_SCRIPT, [])
         assert proc.returncode != 0
-        assert "debt growth" in proc.stderr
+        assert "debt growth" in proc.stderr or "invented" in proc.stderr
     finally:
         DEBT.write_text(original, encoding="utf-8")

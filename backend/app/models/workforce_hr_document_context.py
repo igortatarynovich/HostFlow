@@ -13,7 +13,7 @@ from backend.app.db.base import Base
 from .mixins import TimestampMixin
 
 if TYPE_CHECKING:
-    from backend.app.models.document import Document
+    from backend.app.modules.documents.public.models import Document
     from backend.app.models.workforce_employee import WorkforceEmployee
 
 

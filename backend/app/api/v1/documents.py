@@ -26,7 +26,7 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.models.document import Document
 from backend.app.models.document_template import DocumentTemplate
 from backend.app.models.enums import (

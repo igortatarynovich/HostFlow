@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from backend.app.document_types.registry import is_canonical_code, normalize_input_doc_type
+from backend.app.modules.documents.public.types import is_canonical_code, normalize_input_doc_type
 from backend.app.requirement_rules.document_hub_bridge import (
     SOURCE_LAYER,
     map_requirement_evaluation_to_document_hub,

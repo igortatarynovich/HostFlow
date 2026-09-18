@@ -9,12 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.app.constants.stages_adapter import PIPELINE_SEQUENCE
-from backend.app.document_hub.document_data_contract import build_document_data_contract_from_hub_row
-from backend.app.document_types.schema_registry import validate_document_data
-from backend.app.document_types.registry import is_canonical_code, is_runtime_alias, normalize_input_doc_type
+from backend.app.modules.documents.public.evidence import build_document_data_contract_from_hub_row
+from backend.app.modules.documents.public.types import validate_document_data
+from backend.app.modules.documents.public.types import is_canonical_code, is_runtime_alias, normalize_input_doc_type
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_evidence import CandidateEvidence
-from backend.app.modules.documents.crud import list_candidate_documents
+from backend.app.modules.documents.public.crud import list_candidate_documents
 from backend.app.requirement_rules.evaluation.candidate_bridge import evaluate_candidate_requirements_v2
 from backend.app.requirement_rules.evaluation.result_contract import RequirementEvaluationStatus
 from backend.app.requirement_rules.migration.classifier import apply_classification_to_audit
@@ -35,7 +35,7 @@ from backend.app.requirement_rules.migration.evidence_helpers import (
     is_standard_manual_evidence,
 )
 from backend.app.requirement_rules.requirement_policy_registry import get_requirement_policy
-from backend.app.services.document_type_version_assignment_resolver import (
+from backend.app.modules.documents.public.types import (
     DocumentTypeVersionAssignmentResolver,
     VersionAssignmentStatus,
 )

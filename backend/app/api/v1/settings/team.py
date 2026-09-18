@@ -602,7 +602,7 @@ async def get_transfer_policy_settings(
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     await ensure_user_can_access_tenant(db, ctx, tenant_id)
-    from backend.app.services.transfer_policy_resolver import resolve_tenant_transfer_policy_summary
+    from backend.app.modules.recruitment.public.ready import resolve_tenant_transfer_policy_summary
 
     return await resolve_tenant_transfer_policy_summary(db, tenant_id=tenant_id)
 

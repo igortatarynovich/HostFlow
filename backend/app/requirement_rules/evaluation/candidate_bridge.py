@@ -7,12 +7,12 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.document_hub.document_data_contract import (
+from backend.app.modules.documents.public.evidence import (
     DocumentDataContract,
     build_document_data_contract_from_hub_row,
 )
 from backend.app.models.candidate import Candidate
-from backend.app.modules.documents.crud import list_candidate_documents
+from backend.app.modules.documents.public.crud import list_candidate_documents
 from backend.app.requirement_rules.evaluation.service import (
     RequirementEvaluationRunInput,
     evaluate_requirements,

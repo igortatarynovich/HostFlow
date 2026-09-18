@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from backend.app.document_hub.document_data_contract import DocumentDataContract
+from backend.app.modules.documents.public.evidence import DocumentDataContract
 from backend.app.requirement_rules.evaluation.document_matcher import match_document_alternative
 from backend.app.requirement_rules.evaluation.match_types import AlternativeMatchOutcome
 from backend.app.requirement_rules.evaluation.person_fact_matcher import match_person_fact_alternative

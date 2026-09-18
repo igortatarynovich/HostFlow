@@ -13,7 +13,7 @@ from backend.app.core.settings import settings
 from backend.app.models.communication import (
     CommunicationChannelAccount,
 )
-from backend.app.models.document import Document
+from backend.app.modules.documents.public.models import Document
 from backend.app.models.vacancy import Vacancy
 
 from ..candidate_lookup import (

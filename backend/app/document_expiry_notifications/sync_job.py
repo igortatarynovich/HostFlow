@@ -12,7 +12,7 @@ from backend.app.document_expiry_notifications.event_registry import (
     empty_sync_summary,
     sync_document_expiry_events_with_summary,
 )
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.services.document_hub_delivery_contract import list_candidate_documents_via_contract
 from backend.app.services.document_runtime_delivery_contract import enrich_documents_via_contract
 

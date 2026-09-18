@@ -9,8 +9,8 @@ from uuid import uuid4
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
-from backend.app.models.vacancy import Vacancy
+from backend.app.modules.recruitment.public.models import Candidate
+from backend.app.modules.recruitment.public.models import Vacancy
 from backend.app.models.workforce_employment import WorkforceEmployment
 from backend.app.models.workforce_onboarding_task import WorkforceOnboardingTask
 from backend.app.models.workforce_payroll_profile import WorkforcePayrollProfile
@@ -25,11 +25,11 @@ from backend.app.services.workforce_work_eligibility_payments import list_paymen
 from backend.app.models.workforce_absence import WorkforceAbsence
 from backend.app.models.workforce_compliance_state import WorkforceComplianceState
 from backend.app.models.workforce_employee import WorkforceEmployee
-from backend.app.services.hr_recruitment_transfer import (
+from backend.app.modules.employment.public.transfer import (
     enrich_snapshot_experience,
     flatten_recruitment_candidate_fields,
 )
-from backend.app.services.hr_profile_address import promote_address_fields
+from backend.app.modules.employment.public.review import promote_address_fields
 from backend.app.models.workforce_hr_document_context import WorkforceHrDocumentContext
 from backend.app.models.workforce_insurance_profile import WorkforceInsuranceProfile
 from backend.app.models.workforce_leave_request import WorkforceLeaveRequest
@@ -725,7 +725,7 @@ async def create_employee(
     company_scope = str(company_id or own_company_id or "").strip() or None
     meta_out = dict(meta or {})
     if company_scope:
-        from backend.app.services.hr_employee_funnel_assignment import (
+        from backend.app.modules.employment.public.funnel import (
             assign_hr_employee_pipeline_on_create,
         )
 
@@ -794,7 +794,7 @@ async def _apply_recruitment_handoff_pipeline_meta(
     company_id = str(candidate.company_id or candidate.own_company_id or "").strip()
     if not company_id:
         return employee_meta
-    from backend.app.services.hr_employee_funnel_assignment import (
+    from backend.app.modules.employment.public.funnel import (
         merge_recruitment_handoff_pipeline_meta,
     )
 

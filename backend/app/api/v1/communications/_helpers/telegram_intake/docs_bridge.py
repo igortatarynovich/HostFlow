@@ -14,12 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.settings import settings
 from backend.app.models.candidate import Candidate
 from backend.app.services.candidate_notifications import get_document_display_name
-from backend.app.services.document_hub_delivery_contract import (
+from backend.app.modules.documents.public.evidence import (
     compute_owner_summary_via_contract,
     ensure_ruleset_seed_via_contract,
     list_candidate_documents_via_contract,
 )
-from backend.app.services.document_ruleset import load_default_ruleset
+from backend.app.modules.documents.public.evidence import load_default_ruleset
 from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 
 from ..candidate_lookup import (

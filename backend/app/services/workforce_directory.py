@@ -14,13 +14,13 @@ from backend.app.auth.deps import UserCtx
 from backend.app.models.company import Company
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.user import User
-from backend.app.models.vacancy import Vacancy
+from backend.app.modules.recruitment.public.models import Vacancy
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_employment import WorkforceEmployment
 from backend.app.models.workforce_hr_review import WorkforceHrReview
-from backend.app.services.hr_documents_queue import list_hr_documents_expiring, list_hr_documents_missing
-from backend.app.services.hr_inbox import _document_verification_counts_by_review
-from backend.app.services.hr_operational_risk import list_operational_risk_items
+from backend.app.modules.employment.public.review import list_hr_documents_expiring, list_hr_documents_missing
+from backend.app.modules.employment.public.review import document_verification_counts_by_review
+from backend.app.modules.employment.public.review import list_operational_risk_items
 
 _logger = logging.getLogger(__name__)
 
@@ -310,7 +310,7 @@ async def list_employees_directory(
             if rev.employee_id:
                 reviews_by_emp[str(rev.employee_id)] = rev
     review_ids = [str(r.id) for r in reviews_by_emp.values() if r.id]
-    doc_counts = await _document_verification_counts_by_review(db, tenant_id=tid, review_ids=review_ids)
+    doc_counts = await document_verification_counts_by_review(db, tenant_id=tid, review_ids=review_ids)
 
     rows_out: list[dict[str, Any]] = []
     for e in emp_rows:

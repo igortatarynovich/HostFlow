@@ -8,11 +8,11 @@ from typing import Any, Sequence
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
-from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
-from backend.app.models.workforce_employee import WorkforceEmployee
-from backend.app.models.workforce_hr_review import (
+from backend.app.modules.recruitment.public.models import Candidate
+from backend.app.modules.boundary.public.models import CandidateHandoff
+from backend.app.modules.boundary.public.models import CandidateHandoffSnapshot
+from backend.app.modules.workforce.public.models import WorkforceEmployee
+from backend.app.modules.workforce.public.models import (
     HR_REVIEW_STATUS_APPROVED,
     HR_REVIEW_STATUS_REJECTED,
     HR_REVIEW_STATUS_RETURNED,
@@ -22,12 +22,12 @@ from backend.app.models.workforce_hr_review import (
     HR_REVIEW_STATUS_WAITING_WORK_PERMIT,
     WorkforceHrReview,
 )
-from backend.app.models.workforce_hr_document_verification import (
+from backend.app.modules.workforce.public.models import (
     VERIFICATION_TERMINAL_OK,
     WorkforceHrDocumentVerification,
 )
 from backend.app.services.tenant_hr_flags import delayed_hr_workforce_creation_enabled
-from backend.app.services.workforce_hr_review import ensure_hr_review_for_handoff
+from backend.app.modules.workforce.public.hr_review import ensure_hr_review_for_handoff
 
 # Operational queue codes for HR inbox (Stage B UX).
 QUEUE_AWAITING_PICKUP = "awaiting_hr_pickup"

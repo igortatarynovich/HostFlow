@@ -5,7 +5,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.candidate import Candidate
+from backend.app.modules.recruitment.public.models import Candidate
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.services.audit import log_activity
 from backend.app.services.workforce_eligibility_delivery_contract import (
