@@ -31,7 +31,7 @@
 | Track | Active work | Rule |
 |-------|-------------|------|
 | **Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. Not MA-4. Not External Intake. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
-| **Engineering** | **Active** = PEM-1 Policy Composition ([`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) — composition proof on proved kernel). [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) **PASS** 2026-09-18. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background | Second track |
+| **Engineering** | **Active** = [`pem1-policy-composition.md`](pem1-policy-composition.md) **PASS** 2026-09-18 (dual-boundary). Kernel **PASS**. No PEM-2 auto-opened. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background | Second track |
 | **Launch-ops** | **Parked** — OL-1 `PASS_WITH_CONSTRAINTS`; OL-2 queued until PMI **PASS** or a later amendment. Not Billing | Parked |
 
 ---
@@ -48,12 +48,12 @@ Reaching the program horizon of this section is **not** a release. Release-ready
 |------|--------|
 | **Active Product** | **[MA-3](mapping-authority.md)** after Mapping Resolution Gate **PASS**. UX contract Accepted; Mapping Operator Gate not PASS; feat `feat/mapping-authority-ma3-operator-gate` open. External Intake / Hiring / min HR remain queued. |
 | **Queued Product successor** | **MA-4** Consumer cutover after Mapping Operator Gate PASS — [brief](mapping-authority.md). Do not start MA-4 / External Intake / Forms Publish / Hiring in the MA-3 feat. Hiring is unlocked by RPM close, **not** scheduled. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
-| **Active Engineering** | **PEM-1 Policy Composition** — [`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md) (first production composition on proved kernel). Kernel [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) **PASS** 2026-09-18. |
-| **Queued Engineering after Active** | Classified policy/evidence remediations only as PEM-1 STOP items. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
+| **Active Engineering** | [`pem1-policy-composition.md`](pem1-policy-composition.md) **PASS** 2026-09-18. Spine Kernel + first production composition closed. No PEM-2 auto-scheduled. |
+| **Queued Engineering after Active** | PEM-N / classified STOP items only by amendment. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
 | **Active Launch-ops** | **Parked** this amendment (second slot occupied by Engineering PMI). OL-1 remains `PASS_WITH_CONSTRAINTS`. OL-2 stays queued, **not started** |
 | **Queued Launch-ops** | **OL-2** after PMI program **PASS** or a later amendment that parks Engineering — [brief](operate-and-launch.md) |
 | **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **RPM program = DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). **MA-1 Contract Gate = PASS**. **Mapping Resolution Gate = PASS**. **Product = MA-3** (not a Phase E leftover) |
-| **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1). **Recruitment/Employment spine:** Kernel **PASS**; Active = PEM-1 Policy Composition. |
+| **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1). **Spine:** Kernel **PASS** · PEM-1 **PASS**. |
 
 Historical markers (A2 active, Meta Intake next, Phase E active = E7 feat) live only in §8 History. They are **not** current execution instructions.
 
@@ -649,6 +649,8 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-09-18: **PEM-1 Policy Composition PASS** (dual-boundary Ready `driver` + Admit `PEM-1`; blocking + satisfied + composition-driven `next_action`; same identity → Started → Workforce). No unexpected STOP. PEM-2 not auto-opened. Product stays **MA-3**.
+- 2026-09-18: **PEM-1 Policy Composition OPEN** ([`pem1-policy-composition.md`](pem1-policy-composition.md)). Hard locks: not Kernel / not Walks 1–4; blocking + satisfied; classify before fix; Kernel immutability. Product stays **MA-3**.
 - 2026-09-18: **Baseline Full Spine Kernel Proof PASS** (single continuous new-person P1→P6 via `*.public.*`; public-contract continuity; empty Ready + empty Admit; P5→P6 Workforce public). Active Engineering → **PEM-1 Policy Composition**. No second kernel walk. Product stays **MA-3**.
 - 2026-09-17: **Dual zero-policy preflight PASS** (retry). P1 empty Ready via `recruitment.public.ready` + P4 empty Admit via `employment.public.commands` on minimal fixtures; no stuffing / bypass. Active Engineering → Baseline Kernel P1→P6 witness (authorized, not auto-started). PEM-1 not opened. Product stays **MA-3**.
 - 2026-09-17: **Public-contract Kernel preflight PASS** (retry). Recruitment→Employment→Boundary→Documents→Workforce via `*.public.*` only. Active Engineering → dual zero-policy preflight retry. P1→P6 / PEM-1 not opened. Product stays **MA-3**.

@@ -43,7 +43,7 @@ P1–P6 each have locked six fields (process contracts, not document lists)
 | PMI | Platform Modularization & Isolation Cutover | **OPEN** — [`platform-modularization-isolation-cutover.md`](platform-modularization-isolation-cutover.md) |
 | 3c3 | Dual zero-policy preflight retry | **PASS** 2026-09-17 |
 | 3d | Baseline Kernel P1→P6 witness | **PASS** 2026-09-18 — [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md) |
-| 4 | PEM-1 Policy Composition proof | **OPEN** — Active Engineering ([`three-host-full-spine-gate-pem1.md`](three-host-full-spine-gate-pem1.md)) |
+| 4 | PEM-1 Policy Composition proof | **PASS** 2026-09-18 — [`pem1-policy-composition.md`](pem1-policy-composition.md) |
 | 5 | Classified fixes only | Ongoing — no auto-fix from inventory |
 
 **Corollary:** zero-requirement = property of composable policy engine, not a kernel special-case. `r5_required_set=∅` alone ≠ neutral Recruitment Ready.

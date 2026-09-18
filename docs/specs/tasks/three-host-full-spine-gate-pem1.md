@@ -314,6 +314,6 @@ Life path → Processes → Modules → Boundaries/I/O → Policies/rules inside
 ## Next
 
 1. **Kernel PASS 2026-09-18** — [`baseline-full-spine-kernel-proof.md`](baseline-full-spine-kernel-proof.md).  
-2. **PEM-1 Policy Composition** is now **OPEN / Active Engineering** — first production composition (driver Recruitment + admit Contract/Medical/BHP) on the proved kernel. Walks 1–4 here remain **historical composition evidence**, not Kernel criteria.  
-3. Do **not** reopen Kernel “for confidence.” Classified STOP items only.  
-4. Full Spine **kernel** claim is met by the baseline proof; this file stays the PEM-1 composition artifact (NOT kernel re-stamp).
+2. **Active PEM-1 composition proof** — [`pem1-policy-composition.md`](pem1-policy-composition.md) (**OPEN**). This file’s Walks 1–4 remain **historical evidence only** — do **not** continue them.  
+3. Do **not** reopen Kernel “for confidence.” Classified STOP items only via the PEM-1 brief.  
+4. Full Spine **kernel** claim is met by the baseline proof; PEM-1 is a separate composition stamp.

@@ -161,7 +161,7 @@ PMI-X **PASS** → public-contract preflight **PASS** → Ready composition sepa
 
 ## Next
 
-1. Open **PEM-1 Policy Composition** proof on this proved kernel.  
+1. **PEM-1 Policy Composition** — [`pem1-policy-composition.md`](pem1-policy-composition.md) (**PASS** 2026-09-18).  
 2. Walks 1–4 remain historical evidence only.  
 3. Do **not** re-run Kernel “for confidence.”
 

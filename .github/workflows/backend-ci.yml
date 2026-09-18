@@ -123,6 +123,7 @@ jobs:
       dual_zero: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dual_zero == 'true' }}
       kernel_public_preflight: ${{ github.event_name != 'pull_request' || steps.filter.outputs.kernel_public_preflight == 'true' }}
       kernel_spine_proof: ${{ github.event_name != 'pull_request' || steps.filter.outputs.kernel_spine_proof == 'true' }}
+      pem1_composition: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pem1_composition == 'true' }}
       pmi0: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi0 == 'true' }}
       pmi1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi1 == 'true' }}
       pmi_r: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi_r == 'true' }}
@@ -478,6 +479,14 @@ jobs:
               - 'backend/app/modules/employment/public/commands.py'
               - 'backend/app/modules/boundary/public/ready.py'
               - 'backend/app/modules/workforce/public/started.py'
+              - 'docs/specs/architecture/ADR-042-spine-policy-separation.md'
+            pem1_composition:
+              - 'backend/tests/platform/test_pem1_policy_composition_gate.py'
+              - 'docs/specs/tasks/pem1-policy-composition.md'
+              - 'backend/app/modules/recruitment/public/ready.py'
+              - 'backend/app/modules/employment/public/commands.py'
+              - 'backend/app/reference/employment_start_allowed.py'
+              - 'backend/app/reference/recruitment_ready_policy.py'
               - 'docs/specs/architecture/ADR-042-spine-policy-separation.md'
             pmi0:
               - 'scripts/architecture/check_module_isolation_map.py'
@@ -1463,6 +1472,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_baseline_full_spine_kernel_proof_gate.py') != ''
         with:
           tests: tests/platform/test_baseline_full_spine_kernel_proof_gate.py
+
+  pem1-policy-composition-gate:
+    name: PEM-1 Policy Composition Gate
+    needs: changes
+    if: needs.changes.outputs.pem1_composition == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when PEM-1 composition gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_pem1_policy_composition_gate.py') == ''
+        run: echo "PEM-1 Policy Composition gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_pem1_policy_composition_gate.py') != ''
+        with:
+          tests: tests/platform/test_pem1_policy_composition_gate.py
 
   employment-start-allowed-mint-cutover-gate:
     name: Employment Start Allowed Mint Cutover Gate
