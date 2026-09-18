@@ -13,7 +13,7 @@
 
 - **Внутренний код плана** (`plan_code`): `starter`, `team`, `pro`, `enterprise` (TODO 2.1.C). Используется в `TenantLicense.plan`, в Stripe metadata, в проверках кода.
 - **Маркетинговое имя:** `Solo`, `Team`, `Business`, `Enterprise`. Только в UI и лендинге.
-- **Trial:** мета-статус `subscription.status='trial'` или `TenantLicense.plan='trial'`. Фичи — уровень Team (включая Meta OAuth); объём — SSOT trial-капы (50 лидов / 20 conversion / 2 portal shares / 5 automation runs), не Solo paywall. Часы trial на self-service стартуют **только** на ADR-041 complete (создание Tenant + license), не на verification-link и не на `SignupIntent`.
+- **Trial:** мета-статус `subscription.status='trial'` или `TenantLicense.plan='trial'`. Фичи и объём — уровень Team (включая Meta OAuth и Team license/lead/portal caps). Не Solo paywall и не 50-lead sandbox. Часы trial на self-service стартуют **только** на ADR-041 complete (создание Tenant + license), не на verification-link и не на `SignupIntent`.
 
 ---
 
@@ -104,7 +104,7 @@
 
 | Состояние | Что можно | Что нельзя | Where enforced |
 |-----------|-----------|------------|----------------|
-| **Trial** (`subscription.status='trial'` или `plan='trial'`, 30 дней; старт = tenant provision / ADR-041 complete) | Функционал уровня Team с trial-капами по SSOT; полный продукт, не client-handoff view. Meta OAuth / Facebook Login включены. | — | `plan_feature_gates.tenant_allows_team_tier_features`, `lead_quota` (trial 50), `billing_restrictions` |
+| **Trial** (`subscription.status='trial'` или `plan='trial'`, 30 дней; старт = tenant provision / ADR-041 complete) | Функционал и объём уровня Team; полный продукт, не client-handoff view. Meta OAuth / Facebook Login включены. Signup license = `TRIAL_LICENSE_LIMITS` (Team). | — | `plan_feature_gates.tenant_allows_team_tier_features`, `lead_quota` (trial = Team 1500), `billing_restrictions` |
 | **Active** | По текущему `plan_code` | — | — |
 | **Past_due** (Stripe) | Чтение, экспорт, оплата; завершение текущих задач; закрытие существующих кандидатов (2.1.G v1) | Прочие side-effect write (создание лидов, исходящие comms, automation, non-terminal candidate edits) | `billing_restrictions.ensure_billing_*_allowed` + action-level allowlist |
 | **Canceled / Expired** | Только просмотр истории + оплата | Любые мутации, любые исходящие | `billing_restrictions` + `useLicenseStatus` баннер |

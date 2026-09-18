@@ -34,6 +34,7 @@ from backend.app.models.user import User
 from backend.app.schemas.user import UserDetailOut, UserInviteAccept
 from backend.app.services.system_email import send_system_email
 from backend.app.services import users as users_service
+from backend.app.api.v1.settings.billing._helpers.plans import TRIAL_LICENSE_LIMITS
 from backend.app.services.auth import (
     issue_refresh_token,
     lookup_active_refresh_token,
@@ -255,17 +256,8 @@ async def auth_register(payload: RegisterIn, request: Request) -> RegisterOut:
             tenant_id=tenant.id,
             plan="trial",
             expires_at=trial_expires_at,
-            max_recruiters=1,
-            max_supervisors=1,
-            max_client_managers=0,
-            max_viewers=0,
-            max_storage_gb=5,
-            max_companies=1,
-            max_candidates_active=100,
-            max_vacancies_active=5,
-            max_documents=500,
-            max_public_portal_links=1,
             auto_renew=False,
+            **TRIAL_LICENSE_LIMITS,
         )
         session.add(license_entry)
 
