@@ -1,0 +1,4 @@
+# PMI-D documents isolation allowlist (shrink-only).
+# Format: owner|from_file::import::to_file
+# New rows FORBIDDEN after PMI-D PASS.
+# Documents publishes evidence facts only — not Ready/Admit/Workforce lifecycle.
