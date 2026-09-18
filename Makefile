@@ -172,6 +172,34 @@ module-isolation-freeze:
 module-isolation-freeze-shrink:
 	python3 scripts/architecture/check_module_isolation_freeze.py --shrink-debt
 
+.PHONY: module-isolation-recruitment
+module-isolation-recruitment:
+	python3 scripts/architecture/check_recruitment_isolation.py
+
+.PHONY: module-isolation-boundary
+module-isolation-boundary:
+	python3 scripts/architecture/check_boundary_isolation.py
+
+.PHONY: module-isolation-employment
+module-isolation-employment:
+	python3 scripts/architecture/check_employment_isolation.py
+
+.PHONY: module-isolation-documents
+module-isolation-documents:
+	python3 scripts/architecture/check_documents_isolation.py
+
+.PHONY: module-isolation-workforce
+module-isolation-workforce:
+	python3 scripts/architecture/check_workforce_isolation.py
+
+.PHONY: module-isolation-ui
+module-isolation-ui:
+	python3 scripts/architecture/check_ui_isolation.py
+
+.PHONY: module-isolation-pmi-x
+module-isolation-pmi-x:
+	python3 scripts/architecture/check_pmi_x_program_exit.py
+
 .PHONY: docs-lint-strict
 docs-lint-strict:
 	python3 scripts/docs/check_doc_governance.py --strict --check-orphans

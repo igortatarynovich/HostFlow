@@ -119,9 +119,19 @@ jobs:
       esa3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa3 == 'true' }}
       esa4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa4 == 'true' }}
       admit_ruleset: ${{ github.event_name != 'pull_request' || steps.filter.outputs.admit_ruleset == 'true' }}
+      ready_composition: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ready_composition == 'true' }}
       dual_zero: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dual_zero == 'true' }}
+      kernel_public_preflight: ${{ github.event_name != 'pull_request' || steps.filter.outputs.kernel_public_preflight == 'true' }}
+      kernel_spine_proof: ${{ github.event_name != 'pull_request' || steps.filter.outputs.kernel_spine_proof == 'true' }}
       pmi0: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi0 == 'true' }}
       pmi1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi1 == 'true' }}
+      pmi_r: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi_r == 'true' }}
+      pmi_b: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi_b == 'true' }}
+      pmi_e: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi_e == 'true' }}
+      pmi_d: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi_d == 'true' }}
+      pmi_w: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi_w == 'true' }}
+      pmi_ui: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi_ui == 'true' }}
+      pmi_x: ${{ github.event_name != 'pull_request' || steps.filter.outputs.pmi_x == 'true' }}
       dqc_bridge: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dqc_bridge == 'true' }}
       doc_req_alias: ${{ github.event_name != 'pull_request' || steps.filter.outputs.doc_req_alias == 'true' }}
       start_allowed_hub: ${{ github.event_name != 'pull_request' || steps.filter.outputs.start_allowed_hub == 'true' }}
@@ -438,6 +448,14 @@ jobs:
               - 'docs/specs/tasks/admit-policy-ruleset-separation.md'
               - 'docs/specs/architecture/employment-start-allowed.md'
               - 'docs/specs/architecture/ADR-042-spine-policy-separation.md'
+            ready_composition:
+              - 'backend/app/reference/recruitment_ready_policy.py'
+              - 'backend/app/services/transfer_policy_resolver.py'
+              - 'backend/app/modules/recruitment/public/ready.py'
+              - 'backend/tests/platform/test_recruitment_ready_policy_composition_separation_gate.py'
+              - 'docs/specs/tasks/recruitment-ready-policy-composition-separation.md'
+              - 'docs/specs/workflows/transfer-policy.md'
+              - 'docs/specs/architecture/ADR-042-spine-policy-separation.md'
             dual_zero:
               - 'backend/tests/platform/test_dual_zero_policy_preflight_gate.py'
               - 'docs/specs/tasks/dual-zero-policy-preflight.md'
@@ -445,6 +463,21 @@ jobs:
               - 'backend/app/services/transfer_policy_resolver.py'
               - 'backend/app/services/recruitment_package_readiness.py'
               - 'backend/app/reference/requirement_policy_consumer_parity.py'
+              - 'docs/specs/architecture/ADR-042-spine-policy-separation.md'
+            kernel_public_preflight:
+              - 'backend/tests/platform/test_post_pmi_kernel_public_contract_preflight_gate.py'
+              - 'docs/specs/tasks/post-pmi-kernel-public-contract-preflight.md'
+              - 'docs/specs/tasks/recruitment-ready-policy-composition-separation.md'
+              - 'backend/app/modules/recruitment/public/ready.py'
+              - 'backend/app/services/transfer_policy_resolver.py'
+              - 'docs/specs/architecture/ADR-042-spine-policy-separation.md'
+            kernel_spine_proof:
+              - 'backend/tests/platform/test_baseline_full_spine_kernel_proof_gate.py'
+              - 'docs/specs/tasks/baseline-full-spine-kernel-proof.md'
+              - 'backend/app/modules/recruitment/public/ready.py'
+              - 'backend/app/modules/employment/public/commands.py'
+              - 'backend/app/modules/boundary/public/ready.py'
+              - 'backend/app/modules/workforce/public/started.py'
               - 'docs/specs/architecture/ADR-042-spine-policy-separation.md'
             pmi0:
               - 'scripts/architecture/check_module_isolation_map.py'
@@ -459,7 +492,70 @@ jobs:
               - 'scripts/architecture/module_isolation_pmi1_debt.json'
               - 'scripts/architecture/module_isolation_pmi0_baseline.json'
               - 'scripts/architecture/module_isolation_owners.json'
+              - 'scripts/architecture/module_isolation_owners_pmi1.json'
+              - 'scripts/architecture/module_isolation_public_contracts.json'
               - 'backend/tests/platform/test_module_isolation_pmi1_freeze_gate.py'
+              - 'docs/specs/tasks/platform-modularization-isolation-cutover.md'
+              - 'docs/specs/gates/platform-modularization-isolation-cutover-gate.md'
+            pmi_r:
+              - 'scripts/architecture/check_recruitment_isolation.py'
+              - 'scripts/architecture/recruitment_isolation_boundary_allowlist.txt'
+              - 'backend/app/modules/recruitment/public/**'
+              - 'backend/tests/platform/test_module_isolation_pmi_r_recruitment_gate.py'
+              - 'docs/modules/recruitment/module_isolation_card.md'
+              - 'docs/specs/tasks/pmi-r-recruitment-isolation-inventory.md'
+              - 'docs/specs/tasks/platform-modularization-isolation-cutover.md'
+              - 'docs/specs/gates/platform-modularization-isolation-cutover-gate.md'
+            pmi_b:
+              - 'scripts/architecture/check_boundary_isolation.py'
+              - 'scripts/architecture/boundary_isolation_allowlist.txt'
+              - 'backend/app/modules/boundary/public/**'
+              - 'backend/tests/platform/test_module_isolation_pmi_b_boundary_gate.py'
+              - 'docs/modules/boundary/module_isolation_card.md'
+              - 'docs/specs/tasks/pmi-b-boundary-isolation-inventory.md'
+              - 'docs/specs/tasks/platform-modularization-isolation-cutover.md'
+              - 'docs/specs/gates/platform-modularization-isolation-cutover-gate.md'
+            pmi_e:
+              - 'scripts/architecture/check_employment_isolation.py'
+              - 'scripts/architecture/employment_isolation_allowlist.txt'
+              - 'backend/app/modules/employment/public/**'
+              - 'backend/tests/platform/test_module_isolation_pmi_e_employment_gate.py'
+              - 'docs/modules/employment/module_isolation_card.md'
+              - 'docs/specs/tasks/pmi-e-employment-isolation-inventory.md'
+              - 'docs/specs/tasks/platform-modularization-isolation-cutover.md'
+              - 'docs/specs/gates/platform-modularization-isolation-cutover-gate.md'
+            pmi_d:
+              - 'scripts/architecture/check_documents_isolation.py'
+              - 'scripts/architecture/documents_isolation_allowlist.txt'
+              - 'backend/app/modules/documents/public/**'
+              - 'backend/tests/platform/test_module_isolation_pmi_d_documents_gate.py'
+              - 'docs/modules/documents/module_isolation_card.md'
+              - 'docs/specs/tasks/pmi-d-documents-isolation-inventory.md'
+              - 'docs/specs/tasks/platform-modularization-isolation-cutover.md'
+              - 'docs/specs/gates/platform-modularization-isolation-cutover-gate.md'
+            pmi_w:
+              - 'scripts/architecture/check_workforce_isolation.py'
+              - 'scripts/architecture/workforce_isolation_allowlist.txt'
+              - 'backend/app/modules/workforce/public/**'
+              - 'backend/tests/platform/test_module_isolation_pmi_w_workforce_gate.py'
+              - 'docs/modules/workforce/module_isolation_card.md'
+              - 'docs/specs/tasks/pmi-w-workforce-isolation-inventory.md'
+              - 'docs/specs/tasks/platform-modularization-isolation-cutover.md'
+              - 'docs/specs/gates/platform-modularization-isolation-cutover-gate.md'
+            pmi_ui:
+              - 'scripts/architecture/check_ui_isolation.py'
+              - 'scripts/architecture/ui_isolation_allowlist.txt'
+              - 'scripts/architecture/ui_primitive_authority.json'
+              - 'hostflow-frontend/src/platform/design-system/**'
+              - 'backend/tests/platform/test_module_isolation_pmi_ui_gate.py'
+              - 'docs/modules/ui/module_isolation_card.md'
+              - 'docs/specs/tasks/pmi-ui-isolation-inventory.md'
+              - 'docs/specs/tasks/platform-modularization-isolation-cutover.md'
+              - 'docs/specs/gates/platform-modularization-isolation-cutover-gate.md'
+            pmi_x:
+              - 'scripts/architecture/check_pmi_x_program_exit.py'
+              - 'backend/tests/platform/test_module_isolation_pmi_x_exit_gate.py'
+              - 'docs/specs/tasks/pmi-x-program-exit-inventory.md'
               - 'docs/specs/tasks/platform-modularization-isolation-cutover.md'
               - 'docs/specs/gates/platform-modularization-isolation-cutover-gate.md'
             esa2:
@@ -595,6 +691,20 @@ jobs:
         run: python3 scripts/architecture/check_module_isolation_map.py --check
       - name: PMI-1 module isolation enforcement freeze
         run: python3 scripts/architecture/check_module_isolation_freeze.py
+      - name: PMI-R recruitment isolation (public-only + allowlist)
+        run: python3 scripts/architecture/check_recruitment_isolation.py
+      - name: PMI-B boundary isolation (public-only + allowlist)
+        run: python3 scripts/architecture/check_boundary_isolation.py
+      - name: PMI-E employment isolation (public-only + allowlist)
+        run: python3 scripts/architecture/check_employment_isolation.py
+      - name: PMI-D documents isolation (public-only + allowlist)
+        run: python3 scripts/architecture/check_documents_isolation.py
+      - name: PMI-W workforce isolation (public-only + allowlist)
+        run: python3 scripts/architecture/check_workforce_isolation.py
+      - name: PMI-UI isolation
+        run: python3 scripts/architecture/check_ui_isolation.py
+      - name: PMI-X program exit (joint)
+        run: python3 scripts/architecture/check_pmi_x_program_exit.py
 
   alembic:
     name: alembic
@@ -1157,6 +1267,21 @@ jobs:
         with:
           tests: tests/platform/test_admit_policy_ruleset_separation_gate.py
 
+  recruitment-ready-policy-composition-separation-gate:
+    name: Recruitment Ready Policy Composition Separation Gate
+    needs: changes
+    if: needs.changes.outputs.ready_composition == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Ready composition separation gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_recruitment_ready_policy_composition_separation_gate.py') == ''
+        run: echo "Ready composition separation gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_recruitment_ready_policy_composition_separation_gate.py') != ''
+        with:
+          tests: tests/platform/test_recruitment_ready_policy_composition_separation_gate.py
+
   module-isolation-pmi0-map-gate:
     name: Module Isolation PMI-0 Map Gate
     needs: changes
@@ -1175,7 +1300,7 @@ jobs:
   module-isolation-pmi1-freeze-gate:
     name: Module Isolation PMI-1 Freeze Gate
     needs: changes
-    if: needs.changes.outputs.pmi1 == 'true' || needs.changes.outputs.pmi0 == 'true' || needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    if: needs.changes.outputs.pmi1 == 'true' || needs.changes.outputs.pmi0 == 'true' || needs.changes.outputs.pmi_r == 'true' || needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -1186,6 +1311,113 @@ jobs:
         if: hashFiles('backend/tests/platform/test_module_isolation_pmi1_freeze_gate.py') != ''
         with:
           tests: tests/platform/test_module_isolation_pmi1_freeze_gate.py
+
+  module-isolation-pmi-r-recruitment-gate:
+    name: Module Isolation PMI-R Recruitment Gate
+    needs: changes
+    if: needs.changes.outputs.pmi_r == 'true' || needs.changes.outputs.pmi1 == 'true' || needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when PMI-R recruitment gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_r_recruitment_gate.py') == ''
+        run: echo "PMI-R recruitment gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_r_recruitment_gate.py') != ''
+        with:
+          tests: tests/platform/test_module_isolation_pmi_r_recruitment_gate.py
+
+  module-isolation-pmi-b-boundary-gate:
+    name: Module Isolation PMI-B Boundary Gate
+    needs: changes
+    if: needs.changes.outputs.pmi_b == 'true' || needs.changes.outputs.pmi_r == 'true' || needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when PMI-B boundary gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_b_boundary_gate.py') == ''
+        run: echo "PMI-B boundary gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_b_boundary_gate.py') != ''
+        with:
+          tests: tests/platform/test_module_isolation_pmi_b_boundary_gate.py
+
+  module-isolation-pmi-e-employment-gate:
+    name: Module Isolation PMI-E Employment Gate
+    needs: changes
+    if: needs.changes.outputs.pmi_e == 'true' || needs.changes.outputs.pmi_b == 'true' || needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when PMI-E employment gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_e_employment_gate.py') == ''
+        run: echo "PMI-E employment gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_e_employment_gate.py') != ''
+        with:
+          tests: tests/platform/test_module_isolation_pmi_e_employment_gate.py
+
+  module-isolation-pmi-d-documents-gate:
+    name: Module Isolation PMI-D Documents Gate
+    needs: changes
+    if: needs.changes.outputs.pmi_d == 'true' || needs.changes.outputs.pmi_e == 'true' || needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when PMI-D documents gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_d_documents_gate.py') == ''
+        run: echo "PMI-D documents gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_d_documents_gate.py') != ''
+        with:
+          tests: tests/platform/test_module_isolation_pmi_d_documents_gate.py
+
+  module-isolation-pmi-w-workforce-gate:
+    name: Module Isolation PMI-W Workforce Gate
+    needs: changes
+    if: needs.changes.outputs.pmi_w == 'true' || needs.changes.outputs.pmi_d == 'true' || needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when PMI-W workforce gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_w_workforce_gate.py') == ''
+        run: echo "PMI-W workforce gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_w_workforce_gate.py') != ''
+        with:
+          tests: tests/platform/test_module_isolation_pmi_w_workforce_gate.py
+
+
+  module-isolation-pmi-ui-gate:
+    name: Module Isolation PMI-UI Gate
+    needs: changes
+    if: needs.changes.outputs.pmi_ui == 'true' || needs.changes.outputs.pmi_w == 'true' || needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when PMI-UI gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_ui_gate.py') == ''
+        run: echo "PMI-UI gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_ui_gate.py') != ''
+        with:
+          tests: tests/platform/test_module_isolation_pmi_ui_gate.py
+
+
+  module-isolation-pmi-x-exit-gate:
+    name: Module Isolation PMI-X Exit Gate
+    needs: changes
+    if: needs.changes.outputs.pmi_x == 'true' || needs.changes.outputs.pmi_ui == 'true' || needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when PMI-X exit gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_x_exit_gate.py') == ''
+        run: echo "PMI-X exit gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_module_isolation_pmi_x_exit_gate.py') != ''
+        with:
+          tests: tests/platform/test_module_isolation_pmi_x_exit_gate.py
 
   dual-zero-policy-preflight-gate:
     name: Dual Zero-Policy Preflight Gate
@@ -1201,6 +1433,36 @@ jobs:
         if: hashFiles('backend/tests/platform/test_dual_zero_policy_preflight_gate.py') != ''
         with:
           tests: tests/platform/test_dual_zero_policy_preflight_gate.py
+
+  post-pmi-kernel-public-contract-preflight-gate:
+    name: Post-PMI Kernel Public-Contract Preflight Gate
+    needs: changes
+    if: needs.changes.outputs.kernel_public_preflight == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when kernel public-contract preflight gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_post_pmi_kernel_public_contract_preflight_gate.py') == ''
+        run: echo "Kernel public-contract preflight gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_post_pmi_kernel_public_contract_preflight_gate.py') != ''
+        with:
+          tests: tests/platform/test_post_pmi_kernel_public_contract_preflight_gate.py
+
+  baseline-full-spine-kernel-proof-gate:
+    name: Baseline Full Spine Kernel Proof Gate
+    needs: changes
+    if: needs.changes.outputs.kernel_spine_proof == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when baseline kernel proof gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_baseline_full_spine_kernel_proof_gate.py') == ''
+        run: echo "Baseline Full Spine Kernel Proof gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_baseline_full_spine_kernel_proof_gate.py') != ''
+        with:
+          tests: tests/platform/test_baseline_full_spine_kernel_proof_gate.py
 
   employment-start-allowed-mint-cutover-gate:
     name: Employment Start Allowed Mint Cutover Gate

@@ -1,7 +1,7 @@
 # Platform Modularization & Isolation Cutover
 
-**Status:** **OPEN** (PMI-0 map **PASS**; PMI-1 freeze **PASS** 2026-09-16; Active Engineering waits for **PMI-R** start in its own PR)  
-**Layer:** L2 operating program — **not** an ADR · **not** Full Spine PASS · **not** Module Independence recertification  
+**Status:** **PASS** (PMI-0…**PMI-X PASS** 2026-09-16; program exit CLOSED)
+**Layer:** L2 operating program — **not** an ADR · **not** Full Spine PASS · **not** Module Independence recertification
 **Phase class:** platform  
 **Opened:** 2026-09-16  
 **Named gate:** [`platform-modularization-isolation-cutover-gate.md`](../gates/platform-modularization-isolation-cutover-gate.md)  
@@ -106,13 +106,13 @@ Not created here: Legalization, Posting, Compliance-as-domain, Billing, Fleet.
 ```text
 PMI-0  Fact map (code + imports + UNASSIGNED paths)     ← PASS 2026-09-16
 PMI-1  Enforcement freeze (new leaks illegal)           ← PASS 2026-09-16
-PMI-R  Recruitment → ISOLATED                           ← next (own PR)
-PMI-B  Boundary → ISOLATED
-PMI-E  Employment → ISOLATED
-PMI-D  Documents → ISOLATED
-PMI-W  Workforce → ISOLATED
-PMI-UI Design system v1 + forbid parallel primitives
-PMI-X  Program exit gate
+PMI-R  Recruitment → ISOLATED                           ← PASS 2026-09-16
+PMI-B  Boundary → ISOLATED                              ← PASS 2026-09-16
+PMI-E  Employment → ISOLATED                            ← PASS 2026-09-16
+PMI-D  Documents → ISOLATED                             ← PASS 2026-09-16
+PMI-W  Workforce → ISOLATED                             ← PASS 2026-09-16
+PMI-UI Design system v1 + forbid parallel primitives   ← PASS 2026-09-16
+PMI-X  Program exit                                      ← PASS 2026-09-16
 ```
 
 Unlock ≠ schedule. Do not start PMI-R in the PMI-0 PR. Do not start PMI-B before Recruitment ISOLATED. **PMI-UI** is not a component library drop: it locks platform primitives (layout, nav, entity card, status/verdict, actions, forms, evidence) **and** CI/architecture enforcement that **rejects new parallel primitives** where a platform primitive already exists. Module compositions consume those primitives. Without that forbid rule, backend isolation still leaves product reinvented on the frontend. ADR-011 remains the UI standard; the gap is **runtime kit + parallel-primitive enforcement** ([`PRIMITIVES_AUDIT.md`](../frontend/PRIMITIVES_AUDIT.md)).
@@ -144,7 +144,43 @@ Unlock ≠ schedule. Do not start PMI-R in the PMI-0 PR. Do not start PMI-B befo
 > Architectural debt may only shrink. New cross-module coupling is rejected.
 
 **PMI-1 PASS:** freeze checker green; authority sha matches `844900d6`; debt ⊆ authority; current ⊆ debt; no hide; no Ready/Kernel/policy work in the freeze PR.  
-**Next:** PMI-R Recruitment → ISOLATED (first real debt reduction + eight-row card).
+**PMI-X PASS.** Program exit CLOSED. **Ready is not auto-unfrozen.** Post-PMI cycle: public-contract Kernel preflight → classified fix only on STOP → dual zero-policy → P1→P6 → PEM-1. Preflight **STOP** 2026-09-17 (Recruitment). Active: [`recruitment-ready-policy-composition-separation.md`](recruitment-ready-policy-composition-separation.md).
+
+### PMI-R — Recruitment ISOLATED (PASS 2026-09-16)
+
+Eight-row card CLOSED. Published surface = `backend/app/modules/recruitment/public/`. Ready = Recruitment policy authority (parked rewrite). Debt **2006→1799**. CI: `check_recruitment_isolation.py` (new foreign→Recruitment internals FAIL; allowlist shrink-only).
+
+### PMI-B — Boundary ISOLATED (PASS 2026-09-16)
+
+Eight-row card CLOSED. Narrow charter: RFE package + handoff/trace only — not Ready, not Admit, not Documents, not Workforce. Published surface = `backend/app/modules/boundary/public/`. Named foreign→Boundary internals = **0**. Debt **1799→1746**. EXC-PMI-R-FUNNEL preserved for PMI-E. CI: `check_boundary_isolation.py`.
+
+### PMI-E — Employment ISOLATED (PASS 2026-09-16)
+
+Eight-row card CLOSED. Owns Formalize/Admit/Start; Admit rulesets + ESO-5 internals private; `employment.public.*` only. EXC-PMI-B-EMP closed; EXC-PMI-R-FUNNEL×6 closed (not renamed). EXC-PMI-B-DOC deferred to PMI-D. Debt **1746→1705**. CI: `check_employment_isolation.py`.
+
+### PMI-D — Documents ISOLATED (PASS 2026-09-16)
+
+Eight-row card CLOSED. Evidence facts only via `documents.public.*` — not Ready/Admit/Workforce lifecycle. EXC-PMI-B-DOC closed. DQC/Contract/BHP semantics not rewritten. Debt **1705→1612**. CI: `check_documents_isolation.py`.
+
+### PMI-W — Workforce ISOLATED (PASS 2026-09-16)
+
+Eight-row card CLOSED. Accepts Started Employee continuity via `workforce.public.*`; does not reconstruct Ready/RFE/Admit/evidence. Employment writes only through public. Debt **1612→1557**. Not Kernel witness. CI: `check_workforce_isolation.py`.
+
+### PMI-UI — Design system ISOLATED (PASS 2026-09-16)
+
+Four DoD levels CLOSED on spine surfaces. Authority via `platform/design-system` + `ui_primitive_authority.json`. Decision ownership prefers backend verdicts. UI debt allowlist **8** (shrink-only). Not a full frontend rewrite. CI: `check_ui_isolation.py`. Kernel remains parked.
+
+### PMI-X — Program exit (PASS 2026-09-16)
+
+Joint **verification only** (not remediation; **fixes nothing**). PASS is **HEAD-simultaneous**: historical PMI-R/B/E/D/W/UI stamps alone are insufficient — full suite green together on one revision. Five spine cards ISOLATED; B/E/D/W foreign internals = 0; Recruitment spine foreign internals = 0 (non-spine residual ≤63 shrink-only); backend debt **2006→1557 (−449)**; UI debt **8**; Ready/Kernel/PEM-1 not smuggled. **Ready is not auto-unfrozen.** Debt need not reach zero. Defect at exit → STOP + separate work item. CI: `check_pmi_x_program_exit.py`.
+
+Program boundary closed: `PMI-0 → PMI-1 → R → B → E → D → W → UI → PMI-X`.
+
+### After PMI-X (different proof cycle)
+
+Order: **Public-contract Kernel preflight** ([`post-pmi-kernel-public-contract-preflight.md`](post-pmi-kernel-public-contract-preflight.md)) → classified module-local fix **only if that preflight STOPs** → dual zero-policy PASS → new P1→P6 witness → PEM-1.
+
+**External chain (Recruitment):** `policy composition → recruitment.public.* → verdict / transition permission` (incl. zero-requirement). Symmetric for Boundary / Employment / Documents / Workforce via their `*.public.*`. Forbidden external probes include `recruitment_package`, `VERIFICATION_SLOT_DEFS`, `requirement_engine`, or any facade bypass. Outward = contracts/verdicts; inward = owner only after classified STOP. Old dual-preflight STOP remains a fact about the old runtime — not an auto-resume of Ready composition.
 
 ### PMI-0 — complete map (PASS criteria)
 
@@ -224,5 +260,12 @@ After **PASS**, Full Spine unparks as: each transition calls the owning module�
 ## История
 
 - **2026-09-16** — Program opened. Ready composition **PARKED**. Kernel remains blocked.
+- **2026-09-16** — PMI-X Program exit **PASS**: joint machine gate green; five ISOLATED + UI; debt 2006→1557; UI debt 8; spine public contracts enforced. Post-X = Kernel preflight on public contracts (not auto-resume pre-PMI plan).
+- **2026-09-16** — PMI-UI Design system **ISOLATED PASS**: four DoD levels; `platform/design-system`; UI debt **8**; `check_ui_isolation.py`. PMI-X queued. Ready/Kernel remain parked.
+- **2026-09-16** — PMI-W Workforce **ISOLATED PASS**: `workforce.public.*`; foreign internals = 0; Started Employee intake sealed; debt **1612→1557**; card `docs/modules/workforce/module_isolation_card.md`. PMI-UI queued. Ready/Kernel remain parked.
+- **2026-09-16** — PMI-D Documents **ISOLATED PASS**: `documents.public.*` evidence contracts; foreign internals = 0; EXC-PMI-B-DOC closed; debt **1705→1612**; card `docs/modules/documents/module_isolation_card.md`. PMI-W queued. Ready/Kernel remain parked.
+- **2026-09-16** — PMI-E Employment **ISOLATED PASS**: `employment.public.*`; foreign internals = 0; EXC-PMI-B-EMP + EXC-PMI-R-FUNNEL closed; debt **1746→1705**; EXC-PMI-B-DOC → PMI-D; card `docs/modules/employment/module_isolation_card.md`. PMI-D queued. Ready/Kernel remain parked.
+- **2026-09-16** — PMI-B Boundary **ISOLATED PASS**: `boundary.public.*` (`ready`/`handoff`/`models`/`emit`/`dto`); named foreign internals = 0; debt **1799→1746**; EXC-PMI-R-FUNNEL left for PMI-E; card `docs/modules/boundary/module_isolation_card.md`. PMI-E queued. Ready/Kernel remain parked.
+- **2026-09-16** — PMI-R Recruitment **ISOLATED PASS**: public package `backend/app/modules/recruitment/public/`; Ready classified as Recruitment policy (not rewritten); spine helpers/ORM via public; debt **2006→1799**; `check_recruitment_isolation.py` + allowlist shrink-only; card `docs/modules/recruitment/module_isolation_card.md`. PMI-B queued. Ready/Kernel remain parked.
 - **2026-09-16** — PMI-0 map **PASS**: deterministic owner|UNASSIGNED for all `backend/app/**/*.py`; spine `required_prefixes`; committed reproducible `module_isolation_pmi0_baseline.json` (1275 files; 574 UNASSIGNED; 2006 cross-owner edges = full leak set, no manual public filter).
 - **2026-09-16** — PMI-1 freeze **PASS**: authority `844900d6` pinned; debt = 2006 structural edges; new edge / debt growth / ownership hide / UNASSIGNED hide / authority mutate → FAIL. No remediation. PMI-R not started.
