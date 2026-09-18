@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { Application } from '../../api/types/application'
+import type { Application } from '../../../api/types/application'
 import {
   applicationCallOutcome,
   applicationMatchesSearch,

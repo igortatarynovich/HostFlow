@@ -615,8 +615,8 @@ Next branch only after:
 **Do not** give one named slice two independent unlock conditions — split it.  
 **Do not** run a third concurrent Engineering slice. Fan-out is only `{Reference R2, Reference R3}` after Reference R1 Gate; then collapse.  
 **Do not** activate Reference R5 while Reference R2 is still open.  
-**Do not** park later Product on Engineering DONE. Product is **MA-3** after Mapping Resolution Gate PASS (brief; feat locked this PR).  
-**Do not** auto-start External Intake / Hiring E2E / min HR because Mapping is Active. Hiring is unlocked by RPM close — unlock ≠ schedule. Do not open MA-3 editor in this PR.  
+**Do not** park later Product on Engineering DONE. Product is **MA-4** after Mapping Operator Gate PASS (brief; feat locked this stamp).  
+**Do not** auto-start External Intake / Hiring E2E / min HR because Mapping is Active. Hiring is unlocked by RPM close — unlock ≠ schedule. Do not start MA-4 in this stamp.  
 **Do not** auto-start OCR / packages product / CL8 / ADR-019 automation plane / tenant extension marketplace / Billing product / AI. v1 blockers live in the [Release Goal](../gates/hostflow-v1-release-goal.md); unlock ≠ schedule.  
 **Do not** start full Lifecycle / Funnel UI cutover as LI-1.  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
