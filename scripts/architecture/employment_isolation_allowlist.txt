@@ -1,0 +1,4 @@
+# PMI-E employment isolation allowlist (shrink-only).
+# Format: owner|from_file::import::to_file
+# New rows FORBIDDEN after PMI-E PASS.
+# EXC-PMI-B-DOC (Boundary→Documents) stays until PMI-D — not this allowlist.
