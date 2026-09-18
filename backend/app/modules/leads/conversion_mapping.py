@@ -313,6 +313,22 @@ def _executable_rules_from_normalized(normalized: Mapping[str, Any]) -> list[dic
     return envelope_rules
 
 
+def conversion_payload_from_normalized(normalized: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Candidate create/update payload from the ingest mapping stamp.
+
+    Used by both new-candidate convert and reuse of an ADR-031 / duplicate shell.
+    """
+    mapped = apply_executable_intake_mapping(normalized)
+    payload: dict[str, Any] = dict(mapped.columns)
+    if mapped.extra:
+        payload["extra"] = dict(mapped.extra)
+    if mapped.personal:
+        payload["personal_data"] = dict(mapped.personal)
+    if mapped.contacts:
+        payload["contacts"] = dict(mapped.contacts)
+    return payload
+
+
 def apply_executable_intake_mapping(normalized: Mapping[str, Any] | None) -> ConversionFieldWrite:
     """Map executable intake answers onto candidate columns / extra / personal."""
     n = dict(normalized) if isinstance(normalized, Mapping) else {}
@@ -397,5 +413,6 @@ __all__ = [
     "apply_executable_intake_mapping",
     "attach_field_answer_labels",
     "compact_executable_rules",
+    "conversion_payload_from_normalized",
     "is_operator_questionnaire_field",
 ]

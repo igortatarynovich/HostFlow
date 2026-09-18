@@ -49,11 +49,14 @@ def _meta_lead_payload(
     leadgen_id: str,
     page_id: str | None = None,
     vacancy_id: str | None = None,
+    licence: str | None = None,
 ) -> dict[str, Any]:
     field_data = [
         {"name": "email", "values": [email]},
         {"name": "favourite_color", "values": [color]},
     ]
+    if licence:
+        field_data.append({"name": "which_licence", "values": [licence]})
     if vacancy_id:
         field_data.append({"name": "vacancy_id", "values": [vacancy_id]})
     value: dict[str, Any] = {
@@ -277,10 +280,18 @@ async def test_mapping_workspace_returns_applied_evidence_from_last_submission(
 async def test_mapping_close_path_ready_projection_then_real_ingest_applied_evidence(
     client: AsyncClient, manager_headers: Dict[str, str]
 ) -> None:
-    """Close path through ingest — not a hand-stamped Lead. Does not mark Operator Gate PASS."""
+    """Close path through ingest — not a hand-stamped Lead.
+
+    Maps a non-contact source (licence) onto a Recruitment-readable candidate
+    field and proves Ignore does not land on the card. Does not mark Operator Gate PASS.
+    """
     form_id = f"form-c5-close-{uuid4().hex[:8]}"
     page_id = f"page-c5-close-{uuid4().hex[:6]}"
     async with async_session_maker() as db:
+        from backend.app.models.company import Company
+        from backend.app.services.recruitment_funnel_bootstrap import (
+            bootstrap_recruitment_funnels_for_company,
+        )
         from backend.tests.api.test_leads_meta import _ensure_company, _ensure_vacancy
 
         profile = await _make_meta_source(
@@ -292,10 +303,26 @@ async def test_mapping_close_path_ready_projection_then_real_ingest_applied_evid
         )
         company_id = await _ensure_company(db, DEFAULT_TENANT_ID)
         vacancy_id = await _ensure_vacancy(db, DEFAULT_TENANT_ID, company_id)
+        tenant = await db.get(Tenant, DEFAULT_TENANT_ID)
+        company = await db.get(Company, company_id)
+        assert tenant is not None and company is not None
+        await bootstrap_recruitment_funnels_for_company(
+            db,
+            tenant=tenant,
+            company=company,
+            company_type="agency",
+            tenant_modules={"candidates": True, "leads": True},
+        )
         await db.commit()
         source_id = str(profile.id)
 
     headers = _headers(manager_headers)
+    patch_settings = await client.patch(
+        "/api/v1/settings/leads/settings",
+        headers=headers,
+        json={"auto_create_enabled": True, "leads_processing_mode_v1": "automatic"},
+    )
+    assert patch_settings.status_code == 200, patch_settings.text
     saved = await client.put(
         f"/api/v1/platform/marketing/sources/{source_id}/mapping",
         headers=headers,
@@ -303,6 +330,7 @@ async def test_mapping_close_path_ready_projection_then_real_ingest_applied_evid
             "schema_snapshot": {
                 "fields": [
                     {"source": "email", "label": "Email"},
+                    {"source": "which_licence", "label": "Which licence"},
                     {"source": "favourite_color", "label": "Favourite color"},
                 ]
             },
@@ -311,6 +339,11 @@ async def test_mapping_close_path_ready_projection_then_real_ingest_applied_evid
                     "source": "email",
                     "target": "email",
                     "qualified_field_code": "recruitment.candidate.contacts.email",
+                },
+                {
+                    "source": "which_licence",
+                    "target": "poland_stay_basis",
+                    "qualified_field_code": "recruitment.candidate.personal.residency_status",
                 },
                 {"source": "favourite_color", "action": "ignore"},
             ],
@@ -328,14 +361,17 @@ async def test_mapping_close_path_ready_projection_then_real_ingest_applied_evid
     assert "The next application will write" in projection_text
     by_source = {row["source"]: row for row in workspace["schema_fields"]}
     assert by_source["email"]["binding"] == "mapped"
+    assert by_source["which_licence"]["binding"] == "mapped"
     assert by_source["favourite_color"]["binding"] == "ignored"
 
     suffix = uuid4().hex[:8]
     email = f"close-{suffix}@example.com"
+    licence = "CE"
     payload = _meta_lead_payload(
         form_id=form_id,
         email=email,
         color="blue",
+        licence=licence,
         leadgen_id=f"lg-close-{suffix}",
         page_id=page_id,
         vacancy_id=vacancy_id,
@@ -349,6 +385,8 @@ async def test_mapping_close_path_ready_projection_then_real_ingest_applied_evid
     ingest_body = ingest.json()
     lead_id = ingest_body.get("lead_id")
     assert lead_id
+    candidate_id = ingest_body.get("candidate_id")
+    assert candidate_id, ingest_body
 
     after = await client.get(
         f"/api/v1/platform/marketing/sources/{source_id}/mapping",
@@ -361,8 +399,27 @@ async def test_mapping_close_path_ready_projection_then_real_ingest_applied_evid
     assert evidence["drift"] is False
     sentences = " ".join(row["sentence"] for row in evidence["sentences"])
     assert email in sentences
+    assert licence in sentences
     assert "Last application wrote" in sentences
     assert "blue" not in sentences
+
+    card = await client.get(f"/api/v1/candidates/{candidate_id}", headers=headers)
+    assert card.status_code == 200, card.text
+    body = card.json()
+    extra = body.get("extra") if isinstance(body.get("extra"), dict) else {}
+    personal = body.get("personal_data") if isinstance(body.get("personal_data"), dict) else {}
+    nested_personal = extra.get("personal_data") if isinstance(extra.get("personal_data"), dict) else {}
+    residency = (
+        extra.get("poland_stay_basis")
+        or personal.get("residency_status")
+        or nested_personal.get("residency_status")
+    )
+    assert residency == licence, body
+    facts = {"extra": extra, "personal_data": personal, "contacts": body.get("contacts") or {}}
+    blob = json.dumps(facts, default=str)
+    assert "favourite_color" not in extra
+    assert "favourite_color" not in personal
+    assert "blue" not in blob
 
 
 @pytest.mark.anyio

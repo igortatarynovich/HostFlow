@@ -6,6 +6,7 @@ from backend.app.modules.leads.conversion_mapping import (
     apply_executable_intake_mapping,
     attach_field_answer_labels,
     compact_executable_rules,
+    conversion_payload_from_normalized,
 )
 
 
@@ -141,6 +142,41 @@ def test_option_map_applies_graph_snake_case_to_candidate() -> None:
     assert mapped.extra.get("poland_stay_basis") == "Wiza"
     assert mapped.personal.get("residency_status") == "Wiza"
     assert mapped.extra.get("experience_eu_years") == "Więcej niż 2 lata"
+
+
+def test_conversion_payload_lands_mapped_licence_not_ignored_color() -> None:
+    payload = conversion_payload_from_normalized(
+        {
+            "email": "anna@example.com",
+            "field_answers": [
+                {"name": "email", "values": ["anna@example.com"]},
+                {"name": "which_licence", "values": ["CE"]},
+                {"name": "favourite_color", "values": ["blue"]},
+            ],
+            "mapping_applied_v1": {
+                "executable_rules": [
+                    {
+                        "source": "email",
+                        "normalized_target": "email",
+                        "qualified_field_code": "recruitment.candidate.contacts.email",
+                    },
+                    {
+                        "source": "which_licence",
+                        "normalized_target": "poland_stay_basis",
+                        "qualified_field_code": "recruitment.candidate.personal.residency_status",
+                    },
+                ]
+            },
+        }
+    )
+    assert payload.get("email") == "anna@example.com"
+    assert payload["extra"]["poland_stay_basis"] == "CE"
+    assert payload["personal_data"]["residency_status"] == "CE"
+    extra = payload.get("extra") or {}
+    personal = payload.get("personal_data") or {}
+    assert "favourite_color" not in extra
+    assert "blue" not in extra.values()
+    assert "blue" not in personal.values()
 
 
 def test_attach_labels_from_rules() -> None:
