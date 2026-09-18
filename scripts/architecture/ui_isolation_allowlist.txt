@@ -1,0 +1,12 @@
+# PMI-UI UI isolation allowlist (shrink-only).
+# Format: kind|from_file|detail
+# New rows FORBIDDEN after PMI-UI PASS.
+# Scope: spine surfaces; remaining HostFlow UI may stay listed as debt.
+decision_legacy|hostflow-frontend/src/utils/buildEmployeeReadinessSummary.ts|buildEmployeeReadinessSummary
+parallel_import|hostflow-frontend/src/components/controls/MultiSelect.tsx|hostflow-frontend/src/components/controls/Select.tsx
+parallel_import|hostflow-frontend/src/components/controls/PhoneInput.tsx|hostflow-frontend/src/components/controls/Select.tsx
+parallel_import|hostflow-frontend/src/components/public/PhoneCountryCodeSelect.tsx|hostflow-frontend/src/components/controls/Select.tsx
+parallel_import|hostflow-frontend/src/components/vacancies/detail/tabs/CandidateRequirementsTab.tsx|hostflow-frontend/src/components/controls/MultiSelect.tsx
+parallel_import|hostflow-frontend/src/hooks/useDialCodeOptions.ts|hostflow-frontend/src/components/controls/Select.tsx
+parallel_import|hostflow-frontend/src/pages/public/PublicApplyPage.tsx|hostflow-frontend/src/components/controls/Select.tsx
+parallel_import|hostflow-frontend/src/pages/public/PublicIntakeNew.tsx|hostflow-frontend/src/components/controls/Select.tsx

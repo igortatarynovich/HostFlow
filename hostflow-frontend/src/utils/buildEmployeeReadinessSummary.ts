@@ -1,3 +1,14 @@
+/**
+ * PMI-UI LEGACY decision reconstruction.
+ *
+ * Merges packs + reminder queue + eligibility + HR review into a readiness
+ * verdict/CTA on the client. Prefer backend `decision_readiness` /
+ * `work_eligibility_summary.recommended_next_action` / journey `primary_cta`
+ * for status and actions (see EmployeeReadinessHeader).
+ *
+ * New reconstructors matching build|derive|reconstruct *Readiness|Verdict|…
+ * are FORBIDDEN by scripts/architecture/check_ui_isolation.py.
+ */
 import type { DocumentPackProjection, ReminderWorkQueueItem, ReminderWorkQueueSeverity } from '../api/types'
 import type { HrReviewPanel, WorkforceEligibilityRuntime } from '../api/workforce'
 import {

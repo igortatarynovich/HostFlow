@@ -14,6 +14,9 @@ on:
       - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
       - "hostflow-frontend/scripts/check_ts_import_integrity.py"
+      - "scripts/architecture/check_ui_isolation.py"
+      - "scripts/architecture/ui_primitive_authority.json"
+      - "scripts/architecture/ui_isolation_allowlist.txt"
       - "scripts/repo_health_gate.py"
       - ".github/workflows/frontend-static-qa.yml"
       - ".github/workflows/security-gates.yml"
@@ -31,6 +34,9 @@ on:
       - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
       - "hostflow-frontend/scripts/check_ts_import_integrity.py"
+      - "scripts/architecture/check_ui_isolation.py"
+      - "scripts/architecture/ui_primitive_authority.json"
+      - "scripts/architecture/ui_isolation_allowlist.txt"
       - "scripts/repo_health_gate.py"
       - ".github/workflows/frontend-static-qa.yml"
       - ".github/workflows/security-gates.yml"
@@ -85,6 +91,8 @@ jobs:
           FOUNDATION_PUSH_AFTER: ${{ github.event.after || github.sha }}
           FOUNDATION_PUSH_FORCED: ${{ github.event.forced == true }}
           FOUNDATION_REF_NAME: ${{ github.ref_name }}
+      - name: PMI-UI isolation (parallel primitives / cross-spine / decision ownership)
+        run: npm run ui:isolation:check
       - name: Unit tests with coverage
         run: npm run test:coverage
       - name: Coverage gate (Phase 0 #7 — ratchet)

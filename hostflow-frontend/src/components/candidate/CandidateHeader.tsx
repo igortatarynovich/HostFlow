@@ -15,7 +15,7 @@ import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { CandidateProfile } from '../../api/candidate_profiles'
-import NextActionBadge from './NextActionBadge'
+import { NextActionBadge } from '../../platform/design-system'
 
 interface CandidateHeaderProps {
   candidate: Candidate | null

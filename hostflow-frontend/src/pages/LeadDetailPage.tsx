@@ -23,7 +23,7 @@ import LeadMetaProblemPanel from '../components/leads/LeadMetaProblemPanel'
 import LeadQualificationSuggestionPanel from '../components/leads/LeadQualificationSuggestionPanel'
 import LeadQualificationSummaryCard from '../components/leads/LeadQualificationSummaryCard'
 import LeadNextActionPlaybook from '../components/leads/LeadNextActionPlaybook'
-import { NextActionBadge } from '../components/candidate/NextActionBadge'
+import { NextActionBadge } from '../platform/design-system'
 import { useLeadNextAction } from '../components/lead/useLeadNextAction'
 import ClientLeadDetailView from '../components/leads/ClientLeadDetailView'
 import {

@@ -1,0 +1,133 @@
+{
+  "program": "PMI-UI",
+  "updated": "2026-09-16",
+  "dependency_rule": "Design System primitives → Module-owned UI composition → Public module contracts",
+  "scope": "spine surfaces of Recruitment, Boundary, Employment, Documents, Workforce; remaining frontend = shrink-only debt",
+  "categories": {
+    "layout_shell": {
+      "authority": [
+        "hostflow-frontend/src/components/layout/PageShell.tsx",
+        "hostflow-frontend/src/components/Layout.tsx"
+      ],
+      "forbidden_parallel": [
+        "hostflow-frontend/src/components/Sidebar.tsx"
+      ]
+    },
+    "navigation": {
+      "authority": [
+        "hostflow-frontend/src/components/nav/Sidebar.tsx",
+        "hostflow-frontend/src/components/nav/Topbar.tsx",
+        "hostflow-frontend/src/components/nav/PageHeader.tsx"
+      ],
+      "forbidden_parallel": []
+    },
+    "status_verdict": {
+      "authority": [
+        "hostflow-frontend/src/components/ui/StatusBadge.tsx",
+        "hostflow-frontend/src/components/ui/statusBadgeSemantics.ts",
+        "hostflow-frontend/src/platform/design-system/NextActionBadge.tsx"
+      ],
+      "forbidden_parallel": []
+    },
+    "actions": {
+      "authority": [
+        "hostflow-frontend/src/components/ui/Button.tsx",
+        "hostflow-frontend/src/styles/components.css"
+      ],
+      "forbidden_parallel": []
+    },
+    "forms_fields": {
+      "authority": [
+        "hostflow-frontend/src/components/ui/Combobox.tsx",
+        "hostflow-frontend/src/components/ui/MultiCombobox.tsx",
+        "hostflow-frontend/src/components/ui/Checkbox.tsx",
+        "hostflow-frontend/src/components/ui/FieldGrid.tsx",
+        "hostflow-frontend/src/styles/components.css"
+      ],
+      "forbidden_parallel": [
+        "hostflow-frontend/src/components/controls/Select.tsx",
+        "hostflow-frontend/src/components/controls/SelectAsync.tsx",
+        "hostflow-frontend/src/components/controls/MultiSelect.tsx"
+      ]
+    },
+    "tables_lists": {
+      "authority": [
+        "hostflow-frontend/src/components/layout/DataTable.tsx",
+        "hostflow-frontend/src/components/layout/DataTableFrame.tsx",
+        "hostflow-frontend/src/components/surfaces/EntityListShell.tsx",
+        "hostflow-frontend/src/platform/data-table/DataTableEngine.tsx",
+        "hostflow-frontend/src/platform/detail-rail/DetailRail.tsx"
+      ],
+      "forbidden_parallel": []
+    },
+    "evidence_files": {
+      "authority": [
+        "hostflow-frontend/src/components/surfaces/DocumentRow.tsx",
+        "hostflow-frontend/src/components/surfaces/DocumentStatus.tsx"
+      ],
+      "forbidden_parallel": []
+    },
+    "feedback": {
+      "authority": [
+        "hostflow-frontend/src/components/EmptyStatePanel.tsx",
+        "hostflow-frontend/src/components/Toast.tsx",
+        "hostflow-frontend/src/components/AppErrorBoundary.tsx"
+      ],
+      "forbidden_parallel": []
+    },
+    "overlays": {
+      "authority": [
+        "hostflow-frontend/src/components/Modal.tsx"
+      ],
+      "forbidden_parallel": []
+    },
+    "public_surface": {
+      "authority": [
+        "hostflow-frontend/src/platform/design-system/index.ts"
+      ],
+      "forbidden_parallel": []
+    }
+  },
+  "spine_roots": {
+    "recruitment": [
+      "hostflow-frontend/src/modules/candidates/",
+      "hostflow-frontend/src/modules/recruitment/",
+      "hostflow-frontend/src/modules/pipeline/",
+      "hostflow-frontend/src/components/candidate/",
+      "hostflow-frontend/src/components/recruitment/",
+      "hostflow-frontend/src/pages/recruitment/",
+      "hostflow-frontend/src/pages/Candidates.tsx",
+      "hostflow-frontend/src/pages/CandidateCard.tsx",
+      "hostflow-frontend/src/pages/candidate/"
+    ],
+    "boundary": [
+      "hostflow-frontend/src/components/hr/HrHandoff",
+      "hostflow-frontend/src/components/hr/HrRecruitmentTransfer",
+      "hostflow-frontend/src/pages/hr/HrHandoff",
+      "hostflow-frontend/src/pages/hr/HrInbox",
+      "hostflow-frontend/src/modules/workHub/Handoff"
+    ],
+    "employment": [
+      "hostflow-frontend/src/components/hr/",
+      "hostflow-frontend/src/pages/hr/"
+    ],
+    "documents": [
+      "hostflow-frontend/src/modules/documents/",
+      "hostflow-frontend/src/pages/documents/",
+      "hostflow-frontend/src/components/surfaces/Document"
+    ],
+    "workforce": [
+      "hostflow-frontend/src/components/hr/Employee",
+      "hostflow-frontend/src/pages/hr/HrEmployee",
+      "hostflow-frontend/src/api/workforce.ts"
+    ]
+  },
+  "decision_display_ok": [
+    "hostflow-frontend/src/components/hr/HrHandoffContextSummary.tsx",
+    "hostflow-frontend/src/platform/design-system/NextActionBadge.tsx"
+  ],
+  "decision_reconstruction_legacy": [
+    "hostflow-frontend/src/utils/buildEmployeeReadinessSummary.ts"
+  ],
+  "forbidden_new_reconstruction_basename_re": "^(build|derive|reconstruct).*(Readiness|Verdict|Decision|Admit|Ready).*$"
+}

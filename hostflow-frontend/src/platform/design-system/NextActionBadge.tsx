@@ -16,12 +16,12 @@ import type {
   NextActionKind,
 } from '../../api/nextAction'
 import { useI18n } from '../../i18n'
-import NextActionExplainabilityPopover from '../explainability/NextActionExplainabilityPopover'
+import NextActionExplainabilityPopover from '../../components/explainability/NextActionExplainabilityPopover'
 import {
   STATUS_BADGE_SEMANTIC_CLASSES,
   STATUS_BADGE_SEMANTIC_CLASSES_INVERSE,
   nextActionPriorityToSemantic,
-} from '../ui/statusBadgeSemantics'
+} from '../../components/ui/statusBadgeSemantics'
 
 /**
  * Single primary "what to do next" badge for any entity header.

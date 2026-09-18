@@ -17,7 +17,7 @@ import type { DocType, MetadataState, CoreFields } from "../types";
 import { useI18n } from "../../../i18n";
 import { MAX_FILE_MB } from "../constants";
 import { isTooLarge } from "../documentUtils";
-import { NextActionBadge } from "../../../components/candidate/NextActionBadge";
+import { NextActionBadge } from "../../../platform/design-system";
 import { useDocumentNextAction } from "../../../components/document/useDocumentNextAction";
 import { DocumentReminders } from "./DocumentReminders";
 import { DocumentLastCheck } from "./DocumentLastCheck";

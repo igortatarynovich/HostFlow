@@ -6,6 +6,7 @@ import {
   buildEmployeeReadinessSummary,
   type EmployeeReadinessSummary,
   type ReadinessPrimaryCta,
+  type ReadinessStatus,
 } from '../../utils/buildEmployeeReadinessSummary'
 import { EmployeePackProgressStrip } from './EmployeePackProgressStrip'
 import { EmployeeReadinessHero } from './EmployeeReadinessHero'
@@ -19,6 +20,55 @@ type Props = {
   followUpMessage?: string | null
   onSummaryChange?: (summary: EmployeeReadinessSummary) => void
   onPrimaryAction?: (cta: ReadinessPrimaryCta) => void
+}
+
+/**
+ * PMI-UI decision ownership: status/CTA prefer backend verdict contracts
+ * (`decision_readiness`, eligibility journey next action). Pack strip may still
+ * use the legacy presentation merge — do not invent a second domain decision.
+ */
+function applyBackendVerdict(
+  legacy: EmployeeReadinessSummary,
+  hrReview?: HrReviewPanel | null,
+): EmployeeReadinessSummary {
+  const readiness = hrReview?.decision_readiness
+  if (!readiness) return legacy
+
+  let status: ReadinessStatus = legacy.status
+  let statusLabel = legacy.statusLabel
+  if (readiness.can_approve) {
+    status = 'ready'
+    statusLabel = 'Ready'
+  } else if (readiness.approve_blocked_reason) {
+    status = 'not_ready'
+    statusLabel = String(readiness.approve_blocked_reason).replace(/_/g, ' ')
+  }
+
+  const recommended =
+    hrReview?.work_eligibility_summary?.recommended_next_action || null
+
+  let primaryCta = legacy.primaryCta
+  if (recommended && !readiness.can_approve) {
+    primaryCta = {
+      kind: 'admin',
+      label: recommended,
+      scrollTarget: legacy.primaryCta?.scrollTarget || '#employee-readiness-hero',
+    }
+  }
+
+  return {
+    ...legacy,
+    status,
+    statusLabel,
+    primaryCta,
+    verificationProgress: {
+      verified: readiness.checklist_done,
+      total: readiness.checklist_total,
+    },
+    readyNextStep: readiness.can_approve
+      ? legacy.readyNextStep
+      : recommended || legacy.readyNextStep,
+  }
 }
 
 export function EmployeeReadinessHeader({
@@ -68,16 +118,15 @@ export function EmployeeReadinessHeader({
     }
   }, [candidateId, ownerContext, refreshToken])
 
-  const summary = useMemo(
-    () =>
-      buildEmployeeReadinessSummary({
-        packs,
-        reminderWorkQueue: queue,
-        eligibility,
-        hrReview,
-      }),
-    [packs, queue, eligibility, hrReview],
-  )
+  const summary = useMemo(() => {
+    const legacy = buildEmployeeReadinessSummary({
+      packs,
+      reminderWorkQueue: queue,
+      eligibility,
+      hrReview,
+    })
+    return applyBackendVerdict(legacy, hrReview)
+  }, [packs, queue, eligibility, hrReview])
 
   useEffect(() => {
     onSummaryChange?.(summary)
