@@ -48,6 +48,11 @@ export type CampaignIntakeSourceLink = {
   binding_status?: string | null
   active_binding_count?: number | null
   last_submission_at?: string | null
+  mapping_headline?: string | null
+  mapping_human?: string | null
+  mapping_cta?: string | null
+  contract_health?: string | null
+  mapping_path?: string | null
 }
 
 export type CampaignAdBinding = {

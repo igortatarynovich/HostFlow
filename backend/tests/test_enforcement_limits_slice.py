@@ -97,8 +97,8 @@ def test_sum_file_entries_bytes_handles_mixed() -> None:
 
 def test_trial_usage_caps_snapshot() -> None:
     assert trial_usage_caps() == {
-        "leads_monthly": 50,
-        "conversion_actions": 20,
-        "portal_shares": 2,
-        "automation_runs": 5,
+        "leads_monthly": 1500,
+        "conversion_actions": 1500,
+        "portal_shares": 300,
+        "automation_runs": 10_000,
     }

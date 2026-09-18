@@ -75,6 +75,11 @@ function campaign(partial: Partial<Campaign> = {}): Campaign {
             is_active: true,
             provider: 'meta',
             name: 'Meta Lead Ads',
+            mapping_headline: 'needs_check',
+            mapping_human: 'Needs a check — 2 questions to set',
+            mapping_cta: '2 fields are not configured',
+            contract_health: 'needs_review',
+            mapping_path: '/app/marketing/sources/p1/mapping',
           },
         ],
       },
@@ -136,6 +141,14 @@ describe('MarketingCampaignsPage roster', () => {
     expect(table.querySelector('table')).not.toBeNull()
     expect(table.querySelector('ul')).toBeNull()
     expect(await screen.findByTestId('marketing-campaign-name-c1')).toHaveTextContent('Drivers CE')
+    expect(screen.getByRole('columnheader', { name: 'Questions' })).toBeInTheDocument()
+    expect(screen.getByTestId('marketing-campaign-mapping-c1')).toHaveAttribute(
+      'href',
+      '/app/marketing/sources/p1/mapping',
+    )
+    expect(screen.getByTestId('marketing-campaign-mapping-c1')).toHaveTextContent(
+      'Needs a check — 2 questions to set',
+    )
     expect(screen.getByRole('columnheader', { name: 'Campaign' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Applications' })).toBeInTheDocument()

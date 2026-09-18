@@ -12,6 +12,12 @@ from typing import Any, Mapping, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.field_registry.option_map import (
+    OPTION_IGNORE_VALUE,
+    lookup_option_map,
+    normalize_option_key,
+    option_map_covers,
+)
 from backend.app.acquisition.sources_sample import (
     _publication_config,
     resolve_sample_for_profile,
@@ -19,10 +25,19 @@ from backend.app.acquisition.sources_sample import (
 from backend.app.field_registry.resolver import list_canonical_fields_for_scope
 
 SCHEMA_CONFIG_KEY = "mapping_schema_v1"
-OPTION_IGNORE_VALUE = "__ignore__"
 CHOICE_TYPES = frozenset(
-    {"select", "enum", "choice", "boolean", "reference", "multiselect", "multi_select"}
+    {
+        "select",
+        "enum",
+        "choice",
+        "boolean",
+        "reference",
+        "reference_code",
+        "multiselect",
+        "multi_select",
+    }
 )
+NUMERIC_DEST_TYPES = frozenset({"integer", "int", "number", "float", "decimal"})
 
 DRIFT_FIELD_ADDED = "field_added"
 DRIFT_FIELD_REMOVED = "field_removed"
@@ -261,6 +276,20 @@ def _is_choice_type(field_type: str) -> bool:
     return str(field_type or "").strip().lower() in CHOICE_TYPES
 
 
+def _choice_source_compatible_with_dest(*, dest_type: str, dest_choice: bool) -> bool:
+    """Graph questions with options are `choice`; HostFlow destinations often are not.
+
+    A mapped choice question is type_changed only when the destination cannot
+    accept an option decision (identity formats such as email/phone).
+    `reference_code` and numeric fields are valid destinations; incomplete
+    option-map is a separate Ready blocker.
+    """
+    if dest_choice or _is_choice_type(dest_type):
+        return True
+    kind = str(dest_type or "").strip().lower()
+    return kind in NUMERIC_DEST_TYPES
+
+
 def _dest_options(field: dict[str, Any]) -> list[dict[str, str]]:
     config = field.get("storage") if isinstance(field.get("storage"), dict) else {}
     raw = field.get("options") or config.get("options") or config.get("choices") or []
@@ -313,8 +342,7 @@ def _choice_options_incomplete(
         return False
     if not (choice or options):
         return False
-    decided = {k.lower() for k in option_map}
-    return any(str(opt).lower() not in decided for opt in options)
+    return not option_map_covers(option_map, options)
 
 
 def _human_summary(
@@ -686,11 +714,20 @@ def build_workspace_rows(
             drift = DRIFT_FIELD_ADDED
         elif dest_code and destinations and dest is None:
             drift = DRIFT_DESTINATION_INVALID
-        elif dest and binding == "mapped" and source_choice != dest_choice:
+        elif (
+            dest
+            and binding == "mapped"
+            and source_choice
+            and not _choice_source_compatible_with_dest(
+                dest_type=dest_type, dest_choice=dest_choice
+            )
+        ):
             drift = DRIFT_TYPE_CHANGED
         elif binding == "mapped" and options:
-            decided_opts = {k.lower() for k in option_map}
-            schema_opts = {o.lower() for o in options}
+            decided_opts = {normalize_option_key(k) for k in option_map}
+            decided_opts.discard("")
+            schema_opts = {normalize_option_key(o) for o in options}
+            schema_opts.discard("")
             extra_decisions = decided_opts - schema_opts
             missing_decisions = schema_opts - decided_opts
             if extra_decisions:
@@ -770,12 +807,8 @@ def _canonical_example_out(
     """Return a canonical example, never a raw provider label for choice fields."""
     mapped = ""
     if example_in and option_map:
-        mapped = str(option_map.get(example_in) or "")
-        if not mapped:
-            for key, val in option_map.items():
-                if str(key).lower() == example_in.lower():
-                    mapped = str(val)
-                    break
+        looked = lookup_option_map(option_map, example_in)
+        mapped = str(looked or "")
     if mapped and mapped != OPTION_IGNORE_VALUE:
         for opt in dest_options:
             if str(opt.get("value") or "").strip().lower() == mapped.lower():

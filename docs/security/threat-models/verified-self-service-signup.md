@@ -17,7 +17,7 @@ Candidate `magic_links`, password-reset tokens, and invite tokens are **adjacent
 - Registration session cookie — secret, short TTL, not an app JWT
 - Password at complete — CLASS 2/3 credential
 - Created User, Tenant, membership, TenantLicense, OwnCompany
-- Trial entitlement (30-day full Team-tier window)
+- Trial entitlement (30-day full Team-tier window; license volume = Team limits, not a 100-record sandbox). Same `POST /auth/register` surface — no new public route.
 - Mail contents (verification URL)
 
 ## Trust boundaries

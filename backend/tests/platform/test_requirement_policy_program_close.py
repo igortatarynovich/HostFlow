@@ -44,8 +44,8 @@ def test_rpm_program_done_records_outcome_and_delta() -> None:
 def test_rpm_close_names_ma1_active_feat_locked() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "Active Product → **[MA-1](mapping-authority.md)**" in queue
-    assert "**Active Product** | **[MA-3](mapping-authority.md)**" in queue
-    assert "Active (Product):** **[MA-3](mapping-authority.md)**" in queue
+    assert "**Active Product** | **[MA-4](mapping-authority.md)**" in queue
+    assert "Active (Product):** **[MA-4](mapping-authority.md)**" in queue
     assert "feat locked this PR" in queue
     assert "Active (Product):** **Consumer Cutover Gate" not in queue
     mapping = _MAPPING.read_text(encoding="utf-8")
@@ -68,7 +68,7 @@ def test_rpm_close_leaves_intake_hiring_hr_queued() -> None:
     for text in (hiring, intake, hr):
         assert "**QUEUED**" in text
         assert "not scheduled" in text.lower()
-        assert "MA-3" in text
+        assert "MA-4" in text
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "unlocked, **not** scheduled" in queue or "unlocked, not scheduled" in queue.lower()
     assert "External Intake" in queue

@@ -18,8 +18,10 @@ from backend.app.acquisition.campaign_source_cards import (
     enrich_intake_source_card,
     load_last_submission_by_endpoint,
     load_meta_form_mappings_by_form_id,
+    mapping_card_fields,
     parse_meta_form_id,
 )
+from backend.app.acquisition.mapping_workspace import mapping_assessment_for_profile
 from backend.app.acquisition.endpoint_activity import form_endpoint_id, intake_source_endpoint_id
 from backend.app.acquisition.flights import runtime_commands
 from backend.app.acquisition.flights.runtime_commands import FlightRuntimeError
@@ -271,6 +273,11 @@ class CampaignIntakeSourceLinkOut(BaseModel):
     binding_status: Optional[str] = None
     active_binding_count: Optional[int] = None
     last_submission_at: Optional[datetime] = None
+    mapping_headline: Optional[str] = None
+    mapping_human: Optional[str] = None
+    mapping_cta: Optional[str] = None
+    contract_health: Optional[str] = None
+    mapping_path: Optional[str] = None
 
 
 class CampaignFlightOut(BaseModel):
@@ -801,6 +808,25 @@ async def _campaign_out(db: AsyncSession, campaign: Campaign) -> CampaignOut:
                     intake_source_endpoint_id(link.intake_source_profile_id)
                 ),
             )
+            authority_rules = [
+                rule
+                for rule in (getattr(profile, "mapping_rules", None) or [])
+                if isinstance(rule, dict)
+            ] if profile is not None else []
+            assessment: dict[str, Any] = {}
+            if profile is not None:
+                assessment = await mapping_assessment_for_profile(
+                    db,
+                    tenant_id=str(campaign.tenant_id),
+                    profile=profile,
+                    mapping_rules=authority_rules,
+                )
+            mapping_fields = mapping_card_fields(
+                source_id=str(link.intake_source_profile_id),
+                provider=str(profile.provider) if profile else None,
+                meta_form_id=src_card.meta_form_id,
+                assessment=assessment,
+            )
             sources_out.append(
                 CampaignIntakeSourceLinkOut(
                     id=link.id,
@@ -830,6 +856,11 @@ async def _campaign_out(db: AsyncSession, campaign: Campaign) -> CampaignOut:
                     binding_status=src_card.binding_status,
                     active_binding_count=src_card.active_binding_count,
                     last_submission_at=src_card.last_submission_at,
+                    mapping_headline=mapping_fields["mapping_headline"],
+                    mapping_human=mapping_fields["mapping_human"],
+                    mapping_cta=mapping_fields["mapping_cta"],
+                    contract_health=mapping_fields["contract_health"],
+                    mapping_path=mapping_fields["mapping_path"],
                 )
             )
         ad_bindings_out = [

@@ -25,6 +25,17 @@ import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
+import {
+  DESTINATION_IGNORE,
+  actionSelectValue,
+  bindingFromActionSelect,
+  bindingFromDestinationSelect,
+  destinationSelectValue,
+} from './mappingDestinationSelect'
+import {
+  mappingClosePath,
+  type MappingClosePathStepState,
+} from './mappingClosePath'
 
 const OPTION_IGNORE_VALUE = '__ignore__'
 
@@ -140,6 +151,12 @@ function formatEvidenceWhen(iso: string | null | undefined, locale: string): str
   }
 }
 
+const CLOSE_PATH_STEP_TONE: Record<MappingClosePathStepState, string> = {
+  done: 'bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200',
+  current: 'bg-blue-50 text-blue-900 ring-2 ring-blue-200',
+  upcoming: 'bg-slate-50 text-slate-500 ring-1 ring-slate-200',
+}
+
 function sampleHeadline(
   evidence: MappingSampleEvidence | undefined,
   questionCount: number,
@@ -237,6 +254,7 @@ export default function MarketingSourceMappingPage() {
   const hasSample = Boolean(mapping?.has_sample)
   const waitPrimary = Boolean(mappingReady && !appliedPresent)
   const latestPrimary = isMeta && !hasSample && !waitPrimary
+  const closePath = useMemo(() => (mapping ? mappingClosePath(mapping) : []), [mapping])
 
   const title = useMemo(() => {
     const name = mapping?.display_name || source?.display_name
@@ -361,6 +379,32 @@ export default function MarketingSourceMappingPage() {
         </p>
       ) : mapping ? (
         <div className="space-y-6">
+          <section
+            className="rounded-lg border border-slate-200 bg-white p-4"
+            data-testid="marketing-mapping-close-path"
+          >
+            <h2 className="text-base font-semibold text-slate-900">
+              {t('app.marketing.mapping.path.title')}
+            </h2>
+            <ol className="mt-3 grid gap-2 sm:grid-cols-5">
+              {closePath.map((step, index) => (
+                <li
+                  key={step.id}
+                  className={`rounded-lg px-3 py-2 text-sm ${CLOSE_PATH_STEP_TONE[step.state]}`}
+                  data-testid={`marketing-mapping-close-path-${step.id}`}
+                  data-state={step.state}
+                >
+                  <div className="text-xs font-semibold uppercase tracking-wide">
+                    {index + 1}. {t(`app.marketing.mapping.path.state.${step.state}`)}
+                  </div>
+                  <div className="mt-1 font-medium">
+                    {t(`app.marketing.mapping.path.${step.id}`)}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
           <section
             className="rounded-lg border border-slate-200 bg-white p-4"
             data-testid="marketing-mapping-summary"
@@ -527,18 +571,23 @@ export default function MarketingSourceMappingPage() {
                           <td className="px-3 py-2 align-top">
                             <select
                               className="w-full rounded border border-slate-300 px-2 py-1 text-sm disabled:bg-slate-50"
-                              value={row.destination_code}
-                              disabled={row.binding === 'ignored' || busy}
+                              value={destinationSelectValue(row.binding, row.destination_code)}
+                              disabled={busy}
                               data-testid={`marketing-mapping-target-${row.source}`}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const next = bindingFromDestinationSelect(e.target.value)
                                 updateDraft(index, {
-                                  destination_code: e.target.value,
-                                  binding: e.target.value ? 'mapped' : 'unmapped',
+                                  destination_code: next.destination_code,
+                                  binding: next.binding,
+                                  ...(next.binding === 'ignored' ? { option_map: {} } : {}),
                                 })
-                              }
+                              }}
                             >
                               <option value="">
                                 {t('app.marketing.mapping.destination.none')}
+                              </option>
+                              <option value={DESTINATION_IGNORE}>
+                                {t('app.marketing.mapping.destination.ignore')}
                               </option>
                               {destinationGroups.map((group) => (
                                 <optgroup
@@ -615,15 +664,26 @@ export default function MarketingSourceMappingPage() {
                           <td className="px-3 py-2 align-top">
                             <select
                               className="rounded border border-slate-300 px-2 py-1 text-sm"
-                              value={row.binding === 'ignored' ? 'ignore' : 'map'}
+                              value={actionSelectValue(row.binding)}
                               disabled={busy}
                               data-testid={`marketing-mapping-action-${row.source}`}
                               onChange={(e) =>
                                 updateDraft(index, {
-                                  binding: e.target.value === 'ignore' ? 'ignored' : row.destination_code ? 'mapped' : 'unmapped',
+                                  binding: bindingFromActionSelect(
+                                    e.target.value,
+                                    row.destination_code,
+                                  ),
+                                  ...(e.target.value === 'ignore'
+                                    ? { destination_code: '', option_map: {} }
+                                    : {}),
                                 })
                               }
                             >
+                              {row.binding === 'unmapped' ? (
+                                <option value="unset">
+                                  {t('app.marketing.mapping.action.unset')}
+                                </option>
+                              ) : null}
                               <option value="map">{t('app.marketing.mapping.action.map')}</option>
                               <option value="ignore">{t('app.marketing.mapping.action.ignore')}</option>
                             </select>
@@ -637,21 +697,25 @@ export default function MarketingSourceMappingPage() {
             )}
           </section>
 
-          {mapping.projection && mapping.projection.length > 0 ? (
-            <section
-              className="rounded-lg border border-slate-200 bg-white p-4"
-              data-testid="marketing-mapping-projection"
-            >
-              <h2 className="mb-2 text-base font-semibold text-slate-900">
-                {t('app.marketing.mapping.projection.title')}
-              </h2>
+          <section
+            className="rounded-lg border border-slate-200 bg-white p-4"
+            data-testid="marketing-mapping-projection"
+          >
+            <h2 className="mb-2 text-base font-semibold text-slate-900">
+              {t('app.marketing.mapping.projection.title')}
+            </h2>
+            {mapping.projection && mapping.projection.length > 0 ? (
               <ul className="space-y-1 text-sm text-slate-800">
                 {mapping.projection.map((item) => (
                   <li key={`${item.source}-${item.destination_label}`}>{item.sentence}</li>
                 ))}
               </ul>
-            </section>
-          ) : null}
+            ) : (
+              <p className="text-sm text-slate-500" data-testid="marketing-mapping-projection-empty">
+                {t('app.marketing.mapping.projection.empty')}
+              </p>
+            )}
+          </section>
 
           <section
             className="rounded-lg border border-slate-200 bg-white p-4"

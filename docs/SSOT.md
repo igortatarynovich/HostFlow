@@ -448,11 +448,9 @@
 
 #### Trial
 
-**Длительность:** **30 дней**, функционал уровня **Team или Business**, но **не** безлимит. Trial — **полный продукт** (меню, настройки, вакансии, свои кандидаты без PII-маски); не режим client-portal / handoff-view.
+**Длительность:** **30 дней**. Trial — **полный продукт** уровня **Team** (меню, настройки, вакансии, свои кандидаты без PII-маски); не режим client-portal / handoff-view. Объём = Team, не sandbox и не безлимит Enterprise.
 
-**Trial даёт:** **1** workspace, до **2** test seats, ограниченный test volume, demo/seeded data; **порталы, автоматизации, auto-distribution** — можно попробовать.
-
-**Лимиты trial (канон):** **50** лидов, **20** conversion actions, **2** portal shares, **5** automation runs.
+**Лимиты trial (канон):** объём **Team**, не sandbox: **1500** лидов/мес, **2000** active records, **300** portal candidates/мес, **1500** conversion actions, **10 000** automation runs. Self-service signup пишет `TRIAL_LICENSE_LIMITS` = `PLAN_LICENSE_LIMITS["team"]` (не 100 active records).
 
 **Real sending в trial:** **запрещены** исходящие сообщения во **внешние** каналы (email / WhatsApp / Telegram). **Разрешены** internal simulation / preview.
 

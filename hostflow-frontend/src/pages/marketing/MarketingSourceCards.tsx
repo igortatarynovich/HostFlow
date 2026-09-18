@@ -3,8 +3,15 @@
  * Terminology: Lead Form (Meta) · Анкета HostFlow · Source · Connection.
  */
 import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import type { CampaignFormLink, CampaignIntakeSourceLink } from '../../api/platformCampaigns'
+import {
+  mappingAssessmentCopy,
+  mappingContractTone,
+  mappingWorkspaceCta,
+} from '../../api/marketingSources'
 import { formPublicUrl } from './marketingPresentation'
+import { sourceMappingReady } from './sourceCardPresentation'
 import { useI18n, type TranslateFn } from '../../i18n'
 
 function publicationLabel(status: string | null | undefined, t: TranslateFn): string {
@@ -38,6 +45,45 @@ function providerLabel(provider: string | null | undefined): string {
   if (p === 'meta') return 'Meta'
   if (p === 'public_intake') return 'HostFlow'
   return provider || '—'
+}
+
+export function SourceMappingCue({
+  source,
+  testId,
+}: {
+  source: Pick<
+    CampaignIntakeSourceLink,
+    'mapping_path' | 'mapping_human' | 'mapping_headline' | 'mapping_cta' | 'contract_health'
+  >
+  testId?: string
+}) {
+  const { t } = useI18n()
+  const path = String(source.mapping_path || '').trim()
+  if (!path) return null
+  const ready = sourceMappingReady(source)
+  const copy = mappingAssessmentCopy(source)
+  return (
+    <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2" data-testid={testId}>
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {t('app.marketing.source_card.mapping')}
+      </div>
+      <p
+        className={`mt-1 text-sm font-medium ${mappingContractTone(source.contract_health)}`}
+        data-testid={testId ? `${testId}-copy` : undefined}
+      >
+        {copy}
+      </p>
+      <Link
+        to={path}
+        className={`mt-2 inline-flex text-sm font-medium hover:underline ${
+          ready ? 'text-brand-700' : 'text-amber-900'
+        }`}
+        data-testid={testId ? `${testId}-cta` : undefined}
+      >
+        {mappingWorkspaceCta(source)}
+      </Link>
+    </div>
+  )
 }
 
 function formatRelativeOrDash(iso: string | null | undefined, locale: string, neverLabel: string): string {
@@ -239,6 +285,8 @@ export function MetaLeadFormSourceCard({
           </dd>
         </div>
       </dl>
+
+      <SourceMappingCue source={link} testId={`marketing-source-intake-mapping-${link.id}`} />
 
       <DetailsToggle
         open={open}

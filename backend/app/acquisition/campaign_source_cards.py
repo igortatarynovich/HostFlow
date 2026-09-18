@@ -19,7 +19,7 @@ from backend.app.acquisition.endpoint_activity import (
     form_endpoint_id,
     intake_source_endpoint_id,
 )
-from backend.app.acquisition.sources_read import parse_meta_form_id
+from backend.app.acquisition.sources_read import build_source_paths, parse_meta_form_id
 from backend.app.models.acquisition_activity_event import AcquisitionActivityEvent
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.lead import MetaLeadFormMapping
@@ -306,4 +306,28 @@ def intake_card_as_dict(e: IntakeSourceCardEnrichment) -> dict[str, Any]:
         "active_binding_count": e.active_binding_count,
         "last_submission_at": e.last_submission_at,
         "display_title": e.display_title,
+    }
+
+
+def mapping_card_fields(
+    *,
+    source_id: str,
+    provider: str | None,
+    meta_form_id: str | None,
+    assessment: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Same Mapping assessment the Sources list shows — campaign cards are an entry, not a second editor."""
+    mapping_path, _, _ = build_source_paths(
+        source_id=str(source_id),
+        provider=str(provider or ""),
+        meta_form_id=meta_form_id,
+        lead_form_id=None,
+    )
+    block = assessment if isinstance(assessment, dict) else {}
+    return {
+        "mapping_headline": str(block.get("headline") or "") or None,
+        "mapping_human": str(block.get("human") or "") or None,
+        "mapping_cta": str(block.get("cta") or "Open Mapping"),
+        "contract_health": str(block.get("contract_health") or "") or None,
+        "mapping_path": mapping_path,
     }

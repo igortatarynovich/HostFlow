@@ -8,7 +8,7 @@ from backend.app.services.lead_quota import resolve_monthly_leads_cap
 
 def test_resolve_monthly_leads_trial_uses_trial_cap() -> None:
     cap = resolve_monthly_leads_cap({"status": "trial", "plan_code": "pro"}, None)
-    assert cap == 50
+    assert cap == 1500
 
 
 def test_resolve_monthly_leads_active_uses_plan_code() -> None:

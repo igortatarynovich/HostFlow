@@ -179,4 +179,21 @@ describe('MA-3 leftover mapping surfaces cease to be editors', () => {
     expect(src).toContain('marketingSourceMappingPath')
     expect(src).toContain('navigate')
   })
+
+  it('Campaign list and source cards open the same Mapping workspace', () => {
+    const cards = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingSourceCards.tsx'),
+      'utf8',
+    )
+    const campaigns = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingCampaignsPage.tsx'),
+      'utf8',
+    )
+    expect(cards).toContain('mappingWorkspaceCta')
+    expect(cards).toContain('mapping_path')
+    expect(cards).not.toContain('putMetaLeadFormMapping')
+    expect(campaigns).toContain('mapping_path')
+    expect(campaigns).toContain('marketing-campaign-mapping-')
+    expect(campaigns).not.toContain('putMetaLeadFormMapping')
+  })
 })

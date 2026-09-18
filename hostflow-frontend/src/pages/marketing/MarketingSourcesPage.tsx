@@ -2,7 +2,7 @@
  * Marketing Sources foundation (Acquisition UI Cutover C-3).
  * Read-only inventory: connection, canonical mapping assessment, last lead/error, CTA deep-links.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
@@ -10,6 +10,7 @@ import {
   type DiagnosticsDriftSummary,
 } from '../../api/marketingDiagnostics'
 import {
+  groupMarketingSourcesByType,
   listMarketingSources,
   mappingAssessmentCopy,
   mappingContractTone,
@@ -19,7 +20,7 @@ import {
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { PageHeader } from '../../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../../components/layout'
-import { useI18n } from '../../i18n'
+import { useI18n, type TranslateFn } from '../../i18n'
 import { formatDateTime } from '../../utils/dateFormat'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
@@ -41,6 +42,138 @@ function connectionTone(status: string): string {
   if (status === 'connected') return 'bg-emerald-50 text-emerald-800'
   if (status === 'attention') return 'bg-amber-50 text-amber-900'
   return 'bg-rose-50 text-rose-800'
+}
+
+function SourceRow({
+  row,
+  locale,
+  t,
+}: {
+  row: MarketingSourceSummary
+  locale: string
+  t: TranslateFn
+}) {
+  return (
+    <tr data-testid={`marketing-source-row-${row.source_id}`}>
+      <td className="px-4 py-3">
+        <div className="font-medium text-slate-900">{row.display_name}</div>
+        {row.code ? (
+          <div className="mt-0.5 font-mono text-xs text-slate-500">{row.code}</div>
+        ) : null}
+      </td>
+      <td className="px-4 py-3 text-slate-700">{row.provider}</td>
+      <td
+        className="px-4 py-3 text-slate-700"
+        data-testid={`marketing-source-page-${row.source_id}`}
+      >
+        {row.page_name || row.page_id || t('app.marketing.sources.none')}
+      </td>
+      <td
+        className="px-4 py-3 text-slate-700"
+        data-testid={`marketing-source-provider-form-${row.source_id}`}
+      >
+        {row.provider_form || t('app.marketing.sources.none')}
+      </td>
+      <td
+        className="px-4 py-3 text-slate-700"
+        data-testid={`marketing-source-destination-${row.source_id}`}
+      >
+        {row.destination_label || row.destination || t('app.marketing.sources.none')}
+      </td>
+      <td className="px-4 py-3">
+        <span
+          className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${connectionTone(row.connection_status)}`}
+          data-testid={`marketing-source-connection-${row.source_id}`}
+        >
+          {connectionLabel(row.connection_status, t)}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <Link
+          to={row.mapping_path}
+          className={`inline-flex rounded px-2 py-0.5 text-xs font-medium hover:underline ${mappingContractTone(row.contract_health || row.mapping_health)}`}
+          data-testid={`marketing-source-health-${row.source_id}`}
+        >
+          {mappingAssessmentCopy(row)}
+        </Link>
+      </td>
+      <td className="px-4 py-3 text-slate-600">
+        {row.last_submission_at
+          ? formatDateTime(row.last_submission_at, locale)
+          : t('app.marketing.sources.none')}
+      </td>
+      <td className="px-4 py-3 text-slate-700">
+        {(row.waiting_submissions ?? 0) > 0 ? (
+          <span
+            className="inline-flex rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900"
+            data-testid={`marketing-source-waiting-${row.source_id}`}
+          >
+            {row.waiting_submissions}
+          </span>
+        ) : (
+          t('app.marketing.sources.none')
+        )}
+      </td>
+      <td className="px-4 py-3 text-slate-700">
+        {row.routing_issue_code ? (
+          <div data-testid={`marketing-source-routing-issue-${row.source_id}`}>
+            <div className="text-sm text-rose-800">
+              {t('app.marketing.sources.routing_issue.missing_campaign_flight')}
+            </div>
+            {row.last_problematic_ad_id ? (
+              <div className="mt-0.5 font-mono text-xs text-slate-500">
+                Ad ID: {row.last_problematic_ad_id}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          t('app.marketing.sources.none')
+        )}
+      </td>
+      <td className="px-4 py-3 text-slate-600">
+        {row.last_error_at ? (
+          <div>
+            <div>{formatDateTime(row.last_error_at, locale)}</div>
+            {row.last_error_code ? (
+              <div className="font-mono text-xs text-rose-700">{row.last_error_code}</div>
+            ) : null}
+          </div>
+        ) : (
+          t('app.marketing.sources.none')
+        )}
+      </td>
+      <td className="px-4 py-3 text-slate-700">
+        {row.campaign_count} / {row.flight_count}
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-2">
+          {row.setup_campaign_flight_path ? (
+            <Link
+              to={row.setup_campaign_flight_path}
+              className="text-sm font-medium text-brand-700 hover:underline"
+              data-testid={`marketing-source-setup-campaign-flight-${row.source_id}`}
+            >
+              {t('app.marketing.sources.actions.setup_campaign_flight')}
+            </Link>
+          ) : null}
+          <Link
+            to={row.mapping_path}
+            className="text-sm font-medium text-brand-700 hover:underline"
+            data-testid={`marketing-source-mapping-${row.source_id}`}
+          >
+            {mappingWorkspaceCta(row)}
+          </Link>
+          <Link
+            to={row.settings_path}
+            className="text-sm font-medium text-slate-600 hover:underline"
+            data-testid={`marketing-source-settings-${row.source_id}`}
+          >
+            {t('app.marketing.sources.actions.connection')}
+          </Link>
+        </div>
+      </td>
+    </tr>
+  )
 }
 
 export default function MarketingSourcesPage() {
@@ -82,6 +215,8 @@ export default function MarketingSourcesPage() {
     void load()
     void loadDriftSummary()
   }, [load, loadDriftSummary])
+
+  const sourceGroups = useMemo(() => groupMarketingSourcesByType(items), [items])
 
   return (
     <PageShell data-testid="marketing-sources-page">
@@ -203,131 +338,29 @@ export default function MarketingSourcesPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {items.map((row) => (
-                <tr key={row.source_id} data-testid={`marketing-source-row-${row.source_id}`}>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900">{row.display_name}</div>
-                    {row.code ? (
-                      <div className="mt-0.5 font-mono text-xs text-slate-500">{row.code}</div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">{row.provider}</td>
-                  <td
-                    className="px-4 py-3 text-slate-700"
-                    data-testid={`marketing-source-page-${row.source_id}`}
+            {sourceGroups.map((group) => (
+              <tbody
+                key={group.key}
+                className="divide-y divide-slate-100"
+                data-testid={`marketing-sources-group-${group.key}`}
+              >
+                <tr className="border-t border-slate-200 bg-slate-50">
+                  <th
+                    colSpan={13}
+                    scope="colgroup"
+                    className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600"
                   >
-                    {row.page_name || row.page_id || t('app.marketing.sources.none')}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-slate-700"
-                    data-testid={`marketing-source-provider-form-${row.source_id}`}
-                  >
-                    {row.provider_form || t('app.marketing.sources.none')}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-slate-700"
-                    data-testid={`marketing-source-destination-${row.source_id}`}
-                  >
-                    {row.destination_label ||
-                      row.destination ||
-                      t('app.marketing.sources.none')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${connectionTone(row.connection_status)}`}
-                      data-testid={`marketing-source-connection-${row.source_id}`}
-                    >
-                      {connectionLabel(row.connection_status, t)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      to={row.mapping_path}
-                      className={`inline-flex rounded px-2 py-0.5 text-xs font-medium hover:underline ${mappingContractTone(row.contract_health || row.mapping_health)}`}
-                      data-testid={`marketing-source-health-${row.source_id}`}
-                    >
-                      {mappingAssessmentCopy(row)}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {row.last_submission_at
-                      ? formatDateTime(row.last_submission_at, locale)
-                      : t('app.marketing.sources.none')}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">
-                    {(row.waiting_submissions ?? 0) > 0 ? (
-                      <span
-                        className="inline-flex rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900"
-                        data-testid={`marketing-source-waiting-${row.source_id}`}
-                      >
-                        {row.waiting_submissions}
-                      </span>
-                    ) : (
-                      t('app.marketing.sources.none')
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">
-                    {row.routing_issue_code ? (
-                      <div data-testid={`marketing-source-routing-issue-${row.source_id}`}>
-                        <div className="text-sm text-rose-800">
-                          {t('app.marketing.sources.routing_issue.missing_campaign_flight')}
-                        </div>
-                        {row.last_problematic_ad_id ? (
-                          <div className="mt-0.5 font-mono text-xs text-slate-500">
-                            Ad ID: {row.last_problematic_ad_id}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      t('app.marketing.sources.none')
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {row.last_error_at ? (
-                      <div>
-                        <div>{formatDateTime(row.last_error_at, locale)}</div>
-                        {row.last_error_code ? (
-                          <div className="font-mono text-xs text-rose-700">{row.last_error_code}</div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      t('app.marketing.sources.none')
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">
-                    {row.campaign_count} / {row.flight_count}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      {row.setup_campaign_flight_path ? (
-                        <Link
-                          to={row.setup_campaign_flight_path}
-                          className="text-sm font-medium text-brand-700 hover:underline"
-                          data-testid={`marketing-source-setup-campaign-flight-${row.source_id}`}
-                        >
-                          {t('app.marketing.sources.actions.setup_campaign_flight')}
-                        </Link>
-                      ) : null}
-                      <Link
-                        to={row.mapping_path}
-                        className="text-sm font-medium text-brand-700 hover:underline"
-                        data-testid={`marketing-source-mapping-${row.source_id}`}
-                      >
-                        {mappingWorkspaceCta(row)}
-                      </Link>
-                      <Link
-                        to={row.settings_path}
-                        className="text-sm font-medium text-slate-600 hover:underline"
-                        data-testid={`marketing-source-settings-${row.source_id}`}
-                      >
-                        {t('app.marketing.sources.actions.connection')}
-                      </Link>
-                    </div>
-                  </td>
+                    {t(`app.marketing.sources.groups.${group.key}`, {
+                      defaultValue:
+                        group.items[0]?.destination_label || group.key,
+                    })}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
+                {group.items.map((row) => (
+                  <SourceRow key={row.source_id} row={row} locale={locale} t={t} />
+                ))}
+              </tbody>
+            ))}
           </table>
         </div>
       ) : null}

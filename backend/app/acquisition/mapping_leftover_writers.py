@@ -1,9 +1,9 @@
 """MA-3 leftover mapping HTTP writers — fail-closed.
 
 Leftover Meta / Intake stores stay read-through (MA-2). HTTP PUTs that used to
-write those stores return 410. This is not leftover-writer retirement as a
-product claim, does not delete leftover tables, does not open MA-4, and does
-not declare Mapping Operator Gate PASS.
+write those stores return 410. This is editor-cease evidence for Mapping
+Operator Gate PASS, not leftover-store deletion, not leftover-writer retirement
+as a product claim, and not MA-4.
 """
 
 from __future__ import annotations

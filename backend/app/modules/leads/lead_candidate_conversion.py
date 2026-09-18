@@ -9,7 +9,7 @@ See ``docs/specs/workflows/lead-conversion-contract.md`` and
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Mapping, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,7 @@ from backend.app.services.recruitment_application_service import (
 )
 
 CONVERSION_CONTRACT_VERSION = "lead-conversion-contract@1"
+_SHELL_NAME_PLACEHOLDERS = frozenset({"lead", "shell", "meta"})
 
 
 async def ensure_recruitment_application_for_converted_lead(
@@ -63,6 +64,98 @@ def _duplicate_result_label(level: str) -> str:
 def _assignment_state_value(candidate: Candidate) -> str:
     raw = getattr(candidate, "assignment_state", None)
     return str(raw) if raw is not None else ""
+
+
+def _empty(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str) and not value.strip():
+        return True
+    if isinstance(value, dict) and not value:
+        return True
+    return False
+
+
+def _is_placeholder_name(value: Any) -> bool:
+    return str(value or "").strip().lower() in _SHELL_NAME_PLACEHOLDERS
+
+
+def apply_conversion_payload_to_existing_candidate(
+    candidate: Candidate,
+    payload: Mapping[str, Any] | None,
+) -> bool:
+    """Fill mapped conversion fields onto a reused ADR-031 shell.
+
+    Does not insert a second Candidate. Does not overwrite non-empty operator
+    values. Returns True when extra / personal / identity columns changed.
+    """
+    body = dict(payload or {})
+    changed = False
+
+    extra = candidate._get_extra()
+    incoming_extra = body.get("extra") if isinstance(body.get("extra"), dict) else {}
+    for key, value in incoming_extra.items():
+        if _empty(value):
+            continue
+        current = extra.get(key)
+        if key == "contacts" and isinstance(value, dict):
+            bucket = current if isinstance(current, dict) else {}
+            contact_changed = False
+            for ck, cv in value.items():
+                if _empty(cv) or not _empty(bucket.get(ck)):
+                    continue
+                bucket[ck] = cv
+                contact_changed = True
+            if contact_changed:
+                extra["contacts"] = bucket
+                changed = True
+            continue
+        if _empty(current):
+            extra[key] = value
+            changed = True
+
+    personal = candidate._get_personal_data()
+    incoming_personal = body.get("personal_data") if isinstance(body.get("personal_data"), dict) else {}
+    for key, value in incoming_personal.items():
+        if _empty(value):
+            continue
+        if _empty(personal.get(key)):
+            personal[key] = value
+            changed = True
+
+    contacts = body.get("contacts") if isinstance(body.get("contacts"), dict) else {}
+    extra_contacts = extra.get("contacts") if isinstance(extra.get("contacts"), dict) else {}
+    for key, value in contacts.items():
+        if _empty(value) or not _empty(extra_contacts.get(key)):
+            continue
+        extra_contacts[key] = value
+        extra["contacts"] = extra_contacts
+        changed = True
+
+    def _fill_column(attr: str, value: Any, *, placeholder_ok: bool = False) -> None:
+        nonlocal changed
+        if _empty(value):
+            return
+        current = getattr(candidate, attr, None)
+        if _empty(current) or (placeholder_ok and _is_placeholder_name(current)):
+            setattr(candidate, attr, value)
+            changed = True
+
+    _fill_column("first_name", body.get("first_name"), placeholder_ok=True)
+    _fill_column("last_name", body.get("last_name"), placeholder_ok=True)
+    _fill_column("email", body.get("email") or contacts.get("email"))
+    _fill_column("phone", body.get("phone") or contacts.get("phone"))
+    phone_cc = body.get("phone_country_code") or contacts.get("phone_country_code")
+    if not _empty(phone_cc) and hasattr(candidate, "phone_country_code"):
+        current_cc = getattr(candidate, "phone_country_code", None)
+        if _empty(current_cc):
+            candidate.phone_country_code = phone_cc
+            changed = True
+
+    if changed:
+        candidate._set_extra(extra)
+        candidate._set_personal_data(personal)
+    return changed
 
 
 async def _emit_candidate_created_audit(
@@ -155,7 +248,9 @@ async def create_candidate_from_lead_conversion(
             )
             from backend.app.services.lead_context_carry import carry_lead_context_on_conversion
 
-            if stamp_compliance_shell_attached_if_needed(existing):
+            merged = apply_conversion_payload_to_existing_candidate(existing, candidate_payload)
+            stamped = stamp_compliance_shell_attached_if_needed(existing)
+            if merged or stamped:
                 await db.flush()
             await carry_lead_context_on_conversion(
                 db,

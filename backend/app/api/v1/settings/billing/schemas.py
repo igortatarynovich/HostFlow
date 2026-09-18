@@ -42,10 +42,10 @@ class BillingQuotaHeadroomOut(BaseModel):
 class BillingTrialCapsOut(BaseModel):
     """SSOT trial-limits snapshot shown in billing summary."""
 
-    leads_monthly: int = 50
-    conversion_actions: int = 20
-    portal_shares: int = 2
-    automation_runs: int = 5
+    leads_monthly: int = 1500
+    conversion_actions: int = 1500
+    portal_shares: int = 300
+    automation_runs: int = 10_000
 
 
 class BillingGateOut(BaseModel):

@@ -127,6 +127,9 @@ PLAN_LICENSE_LIMITS: dict[str, dict[str, int]] = {
     },
 }
 
+# Self-service trial evaluates the full Team product, not a tighter sandbox.
+TRIAL_LICENSE_LIMITS: dict[str, int] = dict(PLAN_LICENSE_LIMITS["team"])
+
 
 LICENSE_ADDON_MERGE_FIELDS: tuple[str, ...] = (
     "max_recruiters",

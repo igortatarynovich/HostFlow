@@ -11313,6 +11313,13 @@
         "errors": {
           "load": "Не удалось загрузить источники"
         },
+        "groups": {
+          "candidate_application": "Заявки кандидатов",
+          "sales_inquiry": "Sales-заявки",
+          "service_request": "Заявки на услугу",
+          "partner_inquiry": "Партнёрские заявки",
+          "unset": "Назначение не задано"
+        },
         "drift_summary": "Mapping drift: {count} заявк(и) за {hours} ч. Откройте Diagnostics."
       },
       "status": {
@@ -11370,7 +11377,7 @@
         "open_public": "Открыть публичную ссылку",
         "connect_source": "Подключить источник",
         "starts": "Запуск: {when}",
-        "sources_help": "Source = откуда приходят заявки (Lead Form Meta или анкета HostFlow). Connection (OAuth) настраивается в Integrations. Routing наследует Primary Target кампании.",
+        "sources_help": "Source = откуда приходят заявки (Lead Form Meta или анкета HostFlow). После подключения на этой карточке задаётся, куда ляжет каждый ответ — Mapping не отдельный admin-экран. Connection (OAuth) настраивается в Integrations. Routing наследует Primary Target кампании.",
         "sources_empty_hint": "Подключите Meta Lead Ads или публичную анкету HostFlow — без повторного создания кампании.",
         "primary_slots_full": "Primary-слоты анкеты HostFlow и Meta-источника для этого Flight заняты. Несколько равноправных источников одного типа появятся в следующем обновлении — сейчас UI не предлагает подключение, которое завершится ошибкой.",
         "pause_advice_body": "Сигнал только советует — пауза через кнопку «Пауза» выше. Автопаузы нет.",
@@ -11502,7 +11509,8 @@
         "lead_form_fallback": "Lead Form (Meta)",
         "active": "Активен",
         "active_binding": "Активная привязка",
-        "inactive_binding": "Неактивная привязка"
+        "inactive_binding": "Неактивная привязка",
+        "mapping": "Куда лягут ответы"
       },
       "ad_bindings": {
         "title": "Привязка Ad ID → Flight",
@@ -11596,6 +11604,7 @@
           "applications": "Заявки",
           "form": "Форма",
           "source": "Источник",
+          "mapping": "Вопросы",
           "destination": "Куда",
           "launch": "Запуск",
           "price": "Цена",
@@ -11704,6 +11713,19 @@
         "title": "Маппинг источника",
         "title_named": "Форма: {name}",
         "subtitle": "Вопросы формы остаются полными, даже если в примере нет части ответов.",
+        "path": {
+          "title": "Как настроить эту форму",
+          "schema": "Вопросы формы",
+          "example": "Примеры ответов",
+          "map": "Куда попадёт каждый ответ",
+          "projection": "Что запишет следующая заявка",
+          "applied": "Что записала последняя заявка",
+          "state": {
+            "done": "Готово",
+            "current": "Сейчас",
+            "upcoming": "Дальше"
+          }
+        },
         "errors": {
           "load": "Не удалось загрузить mapping для источника",
           "action": "Не удалось выполнить действие"
@@ -11738,7 +11760,8 @@
           "unmapped": "Unmapped"
         },
         "destination": {
-          "none": "Пока не использовать",
+          "none": "Выберите поле HostFlow",
+          "ignore": "Не использовать этот вопрос",
           "invalid": "Поле HostFlow больше не действует",
           "groups": {
             "candidate": "Кандидат",
@@ -11767,7 +11790,8 @@
           "ignore": "Игнорировать этот ответ"
         },
         "projection": {
-          "title": "Что запишет следующая заявка"
+          "title": "Что запишет следующая заявка",
+          "empty": "Сохраните mapping, чтобы увидеть, что запишет следующая заявка."
         },
         "applied": {
           "title": "Что записала последняя заявка",
@@ -11807,8 +11831,9 @@
           "action": "Использовать"
         },
         "action": {
+          "unset": "Не задано",
           "map": "Сопоставить",
-          "ignore": "Игнорировать"
+          "ignore": "Не использовать"
         }
       },
       "test_lead": {

@@ -40,6 +40,11 @@ import {
   statusSemantic,
 } from './marketingPresentation'
 import { MarketingWorkspaceNav } from './MarketingWorkspaceNav'
+import {
+  mappingAssessmentCopy,
+  mappingContractTone,
+  mappingWorkspaceCta,
+} from '../../api/marketingSources'
 
 type RosterFilter = 'all' | 'active' | 'paused' | 'completed'
 
@@ -274,6 +279,28 @@ export default function MarketingCampaignsPage() {
         key: 'source',
         header: t('app.marketing.list.columns.source'),
         render: (row) => <span className="text-slate-700">{row.sourceLabel}</span>,
+      },
+      {
+        key: 'mapping',
+        header: t('app.marketing.list.columns.mapping'),
+        render: (row) => {
+          const source = primarySource(currentFlight(row.campaign))
+          const path = String(source?.mapping_path || '').trim()
+          if (!source || !path) {
+            return <span className="text-slate-400">—</span>
+          }
+          const copy = mappingAssessmentCopy(source)
+          return (
+            <Link
+              to={path}
+              onClick={(e) => e.stopPropagation()}
+              className={`inline-flex rounded px-2 py-0.5 text-xs font-medium hover:underline ${mappingContractTone(source.contract_health)}`}
+              data-testid={`marketing-campaign-mapping-${row.campaign.id}`}
+            >
+              {copy !== '—' ? copy : mappingWorkspaceCta(source)}
+            </Link>
+          )
+        },
       },
       {
         key: 'destination',

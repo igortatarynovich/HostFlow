@@ -62,7 +62,7 @@ Reject: documenting the old chain as “still how ingest works”; a second reso
 
 ## Consequences
 
-- MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Remaining writable surfaces must cease to be editors (deep-link/redirect or separately owned read-only diagnostics). Feat stays locked until that slice.  
+- MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Mapping Operator Gate **PASS** 2026-09-18. Remaining leftover HTTP writers return 410; leftover stores stay read-through.  
 - MA-4 makes `qualified_code` the only write vocabulary on the intake path.  
 - RPM / evaluators still consume canonical facts only.
 
@@ -70,4 +70,5 @@ Reject: documenting the old chain as “still how ingest works”; a second reso
 
 ## History
 
+- 2026-09-18: Mapping Operator Gate **PASS**. Active Product → MA-4 (brief; feat locked).
 - 2026-09-04: Mapping Resolution Gate **PASS**. One resolver over `intake_source_profiles.mapping_rules`. Active Product → MA-3 (brief; feat locked).

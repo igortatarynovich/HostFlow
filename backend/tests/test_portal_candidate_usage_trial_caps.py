@@ -12,4 +12,4 @@ def test_resolve_plan_code_for_portal_cap_keeps_trial_status() -> None:
 
 
 def test_monthly_cap_for_trial_plan_code() -> None:
-    assert portal_candidate_usage.monthly_cap_for_plan_code("trial") == 2
+    assert portal_candidate_usage.monthly_cap_for_plan_code("trial") == 300
