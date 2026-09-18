@@ -59,7 +59,7 @@ def _public_form_profile_code(public_slug: str) -> str:
     max_len = _INTAKE_SOURCE_CODE_MAX_LEN - len(prefix)
     if len(safe) <= max_len:
         return f"{prefix}{safe}"
-    digest = hashlib.sha1(safe.encode("utf-8")).hexdigest()[:8]
+    digest = hashlib.sha1(safe.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
     keep = max(8, max_len - 9)
     return f"{prefix}{safe[:keep].rstrip('-')}-{digest}"
 
