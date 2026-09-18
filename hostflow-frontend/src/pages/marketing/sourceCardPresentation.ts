@@ -9,3 +9,9 @@ export function humanizeMetaPlaceholder(
   if (/^meta form \d+$/i.test(n)) return null
   return n
 }
+
+export function sourceMappingReady(row: {
+  mapping_headline?: string | null
+}): boolean {
+  return String(row.mapping_headline || '').trim() === 'all_set'
+}

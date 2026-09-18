@@ -9,6 +9,7 @@ from backend.app.acquisition.campaign_source_cards import (
     enrich_intake_source_card,
     form_publication_status,
     humanize_meta_profile_name,
+    mapping_card_fields,
     parse_meta_page_id,
 )
 from backend.app.acquisition.sources_read import parse_meta_form_id
@@ -64,6 +65,24 @@ def test_enrich_intake_prefers_meta_form_name() -> None:
     assert card.page_name is None
     assert card.meta_form_id == "99"
     assert card.binding_status == "bound"
+
+
+def test_mapping_card_fields_open_same_workspace() -> None:
+    fields = mapping_card_fields(
+        source_id="src-1",
+        provider="meta",
+        meta_form_id="99",
+        assessment={
+            "headline": "needs_check",
+            "human": "Needs a check — 2 questions to set",
+            "cta": "2 fields are not configured",
+            "contract_health": "needs_review",
+        },
+    )
+    assert fields["mapping_path"] == "/app/marketing/sources/src-1/mapping"
+    assert fields["mapping_human"] == "Needs a check — 2 questions to set"
+    assert fields["mapping_cta"] == "2 fields are not configured"
+    assert fields["mapping_headline"] == "needs_check"
 
 
 def test_lead_normalized_json_path_uses_as_string_not_astext() -> None:

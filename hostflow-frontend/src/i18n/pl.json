@@ -11377,7 +11377,7 @@
         "open_public": "Otwórz publiczny link",
         "connect_source": "Podłącz źródło",
         "starts": "Start: {when}",
-        "sources_help": "Source to miejsce, skąd przychodzą zgłoszenia (Lead Form Meta albo formularz HostFlow). Connection (OAuth) konfiguruje się w Integrations. Routing dziedziczy Primary Target kampanii.",
+        "sources_help": "Source to miejsce, skąd przychodzą zgłoszenia (Lead Form Meta albo formularz HostFlow). Po podłączeniu na tej karcie ustawiasz, gdzie trafi każda odpowiedź — Mapping nie jest osobnym ekranem admina. Connection (OAuth) konfiguruje się w Integrations. Routing dziedziczy Primary Target kampanii.",
         "sources_empty_hint": "Podłącz Meta Lead Ads albo publiczny formularz HostFlow — bez ponownego tworzenia kampanii.",
         "primary_slots_full": "Sloty primary formularza HostFlow i źródła Meta dla tego Flight są zajęte. Wiele równorzędnych źródeł tego samego typu pojawi się później — UI nie oferuje podłączenia, które skończyłoby się błędem.",
         "pause_advice_body": "To tylko rada — wstrzymaj przyciskiem Wstrzymaj powyżej. Nie ma autodwstrzymania.",
@@ -11509,7 +11509,8 @@
         "lead_form_fallback": "Lead Form (Meta)",
         "active": "Aktywny",
         "active_binding": "Aktywne powiązanie",
-        "inactive_binding": "Nieaktywne powiązanie"
+        "inactive_binding": "Nieaktywne powiązanie",
+        "mapping": "Gdzie trafiają odpowiedzi"
       },
       "ad_bindings": {
         "title": "Powiązanie Ad ID → Flight",
@@ -11603,6 +11604,7 @@
           "applications": "Zgłoszenia",
           "form": "Formularz",
           "source": "Źródło",
+          "mapping": "Pytania",
           "destination": "Dokąd",
           "launch": "Start",
           "price": "Cena",

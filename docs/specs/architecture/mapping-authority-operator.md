@@ -319,7 +319,7 @@ Minimum workspace:
 4. **In-row option map** when destination is choice-typed. Incomplete option decisions keep the choice binding not Ready.
 5. **Projection** after save (same resolver/transform contract as ingestion, not a second evaluator); **applied evidence** after a real submission (RS-3 stays the program proof).
 6. **No-sample state** — full schema still listed; copy is “no example yet”. Actions in this workspace: Get latest example / Wait for next application. For Meta this is a pause to get a test/latest lead, not a dead end and not a licence to treat placeholders as schema. C-4 Test lead is leftover diagnostic, not a second mapping authority.
-7. Entry CTAs from Connect, form, diagnostics, and “1 field is not configured” — all `open` the same editor.
+7. Entry CTAs from Connect, **campaign source cards / campaign list**, form, diagnostics, and “1 field is not configured” — all `open` the same editor. Sources inventory is not the only door.
 8. **Visible close path** — the same workspace lists the five operator steps (questions → example → map → next write → last write) and marks which is current. Buttons without this sequence are not the path. This sequence is not Mapping Operator Gate PASS.
 
 C-5, Meta Field mapping, and Intake form mapping must **cease to be editors**. They may only deep-link/redirect into this workspace or expose narrowly scoped read-only diagnostics where separately owned.
@@ -363,6 +363,7 @@ Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin st
 
 ## History
 
+- 2026-09-18: Campaign list and campaign source cards show the same mapping assessment and open the Mapping workspace. Operators do not have to go to Sources first. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-18: Mapping workspace shows the Meta close path as five visible steps (questions → example → map → next write → last write). Projection stays on the page when empty. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-18: Named red ingest→candidate fields proven at `8dabcfb9` (`which_licence` → `recruitment.candidate.personal.residency_status` on GET candidate after real `POST /api/v1/leads/meta`; Ignore does not land; blocked_duplicate RODO shells receive the same conversion payload). Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Pytest is not Gate PASS. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring. Unlock ≠ schedule.
 - 2026-09-18: Choice Graph questions mapped to `reference_code` / integer HostFlow fields are not `type_changed`; conversion fills reused ADR-031 shells; option-map matches Graph snake_case keys. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.

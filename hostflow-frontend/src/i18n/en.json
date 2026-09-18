@@ -11377,7 +11377,7 @@
         "open_public": "Open public link",
         "connect_source": "Connect a source",
         "starts": "Start: {when}",
-        "sources_help": "Source is where applications come from (Meta Lead Form or HostFlow form). Connection (OAuth) is configured in Integrations. Routing inherits the campaign Primary Target.",
+        "sources_help": "Source is where applications come from (Meta Lead Form or HostFlow form). After connect, set where each answer lands — Mapping is on this card, not a separate admin screen. Connection (OAuth) is configured in Integrations. Routing inherits the campaign Primary Target.",
         "sources_empty_hint": "Connect Meta Lead Ads or a HostFlow public form — without creating the campaign again.",
         "primary_slots_full": "Primary slots for the HostFlow form and Meta source on this Flight are taken. Multiple equal sources of the same type will come later — the UI does not offer a connection that would fail.",
         "pause_advice_body": "This is advice only — pause with the Pause button above. There is no auto-pause.",
@@ -11509,7 +11509,8 @@
         "lead_form_fallback": "Lead Form (Meta)",
         "active": "Active",
         "active_binding": "Active binding",
-        "inactive_binding": "Inactive binding"
+        "inactive_binding": "Inactive binding",
+        "mapping": "Where answers land"
       },
       "ad_bindings": {
         "title": "Ad ID → Flight binding",
@@ -11603,6 +11604,7 @@
           "applications": "Applications",
           "form": "Form",
           "source": "Source",
+          "mapping": "Questions",
           "destination": "Goes to",
           "launch": "Launch",
           "price": "Price",

@@ -11377,7 +11377,7 @@
         "open_public": "Открыть публичную ссылку",
         "connect_source": "Подключить источник",
         "starts": "Запуск: {when}",
-        "sources_help": "Source = откуда приходят заявки (Lead Form Meta или анкета HostFlow). Connection (OAuth) настраивается в Integrations. Routing наследует Primary Target кампании.",
+        "sources_help": "Source = откуда приходят заявки (Lead Form Meta или анкета HostFlow). После подключения на этой карточке задаётся, куда ляжет каждый ответ — Mapping не отдельный admin-экран. Connection (OAuth) настраивается в Integrations. Routing наследует Primary Target кампании.",
         "sources_empty_hint": "Подключите Meta Lead Ads или публичную анкету HostFlow — без повторного создания кампании.",
         "primary_slots_full": "Primary-слоты анкеты HostFlow и Meta-источника для этого Flight заняты. Несколько равноправных источников одного типа появятся в следующем обновлении — сейчас UI не предлагает подключение, которое завершится ошибкой.",
         "pause_advice_body": "Сигнал только советует — пауза через кнопку «Пауза» выше. Автопаузы нет.",
@@ -11509,7 +11509,8 @@
         "lead_form_fallback": "Lead Form (Meta)",
         "active": "Активен",
         "active_binding": "Активная привязка",
-        "inactive_binding": "Неактивная привязка"
+        "inactive_binding": "Неактивная привязка",
+        "mapping": "Куда лягут ответы"
       },
       "ad_bindings": {
         "title": "Привязка Ad ID → Flight",
@@ -11603,6 +11604,7 @@
           "applications": "Заявки",
           "form": "Форма",
           "source": "Источник",
+          "mapping": "Вопросы",
           "destination": "Куда",
           "launch": "Запуск",
           "price": "Цена",
