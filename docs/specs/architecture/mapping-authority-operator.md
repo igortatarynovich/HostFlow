@@ -351,12 +351,13 @@ Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin st
 
 - Mapping Operator Gate **PASS** 2026-09-18: close path proven on Metafora TSL C/CE 110; leftover mapping HTTP writers return 410. An existing page remains insufficient as a stamp by itself.  
 - Remaining writable screens must stay non-editors (deep-link/redirect or separately owned read-only diagnostics). Leftover stores stay read-through.  
-- MA-4 still owns vocabulary cutover (`qualified_code` only). Feat `feat/mapping-authority-ma4-consumer-cutover` is open on a separate branch. This file does not absorb that cutover.
+- MA-4 still owns vocabulary cutover (`qualified_code` only). Mapping Consumer Cutover Gate **PASS** (`fddadd39`). Feat locked. This file remains MA-3 UX SoT and does not absorb Mapping program close.
 
 ---
 
 ## History
 
+- 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. Feat locked. This file remains MA-3 UX SoT. Active Product → Mapping program close (brief; feat locked).
 - 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Mapping Consumer Cutover Gate **not PASS**. This file remains MA-3 UX SoT.
 - 2026-09-18: **Mapping Operator Gate PASS.** Operator acceptance on DANEMA TSL / Metafora TSL C/CE 110 (`7b0e286c-4d8b-4014-a5cb-570e0a8ea01e`). Live `f65edf28`. Ready 8/8; mapped fields on candidate Andrei `f0f8a806`; five-step close path; campaign list + source cards open the same workspace; leftover mapping HTTP writers 410. Leftover stores remain read-through. Active Product → **MA-4** (brief; feat locked). Not leftover-store deletion. Not MA-4 start / External Intake / Forms Publish / Hiring. Not Foundation ✅. RS-3 remains program proof.
 - 2026-09-18: Campaign list and campaign source cards show the same mapping assessment and open the Mapping workspace. Operators do not have to go to Sources first. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.

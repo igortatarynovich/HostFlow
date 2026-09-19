@@ -2,9 +2,8 @@
 
 qualified_code is the only intake write vocabulary. Dual leftover ``target``
 is not a production writer. OCR / Telegram stay named leftovers.
-Gate itself stays not PASS until the brief stamp. Not leftover-store
-deletion. Not External Intake / Forms Publish / Hiring. RS-3 remains
-program proof.
+Gate **PASS** after the brief stamp. Not leftover-store deletion. Not
+External Intake / Forms Publish / Hiring. RS-3 remains program proof.
 """
 
 from __future__ import annotations
@@ -77,18 +76,26 @@ def test_ma4_production_writers_do_not_use_second_vocabulary() -> None:
     assert "legacy_candidate_profile_unscoped_mapping_rejected" in validation
 
 
-def test_ma4_brief_gate_not_pass() -> None:
+def test_ma4_brief_gate_pass() -> None:
     text = _BRIEF.read_text(encoding="utf-8")
-    assert "Mapping Consumer Cutover Gate" in text
+    current = text.split("## History", 1)[0]
+    assert "Mapping Consumer Cutover Gate **PASS**" in current
+    assert "feat locked" in current.lower()
+    assert "Mapping program close" in current
+    assert "fddadd39" in current
     lowered = text.lower()
-    assert "not pass" in lowered
     assert "leftover-store deletion" in lowered
     assert "external intake" in lowered
     assert "hiring" in lowered
     queue = _QUEUE.read_text(encoding="utf-8")
+    queue_current = queue.split("## 8. History", 1)[0]
+    assert "**Active Product** | Mapping program close" in queue_current
+    assert "Active (Product):** Mapping program close" in queue_current
+    assert "Mapping Consumer Cutover Gate **PASS**" in queue_current
     assert "feat/mapping-authority-ma4-consumer-cutover" in queue
     agents = _AGENTS.read_text(encoding="utf-8")
-    assert "Mapping Consumer Cutover Gate not PASS" in agents or "Cutover Gate not PASS" in agents
+    assert "Mapping Consumer Cutover Gate **PASS**" in agents or "Cutover Gate **PASS**" in agents
+    assert "Mapping program close" in agents
 
 
 def test_ma4_leaves_intake_hiring_queued() -> None:

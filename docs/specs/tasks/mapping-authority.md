@@ -1,9 +1,9 @@
 # Mapping Authority
 
-**Status:** **ACTIVE** — MA-1 Contract Gate **PASS**. Mapping Resolution Gate **PASS**. Mapping Operator Gate **PASS**. Active Product = **MA-4** (feat `feat/mapping-authority-ma4-consumer-cutover` open; Mapping Consumer Cutover Gate **not PASS**).  
+**Status:** **ACTIVE** — MA-1 Contract Gate **PASS**. Mapping Resolution Gate **PASS**. Mapping Operator Gate **PASS**. Mapping Consumer Cutover Gate **PASS**. Active Product = Mapping program close (brief; feat locked).  
 **Phase class:** platform
 **Branch (docs):** `docs/mapping-authority-ma3-operator-brief`  
-**Branch (code):** `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Mapping Consumer Cutover Gate **not PASS**. Close path: `qualified_code` is the only intake write vocabulary; hardcoded extractors consume the authority or are named leftovers with owner + expiry. Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. RS-3 remains program proof.
+**Branch (code):** `feat/mapping-authority-ma4-consumer-cutover` locked. Mapping Consumer Cutover Gate **PASS** (`fddadd39`). Close path proven: `qualified_code` is the only intake write vocabulary; hardcoded extractors consume the authority or are named leftovers with owner + expiry. Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. RS-3 remains program proof.
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 2) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-3](../journeys/release-readiness-acceptance-suite.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [ADR-021](../architecture/ADR-021-unified-intake-resolution-model.md) · [Entity Profile Definition Registry](../platform/entity-profile-definition-registry.md) · [Field Registry](../platform/field-registry-card-configuration.md) · [CL6 Flight map](entity-field-composition-cl6-flight-map.md) · [C-5 mapping workspace](acquisition-ui-cutover-c5-mapping-workspace.md)
 **Estimate:** 4–6 slices (1 slice = one docs PR + one feat PR)
 
@@ -11,7 +11,7 @@
 > Not “build another mapping editor” — there are already three editors writing three stores.
 > **Not** Forms Publish (that is [External Intake](external-intake-forms-publish.md), which consumes this). **Not** Requirement Policy. **Not** CL8. **Not** OCR. **Not** a Zapier product.
 > Zapier is a **UX reference** for Meta: Page + Form → test/latest lead → map fields. HostFlow adds what Zapier is not required to solve: schema as structure SoT (sample cannot hide a question), typed Field Registry destinations, option maps, binding vs contract-health scales, versioning, drift, and evaluator isolation.
-> [RPM program close](requirement-policy-management.md) named MA-1 Active Product. MA-1 sealed the [Mapping Authority Contract](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`). MA-2 sealed the [one resolver](../architecture/mapping-authority-resolution.md). [#350](https://github.com/igortatarynovich/HostFlow/pull/350) **Accepted** the [MA-3 UX contract](../architecture/mapping-authority-operator.md). Mapping Operator Gate **PASS** 2026-09-18 (live `f65edf28`; operator acceptance on DANEMA TSL / Metafora TSL C/CE 110). Active Product is **MA-4**. Feat `feat/mapping-authority-ma4-consumer-cutover` is open. Mapping Consumer Cutover Gate stays **not PASS**. External Intake / Hiring E2E / min HR remain queued.
+> [RPM program close](requirement-policy-management.md) named MA-1 Active Product. MA-1 sealed the [Mapping Authority Contract](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`). MA-2 sealed the [one resolver](../architecture/mapping-authority-resolution.md). [#350](https://github.com/igortatarynovich/HostFlow/pull/350) **Accepted** the [MA-3 UX contract](../architecture/mapping-authority-operator.md). Mapping Operator Gate **PASS** 2026-09-18 (live `f65edf28`; operator acceptance on DANEMA TSL / Metafora TSL C/CE 110). Mapping Consumer Cutover Gate **PASS** 2026-09-19 (`fddadd39`). Active Product is Mapping program close (brief; feat locked). External Intake / Hiring E2E / min HR remain queued.
 
 ---
 
@@ -77,7 +77,7 @@ Four parallel ways answers become entity-shaped data: Forms answers (`forms.norm
 
 ## Internal ladder (this program only)
 
-One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **Mapping Operator Gate PASS**. **MA-4 is Active Product** (feat `feat/mapping-authority-ma4-consumer-cutover` open; Mapping Consumer Cutover Gate not PASS).
+One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **Mapping Operator Gate PASS**. **Mapping Consumer Cutover Gate PASS**. Active Product = Mapping program close (brief; feat locked).
 
 ```text
 MA-1 Authority contract
@@ -92,7 +92,7 @@ MA-1 Authority contract
 | **MA-1** | Authority contract | `map-authority` | **Mapping Authority Contract Gate** ✅ — one operator question; one write authority named; twelve answerers classified; contract shape (option map, schema ≠ sample, binding vs health, version/drift, evaluator isolation, uncertainty ≠ failure) is SoT; no fourth store. SoT: [mapping-authority-contract.md](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`) | RPM program close (queue amendment) | 1 slice (docs) |
 | **MA-2** | Resolution runtime | `map-resolve` | **Mapping Resolution Gate** ✅ — exactly one store answers “which rule applies to this source?”; leftover stores are read-through or migrated; precedence chain removed. SoT: [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md) (`resolve_mapping_authority`) | MA-1 Gate | 1–2 slices |
 | **MA-3** | Operator surface | `map-operator` | **Mapping Operator Gate** ✅ — UX SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). Untrained operator on a real Meta source: schema + examples, map every answer, Ready, next-submission projection, applied evidence — on **one** editor (many entry points). Remaining writable surfaces ceased to be editors (HTTP 410; leftover stores stay read-through). | MA-2 Gate | 1 slice |
-| **MA-4** | Consumer cutover | `map-cutover` | **Mapping Consumer Cutover Gate** — canonical `qualified_code` is the only write vocabulary on the intake path; hardcoded extractors read the authority or are named leftovers with owner + expiry. Feat `feat/mapping-authority-ma4-consumer-cutover` open. Gate **not PASS**. | MA-3 Gate | 1–2 slices |
+| **MA-4** | Consumer cutover | `map-cutover` | **Mapping Consumer Cutover Gate** ✅ — canonical `qualified_code` is the only write vocabulary on the intake path; hardcoded extractors read the authority or are named leftovers with owner + expiry. Feat locked. Gate **PASS** (`fddadd39`). | MA-3 Gate | 1–2 slices |
 
 ---
 
@@ -242,19 +242,21 @@ This stamp is **not** MA-4 start, leftover-store deletion, External Intake, Form
 
 ---
 
-## MA-4 — Consumer cutover (Active; feat open)
+## MA-4 — Consumer cutover (**PASS**)
 
-**Outcome:** not PASS. Feat `feat/mapping-authority-ma4-consumer-cutover` is open from `c20f7987`. Mapping Consumer Cutover Gate stays **not PASS**. Intake writes now land on `canonical_facts_v1[qualified_code]`; leftover `target` is inference only. The named Gate is not stamped. Dual vocabulary still participating in the production write path would be not PASS.
+**Outcome:** **PASS** (2026-09-19). Cutover code `fddadd39`. Feat `feat/mapping-authority-ma4-consumer-cutover` locked. Mapping Consumer Cutover Gate **PASS**. Leftover Meta stores remain read-through. OCR / Telegram stay named leftovers with owner + expiry. Not leftover-store deletion.
 
-PASS when:
+Evidence:
 
-1. Canonical Field Registry `qualified_code` is the only write vocabulary on the intake path. Legacy flat `target` is leftover read-through, not a second write key.  
-2. Hardcoded extractors consume the authority (`resolve_mapping_authority`) or are retired: `LEAD_INTAKE_QUALIFIED_TO_NORMALIZED` / `enrich_mapping_rule_for_storage`, `PUBLIC_INTAKE_FIELD_TO_QUALIFIED`, `build_candidate_payload_from_intake_state`, CandidateProfile bridge.  
-3. Evaluators and intake consumers read **canonical facts only**; provider payload stays evidence under the contract, not an evaluation input.  
-4. Anything that cannot be cut over in this slice (OCR mapping, Telegram bootstrap) is listed with owner and expiry — silent leftovers make the gate STOP.  
+1. Canonical Field Registry `qualified_code` is the only write vocabulary on the intake path. Leftover flat `target` is inferred, never minted as a second write key.  
+2. Hardcoded extractors consume Mapping Authority or are retired: `enrich_mapping_rule_for_storage` does not mint `target`; `PUBLIC_INTAKE_FIELD_TO_QUALIFIED` is not a production writer; conversion and `build_candidate_payload_from_intake_state` consume canonical facts; CandidateProfile unscoped accept-all is rejected.  
+3. Intake writes `canonical_facts_v1[qualified_code]`. Phone / email on the lead are a storage projection for matching, not a mapping decision. Provider payload stays evidence.  
+4. OCR mapping and Telegram bootstrap are listed with owner + expiry. Silent leftovers would STOP.  
 5. External Intake / Forms Publish / Hiring E2E / min HR / leftover-store deletion are not this slice. RS-3 remains program proof.
 
 Out: Sales convert mapping rewrite; CL6 re-fork; leftover-store deletion; a canonical-write refactor of modules outside intake.
+
+This stamp is **not** Mapping program close (outcome + release delta), leftover-store deletion, External Intake, Forms Publish, Hiring, Foundation ✅, or HostFlow v1 release-ready.
 
 ---
 
@@ -270,8 +272,8 @@ Out: Sales convert mapping rewrite; CL6 re-fork; leftover-store deletion; a cano
 ## Queue position
 
 **Depends on:** [RPM program close](requirement-policy-management.md). The [DAG](../gates/hostflow-v1-release-goal.md) does **not** make RPM a predecessor of Mapping — one-Active-Product serialized them.  
-**Unlocks:** Mapping Consumer Cutover Gate after this feat (not PASS yet); [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance remains a later edge — **not** scheduled here  
-**Does not:** mark Mapping Consumer Cutover Gate PASS because the feat is open; leftover-store deletion; absorb Forms Publish; reopen CL6 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR; mark Foundation ✅
+**Unlocks:** Mapping program close (brief; feat locked this stamp); [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance remains a later edge — **not** scheduled here  
+**Does not:** leftover-store deletion; absorb Forms Publish; reopen CL6 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR; mark Foundation ✅
 
 ---
 
@@ -292,6 +294,7 @@ Out: Sales convert mapping rewrite; CL6 re-fork; leftover-store deletion; a cano
 
 ## History
 
+- 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. `qualified_code` is the only intake write vocabulary; leftover `target` is inference only. Conversion / public intake / CandidateProfile consume Mapping Authority or canonical facts. OCR / Telegram named leftovers with owner + expiry. Leftover Meta stores remain read-through. Feat locked. Active Product → Mapping program close (brief; feat locked). Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. Not Foundation ✅. RS-3 remains program proof.
 - 2026-09-19: **MA-4 vocabulary cutover in the feat.** Intake writes `canonical_facts_v1[qualified_code]`. `enrich_mapping_rule_for_storage` no longer mints leftover `target`. Conversion / public intake / CandidateProfile allow-list consume Mapping Authority or presentation facts. OCR / Telegram stay named leftovers with owner + expiry. Mapping Consumer Cutover Gate **not PASS**. Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. RS-3 remains program proof.
 - 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Close path = `qualified_code` is the only intake write vocabulary; hardcoded extractors consume the authority or are named leftovers with owner + expiry. Mapping Consumer Cutover Gate **not PASS**. Dual vocabulary still live is not PASS. Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. RS-3 remains program proof.
 - 2026-09-18: **Mapping Operator Gate PASS.** Operator acceptance on DANEMA TSL / Metafora TSL C/CE 110 (`7b0e286c-4d8b-4014-a5cb-570e0a8ea01e`). Live `f65edf28`. Ready 8/8; mapped fields on candidate Andrei `f0f8a806`; five-step close path; campaign list + source cards open the same workspace; leftover mapping HTTP writers 410. Leftover stores remain read-through. Active Product → **MA-4** (brief; feat locked). Not leftover-store deletion. Not MA-4 start / External Intake / Forms Publish / Hiring. Not Foundation ✅. RS-3 remains program proof.

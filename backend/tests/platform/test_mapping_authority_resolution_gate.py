@@ -95,8 +95,8 @@ def test_ma2_brief_resolution_gate_pass() -> None:
 def test_ma2_queue_names_ma3_successor() -> None:
     text = _QUEUE.read_text(encoding="utf-8")
     assert "Mapping Resolution Gate" in text
-    assert "**Active Product** | **[MA-4](mapping-authority.md)**" in text
-    assert "Active (Product):** **[MA-4](mapping-authority.md)**" in text
+    assert "**Active Product** | Mapping program close" in text
+    assert "Active (Product):** Mapping program close" in text
     assert "feat locked" in text
     assert "Active (Product):** **[MA-2](mapping-authority.md)**" not in text
     agents = _AGENTS.read_text(encoding="utf-8")
