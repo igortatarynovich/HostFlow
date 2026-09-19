@@ -1,7 +1,7 @@
 """MA-3 mapping workspace envelope — schema-first, sample optional.
 
-Does not open a fourth store. Does not cut over vocabulary (MA-4).
-Does not absorb Sales convert, OCR, or CL6.
+Destination identity is ``qualified_code`` (MA-4 consume). Does not open a
+fourth store. Does not absorb Sales convert, OCR, or CL6.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from typing import Any, Mapping, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.field_registry.intake_mapping import rule_write_qualified_code
 from backend.app.field_registry.option_map import (
     OPTION_IGNORE_VALUE,
     lookup_option_map,
@@ -691,7 +692,7 @@ def build_workspace_rows(
         dest_code = ""
         option_map: dict[str, str] = {}
         if rule:
-            dest_code = str(rule.get("qualified_field_code") or rule.get("target") or "").strip()
+            dest_code = rule_write_qualified_code(dict(rule))
             raw_map = rule.get("option_map")
             if isinstance(raw_map, dict):
                 option_map = {

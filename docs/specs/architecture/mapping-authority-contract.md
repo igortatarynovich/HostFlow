@@ -12,7 +12,7 @@
 > ADR-021 remains the intake resolution model. This contract names **who may write** source→canonical placement.  
 > Machine copy: `mapping_authority.v1` in `backend/app/reference/mapping_authority.py`.  
 > Resolver (MA-2): [`mapping-authority-resolution.md`](mapping-authority-resolution.md) · `resolve_mapping_authority`.  
-> Operator surface (MA-3): [`mapping-authority-operator.md`](mapping-authority-operator.md) — UX contract; feat locked.
+> Operator surface (MA-3): [`mapping-authority-operator.md`](mapping-authority-operator.md) — UX contract; Mapping Operator Gate **PASS**. Consumer cutover (MA-4): Mapping Consumer Cutover Gate **PASS** (`fddadd39`); feat locked.
 
 ---
 
@@ -161,6 +161,8 @@ Reject: a fourth store; renaming C-5 as “the authority” while Meta admin sti
 
 ## History
 
+- 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. Destination vocabulary `qualified_code` is the only intake write. Dual leftover `target` is inference only. Feat locked. Active Product → Mapping program close (brief; feat locked).
+- 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Mapping Consumer Cutover Gate **not PASS**. This contract still names destination vocabulary as `qualified_code`; dual `target` remains leftover until MA-4 Gate.
 - 2026-09-18: Mapping Operator Gate **PASS**. Active Product → MA-4 (brief; feat locked).
 - 2026-09-04: MA-2 Resolution Gate **PASS**. Row 4 retired into the one resolver. Active Product → MA-3 (brief; feat locked).
 - 2026-09-04: Accepted as MA-1 Authority contract. Twelve-row classification frozen. Feat locked until a later MA-2 branch. Active Product → MA-2 (brief; feat locked).

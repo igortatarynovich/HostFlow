@@ -36,6 +36,7 @@ from backend.app.entity_profile.ingest_runtime import (
 from backend.app.entity_profile.outcome_executor import execute_outcome_decision
 from backend.app.models import Candidate, Lead
 from backend.app.modules.leads import crud as leads_crud
+from backend.app.modules.leads.conversion_mapping import conversion_payload_from_normalized
 from backend.app.services.intake_channel_candidate import public_intake_stable_contact_key
 
 PUBLIC_INTAKE_DRAFT_V1 = "public_intake_draft_v1"
@@ -674,51 +675,50 @@ def build_candidate_payload_from_intake_state(
     intake_state: dict[str, Any],
     vacancy_id: Optional[str],
     source: str,
+    normalized: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
-    contacts = _record(intake_state.get("contacts"))
-    personal = _record(intake_state.get("personal"))
-    experience = _record(intake_state.get("experience"))
-    full_name = str(personal.get("full_name") or "").strip()
-    first_name = "Candidate"
-    last_name = "Draft"
-    if full_name:
-        parts = [p for p in full_name.split() if p]
-        if parts:
-            first_name = parts[0]
-            last_name = " ".join(parts[1:]) if len(parts) > 1 else parts[0]
+    """Candidate create payload from Mapping Authority facts / executable rules.
+
+    Leftover contacts/personal buckets are source evidence, not a write vocabulary.
+    """
+    n: dict[str, Any] = dict(normalized) if isinstance(normalized, dict) else {}
+    envelope = intake_state.get("ingest_envelope_v1")
+    if isinstance(envelope, dict):
+        n.setdefault("ingest_envelope_v1", envelope)
+        payload_facts = envelope.get("normalized_payload")
+        if isinstance(payload_facts, dict):
+            facts = payload_facts.get("canonical_facts_v1")
+            if isinstance(facts, dict):
+                bag = n.setdefault("canonical_facts_v1", {})
+                for code, value in facts.items():
+                    bag.setdefault(str(code), value)
+            stamp = payload_facts.get("mapping_applied_v1")
+            if isinstance(stamp, dict):
+                n.setdefault("mapping_applied_v1", stamp)
+    presentation = intake_state.get("presentation_values_v1")
+    if isinstance(presentation, dict):
+        bag = n.setdefault("canonical_facts_v1", {})
+        for code, value in presentation.items():
+            key = str(code or "").strip()
+            if key and value not in (None, "") and key not in bag:
+                bag[key] = value
+    mapped = conversion_payload_from_normalized(n)
     payload: dict[str, Any] = {
-        "first_name": first_name,
-        "last_name": last_name,
-        "phone": contacts.get("phone"),
-        "phone_country_code": contacts.get("phone_country_code"),
-        "email": contacts.get("email"),
+        "first_name": mapped.get("first_name") or "Candidate",
+        "last_name": mapped.get("last_name") or "Draft",
         "vacancy_id": vacancy_id,
         "source": source,
         "stage": "docs_wait",
         "origin": {source: intake_state},
     }
-    personal_fields = {
-        k: v
-        for k, v in {
-            "citizenship": personal.get("citizenship"),
-            "residency_status": personal.get("residency_status"),
-            "in_poland": personal.get("in_poland"),
-            "birth_date": personal.get("birth_date"),
-            "current_location": personal.get("current_location"),
-            "frigo_experience": personal.get("frigo_experience"),
-            "has_adr": personal.get("has_adr"),
-        }.items()
-        if v is not None
-    }
-    if personal_fields:
-        payload["personal_data"] = personal_fields
-    extra: dict[str, Any] = {}
-    if experience:
-        extra["experience"] = experience
-    if extra:
-        payload["extra"] = extra
-    if contacts:
-        payload["contacts"] = contacts
+    for key, value in mapped.items():
+        if key in {"first_name", "last_name"}:
+            continue
+        payload[key] = value
+    if mapped.get("first_name"):
+        payload["first_name"] = mapped["first_name"]
+    if mapped.get("last_name"):
+        payload["last_name"] = mapped["last_name"]
     return payload
 
 
@@ -819,6 +819,7 @@ async def submit_public_intake_lead_draft(
             intake_state=intake_state,
             vacancy_id=vacancy_id,
             source=source,
+            normalized=flat_normalized,
         )
         outcome = await execute_outcome_decision(
             db,
