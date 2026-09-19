@@ -6,9 +6,9 @@ One operator question. One write. Twelve answerers. A later MA slice may
 retire a leftover; it must not add a thirteenth write of the same question.
 
 MA-2: one resolver over the write authority. Not the operator editor
-(MA-3). Not consumer cutover (MA-4). Not a fourth store. Not Zapier.
-Not Sales convert. Not OCR. Not CL6. Not Hiring E2E. Not External Intake
-publish.
+(MA-3). MA-4: intake write destination is ``qualified_code``. Not leftover-store
+deletion. Not Zapier. Not Sales convert. Not OCR. Not CL6. Not Hiring E2E.
+Not External Intake publish.
 """
 
 from __future__ import annotations
@@ -65,6 +65,8 @@ class Answerer:
     code: str
     role: MaRole
     paths: tuple[str, ...]
+    owner: str | None = None
+    expiry: str | None = None
 
 
 ANSWERERS: Final[tuple[Answerer, ...]] = (
@@ -83,11 +85,15 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
             "backend/app/models/lead.py",
             "backend/app/modules/leads/field_mapping_resolve.py",
         ),
+        owner="Acquisition",
+        expiry="leftover-store deletion (not this feat)",
     ),
     Answerer(
         code="meta_lead_settings_field_mapping",
         role="leftover",
         paths=("backend/app/models/lead.py",),
+        owner="Acquisition",
+        expiry="leftover-store deletion (not this feat)",
     ),
     Answerer(
         code="silent_precedence_chain",
@@ -98,6 +104,8 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
         code="meta_leads_admin_ui",
         role="leftover",
         paths=("hostflow-frontend/src/pages/admin/MetaLeadsAdminPage.tsx",),
+        owner="Acquisition",
+        expiry="leftover-store deletion (not this feat)",
     ),
     Answerer(
         code="c5_and_intake_form_editors",
@@ -129,16 +137,20 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
             "backend/app/modules/documents/mapping_candidate.py",
             "backend/app/api/v1/communications/_helpers/telegram_intake/candidate_link.py",
         ),
+        owner="Documents / Communications",
+        expiry="OCR unlock ≠ schedule; Telegram until External Intake binds it (neither this feat)",
     ),
     Answerer(
         code="dual_vocabulary_and_hardcoded_extractors",
-        role="leftover",
+        role="consume",
         paths=(
             "backend/app/field_registry/intake_mapping.py",
             "backend/app/entity_profile/ingest_runtime.py",
             "backend/app/entity_profile/public_intake_draft_session.py",
             "backend/app/entity_profile/facade.py",
         ),
+        owner="Mapping Authority",
+        expiry="MA-4 Gate — leftover stored target may be inferred to qualified_code; new writes do not mint target",
     ),
     Answerer(
         code="lead_criteria_and_forms_answers",
@@ -153,6 +165,10 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
 
 def write_authority_answerers() -> tuple[Answerer, ...]:
     return tuple(row for row in ANSWERERS if row.role == "write_authority")
+
+
+def leftover_answerers() -> tuple[Answerer, ...]:
+    return tuple(row for row in ANSWERERS if row.role == "leftover")
 
 
 def classified_codes() -> tuple[str, ...]:

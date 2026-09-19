@@ -244,7 +244,7 @@ This stamp is **not** MA-4 start, leftover-store deletion, External Intake, Form
 
 ## MA-4 — Consumer cutover (Active; feat open)
 
-**Outcome:** not PASS. Feat `feat/mapping-authority-ma4-consumer-cutover` is open from `c20f7987`. Mapping Consumer Cutover Gate stays **not PASS**. Dual vocabulary still live is not PASS.
+**Outcome:** not PASS. Feat `feat/mapping-authority-ma4-consumer-cutover` is open from `c20f7987`. Mapping Consumer Cutover Gate stays **not PASS**. Intake writes now land on `canonical_facts_v1[qualified_code]`; leftover `target` is inference only. The named Gate is not stamped. Dual vocabulary still participating in the production write path would be not PASS.
 
 PASS when:
 
@@ -292,6 +292,7 @@ Out: Sales convert mapping rewrite; CL6 re-fork; leftover-store deletion; a cano
 
 ## History
 
+- 2026-09-19: **MA-4 vocabulary cutover in the feat.** Intake writes `canonical_facts_v1[qualified_code]`. `enrich_mapping_rule_for_storage` no longer mints leftover `target`. Conversion / public intake / CandidateProfile allow-list consume Mapping Authority or presentation facts. OCR / Telegram stay named leftovers with owner + expiry. Mapping Consumer Cutover Gate **not PASS**. Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. RS-3 remains program proof.
 - 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Close path = `qualified_code` is the only intake write vocabulary; hardcoded extractors consume the authority or are named leftovers with owner + expiry. Mapping Consumer Cutover Gate **not PASS**. Dual vocabulary still live is not PASS. Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. RS-3 remains program proof.
 - 2026-09-18: **Mapping Operator Gate PASS.** Operator acceptance on DANEMA TSL / Metafora TSL C/CE 110 (`7b0e286c-4d8b-4014-a5cb-570e0a8ea01e`). Live `f65edf28`. Ready 8/8; mapped fields on candidate Andrei `f0f8a806`; five-step close path; campaign list + source cards open the same workspace; leftover mapping HTTP writers 410. Leftover stores remain read-through. Active Product → **MA-4** (brief; feat locked). Not leftover-store deletion. Not MA-4 start / External Intake / Forms Publish / Hiring. Not Foundation ✅. RS-3 remains program proof.
 - 2026-09-18: Campaign list and campaign source cards show the same mapping assessment and open the Mapping workspace. Operators do not have to go to Sources first. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.

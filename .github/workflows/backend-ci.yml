@@ -109,6 +109,7 @@ jobs:
       ma1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma1 == 'true' }}
       ma2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma2 == 'true' }}
       ma3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma3 == 'true' }}
+      ma4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma4 == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
@@ -442,6 +443,18 @@ jobs:
               - 'backend/tests/api/test_acquisition_c5_source_mapping.py'
               - 'hostflow-frontend/src/pages/marketing/MarketingSourceMappingPage.tsx'
               - 'docs/specs/architecture/mapping-authority-operator.md'
+              - 'docs/specs/tasks/mapping-authority.md'
+            ma4:
+              - 'backend/app/field_registry/intake_mapping.py'
+              - 'backend/app/field_registry/canonical_facts.py'
+              - 'backend/app/entity_profile/ingest_runtime.py'
+              - 'backend/app/entity_profile/public_intake_draft_session.py'
+              - 'backend/app/entity_profile/mapping_validation.py'
+              - 'backend/app/modules/leads/conversion_mapping.py'
+              - 'backend/app/modules/leads/normalizer.py'
+              - 'backend/app/reference/mapping_authority.py'
+              - 'backend/tests/platform/test_mapping_authority_consumer_cutover.py'
+              - 'backend/tests/platform/test_mapping_authority_consumer_cutover_gate.py'
               - 'docs/specs/tasks/mapping-authority.md'
 
   guards:
@@ -1169,6 +1182,23 @@ jobs:
           skip-alembic: "0"
           tests: tests/api/test_acquisition_c5_source_mapping.py
 
+  ma4-consumer-cutover-gate:
+    name: Mapping Consumer Cutover Gate
+    needs: changes
+    if: needs.changes.outputs.ma4 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Mapping Consumer Cutover gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_mapping_authority_consumer_cutover_gate.py') == ''
+        run: echo "Mapping Consumer Cutover gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_mapping_authority_consumer_cutover_gate.py') != ''
+        with:
+          tests: >-
+            tests/platform/test_mapping_authority_consumer_cutover_gate.py
+            tests/platform/test_mapping_authority_consumer_cutover.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -1218,6 +1248,7 @@ jobs:
       - ma1-contract-gate
       - ma2-resolution-gate
       - ma3-operator-surface
+      - ma4-consumer-cutover-gate
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:

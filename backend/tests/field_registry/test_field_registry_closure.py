@@ -28,6 +28,7 @@ from backend.app.field_registry.intake_mapping import (
     enrich_mapping_rule_for_storage,
     legacy_normalized_target_from_qualified,
     resolve_intake_mapping_target,
+    rule_write_qualified_code,
 )
 from backend.app.field_registry.manifests.crm import crm_module_manifest
 from backend.app.field_registry.manifests.fleet import fleet_module_manifest
@@ -195,7 +196,8 @@ def test_closure_intake_mapping_uses_canonical_qualified_codes_with_legacy_compa
         }
     )
     assert qualified_rule["qualified_field_code"] == "recruitment.candidate.contacts.phone"
-    assert qualified_rule["target"] == "phone"
+    assert not str(qualified_rule.get("target") or "").strip()
+    assert rule_write_qualified_code(qualified_rule) == "recruitment.candidate.contacts.phone"
     assert resolve_intake_mapping_target(qualified_rule) == "phone"
 
     legacy_rule = enrich_mapping_rule_for_storage({"source": "email", "target": "email"})

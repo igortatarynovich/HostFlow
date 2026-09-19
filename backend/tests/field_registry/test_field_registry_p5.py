@@ -13,31 +13,34 @@ from backend.app.field_registry.intake_mapping import (
     legacy_normalized_target_from_qualified,
     qualified_code_from_legacy_target,
     resolve_intake_mapping_target,
+    rule_write_qualified_code,
 )
 from backend.app.field_registry.resolver import resolve_effective_card_layout
 from backend.app.field_registry.seed import ensure_tenant_field_registry_defaults
 from backend.app.modules.leads.schemas import MetaLeadFieldMappingRule
 
 
-def test_p5_intake_qualified_resolves_to_normalized_phone() -> None:
+def test_p5_intake_qualified_write_destination_is_qualified_code() -> None:
     rule = {
         "source": "phone_number",
         "qualified_field_code": "recruitment.candidate.contacts.phone",
         "format": "phone",
     }
+    assert rule_write_qualified_code(rule) == "recruitment.candidate.contacts.phone"
     assert resolve_intake_mapping_target(rule) == "phone"
 
 
 def test_p5_intake_legacy_target_still_resolves() -> None:
     rule = {"source": "email", "target": "email", "format": "email"}
     assert resolve_intake_mapping_target(rule) == "email"
+    assert rule_write_qualified_code(rule) == "recruitment.candidate.contacts.email"
 
 
-def test_p5_enrich_mapping_rule_fills_legacy_target_from_qualified() -> None:
+def test_p5_enrich_mapping_rule_does_not_mint_legacy_target() -> None:
     enriched = enrich_mapping_rule_for_storage(
         {"source": "phone_number", "qualified_field_code": "recruitment.candidate.contacts.phone"}
     )
-    assert enriched["target"] == "phone"
+    assert "target" not in enriched or not str(enriched.get("target") or "").strip()
     assert enriched["qualified_field_code"] == "recruitment.candidate.contacts.phone"
 
 
@@ -63,7 +66,7 @@ def test_p5_meta_lead_mapping_rule_model_coerces_qualified() -> None:
             "format": "phone",
         }
     )
-    assert rule.target == "phone"
+    assert not str(rule.target or "").strip()
     assert rule.qualified_field_code == "recruitment.candidate.contacts.phone"
 
 

@@ -1,4 +1,8 @@
-"""Lead / Meta intake field mapping bridge — qualified codes ↔ legacy normalized targets (P5)."""
+"""Lead / Meta intake field mapping bridge — leftover ``target`` inference (P5 / MA-4).
+
+Write destination is Field Registry ``qualified_code``. ``LEAD_INTAKE_QUALIFIED_TO_NORMALIZED``
+is leftover read-through of stored ``target`` JSON, not a production write vocabulary.
+"""
 
 from __future__ import annotations
 
@@ -64,28 +68,45 @@ def qualified_code_from_legacy_target(target: str) -> str | None:
     return None
 
 
+def rule_write_qualified_code(rule: dict[str, Any]) -> str:
+    """Intake write destination. Leftover ``target`` is inferred, never the write key."""
+    explicit = str(rule.get("qualified_field_code") or rule.get("qualified_code") or "").strip()
+    if explicit:
+        return explicit
+    target = str(rule.get("target") or rule.get("normalized_target") or "").strip()
+    if not target:
+        return ""
+    if "." in target:
+        return target
+    inferred = qualified_code_from_legacy_target(target)
+    if inferred:
+        return inferred
+    if target in _LEGACY_TARGET_ALIASES:
+        aliased = _LEGACY_TARGET_ALIASES[target]
+        return qualified_code_from_legacy_target(aliased) or ""
+    return ""
+
+
 def resolve_intake_mapping_target(rule: dict[str, Any]) -> str:
-    """Effective normalized path for Meta/custom mapping rule (qualified code wins)."""
+    """Leftover read-through of stored ``target``. Not the intake write destination."""
+    target = str(rule.get("target") or rule.get("normalized_target") or "").strip()
+    if target in _LEGACY_TARGET_ALIASES:
+        return _LEGACY_TARGET_ALIASES[target]
+    if target:
+        return target
     qualified = str(rule.get("qualified_field_code") or "").strip()
     if qualified:
         mapped = legacy_normalized_target_from_qualified(qualified)
         if mapped:
             return mapped
-        # Allow qualified codes that use dot paths directly when they match normalized nesting.
-        return qualified
-    target = str(rule.get("target") or "").strip()
-    if not target:
-        return ""
-    if target in _LEGACY_TARGET_ALIASES:
-        return _LEGACY_TARGET_ALIASES[target]
-    return target
+    return ""
 
 
 def enrich_mapping_rule_for_storage(rule: dict[str, Any]) -> dict[str, Any]:
-    """Ensure legacy ``target`` is populated when only qualified_field_code is set.
+    """Infer ``qualified_field_code`` from leftover ``target``. Do not mint ``target``.
 
     Also accepts the older Meta preset shape ``{"from": “…”, "to": “…"}`` and
-    rewrites it to ``source`` / ``target`` so settings reads do not 500.
+    rewrites it to ``source`` / leftover ``target`` so settings reads do not 500.
     """
     out = dict(rule)
     if not str(out.get("source") or "").strip() and out.get("from") is not None:
@@ -94,14 +115,12 @@ def enrich_mapping_rule_for_storage(rule: dict[str, Any]) -> dict[str, Any]:
         out["target"] = out.get("to")
     qualified = str(out.get("qualified_field_code") or "").strip()
     target = str(out.get("target") or "").strip()
-    if qualified and not target:
-        legacy = legacy_normalized_target_from_qualified(qualified)
-        if legacy:
-            out["target"] = legacy
-    elif target and not qualified:
+    if target and not qualified:
         inferred = qualified_code_from_legacy_target(target)
         if inferred:
             out["qualified_field_code"] = inferred
+        elif "." in target:
+            out["qualified_field_code"] = target
     return out
 
 

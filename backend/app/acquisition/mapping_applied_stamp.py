@@ -11,6 +11,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
+from backend.app.field_registry.intake_mapping import rule_write_qualified_code
+
 MAPPING_APPLIED_V1_KEY = "mapping_applied_v1"
 
 
@@ -163,14 +165,19 @@ def compose_applied_evidence(
         if not isinstance(raw, Mapping):
             continue
         source = str(raw.get("source") or "").strip()
-        dest_code = str(
-            raw.get("qualified_field_code") or raw.get("normalized_target") or ""
-        ).strip()
+        dest_code = rule_write_qualified_code(dict(raw))
         entry = dest_index.get(dest_code.lower()) if dest_code else None
         dest_label = str((entry or {}).get("label") or dest_code or source).strip()
+        facts = (normalized or {}).get("canonical_facts_v1")
+        fact_value = None
+        if isinstance(facts, Mapping) and dest_code:
+            raw_fact = facts.get(dest_code)
+            if raw_fact not in (None, "",):
+                fact_value = str(raw_fact).strip() or None
         value = (
-            _scalar_at(normalized or {}, str(raw.get("normalized_target") or "").strip())
+            fact_value
             or _scalar_at(normalized or {}, dest_code)
+            or _scalar_at(normalized or {}, str(raw.get("normalized_target") or "").strip())
             or _scalar_at(normalized or {}, dest_code.split(".")[-1] if dest_code else "")
             or _scalar_at(normalized or {}, source)
         )
