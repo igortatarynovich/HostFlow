@@ -2,7 +2,7 @@
 
 **Status:** **Accepted** (L2 contract — Forms Publish Contract Gate)  
 **Date:** 2026-09-20  
-**Trusted base:** `integration/release-product-a-b` @ `7112279e`  
+**Trusted base:** `integration/release-product-a-b` @ `41be635a`  
 **Related:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](forms-public-contract.md) · [`ADR-022`](ADR-022-intake-form-purpose-and-submission-policy-model.md) · [`../tasks/external-intake-forms-publish.md`](../tasks/external-intake-forms-publish.md) · [`../gates/hostflow-v1-release-goal.md`](../gates/hostflow-v1-release-goal.md)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (one owner of this write), **INV-01** (one SoT for the operator question), **INV-16** (contract before a second publish action). Does not rewrite L0. Does not mint a second submit engine, FormTemplate SoT, or P4 / P5.
@@ -11,7 +11,7 @@
 > [`forms-public-contract.md`](forms-public-contract.md) remains the Forms Adapter inventory (`publish` = `commit_publish`).  
 > [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) remains Purpose + Target Profile + Submission Policy. This contract names **what publish is**.  
 > Machine copy: `forms_publish.v1` in `backend/app/reference/forms_publish_contract.py`.  
-> Feat `feat/forms-publish-fp2-publish-action` shipped the authenticated product route. Publish Action Gate **PASS**. This stamp does not start FP-3.
+> Feat `feat/forms-publish-fp2-publish-action` shipped the authenticated product route. Publish Action Gate **PASS**. Feat `feat/forms-publish-fp3-public-serve` is open. Public Serve Gate **not PASS**. This stamp does not ship runtime.
 
 ---
 
@@ -40,7 +40,7 @@ No second question is this contract. Mapping Authority, Hiring E2E, min HR, Them
 
 Producer: `backend/app/forms_platform/adapter.py` (`commit_publish`).  
 Ledger: `backend/app/models/form_publication_version.py`.  
-This contract forbids a second **write** of the same question. The authenticated product route (FP-2) calls this write. It does not ship the operator UI (FP-4) or public serve cutover (FP-3).
+This contract forbids a second **write** of the same question. The authenticated product route (FP-2) calls this write. It does not ship the operator UI (FP-4). Public serve cutover is FP-3; this stamp opens that feat and does not ship runtime.
 
 ---
 
@@ -149,16 +149,29 @@ Roles are closed: `write_authority` · `not_this_write` · `leftover` · `consum
 
 ---
 
+## Public Serve Gate
+
+**not PASS.** PASS when:
+
+1. A public request resolves the **live** publication and renders the frozen `form_publication_versions` snapshot through canonical Form Runtime (`resolve` → `serve`).
+2. `/public/intake` driven by `form_presentation_runtime_v1` is no longer the working authority surface to the extent of this cutover. Leftover handling follows the named expiry; this is not general cleanup.
+3. Public link and later embed remain two access methods to **that one** serve surface. Embed compatibility may be preserved; distribution UX / snippet is FP-4.
+4. No second renderer, second publication state, or second submit engine.
+5. Draft markers are rejected. Never-published fails closed.
+6. This feat/open stamp does not ship runtime.
+
+---
+
 ## False close
 
-Reject: bumping `published_version` outside the ledger; a Publish button that writes the draft table; copying a `public_slug` and calling it publish; declaring Builder composition and Entity Profile presentation both “the form”; accepting ADR-022 by rewriting Purpose / Policy / Match Matrix; declaring Publish Action Gate PASS without an authenticated product route that calls `commit_publish`; starting P4 / P5; adding a writer to `TenantLeadForm`; a second submit engine; leftover-store deletion; Hiring E2E / min HR; Foundation ✅; a thirteenth write of this question.
+Reject: bumping `published_version` outside the ledger; a Publish button that writes the draft table; copying a `public_slug` and calling it publish; declaring Builder composition and Entity Profile presentation both “the form”; accepting ADR-022 by rewriting Purpose / Policy / Match Matrix; declaring Publish Action Gate PASS without an authenticated product route that calls `commit_publish`; starting P4 / P5; adding a writer to `TenantLeadForm`; a second submit engine; leftover-store deletion; Hiring E2E / min HR; Foundation ✅; a thirteenth write of this question; a second renderer or second publication state; treating Mapping Operator Surface inherited red as FP-3 scope; shipping an embed snippet / distribution UX in FP-3.
 
 ---
 
 ## Consequences
 
 - FP-2 wired the orphaned `commit_publish` to an authenticated product route and retired leftover version bumps.  
-- FP-3 makes public serve consume the frozen snapshot; the presentation leftover retires.  
+- FP-3 makes public serve consume the frozen snapshot through one Form Runtime path; the presentation leftover retires to the named expiry. Embed is access compatibility, not a second renderer.  
 - FP-4 is the operator surface over these states.  
 - FP-5 binds RS-2 and consumes Mapping Authority.  
 - ADR-022 Purpose + Policy remain the intake entry axes. Publish does not become a fourth axis.
@@ -167,6 +180,7 @@ Reject: bumping `published_version` outside the ledger; a Publish button that wr
 
 ## History
 
+- 2026-09-20: Feat `feat/forms-publish-fp3-public-serve` opened from `41be635a`. Public Serve Gate **not PASS**. Close path = public request → resolve live publication → frozen snapshot → Form Runtime. Twelve-row classification unchanged. This stamp does not ship runtime.
 - 2026-09-20: Publish Action Gate **PASS**. Authenticated `POST /api/v1/platform/forms/{form_id}/publish` → `commit_publish` → `form_publication_versions`. Leftover version bumps retired. Republish idempotent per identity. Twelve-row classification unchanged (rows 3–4 retired to `not_this_write`). This stamp does not start FP-3.
 - 2026-09-20: Feat `feat/forms-publish-fp2-publish-action` opened from `7112279e`. Publish Action Gate **not PASS**. Twelve-row classification unchanged. This stamp does not ship runtime.
 - 2026-09-20: Accepted as FP-1 Publish contract. Twelve-row classification frozen. Feat locked until a later FP-2 branch. Active Product → FP-2 (brief; feat locked).

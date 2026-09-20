@@ -96,8 +96,8 @@ def test_ma2_queue_names_ma3_successor() -> None:
     text = _QUEUE.read_text(encoding="utf-8")
     current = text.split("## 8. History", 1)[0]
     assert "Mapping Resolution Gate" in text
-    assert "**Active Product** | **[FP-2](external-intake-forms-publish.md)**" in current
-    assert "Active (Product):** **[FP-2](external-intake-forms-publish.md)**" in current
+    assert "**Active Product** | **[FP-3](external-intake-forms-publish.md)**" in current
+    assert "Active (Product):** **[FP-3](external-intake-forms-publish.md)**" in current
     assert "feat locked" in text
     assert "Active (Product):** **[MA-2](mapping-authority.md)**" not in current
     agents = _AGENTS.read_text(encoding="utf-8")

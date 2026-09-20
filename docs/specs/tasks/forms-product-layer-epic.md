@@ -1,6 +1,6 @@
 # Forms Product Layer — Epic
 
-**Status:** **OPEN** · Phase C C1–C6 ✅ / Foundation ✅ · **P3 Publish = v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md) (Forms Publish Contract Gate **PASS**; Publish Action Gate **PASS**; FP-3 feat locked) · P4 / P5 **LOCKED**  
+**Status:** **OPEN** · Phase C C1–C6 ✅ / Foundation ✅ · **P3 Publish = v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md) (Forms Publish Contract Gate **PASS**; Publish Action Gate **PASS**; feat `feat/forms-publish-fp3-public-serve` open; Public Serve Gate **not PASS**) · P4 / P5 **LOCKED**  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
@@ -142,7 +142,7 @@ Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](fo
 | Field Catalog contracts v1 | **FROZEN** |
 | P2.1–P2.5 Builder | ✅ **COMPLETE** (MVP) |
 | Builder Catalog Consumption | ✅ **ACTIVE** |
-| P3 Publish UI | **v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md); Forms Publish Contract Gate **PASS**; Publish Action Gate **PASS**; FP-3 feat locked (C5 is Form Execution, not Publish UI — [forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md)) |
+| P3 Publish UI | **v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md); Forms Publish Contract Gate **PASS**; Publish Action Gate **PASS**; feat `feat/forms-publish-fp3-public-serve` open; Public Serve Gate **not PASS** (C5 is Form Execution, not Publish UI — [forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md)) |
 | P4 Themes / P5 Analytics | **LOCKED** |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 | Executable logic inside descriptors | **FORBIDDEN** |
@@ -156,6 +156,7 @@ Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](fo
 
 ## History
 
+- 2026-09-20: FP-3 Public Serve feat opened (`feat/forms-publish-fp3-public-serve` from `41be635a`). Public Serve Gate **not PASS**. Close path = public request → resolve live publication → frozen snapshot → Form Runtime. This stamp does not ship runtime. P4 / P5 stay locked.
 - 2026-09-20: FP-2 Publish Action feat opened (`feat/forms-publish-fp2-publish-action` from `7112279e`). Publish Action Gate **not PASS**. This stamp does not ship runtime. P4 / P5 stay locked.
 - 2026-09-20: FP-1 Forms Publish Contract Gate **PASS**. P3 = v1 blocker 3, contract sealed; FP-2 brief feat locked. P4 / P5 stay locked.
 - 2026-08-28: P3 Publish reclassified from `LOCKED` to **v1 blocker 3** with a brief — [external-intake-forms-publish.md](external-intake-forms-publish.md); roadmap anti-pattern 2 amended to name the unlock instrument (FP-1 + queue amendment). P4 / P5 stay locked. Feat still locked; nothing scheduled.
