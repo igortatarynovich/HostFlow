@@ -278,7 +278,7 @@ Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes`
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md) · [`forms-publish-contract.md`](forms-publish-contract.md)  
 **Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) (`forms.public_contract.v1`)  
 **Task:** [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md)  
-**Sprint 1–6:** ✅ COMPLETE (backend contour) · **P1 Field Catalog:** ✅ CLOSED · **P2 Builder MVP:** ✅ COMPLETE · **P3 Publish:** v1 blocker 3 (contract sealed — [forms-publish-contract.md](forms-publish-contract.md)) · **P4 / P5:** **LOCKED** · **Phase C:** C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) · **Product Track:** [FP-3](../tasks/external-intake-forms-publish.md) (Publish Action Gate **PASS**; feat `feat/forms-publish-fp3-public-serve` open; Public Serve Gate **not PASS**) · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
+**Sprint 1–6:** ✅ COMPLETE (backend contour) · **P1 Field Catalog:** ✅ CLOSED · **P2 Builder MVP:** ✅ COMPLETE · **P3 Publish:** v1 blocker 3 (contract sealed — [forms-publish-contract.md](forms-publish-contract.md)) · **P4 / P5:** **LOCKED** · **Phase C:** C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) · **Product Track:** [FP-3](../tasks/external-intake-forms-publish.md) (Publish Action Gate **PASS**; Public Serve Gate **PASS**; FP-3 feat `feat/forms-publish-fp3-public-serve`) · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
 
 **Purpose.** Платформенный input layer: единственный SoT HostFlow Form.
 
@@ -646,7 +646,7 @@ Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes`
 ---
 
 ## History
-
+- 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.
 - **2026-07-18** — каталог + Capability Boundary.  
 - **2026-07-18** — v2: Owns / Configures / Exposes / Consumes; kinds; **P-04**.  
 - **2026-07-18** — v3: Passport vs **Settings Manifest**; **P-05** Settings Contract; capability-scoped admin IA.

@@ -1,6 +1,6 @@
 # Forms Public Contract v1 — Sprint 1 + Sprint 2 hardening
 
-**Status:** canonical · **ACTIVE** · Phase C C1–C6 ✅ / Foundation ✅ · Product Track = [FP-3](../tasks/external-intake-forms-publish.md) (Publish Action Gate **PASS**; feat `feat/forms-publish-fp3-public-serve` open; Public Serve Gate **not PASS**)  
+**Status:** canonical · **ACTIVE** · Phase C C1–C6 ✅ / Foundation ✅ · Product Track = [FP-3](../tasks/external-intake-forms-publish.md) (Publish Action Gate **PASS**; Public Serve Gate **PASS**; FP-3 feat `feat/forms-publish-fp3-public-serve`)  
 **Capability id:** `forms`  
 **Contract id:** `forms.public_contract.v1`  
 **Adapter id:** `forms.endpoint_adapter_v1`  
@@ -209,7 +209,7 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 ---
 
 ## History
-
+- 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.
 - 2026-07-18: Sprint 1 Public Contract after Epic P DoD.  
 - 2026-07-18: Sprint 1 COMPLETE (PR #36).  
 - 2026-07-18: Sprint 2 — resolve/publish split, snapshot, activate/deactivate, error codes, version pin.  

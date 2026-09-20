@@ -6,7 +6,8 @@ One operator question. One write. Twelve answerers. A later FP slice may
 retire a leftover; it must not add a thirteenth write of the same question.
 
 FP-2 wires the authenticated product route to ``commit_publish``.
-Not FP-3 public serve cutover. Not FP-4 operator UI.
+FP-3 public serve consumes the frozen snapshot through Form Runtime.
+Not FP-4 operator UI.
 Not P4 Themes. Not P5 Analytics. Not FormTemplate SoT. Not a second
 submit engine. Not Hiring E2E. Not leftover-store deletion.
 """
@@ -101,10 +102,8 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
     ),
     Answerer(
         code="entity_profile_presentation_public_serve",
-        role="leftover",
+        role="not_this_write",
         paths=("backend/app/entity_profile/presentation_runtime.py",),
-        owner="Forms / Intake",
-        expiry="FP-3 Public Serve Gate",
     ),
     Answerer(
         code="publication_bridge_resolve",
@@ -114,7 +113,10 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
     Answerer(
         code="form_runtime_serve",
         role="consume",
-        paths=("backend/app/forms_platform/runtime/serve.py",),
+        paths=(
+            "backend/app/forms_platform/runtime/serve.py",
+            "backend/app/forms_platform/public_serve_bridge.py",
+        ),
     ),
     Answerer(
         code="public_submit_bridge",
@@ -133,13 +135,11 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
     ),
     Answerer(
         code="public_intake_unbound_no_ledger",
-        role="leftover",
+        role="not_this_write",
         paths=(
             "backend/app/api/public/intake.py",
             "backend/app/entity_profile/public_intake_presentation_bridge.py",
         ),
-        owner="Forms / Intake",
-        expiry="FP-3 Public Serve Gate",
     ),
 )
 

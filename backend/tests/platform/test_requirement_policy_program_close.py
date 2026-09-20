@@ -45,8 +45,8 @@ def test_rpm_close_names_ma1_active_feat_locked() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "Active Product → **[MA-1](mapping-authority.md)**" in queue
     current = queue.split("## 8. History", 1)[0]
-    assert "**Active Product** | **[FP-3](external-intake-forms-publish.md)**" in current
-    assert "Active (Product):** **[FP-3](external-intake-forms-publish.md)**" in current
+    assert "**Active Product** | **[FP-4](external-intake-forms-publish.md)**" in current
+    assert "Active (Product):** **[FP-4](external-intake-forms-publish.md)**" in current
     assert "feat locked this PR" in queue
     assert "Active (Product):** **Consumer Cutover Gate" not in current
     mapping = _MAPPING.read_text(encoding="utf-8")

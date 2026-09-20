@@ -195,7 +195,7 @@ Configures ───────────────►  Validation Rules (+
 ---
 
 ## History
-
+- 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.
 - **2026-07-18** — introduced with **P-05** ([`ADR-029`](ADR-029-settings-contract.md)); operational half of capability configuration model.
 - **2026-07-18** — Forms Sprint 1: concrete Manifest keys (builder default `false`; adapter contract ids).
 - **2026-08-23** — Observability + Shell Diagnostics outlines ([`ADR-038`](ADR-038-shell-observability-diagnostics.md)).
