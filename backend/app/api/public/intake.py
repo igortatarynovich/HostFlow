@@ -580,7 +580,17 @@ class PublicIntakeState(BaseModel):
     status_share_token: Optional[str] = None
     form_presentation: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="P7: form_presentation_runtime_v1 when intake source binds an Entity Profile presentation.",
+        description=(
+            "Leftover unbound / questionnaire serve. HostFlow-form public serve "
+            "uses form_runtime (forms.runtime.model.v1), not this field as authority."
+        ),
+    )
+    form_runtime: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "FP-3: canonical Form Runtime model from the live frozen publication "
+            "(forms.runtime.model.v1). Authority for HostFlow-form public render."
+        ),
     )
 
 
@@ -1092,6 +1102,52 @@ async def _response_payload_from_session(
         resolve_public_session_form_presentation,
     )
 
+    form_runtime = None
+    form_presentation = None
+    if public_session.kind == "lead_draft":
+        from backend.app.forms_platform.errors import FormsAdapterError
+        from backend.app.forms_platform.public_serve_bridge import (
+            maybe_serve_hostflow_form_public_request,
+            public_serve_http_exception,
+            runtime_model_public_dict,
+        )
+
+        try:
+            runtime_model = await maybe_serve_hostflow_form_public_request(
+                db,
+                tenant_id=str(tenant_id),
+                intake_state=state,
+            )
+        except FormsAdapterError as exc:
+            raise public_serve_http_exception(exc) from exc
+        if runtime_model is not None:
+            form_runtime = runtime_model_public_dict(runtime_model)
+            field_codes = [
+                str(f.get("qualified_code") or "")
+                for f in (form_runtime.get("fields") or [])
+                if isinstance(f, dict)
+            ]
+            merged_pv = presentation_values_dict_from_state(state, field_codes)
+            if merged_pv:
+                data_payload = data_payload.model_copy(update={"presentation_values": merged_pv})
+            return PublicIntakeState(
+                token=public_session.token,
+                candidate_id=public_session.candidate_id,
+                lead_id=public_session.lead_id,
+                status=session_intake_status(public_session),
+                stage=getattr(public_session.lead, "stage", None) if public_session.lead else None,
+                created_at=session_created_at(public_session),
+                expires_at=session_expires_at(public_session),
+                submitted_at=session_submitted_at(public_session),
+                data=data_payload,
+                checklist=checklist,
+                documents=documents,
+                timeline=timeline,
+                status_share_token=session_status_share_token(public_session),
+                form_presentation=None,
+                form_runtime=form_runtime,
+            )
+
     form_presentation = await resolve_public_session_form_presentation(
         db,
         tenant_id=str(tenant_id),
@@ -1121,6 +1177,7 @@ async def _response_payload_from_session(
         timeline=timeline,
         status_share_token=session_status_share_token(public_session),
         form_presentation=form_presentation,
+        form_runtime=form_runtime,
     )
 
 
@@ -3699,6 +3756,21 @@ async def create_public_intake(
                 "message": "Lead form not found, inactive, or slug is not published.",
             },
         )
+    if lf is not None:
+        from backend.app.forms_platform.errors import FormsAdapterError
+        from backend.app.forms_platform.public_serve_bridge import (
+            public_serve_http_exception,
+            resolve_live_public_runtime,
+        )
+
+        try:
+            await resolve_live_public_runtime(
+                db,
+                tenant_id=str(tenant_id),
+                form_id=str(lf.id),
+            )
+        except FormsAdapterError as exc:
+            raise public_serve_http_exception(exc) from exc
 
     resolved_vacancy_id = await _resolve_public_intake_vacancy_id(
         db,
@@ -4398,27 +4470,56 @@ async def submit_public_intake(
             "cookies_accepted": payload.cookies_accepted,
         }
         write_session_intake_state(public_session, state)
-        from backend.app.entity_profile.public_intake_presentation_bridge import (
-            resolve_public_session_form_presentation,
-            validate_presentation_required_fields,
+        from backend.app.forms_platform.errors import FormsAdapterError
+        from backend.app.forms_platform.public_serve_bridge import (
+            maybe_serve_hostflow_form_public_request,
+            missing_required_runtime_fields,
+            public_serve_http_exception,
         )
 
-        form_presentation = await resolve_public_session_form_presentation(
-            db,
-            tenant_id=str(tenant_id),
-            intake_state=state,
-        )
-        if form_presentation:
-            missing = validate_presentation_required_fields(form_presentation, state)
+        form_presentation = None
+        runtime_model = None
+        try:
+            runtime_model = await maybe_serve_hostflow_form_public_request(
+                db,
+                tenant_id=str(tenant_id),
+                intake_state=state,
+            )
+        except FormsAdapterError as exc:
+            raise public_serve_http_exception(exc) from exc
+        if runtime_model is not None:
+            missing = missing_required_runtime_fields(runtime_model, state)
             if missing:
                 raise HTTPException(
                     status_code=422,
                     detail={
-                        "code": "presentation_required_fields",
-                        "message": "Required presentation fields are missing",
+                        "code": "runtime_required_fields",
+                        "message": "Required published fields are missing",
                         "missing": missing,
                     },
                 )
+        else:
+            from backend.app.entity_profile.public_intake_presentation_bridge import (
+                resolve_public_session_form_presentation,
+                validate_presentation_required_fields,
+            )
+
+            form_presentation = await resolve_public_session_form_presentation(
+                db,
+                tenant_id=str(tenant_id),
+                intake_state=state,
+            )
+            if form_presentation:
+                missing = validate_presentation_required_fields(form_presentation, state)
+                if missing:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "code": "presentation_required_fields",
+                            "message": "Required presentation fields are missing",
+                            "missing": missing,
+                        },
+                    )
         # C6 Optimization: HostFlow Form → resolve → serve → execute (Shared Intake path).
         from backend.app.forms_platform.errors import FormsAdapterError
         from backend.app.forms_platform.public_submit_bridge import (
@@ -4453,20 +4554,26 @@ async def submit_public_intake(
             write_session_intake_state(public_session, state)
         mark_session_submitted(public_session)
         lf_block = state.get("lead_form") if isinstance(state.get("lead_form"), dict) else {}
+        schema = dict(runtime_model.field_schema or {}) if runtime_model is not None else {}
+        entity_profile_code = (
+            str(schema.get("entity_profile_code") or "").strip()
+            or (str(form_presentation.get("entity_profile_code") or "") if form_presentation else "")
+            or None
+        )
         application_kind = _resolve_intake_application_kind(
             str(state.get("application_kind") or "candidate"),
             purpose=str(lf_block.get("purpose") or "") or None,
             target_entity_profile_code=str(lf_block.get("target_entity_profile_code") or "") or None,
-            entity_profile_code=(
-                str(form_presentation.get("entity_profile_code") or "") if form_presentation else None
-            ),
+            entity_profile_code=entity_profile_code,
         )
         # Persist corrected kind so subsequent reads / thank-you omit candidate status tracking.
         if application_kind == "client" and str(state.get("application_kind") or "").lower() != "client":
             state["application_kind"] = "client"
             write_session_intake_state(public_session, state)
         form_presentation_code = (
-            str(form_presentation.get("presentation_code") or "") if form_presentation else None
+            str(schema.get("presentation_code") or "").strip()
+            or (str(form_presentation.get("presentation_code") or "") if form_presentation else "")
+            or None
         )
         # Runtime Split R3: destination is chosen by pinned route_intent via
         # destination registry — never by application_kind / FormPurpose.

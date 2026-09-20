@@ -84,19 +84,27 @@ async def _ensure_recruitment_funnels(session, tenant_id: str) -> str:
     return str(company_ids[0])
 
 
-async def _seed_active_lead_form(tenant_id: str, *, prefix: str = "intake") -> str:
+async def _seed_active_lead_form(
+    tenant_id: str, *, prefix: str = "intake", publish: bool = True
+) -> str:
     slug = f"{prefix}-{uuid4().hex[:10]}"
     async with async_session_maker() as session:
         await _ensure_recruitment_funnels(session, tenant_id)
+        form_id = str(uuid4())
         session.add(
             TenantLeadForm(
-                id=str(uuid4()),
+                id=form_id,
                 tenant_id=tenant_id,
                 title="Public intake test form",
                 public_slug=slug,
                 is_active=True,
             )
         )
+        await session.flush()
+        if publish:
+            from backend.tests.forms_platform.publish_fixtures import commit_live_publication
+
+            await commit_live_publication(session, tenant_id=tenant_id, form_id=form_id)
         await session.commit()
     return slug
 

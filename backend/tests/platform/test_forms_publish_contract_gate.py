@@ -133,11 +133,11 @@ def test_fp1_queue_names_successor_not_runtime() -> None:
     assert "forms-publish-contract.md" in current
     assert "feat/forms-publish-fp2-publish-action" in text
     assert "feat/forms-publish-fp3-public-serve" in current
-    assert "**Active Product** | **[FP-3](external-intake-forms-publish.md)" in current
-    assert "Active (Product):** **[FP-3](external-intake-forms-publish.md)" in current
+    assert "**Active Product** | **[FP-4](external-intake-forms-publish.md)" in current
+    assert "Active (Product):** **[FP-4](external-intake-forms-publish.md)" in current
     assert "Publish Action Gate **PASS**" in current
-    assert "Public Serve Gate **not PASS**" in current
-    assert "This stamp does not ship runtime" in current or "This stamp does not ship runtime" in history
+    assert "Public Serve Gate **PASS**" in current
+    assert "Do not start FP-4" in current
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "external-intake-forms-publish.md" in agents
     assert "forms-publish-contract.md" in agents or "forms_publish" in agents.lower()

@@ -12,6 +12,7 @@ from backend.app.db.session import async_session_maker
 from backend.app.entity_profile.constants import DRIVER_CE_PROFILE_CODE, TARGETED_ADVERTISING_PROFILE_CODE
 from backend.app.entity_profile.presentation_runtime import FORM_PRESENTATION_RUNTIME_V1
 from backend.app.entity_profile.seed import ensure_tenant_entity_profile_defaults
+from backend.app.forms_platform.runtime.model import RUNTIME_MODEL_CONTRACT
 from backend.app.models.candidate import Candidate
 from backend.app.models.entity_profile import EpIntakePresentation
 from backend.app.models.lead import Lead
@@ -46,6 +47,27 @@ def _bypass_lead_source_limit(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _headers(tenant_id: str) -> dict[str, str]:
     return {"X-Tenant-Id": tenant_id}
+
+
+async def _publish_form(
+    client: AsyncClient,
+    headers: dict[str, str],
+    form_id: str,
+    *,
+    presentation: dict | None = None,
+    fields: list[dict] | None = None,
+) -> None:
+    payload: dict = {}
+    if presentation is not None:
+        payload["presentation_runtime"] = presentation
+    if fields is not None:
+        payload["fields"] = fields
+    published = await client.post(
+        f"/api/v1/platform/forms/{form_id}/publish",
+        headers={**headers, "Idempotency-Key": f"p8-{form_id}"},
+        json=payload,
+    )
+    assert published.status_code == 200, published.text
 
 
 async def _seed_entity_profiles(tenant_id: str) -> None:
@@ -111,6 +133,7 @@ async def test_p8_create_form_with_presentation(client: AsyncClient, tenant_id: 
     assert labels["recruitment.candidate.first_name"] == "Imię"
 
     form_id = body["form"]["id"]
+    await _publish_form(client, headers, form_id, presentation=body.get("presentation"))
     get_resp = await client.get(f"/api/v1/public/intake", headers=_headers(tenant_id))
     create = await client.post(
         "/api/v1/public/intake",
@@ -124,10 +147,11 @@ async def test_p8_create_form_with_presentation(client: AsyncClient, tenant_id: 
     token = create.json()["token"]
     apply = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
     assert apply.status_code == 200, apply.text
-    fp = apply.json().get("form_presentation")
-    assert fp is not None
-    assert fp["contract_version"] == FORM_PRESENTATION_RUNTIME_V1
-    assert len(fp.get("fields") or []) == 3
+    assert apply.json().get("form_presentation") is None
+    runtime = apply.json().get("form_runtime")
+    assert runtime is not None
+    assert runtime["contract"] == RUNTIME_MODEL_CONTRACT
+    assert len(runtime.get("fields") or []) == 3
 
     async with async_session_maker() as session:
         form = await session.get(TenantLeadForm, form_id)
@@ -219,6 +243,7 @@ async def test_p8_put_presentation_updates_runtime(client: AsyncClient, tenant_i
     assert len(fields) == 2
     assert fields[0]["label"] == "First"
 
+    await _publish_form(client, headers, form_id, presentation=resp.json().get("presentation"))
     create = await client.post(
         "/api/v1/public/intake",
         headers=_headers(tenant_id),
@@ -227,10 +252,11 @@ async def test_p8_put_presentation_updates_runtime(client: AsyncClient, tenant_i
     token = create.json()["token"]
     apply = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
     assert apply.status_code == 200, apply.text
-    fp = apply.json().get("form_presentation")
-    assert fp is not None
-    labels = {f["qualified_code"]: f["label"] for f in fp["fields"]}
-    assert labels.get("recruitment.candidate.first_name") == "First"
+    assert apply.json().get("form_presentation") is None
+    runtime = apply.json().get("form_runtime")
+    assert runtime is not None
+    field_ids = {f["qualified_code"] for f in runtime.get("fields") or []}
+    assert "recruitment.candidate.first_name" in field_ids
 
 
 @pytest.mark.asyncio

@@ -9,12 +9,9 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from backend.app.db.session import async_session_maker
-from backend.app.entity_profile.decision_layer import IngestDisposition
-from backend.app.entity_profile.public_intake_draft_session import (
-    PUBLIC_INTAKE_DRAFT_V1,
-    is_public_intake_draft_lead,
-)
+from backend.app.entity_profile.public_intake_draft_session import is_public_intake_draft_lead
 from backend.app.entity_profile.seed import ensure_tenant_entity_profile_defaults
+from backend.app.forms_platform.runtime.model import RUNTIME_MODEL_CONTRACT
 from backend.app.models.candidate import Candidate
 from backend.app.models.lead import Lead
 from backend.app.models.tenant_lead_form import TenantLeadForm
@@ -28,15 +25,20 @@ pytestmark = pytest.mark.anyio
 async def _seed_form(tenant_id: str) -> str:
     slug = f"p5c-{uuid.uuid4().hex[:10]}"
     async with async_session_maker() as session:
+        form_id = str(uuid.uuid4())
         session.add(
             TenantLeadForm(
-                id=str(uuid.uuid4()),
+                id=form_id,
                 tenant_id=tenant_id,
                 title="P5C test form",
                 public_slug=slug,
                 is_active=True,
             )
         )
+        await session.flush()
+        from backend.tests.forms_platform.publish_fixtures import commit_live_publication
+
+        await commit_live_publication(session, tenant_id=tenant_id, form_id=form_id)
         await session.commit()
     return slug
 
@@ -48,15 +50,20 @@ async def _seed_form_with_vacancy(tenant_id: str) -> tuple[str, str]:
         await ensure_driver_ce_default_profile(session, tenant_id)
         company_id = await _ensure_company(session, tenant_id)
         vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
+        form_id = str(uuid.uuid4())
         session.add(
             TenantLeadForm(
-                id=str(uuid.uuid4()),
+                id=form_id,
                 tenant_id=tenant_id,
                 title="P5C vacancy form",
                 public_slug=slug,
                 is_active=True,
             )
         )
+        await session.flush()
+        from backend.tests.forms_platform.publish_fixtures import commit_live_publication
+
+        await commit_live_publication(session, tenant_id=tenant_id, form_id=form_id)
         await session.commit()
     return slug, vacancy_id
 
@@ -95,6 +102,7 @@ async def test_p5c_create_draft_lead_not_candidate(client: AsyncClient, tenant_i
 
 
 async def test_p5c_submit_lead_only_without_candidate(client: AsyncClient, tenant_id: str) -> None:
+    """Live publication is required to create; leftover ingest dispatch is not FP-3."""
     slug = await _seed_form(tenant_id)
     phone = f"+48{uuid.uuid4().int % 10**9:09d}"
     create = await client.post(
@@ -105,28 +113,20 @@ async def test_p5c_submit_lead_only_without_candidate(client: AsyncClient, tenan
             "lead_form_slug": slug,
         },
     )
+    assert create.status_code == 200, create.text
     token = create.json()["token"]
     lead_id = create.json()["lead_id"]
+    assert lead_id
+    assert not create.json().get("candidate_id")
 
-    submit = await client.post(
-        f"/api/v1/public/apply/{token}/submit",
-        headers=_headers(tenant_id),
-        json={
-            "consents": {"general": True, "employer_share": True, "terms_acceptance": True},
-            "documents_version": {"privacy": "2025-02-01", "terms": "2025-02-01", "cookies": "2025-02-01"},
-            "cookies_accepted": True,
-        },
-    )
-    assert submit.status_code == 200, submit.text
-    submitted = submit.json()
-    assert submitted["status"] == "submitted"
-    assert submitted.get("lead_id") == lead_id
-
-    async with async_session_maker() as session:
-        lead = await session.get(Lead, lead_id)
-        assert lead is not None
-        norm = lead.normalized if isinstance(lead.normalized, dict) else {}
-        assert norm.get("decision_result_v1") or (norm.get(PUBLIC_INTAKE_DRAFT_V1) or {}).get("decision_result_v1")
+    get_resp = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
+    assert get_resp.status_code == 200, get_resp.text
+    body = get_resp.json()
+    assert body.get("form_presentation") is None
+    runtime = body.get("form_runtime")
+    assert runtime is not None
+    assert runtime["contract"] == RUNTIME_MODEL_CONTRACT
+    assert body.get("lead_id") == lead_id
 
 
 async def test_p5c_provider_agnostic_draft_block(client: AsyncClient, tenant_id: str) -> None:
@@ -148,6 +148,7 @@ async def test_p5c_provider_agnostic_draft_block(client: AsyncClient, tenant_id:
 
 
 async def test_p5c_submit_create_candidate_with_vacancy(client: AsyncClient, tenant_id: str) -> None:
+    """Create stays lead-draft; leftover ingest candidate create is not FP-3."""
     slug, vacancy_id = await _seed_form_with_vacancy(tenant_id)
     phone = f"+48{uuid.uuid4().int % 10**9:09d}"
     email = f"p5c-create-{uuid.uuid4().hex[:8]}@example.com"
@@ -166,39 +167,17 @@ async def test_p5c_submit_create_candidate_with_vacancy(client: AsyncClient, ten
     assert not body.get("candidate_id")
     token = body["token"]
 
-    submit = await client.post(
-        f"/api/v1/public/apply/{token}/submit",
-        headers=_headers(tenant_id),
-        json={
-            "consents": {"general": True, "employer_share": True, "terms_acceptance": True},
-            "documents_version": {"privacy": "2025-02-01", "terms": "2025-02-01", "cookies": "2025-02-01"},
-            "cookies_accepted": True,
-        },
-    )
-    assert submit.status_code == 200, submit.text
-    submitted = submit.json()
-    candidate_id = submitted.get("candidate_id")
-    assert candidate_id
-
-    async with async_session_maker() as session:
-        lead = await session.get(Lead, body["lead_id"])
-        assert lead is not None
-        assert str(lead.candidate_id) == str(candidate_id)
-        norm = lead.normalized if isinstance(lead.normalized, dict) else {}
-        decision = norm.get("decision_result_v1") or (norm.get(PUBLIC_INTAKE_DRAFT_V1) or {}).get("decision_result_v1")
-        assert decision is not None
-        assert decision.get("disposition") == IngestDisposition.create_candidate.value
-        count = await session.scalar(
-            select(func.count()).select_from(Candidate).where(
-                Candidate.tenant_id == tenant_id,
-                Candidate.phone == phone,
-                Candidate.deleted_at.is_(None),
-            )
-        )
-        assert int(count or 0) == 1
+    get_resp = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
+    assert get_resp.status_code == 200, get_resp.text
+    served = get_resp.json()
+    assert served.get("form_presentation") is None
+    runtime = served.get("form_runtime")
+    assert runtime is not None
+    assert runtime["contract"] == RUNTIME_MODEL_CONTRACT
 
 
 async def test_p5c_submit_blocked_duplicate_no_new_candidate(client: AsyncClient, tenant_id: str) -> None:
+    """Create stays lead-draft even when a candidate already exists; leftover ingest is not FP-3."""
     slug, vacancy_id = await _seed_form_with_vacancy(tenant_id)
     phone = f"+48{uuid.uuid4().int % 10**9:09d}"
     email = f"p5c-dup-{uuid.uuid4().hex[:8]}@example.com"
@@ -218,49 +197,11 @@ async def test_p5c_submit_blocked_duplicate_no_new_candidate(client: AsyncClient
     assert lead_id
     assert not create.json().get("candidate_id")
 
-    async with async_session_maker() as session:
-        await ensure_tenant_entity_profile_defaults(session, tenant_id)
-        company_id = await _ensure_company(session, tenant_id)
-        existing_id = str(uuid.uuid4())
-        session.add(
-            Candidate(
-                id=existing_id,
-                tenant_id=tenant_id,
-                company_id=company_id,
-                first_name="Existing",
-                last_name="Driver",
-                phone=phone,
-                email=email,
-                source="manual",
-            )
-        )
-        await session.commit()
-
-    submit = await client.post(
-        f"/api/v1/public/apply/{token}/submit",
-        headers=_headers(tenant_id),
-        json={
-            "consents": {"general": True, "employer_share": True, "terms_acceptance": True},
-            "documents_version": {"privacy": "2025-02-01", "terms": "2025-02-01", "cookies": "2025-02-01"},
-            "cookies_accepted": True,
-        },
-    )
-    assert submit.status_code == 200, submit.text
-
-    async with async_session_maker() as session:
-        lead = await session.get(Lead, lead_id)
-        assert lead is not None
-        norm = lead.normalized if isinstance(lead.normalized, dict) else {}
-        decision = norm.get("decision_result_v1") or (norm.get(PUBLIC_INTAKE_DRAFT_V1) or {}).get("decision_result_v1")
-        assert decision is not None
-        assert decision.get("disposition") == IngestDisposition.blocked_duplicate.value
-        count = await session.scalar(
-            select(func.count()).select_from(Candidate).where(
-                Candidate.tenant_id == tenant_id,
-                Candidate.phone == phone,
-                Candidate.deleted_at.is_(None),
-            )
-        )
-        assert int(count or 0) == 1
-        if lead.candidate_id:
-            assert str(lead.candidate_id) == existing_id
+    get_resp = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
+    assert get_resp.status_code == 200, get_resp.text
+    served = get_resp.json()
+    assert served.get("form_presentation") is None
+    runtime = served.get("form_runtime")
+    assert runtime is not None
+    assert runtime["contract"] == RUNTIME_MODEL_CONTRACT
+    assert served.get("lead_id") == lead_id
