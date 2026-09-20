@@ -2,7 +2,7 @@
 
 **Status:** **Accepted** (L2 contract — Forms Publish Contract Gate)  
 **Date:** 2026-09-20  
-**Trusted base:** `integration/release-product-a-b` @ `54537f00`  
+**Trusted base:** `integration/release-product-a-b` @ `7112279e`  
 **Related:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](forms-public-contract.md) · [`ADR-022`](ADR-022-intake-form-purpose-and-submission-policy-model.md) · [`../tasks/external-intake-forms-publish.md`](../tasks/external-intake-forms-publish.md) · [`../gates/hostflow-v1-release-goal.md`](../gates/hostflow-v1-release-goal.md)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (one owner of this write), **INV-01** (one SoT for the operator question), **INV-16** (contract before a second publish action). Does not rewrite L0. Does not mint a second submit engine, FormTemplate SoT, or P4 / P5.
@@ -11,7 +11,7 @@
 > [`forms-public-contract.md`](forms-public-contract.md) remains the Forms Adapter inventory (`publish` = `commit_publish`).  
 > [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) remains Purpose + Target Profile + Submission Policy. This contract names **what publish is**.  
 > Machine copy: `forms_publish.v1` in `backend/app/reference/forms_publish_contract.py`.  
-> Feat locked. FP-2 is the operator route. Do not start FP-2 in this PR.
+> Feat `feat/forms-publish-fp2-publish-action` is open. Publish Action Gate **not PASS**. This stamp does not ship the product route.
 
 ---
 
@@ -132,13 +132,13 @@ Roles are closed: `write_authority` · `not_this_write` · `leftover` · `consum
 6. P3 is unlocked in echoing canon; P4 / P5 stay locked.
 7. ADR-022 is Accepted without expanding Purpose / Policy / Match Matrix.
 8. Named CI (`test_forms_publish_contract_gate.py`) and the boundary guard are green.
-9. Feat remains locked. FP-2 is named; it is not started in this PR.
+9. The FP-1 PR named FP-2 and did not start runtime (historical; Gate remains PASS). A later feat/open may start FP-2 without reopening this Gate.
 
 ---
 
 ## False close
 
-Reject: bumping `published_version` outside the ledger; a Publish button that writes the draft table; copying a `public_slug` and calling it publish; declaring Builder composition and Entity Profile presentation both “the form”; accepting ADR-022 by rewriting Purpose / Policy / Match Matrix in this PR; opening FP-2 runtime in this PR; starting P4 / P5; adding a writer to `TenantLeadForm`; a second submit engine; leftover-store deletion; Hiring E2E / min HR; Foundation ✅; a thirteenth write of this question.
+Reject: bumping `published_version` outside the ledger; a Publish button that writes the draft table; copying a `public_slug` and calling it publish; declaring Builder composition and Entity Profile presentation both “the form”; accepting ADR-022 by rewriting Purpose / Policy / Match Matrix; declaring Publish Action Gate PASS without an authenticated product route that calls `commit_publish`; starting P4 / P5; adding a writer to `TenantLeadForm`; a second submit engine; leftover-store deletion; Hiring E2E / min HR; Foundation ✅; a thirteenth write of this question.
 
 ---
 
@@ -154,4 +154,5 @@ Reject: bumping `published_version` outside the ledger; a Publish button that wr
 
 ## History
 
+- 2026-09-20: Feat `feat/forms-publish-fp2-publish-action` opened from `7112279e`. Publish Action Gate **not PASS**. Twelve-row classification unchanged. This stamp does not ship runtime.
 - 2026-09-20: Accepted as FP-1 Publish contract. Twelve-row classification frozen. Feat locked until a later FP-2 branch. Active Product → FP-2 (brief; feat locked).
