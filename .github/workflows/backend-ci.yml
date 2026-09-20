@@ -468,8 +468,15 @@ jobs:
               - 'docs/specs/gates/hostflow-v1-release-goal.md'
               - 'AGENTS.md'
             fp1:
+              - 'backend/app/reference/forms_publish_contract.py'
+              - 'backend/tests/platform/test_forms_publish_contract_gate.py'
               - 'backend/tests/platform/test_queue_amendment_fp1.py'
+              - 'scripts/architecture/check_forms_publish_boundary.py'
+              - 'scripts/architecture/forms_publish_boundary_*'
               - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/architecture/forms-publish-contract.md'
+              - 'docs/specs/architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md'
+              - 'docs/specs/architecture/ADR-022-review-checklist.md'
               - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
               - 'docs/specs/tasks/hiring-workflow-e2e.md'
               - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
@@ -1247,6 +1254,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_queue_amendment_fp1.py') != ''
         with:
           tests: tests/platform/test_queue_amendment_fp1.py
+
+  fp1-contract-gate:
+    name: Forms Publish Contract Gate
+    needs: changes
+    if: needs.changes.outputs.fp1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Forms Publish Contract gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_forms_publish_contract_gate.py') == ''
+        run: echo "Forms Publish Contract gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_forms_publish_contract_gate.py') != ''
+        with:
+          tests: tests/platform/test_forms_publish_contract_gate.py
 
   dr1-runtime-gate:
     name: DR1 Runtime Gate

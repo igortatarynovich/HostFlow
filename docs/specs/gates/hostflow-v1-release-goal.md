@@ -6,12 +6,12 @@
 **Trusted base:** `integration/release-product-a-b`  
 **Parents:** [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](goal-completion-gate.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md) · [Documents Platform E8-eval](../tasks/documents-platform-e8-eval.md)  
 **Close-out instruments:** [Release Readiness Gate](release-readiness-gate.md) (who declares v1 ready) · [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md) (how it is proven)  
-**Product Track:** **[FP-1](../tasks/external-intake-forms-publish.md)** — Mapping program close recorded ([brief](../tasks/mapping-authority.md); Mapping Consumer Cutover Gate **PASS** `fddadd39`; evidence `92206f40`). Brief; feat locked; Forms Publish Contract Gate not PASS — scheduled in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md). This file does not invent slice order.
+**Product Track:** **[FP-2](../tasks/external-intake-forms-publish.md)** — Forms Publish Contract Gate **PASS** ([forms-publish-contract.md](../architecture/forms-publish-contract.md); `forms_publish.v1`). Brief; feat locked this PR — scheduled in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md). This file does not invent slice order.
 
 > This document is the **v1 in-scope vs later** SoT.  
 > The [sequential queue](../tasks/sales-to-comms-sequential-queue.md) remains the **slice schedule** SoT (one Active Product).  
 > Horizon letters in the [roadmap](../architecture/platform-completion-roadmap.md) (OCR, packages, Billing, AI) are **not** v1.  
-> First Product from § Release DAG was **Requirement Policy Management**. RPM program is **DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). Mapping Authority Contract Gate is **PASS**. Mapping Resolution Gate is **PASS**. Mapping Operator Gate is **PASS**. Mapping Consumer Cutover Gate is **PASS**. Mapping program is **DONE**. Active Product is **[FP-1](../tasks/external-intake-forms-publish.md)** (brief; feat locked). This file does **not** lock a linear program order of the five blockers. Hiring E2E / min HR remain queued — not auto-scheduled here.
+> First Product from § Release DAG was **Requirement Policy Management**. RPM program is **DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). Mapping Authority Contract Gate is **PASS**. Mapping Resolution Gate is **PASS**. Mapping Operator Gate is **PASS**. Mapping Consumer Cutover Gate is **PASS**. Mapping program is **DONE**. Forms Publish Contract Gate is **PASS**. Active Product is **[FP-2](../tasks/external-intake-forms-publish.md)** (brief; feat locked). This file does **not** lock a linear program order of the five blockers. Hiring E2E / min HR remain queued — not auto-scheduled here.
 
 ---
 
@@ -54,14 +54,14 @@ A Settings page that edits non-authority JSON is **not** ready. All four must ho
 |---|------------|--------------------------|
 | **1** | **Requirement Policy Management** — [brief](../tasks/requirement-policy-management.md) (**DONE**; Consumer Cutover Gate PASS `918274d1`; program close recorded) | For this tenant / client / vacancy / profile / country: these requirements apply; base rule; override; reason; result. Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin product. |
 | **2** | **Mapping Authority** — [brief](../tasks/mapping-authority.md) (**DONE**; Consumer Cutover Gate PASS `fddadd39`; program close recorded) | One operator-visible model from source answers to **canonical entity fields**. Not “build another mapping editor.” |
-| **3** | **External Intake / Forms Publish** — [brief](../tasks/external-intake-forms-publish.md) (**active**; FP-1 named; feat locked) | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
+| **3** | **External Intake / Forms Publish** — [brief](../tasks/external-intake-forms-publish.md) (**active**; FP-1 Gate PASS; FP-2 named; feat locked) | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
 | **4** | **Hiring workflow E2E** — [brief](../tasks/hiring-workflow-e2e.md) (queued) | One candidate: `stage → requirements/docs → eligibility → transfer`. Acceptance over existing funnels, gates, policy authority, and transfer — **not** a new Hiring Product. |
 | **5** | **Minimal Recruitment → HR handoff** — [brief](../tasks/recruitment-hr-minimal-handoff.md) (queued) | Hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy. Full HR operations (Kadry, payroll, extended lifecycle) are later. |
 | **6** | **Operate & Launch** — [brief](../tasks/operate-and-launch.md) (**active**; **Launch-ops track** opened 2026-08-31, [OL-1](launch-ownership-gate.md) done, OL-2 next) | Deployed, rolled back, monitored, backed up and restored from written procedures; tenant created, loaded, exported and erased as product; support and incident path named. Not an SRE programme, not IaC, not steady-state operations. |
 
 Blockers 1–5 are **capability** blockers: they make the product complete. Blocker 6 is an **operability** blocker: it makes the product sellable. Blocker 6 is not a capability node in the DAG and does not consume a Product slot — it runs as the parallel **Launch-ops** track, because a paying tenant cannot be served by features alone.
 
-Every blocker now has a brief with `Original Goal → Completion Proof`, an internal slice ladder with named gates, and an estimate. A brief is **not** a schedule: only the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) activates a slice. Active Product is **[FP-1](../tasks/external-intake-forms-publish.md)** after Mapping program close.
+Every blocker now has a brief with `Original Goal → Completion Proof`, an internal slice ladder with named gates, and an estimate. A brief is **not** a schedule: only the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) activates a slice. Active Product is **[FP-2](../tasks/external-intake-forms-publish.md)** after Forms Publish Contract Gate PASS.
 
 ### Supporting (must work for the five; not separate programs)
 
@@ -193,7 +193,7 @@ Recorded at Mapping program close (2026-09-20). RS-3 and RS-4 are named; the [Re
 |------------|-----------|------------------|-----------------|------------|
 | Requirement Policy Management | **PASS** (sole write = R5 merge; parallel writers retired; [requirement-policy-authority.md](../architecture/requirement-policy-authority.md)) | **PASS** (overlay; `tenant_document_policy_deltas`) | **PASS** (D4 + classified consumers; Consumer Cutover `918274d1`) | **PASS** (Documents domain; RS-4 named). v1 not release-ready |
 | Mapping Authority | **PASS** (sole write = intake_source_profiles.mapping_rules; leftovers classified; [mapping-authority-contract.md](../architecture/mapping-authority-contract.md)) | **PASS** (one editor; leftover HTTP writers 410; [mapping-authority-operator.md](../architecture/mapping-authority-operator.md)) | **PASS** (one resolver + `qualified_code` write vocabulary; Consumer Cutover `fddadd39`) | **PASS** (RS-3 named). v1 not release-ready |
-| External Intake / Forms Publish | partial (Foundation serve→execute) | no (P3 locked) | partial | OPEN |
+| External Intake / Forms Publish | **PASS** (publish = `commit_publish`; leftovers classified; [forms-publish-contract.md](../architecture/forms-publish-contract.md)) | no (FP-4) | leftover (presentation serve; FP-3) | OPEN |
 | Hiring workflow E2E | partial (funnels / gates / transfer; policy authority now exists) | partial | not proven vs policy authority | OPEN |
 | Minimal HR handoff | partial (E3/E4 Document Link) | partial | partial | OPEN |
 | Operate & Launch (blocker 6, added 2026-08-28) | no (no deploy / rollback / backup procedure — RB-1…RB-10 all MISSING, now owned and countable via [OL-1](launch-ownership-gate.md)) | partial (tenant create only; no delete, no export, no bulk import; contract accepted in [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md), capability absent) | no (in-process queue + local disk are the defaults) | OPEN |
@@ -202,7 +202,7 @@ Recorded at Mapping program close (2026-09-20). RS-3 and RS-4 are named; the [Re
 
 ## What this document does not do
 
-- Does not schedule Hiring E2E or min HR (Active Product is **[FP-1](../tasks/external-intake-forms-publish.md)**; the Launch-ops track is opened by a queue amendment)  
+- Does not schedule Hiring E2E or min HR (Active Product is **[FP-2](../tasks/external-intake-forms-publish.md)** after Forms Publish Contract Gate PASS; the Launch-ops track is opened by a queue amendment)  
 - Does not run RS-3 or leftover-store deletion (Mapping program close names RS-3; the Release Readiness Gate has not run it)  
 - Does not lock a linear program / slice order (that is the sequential queue)  
 - Does not reopen E8-eval, Overlay, CL7, DR1-runtime, E8-bind, or RPM  
@@ -215,7 +215,8 @@ Recorded at Mapping program close (2026-09-20). RS-3 and RS-4 are named; the [Re
 
 ## Refs
 
-- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [FP-1](../tasks/external-intake-forms-publish.md) after Mapping program close  
+- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [FP-2](../tasks/external-intake-forms-publish.md) after Forms Publish Contract Gate PASS
+- [Forms Publish Contract](../architecture/forms-publish-contract.md) — FP-1 SoT (`forms_publish.v1`)  
 - [Mapping Authority Resolution](../architecture/mapping-authority-resolution.md) — one resolver (`resolve_mapping_authority`)  
 - [Mapping Authority Contract](../architecture/mapping-authority-contract.md) — operator question + write (`mapping_authority.v1`)  
 - [Requirement Policy Authority](../architecture/requirement-policy-authority.md) — operator question + write  

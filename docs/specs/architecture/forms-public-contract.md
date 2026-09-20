@@ -1,11 +1,12 @@
 # Forms Public Contract v1 — Sprint 1 + Sprint 2 hardening
 
-**Status:** canonical · **ACTIVE** · Phase C C1–C6 ✅ / Foundation ✅ · Product Track = [Entity Workspace D1](../tasks/entity-workspace-d1-contract-seal.md)  
+**Status:** canonical · **ACTIVE** · Phase C C1–C6 ✅ / Foundation ✅ · Product Track = [FP-2](../tasks/external-intake-forms-publish.md) (brief; feat locked)  
 **Capability id:** `forms`  
 **Contract id:** `forms.public_contract.v1`  
 **Adapter id:** `forms.endpoint_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#forms)  
-**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · P1 Catalog ✅ · P2 Builder MVP ✅ · P3 Publish UI / P4 / P5 **LOCKED** · C1 [`forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md) ✅ · C2 [`forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md) ✅ · C3 [`forms-platform-c3-builder-runtime.md`](../tasks/forms-platform-c3-builder-runtime.md) ✅ · C4 [`forms-platform-c4-form-runtime.md`](../tasks/forms-platform-c4-form-runtime.md) ✅ · C5 [`forms-platform-c5-form-execution.md`](../tasks/forms-platform-c5-form-execution.md) ✅ · C6 [`forms-platform-c6-optimization.md`](../tasks/forms-platform-c6-optimization.md) ✅  
+**Publish write SoT:** [`forms-publish-contract.md`](forms-publish-contract.md) (`forms_publish.v1`)  
+**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · P1 Catalog ✅ · P2 Builder MVP ✅ · P3 Publish = v1 blocker 3 (contract sealed) · P4 / P5 **LOCKED** · C1 [`forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md) ✅ · C2 [`forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md) ✅ · C3 [`forms-platform-c3-builder-runtime.md`](../tasks/forms-platform-c3-builder-runtime.md) ✅ · C4 [`forms-platform-c4-form-runtime.md`](../tasks/forms-platform-c4-form-runtime.md) ✅ · C5 [`forms-platform-c5-form-execution.md`](../tasks/forms-platform-c5-form-execution.md) ✅ · C6 [`forms-platform-c6-optimization.md`](../tasks/forms-platform-c6-optimization.md) ✅  
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -119,7 +120,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 4. First entry uses Universal Routing once; continuation inherits attribution (ADR-024).  
 5. Forms **never** owns Campaign / Flight / Outcome / KPI tables.  
 6. Consumers call **Adapter** ops only.  
-7. P1 Field Catalog is closed; P2 Builder MVP is complete; **C3 Builder Runtime** is the editor of FormDefinition ([brief](../tasks/forms-platform-c3-builder-runtime.md)). Draft save is not publish. **C4 Form Runtime** projects frozen publication versions into **Runtime Model** ([brief](../tasks/forms-platform-c4-form-runtime.md)). Runtime does not import Builder. **C5 Form Execution** binds validate/submit/persist to Runtime Model ([brief](../tasks/forms-platform-c5-form-execution.md)). **C6 Optimization** wires production Shared Intake through serve→execute and closes Forms Foundation ([brief](../tasks/forms-platform-c6-optimization.md)) ✅. **P3 Publish UI / P4 Themes / P5 Analytics remain LOCKED.** Builder **must not invent field types**.
+7. P1 Field Catalog is closed; P2 Builder MVP is complete; **C3 Builder Runtime** is the editor of FormDefinition ([brief](../tasks/forms-platform-c3-builder-runtime.md)). Draft save is not publish. **C4 Form Runtime** projects frozen publication versions into **Runtime Model** ([brief](../tasks/forms-platform-c4-form-runtime.md)). Runtime does not import Builder. **C5 Form Execution** binds validate/submit/persist to Runtime Model ([brief](../tasks/forms-platform-c5-form-execution.md)). **C6 Optimization** wires production Shared Intake through serve→execute and closes Forms Foundation ([brief](../tasks/forms-platform-c6-optimization.md)) ✅. **P3 publish write** is [forms-publish-contract.md](forms-publish-contract.md) (`commit_publish` only). **P4 Themes / P5 Analytics remain LOCKED.** Builder **must not invent field types**.
 
 ---
 

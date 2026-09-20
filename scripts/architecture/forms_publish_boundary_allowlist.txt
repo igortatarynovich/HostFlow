@@ -1,0 +1,2 @@
+# Forms Publish — surviving-write lineage (FP-1). Runtime route is FP-2.
+forms_publish_write|backend/app/forms_platform/adapter.py
