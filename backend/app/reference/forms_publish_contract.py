@@ -5,7 +5,8 @@ Contract id: ``forms_publish.v1``.
 One operator question. One write. Twelve answerers. A later FP slice may
 retire a leftover; it must not add a thirteenth write of the same question.
 
-Not FP-2 runtime. Not FP-3 public serve cutover. Not FP-4 operator UI.
+FP-2 wires the authenticated product route to ``commit_publish``.
+Not FP-3 public serve cutover. Not FP-4 operator UI.
 Not P4 Themes. Not P5 Analytics. Not FormTemplate SoT. Not a second
 submit engine. Not Hiring E2E. Not leftover-store deletion.
 """
@@ -25,6 +26,8 @@ OPERATOR_QUESTION: Final[str] = (
 WRITE_AUTHORITY: Final[str] = "commit_publish_ledger"
 WRITE_PRODUCER_REL: Final[str] = "backend/app/forms_platform/adapter.py"
 WRITE_API: Final[str] = "commit_publish"
+PRODUCT_ROUTE_REL: Final[str] = "backend/app/api/v1/platform/forms_publications.py"
+PRODUCT_ROUTE_PATH: Final[str] = "/api/v1/platform/forms/{form_id}/publish"
 LEDGER_REL: Final[str] = "backend/app/models/form_publication_version.py"
 PUBLIC_CONTRACT_ID: Final[str] = "forms.public_contract.v1"
 ADAPTER_ID: Final[str] = "forms.endpoint_adapter_v1"
@@ -73,6 +76,7 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
         paths=(
             "backend/app/forms_platform/adapter.py",
             "backend/app/models/form_publication_version.py",
+            "backend/app/api/v1/platform/forms_publications.py",
         ),
     ),
     Answerer(
@@ -82,17 +86,13 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
     ),
     Answerer(
         code="intake_form_write_service_version_bump",
-        role="leftover",
+        role="not_this_write",
         paths=("backend/app/services/intake_form_write_service.py",),
-        owner="Forms",
-        expiry="FP-2 Publish Action Gate",
     ),
     Answerer(
         code="form_definition_published_version_write",
-        role="leftover",
+        role="not_this_write",
         paths=("backend/app/intake_platform/form_definition.py",),
-        owner="Forms / Intake",
-        expiry="FP-2 Publish Action Gate",
     ),
     Answerer(
         code="builder_draft_save",

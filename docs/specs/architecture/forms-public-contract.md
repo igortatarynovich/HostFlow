@@ -1,6 +1,6 @@
 # Forms Public Contract v1 — Sprint 1 + Sprint 2 hardening
 
-**Status:** canonical · **ACTIVE** · Phase C C1–C6 ✅ / Foundation ✅ · Product Track = [FP-2](../tasks/external-intake-forms-publish.md) (feat `feat/forms-publish-fp2-publish-action` open; Publish Action Gate **not PASS**)  
+**Status:** canonical · **ACTIVE** · Phase C C1–C6 ✅ / Foundation ✅ · Product Track = [FP-3](../tasks/external-intake-forms-publish.md) (Publish Action Gate **PASS**; feat locked)  
 **Capability id:** `forms`  
 **Contract id:** `forms.public_contract.v1`  
 **Adapter id:** `forms.endpoint_adapter_v1`  

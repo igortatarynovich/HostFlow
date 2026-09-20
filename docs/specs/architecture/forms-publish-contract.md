@@ -11,7 +11,7 @@
 > [`forms-public-contract.md`](forms-public-contract.md) remains the Forms Adapter inventory (`publish` = `commit_publish`).  
 > [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) remains Purpose + Target Profile + Submission Policy. This contract names **what publish is**.  
 > Machine copy: `forms_publish.v1` in `backend/app/reference/forms_publish_contract.py`.  
-> Feat `feat/forms-publish-fp2-publish-action` is open. Publish Action Gate **not PASS**. This stamp does not ship the product route.
+> Feat `feat/forms-publish-fp2-publish-action` shipped the authenticated product route. Publish Action Gate **PASS**. This stamp does not start FP-3.
 
 ---
 
@@ -40,7 +40,7 @@ No second question is this contract. Mapping Authority, Hiring E2E, min HR, Them
 
 Producer: `backend/app/forms_platform/adapter.py` (`commit_publish`).  
 Ledger: `backend/app/models/form_publication_version.py`.  
-This contract forbids a second **write** of the same question. It does not ship the authenticated product route (FP-2) or the operator UI (FP-4).
+This contract forbids a second **write** of the same question. The authenticated product route (FP-2) calls this write. It does not ship the operator UI (FP-4) or public serve cutover (FP-3).
 
 ---
 
@@ -84,10 +84,10 @@ A later FP slice may **retire** a leftover. It may not add a thirteenth write of
 
 | # | Live answerer | FP role | Evidence (paths) |
 |---|---------------|---------|------------------|
-| 1 | Adapter `commit_publish` + `form_publication_versions` | **Write authority** | `backend/app/forms_platform/adapter.py` · `backend/app/models/form_publication_version.py` |
+| 1 | Adapter `commit_publish` + `form_publication_versions` + authenticated product route | **Write authority** | `backend/app/forms_platform/adapter.py` · `backend/app/models/form_publication_version.py` · `backend/app/api/v1/platform/forms_publications.py` |
 | 2 | `TenantLeadForm.published_version` current pointer | **Consume** | `backend/app/models/tenant_lead_form.py` |
-| 3 | Intake admin presentation save bump | **Leftover** (FP-2) | `backend/app/services/intake_form_write_service.py` |
-| 4 | Form Definition `published_version` field write | **Leftover** (FP-2) | `backend/app/intake_platform/form_definition.py` |
+| 3 | Intake admin presentation save | **Not this write** (retired FP-2) | `backend/app/services/intake_form_write_service.py` |
+| 4 | Form Definition `published_version` field | **Not this write** (retired FP-2) | `backend/app/intake_platform/form_definition.py` |
 | 5 | Builder draft save | **Not this write** | `backend/app/forms_platform/builder/draft_persistence.py` |
 | 6 | Entity Profile `form_presentation_runtime_v1` | **Leftover** public-serve definition (FP-3) | `backend/app/entity_profile/presentation_runtime.py` |
 | 7 | Publication bridge / Adapter `resolve` | **Consume** | `backend/app/forms_platform/publication_bridge.py` |
@@ -128,11 +128,24 @@ Roles are closed: `write_authority` · `not_this_write` · `leftover` · `consum
 2. The only write of “what is published?” is Adapter `commit_publish` onto `form_publication_versions`.
 3. Operator-visible states are **draft · published · live · inactive · never published**.
 4. Surviving public serve is the frozen publication snapshot; leftover serve is `form_presentation_runtime_v1` (expiry FP-3).
-5. Out-of-band `published_version` increment is classified leftover (expiry FP-2), not a second write.
+5. Out-of-band `published_version` increment is forbidden. Presentation save and Form Definition leftover writers are retired (FP-2).
 6. P3 is unlocked in echoing canon; P4 / P5 stay locked.
 7. ADR-022 is Accepted without expanding Purpose / Policy / Match Matrix.
 8. Named CI (`test_forms_publish_contract_gate.py`) and the boundary guard are green.
 9. The FP-1 PR named FP-2 and did not start runtime (historical; Gate remains PASS). A later feat/open may start FP-2 without reopening this Gate.
+
+---
+
+## Publish Action Gate
+
+**PASS** when:
+
+1. An authenticated product route calls Adapter `commit_publish` and a `form_publication_versions` row exists afterwards.
+2. Presentation save does not increment `published_version`.
+3. Form Definition apply does not write `published_version`.
+4. Republish with the same `idempotency_key` returns the original version and does not append a second ledger row.
+5. Named CI (`test_forms_publish_action_gate.py`) is green.
+6. FP-3 public serve / embed is not started in the same stamp.
 
 ---
 
@@ -144,7 +157,7 @@ Reject: bumping `published_version` outside the ledger; a Publish button that wr
 
 ## Consequences
 
-- FP-2 wires the orphaned `commit_publish` to an authenticated product route and removes leftover version bumps.  
+- FP-2 wired the orphaned `commit_publish` to an authenticated product route and retired leftover version bumps.  
 - FP-3 makes public serve consume the frozen snapshot; the presentation leftover retires.  
 - FP-4 is the operator surface over these states.  
 - FP-5 binds RS-2 and consumes Mapping Authority.  
@@ -154,5 +167,6 @@ Reject: bumping `published_version` outside the ledger; a Publish button that wr
 
 ## History
 
+- 2026-09-20: Publish Action Gate **PASS**. Authenticated `POST /api/v1/platform/forms/{form_id}/publish` → `commit_publish` → `form_publication_versions`. Leftover version bumps retired. Republish idempotent per identity. Twelve-row classification unchanged (rows 3–4 retired to `not_this_write`). This stamp does not start FP-3.
 - 2026-09-20: Feat `feat/forms-publish-fp2-publish-action` opened from `7112279e`. Publish Action Gate **not PASS**. Twelve-row classification unchanged. This stamp does not ship runtime.
 - 2026-09-20: Accepted as FP-1 Publish contract. Twelve-row classification frozen. Feat locked until a later FP-2 branch. Active Product → FP-2 (brief; feat locked).
