@@ -1,9 +1,9 @@
 # External Intake / Forms Publish
 
-**Status:** **ACTIVE** — Forms Publish Contract Gate **PASS**. Publish Action Gate **PASS**. Active Product = **FP-3** (feat locked; Public Serve Gate **not PASS**).
+**Status:** **ACTIVE** — Forms Publish Contract Gate **PASS**. Publish Action Gate **PASS**. Active Product = **FP-3** (feat `feat/forms-publish-fp3-public-serve` open; Public Serve Gate **not PASS**).
 **Phase class:** platform
 **Branch (docs):** `docs/forms-publish-fp1-contract-seal`
-**Branch (code):** `feat/forms-publish-fp2-publish-action` (FP-2 runtime). FP-3 feat locked. This stamp does not start public serve / embed.
+**Branch (code):** `feat/forms-publish-fp3-public-serve`. Public Serve Gate **not PASS**. This stamp does not ship runtime.
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 3) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-2](../journeys/release-readiness-acceptance-suite.md) · [Forms product layer epic](forms-product-layer-epic.md) · [Forms Platform C6](forms-platform-c6-optimization.md) ✅ · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Publish Contract](../architecture/forms-publish-contract.md) (`forms_publish.v1`) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Mapping Authority](mapping-authority.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
 **Estimate:** 5–7 slices (1 slice = one docs PR + one feat PR)
 
@@ -12,7 +12,7 @@
 > **Not** P4 Themes. **Not** P5 Analytics. **Not** FormTemplate SoT migration. **Not** a second submit engine. **Not** Mapping Authority (consumed, not rebuilt).
 >
 > **U-2:** [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) is **Accepted** (Purpose + Policy unchanged). Publish definition SoT: [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`).
-> Mapping program is **DONE**. Unlock ≠ schedule of leftover-store deletion / Hiring. The queue’s Active Product is **FP-3** (feat locked; Public Serve Gate **not PASS**) after Publish Action Gate **PASS**. This stamp does not start FP-3.
+> Mapping program is **DONE**. Unlock ≠ schedule of leftover-store deletion / Hiring. The queue’s Active Product is **FP-3** (feat `feat/forms-publish-fp3-public-serve` open; Public Serve Gate **not PASS**) after Publish Action Gate **PASS**. This stamp does not ship runtime.
 
 ---
 
@@ -37,7 +37,7 @@ HostFlow cannot acquire an external candidate through a form that an operator pu
 | [Forms product layer epic](forms-product-layer-epic.md) | `P3 Publish UI … LOCKED` → **amended with this brief** to “v1 blocker 3, feat locked until FP-1” |
 | Status echoes | [capability catalog](../architecture/platform-capability-catalog.md) · [capability contract](../architecture/capability-contract.md) · [capability settings manifest](../architecture/capability-settings-manifest.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [forms module-scope](../../forms/module-scope.md) — P3 = v1 blocker 3 (contract sealed); P4 / P5 stay locked |
 
-The roadmap no longer forbids the work v1 cannot ship without, and the epic no longer contradicts the Release Goal. **FP-1 sealed the publish semantics** (`forms_publish.v1`). **FP-2 Publish Action Gate PASS**. Feat for FP-3 is locked. This stamp does not start public serve.
+The roadmap no longer forbids the work v1 cannot ship without, and the epic no longer contradicts the Release Goal. **FP-1 sealed the publish semantics** (`forms_publish.v1`). **FP-2 Publish Action Gate PASS**. Feat `feat/forms-publish-fp3-public-serve` is open. Public Serve Gate **not PASS**. This stamp does not ship runtime.
 
 ---
 
@@ -85,7 +85,7 @@ FP-1 Publish contract seal + roadmap unlock (docs)
 |---|-------|------------|---------------------|------------|----------|
 | **FP-1** | Publish contract seal + unlock + **ADR-022 accept** | `fp-contract` | **Forms Publish Contract Gate** ✅ — publish is defined as `commit_publish` only; SoT [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`); P3 unlocked in echoing canon; out-of-band `published_version` bumps forbidden; [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) **Accepted** without expanding Purpose / Policy / Match Matrix | Queue amendment [#377](https://github.com/igortatarynovich/HostFlow/pull/377) / `54537f00` | 1–1.5 slices (docs) |
 | **FP-2** | Publish action runtime | `fp-publish` | **Publish Action Gate** ✅ — an authenticated product route commits a publication version; presentation save no longer bumps versions; republish is idempotent per identity | FP-1 Gate | 1–2 slices |
-| **FP-3** | Public serve from publication | `fp-serve` | **Public Serve Gate** — the public form is served from the frozen snapshot; draft markers rejected; one definition reaches the renderer | FP-2 Gate | 1–2 slices |
+| **FP-3** | Public serve from publication | `fp-serve` | **Public Serve Gate** **not PASS** — public request → resolve live publication → frozen snapshot → Form Runtime; draft markers rejected; one definition reaches the renderer | FP-2 Gate | 1–2 slices |
 | **FP-4** | Operator publish surface | `fp-operator` | **Forms Publish Operator Gate** — operator publishes / unpublishes, sees version history and draft-vs-published state, and obtains the public URL from the product | FP-3 Gate | 1 slice |
 | **FP-5** | Acceptance bind | `fp-accept` | **External Intake Acceptance Gate** — RS-2 passes end to end on a fresh tenant: publish → stranger submit → canonical entity visible; abuse protections stated (rate limit is fail-open when Redis is unavailable — declare or fix) | FP-4 Gate **∧** Mapping Authority program close | 1 slice |
 
@@ -103,9 +103,13 @@ Canon unlock: P3 only. P4 / P5 remain locked. ADR-022 Accepted without expanding
 
 Wired the orphaned operation: authenticated `POST /api/v1/platform/forms/{form_id}/publish` → Adapter `commit_publish` → `form_publication_versions`. Presentation save and Form Definition leftover version bumps retired. Republish is idempotent per identity. Out: themes, analytics, FormTemplate migration, a second submit engine, changing validation semantics, public serve/embed.
 
-## FP-3 — Public serve from frozen publication (queued; feat locked)
+## FP-3 — Public serve from frozen publication (Active; feat `feat/forms-publish-fp3-public-serve` open; Public Serve Gate **not PASS**)
 
-Resolve the dual definition. If Builder composition cannot yet drive the public renderer, the surviving definition must be stated in FP-1 and the other declared a named leftover with owner and expiry — not left ambiguous.
+Close path (narrow): **public request → resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime render**. Public link and later embed remain two access methods to **one** serve surface, not two renderer or publish mechanisms. Embed may be counted as serve-surface compatibility; distribution UX / snippet is FP-4.
+
+`/public/intake` driven by Entity Profile `form_presentation_runtime_v1` must stop being the working authority surface to the extent this cutover requires. Leftover handling follows the named expiry already sealed in [forms-publish-contract.md](../architecture/forms-publish-contract.md) — not a pretext for general cleanup.
+
+This stamp opens the feat and does **not** ship public serve. Out: a second renderer; a second publication state; a second submit engine; operator publish UI (FP-4); leftover-store deletion; Mapping Operator Surface inherited reds.
 
 ## FP-4 — Operator publish surface (queued)
 
@@ -129,11 +133,11 @@ Depends on [Mapping Authority](mapping-authority.md) program close — the accep
 ## Queue position
 
 **Depends on:** queue amendment [#377](https://github.com/igortatarynovich/HostFlow/pull/377). FP-5 additionally on Mapping Authority close  
-**Active Product:** **FP-3** (feat locked; Public Serve Gate **not PASS**). Publish Action Gate **PASS**. Forms Publish Contract Gate **PASS**.  
+**Active Product:** **FP-3** (feat `feat/forms-publish-fp3-public-serve` open; Public Serve Gate **not PASS**). Publish Action Gate **PASS**. Forms Publish Contract Gate **PASS**.  
 **Unlocks:** nothing automatically — “unlock ≠ schedule”  
-**Does not:** start FP-3 public serve / embed in this stamp; open P4 / P5; migrate `TenantLeadForm` → FormTemplate SoT (U-5 residual: Publish ships on the bridge, and **no new writer may be added to it**); rebuild Shared Intake; touch C2.4; start leftover-store deletion / Hiring
+**Does not:** ship public serve / embed runtime in this stamp; build distribution UX / snippet (FP-4); mint a second renderer, publication state, or submit engine; open P4 / P5; migrate `TenantLeadForm` → FormTemplate SoT (U-5 residual: Publish ships on the bridge, and **no new writer may be added to it**); rebuild Shared Intake; touch C2.4; start leftover-store deletion / Hiring; expand Mapping Operator Surface inherited reds
 
-**Does:** ship authenticated `commit_publish` on `feat/forms-publish-fp2-publish-action` against sealed [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`). ADR-022 stays Accepted without expansion.
+**Does:** open feat `feat/forms-publish-fp3-public-serve` against sealed [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`). Close path stays `public request → resolve live publication → frozen snapshot → Form Runtime`. ADR-022 stays Accepted without expansion.
 
 ---
 
@@ -151,6 +155,7 @@ Depends on [Mapping Authority](mapping-authority.md) program close — the accep
 
 ## History
 
+- 2026-09-20: **FP-3 Public Serve feat opened.** Branch `feat/forms-publish-fp3-public-serve` from `41be635a` ([#380](https://github.com/igortatarynovich/HostFlow/pull/380)). Close path = public request → resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime render. Leftover `/public/intake` → `form_presentation_runtime_v1` follows named expiry, not general cleanup. Embed is serve-surface compatibility, not FP-4 snippet UX. Public Serve Gate **not PASS**. This stamp does not ship runtime. Not Hiring / leftover-store deletion. Not P4 / P5.
 - 2026-09-20: **Publish Action Gate PASS.** Authenticated `POST /api/v1/platform/forms/{form_id}/publish` → Adapter `commit_publish` → `form_publication_versions`. Leftover presentation / Form Definition version bumps retired. Republish idempotent per identity. Active Product → **FP-3** (brief; feat locked). Do not start FP-3 in this PR. Not Hiring / leftover-store deletion. Not P4 / P5.
 - 2026-09-20: **FP-2 Publish Action feat opened.** Branch `feat/forms-publish-fp2-publish-action` from `7112279e` ([#378](https://github.com/igortatarynovich/HostFlow/pull/378)). Close path = authenticated product route → Adapter `commit_publish` → `form_publication_versions`; leftover presentation / Form Definition version bumps retire; republish is idempotent per identity. Publish Action Gate **not PASS**. This stamp does not ship runtime. Not FP-3 / Hiring / leftover-store deletion. Not P4 / P5.
 - 2026-09-20: **Forms Publish Contract Gate PASS.** SoT = [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`). ADR-022 **Accepted** without expanding Purpose / Policy / Match Matrix. P3 unlocked in echoing canon; P4 / P5 stay locked. Feat still locked. Active Product → **FP-2** (brief; feat locked this PR). Do not start FP-2 in this PR. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not P4 / P5.

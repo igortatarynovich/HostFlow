@@ -161,6 +161,7 @@ Reject: a fourth store; renaming C-5 as “the authority” while Meta admin sti
 
 ## History
 
+- 2026-09-20: **FP-3 Public Serve feat opened.** Branch `feat/forms-publish-fp3-public-serve` from `41be635a`. Public Serve Gate **not PASS**. This stamp does not ship runtime. Mapping program **DONE**.
 - 2026-09-20: **FP-2 Publish Action feat opened.** Branch `feat/forms-publish-fp2-publish-action` from `7112279e`. Publish Action Gate **not PASS**. This stamp does not ship runtime. Mapping program **DONE**.
 - 2026-09-20: **Forms Publish Contract Gate PASS.** Active Product → **FP-2** (brief; feat locked). Mapping program **DONE**.
 - 2026-09-20: Queue amendment names **FP-1** Active Product (brief; feat locked). Mapping program **DONE**.
