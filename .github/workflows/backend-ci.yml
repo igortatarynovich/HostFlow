@@ -110,6 +110,7 @@ jobs:
       ma2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma2 == 'true' }}
       ma3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma3 == 'true' }}
       ma4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma4 == 'true' }}
+      ma_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma_close == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
@@ -456,6 +457,15 @@ jobs:
               - 'backend/tests/platform/test_mapping_authority_consumer_cutover.py'
               - 'backend/tests/platform/test_mapping_authority_consumer_cutover_gate.py'
               - 'docs/specs/tasks/mapping-authority.md'
+            ma_close:
+              - 'backend/tests/platform/test_mapping_authority_program_close.py'
+              - 'docs/specs/tasks/mapping-authority.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
 
   guards:
     name: guards
@@ -1199,6 +1209,21 @@ jobs:
             tests/platform/test_mapping_authority_consumer_cutover_gate.py
             tests/platform/test_mapping_authority_consumer_cutover.py
 
+  ma-close-gate:
+    name: Mapping Authority Program Close
+    needs: changes
+    if: needs.changes.outputs.ma_close == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Mapping program close gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_mapping_authority_program_close.py') == ''
+        run: echo "Mapping program close gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_mapping_authority_program_close.py') != ''
+        with:
+          tests: tests/platform/test_mapping_authority_program_close.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -1249,6 +1274,7 @@ jobs:
       - ma2-resolution-gate
       - ma3-operator-surface
       - ma4-consumer-cutover-gate
+      - ma-close-gate
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:

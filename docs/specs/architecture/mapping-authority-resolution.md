@@ -70,6 +70,7 @@ Reject: documenting the old chain as “still how ingest works”; a second reso
 
 ## History
 
+- 2026-09-20: Mapping program close. Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). Product **DONE** with no named successor until amendment.
 - 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. `qualified_code` is the only intake write vocabulary. Feat locked. Active Product → Mapping program close (brief; feat locked).
 - 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Mapping Consumer Cutover Gate **not PASS**.
 - 2026-09-18: Mapping Operator Gate **PASS**. Active Product → MA-4 (brief; feat locked).
