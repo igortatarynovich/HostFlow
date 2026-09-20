@@ -1,8 +1,8 @@
 """Forms Publish Contract Gate (FP-1).
 
 One operator question. One write. Twelve classified answerers.
-Feat `feat/forms-publish-fp3-public-serve` is open. Public Serve Gate
-not PASS. Not FP-3 runtime. Not Hiring E2E.
+Feat `feat/forms-publish-fp4-operator-surface` is open. Operator Publish Gate
+not PASS. Not FP-4 operator UI. Not Hiring E2E.
 """
 
 from __future__ import annotations
@@ -117,8 +117,10 @@ def test_fp1_brief_contract_gate_pass() -> None:
     assert "**PASS**" in current
     assert "feat/forms-publish-fp2-publish-action" in current
     assert "feat/forms-publish-fp3-public-serve" in current
+    assert "feat/forms-publish-fp4-operator-surface" in current
     assert "Publish Action Gate" in current
     assert "Public Serve Gate" in current
+    assert "Operator Publish Gate" in current
     assert "FP-2" in current
     assert "commit_publish" in current
     assert "ADR-022" in current
@@ -133,11 +135,13 @@ def test_fp1_queue_names_successor_not_runtime() -> None:
     assert "forms-publish-contract.md" in current
     assert "feat/forms-publish-fp2-publish-action" in text
     assert "feat/forms-publish-fp3-public-serve" in current
+    assert "feat/forms-publish-fp4-operator-surface" in current
     assert "**Active Product** | **[FP-4](external-intake-forms-publish.md)" in current
     assert "Active (Product):** **[FP-4](external-intake-forms-publish.md)" in current
     assert "Publish Action Gate **PASS**" in current
     assert "Public Serve Gate **PASS**" in current
-    assert "Do not start FP-4" in current
+    assert "Operator Publish Gate **not PASS**" in current
+    assert "This stamp does not ship operator UI" in current
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "external-intake-forms-publish.md" in agents
     assert "forms-publish-contract.md" in agents or "forms_publish" in agents.lower()

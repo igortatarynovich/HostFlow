@@ -1,7 +1,7 @@
 """Queue amendment named FP-1; Contract Gate then named FP-2.
 
 History still records the 2026-09-20 FP-1 naming amendment.
-Current Active Product is FP-4 (brief; feat locked; Public Serve Gate PASS)
+Current Active Product is FP-4 (feat open; Operator Publish Gate not PASS)
 after Public Serve Gate PASS. Hiring / min HR remain queued. Leftover-store
 deletion and RS-3 stay unauthorized.
 """
@@ -33,20 +33,25 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     assert "**Active Product** | **[FP-4](external-intake-forms-publish.md)**" in current
     assert "feat/forms-publish-fp2-publish-action" in queue
     assert "feat/forms-publish-fp3-public-serve" in current
+    assert "feat/forms-publish-fp4-operator-surface" in current
     assert "Publish Action Gate **PASS**" in current
     assert "Public Serve Gate **PASS**" in current
+    assert "Operator Publish Gate **not PASS**" in current
     assert "Forms Publish Contract Gate **PASS**" in current or "Forms Publish Contract Gate = PASS" in current
     assert "Active (Product):** **[FP-4](external-intake-forms-publish.md)**" in current
     assert "**Active Product** | **DONE**" not in current
-    assert "Do not start FP-4" in current
+    assert "This stamp does not ship operator UI" in current
     intake = _INTAKE.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]
     assert "**ACTIVE**" in intake_current
     assert "FP-1" in intake_current
     assert "FP-2" in intake_current
     assert "FP-3" in intake_current
+    assert "FP-4" in intake_current
     assert "feat/forms-publish-fp2-publish-action" in intake_current
     assert "feat/forms-publish-fp3-public-serve" in intake_current
+    assert "feat/forms-publish-fp4-operator-surface" in intake_current
+    assert "Operator Publish Gate **not PASS**" in intake_current
     assert "Public Serve Gate **PASS**" in intake_current
     assert "Forms Publish Contract Gate **PASS**" in intake_current
     agents = _AGENTS.read_text(encoding="utf-8")
