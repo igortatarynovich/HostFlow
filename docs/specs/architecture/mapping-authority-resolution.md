@@ -63,12 +63,14 @@ Reject: documenting the old chain as “still how ingest works”; a second reso
 ## Consequences
 
 - MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Mapping Operator Gate **PASS** 2026-09-18. Remaining leftover HTTP writers return 410; leftover stores stay read-through.  
-- MA-4 makes `qualified_code` the only write vocabulary on the intake path.  
+- MA-4 made `qualified_code` the only write vocabulary on the intake path. Mapping Consumer Cutover Gate **PASS** (`fddadd39`).  
 - RPM / evaluators still consume canonical facts only.
 
 ---
 
 ## History
 
+- 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. `qualified_code` is the only intake write vocabulary. Feat locked. Active Product → Mapping program close (brief; feat locked).
+- 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Mapping Consumer Cutover Gate **not PASS**.
 - 2026-09-18: Mapping Operator Gate **PASS**. Active Product → MA-4 (brief; feat locked).
 - 2026-09-04: Mapping Resolution Gate **PASS**. One resolver over `intake_source_profiles.mapping_rules`. Active Product → MA-3 (brief; feat locked).
