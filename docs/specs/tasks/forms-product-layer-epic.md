@@ -1,11 +1,11 @@
 # Forms Product Layer — Epic
 
-**Status:** **OPEN** · Phase C C1–C6 ✅ / Foundation ✅ · **P3 Publish = v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md) (Forms Publish Contract Gate **PASS**; Publish Action Gate **PASS**; Public Serve Gate **PASS**; feat `feat/forms-publish-fp4-operator-surface` open; Operator Publish Gate **not PASS**; FP-3 feat `feat/forms-publish-fp3-public-serve`) · P4 / P5 **LOCKED**  
+**Status:** **OPEN** · Phase C C1–C6 ✅ / Foundation ✅ · **P3 Publish = v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md) (Forms Publish Contract Gate **PASS**; Publish Action Gate **PASS**; Public Serve Gate **PASS**; Operator Publish Gate **PASS**; feat `feat/forms-publish-fp4-operator-surface`; FP-3 feat `feat/forms-publish-fp3-public-serve`) · P4 / P5 **LOCKED**  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
 **P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Builder MVP **COMPLETE** (P2.1–P2.5) · P3 = v1 blocker 3 (contract sealed)  
-**Out of this Product Track slice:** Stage 5 settings/enable-disable · R6 table-cutover · P4 Themes / P5 Analytics (locked). P3 Publish contract is sealed; operator UI is FP-4 (feat `feat/forms-publish-fp4-operator-surface` open; Operator Publish Gate **not PASS**). Embed snippet stays a later slice.
+**Out of this Product Track slice:** Stage 5 settings/enable-disable · R6 table-cutover · P4 Themes / P5 Analytics (locked). P3 Publish contract is sealed; operator UI is FP-4 (Operator Publish Gate **PASS**; feat `feat/forms-publish-fp4-operator-surface`). Embed snippet stays a later slice.
 
 ---
 
@@ -142,7 +142,7 @@ Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](fo
 | Field Catalog contracts v1 | **FROZEN** |
 | P2.1–P2.5 Builder | ✅ **COMPLETE** (MVP) |
 | Builder Catalog Consumption | ✅ **ACTIVE** |
-| P3 Publish UI | **v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md); Forms Publish Contract Gate **PASS**; Publish Action Gate **PASS**; Public Serve Gate **PASS**; feat `feat/forms-publish-fp4-operator-surface` open; Operator Publish Gate **not PASS**; FP-3 feat `feat/forms-publish-fp3-public-serve` (C5 is Form Execution, not Publish UI — [forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md)) |
+| P3 Publish UI | **v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md); Forms Publish Contract Gate **PASS**; Publish Action Gate **PASS**; Public Serve Gate **PASS**; Operator Publish Gate **PASS**; feat `feat/forms-publish-fp4-operator-surface`; FP-3 feat `feat/forms-publish-fp3-public-serve` (C5 is Form Execution, not Publish UI — [forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md)) |
 | P4 Themes / P5 Analytics | **LOCKED** |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 | Executable logic inside descriptors | **FORBIDDEN** |
@@ -155,6 +155,7 @@ Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](fo
 ---
 
 ## History
+- 2026-09-20: **Operator Publish Gate PASS.** Never published → Publish (`commit_publish`) → Live v1 + public URL → Unpublish (`deactivate_endpoint`) → Inactive + URL absent. After each act the operator surface re-reads backend publication authority. UI does not compute live. Embed snippet is a later product slice. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
 - 2026-09-20: **FP-4 Operator Publish Surface feat opened.** Branch `feat/forms-publish-fp4-operator-surface` from `9cc986ce` ([#382](https://github.com/igortatarynovich/HostFlow/pull/382)). Close path = operator opens form → sees current publication state/version → publish or unpublish → sees resulting live state → obtains public URL from product UI. Publish uses closed FP-2 `commit_publish` authority. Live/public URL uses closed FP-3 serve authority. Embed snippet is a later product slice (one serve surface). Operator Publish Gate **not PASS**. This stamp does not ship operator UI. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
 - 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.
 - 2026-09-20: FP-3 Public Serve feat opened (`feat/forms-publish-fp3-public-serve` from `41be635a`). Public Serve Gate **not PASS**. Close path = public request → resolve live publication → frozen snapshot → Form Runtime. This stamp does not ship runtime. P4 / P5 stay locked.

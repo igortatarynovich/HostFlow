@@ -133,8 +133,9 @@ def test_fp2_brief_and_named_ci() -> None:
     assert "feat/forms-publish-fp3-public-serve" in queue_current
     assert "feat/forms-publish-fp4-operator-surface" in queue_current
     assert "Public Serve Gate **PASS**" in queue_current
-    assert "Operator Publish Gate **not PASS**" in queue_current
-    assert "This stamp does not ship operator UI" in queue_current or "This stamp does not ship operator UI" in queue
+    assert "Operator Publish Gate **PASS**" in queue_current
+    assert "This stamp does not ship operator UI" not in queue_current
+    assert "Do not start FP-5" in queue_current
     ci = _CI.read_text(encoding="utf-8")
     assert "Publish Action Gate" in ci
     assert "test_forms_publish_action_gate.py" in ci

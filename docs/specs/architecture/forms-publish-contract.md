@@ -11,7 +11,7 @@
 > [`forms-public-contract.md`](forms-public-contract.md) remains the Forms Adapter inventory (`publish` = `commit_publish`).  
 > [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) remains Purpose + Target Profile + Submission Policy. This contract names **what publish is**.  
 > Machine copy: `forms_publish.v1` in `backend/app/reference/forms_publish_contract.py`.  
-> Feat `feat/forms-publish-fp2-publish-action` shipped the authenticated product route. Publish Action Gate **PASS**. Feat `feat/forms-publish-fp3-public-serve` shipped public serve. Public Serve Gate **PASS**. Feat `feat/forms-publish-fp4-operator-surface` is open. Operator Publish Gate **not PASS**. This stamp does not ship operator UI.
+> Feat `feat/forms-publish-fp2-publish-action` shipped the authenticated product route. Publish Action Gate **PASS**. Feat `feat/forms-publish-fp3-public-serve` shipped public serve. Public Serve Gate **PASS**. Feat `feat/forms-publish-fp4-operator-surface` shipped the operator surface. Operator Publish Gate **PASS**. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR.
 
 ---
 
@@ -40,7 +40,7 @@ No second question is this contract. Mapping Authority, Hiring E2E, min HR, Them
 
 Producer: `backend/app/forms_platform/adapter.py` (`commit_publish`).  
 Ledger: `backend/app/models/form_publication_version.py`.  
-This contract forbids a second **write** of the same question. The authenticated product route (FP-2) calls this write. Public serve cutover (FP-3) is **PASS**. This stamp opens the operator surface feat (FP-4) and does not ship operator UI.
+This contract forbids a second **write** of the same question. The authenticated product route (FP-2) calls this write. Public serve cutover (FP-3) is **PASS**. Operator Publish Gate **PASS**. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR.
 
 ---
 
@@ -165,14 +165,14 @@ Roles are closed: `write_authority` · `not_this_write` · `leftover` · `consum
 
 ## Operator Publish Gate
 
-**not PASS.** PASS when:
+**PASS**. Evidence: `test_forms_publish_operator_gate.py` (`test_fp4_operator_close_path`). Close path = Never published → Publish (`commit_publish`) → Live v1 + public URL → Unpublish (`deactivate_endpoint`) → Inactive + URL absent. After each act the operator surface re-reads backend publication authority (`GET /publications/resolve`). UI displays `operator_state` / `public_form_url`; it does not compute live.
 
 1. An operator opens a HostFlow form and sees the current publication state and version (draft / published / live / inactive / never published).
-2. The operator can publish or unpublish from the product UI. Publish calls closed FP-2 authority (`commit_publish` / lifecycle). No new publication write.
-3. After that act the operator sees the resulting live state.
-4. The operator can obtain the public URL from the product UI. Live / public URL display reads closed FP-3 authority (live publication → frozen snapshot → Form Runtime `serve()`). No new serve path.
+2. The operator can publish or unpublish from the product UI. Publish calls closed FP-2 authority (`commit_publish`). Unpublish calls existing lifecycle (`deactivate_endpoint`). No new publication write.
+3. After that act the operator sees the resulting live state by re-reading backend authority.
+4. The operator can obtain the public URL from the product UI only when the publication is live. Live / public URL display reads closed FP-3 authority (live publication → frozen snapshot → Form Runtime `serve()`). No new serve path.
 5. Embed snippet / distribution UX is **not** this slice. A later product slice may add snippet while keeping one serve surface.
-6. This feat/open stamp does not ship operator UI or production code.
+6. Named CI (`test_forms_publish_operator_gate.py`) is green.
 7. Themes / analytics, a second serve or publish mechanism, leftover-store deletion, Hiring, P4 / P5, and Mapping Operator Surface inherited red at `54537f00` stay out of this slice.
 
 ---
@@ -194,6 +194,7 @@ Reject: bumping `published_version` outside the ledger; a Publish button that wr
 ---
 
 ## History
+- 2026-09-20: **Operator Publish Gate PASS.** Never published → Publish (`commit_publish`) → Live v1 + public URL → Unpublish (`deactivate_endpoint`) → Inactive + URL absent. After each act the operator surface re-reads backend publication authority. UI does not compute live. Embed snippet is a later product slice. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
 - 2026-09-20: **FP-4 Operator Publish Surface feat opened.** Branch `feat/forms-publish-fp4-operator-surface` from `9cc986ce` ([#382](https://github.com/igortatarynovich/HostFlow/pull/382)). Close path = operator opens form → sees current publication state/version → publish or unpublish → sees resulting live state → obtains public URL from product UI. Publish uses closed FP-2 `commit_publish` authority. Live/public URL uses closed FP-3 serve authority. Embed snippet is a later product slice (one serve surface). Operator Publish Gate **not PASS**. This stamp does not ship operator UI. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
 - 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.
 - 2026-09-20: Feat `feat/forms-publish-fp3-public-serve` opened from `41be635a`. Public Serve Gate **not PASS**. Close path = public request → resolve live publication → frozen snapshot → Form Runtime. Twelve-row classification unchanged. This stamp does not ship runtime.

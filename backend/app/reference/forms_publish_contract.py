@@ -7,7 +7,7 @@ retire a leftover; it must not add a thirteenth write of the same question.
 
 FP-2 wires the authenticated product route to ``commit_publish``.
 FP-3 public serve consumes the frozen snapshot through Form Runtime.
-Not FP-4 operator UI.
+FP-4 is the operator projection over those closed writes / serve.
 Not P4 Themes. Not P5 Analytics. Not FormTemplate SoT. Not a second
 submit engine. Not Hiring E2E. Not leftover-store deletion.
 """
@@ -108,7 +108,10 @@ ANSWERERS: Final[tuple[Answerer, ...]] = (
     Answerer(
         code="publication_bridge_resolve",
         role="consume",
-        paths=("backend/app/forms_platform/publication_bridge.py",),
+        paths=(
+            "backend/app/forms_platform/publication_bridge.py",
+            "backend/app/forms_platform/operator_publication.py",
+        ),
     ),
     Answerer(
         code="form_runtime_serve",

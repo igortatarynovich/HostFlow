@@ -2,7 +2,8 @@
 
 C4 resolve remains a read. FP-2 adds the authenticated publish write:
 HTTP → Adapter ``commit_publish`` → ``form_publication_versions``.
-Not public serve / embed (FP-3). Not operator UI (FP-4).
+FP-4 adds the operator unpublish wrapper: HTTP → Adapter ``deactivate_endpoint``.
+Not a second publication write. Not a new serve path.
 """
 
 from __future__ import annotations
@@ -15,7 +16,11 @@ from pydantic import BaseModel, Field
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.auth.trust_role_deps import require_trust_write
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.forms_platform.adapter import commit_publish, resolve_publication
+from backend.app.forms_platform.adapter import (
+    commit_publish,
+    deactivate_endpoint,
+    resolve_publication,
+)
 from backend.app.forms_platform.errors import FormsAdapterError, FormsNotFoundError
 from backend.app.forms_platform.handlers import list_registered_handlers
 
@@ -55,6 +60,8 @@ class FormPublicationOut(BaseModel):
     entity_profile_code: str
     presentation_code: Optional[str] = None
     intake_source_profile_id: Optional[str] = None
+    operator_state: Optional[str] = None
+    public_form_url: Optional[str] = None
     public_intake_path: str
     public_apply_path_template: str
     submission_handler: SubmissionHandlerOut
@@ -157,6 +164,31 @@ async def publish_form_publication(
             field_schema=body.field_schema,
             fields=body.fields,
             presentation_runtime=body.presentation_runtime,
+        )
+        await db.commit()
+    except FormsNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.to_dict()) from exc
+    except FormsAdapterError as exc:
+        raise HTTPException(status_code=exc.http_status, detail=exc.to_dict()) from exc
+    return FormPublicationOut.model_validate(publication)
+
+
+@router.post("/{form_id}/unpublish", response_model=FormPublicationOut)
+async def unpublish_form_publication(
+    form_id: str,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple = Depends(get_db_with_tenant),
+    _role: str = Depends(require_trust_write()),
+) -> FormPublicationOut:
+    """Authenticated lifecycle consume: Adapter deactivate_endpoint only."""
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    try:
+        publication = await deactivate_endpoint(
+            db,
+            tenant_id=tenant_id,
+            form_id=str(form_id).strip(),
         )
         await db.commit()
     except FormsNotFoundError as exc:

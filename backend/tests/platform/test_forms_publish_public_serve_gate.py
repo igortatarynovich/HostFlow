@@ -134,7 +134,7 @@ def test_fp3_brief_and_named_ci() -> None:
         "**Public Serve Gate** ✅" in queue_current
     )
     assert "feat/forms-publish-fp4-operator-surface" in queue_current
-    assert "Operator Publish Gate **not PASS**" in queue_current
+    assert "Operator Publish Gate **PASS**" in queue_current
     ci = _CI.read_text(encoding="utf-8")
     assert "Public Serve Gate" in ci
     assert "test_forms_publish_public_serve_gate.py" in ci
