@@ -1,9 +1,9 @@
 """Mapping Authority program close.
 
 Mapping program DONE. Mapping Consumer Cutover Gate PASS.
-Product DONE with no named successor until amendment.
-Does not start External Intake / Forms Publish / Hiring / leftover-store
-deletion / RS-3. Architecture stays CLOSED / PASS.
+Queue amendment names FP-1 Active Product (brief; feat locked).
+Does not start leftover-store deletion / Hiring / RS-3.
+Architecture stays CLOSED / PASS.
 """
 
 from __future__ import annotations
@@ -49,41 +49,40 @@ def test_mapping_program_done_records_outcome_and_delta() -> None:
 def test_mapping_close_product_done_no_named_successor() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     current = queue.split("## 8. History", 1)[0]
-    assert "**Active Product** | **DONE**" in current
-    assert "Mapping program close recorded" in current
-    assert "Active (Product):** **DONE**" in current
-    assert "no named successor" in current.lower()
-    assert "Queued Product successor** | none this amendment" in current
+    history = queue.split("## 8. History", 1)[1]
+    assert "Mapping program close recorded" in current or "Mapping program close" in current
+    assert "**Active Product** | **[FP-1](external-intake-forms-publish.md)**" in current
+    assert "Product **DONE** with no named successor until amendment" in history
     assert "Active (Product):** Mapping program close" not in current
     mapping = _BRIEF.read_text(encoding="utf-8")
     mapping_current = mapping.split("## History", 1)[0]
     assert "**DONE**" in mapping_current
     assert "**ACTIVE**" not in mapping_current
-    assert "no named successor" in mapping_current.lower()
+    assert "FP-1" in mapping_current
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "mapping-authority.md" in agents
-    assert "Product = DONE" in agents or "Product Track** = **DONE**" in agents
-    assert "External Intake" in agents
+    assert "FP-1" in agents
     assert "not auto-scheduled" in agents.lower()
 
 
 def test_mapping_close_leaves_intake_hiring_hr_queued() -> None:
     hiring = _HIRING.read_text(encoding="utf-8")
-    intake = _INTAKE.read_text(encoding="utf-8")
     hr = _HR.read_text(encoding="utf-8")
-    for text in (hiring, intake, hr):
+    for text in (hiring, hr):
         assert "**QUEUED**" in text
         assert "not scheduled" in text.lower()
-        assert "mapping-authority.md" in text
+    intake = _INTAKE.read_text(encoding="utf-8")
+    intake_current = intake.split("## History", 1)[0]
+    assert "**ACTIVE**" in intake_current
+    assert "FP-1" in intake_current
     queue = _QUEUE.read_text(encoding="utf-8")
     current = queue.split("## 8. History", 1)[0]
-    assert "unlocked, **not** scheduled" in current or "unlocked, not scheduled" in current.lower()
-    assert "External Intake" in current
+    assert "Hiring" in current
     assert "leftover-store deletion" in current.lower()
     mapping = _BRIEF.read_text(encoding="utf-8")
     mapping_current = mapping.split("## History", 1)[0]
     lowered = mapping_current.lower()
-    assert "external intake" in lowered
+    assert "fp-1" in lowered or "external intake" in lowered
     assert "hiring" in lowered
     assert "leftover-store deletion" in lowered
     assert "rs-3" in lowered

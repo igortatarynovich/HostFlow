@@ -167,16 +167,16 @@ Known acceptance edges unchanged from the Goal. Still **not** proven as executio
 
 ## Next (consumed)
 
-The docs-only queue amendment after this review named **Requirement Policy Management** as the first Product and cut [RPM-1 / RPM-2 / RPM-3](../tasks/requirement-policy-management.md). The RPM program close amendment then named **Mapping Authority MA-1** as Active Product (brief; feat locked). Mapping Authority Contract Gate then **PASS**; Mapping Resolution Gate then **PASS**; Mapping Operator Gate then **PASS**; Mapping Consumer Cutover Gate then **PASS**; Mapping program close recorded Product **DONE** with no named successor until amendment. External Intake / Hiring E2E / min HR remain queued. This review is still not the schedule.
+The docs-only queue amendment after this review named **Requirement Policy Management** as the first Product and cut [RPM-1 / RPM-2 / RPM-3](../tasks/requirement-policy-management.md). The RPM program close amendment then named **Mapping Authority MA-1** as Active Product (brief; feat locked). Mapping Authority Contract Gate then **PASS**; Mapping Resolution Gate then **PASS**; Mapping Operator Gate then **PASS**; Mapping Consumer Cutover Gate then **PASS**; Mapping program close recorded Product **DONE**. A later queue amendment named **[FP-1](../tasks/external-intake-forms-publish.md)** Active Product (brief; feat locked). Hiring E2E / min HR remain queued. This review is still not the schedule.
 
-Until that first amendment merged, Product Track stayed **none**. After it, Active Product was RPM-1 (brief; feat locked). After RPM program close, Active Product was MA-1. After MA-1 Contract Gate PASS, Active Product is MA-2.
+Until that first amendment merged, Product Track stayed **none**. After it, Active Product was RPM-1 (brief; feat locked). After RPM program close, Active Product was MA-1. After Mapping program close, Product was **DONE**. After this queue amendment, Active Product is FP-1.
 
 ---
 
 ## Refs
 
 - [HostFlow v1 Release Goal](hostflow-v1-release-goal.md) — v1 in-scope vs later; Release DAG; known acceptance edges  
-- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [MA-2](../tasks/mapping-authority.md) after Mapping Authority Contract Gate PASS  
+- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [FP-1](../tasks/external-intake-forms-publish.md) after Mapping program close  
 - [Mapping Authority Contract](../architecture/mapping-authority-contract.md) — MA-1 SoT (`mapping_authority.v1`)  
 - [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) — one evaluator; Admin UI for policy was out of Slice 1  
 - [ADR-007](../architecture/ADR-007-forms-platform-capability.md) — Forms Foundation ✅; P3 Publish UI locked  

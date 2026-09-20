@@ -1,9 +1,9 @@
 # External Intake / Forms Publish
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Product is **DONE** after Mapping program close ([brief](mapping-authority.md))
+**Status:** **ACTIVE** — Mapping program **DONE**. Active Product = **FP-1** (brief; feat locked; Forms Publish Contract Gate **not PASS**).
 **Phase class:** platform
-**Branch (docs):** `docs/v1-blocker-briefs`
-**Branch (code):** none — later slices `feat/forms-publish-fpN-…`
+**Branch (docs):** `docs/queue-amendment-fp1`
+**Branch (code):** none this amendment — later slices `feat/forms-publish-fpN-…`. Do not open FP-1 contract seal in this PR.
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 3) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-2](../journeys/release-readiness-acceptance-suite.md) · [Forms product layer epic](forms-product-layer-epic.md) · [Forms Platform C6](forms-platform-c6-optimization.md) ✅ · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Mapping Authority](mapping-authority.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
 **Estimate:** 5–7 slices (1 slice = one docs PR + one feat PR)
 
@@ -12,7 +12,7 @@
 > **Not** P4 Themes. **Not** P5 Analytics. **Not** FormTemplate SoT migration. **Not** a second submit engine. **Not** Mapping Authority (consumed, not rebuilt).
 >
 > **Amended 2026-08-28 (U-2 decision):** accepting [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) *is* in FP-1 scope. v1 does not ship intake acceptance over a `Proposed` contract whose backend already runs.
-> Opening this brief does **not** schedule it. Mapping program is **DONE**; Active Product is **DONE** with no named successor until amendment. Intake stays queued. Unlock ≠ schedule. MA-4 Cutover Gate PASS. Leftover-store deletion is not this program. The queue’s Product is **DONE** after Mapping program close ([brief](mapping-authority.md)).
+> This queue amendment **names** FP-1 Active Product. It does **not** seal the publish contract, accept ADR-022, or open a feat. Mapping program is **DONE**. Unlock ≠ schedule of FP-2 / Hiring / leftover-store deletion. MA-4 Cutover Gate PASS. Leftover-store deletion is not this program. The queue’s Active Product is **[FP-1](external-intake-forms-publish.md)** (brief; feat locked).
 
 ---
 
@@ -91,11 +91,13 @@ FP-1 Publish contract seal + roadmap unlock (docs)
 
 ---
 
-## FP-1 — Publish contract seal (queued, docs only)
+## FP-1 — Publish contract seal (Active; brief; feat locked this amendment)
 
 Seals: publish = `commit_publish`; the publication ledger is the only publish record; `published_version` is derived from the ledger and never incremented elsewhere; Builder draft is not a publication; the public renderer consumes the frozen snapshot.
 
 Also performs the **canon unlock**: amends roadmap anti-pattern 2 and the Phase C “still locked” line to unlock **P3 only**, and updates the [epic](forms-product-layer-epic.md) status from `P3 LOCKED` to `P3 = v1 blocker, scheduled by the queue`. P4 / P5 remain locked.
+
+This amendment names the slice. The contract seal is the **next** PR. Do not accept ADR-022, amend the echoing canon, or open a feat here.
 
 ---
 
@@ -128,11 +130,12 @@ Depends on [Mapping Authority](mapping-authority.md) program close — the accep
 
 ## Queue position
 
-**Depends on:** queue amendment; FP-5 additionally on Mapping Authority close
-**Unlocks:** nothing automatically — “unlock ≠ schedule”
-**Does not:** open P4 / P5; migrate `TenantLeadForm` → FormTemplate SoT (U-5 residual: Publish ships on the bridge, and **no new writer may be added to it**); rebuild Shared Intake; touch C2.4
+**Depends on:** this queue amendment (names FP-1). FP-5 additionally on Mapping Authority close  
+**Active Product:** **FP-1** (brief; feat locked). Forms Publish Contract Gate **not PASS**.  
+**Unlocks:** nothing automatically — “unlock ≠ schedule”  
+**Does not:** open P4 / P5; migrate `TenantLeadForm` → FormTemplate SoT (U-5 residual: Publish ships on the bridge, and **no new writer may be added to it**); rebuild Shared Intake; touch C2.4; seal the publish contract in this PR; start leftover-store deletion / Hiring / FP-2
 
-**Does (added 2026-08-28):** accept ADR-022 and close [`ADR-022-review-checklist.md`](../architecture/ADR-022-review-checklist.md).
+**Does (added 2026-08-28):** accept ADR-022 and close [`ADR-022-review-checklist.md`](../architecture/ADR-022-review-checklist.md) — **in the FP-1 contract-seal PR**, not this amendment.
 
 ---
 
@@ -144,3 +147,9 @@ Depends on [Mapping Authority](mapping-authority.md) program close — the accep
 - [Mapping Authority](mapping-authority.md) — the acceptance edge FP-5 consumes
 - [ADR-007](../architecture/ADR-007-forms-platform-capability.md) — Forms as capability; publication DTO
 - [Intake canonical input matrix](../architecture/intake-canonical-input-matrix.md) — Forms does not own domain mapping
+
+---
+
+## History
+
+- 2026-09-20: Queue amendment names **FP-1** Active Product (brief; feat locked). Mapping program **DONE**. Forms Publish Contract Gate **not PASS**. Do not seal the publish contract in this PR. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not FP-2. Not P4 / P5.

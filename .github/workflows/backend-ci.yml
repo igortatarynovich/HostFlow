@@ -111,6 +111,7 @@ jobs:
       ma3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma3 == 'true' }}
       ma4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma4 == 'true' }}
       ma_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma_close == 'true' }}
+      fp1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp1 == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
@@ -463,6 +464,14 @@ jobs:
               - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
               - 'docs/specs/tasks/hiring-workflow-e2e.md'
               - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            fp1:
+              - 'backend/tests/platform/test_queue_amendment_fp1.py'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
               - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
               - 'docs/specs/gates/hostflow-v1-release-goal.md'
               - 'AGENTS.md'
@@ -1223,6 +1232,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_mapping_authority_program_close.py') != ''
         with:
           tests: tests/platform/test_mapping_authority_program_close.py
+
+  fp1-amendment-gate:
+    name: Queue Amendment FP-1
+    needs: changes
+    if: needs.changes.outputs.fp1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when FP-1 queue amendment gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_queue_amendment_fp1.py') == ''
+        run: echo "FP-1 queue amendment gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_queue_amendment_fp1.py') != ''
+        with:
+          tests: tests/platform/test_queue_amendment_fp1.py
 
   dr1-runtime-gate:
     name: DR1 Runtime Gate

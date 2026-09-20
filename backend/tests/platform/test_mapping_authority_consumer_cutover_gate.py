@@ -89,9 +89,9 @@ def test_ma4_brief_gate_pass() -> None:
     assert "hiring" in lowered
     queue = _QUEUE.read_text(encoding="utf-8")
     queue_current = queue.split("## 8. History", 1)[0]
-    assert "**Active Product** | **DONE**" in queue_current
-    assert "Mapping program close recorded" in queue_current
-    assert "Active (Product):** **DONE**" in queue_current
+    assert "**Active Product** | **[FP-1](external-intake-forms-publish.md)**" in queue_current
+    assert "Mapping program close" in queue_current
+    assert "Active (Product):** **[FP-1](external-intake-forms-publish.md)**" in queue_current
     assert "Mapping Consumer Cutover Gate **PASS**" in queue_current
     assert "feat/mapping-authority-ma4-consumer-cutover" in queue
     agents = _AGENTS.read_text(encoding="utf-8")
@@ -100,10 +100,11 @@ def test_ma4_brief_gate_pass() -> None:
 
 
 def test_ma4_leaves_intake_hiring_queued() -> None:
-    for path in (_HIRING, _INTAKE):
-        text = path.read_text(encoding="utf-8")
-        assert "**QUEUED**" in text
-        assert "not scheduled" in text.lower()
+    hiring = _HIRING.read_text(encoding="utf-8")
+    assert "**QUEUED**" in hiring
+    assert "not scheduled" in hiring.lower()
+    intake = _INTAKE.read_text(encoding="utf-8")
+    assert "**ACTIVE**" in intake.split("## History", 1)[0]
 
 
 def test_ma4_named_ci_gate() -> None:
