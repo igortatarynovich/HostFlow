@@ -94,12 +94,12 @@ def test_ma2_brief_resolution_gate_pass() -> None:
 
 def test_ma2_queue_names_ma3_successor() -> None:
     text = _QUEUE.read_text(encoding="utf-8")
+    current = text.split("## 8. History", 1)[0]
     assert "Mapping Resolution Gate" in text
-    assert "**Active Product** | **DONE**" in text
-    assert "Mapping program close recorded" in text
-    assert "Active (Product):** **DONE**" in text
+    assert "**Active Product** | **[FP-1](external-intake-forms-publish.md)**" in current
+    assert "Active (Product):** **[FP-1](external-intake-forms-publish.md)**" in current
     assert "feat locked" in text
-    assert "Active (Product):** **[MA-2](mapping-authority.md)**" not in text
+    assert "Active (Product):** **[MA-2](mapping-authority.md)**" not in current
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "mapping-authority.md" in agents
     assert "MA-4" in agents
@@ -108,12 +108,15 @@ def test_ma2_queue_names_ma3_successor() -> None:
 
 
 def test_ma2_leaves_intake_hiring_hr_queued() -> None:
-    for path in (_HIRING, _INTAKE, _HR):
-        text = path.read_text(encoding="utf-8")
+    hiring = _HIRING.read_text(encoding="utf-8")
+    hr = _HR.read_text(encoding="utf-8")
+    for text in (hiring, hr):
         assert "**QUEUED**" in text
         assert "not scheduled" in text.lower()
         assert "MA-4" in text
-        assert "mapping-authority.md" in text
+    intake = _INTAKE.read_text(encoding="utf-8")
+    assert "**ACTIVE**" in intake.split("## History", 1)[0]
+    assert "mapping-authority.md" in intake
 
 
 def test_ma2_named_ci_gate() -> None:

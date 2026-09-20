@@ -161,6 +161,7 @@ Reject: a fourth store; renaming C-5 as “the authority” while Meta admin sti
 
 ## History
 
+- 2026-09-20: Queue amendment names **FP-1** Active Product (brief; feat locked). Mapping program **DONE**.
 - 2026-09-20: Mapping program close. Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). Product **DONE** with no named successor until amendment.
 - 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. Destination vocabulary `qualified_code` is the only intake write. Dual leftover `target` is inference only. Feat locked. Active Product → Mapping program close (brief; feat locked).
 - 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Mapping Consumer Cutover Gate **not PASS**. This contract still names destination vocabulary as `qualified_code`; dual `target` remains leftover until MA-4 Gate.
