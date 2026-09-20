@@ -44,12 +44,13 @@ def test_rpm_program_done_records_outcome_and_delta() -> None:
 def test_rpm_close_names_ma1_active_feat_locked() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "Active Product → **[MA-1](mapping-authority.md)**" in queue
-    assert "**Active Product** | Mapping program close" in queue
-    assert "Active (Product):** Mapping program close" in queue
+    assert "**Active Product** | **DONE**" in queue
+    assert "Mapping program close recorded" in queue
+    assert "Active (Product):** **DONE**" in queue
     assert "feat locked this PR" in queue
     assert "Active (Product):** **Consumer Cutover Gate" not in queue
     mapping = _MAPPING.read_text(encoding="utf-8")
-    assert "**ACTIVE**" in mapping
+    assert "**DONE**" in mapping
     assert "MA-1" in mapping
     assert "MA-2" in mapping
     assert "MA-3" in mapping
