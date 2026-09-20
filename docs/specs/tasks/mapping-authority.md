@@ -1,9 +1,9 @@
 # Mapping Authority
 
-**Status:** **DONE** — MA-1…MA-4 PASS · Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`) · Mapping program **DONE** (outcome + release delta). Active Product = **[FP-4](external-intake-forms-publish.md)** (brief; feat locked; Public Serve Gate **PASS**; Publish Action Gate **PASS**; Forms Publish Contract Gate **PASS**).  
+**Status:** **DONE** — MA-1…MA-4 PASS · Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`) · Mapping program **DONE** (outcome + release delta). Active Product = **[FP-4](external-intake-forms-publish.md)** (feat `feat/forms-publish-fp4-operator-surface` open; Operator Publish Gate **not PASS**; Public Serve Gate **PASS**; Publish Action Gate **PASS**; Forms Publish Contract Gate **PASS**).  
 **Phase class:** platform
 **Branch (docs):** `docs/mapping-authority-program-close`  
-**Branch (code):** none this amendment — External Intake Public Serve Gate **PASS**; FP-3 feat `feat/forms-publish-fp3-public-serve`; Publish Action Gate **PASS**. Cutover feat `feat/mapping-authority-ma4-consumer-cutover` ✅ `fddadd39`. Mapping Consumer Cutover Gate **PASS**. Consumer cutover did not require leftover-store deletion. RS-3 named; the [Release Readiness Gate](../gates/release-readiness-gate.md) has not run it.
+**Branch (code):** none this amendment — External Intake Operator Publish Gate **not PASS**; feat `feat/forms-publish-fp4-operator-surface` open; Public Serve Gate **PASS**; FP-3 feat `feat/forms-publish-fp3-public-serve`; Publish Action Gate **PASS**. Cutover feat `feat/mapping-authority-ma4-consumer-cutover` ✅ `fddadd39`. Mapping Consumer Cutover Gate **PASS**. Consumer cutover did not require leftover-store deletion. RS-3 named; the [Release Readiness Gate](../gates/release-readiness-gate.md) has not run it.
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 2) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-3](../journeys/release-readiness-acceptance-suite.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [ADR-021](../architecture/ADR-021-unified-intake-resolution-model.md) · [Entity Profile Definition Registry](../platform/entity-profile-definition-registry.md) · [Field Registry](../platform/field-registry-card-configuration.md) · [CL6 Flight map](entity-field-composition-cl6-flight-map.md) · [C-5 mapping workspace](acquisition-ui-cutover-c5-mapping-workspace.md)
 **Estimate:** 4–6 slices (1 slice = one docs PR + one feat PR)
 
@@ -11,7 +11,7 @@
 > Not “build another mapping editor” — there are already three editors writing three stores.
 > **Not** Forms Publish (that is [External Intake](external-intake-forms-publish.md), which consumes this). **Not** Requirement Policy. **Not** CL8. **Not** OCR. **Not** a Zapier product.
 > Zapier is a **UX reference** for Meta: Page + Form → test/latest lead → map fields. HostFlow adds what Zapier is not required to solve: schema as structure SoT (sample cannot hide a question), typed Field Registry destinations, option maps, binding vs contract-health scales, versioning, drift, and evaluator isolation.
-> Queue amendment names Active Product **[FP-4](external-intake-forms-publish.md)** (brief; feat locked; Public Serve Gate **PASS**) after Public Serve Gate PASS. Hiring E2E / min HR remain queued. Unlock ≠ schedule.
+> Queue names Active Product **[FP-4](external-intake-forms-publish.md)** (feat `feat/forms-publish-fp4-operator-surface` open; Operator Publish Gate **not PASS**; Public Serve Gate **PASS**) after Public Serve Gate PASS. Hiring E2E / min HR remain queued. Unlock ≠ schedule.
 
 ---
 
@@ -77,7 +77,7 @@ Four parallel ways answers become entity-shaped data: Forms answers (`forms.norm
 
 ## Internal ladder (this program only)
 
-One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **Mapping Operator Gate PASS**. **Mapping Consumer Cutover Gate PASS**. **Mapping program = DONE**. Forms Publish Contract Gate **PASS**. Publish Action Gate **PASS**. Public Serve Gate **PASS**. Active Product = **[FP-4](external-intake-forms-publish.md)** (brief; feat locked).
+One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **Mapping Operator Gate PASS**. **Mapping Consumer Cutover Gate PASS**. **Mapping program = DONE**. Forms Publish Contract Gate **PASS**. Publish Action Gate **PASS**. Public Serve Gate **PASS**. Active Product = **[FP-4](external-intake-forms-publish.md)** (feat `feat/forms-publish-fp4-operator-surface` open; Operator Publish Gate **not PASS**).
 
 ```text
 MA-1 Authority contract
@@ -277,8 +277,8 @@ Recorded this amendment. Reaching this horizon is **not** a release. Mapping Con
 **Depends on:** [RPM program close](requirement-policy-management.md). The [DAG](../gates/hostflow-v1-release-goal.md) does **not** make RPM a predecessor of Mapping — one-Active-Product serialized them.  
 **MA-1…MA-4:** **PASS**. Cutover evidence `92206f40`; production cutover `fddadd39`.  
 **Program:** **DONE** (outcome + release delta this amendment).  
-**Active Product after close:** named **[FP-1](external-intake-forms-publish.md)** (brief; feat locked). Forms Publish Contract Gate **PASS** moved Active Product to **[FP-2](external-intake-forms-publish.md)**. Publish Action Gate **PASS** moved Active Product to **[FP-3](external-intake-forms-publish.md)**. Public Serve Gate **PASS** moved Active Product to **[FP-4](external-intake-forms-publish.md)** (brief; feat locked).  
-**External Intake / Forms Publish:** **FP-4** named Active Product (brief; feat locked) after Public Serve Gate **PASS**. Hiring E2E remains unlocked from RPM, **not** scheduled. min HR remains queued.  
+**Active Product after close:** named **[FP-1](external-intake-forms-publish.md)** (brief; feat locked). Forms Publish Contract Gate **PASS** moved Active Product to **[FP-2](external-intake-forms-publish.md)**. Publish Action Gate **PASS** moved Active Product to **[FP-3](external-intake-forms-publish.md)**. Public Serve Gate **PASS** moved Active Product to **[FP-4](external-intake-forms-publish.md)**. Feat `feat/forms-publish-fp4-operator-surface` is open. Operator Publish Gate **not PASS**.  
+**External Intake / Forms Publish:** **FP-4** named Active Product (feat `feat/forms-publish-fp4-operator-surface` open; Operator Publish Gate **not PASS**) after Public Serve Gate **PASS**. This stamp does not ship operator UI. Hiring E2E remains unlocked from RPM, **not** scheduled. min HR remains queued.  
 **Does not:** leftover-store deletion; absorb Forms Publish; reopen Architecture / CL6 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR; run RS-3; mark Foundation ✅; declare HostFlow v1 release-ready
 
 ---
@@ -299,6 +299,7 @@ Recorded this amendment. Reaching this horizon is **not** a release. Mapping Con
 ---
 
 ## History
+- 2026-09-20: **FP-4 Operator Publish Surface feat opened.** Branch `feat/forms-publish-fp4-operator-surface` from `9cc986ce` ([#382](https://github.com/igortatarynovich/HostFlow/pull/382)). Close path = operator opens form → sees current publication state/version → publish or unpublish → sees resulting live state → obtains public URL from product UI. Publish uses closed FP-2 `commit_publish` authority. Live/public URL uses closed FP-3 serve authority. Embed snippet is a later product slice (one serve surface). Operator Publish Gate **not PASS**. This stamp does not ship operator UI. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
 - 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.
 - 2026-09-20: **FP-3 Public Serve feat opened.** Branch `feat/forms-publish-fp3-public-serve` from `41be635a`. Active Product remains **[FP-3](external-intake-forms-publish.md)** (feat open; Public Serve Gate **not PASS**). This stamp does not ship runtime. Hiring E2E / min HR remain queued. Not leftover-store deletion.
 - 2026-09-20: **FP-2 Publish Action feat opened.** Branch `feat/forms-publish-fp2-publish-action` from `7112279e`. Active Product remains **[FP-2](external-intake-forms-publish.md)** (feat open; Publish Action Gate **not PASS**). This stamp does not ship runtime. Hiring E2E / min HR remain queued. Not leftover-store deletion.
