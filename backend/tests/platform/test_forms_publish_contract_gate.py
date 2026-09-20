@@ -126,13 +126,14 @@ def test_fp1_brief_contract_gate_pass() -> None:
 def test_fp1_queue_names_successor_not_runtime() -> None:
     text = _QUEUE.read_text(encoding="utf-8")
     current = text.split("## 8. History", 1)[0]
+    history = text.split("## 8. History", 1)[1]
     assert "Forms Publish Contract Gate" in current
     assert "forms-publish-contract.md" in current
-    assert "feat/forms-publish-fp2-publish-action" in current
-    assert "**Active Product** | **[FP-2](external-intake-forms-publish.md)" in current
-    assert "Active (Product):** **[FP-2](external-intake-forms-publish.md)" in current
-    assert "Publish Action Gate **not PASS**" in current
-    assert "Do not ship FP-2 runtime" in current or "This stamp does not ship runtime" in current
+    assert "feat/forms-publish-fp2-publish-action" in text
+    assert "**Active Product** | **[FP-3](external-intake-forms-publish.md)" in current
+    assert "Active (Product):** **[FP-3](external-intake-forms-publish.md)" in current
+    assert "Publish Action Gate **PASS**" in current
+    assert "This stamp does not ship runtime" in history
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "external-intake-forms-publish.md" in agents
     assert "forms-publish-contract.md" in agents or "forms_publish" in agents.lower()

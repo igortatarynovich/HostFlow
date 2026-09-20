@@ -112,6 +112,7 @@ jobs:
       ma4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma4 == 'true' }}
       ma_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma_close == 'true' }}
       fp1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp1 == 'true' }}
+      fp2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp2 == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
@@ -481,6 +482,18 @@ jobs:
               - 'docs/specs/tasks/hiring-workflow-e2e.md'
               - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
               - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            fp2:
+              - 'backend/app/api/v1/platform/forms_publications.py'
+              - 'backend/app/forms_platform/adapter.py'
+              - 'backend/app/services/intake_form_write_service.py'
+              - 'backend/app/intake_platform/form_definition.py'
+              - 'backend/app/models/tenant_lead_form.py'
+              - 'backend/app/reference/forms_publish_contract.py'
+              - 'backend/tests/platform/test_forms_publish_action_gate.py'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/architecture/forms-publish-contract.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
               - 'AGENTS.md'
 
   guards:
@@ -1270,6 +1283,35 @@ jobs:
         with:
           tests: tests/platform/test_forms_publish_contract_gate.py
 
+  fp2-publish-action-gate:
+    name: Publish Action Gate
+    needs: changes
+    if: needs.changes.outputs.fp2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Publish Action gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_forms_publish_action_gate.py') == ''
+        run: echo "Publish Action gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_forms_publish_action_gate.py') != ''
+        with:
+          skip-alembic: "0"
+          tests: tests/platform/test_forms_publish_action_gate.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -1322,6 +1364,7 @@ jobs:
       - ma4-consumer-cutover-gate
       - ma-close-gate
       - dr1-runtime-gate
+      - fp2-publish-action-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed

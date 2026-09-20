@@ -31,7 +31,7 @@ class TenantLeadForm(Base):
     purpose: Mapped[str] = mapped_column(String(32), nullable=False, default="inquiry")
     target_entity_profile_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
     submission_policy: Mapped[dict] = mapped_column(JSONAnyType, nullable=False, default=dict)
-    published_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    published_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     published_snapshot_v1: Mapped[dict | None] = mapped_column(JSONAnyType, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_system_preset: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

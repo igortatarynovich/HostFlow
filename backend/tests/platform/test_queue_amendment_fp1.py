@@ -1,10 +1,9 @@
 """Queue amendment named FP-1; Contract Gate then named FP-2.
 
 History still records the 2026-09-20 FP-1 naming amendment.
-Current Active Product is FP-2 (feat open; Publish Action Gate not PASS)
-after Forms Publish Contract Gate PASS. This stamp does not ship runtime.
-Hiring / min HR remain queued. Leftover-store deletion and RS-3 stay
-unauthorized.
+Current Active Product is FP-3 (feat locked; Public Serve Gate not PASS)
+after Publish Action Gate PASS. Hiring / min HR remain queued. Leftover-store
+deletion and RS-3 stay unauthorized.
 """
 
 from __future__ import annotations
@@ -31,18 +30,19 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "Queue amendment names FP-1 Active Product" in history
-    assert "**Active Product** | **[FP-2](external-intake-forms-publish.md)**" in current
-    assert "feat/forms-publish-fp2-publish-action" in current
-    assert "Publish Action Gate **not PASS**" in current or "Publish Action Gate **not PASS**" in queue
+    assert "**Active Product** | **[FP-3](external-intake-forms-publish.md)**" in current
+    assert "feat/forms-publish-fp2-publish-action" in queue
+    assert "Publish Action Gate **PASS**" in current
     assert "Forms Publish Contract Gate **PASS**" in current or "Forms Publish Contract Gate = PASS" in current
-    assert "Active (Product):** **[FP-2](external-intake-forms-publish.md)**" in current
+    assert "Active (Product):** **[FP-3](external-intake-forms-publish.md)**" in current
     assert "**Active Product** | **DONE**" not in current
-    assert "Do not ship FP-2 runtime" in current or "This stamp does not ship runtime" in current
+    assert "This stamp does not ship runtime" in history
     intake = _INTAKE.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]
     assert "**ACTIVE**" in intake_current
     assert "FP-1" in intake_current
     assert "FP-2" in intake_current
+    assert "FP-3" in intake_current
     assert "feat/forms-publish-fp2-publish-action" in intake_current
     assert "Forms Publish Contract Gate **PASS**" in intake_current
     agents = _AGENTS.read_text(encoding="utf-8")

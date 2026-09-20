@@ -1,17 +1,21 @@
-"""ADR-007 Forms platform read API (C4 publication bridge)."""
+"""ADR-007 Forms platform publication API.
+
+C4 resolve remains a read. FP-2 adds the authenticated publish write:
+HTTP → Adapter ``commit_publish`` → ``form_publication_versions``.
+Not public serve / embed (FP-3). Not operator UI (FP-4).
+"""
 
 from __future__ import annotations
 
 from typing import Any, Optional
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from backend.app.auth.deps import UserCtx, get_current_user
-from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_PROFILE_READ_ROLES
+from backend.app.auth.trust_role_deps import require_trust_write
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.forms_platform.adapter import resolve_publication
+from backend.app.forms_platform.adapter import commit_publish, resolve_publication
 from backend.app.forms_platform.errors import FormsAdapterError, FormsNotFoundError
 from backend.app.forms_platform.handlers import list_registered_handlers
 
@@ -60,6 +64,19 @@ class FormPublicationOut(BaseModel):
     routing_status: Optional[str] = None
     routing_reason: Optional[str] = None
     route_intent: Optional[str] = None
+    idempotent_replay: Optional[bool] = None
+    replayed_version: Optional[int] = None
+    replayed_version_id: Optional[str] = None
+
+
+class FormPublishIn(BaseModel):
+    terms_version: Optional[str] = Field(default=None, max_length=64)
+    privacy_version: Optional[str] = Field(default=None, max_length=64)
+    activate: bool = True
+    idempotency_key: Optional[str] = Field(default=None, max_length=128)
+    field_schema: Optional[dict[str, Any]] = None
+    fields: Optional[list[dict[str, Any]]] = None
+    presentation_runtime: Optional[dict[str, Any]] = None
 
 
 class FormHandlersOut(BaseModel):
@@ -106,6 +123,42 @@ async def resolve_form_publication(
             form_id=form_id,
             version=version,
         )
+    except FormsNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.to_dict()) from exc
+    except FormsAdapterError as exc:
+        raise HTTPException(status_code=exc.http_status, detail=exc.to_dict()) from exc
+    return FormPublicationOut.model_validate(publication)
+
+
+@router.post("/{form_id}/publish", response_model=FormPublicationOut)
+async def publish_form_publication(
+    form_id: str,
+    payload: FormPublishIn | None = None,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple = Depends(get_db_with_tenant),
+    _role: str = Depends(require_trust_write()),
+    idempotency_header: Optional[str] = Header(default=None, alias="Idempotency-Key"),
+) -> FormPublicationOut:
+    """Authenticated product write: Adapter commit_publish only."""
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    body = payload or FormPublishIn()
+    idempotency_key = (body.idempotency_key or idempotency_header or "").strip() or None
+    try:
+        publication = await commit_publish(
+            db,
+            tenant_id=tenant_id,
+            form_id=str(form_id).strip(),
+            terms_version=body.terms_version,
+            privacy_version=body.privacy_version,
+            activate=bool(body.activate),
+            idempotency_key=idempotency_key,
+            field_schema=body.field_schema,
+            fields=body.fields,
+            presentation_runtime=body.presentation_runtime,
+        )
+        await db.commit()
     except FormsNotFoundError as exc:
         raise HTTPException(status_code=404, detail=exc.to_dict()) from exc
     except FormsAdapterError as exc:
