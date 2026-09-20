@@ -278,7 +278,7 @@ Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes`
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md) · [`forms-publish-contract.md`](forms-publish-contract.md)  
 **Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) (`forms.public_contract.v1`)  
 **Task:** [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md)  
-**Sprint 1–6:** ✅ COMPLETE (backend contour) · **P1 Field Catalog:** ✅ CLOSED · **P2 Builder MVP:** ✅ COMPLETE · **P3 Publish:** v1 blocker 3 (contract sealed — [forms-publish-contract.md](forms-publish-contract.md)) · **P4 / P5:** **LOCKED** · **Phase C:** C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) · **Product Track:** [FP-2](../tasks/external-intake-forms-publish.md) (brief; feat locked) · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
+**Sprint 1–6:** ✅ COMPLETE (backend contour) · **P1 Field Catalog:** ✅ CLOSED · **P2 Builder MVP:** ✅ COMPLETE · **P3 Publish:** v1 blocker 3 (contract sealed — [forms-publish-contract.md](forms-publish-contract.md)) · **P4 / P5:** **LOCKED** · **Phase C:** C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) · **Product Track:** [FP-2](../tasks/external-intake-forms-publish.md) (feat `feat/forms-publish-fp2-publish-action` open; Publish Action Gate **not PASS**) · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
 
 **Purpose.** Платформенный input layer: единственный SoT HostFlow Form.
 

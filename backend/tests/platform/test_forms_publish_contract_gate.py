@@ -1,7 +1,8 @@
 """Forms Publish Contract Gate (FP-1).
 
 One operator question. One write. Twelve classified answerers.
-Feat locked. Not FP-2 runtime. Not Hiring E2E.
+Feat `feat/forms-publish-fp2-publish-action` is open. Publish Action Gate
+not PASS. Not FP-2 runtime. Not Hiring E2E.
 """
 
 from __future__ import annotations
@@ -114,7 +115,8 @@ def test_fp1_brief_contract_gate_pass() -> None:
     assert "forms-publish-contract.md" in current
     assert CONTRACT_ID in current or "forms_publish.v1" in current
     assert "**PASS**" in current
-    assert "feat locked" in current.lower()
+    assert "feat/forms-publish-fp2-publish-action" in current
+    assert "Publish Action Gate" in current
     assert "FP-2" in current
     assert "commit_publish" in current
     assert "ADR-022" in current
@@ -126,10 +128,11 @@ def test_fp1_queue_names_successor_not_runtime() -> None:
     current = text.split("## 8. History", 1)[0]
     assert "Forms Publish Contract Gate" in current
     assert "forms-publish-contract.md" in current
-    assert "feat locked this PR" in current
+    assert "feat/forms-publish-fp2-publish-action" in current
     assert "**Active Product** | **[FP-2](external-intake-forms-publish.md)" in current
     assert "Active (Product):** **[FP-2](external-intake-forms-publish.md)" in current
-    assert "Do not start FP-2" in current or "Do not open FP-2" in current
+    assert "Publish Action Gate **not PASS**" in current
+    assert "Do not ship FP-2 runtime" in current or "This stamp does not ship runtime" in current
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "external-intake-forms-publish.md" in agents
     assert "forms-publish-contract.md" in agents or "forms_publish" in agents.lower()
