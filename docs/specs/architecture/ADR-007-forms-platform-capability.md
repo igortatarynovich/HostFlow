@@ -77,14 +77,14 @@ Lead, Candidate, Employee, Client, Service Order, Fleet records, Document, Billi
 - **Forms Sprint 1–6:** ✅ **COMPLETE** — L0 backend platform contour ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md)).  
 - **Forms Product Layer:** **ACTIVE** ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md) · `29f4057f`) — P1 Field Catalog as **component registry** ([`../tasks/forms-product-p1-field-catalog.md`](../tasks/forms-product-p1-field-catalog.md)).  
 - **Architectural rule:** **Field Catalog is SoT** for components (id/version/config/validation/normalization/storage/render). **Builder must not invent field types** — only compose Catalog blocks.  
-- **Forms Builder P3 Publish UI / P4 / P5:** **LOCKED**. **C3 Builder Runtime** ✅ ([brief](../tasks/forms-platform-c3-builder-runtime.md)). **C4 Form Runtime** ✅ — **Runtime, not an Engine**: frozen publication → **Runtime Model** ([brief](../tasks/forms-platform-c4-form-runtime.md)). **C5 Form Execution** ✅ ([brief](../tasks/forms-platform-c5-form-execution.md)). **C6 Optimization** ✅ ([brief](../tasks/forms-platform-c6-optimization.md)) — Forms Foundation closed. C1–C6 ✅. Builder must not invent field types.  
+- **Forms Builder P3 Publish:** v1 blocker 3 — contract sealed ([forms-publish-contract.md](forms-publish-contract.md); `forms_publish.v1`). **P4 / P5:** **LOCKED**. **C3 Builder Runtime** ✅ ([brief](../tasks/forms-platform-c3-builder-runtime.md)). **C4 Form Runtime** ✅ — **Runtime, not an Engine**: frozen publication → **Runtime Model** ([brief](../tasks/forms-platform-c4-form-runtime.md)). **C5 Form Execution** ✅ ([brief](../tasks/forms-platform-c5-form-execution.md)). **C6 Optimization** ✅ ([brief](../tasks/forms-platform-c6-optimization.md)) — Forms Foundation closed. C1–C6 ✅. Builder must not invent field types.  
 - Forms compose Acquisition Endpoint/Submission/Result — не копируют Outcome/KPI.
 
 ## Platform epic (roadmap)
 
 **Done (Sprint 1–6):** Endpoint Engine (HostFlow Form publish); Version ledger; Schema/validation/normalization; Immutable submission envelope; Shared Intake handoff; Audit.
 
-**Open — Product Track:** [Documents Platform E7](../tasks/documents-platform-e7-document-requests.md) ← active (feat). E6 ✅. E5 ✅. E4 ✅. E3 ✅. E2 ✅. WCP **COMPLETE**. Forms Phase C C1–C6 ✅ / Foundation ✅. D1–D9 brief-complete / goal-incomplete vs original D. P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is Core Platform Kit class (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
+**Open — Product Track:** [FP-2](../tasks/external-intake-forms-publish.md) (brief; feat locked; Forms Publish Contract Gate **PASS**). E7 ✅. E6 ✅. E5 ✅. E4 ✅. E3 ✅. E2 ✅. WCP **COMPLETE**. Forms Phase C C1–C6 ✅ / Foundation ✅. D1–D9 brief-complete / goal-incomplete vs original D. P3 Publish contract sealed. P4 Themes / P5 Analytics remain **LOCKED**. Forms is Core Platform Kit class (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
 
 Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Automations / Documents / Universal Entity integration.
 
@@ -98,10 +98,11 @@ Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Autom
 
 ## References
 
-[`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) · [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) · [`ADR-008`](ADR-008-job-publishing-and-distribution.md) · [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md)
+[`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) · [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) · [`ADR-008`](ADR-008-job-publishing-and-distribution.md) · [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`forms-publish-contract.md`](forms-publish-contract.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md)
 
 ## История
 
+- 2026-09-20: Forms Publish Contract Gate **PASS**; P3 publish write sealed ([forms-publish-contract.md](forms-publish-contract.md)); P4 / P5 stay locked.  
 - 2026-05: Forms как платформенная capability.  
 - 2026-07-02: C4 bridge MVP.  
 - 2026-07-18: Core Platform Module; Endpoint spine (ADR-024); Forms SoT + consent version pinning; Platform Forms epic; link **P-01** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)).  

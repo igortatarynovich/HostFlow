@@ -275,10 +275,10 @@ Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes`
 
 ### Forms
 
-**Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md)  
+**Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md) · [`forms-publish-contract.md`](forms-publish-contract.md)  
 **Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) (`forms.public_contract.v1`)  
 **Task:** [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md)  
-**Sprint 1–6:** ✅ COMPLETE (backend contour) · **P1 Field Catalog:** ✅ CLOSED · **P2 Builder MVP:** ✅ COMPLETE · **P3 Publish UI / P4 / P5:** **LOCKED** · **Phase C:** C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) · **Product Track:** [Entity Workspace D1](../tasks/entity-workspace-d1-contract-seal.md) · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
+**Sprint 1–6:** ✅ COMPLETE (backend contour) · **P1 Field Catalog:** ✅ CLOSED · **P2 Builder MVP:** ✅ COMPLETE · **P3 Publish:** v1 blocker 3 (contract sealed — [forms-publish-contract.md](forms-publish-contract.md)) · **P4 / P5:** **LOCKED** · **Phase C:** C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) · **Product Track:** [FP-2](../tasks/external-intake-forms-publish.md) (brief; feat locked) · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
 
 **Purpose.** Платформенный input layer: единственный SoT HostFlow Form.
 
@@ -287,14 +287,14 @@ Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes`
 | **Owns** | Form Submission **surface**; Consent + version pin **intent**; Public Form Endpoint publishing **для HostFlow Form**; publication bridge (`TenantLeadForm` until FormTemplate); handler registry metadata |
 | **Configures** | Default language, public URL base, consent defaults, limits, adapter ids, builder flag → Manifest [`capability-settings-manifest.md`](capability-settings-manifest.md#forms) |
 | **Exposes** | Form / HostFlow Form Endpoint Adapter **`forms.endpoint_adapter_v1` (Stable)** — ops `publish` · `endpoint` · `submission` · `result` handoff; Consent pin policy key (**Stable** intent); C4 HTTP resolve (**Stable**) |
-| **Non-Goals** | BPM; Workflow engine; Candidate Evaluation; CRM; Notifications; Documents SoT; Campaign SoT; Outcome/KPI; Universal Routing engine; Publish UI / Themes / Analytics (P3–P5 locked) |
+| **Non-Goals** | BPM; Workflow engine; Candidate Evaluation; CRM; Notifications; Documents SoT; Campaign SoT; Outcome/KPI; Universal Routing engine; Themes / Analytics (P4–P5 locked) |
 | **Consumes** | Endpoint / Submission (routing after surface); Acquisition binding + attribution contracts; Documents (file fields); Notifications; Automations (opt.); Field Registry |
 | **Requires** | Endpoint, Submission |
 | **Optional** | Documents, Notifications, Automations |
 | **License class** | Platform (Basic); Licensed addons = Advanced Forms |
 | **Lifecycle defaults** | Install+Enable+Configure (default Manifest) on tenant create |
 | **Events** | Publishes: `form.published` (Experimental bridge), `form.submission_received` (Experimental); future: `form.version_created`, consent accepted |
-| **Forbidden** | Candidate / Client / Campaign SoT; Notification delivery / SMTP; Document registry SoT; AI SoT; universal Campaign routing SoT; Forms-owned Outcome/KPI/attribution engines; P3 Publish UI / P4 / P5 · Execution without Runtime Model · Runtime importing Builder / Builder importing Runtime |
+| **Forbidden** | Candidate / Client / Campaign SoT; Notification delivery / SMTP; Document registry SoT; AI SoT; universal Campaign routing SoT; Forms-owned Outcome/KPI/attribution engines; P4 / P5 · a second publish write · Execution without Runtime Model · Runtime importing Builder / Builder importing Runtime |
 | **Data Ownership** | Form surface / publication identity (bridge: `TenantLeadForm`); ConsentDefinition + pin (intent); form-surface payload. **Not yet:** FormTemplate / FormTheme / FormLogic SoT (post–Sprint 1) |
 | **Contract tests** | `backend/tests/forms_platform/test_forms_sprint1_contract.py` · gates `test_forms_sprint1_gates.py` · Sprint HTTP C4 `test_forms_platform_c4.py` (historical; ≠ Phase C C4) · C1 `test_forms_c1_contract_seal.py` · C2 `test_forms_c2_*_gate.py` · C3 `test_forms_c3_builder_runtime_gate.py` · C4 `test_forms_c4_form_runtime_gate.py` |
 

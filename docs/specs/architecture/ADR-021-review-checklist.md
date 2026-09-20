@@ -158,7 +158,7 @@ Non-blocking follow-ups:
 - Phase 1A: routed vs same application_id for UI
 - Phase 1B: execution_status transitions on retry
 - Author phase-1a / phase-1b task docs
-- ADR-022 remains Proposed — own sign-off required
+- ADR-022 Accepted 2026-09-20 (FP-1) — own sign-off closed; publish SoT is forms-publish-contract.md
 ```
 
 ---

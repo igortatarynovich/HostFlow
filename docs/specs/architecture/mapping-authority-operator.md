@@ -357,6 +357,7 @@ Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin st
 
 ## History
 
+- 2026-09-20: **Forms Publish Contract Gate PASS.** Active Product → **FP-2** (brief; feat locked). This file remains MA-3 UX SoT. Mapping program **DONE**.
 - 2026-09-20: Queue amendment names **FP-1** Active Product (brief; feat locked). This file remains MA-3 UX SoT. Mapping program **DONE**.
 - 2026-09-20: Mapping program close. Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). This file remains MA-3 UX SoT. Product **DONE** with no named successor until amendment.
 - 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. Feat locked. This file remains MA-3 UX SoT. Active Product → Mapping program close (brief; feat locked).

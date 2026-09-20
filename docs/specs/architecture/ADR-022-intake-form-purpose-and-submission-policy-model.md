@@ -1,12 +1,13 @@
 # ADR-022: Intake Form Purpose and Submission Policy Model
 
-**Status:** Proposed (L1 — pending architecture review)  
+**Status:** Accepted (L1) — FP-1 Forms Publish Contract Gate 2026-09-20  
 **Date:** 2026-07-15  
+**Accepted:** 2026-09-20 (U-2 / [Forms Publish Contract Gate](forms-publish-contract.md); Phase 1 backend already on the trusted base; Purpose / Policy / Match Matrix **not** rewritten)  
 **Layer of change:** Platform | Domain contract | Intake runtime  
 **Authors:** Product + Platform architecture  
 **Supersedes / clarifies:** implicit behaviour in [ADR-007](ADR-007-forms-platform-capability.md) (Forms Platform presentation layer), [ADR-013](ADR-013-public-intake-strategy.md) (public intake transport), targeted-advertising seed and channel-specific submit paths
 
-**Related (not replaced):** [ADR-021](ADR-021-unified-intake-resolution-model.md) (Application / Submission / resolution), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Entity Profile, Decision Layer, Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md), [ADR-022 Phase 2 Sales-only flow](../workflows/adr022-phase2-sales-only-capability-flow.md) (F3-B-10 product spine)
+**Related (not replaced):** [ADR-021](ADR-021-unified-intake-resolution-model.md) (Application / Submission / resolution), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Entity Profile, Decision Layer, Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md), [ADR-022 Phase 2 Sales-only flow](../workflows/adr022-phase2-sales-only-capability-flow.md) (F3-B-10 product spine), [forms-publish-contract.md](forms-publish-contract.md) (`forms_publish.v1` — what publish is; not a fourth axis)
 
 **Review artifact:** [ADR-022-review-checklist.md](ADR-022-review-checklist.md)
 
@@ -298,7 +299,7 @@ Auto-attach (`match_or_create` → attach) **only** when **all** conditions hold
 
 **Non-compliant:** upserting `EpIntakePresentation` in place for live published forms without version increment.
 
-**Phase 1 honesty (2026-07-15):** `published_version` column and `is_system_preset` are **preparation only**. Phase 1 does **not** implement immutable published snapshots, publish workflow, or version-bound presentation storage. Do not claim versioning is shipped until Phase 2 publish slice lands.
+**Publish definition (FP-1, 2026-09-20):** publish is Adapter `commit_publish` only. The publication ledger is the only publish record; `published_version` is the current pointer, derived from that ledger. SoT: [forms-publish-contract.md](forms-publish-contract.md) (`forms_publish.v1`). The operator product route remains FP-2. This ADR's Purpose / Policy / Match Matrix are unchanged.
 
 ---
 
@@ -397,18 +398,18 @@ See [intake-form-purpose-phase1-backend.md](../tasks/intake-form-purpose-phase1-
 
 ## 11. Acceptance criteria (ADR approval)
 
-- [ ] Architecture review: three mandatory axes (§2)
-- [ ] Architecture review: Purpose vs Policy separation (§2.1, §3)
-- [ ] Architecture review: `review` vs new Application (§3.1)
-- [ ] Architecture review: Match Policy + three outcomes (§4)
-- [ ] Architecture review: Publication / Invite contract (§5)
-- [ ] Architecture review: Versioning (§6)
-- [ ] Architecture review: Entity Profile validation (§7)
-- [ ] Product: Product B acceptance scenarios accepted (§9.1)
-- [ ] Engineering: Phase 1 feasible without `applications` table
-- [ ] Security: tenant isolation on policy + submission data
+- [x] Architecture review: three mandatory axes (§2)
+- [x] Architecture review: Purpose vs Policy separation (§2.1, §3)
+- [x] Architecture review: `review` vs new Application (§3.1)
+- [x] Architecture review: Match Policy + three outcomes (§4)
+- [x] Architecture review: Publication / Invite contract (§5)
+- [x] Architecture review: Versioning (§6) — publish definition sealed by [forms-publish-contract.md](forms-publish-contract.md); operator route is FP-2
+- [x] Architecture review: Entity Profile validation (§7)
+- [x] Product: Product B acceptance scenarios accepted (§9.1)
+- [x] Engineering: Phase 1 feasible without `applications` table
+- [x] Security: tenant isolation on policy + submission data
 
-**After approval:** set ADR-022 to Accepted; verify already-implemented backend slice matches contract; merge per backend merge gate. UI/publication slice and product release gate follow in separate PR(s).
+**After approval:** Status **Accepted** (FP-1, 2026-09-20). Phase 1 backend already matches this contract. Operator publish route and product UI walkthrough remain later FP slices — not this accept.
 
 ---
 
@@ -421,3 +422,4 @@ See [intake-form-purpose-phase1-backend.md](../tasks/intake-form-purpose-phase1-
 | [ADR-007-forms-platform-capability.md](ADR-007-forms-platform-capability.md) | Forms platform bridge |
 | [intake-form-purpose-phase1-backend.md](../tasks/intake-form-purpose-phase1-backend.md) | Phase 1 implementation contract |
 | [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) | Entity Profile registry |
+| [forms-publish-contract.md](forms-publish-contract.md) | FP-1 SoT for what publish is (`forms_publish.v1`) |

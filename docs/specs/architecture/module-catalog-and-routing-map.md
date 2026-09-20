@@ -22,7 +22,7 @@
 | **Companies** | Операционная / data boundary: `Company`, `enabled_modules`, ACL, party (ADR-003) |
 | **Users / Roles / Permissions** | Trust roles (**ADR-036**: `superadmin` / `administrator` / `employee` / `viewer`), permissions, presets, org, scope, `access_context` (`tenant`\|`portal`); матрица — [`rbac_matrix.md`](rbac_matrix.md). Growth self-service identity — [`ADR-041`](ADR-041-verified-self-service-signup.md) (SignupIntent pre-tenant; trial on TenantLicense at complete) |
 | **Settings** | Три уровня: Tenant → Company → Company Module Settings ([`ADR-005`](ADR-005-three-level-settings-hierarchy.md)) |
-| **Forms** | **Input layer** ([`ADR-007`](ADR-007-forms-platform-capability.md), [`../../forms/module-scope.md`](../../forms/module-scope.md)) |
+| **Forms** | **Input layer** ([`ADR-007`](ADR-007-forms-platform-capability.md), [`forms-publish-contract.md`](forms-publish-contract.md), [`../../forms/module-scope.md`](../../forms/module-scope.md)) |
 | **Acquisition / Campaigns** | Demand flow + intake routing ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md)); **не** Marketing-продукт |
 | **Document Hub** | Единый registry документов ([`ADR-009`](ADR-009-document-hub-platform-layer.md), [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md)) |
 | **Process Engine** | Единый движок процессов: profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)). Stage existence: [`ADR-037`](ADR-037-lifecycle-identity-canon.md). |
@@ -49,7 +49,7 @@
 |------------|-------------|----------------------|-------------------|---------------------------|
 | **Endpoint** | Intake / Acquisition boundary | [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) | Acquisition, Forms (HostFlow Form is-a), API, Mobile, Meta, … | Endpoint Adapter |
 | **Submission** (universal intake record) | Shared Intake | ADR-021 / ADR-022 / ADR-024 | Recruitment, Sales, HR, Services, … | Submission / Intake contracts |
-| **Forms** (builder, version, consent, form surface) | Forms | [`ADR-007`](ADR-007-forms-platform-capability.md), [`../../forms/module-scope.md`](../../forms/module-scope.md) | All modules | Endpoint Adapter (HostFlow Form) + Forms public APIs |
+| **Forms** (builder, version, consent, form surface) | Forms | [`ADR-007`](ADR-007-forms-platform-capability.md), [`forms-publish-contract.md`](forms-publish-contract.md), [`../../forms/module-scope.md`](../../forms/module-scope.md) | All modules | Endpoint Adapter (HostFlow Form) + Forms public APIs |
 | **Acquisition / Campaigns** | Acquisition | [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md) | Growth / demand; not Result SoT | Campaign / Flight / routing APIs |
 | **Documents** | Document Hub | [`ADR-009`](ADR-009-document-hub-platform-layer.md) | Recruitment, HR, Fleet, Finance, … | Document Adapter |
 | **Notifications** | Activity & Notification Operating Layer | [`ADR-012`](ADR-012-activity-notification-operating-layer.md) | All modules | Notification Adapter |
@@ -97,7 +97,7 @@
 | Слой | Назначение | Где живёт |
 |------|------------|-----------|
 | **Пять продуктовых модулей (ADR-004)** | Лицензирование, продуктовые границы, company scope | Ключи: `recruitment`, `hr`, `fleet`, `services`, `finance`; внутри **recruitment** — capability **Job Publishing** ([`ADR-008`](ADR-008-job-publishing-and-distribution.md)), не отдельный модуль ADR-004 |
-| **Forms / Public Forms (ADR-007)** | Платформенный **input layer**: шаблоны, публичные ссылки, submissions, маппинг в сущности модулей | **Не** шестой ключ ADR-004; Basic = core capability, Advanced = addon; см. [`../../forms/module-scope.md`](../../forms/module-scope.md) |
+| **Forms / Public Forms (ADR-007)** | Платформенный **input layer**: шаблоны, публичные ссылки, submissions, маппинг в сущности модулей | **Не** шестой ключ ADR-004; Basic = core capability, Advanced = addon; publish write = [`forms-publish-contract.md`](forms-publish-contract.md); см. [`../../forms/module-scope.md`](../../forms/module-scope.md) |
 | **Acquisition / Campaigns (ADR-024)** | Кампании, источники, атрибуция, `route_intent` → module object | **Не** Marketing-продукт; shell UI; см. [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md); операторский disclosure [`../frontend/ACQUISITION_MARKETING_IA_V1.md`](../frontend/ACQUISITION_MARKETING_IA_V1.md); матрица входов [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) |
 | **Document Hub (ADR-009)** | Платформенный **document layer**: типы, шаблоны, наборы требований, links, multi-module review | **Не** ключ ADR-004; Basic / Advanced document management; см. [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md) |
 | **Legacy / гранулярные флаги тенанта** | Матрица ролей, постепенный перенос UI | `candidates`, `leads`, `vacancies`, `documents`, `companies`, `client_portal`, плюс те же пять где применимо |

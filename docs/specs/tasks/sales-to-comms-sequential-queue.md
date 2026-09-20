@@ -30,7 +30,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **[FP-1](external-intake-forms-publish.md)** after Mapping program close. Brief; feat locked; Forms Publish Contract Gate not PASS. Not FP-2. Not leftover-store deletion. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
+| **Product** | **[FP-2](external-intake-forms-publish.md)** after Forms Publish Contract Gate **PASS**. Brief; feat locked this PR. Do not start FP-2 in this PR. Not leftover-store deletion. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
 | **Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` — [brief](platform-reference-identity-sot.md). No named Engineering successor this amendment. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background — **not** Active Engineering |
 | **Launch-ops** | **[Operate & Launch](operate-and-launch.md)** — v1 blocker 6 (brief this amendment; **not scheduled**, no Active Launch-ops slice yet). Write-set: `deploy/`, `docs/runbooks/`, infra defaults, tenant-lifecycle surfaces. Occupies the second-track slot left free by Engineering DONE. Not an SRE programme. Not Billing | Second track, small share of capacity |
 
@@ -46,20 +46,20 @@ Reaching the program horizon of this section is **not** a release. Release-ready
 
 | Role | Value |
 |------|--------|
-| **Active Product** | **[FP-1](external-intake-forms-publish.md)** after Mapping program close. Brief; feat locked; Forms Publish Contract Gate not PASS. Hiring / min HR remain queued. |
-| **Queued Product successor** | **FP-2** Publish action runtime after Forms Publish Contract Gate PASS — [brief](external-intake-forms-publish.md). Do not start FP-2 / leftover-store deletion / Hiring / RS-3 in this amendment. Hiring is unlocked by RPM close, **not** scheduled. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
+| **Active Product** | **[FP-2](external-intake-forms-publish.md)** after Forms Publish Contract Gate **PASS**. Brief; feat locked this PR. Do not start FP-2 in this PR. Hiring / min HR remain queued. |
+| **Queued Product successor** | **FP-3** Public serve from frozen publication after Publish Action Gate PASS — [brief](external-intake-forms-publish.md). Do not start FP-2 runtime / leftover-store deletion / Hiring / RS-3 in this PR. Hiring is unlocked by RPM close, **not** scheduled. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
 | **Active Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` (`ref-id-exit`). No named successor. |
 | **Queued Engineering after Exit** | none this amendment. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
 | **Active Launch-ops** | **[OL-1](operate-and-launch.md) DONE** — [Launch Ownership Gate](../gates/launch-ownership-gate.md) `PASS_WITH_CONSTRAINTS` 2026-08-31. Production target for v1: **one dedicated host, one compose stack**. RR3 / RR4 / RR7 owner: **igortatarynovich** for all three, recorded as a named residual (OL1-C1), not as a solved question |
 | **Queued Launch-ops** | **OL-2** Deploy, migrate & rollback — named successor, **starts in its own PR** (invariant 6), then OL-3…OL-7 — [brief](operate-and-launch.md). The migration blocker is **withdrawn** — measured 2026-08-31, `alembic upgrade heads` applies to a fresh DB in one command ([§ Correction](operate-and-launch.md)). CI has been proving the same on every push (`backend-ci.yml` job `alembic`, green). OL-2 still owns what replaced it: the **written** deploy/migrate procedure RC condition 4 asks for, a fresh instance that starts with no admin user, and a rollback whose first release is a **baseline**, not a predecessor ([OL-2D](operate-launch-ol2d-predecessor.md)) |
-| **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **RPM program = DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). **MA-1 Contract Gate = PASS**. **Mapping Resolution Gate = PASS**. **Mapping Operator Gate = PASS**. **Mapping Consumer Cutover Gate = PASS**. **Mapping program = DONE**. **Product = FP-1** (brief; feat locked this amendment; not a Phase E leftover) |
+| **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **RPM program = DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). **MA-1 Contract Gate = PASS**. **Mapping Resolution Gate = PASS**. **Mapping Operator Gate = PASS**. **Mapping Consumer Cutover Gate = PASS**. **Mapping program = DONE**. **Forms Publish Contract Gate = PASS**. **Product = FP-2** (brief; feat locked this PR; not a Phase E leftover) |
 | **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1) |
 
 Historical markers (A2 active, Meta Intake next, Phase E active = E7 feat) live only in §8 History. They are **not** current execution instructions.
 
 ### Invariants (mandatory)
 
-1. **One Active Product slice**, **or Product DONE with no named successor until amendment**. This amendment names **FP-1** after Mapping program close. Unlock ≠ silent schedule of Hiring. Do not open FP-1 contract seal in this PR. Do not start leftover-store deletion in this stamp.  
+1. **One Active Product slice**, **or Product DONE with no named successor until amendment**. This PR names **FP-2** after Forms Publish Contract Gate PASS. Unlock ≠ silent schedule of Hiring. Do not start FP-2 in this PR. Do not start leftover-store deletion in this stamp.  
 2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor**. After Exit PASS with no successor, Engineering is DONE — do not promote pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) to Active Engineering.  
 3. **Two named tracks maximum.** A track exists only when this section names it with an owner and a write-set; unlocked work never creates a stream by itself. Engineering is **DONE with no successor**, so this amendment assigns the second slot to **Launch-ops** ([Operate & Launch](operate-and-launch.md), v1 blocker 6). Reviving Engineering would require closing or parking Launch-ops first — never three concurrent tracks.  
 4. **Unlock ≠ schedule.** A satisfied unlock condition does **not** auto-start the slice. Only the owning track’s queue may activate it.  
@@ -135,9 +135,9 @@ DR1-runtime  also required  DR1-contract ∧ Reference R5   (PASS [#313](https:/
 | **P-MA3** | [MA-3](mapping-authority.md) Operator surface | **Mapping Operator Gate** ✅ 2026-09-18 / live `f65edf28` — untrained operator on a real Meta source; one editor; leftover HTTP writers 410. SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). Not leftover-store deletion. Not MA-4 start | Mapping Resolution Gate | MA-4 |
 | **P-MA4** | [MA-4](mapping-authority.md) Consumer cutover | **Mapping Consumer Cutover Gate** ✅ `fddadd39` — canonical `qualified_code` is the only intake write vocabulary; hardcoded extractors consume the authority or are named leftovers with owner + expiry. Feat locked. Gate **PASS**. Not leftover-store deletion. Not External Intake. Not Hiring | Mapping Operator Gate | Mapping program close ✅ |
 | **P-MAX** | [Mapping](mapping-authority.md) program close | **Mapping program DONE** — outcome + release delta; four-checks PASS (RS-3 named). Evidence `92206f40`. Consumer cutover did not require leftover-store deletion | Mapping Consumer Cutover Gate | FP-1 (this amendment). Hiring E2E remains unlocked, **not** scheduled |
-| **P-FP1** | [FP-1](external-intake-forms-publish.md) Publish contract seal | **Forms Publish Contract Gate** — publish is `commit_publish` only; P3 unlock in echoing canon; ADR-022 Accepted. Brief; feat locked this amendment. Not FP-2. Not leftover-store deletion. Not Hiring. Not P4 / P5 | Mapping program DONE | FP-2 |
+| **P-FP1** | [FP-1](external-intake-forms-publish.md) Publish contract seal | **Forms Publish Contract Gate** ✅ — publish is `commit_publish` only; SoT [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`); P3 unlock in echoing canon; ADR-022 Accepted without expansion. Feat locked. Not FP-2 runtime. Not leftover-store deletion. Not Hiring. Not P4 / P5 | Mapping program DONE | FP-2 |
 
-**Now:** Product **[FP-1](external-intake-forms-publish.md)** (brief; feat locked; Forms Publish Contract Gate not PASS) after Mapping program close. Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** leftover-store deletion. **Not** FP-2. **Not** Hiring E2E. **Not** OCR. Do not invent CL8. Do not mark Foundation ✅.
+**Now:** Product **[FP-2](external-intake-forms-publish.md)** (brief; feat locked this PR) after Forms Publish Contract Gate **PASS**. Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** leftover-store deletion. Do not start FP-2 in this PR. **Not** Hiring E2E. **Not** OCR. Do not invent CL8. Do not mark Foundation ✅.
 
 LI-1 is the **only** Lifecycle slice between CL1 and CL2. LI-2…LI-4 stay in [the Lifecycle brief](lifecycle-identity-l0-contract-seal.md) and do not stall Field Composition.
 
@@ -158,20 +158,20 @@ Engineering:
             → (r2 ∧ r4) → ref-id-r5 → ref-id-exit
 
 Product:
-  CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → CL5 → CL6 → CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2 → RPM-3A → RPM-3B → rpm-cutover → RPM program close → MA-1 → MA-2 → MA-3 → MA-4 → Mapping program close → FP-1
+  CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → CL5 → CL6 → CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2 → RPM-3A → RPM-3B → rpm-cutover → RPM program close → MA-1 → MA-2 → MA-3 → MA-4 → Mapping program close → FP-1 → FP-2
   DR1-runtime also: DR1-contract ∧ ref-id-r5 (PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313))
 
 Documents:
   r3 ∧ r4 ∧ DR1-runtime → E8-bind   PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`
   r5 ∧ E8-bind → E8-eval   PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`
-  E8-eval ∧ DAG review [#328] → RPM-1 → … → RPM program close → MA-1 → MA-2 → MA-3 → MA-4 → Mapping program close → FP-1   (this amendment)
+  E8-eval ∧ DAG review [#328] → RPM-1 → … → RPM program close → MA-1 → MA-2 → MA-3 → MA-4 → Mapping program close → FP-1 → FP-2   (this PR)
 ```
 
-Program horizon of this amendment: **FP-1** (brief; feat locked). Mapping program close is **DONE**. RPM program is **DONE**. Hiring E2E is unlocked, **not** scheduled. Do not invent CL8. Do not auto-start OCR. Do not mark Foundation ✅.
+Program horizon of this amendment: **FP-2** (brief; feat locked this PR). Forms Publish Contract Gate is **PASS**. Mapping program close is **DONE**. RPM program is **DONE**. Hiring E2E is unlocked, **not** scheduled. Do not invent CL8. Do not auto-start OCR. Do not mark Foundation ✅.
 
 ### v1 blocker programs beyond this horizon (briefed, not scheduled)
 
-External Intake / Forms Publish is **no longer in this table** — FP-1 is Active Product (brief; feat locked). A brief is **not** a schedule for the rows below: they exist so the release distance is countable. Activation still requires a queue amendment, one Active Product slice at a time.
+External Intake / Forms Publish is **no longer in this table** — FP-2 is Active Product (brief; feat locked this PR) after Forms Publish Contract Gate PASS. A brief is **not** a schedule for the rows below: they exist so the release distance is countable. Activation still requires a queue amendment, one Active Product slice at a time.
 
 | Program | Brief | Internal slices | Estimate | Startable after |
 |---------|-------|-----------------|----------|-----------------|
@@ -212,6 +212,8 @@ Computed from 2026-09-04 over **33–48** serialized-equivalent slices, adding a
 
 **Queue amendment 2026-09-20 names FP-1 Active Product.** Mapping program stays **DONE**. Serialized-equivalent stays **29–42** (no RC recut this amendment). Active Product → **FP-1** (brief; feat locked). Hiring E2E / min HR remain queued. Not leftover-store deletion. Not FP-2 start this stamp.
 
+**Forms Publish Contract Gate PASS 2026-09-20.** Remaining Forms Publish path is FP-2…FP-5. Serialized-equivalent stays **29–42** (no RC recut this amendment). Active Product → **FP-2** (brief; feat locked). Do not start FP-2 in this PR.
+
 **Mapping Resolution Gate PASS 2026-09-04.** Mapping remaining path is MA-3…MA-4. Serialized-equivalent stays **33–48** (no RC recut this amendment). Active Product → **MA-3** (brief; feat locked).
 
 **MA-1 Contract Gate PASS 2026-09-04.** Mapping remaining path is MA-2…MA-4. Serialized-equivalent stays **33–48** (no RC recut this amendment). Active Product → **MA-2** (brief; feat locked).
@@ -246,7 +248,7 @@ Computed from 2026-09-04 over **33–48** serialized-equivalent slices, adding a
 
 A reader who has only this section can answer every item **yes**:
 
-1. Exactly one **Active Product** slice, **or Product DONE with no named successor until amendment** (now: **FP-1**; brief; feat locked this PR).  
+1. Exactly one **Active Product** slice, **or Product DONE with no named successor until amendment** (now: **FP-2**; brief; feat locked this PR).  
 2. Exactly one **Active Engineering** slice, **or** the named fan-out `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor** — never a third concurrent Engineering slice. Pytest is not Active Engineering.  
 3. Every queued slice has a named predecessor.  
 4. Every slice has an owner track. Unlocked work is not a third track.  
@@ -313,7 +315,7 @@ A reader who has only this section can answer every item **yes**:
 - **DR1-contract** ← **PASS** [#302](https://github.com/igortatarynovich/HostFlow/pull/302) — [brief](engine-document-request-dr1-contract.md). **DR1-runtime** ← **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313)
 - **Documents E8-eval** ← **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — [brief](documents-platform-e8-eval.md); required / optional / applicability from R5 merge. Not OCR. Not CL8. Not mass D3–D9 bind. Successor = RPM program **DONE**.
 - **Requirement Policy Management** ← **DONE** — RPM-1…3B PASS · Consumer Cutover Gate **PASS** `918274d1` · program close this amendment — [brief](requirement-policy-management.md). Hiring E2E unlocked, **not** scheduled. Not CL8.
-- **Mapping Authority** ← **DONE** — MA-1…MA-4 PASS · Consumer Cutover Gate **PASS** `fddadd39` · program close recorded — [brief](mapping-authority.md). Active Product = **[FP-1](external-intake-forms-publish.md)** (brief; feat locked). Hiring / min HR remain queued.
+- **Mapping Authority** ← **DONE** — MA-1…MA-4 PASS · Consumer Cutover Gate **PASS** `fddadd39` · program close recorded — [brief](mapping-authority.md). Forms Publish Contract Gate **PASS**. Active Product = **[FP-2](external-intake-forms-publish.md)** (brief; feat locked). Hiring / min HR remain queued.
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -401,9 +403,11 @@ A reader who has only this section can answer every item **yes**:
 | **46b** | **MA-3** Operator surface | [brief](mapping-authority.md) · [UX SoT](../architecture/mapping-authority-operator.md) | after Mapping Resolution Gate; **PASS** 2026-09-18 / live `f65edf28` |
 | **46c** | **MA-4** Consumer cutover | [brief](mapping-authority.md) | after Mapping Operator Gate; **PASS** `fddadd39`; feat locked |
 | **46d** | **Mapping program close** | [brief](mapping-authority.md) | **DONE** this amendment — outcome + release delta |
+| **46e** | **FP-1** Publish contract seal | [brief](external-intake-forms-publish.md) · [contract SoT](../architecture/forms-publish-contract.md) | after Mapping program close; **PASS** this PR; feat locked |
+| **46f** | **FP-2** Publish action runtime | [brief](external-intake-forms-publish.md) | after Forms Publish Contract Gate; brief; feat locked this PR |
 
 **C0–C2.3** ✅. **C2.4 frozen (Epic C residual R1).** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** **[FP-1](external-intake-forms-publish.md)** (brief; feat locked; Forms Publish Contract Gate not PASS) after Mapping program close. Mapping Consumer Cutover Gate **PASS** `fddadd39`; evidence `92206f40`. E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** leftover-store deletion. **Not** FP-2. **Not** Hiring E2E. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
+**Active (Product):** **[FP-2](external-intake-forms-publish.md)** (brief; feat locked this PR) after Forms Publish Contract Gate **PASS**. Mapping Consumer Cutover Gate **PASS** `fddadd39`; evidence `92206f40`. E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** leftover-store deletion. Do not start FP-2 in this PR. **Not** Hiring E2E. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
 **Active (Engineering):** **DONE** — Reference Program Exit Gate PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. No named successor. Legacy full-repo pytest does **not** become Active Engineering.
 
 ---
@@ -537,7 +541,7 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 ### CL1+ — Entity Field Composition remainder ← **CL0–CL7 / Overlay PASS**
 
-After CL0: **CL1 → LI-1 → DR1-contract → CL2…CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2 → RPM-3A → RPM-3B → Consumer Cutover Gate → RPM program close → MA-1**. CL1 observes live codes; it does **not** canonize country or document-type identity. **DR1-contract** is not a Field Composition slice. **DR1-runtime** is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-bind** is **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. **E8-eval** is **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **RPM program DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **Mapping Operator Gate PASS**. **Mapping Consumer Cutover Gate PASS**. Mapping program **DONE**. Product = **[FP-1](external-intake-forms-publish.md)** (brief; feat locked this amendment; evidence `92206f40`). **CL7** is Engine evaluation, not Engine→Request. Vacancy Overlay leftover of the original CL0 chain is **PASS** — **not** CL8.
+After CL0: **CL1 → LI-1 → DR1-contract → CL2…CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2 → RPM-3A → RPM-3B → Consumer Cutover Gate → RPM program close → MA-1**. CL1 observes live codes; it does **not** canonize country or document-type identity. **DR1-contract** is not a Field Composition slice. **DR1-runtime** is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-bind** is **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. **E8-eval** is **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **RPM program DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **Mapping Operator Gate PASS**. **Mapping Consumer Cutover Gate PASS**. Mapping program **DONE**. Product = **[FP-2](external-intake-forms-publish.md)** (brief; feat locked this amendment; Forms Publish Contract Gate **PASS**). **CL7** is Engine evaluation, not Engine→Request. Vacancy Overlay leftover of the original CL0 chain is **PASS** — **not** CL8.
 
 ### Lifecycle Identity — LI-1 after CL1 (docs sealed; feat locked until CL1 Gate)
 
@@ -622,8 +626,8 @@ Next branch only after:
 **Do not** give one named slice two independent unlock conditions — split it.  
 **Do not** run a third concurrent Engineering slice. Fan-out is only `{Reference R2, Reference R3}` after Reference R1 Gate; then collapse.  
 **Do not** activate Reference R5 while Reference R2 is still open.  
-**Do not** park later Product on Engineering DONE. Product is FP-1 after Mapping program close (brief; feat locked this amendment).  
-**Do not** auto-start Hiring E2E / min HR because FP-1 is Active. Hiring is unlocked by RPM close — unlock ≠ schedule. Do not start leftover-store deletion in this stamp. Do not open FP-1 contract seal in this PR.
+**Do not** park later Product on Engineering DONE. Product is FP-2 after Forms Publish Contract Gate PASS (brief; feat locked this PR).  
+**Do not** auto-start Hiring E2E / min HR because FP-2 is named. Hiring is unlocked by RPM close — unlock ≠ schedule. Do not start leftover-store deletion in this stamp. Do not start FP-2 in this PR.
 **Do not** auto-start OCR / packages product / CL8 / ADR-019 automation plane / tenant extension marketplace / Billing product / AI. v1 blockers live in the [Release Goal](../gates/hostflow-v1-release-goal.md); unlock ≠ schedule.  
 **Do not** start full Lifecycle / Funnel UI cutover as LI-1.  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
@@ -640,6 +644,7 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-09-20: **Forms Publish Contract Gate PASS.** SoT [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`). ADR-022 **Accepted** without expanding Purpose / Policy / Match Matrix. P3 unlocked in echoing canon; P4 / P5 stay locked. Active Product → **[FP-2](external-intake-forms-publish.md)** (brief; feat locked this PR). Do not start FP-2 in this PR. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not RS-3 execution. Architecture stays CLOSED / PASS. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-20: **Queue amendment names FP-1 Active Product.** Mapping program close recorded (`8ed8b134`). Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). Active Product → **[FP-1](external-intake-forms-publish.md)** (brief; feat locked this PR). Forms Publish Contract Gate **not PASS**. Do not open FP-1 contract seal in this PR. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not FP-2. Not RS-3 execution. Architecture stays CLOSED / PASS. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-20: **Mapping program close.** Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). Program outcome + release delta recorded. Mapping Authority four-checks PASS (RS-3 named; Release Readiness Gate has not run it). Product **DONE** with no named successor until amendment. External Intake unlocked, **not** scheduled. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not RS-3 execution. Architecture stays CLOSED / PASS. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. `qualified_code` is the only intake write vocabulary. Feat locked. Active Product → Mapping program close (brief; feat locked). External Intake / Hiring E2E / min HR remain queued. Not leftover-store deletion. Not CL8. Foundation stays 🔄. RS-3 remains program proof.

@@ -1,6 +1,6 @@
 # Mapping Authority
 
-**Status:** **DONE** — MA-1…MA-4 PASS · Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`) · Mapping program **DONE** (outcome + release delta). Active Product = **[FP-1](external-intake-forms-publish.md)** (brief; feat locked).  
+**Status:** **DONE** — MA-1…MA-4 PASS · Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`) · Mapping program **DONE** (outcome + release delta). Active Product = **[FP-2](external-intake-forms-publish.md)** (brief; feat locked; Forms Publish Contract Gate **PASS**).  
 **Phase class:** platform
 **Branch (docs):** `docs/mapping-authority-program-close`  
 **Branch (code):** none this amendment — External Intake feat locked. Cutover feat `feat/mapping-authority-ma4-consumer-cutover` ✅ `fddadd39`. Mapping Consumer Cutover Gate **PASS**. Consumer cutover did not require leftover-store deletion. RS-3 named; the [Release Readiness Gate](../gates/release-readiness-gate.md) has not run it.
@@ -11,7 +11,7 @@
 > Not “build another mapping editor” — there are already three editors writing three stores.
 > **Not** Forms Publish (that is [External Intake](external-intake-forms-publish.md), which consumes this). **Not** Requirement Policy. **Not** CL8. **Not** OCR. **Not** a Zapier product.
 > Zapier is a **UX reference** for Meta: Page + Form → test/latest lead → map fields. HostFlow adds what Zapier is not required to solve: schema as structure SoT (sample cannot hide a question), typed Field Registry destinations, option maps, binding vs contract-health scales, versioning, drift, and evaluator isolation.
-> [RPM program close](requirement-policy-management.md) named MA-1 Active Product. MA-1 sealed the [Mapping Authority Contract](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`). MA-2 sealed the [one resolver](../architecture/mapping-authority-resolution.md). [#350](https://github.com/igortatarynovich/HostFlow/pull/350) **Accepted** the [MA-3 UX contract](../architecture/mapping-authority-operator.md). Mapping Operator Gate **PASS** 2026-09-18 (live `f65edf28`; operator acceptance on DANEMA TSL / Metafora TSL C/CE 110). Mapping Consumer Cutover Gate **PASS** 2026-09-19 (`fddadd39`). Mapping program **DONE**. Queue amendment names Active Product **[FP-1](external-intake-forms-publish.md)** (brief; feat locked). Hiring E2E / min HR remain queued. Unlock ≠ schedule.
+> Queue amendment names Active Product **[FP-2](external-intake-forms-publish.md)** (brief; feat locked) after Forms Publish Contract Gate PASS. Hiring E2E / min HR remain queued. Unlock ≠ schedule.
 
 ---
 
@@ -77,7 +77,7 @@ Four parallel ways answers become entity-shaped data: Forms answers (`forms.norm
 
 ## Internal ladder (this program only)
 
-One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **Mapping Operator Gate PASS**. **Mapping Consumer Cutover Gate PASS**. **Mapping program = DONE**. Active Product = **[FP-1](external-intake-forms-publish.md)** (brief; feat locked).
+One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **Mapping Operator Gate PASS**. **Mapping Consumer Cutover Gate PASS**. **Mapping program = DONE**. Forms Publish Contract Gate **PASS**. Active Product = **[FP-2](external-intake-forms-publish.md)** (brief; feat locked).
 
 ```text
 MA-1 Authority contract
@@ -277,8 +277,8 @@ Recorded this amendment. Reaching this horizon is **not** a release. Mapping Con
 **Depends on:** [RPM program close](requirement-policy-management.md). The [DAG](../gates/hostflow-v1-release-goal.md) does **not** make RPM a predecessor of Mapping — one-Active-Product serialized them.  
 **MA-1…MA-4:** **PASS**. Cutover evidence `92206f40`; production cutover `fddadd39`.  
 **Program:** **DONE** (outcome + release delta this amendment).  
-**Active Product after close:** named **[FP-1](external-intake-forms-publish.md)** (brief; feat locked this amendment).  
-**External Intake / Forms Publish:** **FP-1** named Active Product (brief; feat locked). Hiring E2E remains unlocked from RPM, **not** scheduled. min HR remains queued.  
+**Active Product after close:** named **[FP-1](external-intake-forms-publish.md)** (brief; feat locked). Forms Publish Contract Gate **PASS** moved Active Product to **[FP-2](external-intake-forms-publish.md)** (brief; feat locked).  
+**External Intake / Forms Publish:** **FP-2** named Active Product (brief; feat locked). Hiring E2E remains unlocked from RPM, **not** scheduled. min HR remains queued.  
 **Does not:** leftover-store deletion; absorb Forms Publish; reopen Architecture / CL6 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR; run RS-3; mark Foundation ✅; declare HostFlow v1 release-ready
 
 ---
@@ -300,6 +300,7 @@ Recorded this amendment. Reaching this horizon is **not** a release. Mapping Con
 
 ## History
 
+- 2026-09-20: **Forms Publish Contract Gate PASS.** SoT [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`). Active Product → **[FP-2](external-intake-forms-publish.md)** (brief; feat locked). Hiring E2E / min HR remain queued. Not leftover-store deletion. Not RS-3 execution. Architecture stays CLOSED / PASS. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-20: **Queue amendment names FP-1 Active Product.** Mapping program **DONE**. Active Product → **[FP-1](external-intake-forms-publish.md)** (brief; feat locked). Forms Publish Contract Gate **not PASS**. Do not open FP-1 contract seal in this PR. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not RS-3 execution. Architecture stays CLOSED / PASS. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-20: **Mapping program close.** Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). Program outcome + release delta recorded. Mapping Authority four-checks PASS (RS-3 named; Release Readiness Gate has not run it). Product **DONE** with no named successor until amendment. External Intake unlocked, **not** scheduled. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not RS-3 execution. Architecture stays CLOSED / PASS. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. `qualified_code` is the only intake write vocabulary; leftover `target` is inference only. Conversion / public intake / CandidateProfile consume Mapping Authority or canonical facts. OCR / Telegram named leftovers with owner + expiry. Leftover Meta stores remain read-through. Feat locked. Active Product → Mapping program close (brief; feat locked). Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. Not Foundation ✅. RS-3 remains program proof.
