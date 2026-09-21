@@ -51,7 +51,7 @@ def test_mapping_close_product_done_no_named_successor() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "Mapping program close recorded" in current or "Mapping program close" in current
-    assert "**Active Product** | **[FP-4](external-intake-forms-publish.md)**" in current
+    assert "**Active Product** | **[FP-5](external-intake-forms-publish.md)**" in current
     assert "Product **DONE** with no named successor until amendment" in history
     assert "Active (Product):** Mapping program close" not in current
     mapping = _BRIEF.read_text(encoding="utf-8")

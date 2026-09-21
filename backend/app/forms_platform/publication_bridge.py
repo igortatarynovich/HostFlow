@@ -23,6 +23,10 @@ from backend.app.forms_platform.handlers import (
     list_registered_handlers,
     resolve_submission_handler,
 )
+from backend.app.forms_platform.operator_publication import (
+    operator_state_from_lead_form,
+    public_form_url_from_publication,
+)
 from backend.app.models.intake_routing import IntakeSourceProfile
 from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.modules.intake_routing import crud as intake_crud
@@ -119,6 +123,7 @@ def build_forms_platform_publication_view(
     has_field_schema = bool(
         field_schema and field_schema.get("schema_contract") == "forms.field_schema.v1"
     )
+    operator_state = operator_state_from_lead_form(lead_form)
 
     return {
         "contract_version": FORMS_PLATFORM_CONTRACT_VERSION,
@@ -148,6 +153,11 @@ def build_forms_platform_publication_view(
         "route_intent": route_intent,
         "routing_status": routing_status,
         "routing_reason": routing_reason,
+        "operator_state": operator_state,
+        "public_form_url": public_form_url_from_publication(
+            public_slug=public_slug,
+            operator_state=operator_state,
+        ),
         "public_intake_path": "/api/v1/public/intake",
         "public_apply_path_template": "/public/apply/{token}",
         "submission_handler": handler,

@@ -3,8 +3,12 @@ import { Link, useParams } from 'react-router-dom'
 import {
   IconArrowDown,
   IconArrowUp,
+  IconCopy,
   IconDeviceFloppy,
   IconForms,
+  IconLink,
+  IconPlayerPlay,
+  IconPlayerStop,
   IconPlus,
   IconRefresh,
   IconTrash,
@@ -29,6 +33,13 @@ import {
   type FormComposition,
 } from '../../api/formsBuilder'
 import {
+  fetchFormPublication,
+  publishFormPublication,
+  unpublishFormPublication,
+  type FormOperatorState,
+  type FormPublication,
+} from '../../api/formsPublications'
+import {
   friendlyErrorBannerSecondary,
   getFriendlyErrorInfo,
   type FriendlyErrorInfo,
@@ -40,6 +51,31 @@ function emptyComposition(draftId: string): FormComposition {
     draft_id: draftId,
     instances: [],
   }
+}
+
+const OPERATOR_STATE_LABEL: Record<FormOperatorState, string> = {
+  never_published: 'Never published',
+  live: 'Live',
+  inactive: 'Inactive',
+  published: 'Published',
+  draft: 'Draft',
+}
+
+function operatorStateLabel(state: FormOperatorState | undefined, t: (k: string, o?: object) => string) {
+  const fallback = state ? OPERATOR_STATE_LABEL[state] || state : '—'
+  return t(`admin.forms_builder.publication.states.${state || 'unknown'}`, { defaultValue: fallback })
+}
+
+function publicationVersionLabel(publication: FormPublication | null) {
+  if (!publication || publication.operator_state === 'never_published') return '—'
+  return publication.published_version == null ? '—' : String(publication.published_version)
+}
+
+function publicFormHref(path: string | null | undefined): string | null {
+  if (!path) return null
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  if (typeof window === 'undefined') return path
+  return `${window.location.origin}${path}`
 }
 
 function labelFor(item: { label_key?: string | null; component_id: string }, t: (k: string, o?: object) => string) {
@@ -71,6 +107,8 @@ export default function FormsBuilderPage() {
   const [conflict, setConflict] = useState(false)
   const [pageError, setPageError] = useState<FriendlyErrorInfo | null>(null)
   const [formTitle, setFormTitle] = useState('')
+  const [publication, setPublication] = useState<FormPublication | null>(null)
+  const [publicationActing, setPublicationActing] = useState(false)
 
   const dirty = useMemo(() => {
     if (!composition) return false
@@ -86,6 +124,16 @@ export default function FormsBuilderPage() {
     const items = await fetchBuilderPalette(q.trim() ? { query: q.trim() } : undefined)
     setPalette(items)
   }, [])
+
+  const loadPublication = useCallback(async () => {
+    if (!formId) return
+    try {
+      const pub = await fetchFormPublication(formId)
+      setPublication(pub)
+    } catch {
+      setPublication(null)
+    }
+  }, [formId])
 
   const loadDraft = useCallback(async () => {
     if (!formId) return
@@ -108,6 +156,7 @@ export default function FormsBuilderPage() {
       } catch {
         setFormTitle('')
       }
+      await loadPublication()
     } catch (err: unknown) {
       setPageError(
         getFriendlyErrorInfo(
@@ -120,7 +169,7 @@ export default function FormsBuilderPage() {
     } finally {
       setLoading(false)
     }
-  }, [formId, loadPalette, t])
+  }, [formId, loadPalette, loadPublication, t])
 
   useEffect(() => {
     void loadDraft()
@@ -241,7 +290,71 @@ export default function FormsBuilderPage() {
     }
   }
 
+  const actOnPublication = async (action: 'publish' | 'unpublish') => {
+    if (!formId || !canMutate) return
+    setPublicationActing(true)
+    setPageError(null)
+    try {
+      const next =
+        action === 'publish'
+          ? await publishFormPublication(formId)
+          : await unpublishFormPublication(formId)
+      setPublication(next)
+    } catch (err: unknown) {
+      setPageError(
+        getFriendlyErrorInfo(
+          err,
+          action === 'publish'
+            ? t('admin.forms_builder.publication.errors.publish', {
+                defaultValue: 'Failed to publish form',
+              })
+            : t('admin.forms_builder.publication.errors.unpublish', {
+                defaultValue: 'Failed to unpublish form',
+              }),
+          t,
+        ),
+      )
+      return
+    } finally {
+      setPublicationActing(false)
+    }
+    try {
+      notify({
+        variant: 'success',
+        title:
+          action === 'publish'
+            ? t('admin.forms_builder.publication.published', { defaultValue: 'Form published' })
+            : t('admin.forms_builder.publication.unpublished', { defaultValue: 'Form unpublished' }),
+      })
+    } catch {
+      // Toast is display-only; publication already refreshed from the API.
+    }
+  }
+
+  const copyPublicUrl = async () => {
+    const href = publicFormHref(publication?.public_form_url)
+    if (!href) return
+    try {
+      await navigator.clipboard.writeText(href)
+      notify({
+        variant: 'success',
+        title: t('admin.forms_builder.publication.copied', { defaultValue: 'Public URL copied' }),
+      })
+    } catch {
+      notify({
+        variant: 'error',
+        title: t('admin.forms_builder.publication.copy_failed', {
+          defaultValue: 'Could not copy public URL',
+        }),
+      })
+    }
+  }
+
   const backHref = CRM_APP_PATHS.settingsLeadForms
+  const operatorState = publication?.operator_state
+  const canPublish = canMutate && (operatorState === 'never_published' || operatorState === 'inactive')
+  const canUnpublish = canMutate && operatorState === 'live'
+  const publicHref = publicFormHref(publication?.public_form_url)
 
   return (
     <SettingsSubpageHeader
@@ -308,6 +421,89 @@ export default function FormsBuilderPage() {
                 t('admin.forms_builder.back', { defaultValue: 'All forms' }),
               )}
             />
+          </div>
+        )}
+
+        {formId && (
+          <div className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {t('admin.forms_builder.publication.title', { defaultValue: 'Publication' })}
+                </p>
+                <p className="mt-1 text-sm text-slate-800">
+                  {t('admin.forms_builder.publication.state', { defaultValue: 'State' })}
+                  {': '}
+                  <span data-testid="form-operator-state" className="font-medium">
+                    {operatorStateLabel(operatorState, t)}
+                  </span>
+                  {' · '}
+                  {t('admin.forms_builder.publication.version', { defaultValue: 'Version' })}
+                  {': '}
+                  <span data-testid="form-published-version">{publicationVersionLabel(publication)}</span>
+                </p>
+                <p className="mt-1 break-all text-sm text-slate-600">
+                  <IconLink size={14} className="mr-1 inline align-text-bottom" />
+                  {publicHref ? (
+                    <a
+                      data-testid="form-public-url"
+                      className="text-brand-700 underline"
+                      href={publicHref}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {publication?.public_form_url}
+                    </a>
+                  ) : (
+                    <span data-testid="form-public-url">
+                      {t('admin.forms_builder.publication.no_url', {
+                        defaultValue: 'Public URL available when the form is live.',
+                      })}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {publicHref && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary inline-flex items-center gap-1.5"
+                    onClick={() => void copyPublicUrl()}
+                  >
+                    <IconCopy size={16} />
+                    {t('admin.forms_builder.publication.copy_url', { defaultValue: 'Copy URL' })}
+                  </button>
+                )}
+                {canPublish && (
+                  <button
+                    type="button"
+                    className="btn btn-primary inline-flex items-center gap-1.5"
+                    onClick={() => void actOnPublication('publish')}
+                    disabled={loading || publicationActing}
+                  >
+                    <IconPlayerPlay size={16} />
+                    {publicationActing
+                      ? t('admin.forms_builder.publication.publishing', { defaultValue: 'Publishing…' })
+                      : t('admin.forms_builder.publication.publish', { defaultValue: 'Publish' })}
+                  </button>
+                )}
+                {canUnpublish && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary inline-flex items-center gap-1.5"
+                    onClick={() => void actOnPublication('unpublish')}
+                    disabled={loading || publicationActing}
+                  >
+                    <IconPlayerStop size={16} />
+                    {publicationActing
+                      ? t('admin.forms_builder.publication.unpublishing', {
+                          defaultValue: 'Unpublishing…',
+                        })
+                      : t('admin.forms_builder.publication.unpublish', { defaultValue: 'Unpublish' })}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -554,7 +750,7 @@ export default function FormsBuilderPage() {
           </Link>
           {' · '}
           {t('admin.forms_builder.no_publish', {
-            defaultValue: 'Save draft only — publish remains a separate action (P3 locked).',
+            defaultValue: 'Draft save stays on this canvas. Publish and the public URL use the publication authority above.',
           })}
         </p>
       </section>
