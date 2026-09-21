@@ -1,6 +1,6 @@
 # External Intake / Forms Publish
 
-**Status:** **DONE** — FP-1…FP-5 PASS · Forms Publish Contract Gate **PASS** · Publish Action Gate **PASS** · Public Serve Gate **PASS** · Operator Publish Gate **PASS** · External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)) · program **DONE** (outcome + release delta). Product **DONE** with no named successor until amendment.
+**Status:** **DONE** — FP-1…FP-5 PASS · Forms Publish Contract Gate **PASS** · Publish Action Gate **PASS** · Public Serve Gate **PASS** · Operator Publish Gate **PASS** · External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)) · program **DONE** (outcome + release delta). Active Product is [HE-1](hiring-workflow-e2e.md) (brief; feat locked).
 **Phase class:** platform
 **Branch (docs):** `docs/forms-publish-fp1-contract-seal`
 **Branch (code):** `feat/forms-publish-fp5-runtime`. External Intake Acceptance Gate **PASS**.
@@ -12,7 +12,7 @@
 > **Not** P4 Themes. **Not** P5 Analytics. **Not** FormTemplate SoT migration. **Not** a second submit engine. **Not** Mapping Authority (consumed, not rebuilt).
 >
 > **U-2:** [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) is **Accepted** (Purpose + Policy unchanged). Publish definition SoT: [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`).
-> Mapping program is **DONE**. External Intake program is **DONE**. Unlock ≠ schedule of leftover-store deletion / Hiring / RS-3. Product **DONE** with no named successor until amendment. FP-5 PASS is not Release Acceptance PASS.
+> Mapping program is **DONE**. External Intake program is **DONE**. Queue amendment names [HE-1](hiring-workflow-e2e.md) Active Product (brief; feat locked). Unlock ≠ schedule of leftover-store deletion / min HR / RS-3. FP-5 PASS is not Release Acceptance PASS.
 
 ---
 
@@ -140,7 +140,7 @@ Recorded this amendment. Ladder **FP-1 Contract → FP-2 Publish → FP-3 Serve 
 
 **Depends on:** queue amendment [#377](https://github.com/igortatarynovich/HostFlow/pull/377). External Intake Acceptance Gate **PASS** `4f454556`. Mapping program is already **DONE**; this close does not write Mapping and does not prove RS-3.  
 **Program:** **DONE** (outcome + release delta this amendment).  
-**Active Product after close:** **DONE** with no named successor until amendment. Hiring E2E remains unlocked from RPM, **not** scheduled. min HR remains queued.  
+**Active Product after close:** named **[HE-1](hiring-workflow-e2e.md)** by a later queue amendment (brief; feat locked). min HR remains queued.  
 **Unlocks:** nothing automatically — “unlock ≠ schedule”  
 **Does not:** mix Mapping / RS-3; add embed snippet; mint a second renderer, publication state, or submit engine; open P4 / P5; migrate `TenantLeadForm` → FormTemplate SoT (U-5 residual: Publish ships on the bridge, and **no new writer may be added to it**); rebuild Shared Intake; touch C2.4; start leftover-store deletion / Hiring / min HR; invent a new form architecture; expand Mapping Operator Surface or DR1 Runtime inherited reds; convert FP-5 PASS into Release Acceptance PASS
 
@@ -161,6 +161,7 @@ Recorded this amendment. Ladder **FP-1 Contract → FP-2 Publish → FP-3 Serve 
 ---
 
 ## History
+- 2026-09-21: **Queue amendment names HE-1 Active Product.** External Intake program close recorded (`741a4b2e`; [#387](https://github.com/igortatarynovich/HostFlow/pull/387)). External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Active Product → **[HE-1](hiring-workflow-e2e.md)** (brief; feat locked this PR). Hiring Acceptance Contract Gate **not PASS**. Do not open HE-1 contract seal in this PR. min HR remains queued. Not leftover-store deletion. Not RS-3. Not Mapping Operator Surface / DR1 Runtime inherited reds. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-21: **External Intake program close.** External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Program outcome + release delta recorded. FP-1…FP-5 = External Intake **DONE**. Product **DONE** with no named successor until amendment. FP-5 PASS is not Release Acceptance PASS. Hiring E2E / min HR remain queued. Mapping Operator Surface / DR1 Runtime inherited reds unchanged. Not leftover-store deletion. Not RS-3. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-21: **External Intake Acceptance Gate PASS.** Feat `feat/forms-publish-fp5-runtime` from `de6383aa` ([#385](https://github.com/igortatarynovich/HostFlow/pull/385)). Close path = operator live public URL → stranger without auth opens → fills → submit → existing public submission/intake contract → production intake → intake/person/application visible in HostFlow workspace. Browser E2E through that published URL. Rate limit remains fail-open when Redis is unavailable. No second submit engine. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice. Active Product → External Intake program close (brief; feat locked).
 - 2026-09-21: **FP-5 External submission feat opened.** Branch `feat/forms-publish-fp5-external-submit` from `5e2a8f59` ([#384](https://github.com/igortatarynovich/HostFlow/pull/384)). Close path = live public URL → stranger without auth opens it → fills → submit → production intake accepts → real intake/person/application per existing contracts. Browser E2E through that published URL is the later runtime proof, not API composition. External Intake Acceptance Gate **not PASS**. This stamp does not ship runtime. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not a new form architecture. Not P4 / P5.

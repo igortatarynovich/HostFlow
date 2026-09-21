@@ -1,8 +1,9 @@
 """External Intake program close.
 
 External Intake program DONE. External Intake Acceptance Gate PASS.
-Product DONE with no named successor until amendment.
-Does not start Hiring / leftover-store deletion / RS-3.
+History records Product DONE with no named successor until amendment.
+Current Active Product is HE-1 after the queue amendment.
+Does not start leftover-store deletion / RS-3.
 FP-5 PASS is not Release Acceptance PASS.
 """
 
@@ -53,29 +54,34 @@ def test_external_intake_close_product_done_no_named_successor() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "External Intake program close" in current
-    assert "**Active Product** | **DONE**" in current
+    assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in current
     assert "no named successor until amendment" in current.lower()
     assert "External Intake program close." in history or "External Intake program close**" in history
-    assert "Active (Product):** **DONE**" in current
+    assert "Product **DONE** with no named successor until amendment" in history
+    assert "Active (Product):** **[HE-1](hiring-workflow-e2e.md)**" in current
     assert "**Active Product** | External Intake program close" not in current
+    assert "**Active Product** | **DONE**" not in current
     intake = _BRIEF.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]
     assert "**DONE**" in intake_current
     assert "**ACTIVE**" not in intake_current
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "external-intake-forms-publish.md" in agents
-    assert "Product = DONE" in agents
-    assert "no named successor" in agents.lower()
+    assert "Product = [HE-1]" in agents or "Product Track** = **[HE-1]" in agents
+    assert "no named successor" in history.lower()
 
 
 def test_external_intake_close_leaves_hiring_hr_queued() -> None:
     hiring = _HIRING.read_text(encoding="utf-8")
     hr = _HR.read_text(encoding="utf-8")
-    for text in (hiring, hr):
-        header = text.split("## History", 1)[0] if "## History" in text else text
-        assert "**QUEUED**" in header
-        assert "not scheduled" in header.lower()
-        assert "Hiring" in hiring
+    hiring_header = hiring.split("## History", 1)[0] if "## History" in hiring else hiring
+    hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
+    assert "**ACTIVE**" in hiring_header
+    assert "HE-1" in hiring_header
+    assert "**QUEUED**" not in hiring_header
+    assert "**QUEUED**" in hr_header
+    assert "not scheduled" in hr_header.lower()
+    assert "Hiring" in hiring
     mapping = _MAPPING.read_text(encoding="utf-8")
     mapping_current = mapping.split("## History", 1)[0]
     assert "**DONE**" in mapping_current

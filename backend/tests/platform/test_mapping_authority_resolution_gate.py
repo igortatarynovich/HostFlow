@@ -96,8 +96,9 @@ def test_ma2_queue_names_ma3_successor() -> None:
     text = _QUEUE.read_text(encoding="utf-8")
     current = text.split("## 8. History", 1)[0]
     assert "Mapping Resolution Gate" in text
-    assert "**Active Product** | **DONE**" in current
-    assert "Active (Product):** **DONE**" in current
+    assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in current
+    assert "Active (Product):** **[HE-1](hiring-workflow-e2e.md)**" in current
+    assert "**Active Product** | **DONE**" not in current
     assert "feat locked" in text
     assert "Active (Product):** **[MA-2](mapping-authority.md)**" not in current
     agents = _AGENTS.read_text(encoding="utf-8")
@@ -110,10 +111,14 @@ def test_ma2_queue_names_ma3_successor() -> None:
 def test_ma2_leaves_intake_hiring_hr_queued() -> None:
     hiring = _HIRING.read_text(encoding="utf-8")
     hr = _HR.read_text(encoding="utf-8")
-    for text in (hiring, hr):
-        assert "**QUEUED**" in text
-        assert "not scheduled" in text.lower()
-        assert "MA-4" in text
+    hiring_header = hiring.split("## History", 1)[0] if "## History" in hiring else hiring
+    hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
+    assert "**ACTIVE**" in hiring_header
+    assert "HE-1" in hiring_header
+    assert "MA-4" in hiring
+    assert "**QUEUED**" in hr_header
+    assert "not scheduled" in hr_header.lower()
+    assert "MA-4" in hr
     intake = _INTAKE.read_text(encoding="utf-8")
     assert "**DONE**" in intake.split("## History", 1)[0]
     assert "**ACTIVE**" not in intake.split("## History", 1)[0]

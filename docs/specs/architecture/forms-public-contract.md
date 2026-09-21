@@ -1,6 +1,6 @@
 # Forms Public Contract v1 — Sprint 1 + Sprint 2 hardening
 
-**Status:** canonical · **ACTIVE** · Phase C C1–C6 ✅ / Foundation ✅ · Product Track = **DONE** after External Intake program close ([brief](../tasks/external-intake-forms-publish.md); no named successor until amendment) (feat `feat/forms-publish-fp5-runtime`; External Intake Acceptance Gate **PASS**; Operator Publish Gate **PASS**; feat `feat/forms-publish-fp4-operator-surface`; Public Serve Gate **PASS**; FP-3 feat `feat/forms-publish-fp3-public-serve`)  
+**Status:** canonical · **ACTIVE** · Phase C C1–C6 ✅ / Foundation ✅ · Product Track = **[HE-1](../tasks/hiring-workflow-e2e.md)** (brief; feat locked) after External Intake program close ([brief](../tasks/external-intake-forms-publish.md)) (feat `feat/forms-publish-fp5-runtime`; External Intake Acceptance Gate **PASS**; Operator Publish Gate **PASS**; feat `feat/forms-publish-fp4-operator-surface`; Public Serve Gate **PASS**; FP-3 feat `feat/forms-publish-fp3-public-serve`)  
 **Capability id:** `forms`  
 **Contract id:** `forms.public_contract.v1`  
 **Adapter id:** `forms.endpoint_adapter_v1`  
