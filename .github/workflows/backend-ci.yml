@@ -118,6 +118,7 @@ jobs:
       fp5: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp5 == 'true' }}
       fp_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp_close == 'true' }}
       he1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he1 == 'true' }}
+      he1_contract: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he1_contract == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
@@ -553,6 +554,17 @@ jobs:
               - 'docs/specs/tasks/hiring-workflow-e2e.md'
               - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
               - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            he1_contract:
+              - 'backend/app/reference/hiring_acceptance.py'
+              - 'backend/tests/platform/test_hiring_acceptance_contract_gate.py'
+              - 'scripts/architecture/check_hiring_acceptance_boundary.py'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/architecture/hiring-acceptance-contract.md'
+              - 'docs/specs/architecture/ADR-016-requirement-evidence-document-separation.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
               - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
               - 'docs/specs/gates/hostflow-v1-release-goal.md'
               - 'AGENTS.md'
@@ -1460,6 +1472,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_queue_amendment_he1.py') != ''
         with:
           tests: tests/platform/test_queue_amendment_he1.py
+
+  he1-contract-gate:
+    name: Hiring Acceptance Contract Gate
+    needs: changes
+    if: needs.changes.outputs.he1_contract == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Hiring Acceptance Contract gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_hiring_acceptance_contract_gate.py') == ''
+        run: echo "Hiring Acceptance Contract gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_hiring_acceptance_contract_gate.py') != ''
+        with:
+          tests: tests/platform/test_hiring_acceptance_contract_gate.py
 
   fp5-acceptance-gate:
     name: External Intake Acceptance Gate
