@@ -69,6 +69,7 @@ Reject: documenting the old chain as “still how ingest works”; a second reso
 ---
 
 ## History
+- 2026-09-21: **Queue amendment names HE-1 Active Product.** External Intake program close recorded (`741a4b2e`; [#387](https://github.com/igortatarynovich/HostFlow/pull/387)). External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Active Product → **[HE-1](../tasks/hiring-workflow-e2e.md)** (brief; feat locked this PR). Hiring Acceptance Contract Gate **not PASS**. Do not open HE-1 contract seal in this PR. min HR remains queued. Not leftover-store deletion. Not RS-3. Not Mapping Operator Surface / DR1 Runtime inherited reds. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
 
 - 2026-09-20: Queue amendment names **FP-1** Active Product (brief; feat locked). Mapping program **DONE**.
 - 2026-09-20: Mapping program close. Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). Product **DONE** with no named successor until amendment.
