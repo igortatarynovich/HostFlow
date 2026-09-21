@@ -78,7 +78,13 @@ test.describe('FP-5 external intake acceptance', () => {
     await strangerPage.goto(`/public/intake?lead_form_slug=${encodeURIComponent(slug)}`)
     await acceptCookiesIfPresent(strangerPage)
     await strangerPage.getByTestId('public-intake-email').fill(email)
+    const started = strangerPage.waitForResponse(
+      (r) => r.url().includes('/public/intake') && r.request().method() === 'POST' && r.ok(),
+    )
     await strangerPage.getByTestId('public-intake-start-submit').click()
+    const startedBody = (await (await started).json()) as { lead_id?: string }
+    const leadId = String(startedBody.lead_id || '')
+    expect(leadId).toBeTruthy()
     await strangerPage.getByTestId('public-intake-open-apply').click()
     await strangerPage.getByTestId('public-intake-lang-en').click()
     await expect(strangerPage.getByTestId('presentation-field-recruitment.candidate.first_name')).toBeVisible({
@@ -89,24 +95,30 @@ test.describe('FP-5 external intake acceptance', () => {
     await strangerPage.locator('#presentation-consent-general').check()
     await strangerPage.locator('#presentation-consent-share').check()
     await strangerPage.locator('#presentation-consent-terms').check()
+    const submitted = strangerPage.waitForResponse(
+      (r) => r.url().includes('/submit') && r.request().method() === 'POST' && r.ok(),
+    )
     await strangerPage.getByTestId('public-intake-submit').click()
+    const submittedBody = (await (await submitted).json()) as { candidate_id?: string | null }
     await expect(strangerPage.getByText(/dziękujemy|thank you|otrzymaliśmy/i)).toBeVisible({ timeout: 30_000 })
     await stranger.close()
 
     const headers = authHeaders(token)
-    let candidateId = ''
-    await expect
-      .poll(
-        async () => {
-          const leads = await request.get(`${API_BASE}/leads?q=${encodeURIComponent(email)}`, { headers })
-          expect(leads.ok(), await leads.text()).toBeTruthy()
-          const body = (await leads.json()) as { items?: Array<{ candidate_id?: string | null }> }
-          candidateId = String(body.items?.find((row) => row.candidate_id)?.candidate_id || '')
-          return candidateId
-        },
-        { timeout: 15_000 },
-      )
-      .toBeTruthy()
+    let candidateId = String(submittedBody.candidate_id || '')
+    if (!candidateId) {
+      await expect
+        .poll(
+          async () => {
+            const lead = await request.get(`${API_BASE}/leads/${leadId}`, { headers })
+            expect(lead.ok(), await lead.text()).toBeTruthy()
+            const body = (await lead.json()) as { candidate_id?: string | null }
+            candidateId = String(body.candidate_id || '')
+            return candidateId
+          },
+          { timeout: 15_000 },
+        )
+        .toBeTruthy()
+    }
     const workspace = await request.get(`${API_BASE}/candidates/${candidateId}`, { headers })
     expect(workspace.ok(), await workspace.text()).toBeTruthy()
     const shown = (await workspace.json()) as { email?: string }
