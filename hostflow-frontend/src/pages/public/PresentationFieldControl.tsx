@@ -93,6 +93,8 @@ export function PresentationFieldControl({ field, value, error, disabled, locale
       <label className="block">
         {label}
         <textarea
+          name={field.qualified_code}
+          data-testid={`presentation-field-${field.qualified_code}`}
           className="input min-h-[96px] w-full"
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onChange(field.qualified_code, e.target.value)}
@@ -112,6 +114,8 @@ export function PresentationFieldControl({ field, value, error, disabled, locale
       {label}
       <input
         type={inputType}
+        name={field.qualified_code}
+        data-testid={`presentation-field-${field.qualified_code}`}
         className="input w-full"
         value={typeof value === 'string' ? value : ''}
         onChange={(e) => onChange(field.qualified_code, e.target.value)}

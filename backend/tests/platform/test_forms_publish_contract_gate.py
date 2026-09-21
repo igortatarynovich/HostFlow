@@ -1,8 +1,8 @@
 """Forms Publish Contract Gate (FP-1).
 
 One operator question. One write. Twelve classified answerers.
-Feat `feat/forms-publish-fp5-external-submit` is open. External Intake
-Acceptance Gate not PASS. This stamp does not ship runtime. Not Hiring E2E.
+Feat `feat/forms-publish-fp5-runtime` shipped the stranger submit path.
+External Intake Acceptance Gate PASS. Not Hiring E2E.
 """
 
 from __future__ import annotations
@@ -118,7 +118,7 @@ def test_fp1_brief_contract_gate_pass() -> None:
     assert "feat/forms-publish-fp2-publish-action" in current
     assert "feat/forms-publish-fp3-public-serve" in current
     assert "feat/forms-publish-fp4-operator-surface" in current
-    assert "feat/forms-publish-fp5-external-submit" in current
+    assert "feat/forms-publish-fp5-runtime" in current
     assert "Publish Action Gate" in current
     assert "Public Serve Gate" in current
     assert "Operator Publish Gate" in current
@@ -138,14 +138,14 @@ def test_fp1_queue_names_successor_not_runtime() -> None:
     assert "feat/forms-publish-fp2-publish-action" in text
     assert "feat/forms-publish-fp3-public-serve" in current
     assert "feat/forms-publish-fp4-operator-surface" in current
-    assert "feat/forms-publish-fp5-external-submit" in current
-    assert "**Active Product** | **[FP-5](external-intake-forms-publish.md)" in current
-    assert "Active (Product):** **[FP-5](external-intake-forms-publish.md)" in current
+    assert "feat/forms-publish-fp5-runtime" in current
+    assert "**Active Product** | External Intake program close" in current
+    assert "Active (Product):** External Intake program close" in current
     assert "Publish Action Gate **PASS**" in current
     assert "Public Serve Gate **PASS**" in current
     assert "Operator Publish Gate **PASS**" in current
-    assert "External Intake Acceptance Gate **not PASS**" in current
-    assert "This stamp does not ship runtime" in current
+    assert "External Intake Acceptance Gate **PASS**" in current
+    assert "This stamp does not ship runtime" not in current
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "external-intake-forms-publish.md" in agents
     assert "forms-publish-contract.md" in agents or "forms_publish" in agents.lower()

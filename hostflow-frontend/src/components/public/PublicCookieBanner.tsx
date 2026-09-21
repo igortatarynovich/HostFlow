@@ -46,6 +46,7 @@ export function PublicCookieBanner() {
             </a>
             <button
               type="button"
+              data-testid="public-cookie-accept"
               onClick={handleAccept}
               className="rounded-xl bg-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
             >
