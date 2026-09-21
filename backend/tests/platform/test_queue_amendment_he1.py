@@ -1,8 +1,7 @@
 """Queue amendment named HE-1 after External Intake program close.
 
-Current Active Product is HE-1 (brief; feat locked).
-Hiring Acceptance Contract Gate stays NOT PASS.
-This stamp does not open the HE-1 contract seal.
+History records the stamp: Active Product HE-1, contract gate NOT PASS.
+Current Active Product is still HE-1. Hiring Acceptance Contract Gate is PASS.
 min HR / leftover-store deletion / RS-3 stay unauthorized.
 FP-5 PASS is not Release Acceptance PASS.
 """
@@ -31,18 +30,24 @@ def test_he1_amendment_history_then_current() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "Queue amendment names HE-1 Active Product" in history
+    assert "Hiring Acceptance Contract Gate **not PASS**" in history
+    assert "Do not open HE-1 contract seal" in history
     assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in current
     assert "Active (Product):** **[HE-1](hiring-workflow-e2e.md)**" in current
     assert "**Active Product** | **DONE**" not in current
     assert "Active (Product):** **DONE**" not in current
-    assert "Hiring Acceptance Contract Gate **not PASS**" in current
-    assert "Do not open HE-1 contract seal" in current
+    assert "Hiring Acceptance Contract Gate **PASS**" in current
+    assert "Hiring Acceptance Contract Gate **not PASS**" not in current
+    assert "Do not open HE-1 contract seal" not in current
     hiring = _HIRING.read_text(encoding="utf-8")
     hiring_current = hiring.split("## History", 1)[0]
+    hiring_history = hiring.split("## History", 1)[1]
     assert "**ACTIVE**" in hiring_current
     assert "**QUEUED**" not in hiring_current
-    assert "Hiring Acceptance Contract Gate **not PASS**" in hiring_current
-    assert "Do not open HE-1 contract seal" in hiring_current
+    assert "Hiring Acceptance Contract Gate **PASS**" in hiring_current
+    assert "Hiring Acceptance Contract Gate **not PASS**" not in hiring_current
+    assert "Do not open HE-1 contract seal" not in hiring_current
+    assert "Do not open HE-1 contract seal" in hiring_history
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "hiring-workflow-e2e.md" in agents
     assert "Product = [HE-1]" in agents or "Product Track** = **[HE-1]" in agents

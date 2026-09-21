@@ -58,7 +58,7 @@
 | **AI** | AI platform capability | ADR-025 (AI Adapter); future AI ADR | All modules | AI Adapter |
 | **Search** | Global Search | Search services / future Search ADR | All modules | Search Adapter |
 | **Integrations / Marketplace** | Integrations | [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) | All modules | Integration Adapters |
-| **Process Engine** | Process Engine | [`process-engine.md`](../platform/process-engine.md) | Business modules | Process contracts |
+| **Process Engine** | Process Engine | [`process-engine.md`](../platform/process-engine.md) · [`ADR-037`](ADR-037-lifecycle-identity-canon.md) · [hiring-acceptance-contract.md](hiring-acceptance-contract.md) | Business modules; Hiring E2E walk | Process contracts |
 | **Field Registry / Entity Profile** | Platform Reference | platform specs · [mapping-authority-contract.md](mapping-authority-contract.md) · [mapping-authority-resolution.md](mapping-authority-resolution.md) · [mapping-authority-operator.md](mapping-authority-operator.md) | Forms, Intake, modules | Reference / profile contracts |
 | **Resource List Shell / UI Standard** | Frontend platform | ADR-010 / ADR-011 | SPA | UI contracts |
 | **Observability** | Platform observability | [`ADR-038`](ADR-038-shell-observability-diagnostics.md), [`../platform/observability.md`](../platform/observability.md) | All runtimes (emit); Shell Diagnostics (search/export) | Observability Adapter |

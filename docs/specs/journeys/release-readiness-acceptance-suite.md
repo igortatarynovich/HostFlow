@@ -109,7 +109,7 @@ Each scenario lists **preconditions**, the **operator job** (not the click path)
 - **Preconditions:** RS-4 and RS-5 done for one candidate.
 - **Operator job:** progress the candidate through the defined stages, attempt transfer while a requirement is unmet (must be refused with a readable reason), satisfy it, then complete the hire.
 - **Pass detail:** the refusal came from the same policy authority the operator manages in RS-4, not from a separate hard-coded rule.
-- **Evidence:** stage history, refusal reason text, completion record.
+- **Evidence:** stage history, refusal reason text, completion record. Contract SoT: [hiring-acceptance-contract.md](../architecture/hiring-acceptance-contract.md) (`hiring_acceptance.v1`). Test-only seeding is inadmissible.
 
 ### RS-8 Handoff into HR
 
