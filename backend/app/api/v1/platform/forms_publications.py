@@ -90,6 +90,47 @@ class FormHandlersOut(BaseModel):
     handlers: list[SubmissionHandlerOut] = Field(default_factory=list)
 
 
+async def _presentation_runtime_for_publish(
+    db,
+    *,
+    tenant_id: str,
+    form_id: str,
+) -> dict[str, Any] | None:
+    """Current form field definition to freeze when the operator POST body is empty.
+
+    Presentation leftover is not serve authority (FP-3). At publish it is the
+    form's current field subset that ``commit_publish`` freezes into the ledger.
+    """
+    from backend.app.entity_profile.ingest_runtime import resolve_public_intake_source_profile_id
+    from backend.app.entity_profile.presentation_runtime import (
+        FormPresentationNotFoundError,
+        resolve_form_presentation_for_intake_source,
+    )
+    from backend.app.models.intake_routing import IntakeSourceProfile
+
+    profile_id = await resolve_public_intake_source_profile_id(
+        db,
+        tenant_id=str(tenant_id),
+        lead_form_id=str(form_id),
+    )
+    if not profile_id:
+        return None
+    profile = await db.get(IntakeSourceProfile, str(profile_id))
+    presentation_code = str(getattr(profile, "presentation_code", None) or "").strip()
+    if not presentation_code:
+        return None
+    try:
+        runtime = await resolve_form_presentation_for_intake_source(
+            db,
+            tenant_id=str(tenant_id),
+            intake_source_profile_id=str(profile_id),
+            presentation_code=presentation_code,
+        )
+    except FormPresentationNotFoundError:
+        return None
+    return runtime if isinstance(runtime, dict) else None
+
+
 def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
     token_tenant = (ctx.tenant_id or "").strip()
     if token_tenant and token_tenant != tenant_id:
@@ -152,6 +193,11 @@ async def publish_form_publication(
     _ensure_tenant(ctx, tenant_id)
     body = payload or FormPublishIn()
     idempotency_key = (body.idempotency_key or idempotency_header or "").strip() or None
+    presentation_runtime = body.presentation_runtime
+    if body.field_schema is None and body.fields is None and presentation_runtime is None:
+        presentation_runtime = await _presentation_runtime_for_publish(
+            db, tenant_id=tenant_id, form_id=str(form_id).strip()
+        )
     try:
         publication = await commit_publish(
             db,
@@ -163,7 +209,7 @@ async def publish_form_publication(
             idempotency_key=idempotency_key,
             field_schema=body.field_schema,
             fields=body.fields,
-            presentation_runtime=body.presentation_runtime,
+            presentation_runtime=presentation_runtime,
         )
         await db.commit()
     except FormsNotFoundError as exc:

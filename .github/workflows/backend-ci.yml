@@ -115,6 +115,7 @@ jobs:
       fp2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp2 == 'true' }}
       fp3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp3 == 'true' }}
       fp4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp4 == 'true' }}
+      fp5: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp5 == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
@@ -517,6 +518,22 @@ jobs:
               - 'backend/tests/platform/test_forms_publish_operator_gate.py'
               - 'hostflow-frontend/src/pages/admin/FormsBuilderPage.tsx'
               - 'hostflow-frontend/src/api/formsPublications.ts'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/architecture/forms-publish-contract.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'AGENTS.md'
+            fp5:
+              - 'backend/app/api/public/intake.py'
+              - 'backend/app/forms_platform/public_submit_bridge.py'
+              - 'backend/app/core/rate_limit.py'
+              - 'backend/app/reference/forms_publish_contract.py'
+              - 'backend/tests/platform/test_forms_publish_acceptance_gate.py'
+              - 'hostflow-frontend/src/api/http.ts'
+              - 'hostflow-frontend/src/pages/public/PublicIntakeStart.tsx'
+              - 'hostflow-frontend/src/pages/public/PublicIntakePresentationForm.tsx'
+              - 'hostflow-frontend/src/pages/admin/FormsBuilderPage.tsx'
+              - 'e2e/forms-publish-fp5-external-submit.ui.spec.ts'
+              - '.github/workflows/fp5-external-intake-e2e.yml'
               - 'docs/specs/tasks/external-intake-forms-publish.md'
               - 'docs/specs/architecture/forms-publish-contract.md'
               - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
@@ -1396,6 +1413,35 @@ jobs:
           skip-alembic: "0"
           tests: tests/platform/test_forms_publish_operator_gate.py
 
+  fp5-acceptance-gate:
+    name: External Intake Acceptance Gate
+    needs: changes
+    if: needs.changes.outputs.fp5 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when External Intake Acceptance gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_forms_publish_acceptance_gate.py') == ''
+        run: echo "External Intake Acceptance gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_forms_publish_acceptance_gate.py') != ''
+        with:
+          skip-alembic: "0"
+          tests: tests/platform/test_forms_publish_acceptance_gate.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -1451,6 +1497,7 @@ jobs:
       - fp2-publish-action-gate
       - fp3-public-serve-gate
       - fp4-operator-publish-gate
+      - fp5-acceptance-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed

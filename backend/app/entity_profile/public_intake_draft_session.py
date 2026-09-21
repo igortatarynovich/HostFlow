@@ -781,6 +781,8 @@ async def submit_public_intake_lead_draft(
         normalized=flat_normalized,
         vacancy_id=vacancy_id,
         company_id=company_id,
+        current_lead_id=str(getattr(lead, "id", "") or "") or None,
+        existing_candidate_id=str(getattr(lead, "candidate_id", None) or "") or None,
     )
     application_kind = str(intake_state.get("application_kind") or "candidate").strip().lower()
     is_client = application_kind == "client"

@@ -213,6 +213,29 @@ def _presentation_canonical_facts(intake_state: dict[str, Any]) -> dict[str, Any
     }
 
 
+def _contact_identity_canonical_facts(intake_state: dict[str, Any]) -> dict[str, Any]:
+    """Session start identity (email/phone) uses existing candidate write destinations.
+
+    Public intake collects contact on the start page, not as a published field.
+    Mapping Operator Surface is not this path — destinations already exist on
+    ``CANDIDATE_WRITE_BY_QUALIFIED``.
+    """
+    contacts = intake_state.get("contacts")
+    if not isinstance(contacts, dict):
+        return {}
+    out: dict[str, Any] = {}
+    email = str(contacts.get("email") or "").strip()
+    if email:
+        out["recruitment.candidate.contacts.email"] = email
+    phone = str(contacts.get("phone") or "").strip()
+    if phone:
+        out["recruitment.candidate.contacts.phone"] = phone
+    phone_cc = str(contacts.get("phone_country_code") or "").strip()
+    if phone_cc:
+        out["recruitment.candidate.contacts.phone_country_code"] = phone_cc
+    return out
+
+
 async def prepare_public_intake_runtime(
     db: AsyncSession,
     *,
@@ -263,6 +286,7 @@ async def prepare_public_intake_runtime(
 
     mapped_facts = apply_authority_rules_to_sources(flat, validation.accepted_rules)
     normalized_payload: dict[str, Any] = {}
+    merge_canonical_facts(normalized_payload, _contact_identity_canonical_facts(intake_state), overwrite=False)
     merge_canonical_facts(normalized_payload, _presentation_canonical_facts(intake_state), overwrite=False)
     merge_canonical_facts(normalized_payload, mapped_facts, overwrite=True)
 

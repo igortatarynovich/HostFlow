@@ -477,6 +477,7 @@ export default function FormsBuilderPage() {
                 {canPublish && (
                   <button
                     type="button"
+                    data-testid="form-publish"
                     className="btn btn-primary inline-flex items-center gap-1.5"
                     onClick={() => void actOnPublication('publish')}
                     disabled={loading || publicationActing}

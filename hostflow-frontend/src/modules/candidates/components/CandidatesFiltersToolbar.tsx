@@ -174,6 +174,7 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <input
           id="candidates-search"
+          data-testid="candidates-search"
           ref={searchRef}
           className="input min-h-[40px] min-w-0 flex-1 rounded-lg border-slate-200/90 bg-white py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-500/15"
           value={q}

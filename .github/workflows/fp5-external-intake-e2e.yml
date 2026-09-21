@@ -1,0 +1,136 @@
+name: fp5-external-intake-e2e
+
+on:
+  push:
+    paths:
+      - "e2e/forms-publish-fp5-external-submit.ui.spec.ts"
+      - "e2e/helpers/hostflowApi.ts"
+      - "backend/app/api/public/intake.py"
+      - "backend/app/forms_platform/public_submit_bridge.py"
+      - "hostflow-frontend/src/api/http.ts"
+      - "hostflow-frontend/src/pages/public/**"
+      - "hostflow-frontend/src/pages/admin/FormsBuilderPage.tsx"
+      - "playwright.config.ts"
+      - "package.json"
+      - ".github/workflows/fp5-external-intake-e2e.yml"
+  pull_request:
+    paths:
+      - "e2e/forms-publish-fp5-external-submit.ui.spec.ts"
+      - "e2e/helpers/hostflowApi.ts"
+      - "backend/app/api/public/intake.py"
+      - "backend/app/forms_platform/public_submit_bridge.py"
+      - "hostflow-frontend/src/api/http.ts"
+      - "hostflow-frontend/src/pages/public/**"
+      - "hostflow-frontend/src/pages/admin/FormsBuilderPage.tsx"
+      - "playwright.config.ts"
+      - "package.json"
+      - ".github/workflows/fp5-external-intake-e2e.yml"
+  workflow_dispatch:
+
+jobs:
+  fp5-browser-e2e:
+    name: External Intake Acceptance E2E
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pytest-asyncio
+
+      - name: Alembic upgrade
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+        run: alembic -c alembic.ini upgrade heads
+
+      - name: Seed bootstrap users and entity profiles
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          HOSTFLOW_ALLOW_NON_TEST_DB: "1"
+        run: |
+          PYTHONPATH=. python3 backend/scripts/seed_e2e_bootstrap.py
+          PYTHONPATH=. python3 - <<'PY'
+          import asyncio
+          from backend.tests.api.test_intake_forms_settings_p8 import _seed_entity_profiles
+          from backend.tests.conftest import DEFAULT_TENANT_ID
+          asyncio.run(_seed_entity_profiles(DEFAULT_TENANT_ID))
+          PY
+
+      - name: Install Playwright and frontend
+        run: |
+          npm ci
+          npx playwright install chromium --with-deps
+          cd hostflow-frontend
+          npm ci
+
+      - name: Start API server
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          ASYNC_DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          JWT_SECRET: hostflow-dev-secret
+          TENANT_ID: 11111111-1111-1111-1111-111111111111
+        run: |
+          nohup python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 > api-e2e.log 2>&1 &
+          echo $! > api-e2e.pid
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8000/healthz > /dev/null; then
+              echo "API ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to start"
+          cat api-e2e.log || true
+          exit 1
+
+      - name: Start frontend
+        working-directory: hostflow-frontend
+        run: |
+          nohup npm run dev -- --host 127.0.0.1 --port 5173 > ../fe-e2e.log 2>&1 &
+          echo $! > ../fe-e2e.pid
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:5173 > /dev/null; then
+              echo "Frontend ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Frontend failed to start"
+          cat ../fe-e2e.log || true
+          exit 1
+
+      - name: Run FP-5 browser E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_API_BASE_URL: http://127.0.0.1:8000/api/v1
+        run: npm run e2e:fp5
+
+      - name: Stop servers
+        if: always()
+        run: |
+          if [ -f fe-e2e.pid ]; then kill "$(cat fe-e2e.pid)" || true; fi
+          if [ -f api-e2e.pid ]; then kill "$(cat api-e2e.pid)" || true; fi
+          if [ -f api-e2e.log ]; then tail -n 80 api-e2e.log || true; fi
+          if [ -f fe-e2e.log ]; then tail -n 80 fe-e2e.log || true; fi
