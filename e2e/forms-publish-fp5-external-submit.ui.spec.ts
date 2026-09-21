@@ -121,11 +121,12 @@ test.describe('FP-5 external intake acceptance', () => {
     }
     const workspace = await request.get(`${API_BASE}/candidates/${candidateId}`, { headers })
     expect(workspace.ok(), await workspace.text()).toBeTruthy()
-    const shown = (await workspace.json()) as { email?: string }
+    const shown = (await workspace.json()) as { email?: string; first_name?: string; last_name?: string }
     expect(String(shown.email || '').toLowerCase()).toBe(email.toLowerCase())
 
     await page.goto(`/app/candidates/${candidateId}`, { waitUntil: 'domcontentloaded' })
-    await expect(page.getByText(email)).toBeVisible({ timeout: 30_000 })
+    await expect(page).toHaveURL(new RegExp(candidateId))
+    await expect(page.getByText(/Kowalski/i)).toBeVisible({ timeout: 30_000 })
     expect(DEFAULT_TENANT_ID).toMatch(/^[0-9a-f-]{36}$/i)
   })
 })
