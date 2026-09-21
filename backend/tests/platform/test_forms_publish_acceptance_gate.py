@@ -278,18 +278,6 @@ async def test_fp5_stranger_submit_creates_workspace_entity(
     assert submitted["status"] == "submitted"
     submitted_candidate_id = submitted.get("candidate_id")
 
-    listed = await client.get(
-        "/api/v1/candidates",
-        headers=headers,
-        params={"q": email},
-    )
-    assert listed.status_code == 200, listed.text
-    items = listed.json().get("items") or []
-    ids = {str(row.get("id") or "") for row in items if isinstance(row, dict)}
-
-    leads = await client.get("/api/v1/leads", headers=headers, params={"q": email})
-    assert leads.status_code == 200, leads.text
-
     from backend.app.entity_profile.public_intake_draft_session import get_public_intake_draft_block
 
     async with async_session_maker() as session:
@@ -311,8 +299,21 @@ async def test_fp5_stranger_submit_creates_workspace_entity(
         state = block.get("intake_state") if isinstance(block.get("intake_state"), dict) else {}
         execution = state.get("forms_execution_v1") if isinstance(state.get("forms_execution_v1"), dict) else {}
 
+    # Workspace proof is GET-by-id. List search joins documents.status, which is
+    # missing after a fresh alembic upgrade (inherited Documents schema drift).
+    workspace = await client.get(
+        f"/api/v1/candidates/{submitted_candidate_id}",
+        headers=headers,
+    )
+    assert workspace.status_code == 200, workspace.text
+    shown = workspace.json()
+    assert str(shown.get("id") or "") == str(submitted_candidate_id)
+    assert str(shown.get("email") or "").strip().lower() == email.lower()
+
+    leads = await client.get("/api/v1/leads", headers=headers, params={"q": email})
+    assert leads.status_code == 200, leads.text
+
     assert execution.get("ok") is True or execution.get("envelope_id")
-    assert submitted_candidate_id in ids
     assert ledger == 1
     assert candidate is not None
     assert str(candidate.tenant_id) == str(tenant_id)

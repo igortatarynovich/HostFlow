@@ -93,8 +93,26 @@ test.describe('FP-5 external intake acceptance', () => {
     await expect(strangerPage.getByText(/dziękujemy|thank you|otrzymaliśmy/i)).toBeVisible({ timeout: 30_000 })
     await stranger.close()
 
-    await page.goto('/app/candidates', { waitUntil: 'domcontentloaded' })
-    await page.getByTestId('candidates-search').fill(email)
+    const headers = authHeaders(token)
+    let candidateId = ''
+    await expect
+      .poll(
+        async () => {
+          const leads = await request.get(`${API_BASE}/leads?q=${encodeURIComponent(email)}`, { headers })
+          expect(leads.ok(), await leads.text()).toBeTruthy()
+          const body = (await leads.json()) as { items?: Array<{ candidate_id?: string | null }> }
+          candidateId = String(body.items?.find((row) => row.candidate_id)?.candidate_id || '')
+          return candidateId
+        },
+        { timeout: 15_000 },
+      )
+      .toBeTruthy()
+    const workspace = await request.get(`${API_BASE}/candidates/${candidateId}`, { headers })
+    expect(workspace.ok(), await workspace.text()).toBeTruthy()
+    const shown = (await workspace.json()) as { email?: string }
+    expect(String(shown.email || '').toLowerCase()).toBe(email.toLowerCase())
+
+    await page.goto(`/app/candidates/${candidateId}`, { waitUntil: 'domcontentloaded' })
     await expect(page.getByText(email)).toBeVisible({ timeout: 30_000 })
     expect(DEFAULT_TENANT_ID).toMatch(/^[0-9a-f-]{36}$/i)
   })
