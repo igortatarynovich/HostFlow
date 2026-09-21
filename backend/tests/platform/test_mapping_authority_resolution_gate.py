@@ -96,8 +96,8 @@ def test_ma2_queue_names_ma3_successor() -> None:
     text = _QUEUE.read_text(encoding="utf-8")
     current = text.split("## 8. History", 1)[0]
     assert "Mapping Resolution Gate" in text
-    assert "**Active Product** | External Intake program close" in current
-    assert "Active (Product):** External Intake program close" in current
+    assert "**Active Product** | **DONE**" in current
+    assert "Active (Product):** **DONE**" in current
     assert "feat locked" in text
     assert "Active (Product):** **[MA-2](mapping-authority.md)**" not in current
     agents = _AGENTS.read_text(encoding="utf-8")
@@ -115,7 +115,8 @@ def test_ma2_leaves_intake_hiring_hr_queued() -> None:
         assert "not scheduled" in text.lower()
         assert "MA-4" in text
     intake = _INTAKE.read_text(encoding="utf-8")
-    assert "**ACTIVE**" in intake.split("## History", 1)[0]
+    assert "**DONE**" in intake.split("## History", 1)[0]
+    assert "**ACTIVE**" not in intake.split("## History", 1)[0]
     assert "mapping-authority.md" in intake
 
 
