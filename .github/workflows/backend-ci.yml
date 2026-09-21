@@ -116,6 +116,7 @@ jobs:
       fp3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp3 == 'true' }}
       fp4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp4 == 'true' }}
       fp5: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp5 == 'true' }}
+      fp_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp_close == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
@@ -537,6 +538,14 @@ jobs:
               - 'docs/specs/tasks/external-intake-forms-publish.md'
               - 'docs/specs/architecture/forms-publish-contract.md'
               - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'AGENTS.md'
+            fp_close:
+              - 'backend/tests/platform/test_external_intake_program_close.py'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
               - 'AGENTS.md'
 
   guards:
@@ -1413,6 +1422,21 @@ jobs:
           skip-alembic: "0"
           tests: tests/platform/test_forms_publish_operator_gate.py
 
+  fp-close-gate:
+    name: External Intake Program Close
+    needs: changes
+    if: needs.changes.outputs.fp_close == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when External Intake program close gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_external_intake_program_close.py') == ''
+        run: echo "External Intake program close gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_external_intake_program_close.py') != ''
+        with:
+          tests: tests/platform/test_external_intake_program_close.py
+
   fp5-acceptance-gate:
     name: External Intake Acceptance Gate
     needs: changes
@@ -1498,6 +1522,7 @@ jobs:
       - fp3-public-serve-gate
       - fp4-operator-publish-gate
       - fp5-acceptance-gate
+      - fp-close-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed

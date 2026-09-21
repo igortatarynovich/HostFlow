@@ -51,7 +51,7 @@ def test_mapping_close_product_done_no_named_successor() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "Mapping program close recorded" in current or "Mapping program close" in current
-    assert "**Active Product** | External Intake program close" in current
+    assert "**Active Product** | **DONE**" in current
     assert "Product **DONE** with no named successor until amendment" in history
     assert "Active (Product):** Mapping program close" not in current
     mapping = _BRIEF.read_text(encoding="utf-8")
@@ -73,7 +73,8 @@ def test_mapping_close_leaves_intake_hiring_hr_queued() -> None:
         assert "not scheduled" in text.lower()
     intake = _INTAKE.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]
-    assert "**ACTIVE**" in intake_current
+    assert "**DONE**" in intake_current
+    assert "**ACTIVE**" not in intake_current
     assert "FP-1" in intake_current
     queue = _QUEUE.read_text(encoding="utf-8")
     current = queue.split("## 8. History", 1)[0]

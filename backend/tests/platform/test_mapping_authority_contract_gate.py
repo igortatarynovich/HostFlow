@@ -133,7 +133,8 @@ def test_ma1_leaves_intake_hiring_hr_queued() -> None:
         assert "**QUEUED**" in text
         assert "not scheduled" in text.lower()
     intake = _INTAKE.read_text(encoding="utf-8")
-    assert "**ACTIVE**" in intake.split("## History", 1)[0]
+    assert "**DONE**" in intake.split("## History", 1)[0]
+    assert "**ACTIVE**" not in intake.split("## History", 1)[0]
     assert "mapping-authority.md" in intake
 
 

@@ -1,10 +1,10 @@
 """Queue amendment named FP-1; Contract Gate then named FP-2.
 
 History still records the 2026-09-20 FP-1 naming amendment.
-Current Active Product is External Intake program close after External Intake
-Acceptance Gate PASS (feat `feat/forms-publish-fp5-runtime`). Hiring / min HR
-remain queued. Leftover-store deletion, RS-3, embed snippet, and a new form
-architecture stay unauthorized.
+Current Product is DONE after External Intake program close.
+Hiring / min HR remain queued. Leftover-store deletion, RS-3, embed snippet,
+and a new form architecture stay unauthorized. FP-5 PASS is not Release
+Acceptance PASS.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "Queue amendment names FP-1 Active Product" in history
-    assert "**Active Product** | External Intake program close" in current
+    assert "**Active Product** | **DONE**" in current
     assert "feat/forms-publish-fp2-publish-action" in queue
     assert "feat/forms-publish-fp3-public-serve" in current
     assert "feat/forms-publish-fp4-operator-surface" in current
@@ -41,13 +41,14 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     assert "Operator Publish Gate **PASS**" in current
     assert "External Intake Acceptance Gate **PASS**" in current
     assert "Forms Publish Contract Gate **PASS**" in current or "Forms Publish Contract Gate = PASS" in current
-    assert "Active (Product):** External Intake program close" in current
-    assert "**Active Product** | **DONE**" not in current
+    assert "Active (Product):** **DONE**" in current
+    assert "**Active Product** | External Intake program close" not in current
     assert "This stamp does not ship runtime" not in current
     assert "Do not start FP-5" not in current
     intake = _INTAKE.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]
-    assert "**ACTIVE**" in intake_current
+    assert "**DONE**" in intake_current
+    assert "**ACTIVE**" not in intake_current
     assert "FP-1" in intake_current
     assert "FP-2" in intake_current
     assert "FP-3" in intake_current
@@ -65,7 +66,7 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     assert "external-intake-forms-publish.md" in agents
     assert "FP-1" in agents
     assert "FP-2" in agents
-    assert "Product = DONE" not in agents
+    assert "Product = DONE" in agents
     goal = _GOAL.read_text(encoding="utf-8")
     assert "external-intake-forms-publish.md" in goal
     assert "FP-1" in goal
