@@ -26,5 +26,6 @@
 | [documents-platform.md](./documents-platform.md) | Documents Platform E3–E6 resolve: authenticated Hub metadata + Document Link + Hub expiry; `candidate_id` column dropped; tenant bind; closed entity/relation types (`workforce_employee` / `reused_for_hr` and `candidate` / `primary`); no file bytes / signed URL / second Adapter / Hub reminder table |
 | [user-report-intake.md](./user-report-intake.md) | User Report Intake (ADR-040): free text / later attachments; tenant vs elevated inbox; correlation best-effort; no severity SoT; INV-UR-01; runtime STOP without this model |
 | [verified-self-service-signup.md](./verified-self-service-signup.md) | Verified Growth signup (ADR-041): SignupIntent, verification token, registration session, atomic Tenant+trial; not candidate magic_links; runtime STOP without this model |
+| [hiring-stage-writes.md](./hiring-stage-writes.md) | HE-2 hiring-path candidate stage writes: LI-1 existence, `Candidate.stage` occupancy, leftover registries fail closed (422); not portal / handoff / HE-3 |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).

@@ -78,6 +78,7 @@
 - [ ] Forms Platform (C2 identity + C3 Builder + C4 Runtime + C5 Execution + C6 Optimization): см. [`threat-models/forms-platform.md`](threat-models/forms-platform.md) (frozen publication identity; FormDefinition ↔ Draft only; Runtime Model read-only; Execution validates Runtime Model only; production apply-submit resolve→serve→execute; Shared Intake write path; no Builder↔Runtime/Execution import; tenant resolve; submit pin; fail-closed backfill).
 - [ ] Documents Platform (E3–E5 public resolve): см. [`threat-models/documents-platform.md`](threat-models/documents-platform.md) (authenticated Hub metadata + Document Link; tenant bind; closed entity/relation types; no file bytes / second Adapter; `candidate_id` column dropped).
 - [ ] Verified self-service signup (ADR-041): см. [`threat-models/verified-self-service-signup.md`](threat-models/verified-self-service-signup.md) (SignupIntent pre-tenant; token hash; enumeration; concurrent complete; invite vs new tenant; registration session; cutover of `/auth/register`).
+- [ ] Hiring-path candidate stage writes (HE-2): см. [`threat-models/hiring-stage-writes.md`](threat-models/hiring-stage-writes.md) (LI-1 `is_stage_registered` existence; `Candidate.stage` occupancy; unregistered / funnel-local target 422; no new public route; Funnel is not existence SoT).
 
 ---
 
