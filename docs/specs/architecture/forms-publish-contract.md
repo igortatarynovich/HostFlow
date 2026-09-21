@@ -2,7 +2,7 @@
 
 **Status:** **Accepted** (L2 contract — Forms Publish Contract Gate)  
 **Date:** 2026-09-20  
-**Trusted base:** `integration/release-product-a-b` @ `9cc986ce`  
+**Trusted base:** `integration/release-product-a-b` @ `5e2a8f59`  
 **Related:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](forms-public-contract.md) · [`ADR-022`](ADR-022-intake-form-purpose-and-submission-policy-model.md) · [`../tasks/external-intake-forms-publish.md`](../tasks/external-intake-forms-publish.md) · [`../gates/hostflow-v1-release-goal.md`](../gates/hostflow-v1-release-goal.md)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (one owner of this write), **INV-01** (one SoT for the operator question), **INV-16** (contract before a second publish action). Does not rewrite L0. Does not mint a second submit engine, FormTemplate SoT, or P4 / P5.
@@ -11,7 +11,7 @@
 > [`forms-public-contract.md`](forms-public-contract.md) remains the Forms Adapter inventory (`publish` = `commit_publish`).  
 > [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) remains Purpose + Target Profile + Submission Policy. This contract names **what publish is**.  
 > Machine copy: `forms_publish.v1` in `backend/app/reference/forms_publish_contract.py`.  
-> Feat `feat/forms-publish-fp2-publish-action` shipped the authenticated product route. Publish Action Gate **PASS**. Feat `feat/forms-publish-fp3-public-serve` shipped public serve. Public Serve Gate **PASS**. Feat `feat/forms-publish-fp4-operator-surface` shipped the operator surface. Operator Publish Gate **PASS**. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR.
+> Feat `feat/forms-publish-fp2-publish-action` shipped the authenticated product route. Publish Action Gate **PASS**. Feat `feat/forms-publish-fp3-public-serve` shipped public serve. Public Serve Gate **PASS**. Feat `feat/forms-publish-fp4-operator-surface` shipped the operator surface. Operator Publish Gate **PASS**. Feat `feat/forms-publish-fp5-external-submit` is open. External Intake Acceptance Gate **not PASS**. This stamp does not ship runtime.
 
 ---
 
@@ -40,7 +40,7 @@ No second question is this contract. Mapping Authority, Hiring E2E, min HR, Them
 
 Producer: `backend/app/forms_platform/adapter.py` (`commit_publish`).  
 Ledger: `backend/app/models/form_publication_version.py`.  
-This contract forbids a second **write** of the same question. The authenticated product route (FP-2) calls this write. Public serve cutover (FP-3) is **PASS**. Operator Publish Gate **PASS**. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR.
+This contract forbids a second **write** of the same question. The authenticated product route (FP-2) calls this write. Public serve cutover (FP-3) is **PASS**. Operator Publish Gate **PASS**. This stamp opens the external-submission feat (FP-5) and does not ship runtime.
 
 ---
 
@@ -105,7 +105,7 @@ Roles are closed: `write_authority` · `not_this_write` · `leftover` · `consum
 
 | # | Answer |
 |---|--------|
-| 1 | **Owner:** Forms platform (ADR-007) writes publish via Adapter `commit_publish`. Shared Intake consumes submission. Mapping Authority is a later edge (FP-5), not this write. |
+| 1 | **Owner:** Forms platform (ADR-007) writes publish via Adapter `commit_publish`. Shared Intake consumes submission. Mapping Authority is a separate program (RS-3), not this write and not FP-5. |
 | 2 | Not a new capability. Collapses the de facto presentation bump and the orphaned Adapter op into one publish definition. Does not mint a second form stack. |
 | 3 | Existing Adapter: `forms.endpoint_adapter_v1` **Stable** op `publish` = `commit_publish`. No new adapter. |
 | 4 | P4 Themes / P5 Analytics stay locked. FormTemplate SoT stays U-5. No second submit engine. Mapping / Hiring / min HR are other programs. |
@@ -177,9 +177,22 @@ Roles are closed: `write_authority` · `not_this_write` · `leftover` · `consum
 
 ---
 
+## External Intake Acceptance Gate
+
+**not PASS.** PASS when:
+
+1. A stranger without an account opens the **live public URL** produced by the closed FP-4 operator surface.
+2. The stranger fills the published form and submits it.
+3. Production intake **accepts** the submission on existing C6 / public-submit contracts. No second submit engine. No new form architecture.
+4. A real **intake / person / application** appears per those existing contracts.
+5. The later runtime feat proves this path with a **browser E2E through that published URL**, not API composition alone. This open stamp does not ship runtime or that E2E.
+6. Mapping / RS-3 field placement, Hiring E2E, min HR, embed snippet, leftover-store deletion, and P4 / P5 stay out of this slice.
+
+---
+
 ## False close
 
-Reject: bumping `published_version` outside the ledger; a Publish button that writes the draft table; copying a `public_slug` and calling it publish; declaring Builder composition and Entity Profile presentation both “the form”; accepting ADR-022 by rewriting Purpose / Policy / Match Matrix; declaring Publish Action Gate PASS without an authenticated product route that calls `commit_publish`; starting P4 / P5; adding a writer to `TenantLeadForm`; a second submit engine; leftover-store deletion; Hiring E2E / min HR; Foundation ✅; a thirteenth write of this question; a second renderer or second publication state; treating Mapping Operator Surface inherited red as FP-3 or FP-4 scope; shipping an embed snippet / distribution UX in FP-3 or this FP-4 operator surface; inventing a new publish or serve mechanism in FP-4.
+Reject: bumping `published_version` outside the ledger; a Publish button that writes the draft table; copying a `public_slug` and calling it publish; declaring Builder composition and Entity Profile presentation both “the form”; accepting ADR-022 by rewriting Purpose / Policy / Match Matrix; declaring Publish Action Gate PASS without an authenticated product route that calls `commit_publish`; starting P4 / P5; adding a writer to `TenantLeadForm`; a second submit engine; leftover-store deletion; Hiring E2E / min HR; Foundation ✅; a thirteenth write of this question; a second renderer or second publication state; treating Mapping Operator Surface inherited red as FP-3, FP-4, or FP-5 scope; shipping an embed snippet / distribution UX in FP-3, FP-4, or FP-5; inventing a new publish, serve, or submit mechanism; proving FP-5 with API composition instead of the stranger path through the published URL; mixing Mapping / RS-3 into FP-5; declaring External Intake Acceptance Gate PASS in this open stamp.
 
 ---
 
@@ -188,12 +201,13 @@ Reject: bumping `published_version` outside the ledger; a Publish button that wr
 - FP-2 wired the orphaned `commit_publish` to an authenticated product route and retired leftover version bumps.  
 - FP-3 makes public serve consume the frozen snapshot through one Form Runtime path; the presentation leftover is retired to `not_this_write`. Embed is access compatibility, not a second renderer.  
 - FP-4 is the operator surface over these states. It does not create new publication or serve semantics. Embed snippet stays a later product slice.  
-- FP-5 binds RS-2 and consumes Mapping Authority.  
+- FP-5 binds the RS-2 path: stranger through the live public URL into production intake. It does not prove Mapping / RS-3 and does not mint a new form architecture.  
 - ADR-022 Purpose + Policy remain the intake entry axes. Publish does not become a fourth axis.
 
 ---
 
 ## History
+- 2026-09-21: **FP-5 External submission feat opened.** Branch `feat/forms-publish-fp5-external-submit` from `5e2a8f59` ([#384](https://github.com/igortatarynovich/HostFlow/pull/384)). Close path = live public URL → stranger without auth opens it → fills → submit → production intake accepts → real intake/person/application per existing contracts. Browser E2E through that published URL is the later runtime proof, not API composition. External Intake Acceptance Gate **not PASS**. This stamp does not ship runtime. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not a new form architecture. Not P4 / P5.
 - 2026-09-20: **Operator Publish Gate PASS.** Never published → Publish (`commit_publish`) → Live v1 + public URL → Unpublish (`deactivate_endpoint`) → Inactive + URL absent. After each act the operator surface re-reads backend publication authority. UI does not compute live. Embed snippet is a later product slice. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
 - 2026-09-20: **FP-4 Operator Publish Surface feat opened.** Branch `feat/forms-publish-fp4-operator-surface` from `9cc986ce` ([#382](https://github.com/igortatarynovich/HostFlow/pull/382)). Close path = operator opens form → sees current publication state/version → publish or unpublish → sees resulting live state → obtains public URL from product UI. Publish uses closed FP-2 `commit_publish` authority. Live/public URL uses closed FP-3 serve authority. Embed snippet is a later product slice (one serve surface). Operator Publish Gate **not PASS**. This stamp does not ship operator UI. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
 - 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.

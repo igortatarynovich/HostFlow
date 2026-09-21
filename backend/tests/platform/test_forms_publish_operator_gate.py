@@ -155,7 +155,8 @@ def test_fp4_brief_and_named_ci() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     queue_current = queue.split("## 8. History", 1)[0]
     assert "Operator Publish Gate **PASS**" in queue_current
-    assert "feat/forms-publish-fp5" not in queue_current
+    assert "feat/forms-publish-fp5-external-submit" in queue_current
+    assert "External Intake Acceptance Gate **not PASS**" in queue_current
     ci = _CI.read_text(encoding="utf-8")
     assert "Operator Publish Gate" in ci
     assert "test_forms_publish_operator_gate.py" in ci

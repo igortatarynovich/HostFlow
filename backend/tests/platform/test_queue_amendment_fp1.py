@@ -1,9 +1,10 @@
 """Queue amendment named FP-1; Contract Gate then named FP-2.
 
 History still records the 2026-09-20 FP-1 naming amendment.
-Current Active Product is FP-5 (feat locked; Operator Publish Gate PASS)
-after Public Serve Gate PASS. Hiring / min HR remain queued. Leftover-store
-deletion and RS-3 stay unauthorized.
+Current Active Product is FP-5 (feat `feat/forms-publish-fp5-external-submit`
+open; External Intake Acceptance Gate not PASS) after Operator Publish Gate PASS.
+Hiring / min HR remain queued. Leftover-store deletion, RS-3, embed snippet,
+and a new form architecture stay unauthorized. This stamp does not ship runtime.
 """
 
 from __future__ import annotations
@@ -34,14 +35,16 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     assert "feat/forms-publish-fp2-publish-action" in queue
     assert "feat/forms-publish-fp3-public-serve" in current
     assert "feat/forms-publish-fp4-operator-surface" in current
+    assert "feat/forms-publish-fp5-external-submit" in current
     assert "Publish Action Gate **PASS**" in current
     assert "Public Serve Gate **PASS**" in current
     assert "Operator Publish Gate **PASS**" in current
+    assert "External Intake Acceptance Gate **not PASS**" in current
     assert "Forms Publish Contract Gate **PASS**" in current or "Forms Publish Contract Gate = PASS" in current
     assert "Active (Product):** **[FP-5](external-intake-forms-publish.md)**" in current
     assert "**Active Product** | **DONE**" not in current
-    assert "This stamp does not ship operator UI" not in current
-    assert "Do not start FP-5" in current
+    assert "This stamp does not ship runtime" in current
+    assert "Do not start FP-5" not in current
     intake = _INTAKE.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]
     assert "**ACTIVE**" in intake_current
@@ -52,7 +55,10 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     assert "feat/forms-publish-fp2-publish-action" in intake_current
     assert "feat/forms-publish-fp3-public-serve" in intake_current
     assert "feat/forms-publish-fp4-operator-surface" in intake_current
+    assert "feat/forms-publish-fp5-external-submit" in intake_current
     assert "Operator Publish Gate **PASS**" in intake_current
+    assert "External Intake Acceptance Gate **not PASS**" in intake_current
+    assert "This stamp does not ship runtime" in intake_current
     assert "Public Serve Gate **PASS**" in intake_current
     assert "Forms Publish Contract Gate **PASS**" in intake_current
     agents = _AGENTS.read_text(encoding="utf-8")
