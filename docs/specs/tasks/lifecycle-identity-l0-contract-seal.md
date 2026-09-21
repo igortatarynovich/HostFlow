@@ -1,6 +1,6 @@
 # Lifecycle Identity L0 — Contract Seal
 
-**Status:** **PARTIAL** — **LI-1 ✅ PASS** [#300](https://github.com/igortatarynovich/HostFlow/pull/300) (existence guard shipped after CL1 Gate); **LI-2…LI-4 QUEUED** and not scheduled. Recorded as a declared residual in the [unowned work register](../gates/v1-unowned-work-register.md). Consumed by [Hiring E2E](hiring-workflow-e2e.md) HE-2 (LI-1 only)  
+**Status:** **PARTIAL** — **LI-1 ✅ PASS** [#300](https://github.com/igortatarynovich/HostFlow/pull/300) (existence guard shipped after CL1 Gate); HE-2 consumed LI-1 on the hiring path; **LI-2…LI-4 QUEUED** and not scheduled. Recorded as a declared residual in the [unowned work register](../gates/v1-unowned-work-register.md). Consumed by [Hiring E2E](hiring-workflow-e2e.md) HE-2 (LI-1 only)  
 **Phase class:** platform  
 **Branch (docs):** this slice — ADR + L2 + queue linkage  
 **Branch (code):** none until **CL1 Gate**; then `feat/lifecycle-identity-li1-…` for LI-1 only. LI-2+ stay in the Lifecycle ladder  

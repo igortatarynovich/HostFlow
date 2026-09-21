@@ -2,7 +2,7 @@
 
 Nine walk steps. Dual-evidence disposition sealed.
 Admissible production evidence named. Forbidden implementation frozen.
-Feat locked. Not HE-2 runtime. Not RS-7 execution. Not min HR.
+HE-2 may consume stage steps. Not HE-3 collapse. Not RS-7. Not min HR.
 """
 
 from __future__ import annotations
@@ -114,21 +114,24 @@ def test_he1_brief_contract_gate_pass() -> None:
     assert "Do not open HE-1 contract seal" not in current
     assert "feat locked" in current.lower()
     assert "HE-2" in current
+    assert "hiring-stage-authority-consumption.md" in current or "Stage Authority Consumption" in current
     assert "not a new hiring product" in current.lower()
     assert "seed_documents_for_ready_for_handoff" in current
     assert "min HR" in current or "minimal" in current.lower()
 
 
-def test_he1_queue_names_pass_not_he2_runtime() -> None:
+def test_he1_queue_names_pass_not_he3_runtime() -> None:
     text = _QUEUE.read_text(encoding="utf-8")
     current = text.split("## 8. History", 1)[0]
+    history = text.split("## 8. History", 1)[1]
     assert "Hiring Acceptance Contract Gate" in current
     assert "hiring-acceptance-contract.md" in current
     assert "Hiring Acceptance Contract Gate **PASS**" in current
     assert "Hiring Acceptance Contract Gate **not PASS**" not in current
     assert "Do not open HE-1 contract seal" not in current
-    assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in current
+    assert "HE-1" in current
     assert "HE-2" in current
+    assert "Active Product stays **[HE-1]" in history or "Do not start HE-2" in history
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "hiring-workflow-e2e.md" in agents
     assert "hiring-acceptance-contract.md" in agents or "hiring_acceptance" in agents.lower()

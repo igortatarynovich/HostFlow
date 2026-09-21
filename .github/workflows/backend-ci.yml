@@ -119,6 +119,7 @@ jobs:
       fp_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp_close == 'true' }}
       he1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he1 == 'true' }}
       he1_contract: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he1_contract == 'true' }}
+      he2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he2 == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
@@ -564,6 +565,22 @@ jobs:
               - 'docs/specs/tasks/hiring-workflow-e2e.md'
               - 'docs/specs/architecture/hiring-acceptance-contract.md'
               - 'docs/specs/architecture/ADR-016-requirement-evidence-document-separation.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            he2:
+              - 'backend/app/reference/hiring_stage_authority.py'
+              - 'backend/app/reference/hiring_acceptance.py'
+              - 'backend/app/api/v1/candidates/helpers.py'
+              - 'backend/app/services/candidate_doc_pipeline_guard.py'
+              - 'backend/tests/platform/test_stage_authority_consumption_gate.py'
+              - 'backend/tests/api/test_candidate_funnel_stage_write.py'
+              - 'scripts/architecture/check_hiring_stage_authority_boundary.py'
+              - 'docs/specs/architecture/hiring-stage-authority-consumption.md'
+              - 'docs/specs/architecture/hiring-acceptance-contract.md'
+              - 'docs/specs/architecture/ADR-037-lifecycle-identity-canon.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
               - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
               - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
               - 'docs/specs/gates/hostflow-v1-release-goal.md'
@@ -1488,6 +1505,21 @@ jobs:
         with:
           tests: tests/platform/test_hiring_acceptance_contract_gate.py
 
+  he2-stage-authority-gate:
+    name: Stage Authority Consumption Gate
+    needs: changes
+    if: needs.changes.outputs.he2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Stage Authority Consumption gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_stage_authority_consumption_gate.py') == ''
+        run: echo "Stage Authority Consumption gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_stage_authority_consumption_gate.py') != ''
+        with:
+          tests: tests/platform/test_stage_authority_consumption_gate.py tests/api/test_candidate_funnel_stage_write.py
+
   fp5-acceptance-gate:
     name: External Intake Acceptance Gate
     needs: changes
@@ -1575,6 +1607,8 @@ jobs:
       - fp5-acceptance-gate
       - fp-close-gate
       - he1-amendment-gate
+      - he1-contract-gate
+      - he2-stage-authority-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed
