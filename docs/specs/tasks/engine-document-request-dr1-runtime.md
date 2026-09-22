@@ -4,7 +4,7 @@
 **Phase class:** platform  
 **Branch (docs):** `docs/queue-post-overlay-amendment`  
 **Branch (code):** `feat/engine-document-request-dr1-runtime`  
-**Parents:** [DR1-contract](engine-document-request-dr1-contract.md) · [CL7 Engine evaluation](entity-field-composition-cl7-engine-eval.md) · [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md) · [Documents Platform E7](documents-platform-e7-document-requests.md) · [Platform Reference Identity SoT](platform-reference-identity-sot.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
+**Parents:** [DR1-contract](engine-document-request-dr1-contract.md) · [CL7 Engine evaluation](entity-field-composition-cl7-engine-eval.md) · [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md) · [Documents Platform E7](documents-platform-e7-document-requests.md) · [Platform Reference Identity SoT](platform-reference-identity-sot.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [trusted-base reproduction 2026-08-31](../gates/dr1-runtime-trusted-base-repro.md)
 
 > DR1-runtime is the **write** half of Engine → Hub outstanding ask. DR1-contract already projects CL7 evaluation to `engine_to_hub_outstanding_ask.v1` rows. This slice **persists** those rows onto Hub (`documents.hub_adapter_v1`) so evaluation consumers may run. **Not** CL8. **Not** Engine v2. **Not** E8-bind / E8-eval. **Not** a Hub request table. **Not** Catalog `document.requested`. **Not** mass generation. **Not** Overlay SoT. Overlay is an input to evaluate; this producer writes asks.
 
@@ -89,6 +89,7 @@ Unlocks: later Product via **queue amendment** — named **E8-bind** after this 
 
 ## History
 
+- 2026-08-31: Trusted-base CI job is red; GitHub logs for run #326 are gone. Local reproduction of the same pytest target fails 1/10 — see [dr1-runtime-trusted-base-repro.md](../gates/dr1-runtime-trusted-base-repro.md). Owning defect: [dr1-runtime-alias-satisfaction-defect.md](dr1-runtime-alias-satisfaction-defect.md). Not a reopen of this slice. Not Launch-ops.
 - 2026-08-25: E8 Required-Doc Evaluation Gate PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product = **none this amendment**. Not OCR auto-start. Not CL8.
 - 2026-08-25: Queue amendment after E8-bind Gate PASS names **E8-eval** as Active Product (brief; feat locked). Not OCR auto-start. Not CL8.
 - 2026-08-25: Queue amendment after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. No named Product successor. E8-eval unlocked (not scheduled).
