@@ -497,19 +497,70 @@ class TransferPolicyResolver:
             readiness_ok = True
 
         package_ready = bool(pkg.get("ready")) and not required_confirmations
-        transfer_allowed = (
-            handoff_allowed
-            and readiness_ok
-            and docs_ready
-            and bool(pkg.get("ready"))
-            and not required_confirmations
-            and ops_ready
+
+        from backend.app.reference.hiring_eligibility_composition import (
+            compose_hiring_eligibility,
+            neutral_conjuncts,
         )
+
+        rpm_required = {str(code).strip().lower() for code in required_documents if str(code).strip()}
+        rpm_unmet = {
+            str(code).strip().lower()
+            for code in (*missing_documents, *pending_verification)
+            if str(code).strip()
+        } & rpm_required
+        conjuncts = neutral_conjuncts()
+        if not (handoff_allowed and readiness_ok):
+            conjuncts["workforce_packs"] = (False, "Workforce eligibility blocks transfer")
+        if not package_ready:
+            package_message = "Recruitment dossier is not ready for transfer"
+            if required_confirmations:
+                key = str(required_confirmations[0].get("block_key") or "").strip()
+                if key:
+                    package_message = f"Recruiter must confirm reviewed block: {key}"
+            elif pkg.get("blocking_blocks"):
+                block_key = str((pkg.get("blocking_blocks") or [""])[0] or "").strip()
+                if block_key:
+                    package_message = f"Dossier block incomplete: {block_key}"
+            conjuncts["package_readiness"] = (False, package_message)
+        if missing_data_fields:
+            first_field = missing_data_fields[0] if isinstance(missing_data_fields[0], dict) else {}
+            label = str(first_field.get("label") or first_field.get("field_code") or "field")
+            conjuncts["field_requirements"] = (False, f"Missing required data: {label}")
+        if not ops_ready:
+            ops_message = "An operational requirement is still open"
+            if ops_blockers and isinstance(ops_blockers[0], dict):
+                ops_message = str(ops_blockers[0].get("message") or ops_message)
+            conjuncts["operational_requirements"] = (False, ops_message)
+        eligibility_decision = compose_hiring_eligibility(
+            rpm_required=rpm_required,
+            rpm_unmet=rpm_unmet,
+            conjuncts=conjuncts,
+        )
+        source_layers.add("hiring_eligibility_composition")
+        transfer_allowed = eligibility_decision.allowed
         handoff_create_allowed = transfer_allowed and bool(destinations_allowed)
+        handoff_refusal_reason = eligibility_decision.refusal_reason
+        if eligibility_decision.allowed and not destinations_allowed:
+            handoff_refusal_reason = (
+                "No handoff destination enabled (handoff rules + tenant link)"
+            )
 
         return {
             "candidate_id": str(candidate_id),
             "policy_version": POLICY_VERSION,
+            "eligibility_contract": "hiring_eligibility_composition.v1",
+            "eligibility_decision": {
+                "allowed": eligibility_decision.allowed,
+                "refusal_reason": eligibility_decision.refusal_reason,
+                "requirement_conjunct": {
+                    "source": eligibility_decision.requirement_source,
+                    "api": "r5_required_set",
+                    "unmet": list(eligibility_decision.requirement_unmet),
+                },
+                "ignored_authorities": list(eligibility_decision.ignored_authorities),
+            },
+            "handoff_refusal_reason": handoff_refusal_reason,
             "transfer_allowed": transfer_allowed,
             "handoff_create_allowed": handoff_create_allowed,
             "destinations_allowed": destinations_allowed,
@@ -571,9 +622,15 @@ class TransferPolicyResolver:
         allowed = report.get("handoff_create_allowed") if require_destination else report.get("transfer_allowed")
         if allowed:
             return {}
+        decision = report.get("eligibility_decision") or {}
+        if require_destination:
+            message = report.get("handoff_refusal_reason") or decision.get("refusal_reason")
+        else:
+            message = decision.get("refusal_reason")
         return {
             "code": "transfer_blocked",
-            "message": "Transfer is blocked by transfer policy",
+            "message": message or "Transfer is blocked by transfer policy",
+            "refusal_reason": message or "Transfer is blocked by transfer policy",
             "policy_version": report.get("policy_version"),
             "blocking_reasons": report.get("blocking_reasons") or [],
             "missing_types": sorted(

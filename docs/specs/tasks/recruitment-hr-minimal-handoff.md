@@ -1,6 +1,6 @@
 # Minimal Recruitment → HR handoff
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [HE-1](hiring-workflow-e2e.md)
+**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [HE-3](hiring-workflow-e2e.md)
 **Phase class:** platform
 **Branch (docs):** `docs/v1-blocker-briefs`
 **Branch (code):** none — later slices `feat/min-hr-handoff-hhN-…`
@@ -10,7 +10,7 @@
 > v1 blocker 5: **hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy.**
 > Full HR operations (Kadry, payroll, extended lifecycle) stay **later**.
 > **Not** Hiring E2E (that is [the predecessor](hiring-workflow-e2e.md)). **Not** a Documents phase. **Not** an HR product build-out. **Not** D10.
-> Opening this brief does **not** schedule it. Hiring E2E is Active Product ([HE-1](hiring-workflow-e2e.md); brief; feat locked). Handoff stays behind Hiring close. MA-4 Cutover Gate PASS. Leftover-store deletion is not this program.
+> Opening this brief does **not** schedule it. Hiring E2E is Active Product ([HE-3](hiring-workflow-e2e.md); Eligibility Composition Gate **PASS**). Handoff stays behind Hiring close. MA-4 Cutover Gate PASS. Leftover-store deletion is not this program.
 
 ---
 
