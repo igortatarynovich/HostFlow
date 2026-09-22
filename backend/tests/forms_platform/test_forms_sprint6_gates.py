@@ -19,14 +19,13 @@ def _run_alembic(*args: str) -> subprocess.CompletedProcess[str]:
         val = env.get(key)
         if val and "@db:" in val:
             env[key] = val.replace("@db:", "@127.0.0.1:")
-    alembic = None
-    for rel in (".venv312/bin/alembic", ".venv/bin/alembic"):
-        cand = _REPO_ROOT / rel
-        if cand.is_file():
-            alembic = str(cand)
-            break
+    from backend.tests.test_support.repo_paths import alembic_executable
+
+    alembic = alembic_executable()
     if alembic is None:
-        alembic = "alembic"
+        import pytest
+
+        pytest.skip("alembic executable not found")
     return subprocess.run(
         [alembic, "-c", str(_BACKEND_ROOT / "alembic.ini"), *args],
         cwd=str(_BACKEND_ROOT),
@@ -65,7 +64,12 @@ def test_forms_sprint6_alembic_single_head() -> None:
         if line.strip() and not line.startswith("INFO")
     ]
     assert len(heads) == 1, result.stdout
-    assert "202607180009_forms_s6" in result.stdout
+
+    # The Sprint 6 revision must stay reachable in the graph; it stops being the
+    # head as soon as any later migration lands, so head identity is not the property.
+    history = _run_alembic("history")
+    assert history.returncode == 0, history.stderr + history.stdout
+    assert "202607180009_forms_s6" in history.stdout
 
 
 def test_forms_sprint6_alembic_roundtrip() -> None:

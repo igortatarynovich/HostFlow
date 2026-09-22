@@ -1,9 +1,6 @@
 """H1: funnel type schema contracts (employee + recruitment types)."""
 
 from __future__ import annotations
-
-from pathlib import Path
-
 import pytest
 
 from backend.app.constants.funnel_types import (
@@ -14,6 +11,7 @@ from backend.app.constants.funnel_types import (
     module_key_for_funnel_type,
     validate_funnel_type,
 )
+from backend.tests.test_support.repo_paths import read_repo_text
 
 
 def test_funnel_types_include_employee_without_changing_recruitment_set() -> None:
@@ -40,21 +38,21 @@ def test_validate_funnel_type_rejects_invalid() -> None:
 
 
 def test_funnels_api_pydantic_allows_employee_type_in_schema() -> None:
-    source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
+    source = read_repo_text("backend/app/api/v1/funnels.py")
     assert "FUNNEL_TYPE_PATTERN" in source
     assert "pattern=FUNNEL_TYPE_PATTERN" in source
     assert "is_hr_employee_funnel_type" in source
 
 
 def test_funnels_api_recruitment_create_routes_employee_to_hr_module() -> None:
-    source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
+    source = read_repo_text("backend/app/api/v1/funnels.py")
     assert "is_hr_employee_funnel_type(payload.type)" in source
     assert "module_key=HR_MODULE_KEY" in source
     assert "Recruitment funnels cannot use type=employee" in source
 
 
 def test_hr_employee_funnel_resolver_module_is_hr() -> None:
-    source = Path("backend/app/services/hr_employee_funnel_resolver.py").read_text(encoding="utf-8")
+    source = read_repo_text("backend/app/services/hr_employee_funnel_resolver.py")
     assert "async def resolve_hr_employee_funnel" in source
     assert "HR_MODULE_KEY" in source
     assert "HR_EMPLOYEE_FUNNEL_TYPE" in source
