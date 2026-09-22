@@ -98,7 +98,7 @@ Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Autom
 
 ## References
 
-[`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) · [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) · [`ADR-008`](ADR-008-job-publishing-and-distribution.md) · [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md)
+[`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) · [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) · [`ADR-008`](ADR-008-job-publishing-and-distribution.md) · [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md) · операторский продукт: [`forms-operator-product-contract.md`](forms-operator-product-contract.md) · приёмка: [`../gates/forms-operator-product-acceptance.md`](../gates/forms-operator-product-acceptance.md)
 
 ## История
 
@@ -119,3 +119,4 @@ Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Autom
 - 2026-08-14: C1+C2 merged; Product Track → C3 Builder Runtime ([`../tasks/forms-platform-c3-builder-runtime.md`](../tasks/forms-platform-c3-builder-runtime.md)); P3 Publish UI / P4 / P5 remain locked.
 - 2026-08-13: Product Track → Phase C C1 contract seal ([`../tasks/forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md)); P3–P5 remain locked.  
 - 2026-08-13: Next after C1 = C2 Runtime Contract ([`../tasks/forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md)); Builder locked until C2 feat.
+- 2026-09-22: Операторский продукт вынесен в [`forms-operator-product-contract.md`](forms-operator-product-contract.md). Приёмка [`../gates/forms-operator-product-acceptance.md`](../gates/forms-operator-product-acceptance.md) — **OPEN**. ADR-007, Public Contract и Field Catalog не менялись.

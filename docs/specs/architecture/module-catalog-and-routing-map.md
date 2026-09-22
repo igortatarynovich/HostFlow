@@ -231,6 +231,7 @@
 - [ ] **Advanced** (платно / addon): условные поля, маппинг, автоматизации, e-sign/consent tracking, бренд, мультиязычность, expiry, порталы.  
 - [ ] Entitlements / биллинг Advanced отдельно от пяти модулей ADR-004 (флаг вида `forms_advanced` или эквивалент — по продукту).  
 - [ ] Документация потребителей: [`../../forms/module-scope.md`](../../forms/module-scope.md) + ссылки из scope HR/Fleet/Services/Finance.
+- Операторский продукт и замер реализации (не второй движок публикации): [`forms-operator-product-contract.md`](forms-operator-product-contract.md) · [`../gates/forms-operator-product-acceptance.md`](../gates/forms-operator-product-acceptance.md).
 
 ---
 

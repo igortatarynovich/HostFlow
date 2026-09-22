@@ -13,6 +13,8 @@
 >
 > **Amended 2026-08-28 (U-2 decision):** accepting [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) *is* in FP-1 scope. v1 does not ship intake acceptance over a `Proposed` contract whose backend already runs.
 > Opening this brief does **not** schedule it. Mapping Resolution Gate is PASS; Active Product is MA-3 (feat locked). Intake stays behind Mapping close. The queue’s Active Product is [MA-3](mapping-authority.md).
+>
+> Операторский продукт шире FP-1…FP-5 (бренд, embed, Responses, consent UI, откат версии). Его контракт и замер — [Forms Operator Product Contract](../architecture/forms-operator-product-contract.md) и [Forms Operator Product Acceptance](../gates/forms-operator-product-acceptance.md) (**OPEN**). Они не планируют этот brief и не подменяют `commit_publish`.
 
 ---
 

@@ -38,12 +38,15 @@ Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — 
 **Communications:** [`Intake Domain Separation & Communication Context V1`](../specs/tasks/intake-domain-separation-communication-context-v1.md) (**READY**) · Stage 1 audit [`ACTIVE`](../specs/architecture/intake-communication-context-audit-v1.md).  
 **Forms P3–P5** remain **LOCKED**.
 
+Операторский продукт (создание, бренд, embed, ответы, согласие) задан отдельно от FP и пока не принят: [`../specs/architecture/forms-operator-product-contract.md`](../specs/architecture/forms-operator-product-contract.md) · gate [`../specs/gates/forms-operator-product-acceptance.md`](../specs/gates/forms-operator-product-acceptance.md) (**OPEN**, 2026-09-22).
+
 Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 
 Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md) · Forms E2E `backend/tests/forms_platform/test_forms_sprint1_contract.py`.
 
 ## История
 
+- 2026-09-22: Operator product contract + acceptance gate **OPEN** — [`../specs/architecture/forms-operator-product-contract.md`](../specs/architecture/forms-operator-product-contract.md).
 - 2026-05: платформенная capability.  
 - 2026-07-18: Core Platform Module + Endpoint spine.  
 - 2026-07-18: Forms Sprint 1 gated on Epic P; Capability Contract sequence.  
