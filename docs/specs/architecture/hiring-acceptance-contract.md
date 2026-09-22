@@ -182,13 +182,14 @@ Reject: a new Hiring Product; sealing the walk while leaving `candidate_evidence
 
 - HE-2 consumes LI-1 on every hiring-path existence reader and states the transition-order rule — [hiring-stage-authority-consumption.md](hiring-stage-authority-consumption.md) (**PASS**).  
 - HE-3 composes one eligibility decision with one operator-readable reason; the requirement conjunct is RPM — [hiring-eligibility-composition.md](hiring-eligibility-composition.md) (**PASS**).  
-- HE-4 walks RS-7 on an RS-1 tenant with no inadmissible seeding.  
+- HE-4 walks RS-7 on an RS-1 tenant with no inadmissible seeding. Feat `feat/hiring-e2e-he4-acceptance-walk` is open. Hiring E2E Acceptance Gate is **not PASS**. This stamp does not execute RS-7.  
 - Min HR stays queued until Hiring E2E program close.
 
 ---
 
 ## History
 
+- 2026-09-22: **HE-4 Acceptance walk feat opened.** Active Product → **HE-4**. Hiring E2E Acceptance Gate **not PASS**. RS-7 is not executed. min HR remains queued. Not a change to this acceptance contract.
 - 2026-09-22: Eligibility Composition Gate **PASS**. Eligibility step consumes `hiring_eligibility_composition.v1`. Requirement conjunct = RPM. Active Product → **HE-3**. HE-4 feat locked. min HR remains queued.
 - 2026-09-21: Stage Authority Consumption Gate **PASS**. Hiring-path existence consumes LI-1. Occupancy stays `Candidate.stage`. Transition-order rule is production. Active Product → **HE-2**. HE-3 feat locked. min HR remains queued.
 - 2026-09-21: Accepted as HE-1 Acceptance contract. Nine-step walk frozen. Dual-evidence disposition = `candidate_evidence_binds_document_link`. Named CI + boundary. Feat locked for HE-2. Active Product stays **HE-1**. min HR remains queued.

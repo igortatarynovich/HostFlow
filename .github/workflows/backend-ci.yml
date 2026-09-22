@@ -121,6 +121,7 @@ jobs:
       he1_contract: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he1_contract == 'true' }}
       he2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he2 == 'true' }}
       he3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he3 == 'true' }}
+      he4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he4 == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
@@ -600,6 +601,17 @@ jobs:
               - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
               - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
               - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            he4:
+              - 'backend/tests/platform/test_queue_amendment_he4.py'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'docs/specs/architecture/platform-completion-roadmap.md'
+              - 'docs/specs/architecture/hiring-eligibility-composition.md'
+              - 'docs/specs/architecture/hiring-acceptance-contract.md'
+              - 'docs/specs/architecture/hiring-stage-authority-consumption.md'
               - 'AGENTS.md'
 
   guards:
@@ -1550,6 +1562,21 @@ jobs:
         if: hashFiles('backend/tests/platform/test_eligibility_composition_gate.py') != ''
         with:
           tests: tests/platform/test_eligibility_composition_gate.py
+
+  he4-amendment-gate:
+    name: Queue Amendment HE-4
+    needs: changes
+    if: needs.changes.outputs.he4 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when HE-4 queue amendment gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_queue_amendment_he4.py') == ''
+        run: echo "HE-4 queue amendment gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_queue_amendment_he4.py') != ''
+        with:
+          tests: tests/platform/test_queue_amendment_he4.py
 
   fp5-acceptance-gate:
     name: External Intake Acceptance Gate
