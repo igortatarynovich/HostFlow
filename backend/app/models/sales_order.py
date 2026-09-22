@@ -74,6 +74,8 @@ class SalesOrder(Base):
     invoice_right_policy: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     billing_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     commercial_snapshot: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONType, nullable=True)
+    commercial_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    commercial_versions: Mapped[Optional[list[Any]]] = mapped_column(JSONType, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=now_utc, server_default=text("CURRENT_TIMESTAMP")
     )
