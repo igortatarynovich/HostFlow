@@ -71,7 +71,8 @@ def test_he2_contract_consumes_li1_and_he1() -> None:
     assert step_by_code["stage_occupancy"].authority_role == "authority"
     assert step_by_code["stage_transition"].authority_role == "authority"
     assert step_by_code["stage_transition"].later_slice == "none"
-    assert step_by_code["eligibility_decision"].authority_role == "compose_later"
+    assert step_by_code["eligibility_decision"].authority_role == "consume"
+    assert step_by_code["eligibility_decision"].later_slice == "none"
     assert len(TRANSITION_ORDER) == len(set(TRANSITION_ORDER))
     assert all(hiring_stage_exists(key) for key in TRANSITION_ORDER)
 
@@ -149,12 +150,12 @@ def test_he2_queue_names_he2_active_he3_locked() -> None:
     current = text.split("## 8. History", 1)[0]
     history = text.split("## 8. History", 1)[1]
     assert "Stage Authority Consumption Gate **PASS**" in current
-    assert "**Active Product** | **[HE-2](hiring-workflow-e2e.md)**" in current or (
-        "**Active Product** | **[HE-2]" in current
+    assert "Stage Authority Consumption Gate PASS" in history
+    assert "**Active Product** | **[HE-3](hiring-workflow-e2e.md)**" in current or (
+        "**Active Product** | **[HE-3]" in current
     )
-    assert "Active (Product):** **[HE-2](hiring-workflow-e2e.md)**" in current
     assert "Hiring Acceptance Contract Gate **PASS**" in current
-    assert "Do not start HE-3" in current or "HE-3 feat locked" in current.lower()
+    assert "Do not start HE-3" in history
     assert "Active Product stays **[HE-1]" in history or "Do not start HE-2" in history
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "hiring-workflow-e2e.md" in agents

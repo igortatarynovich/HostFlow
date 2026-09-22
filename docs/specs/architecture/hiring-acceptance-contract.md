@@ -3,7 +3,7 @@
 **Status:** **Accepted** (L2 contract — Hiring Acceptance Contract Gate)  
 **Date:** 2026-09-21  
 **Trusted base:** `integration/release-product-a-b` @ `d8d619f1`  
-**Related:** [`../tasks/hiring-workflow-e2e.md`](../tasks/hiring-workflow-e2e.md) · [`hiring-stage-authority-consumption.md`](hiring-stage-authority-consumption.md) · [`ADR-016`](ADR-016-requirement-evidence-document-separation.md) · [`ADR-037`](ADR-037-lifecycle-identity-canon.md) · [`requirement-policy-authority.md`](requirement-policy-authority.md) · [`ready-for-employment-contract.md`](ready-for-employment-contract.md) · [`../tasks/lifecycle-identity-li1-existence-guard.md`](../tasks/lifecycle-identity-li1-existence-guard.md) · [`../tasks/documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) · [`../journeys/release-readiness-acceptance-suite.md`](../journeys/release-readiness-acceptance-suite.md) (RS-7)
+**Related:** [`../tasks/hiring-workflow-e2e.md`](../tasks/hiring-workflow-e2e.md) · [`hiring-eligibility-composition.md`](hiring-eligibility-composition.md) · [`hiring-stage-authority-consumption.md`](hiring-stage-authority-consumption.md) · [`ADR-016`](ADR-016-requirement-evidence-document-separation.md) · [`ADR-037`](ADR-037-lifecycle-identity-canon.md) · [`requirement-policy-authority.md`](requirement-policy-authority.md) · [`ready-for-employment-contract.md`](ready-for-employment-contract.md) · [`../tasks/lifecycle-identity-li1-existence-guard.md`](../tasks/lifecycle-identity-li1-existence-guard.md) · [`../tasks/documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) · [`../journeys/release-readiness-acceptance-suite.md`](../journeys/release-readiness-acceptance-suite.md) (RS-7)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (owners stay on existing capabilities), **INV-01** (one SoT per walk step), **INV-16** (contract before HE-2 consumption). Does not rewrite L0. Does not mint a Hiring Product, a second stage registry, or a hiring-owned eligibility rule set.
 
@@ -35,7 +35,7 @@ The four-phase walk is not four authorities. Each phase splits into the question
 | 5 | **Document request** | requirements/docs | What outstanding ask exists? | Hub outstanding ask (E7 / DR1) | **authority** | no hiring request table |
 | 6 | **Document instance** | requirements/docs | Does a document exist, and is it valid? | Document Hub + Document Link (E4) + expiry (E6) | **authority** | not `candidate_id`; not CE as a file store |
 | 7 | **Requirement satisfaction** | requirements/docs | Is requirement R satisfied? | Candidate Evidence **bound to** Document Link instance(s) ([ADR-016](ADR-016-requirement-evidence-document-separation.md)) | **authority** | none — disposition sealed here |
-| 8 | **Eligibility** | eligibility | May this candidate transfer, and why not if refused? | Requirement conjunct = RPM result; composed decision = HE-3 | **compose_later** | HE-3 collapses ten leftover answerers to one readable reason |
+| 8 | **Eligibility** | eligibility | May this candidate transfer, and why not if refused? | [HE-3 composer](hiring-eligibility-composition.md) consuming RPM | **consume** | Eligibility Composition Gate **PASS** — one refusal; requirement conjunct = RPM |
 | 9 | **Transfer complete** | transfer | Is the Recruitment hire complete? | Recruitment emit of [`ready_for_employment.v1`](ready-for-employment-contract.md) | **authority** | HE-4 proves the walk; min HR (HH) is **not this walk** |
 
 Roles are closed: `authority` · `consume` · `leftover` · `compose_later` · `not_this_walk`.
@@ -181,7 +181,7 @@ Reject: a new Hiring Product; sealing the walk while leaving `candidate_evidence
 ## Consequences
 
 - HE-2 consumes LI-1 on every hiring-path existence reader and states the transition-order rule — [hiring-stage-authority-consumption.md](hiring-stage-authority-consumption.md) (**PASS**).  
-- HE-3 composes one eligibility decision with one operator-readable reason; the requirement conjunct is RPM.  
+- HE-3 composes one eligibility decision with one operator-readable reason; the requirement conjunct is RPM — [hiring-eligibility-composition.md](hiring-eligibility-composition.md) (**PASS**).  
 - HE-4 walks RS-7 on an RS-1 tenant with no inadmissible seeding.  
 - Min HR stays queued until Hiring E2E program close.
 
@@ -189,5 +189,6 @@ Reject: a new Hiring Product; sealing the walk while leaving `candidate_evidence
 
 ## History
 
+- 2026-09-22: Eligibility Composition Gate **PASS**. Eligibility step consumes `hiring_eligibility_composition.v1`. Requirement conjunct = RPM. Active Product → **HE-3**. HE-4 feat locked. min HR remains queued.
 - 2026-09-21: Stage Authority Consumption Gate **PASS**. Hiring-path existence consumes LI-1. Occupancy stays `Candidate.stage`. Transition-order rule is production. Active Product → **HE-2**. HE-3 feat locked. min HR remains queued.
 - 2026-09-21: Accepted as HE-1 Acceptance contract. Nine-step walk frozen. Dual-evidence disposition = `candidate_evidence_binds_document_link`. Named CI + boundary. Feat locked for HE-2. Active Product stays **HE-1**. min HR remains queued.
