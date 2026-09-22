@@ -18,8 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
 from backend.app.models.candidate import Candidate
-from backend.app.constants.stages import LABELS, TERMINAL_STATUSES, code_for_label
+from backend.app.constants.stages import TERMINAL_STATUSES
 from backend.app.constants.stages_adapter import PIPELINE_SEQUENCE
+from backend.app.reference.hiring_stage_authority import hiring_stage_exists, normalize_hiring_stage_key
 from backend.app.services.hiring_pipeline_gates import (
     HiringPipelineGates,
     contact_attempt_gate_applies,
@@ -41,25 +42,9 @@ _STAGE_DOC_CANONICAL_ALIASES: Dict[str, str] = {
     "interview": "contacted",
 }
 
-# Keep in sync with candidates/helpers._STAGE_CODE_ALIASES (avoid importing candidates.* → circular).
-_HELPERS_STAGE_ALIASES: Dict[str, str] = {
-    "planning_arrival": "trip_plan",
-    "plan_arrival": "trip_plan",
-    "planning-trip": "trip_plan",
-}
-
 
 def _normalize_stage_to_code_local(value: Optional[str]) -> Optional[str]:
-    if not value:
-        return None
-    v = value.strip()
-    vl = v.lower()
-    alias = _HELPERS_STAGE_ALIASES.get(vl)
-    if alias:
-        return alias
-    if vl in LABELS:
-        return vl
-    return code_for_label(v) or code_for_label(vl)
+    return normalize_hiring_stage_key(value)
 
 
 def _norm_stage_token(raw: Optional[str]) -> str:
@@ -68,8 +53,12 @@ def _norm_stage_token(raw: Optional[str]) -> str:
     s = str(raw).strip()
     if not s:
         return ""
-    code = _normalize_stage_to_code_local(s) or s.lower()
-    return _STAGE_DOC_CANONICAL_ALIASES.get(code, code)
+    code = _normalize_stage_to_code_local(s)
+    if code:
+        return _STAGE_DOC_CANONICAL_ALIASES.get(code, code)
+    lower = s.lower()
+    aliased = _STAGE_DOC_CANONICAL_ALIASES.get(lower, lower)
+    return aliased if hiring_stage_exists(aliased) else lower
 
 
 def _pipeline_index(code: str) -> int:

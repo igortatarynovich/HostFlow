@@ -153,7 +153,7 @@ Each carries the sentence a customer is told, because that is what the closing r
 |-----|-------|-------|--------------|
 | [ADR-012](../architecture/ADR-012-activity-notification-operating-layer.md) Activity & Notification layer | Phases 1–4 not started; parallel task tables remain | Platform | Declared residual |
 | [ADR-019](../architecture/ADR-019-automation-capability-entitlement-control-plane.md) Reaction Orchestrator | Target architecture; scattered `automation_rules` | Architecture + Platform | Already declared later in the Release Goal |
-| [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md) Lifecycle Identity | Canon sealed; LI-1 ✅ merged; **LI-2…LI-4 queued** | Product Architecture | Declared residual; HE-2 consumes LI-1 only |
+| [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md) Lifecycle Identity | Canon sealed; LI-1 ✅ merged; HE-2 consumed LI-1 on the hiring path; **LI-2…LI-4 queued** | Product Architecture | Declared residual; HE-3 does not reopen LI-2 |
 | [ADR-038](../architecture/ADR-038-shell-observability-diagnostics.md) Shell Observability / Collect diagnostics | Accepted; runtime not started | Platform / Shell | Declared residual — overlaps OL-4 signal work |
 | [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) Unified Resource List Shell | Target model; lists still diverge (ListWorkspace unscheduled) | Platform UI | Declared residual |
 | [ADR-016](../architecture/ADR-016-requirement-evidence-document-separation.md) Requirement / Evidence / Document | Accepted; P0 phased; dual evidence sealed on the hiring path as `candidate_evidence_binds_document_link` | Platform | Consumed by [HE-1](../architecture/hiring-acceptance-contract.md) |

@@ -91,6 +91,8 @@ Forms Platform C2+C3 (frozen publication Contract Identity; Builder FormDefiniti
 
 Documents Platform E3–E5 (authenticated Hub metadata resolve via Document Link, not file download; `candidate_id` column dropped): [`threat-models/documents-platform.md`](threat-models/documents-platform.md). Uploads / MIME / storage ACL remain [`threat-models/document-uploads.md`](threat-models/document-uploads.md).
 
+Hiring-path candidate stage writes (HE-2; LI-1 existence, `Candidate.stage` occupancy, leftover registries fail closed): [`threat-models/hiring-stage-writes.md`](threat-models/hiring-stage-writes.md). Not portal, handoff, or HE-3.
+
 ---
 
 ## 2. Классификация данных (Data Classification)

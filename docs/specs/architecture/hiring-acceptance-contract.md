@@ -3,7 +3,7 @@
 **Status:** **Accepted** (L2 contract — Hiring Acceptance Contract Gate)  
 **Date:** 2026-09-21  
 **Trusted base:** `integration/release-product-a-b` @ `d8d619f1`  
-**Related:** [`../tasks/hiring-workflow-e2e.md`](../tasks/hiring-workflow-e2e.md) · [`ADR-016`](ADR-016-requirement-evidence-document-separation.md) · [`ADR-037`](ADR-037-lifecycle-identity-canon.md) · [`requirement-policy-authority.md`](requirement-policy-authority.md) · [`ready-for-employment-contract.md`](ready-for-employment-contract.md) · [`../tasks/lifecycle-identity-li1-existence-guard.md`](../tasks/lifecycle-identity-li1-existence-guard.md) · [`../tasks/documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) · [`../journeys/release-readiness-acceptance-suite.md`](../journeys/release-readiness-acceptance-suite.md) (RS-7)
+**Related:** [`../tasks/hiring-workflow-e2e.md`](../tasks/hiring-workflow-e2e.md) · [`hiring-stage-authority-consumption.md`](hiring-stage-authority-consumption.md) · [`ADR-016`](ADR-016-requirement-evidence-document-separation.md) · [`ADR-037`](ADR-037-lifecycle-identity-canon.md) · [`requirement-policy-authority.md`](requirement-policy-authority.md) · [`ready-for-employment-contract.md`](ready-for-employment-contract.md) · [`../tasks/lifecycle-identity-li1-existence-guard.md`](../tasks/lifecycle-identity-li1-existence-guard.md) · [`../tasks/documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) · [`../journeys/release-readiness-acceptance-suite.md`](../journeys/release-readiness-acceptance-suite.md) (RS-7)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (owners stay on existing capabilities), **INV-01** (one SoT per walk step), **INV-16** (contract before HE-2 consumption). Does not rewrite L0. Does not mint a Hiring Product, a second stage registry, or a hiring-owned eligibility rule set.
 
@@ -28,9 +28,9 @@ The four-phase walk is not four authorities. Each phase splits into the question
 
 | # | Step | Phase | Operator question | Authority | Role now | Later |
 |---|------|-------|-------------------|-----------|----------|-------|
-| 1 | **Stage existence** | stage | Which stages exist for this hiring path? | LI-1 `is_stage_registered` | **authority** | HE-2 cuts consumers over |
-| 2 | **Stage occupancy** | stage | Which stage is this candidate on? | Candidate occupancy (`Candidate.stage`) | **authority** | HE-2; Funnel ≠ occupancy (ADR-037) |
-| 3 | **Stage transition** | stage | May this candidate move A→B? | Transition-order rule | **compose_later** | HE-2 states the rule (even if “all forward moves guarded, jumps rejected”) |
+| 1 | **Stage existence** | stage | Which stages exist for this hiring path? | LI-1 `is_stage_registered` | **authority** | HE-2 consumed — [hiring-stage-authority-consumption.md](hiring-stage-authority-consumption.md) |
+| 2 | **Stage occupancy** | stage | Which stage is this candidate on? | Candidate occupancy (`Candidate.stage`) | **authority** | HE-2 consumed; Funnel ≠ occupancy (ADR-037) |
+| 3 | **Stage transition** | stage | May this candidate move A→B? | Transition-order rule `forward_moves_guarded_jumps_rejected` | **authority** | HE-2 consumed |
 | 4 | **Requirement policy** | requirements/docs | Must this candidate provide type X? | [RPM](requirement-policy-authority.md) `requirement_policy_authority.v1` | **authority** | none — Hiring **consumes**, never writes |
 | 5 | **Document request** | requirements/docs | What outstanding ask exists? | Hub outstanding ask (E7 / DR1) | **authority** | no hiring request table |
 | 6 | **Document instance** | requirements/docs | Does a document exist, and is it valid? | Document Hub + Document Link (E4) + expiry (E6) | **authority** | not `candidate_id`; not CE as a file store |
@@ -52,7 +52,7 @@ stage existence (LI-1)
   → transfer emit ready_for_employment.v1
 ```
 
-**Existence ≠ occupancy ≠ allowed transition.** Funnel stages, the static `new → hired` list, and the tenant `candidate_stages` dictionary are **leftover existence answerers**. HE-2 makes every hiring-path consumer read LI-1 and states the order rule. This contract forbids treating any leftover as existence SoT.
+**Existence ≠ occupancy ≠ allowed transition.** Funnel stages, the static `new → hired` list, and the tenant `candidate_stages` dictionary are **leftover existence answerers**. HE-2 cut hiring-path consumers over to LI-1 and stated the order rule (`forward_moves_guarded_jumps_rejected`). This contract forbids treating any leftover as existence SoT.
 
 ---
 
@@ -180,7 +180,7 @@ Reject: a new Hiring Product; sealing the walk while leaving `candidate_evidence
 
 ## Consequences
 
-- HE-2 consumes LI-1 on every hiring-path existence reader and states the transition-order rule.  
+- HE-2 consumes LI-1 on every hiring-path existence reader and states the transition-order rule — [hiring-stage-authority-consumption.md](hiring-stage-authority-consumption.md) (**PASS**).  
 - HE-3 composes one eligibility decision with one operator-readable reason; the requirement conjunct is RPM.  
 - HE-4 walks RS-7 on an RS-1 tenant with no inadmissible seeding.  
 - Min HR stays queued until Hiring E2E program close.
@@ -189,4 +189,5 @@ Reject: a new Hiring Product; sealing the walk while leaving `candidate_evidence
 
 ## History
 
+- 2026-09-21: Stage Authority Consumption Gate **PASS**. Hiring-path existence consumes LI-1. Occupancy stays `Candidate.stage`. Transition-order rule is production. Active Product → **HE-2**. HE-3 feat locked. min HR remains queued.
 - 2026-09-21: Accepted as HE-1 Acceptance contract. Nine-step walk frozen. Dual-evidence disposition = `candidate_evidence_binds_document_link`. Named CI + boundary. Feat locked for HE-2. Active Product stays **HE-1**. min HR remains queued.
