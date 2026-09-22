@@ -151,7 +151,7 @@ def test_he3_brief_and_queue() -> None:
     assert "not a new hiring product" in current.lower()
     queue = _QUEUE.read_text(encoding="utf-8")
     header = queue.split("## 8. History", 1)[0]
-    assert "**Active Product** | **[HE-3](hiring-workflow-e2e.md)**" in header
+    assert "**Active Product** | **[HE-4](hiring-workflow-e2e.md)**" in header
     assert "Eligibility Composition Gate **PASS**" in header
     assert "Stage Authority Consumption Gate **PASS**" in header
     assert "Hiring Acceptance Contract Gate **PASS**" in header

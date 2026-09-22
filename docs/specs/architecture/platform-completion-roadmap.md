@@ -320,7 +320,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | [hiring-acceptance-contract.md](hiring-acceptance-contract.md) | HE-1 SoT (`hiring_acceptance.v1`); Hiring Acceptance Contract Gate **PASS** |
 | [hiring-eligibility-composition.md](hiring-eligibility-composition.md) | HE-3 SoT (`hiring_eligibility_composition.v1`); Eligibility Composition Gate **PASS** |
 | [hiring-stage-authority-consumption.md](hiring-stage-authority-consumption.md) | HE-2 SoT (`hiring_stage_authority.v1`); Stage Authority Consumption Gate **PASS** |
-| [hiring-workflow-e2e.md](../tasks/hiring-workflow-e2e.md) | v1 blocker 4 — **Active Product HE-2**; stage consumed; HE-3 feat locked |
+| [hiring-workflow-e2e.md](../tasks/hiring-workflow-e2e.md) | v1 blocker 4 — **Active Product HE-4**; feat `feat/hiring-e2e-he4-acceptance-walk` open; Hiring E2E Acceptance Gate **not PASS** |
 | [recruitment-hr-minimal-handoff.md](../tasks/recruitment-hr-minimal-handoff.md) | v1 blocker 5 brief — **queued**, not scheduled |
 | [release-readiness-gate.md](../gates/release-readiness-gate.md) | Release close-out: reaching the program horizon is not release |
 | [engine-document-request-dr1-runtime.md](../tasks/engine-document-request-dr1-runtime.md) | DR1-runtime ✅ (#313) — Engine may create Hub outstanding asks |
@@ -340,6 +340,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 ---
 
 ## History
+- 2026-09-22: **HE-4 Acceptance walk feat opened.** Queue amendment from `8d5a9fef`. Active Product → **[HE-4](../tasks/hiring-workflow-e2e.md)**. Feat `feat/hiring-e2e-he4-acceptance-walk`. Hiring E2E Acceptance Gate **not PASS**. RS-7 is not executed. min HR remains queued. Not Hiring E2E program close. Not inherited DR1 / Mapping fixes. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-22: **Eligibility Composition Gate PASS.** SoT [hiring-eligibility-composition.md](hiring-eligibility-composition.md) (`hiring_eligibility_composition.v1`). One composed decision. Requirement conjunct = RPM. Active Product → **[HE-3](../tasks/hiring-workflow-e2e.md)**. HE-4 feat locked. Do not start RS-7 / min HR in this PR. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-21: **Stage Authority Consumption Gate PASS.** SoT [hiring-stage-authority-consumption.md](hiring-stage-authority-consumption.md) (`hiring_stage_authority.v1`). Hiring-path existence consumes LI-1. Occupancy stays `Candidate.stage`. Active Product → **[HE-2](../tasks/hiring-workflow-e2e.md)**. HE-3 feat locked. Do not start HE-3 / min HR / RS-7 in this PR. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-21: **Hiring Acceptance Contract Gate PASS.** SoT [hiring-acceptance-contract.md](hiring-acceptance-contract.md) (`hiring_acceptance.v1`). Nine-step walk frozen. Dual-evidence disposition = `candidate_evidence_binds_document_link`. Active Product stays **[HE-1](../tasks/hiring-workflow-e2e.md)**. Do not start HE-2 / min HR / RS-7 in this PR. Foundation stays 🔄. HostFlow v1 is not release-ready.

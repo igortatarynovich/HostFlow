@@ -101,7 +101,7 @@ Reject: a Hiring-owned required-document list; leaving v1 and v2 as parallel eli
 
 ## Consequences
 
-- HE-4 walks RS-7. Feat stays locked.  
+- HE-4 walks RS-7. Feat `feat/hiring-e2e-he4-acceptance-walk` is open. Hiring E2E Acceptance Gate is **not PASS**. This stamp does not execute RS-7.  
 - Min HR stays queued until Hiring E2E program close.  
 - Inherited DR1 Runtime and Mapping Operator Surface reds stay out of this slice.
 
@@ -109,4 +109,5 @@ Reject: a Hiring-owned required-document list; leaving v1 and v2 as parallel eli
 
 ## History
 
+- 2026-09-22: **HE-4 Acceptance walk feat opened.** Active Product → **HE-4**. Feat `feat/hiring-e2e-he4-acceptance-walk` from `8d5a9fef`. Hiring E2E Acceptance Gate **not PASS**. RS-7 is not executed. min HR remains queued. Not a change to this composition contract.
 - 2026-09-22: Eligibility Composition Gate **PASS**. One composed decision. Requirement conjunct = RPM `r5_required_set`. v1 and v2 are not eligibility authorities. Active Product → **HE-3**. HE-4 feat locked. Do not start RS-7 / min HR in this PR. Not a HE-2 stage-authority change. Not inherited DR1 / Mapping reds. Foundation stays 🔄. HostFlow v1 is not release-ready.

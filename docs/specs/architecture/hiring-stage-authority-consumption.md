@@ -103,11 +103,12 @@ Reject: documenting leftovers as “still how candidate PATCH works”; a second
 ## Consequences
 
 - HE-3 composes one eligibility decision with one operator-readable reason; leftover pipeline guards remain classified until then.  
-- HE-4 walks RS-7. Feat stays locked.  
+- HE-4 walks RS-7. Feat `feat/hiring-e2e-he4-acceptance-walk` is open. Hiring E2E Acceptance Gate is **not PASS**. This stamp does not execute RS-7.  
 - LI-2+ still owns Funnel UI rework and `/meta/stages` cutover.
 
 ---
 
 ## History
 
+- 2026-09-22: **HE-4 Acceptance walk feat opened.** Active Product → **HE-4**. Hiring E2E Acceptance Gate **not PASS**. Not a change to this stage-authority contract. min HR remains queued.
 - 2026-09-21: Stage Authority Consumption Gate **PASS**. Hiring-path existence consumes LI-1. Occupancy stays `Candidate.stage`. Transition-order rule `forward_moves_guarded_jumps_rejected` is production. Active Product → **HE-2**. HE-3 feat locked. min HR remains queued.
