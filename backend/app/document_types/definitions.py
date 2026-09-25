@@ -537,6 +537,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         title={"ru": "Свидетельство ADR", "en": "ADR certificate"},
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
+        canonical_ref_code="adr_certificate",
         metadata_schema=_object_schema(
             ("number", "issued_at", "expires_at", "classes"),
             {

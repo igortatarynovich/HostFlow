@@ -43,6 +43,8 @@ def test_legacy_aliases_normalize_to_canonical() -> None:
     assert normalize_input_doc_type("tacho_card") == "tachograph_card"
     assert normalize_input_doc_type("psych_tests") == "psychological_certificate"
     assert normalize_input_doc_type("code95") == "driver_qualification_card"
+    assert normalize_input_doc_type("adr") == "adr_certificate"
+    assert normalize_input_doc_type("adr_card") == "adr_certificate"
     assert normalize_input_doc_type("national_id") == "national_identity_card"
     assert normalize_input_doc_type("decision") == "other"
     assert normalize_input_doc_type("voivodeship_decision") == "other"
