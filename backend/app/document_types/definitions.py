@@ -345,7 +345,12 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         required_files=_sides_required("id_card", **ID_CARD_FRAME),
         expiry_rule=_expiry_rule("expires_at"),
         default_expire_in_days=1825,
-        aliases=("qualification_code95", "code_95", "qualification_card"),
+        aliases=(
+            "qualification_code95",
+            "code_95",
+            "qualification_card",
+            "driver_qualification_card",
+        ),
         owner_summary_weight=80,
     ),
     DocumentTypeDefinition(

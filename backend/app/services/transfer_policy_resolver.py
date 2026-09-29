@@ -502,13 +502,17 @@ class TransferPolicyResolver:
             compose_hiring_eligibility,
             neutral_conjuncts,
         )
+        from backend.app.reference.requirement_policy_consumer_parity import canonical_rpm_unmet
 
         rpm_required = {str(code).strip().lower() for code in required_documents if str(code).strip()}
-        rpm_unmet = {
-            str(code).strip().lower()
-            for code in (*missing_documents, *pending_verification)
-            if str(code).strip()
-        } & rpm_required
+        rpm_unmet = canonical_rpm_unmet(
+            (
+                str(code).strip().lower()
+                for code in (*missing_documents, *pending_verification)
+                if str(code).strip()
+            ),
+            rpm_required,
+        )
         conjuncts = neutral_conjuncts()
         if not (handoff_allowed and readiness_ok):
             conjuncts["workforce_packs"] = (False, "Workforce eligibility blocks transfer")

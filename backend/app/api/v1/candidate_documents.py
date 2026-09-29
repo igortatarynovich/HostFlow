@@ -1088,10 +1088,12 @@ async def update_candidate_document(
     if payload.expires_at is not None:
         m.expire_date = payload.expires_at
 
-    if payload.company_id is not None:
-        m.company_id = str(payload.company_id) if payload.company_id else None
-    if payload.owner_id is not None:
-        m.owner_id = str(payload.owner_id) if payload.owner_id else None
+    company_id = getattr(payload, "company_id", None)
+    if company_id is not None:
+        m.company_id = str(company_id) if company_id else None
+    owner_id = getattr(payload, "owner_id", None)
+    if owner_id is not None:
+        m.owner_id = str(owner_id) if owner_id else None
 
     if payload.number is not None:
         m.number = payload.number
@@ -1195,8 +1197,9 @@ async def update_candidate_document(
         auto_status_value = status_value
     m.status = auto_status_value
 
-    if payload.verified_at is not None:
-        m.verified_at = payload.verified_at
+    verified_at = getattr(payload, "verified_at", None)
+    if verified_at is not None:
+        m.verified_at = verified_at
     elif auto_status_value == DocumentStatus.approved and getattr(m, "verified_at", None) is None:
         m.verified_at = _utc_aware()
     
@@ -1204,7 +1207,6 @@ async def update_candidate_document(
     if old_status != auto_status_value and m.owner_id:
         try:
             from backend.app.api.public.notifications import send_candidate_notification
-            from sqlalchemy import select
             cand_result = await db.execute(
                 select(Candidate).where(Candidate.id == m.owner_id, Candidate.tenant_id == str(cand.tenant_id))
             )
@@ -1236,10 +1238,12 @@ async def update_candidate_document(
             # Don't fail document update if notification fails
             pass
 
-    if payload.source is not None:
-        m.source = payload.source
-    if payload.external_id is not None:
-        m.external_id = payload.external_id
+    source = getattr(payload, "source", None)
+    if source is not None:
+        m.source = source
+    external_id = getattr(payload, "external_id", None)
+    if external_id is not None:
+        m.external_id = external_id
 
     m.meta = meta_payload if meta_payload else None
     m.updated_at = _utc_aware()

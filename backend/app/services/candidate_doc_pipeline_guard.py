@@ -273,6 +273,67 @@ async def _requirement_fulfillment_blockers(
     return blockers
 
 
+async def _refuse_forward_when_rpm_unmet(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    extra: Dict[str, Any] | None,
+    personal: Dict[str, Any] | None,
+    missing: List[str],
+    problematic: List[str],
+    in_progress: List[str],
+    blocker_source: str,
+) -> None:
+    """Refuse a forward move from the RPM result. Codes outside that set are dropped."""
+    from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+    from backend.app.reference.hiring_eligibility_composition import (
+        compose_hiring_eligibility,
+        neutral_conjuncts,
+    )
+    from backend.app.reference.requirement_policy_consumer_parity import (
+        canonical_rpm_unmet,
+        r5_required_set,
+    )
+
+    tenant_delta = await load_persisted_tenant_delta(db, tenant_id)
+    owner_ctx = _owner_context_for_docs(
+        candidate_id=candidate_id,
+        extra=extra,
+        personal=personal,
+    )
+    rpm_required = r5_required_set(owner_ctx, tenant_delta)
+    claimed = [
+        str(code or "").strip().lower()
+        for code in (*missing, *problematic, *in_progress)
+        if str(code or "").strip()
+    ]
+    decision = compose_hiring_eligibility(
+        rpm_required=rpm_required,
+        rpm_unmet=canonical_rpm_unmet(claimed, rpm_required),
+        conjuncts=neutral_conjuncts(),
+    )
+    if decision.allowed:
+        return
+    unmet = list(decision.requirement_unmet)
+    unmet_set = set(unmet)
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "stage_blocked_by_documents",
+            "message": decision.refusal_reason,
+            "refusal_reason": decision.refusal_reason,
+            "requirement_conjunct_source": decision.requirement_source,
+            "missing_types": unmet,
+            "problematic_types": [code for code in problematic if str(code).strip().lower() in unmet_set],
+            "in_progress_types": [
+                code for code in in_progress if str(code).strip().lower() in unmet_set
+            ],
+            "blocker_source": blocker_source,
+        },
+    )
+
+
 async def enforce_pipeline_doc_forward_block(
     db: AsyncSession,
     *,
@@ -316,7 +377,6 @@ async def enforce_pipeline_doc_forward_block(
         problematic = list(req_blockers.get("problematic_requirements") or [])
         in_progress = list(req_blockers.get("pending_review_requirements") or [])
         blocker_source = "requirement_fulfillment_v1"
-        unfulfilled = list(req_blockers.get("unfulfilled_requirements") or [])
     else:
         missing, problematic, in_progress = await _legacy_document_type_blockers(
             db,
@@ -326,7 +386,6 @@ async def enforce_pipeline_doc_forward_block(
             personal=personal,
         )
         blocker_source = "legacy_document_summary_v1"
-        unfulfilled = []
 
     # Lazy import: pipeline_overrides_service lives under candidates package (router pulls service).
     from backend.app.api.v1.candidates.pipeline_overrides_service import (
@@ -344,11 +403,6 @@ async def enforce_pipeline_doc_forward_block(
         missing, problematic, in_progress = _relax_requirement_blocker_lists(
             missing, problematic, in_progress, relaxed_reqs
         )
-        unfulfilled = [
-            row
-            for row in unfulfilled
-            if _norm_requirement_code(str(row.get("requirement_code") or "")) not in relaxed_reqs
-        ]
 
     hard_block, _soft = docs_pipeline_blocks_forward_resolved(
         canon_old, missing, problematic, in_progress, resolved_gates
@@ -356,70 +410,19 @@ async def enforce_pipeline_doc_forward_block(
     if not hard_block:
         return
 
-    if blocker_source == "legacy_document_summary_v1":
-        from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
-        from backend.app.reference.hiring_eligibility_composition import (
-            compose_hiring_eligibility,
-            neutral_conjuncts,
-        )
-        from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
-
-        tenant_delta = await load_persisted_tenant_delta(db, tenant_id)
-        owner_ctx = _owner_context_for_docs(
+    if blocker_source in {"legacy_document_summary_v1", "requirement_fulfillment_v1"}:
+        await _refuse_forward_when_rpm_unmet(
+            db,
+            tenant_id=tenant_id,
             candidate_id=candidate_id,
             extra=extra,
             personal=personal,
+            missing=missing,
+            problematic=problematic,
+            in_progress=in_progress,
+            blocker_source=blocker_source,
         )
-        rpm_required = r5_required_set(owner_ctx, tenant_delta)
-        claimed = {
-            str(code or "").strip().lower()
-            for code in (*missing, *problematic, *in_progress)
-            if str(code or "").strip()
-        }
-        decision = compose_hiring_eligibility(
-            rpm_required=rpm_required,
-            rpm_unmet=claimed & set(rpm_required),
-            conjuncts=neutral_conjuncts(),
-        )
-        if decision.allowed:
-            return
-        unmet = list(decision.requirement_unmet)
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "stage_blocked_by_documents",
-                "message": decision.refusal_reason,
-                "refusal_reason": decision.refusal_reason,
-                "requirement_conjunct_source": decision.requirement_source,
-                "missing_types": unmet,
-                "problematic_types": [code for code in problematic if str(code).strip().lower() in set(unmet)],
-                "in_progress_types": [
-                    code for code in in_progress if str(code).strip().lower() in set(unmet)
-                ],
-                "blocker_source": blocker_source,
-            },
-        )
-
-    if blocker_source == "requirement_fulfillment_v1":
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "stage_blocked_by_requirements",
-                "message": "Cannot move stage forward: required recruitment confirmations are incomplete",
-                "refusal_reason": (
-                    "Cannot move stage forward: required recruitment confirmations are incomplete"
-                ),
-                "missing_requirements": missing,
-                "problematic_requirements": problematic,
-                "pending_review_requirements": in_progress,
-                "unfulfilled_requirements": unfulfilled,
-                "blocker_source": blocker_source,
-                # Transitional aliases — values are requirement codes, not document types.
-                "missing_types": missing,
-                "problematic_types": problematic,
-                "in_progress_types": in_progress,
-            },
-        )
+        return
 
     raise HTTPException(
         status_code=409,

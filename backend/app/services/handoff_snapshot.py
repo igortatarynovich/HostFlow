@@ -264,6 +264,7 @@ async def persist_handoff_create_snapshot(
     *,
     handoff: CandidateHandoff,
     candidate: Candidate,
+    ready_for_employment: dict[str, Any] | None = None,
 ) -> CandidateHandoffSnapshot:
     """Insert immutable snapshot row for this handoff (caller must commit)."""
     existing = (
@@ -278,6 +279,8 @@ async def persist_handoff_create_snapshot(
 
     now = datetime.now(timezone.utc)
     payload = await build_handoff_snapshot_payload_v1(db, handoff=handoff, candidate=candidate, now=now)
+    if ready_for_employment is not None:
+        payload["ready_for_employment_v1"] = ready_for_employment
     # Deep-freeze shape for tests / API consumers (JSON round-trip stable).
     payload = json.loads(json.dumps(payload, default=str))
 
