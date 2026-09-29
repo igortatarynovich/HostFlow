@@ -1,7 +1,7 @@
 """HE-4 Hiring E2E Acceptance walk (RS-7).
 
 One candidate on product HTTP surfaces: operator policy, stage moves,
-document request → provide → accept, Document Link + Candidate Evidence,
+document requested → provided → accepted, Document Link + Candidate Evidence,
 readable refusal while an RPM requirement is unmet, then transfer.
 
 Inadmissible and not used: ``seed_documents_for_ready_for_handoff``,
@@ -44,6 +44,36 @@ def _extraction_meta(code: str) -> dict[str, Any]:
     if code == "driver_license":
         meta["categories"] = ["CE"]
     return meta
+
+
+async def _request_requirement_document(
+    client: AsyncClient,
+    headers: dict[str, str],
+    candidate_id: str,
+    code: str,
+) -> str:
+    """Operator ask: create the document in status requested, then read it back."""
+    requested = await client.post(
+        f"/api/v1/candidates/{candidate_id}/documents",
+        headers=headers,
+        json={"doc_type": code, "status": "requested", "title": code},
+    )
+    assert requested.status_code == 201, requested.text
+    document_id = str(requested.json()["id"])
+    assert requested.json().get("status") == "requested", requested.text
+
+    listed = await client.get(
+        f"/api/v1/candidates/{candidate_id}/documents",
+        headers=headers,
+    )
+    assert listed.status_code == 200, listed.text
+    match = next(
+        (row for row in listed.json() if str(row.get("id")) == document_id),
+        None,
+    )
+    assert match is not None, listed.text
+    assert match.get("status") == "requested", match
+    return document_id
 
 
 async def _provide_requirement_document(
@@ -273,13 +303,27 @@ async def test_rs7_operator_surface_walk(client: AsyncClient, manager_headers: d
     reason = str(refusal.get("refusal_reason") or refusal.get("message") or "")
     assert reason == requirement_refusal(tuple(sorted(set(unmet)))), refusal
 
-    # Same operator path for every code in the refusal: upload the file the
-    # route returns, then Hub approval and that type's extraction metadata.
+    # Request, then provide. The request row stays requested; the file-bearing
+    # upload is a new instance and continues the approval lifecycle.
+    requested_ids: dict[str, str] = {}
     provided: dict[str, str] = {}
     for code in sorted(set(unmet)):
+        requested_ids[code] = await _request_requirement_document(
+            client, headers, candidate_id, code
+        )
         provided[code] = await _provide_requirement_document(
             client, headers, candidate_id, code
         )
+
+    listed = await client.get(
+        f"/api/v1/candidates/{candidate_id}/documents",
+        headers=headers,
+    )
+    assert listed.status_code == 200, listed.text
+    by_id = {str(row.get("id")): row for row in listed.json()}
+    for code, request_id in requested_ids.items():
+        assert request_id != provided[code]
+        assert by_id[request_id].get("status") == "requested", by_id.get(request_id)
 
     resolved_docs = await client.get(
         "/api/v1/platform/documents/resolve",
