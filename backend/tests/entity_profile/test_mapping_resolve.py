@@ -67,7 +67,7 @@ async def _make_profile(db, *, tenant_id: str, form_id: str, page_id: str = ""):
     return profile
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_authority_wins_over_leftover_stores(db, tenant_id: str) -> None:
     form_id = f"form-{uuid.uuid4().hex[:8]}"
     page_id = "259905353877064"
@@ -103,7 +103,7 @@ async def test_authority_wins_over_leftover_stores(db, tenant_id: str) -> None:
     assert resolved.migrated is False
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_empty_authority_migrates_leftover_form_rules(db, tenant_id: str) -> None:
     form_id = f"form-{uuid.uuid4().hex[:8]}"
     page_id = "484113398123847"
@@ -136,7 +136,7 @@ async def test_empty_authority_migrates_leftover_form_rules(db, tenant_id: str) 
     assert any(r.get("target") == "vacancy_hint" for r in again.rules)
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_no_profile_does_not_answer_from_leftover(db, tenant_id: str) -> None:
     form_id = f"form-{uuid.uuid4().hex[:8]}"
     page_id = "259905353877066"
