@@ -54,20 +54,20 @@ def test_external_intake_close_product_done_no_named_successor() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "External Intake program close" in current
-    assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in current
+    assert "**Active Product** | **DONE**" in current
+    assert "Hiring E2E program close recorded" in current
     assert "no named successor until amendment" in current.lower()
     assert "External Intake program close." in history or "External Intake program close**" in history
     assert "Product **DONE** with no named successor until amendment" in history
-    assert "Active (Product):** **[HE-1](hiring-workflow-e2e.md)**" in current
+    assert "Active (Product):** **DONE**" in current
     assert "**Active Product** | External Intake program close" not in current
-    assert "**Active Product** | **DONE**" not in current
     intake = _BRIEF.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]
     assert "**DONE**" in intake_current
     assert "**ACTIVE**" not in intake_current
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "external-intake-forms-publish.md" in agents
-    assert "Product = [HE-1]" in agents or "Product Track** = **[HE-1]" in agents
+    assert "Product DONE" in agents
     assert "no named successor" in history.lower()
 
 
@@ -76,7 +76,9 @@ def test_external_intake_close_leaves_hiring_hr_queued() -> None:
     hr = _HR.read_text(encoding="utf-8")
     hiring_header = hiring.split("## History", 1)[0] if "## History" in hiring else hiring
     hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
-    assert "**ACTIVE**" in hiring_header
+    assert "**DONE**" in hiring_header
+    assert "**ACTIVE**" not in hiring_header
+    assert "Hiring E2E program close recorded" in hiring_header
     assert "HE-1" in hiring_header
     assert "**QUEUED**" not in hiring_header
     assert "**QUEUED**" in hr_header

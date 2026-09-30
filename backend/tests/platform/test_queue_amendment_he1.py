@@ -1,7 +1,7 @@
 """Queue amendment named HE-1 after External Intake program close.
 
 History records the stamp: Active Product HE-1, contract gate NOT PASS.
-Current Active Product is still HE-1. Hiring Acceptance Contract Gate is PASS.
+Current Active Product is **DONE** after Hiring E2E program close. No named successor. Hiring Acceptance Contract Gate is PASS.
 min HR / leftover-store deletion / RS-3 stay unauthorized.
 FP-5 PASS is not Release Acceptance PASS.
 """
@@ -35,15 +35,19 @@ def test_he1_amendment_history_then_current() -> None:
     assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in history or (
         "Active Product stays **[HE-1]" in history
     )
-    assert "**Active Product** | **DONE**" not in current
-    assert "Active (Product):** **DONE**" not in current
+    assert "**Active Product** | **DONE**" in current
+    assert "Active (Product):** **DONE**" in current
+    assert "Hiring E2E program close recorded" in current
+    assert "no named successor" in current.lower()
     assert "Hiring Acceptance Contract Gate **PASS**" in current
     assert "Hiring Acceptance Contract Gate **not PASS**" not in current
     assert "Do not open HE-1 contract seal" not in current
     hiring = _HIRING.read_text(encoding="utf-8")
     hiring_current = hiring.split("## History", 1)[0]
     hiring_history = hiring.split("## History", 1)[1]
-    assert "**ACTIVE**" in hiring_current
+    assert "**DONE**" in hiring_current
+    assert "**ACTIVE**" not in hiring_current
+    assert "Hiring E2E program close recorded" in hiring_current
     assert hiring_current.split("**Status:**", 1)[1].split("\n", 1)[0].count("**QUEUED**") == 0
     assert "Hiring Acceptance Contract Gate **PASS**" in hiring_current
     assert "Hiring Acceptance Contract Gate **not PASS**" not in hiring_current
