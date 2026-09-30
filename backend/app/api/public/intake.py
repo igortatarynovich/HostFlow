@@ -2684,6 +2684,11 @@ async def _save_public_document_upload(
     }
     if final_comment:
         meta_payload["user_comment"] = final_comment
+    if existing and isinstance(existing.meta, dict):
+        for key in ("request_kind", "requirement_code"):
+            kept = existing.meta.get(key)
+            if kept and key not in meta_payload:
+                meta_payload[key] = kept
 
     issue_date = _parse_date(g_issued)
     expire_date = _parse_date(g_expires)

@@ -110,6 +110,7 @@ Each scenario lists **preconditions**, the **operator job** (not the click path)
 - **Operator job:** progress the candidate through the defined stages, attempt transfer while a requirement is unmet (must be refused with a readable reason), satisfy it, then complete the hire.
 - **Pass detail:** the refusal came from the same policy authority the operator manages in RS-4, not from a separate hard-coded rule.
 - **Evidence:** stage history, refusal reason text, completion record. Contract SoT: [hiring-acceptance-contract.md](../architecture/hiring-acceptance-contract.md) (`hiring_acceptance.v1`). Test-only seeding is inadmissible.
+- **Execution (2026-09-29):** Hiring E2E Acceptance Gate **PASS**. Evidence `315cb710`. Clean DB walk, 10 passed. The refusal came from the operator RPM overlay. This execution is not the Release Readiness Gate, does not re-run RS-5 expiry, and does not prove the [legal employability matrix](../tasks/legal-eligibility-requirement-policy.md).
 
 ### RS-8 Handoff into HR
 

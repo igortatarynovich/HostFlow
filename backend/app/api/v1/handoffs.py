@@ -119,6 +119,7 @@ class HandoffOut(BaseModel):
     return_reason: Optional[str] = None
     requested_by_user_name: Optional[str] = None
     assigned_to_user_name: Optional[str] = None
+    ready_for_employment: Optional[dict[str, Any]] = None
 
     class Config:
         from_attributes = True
@@ -223,7 +224,22 @@ async def create_handoff_route(
         raise _handoff_create_http_exception(err)
     await db.commit()
     await db.refresh(handoff)
-    return HandoffOut.model_validate(handoff)
+    out = HandoffOut.model_validate(handoff)
+    if (handoff.destination or "") == "internal_hr":
+        from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
+        from backend.app.services.ready_for_employment_emit import MANIFEST_PAYLOAD_KEY
+
+        snap = (
+            await db.execute(
+                select(CandidateHandoffSnapshot).where(
+                    CandidateHandoffSnapshot.handoff_id == str(handoff.id)
+                )
+            )
+        ).scalar_one_or_none()
+        stored = (snap.payload or {}).get(MANIFEST_PAYLOAD_KEY) if snap is not None else None
+        if isinstance(stored, dict):
+            out.ready_for_employment = stored
+    return out
 
 
 class PendingHandoffWithCandidateOut(BaseModel):

@@ -31,7 +31,8 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "Queue amendment names FP-1 Active Product" in history
-    assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in current
+    assert "**Active Product** | **DONE**" in current
+    assert "Hiring E2E program close recorded" in current
     assert "feat/forms-publish-fp2-publish-action" in queue
     assert "feat/forms-publish-fp3-public-serve" in current
     assert "feat/forms-publish-fp4-operator-surface" in current
@@ -41,9 +42,8 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     assert "Operator Publish Gate **PASS**" in current
     assert "External Intake Acceptance Gate **PASS**" in current
     assert "Forms Publish Contract Gate **PASS**" in current or "Forms Publish Contract Gate = PASS" in current
-    assert "Active (Product):** **[HE-1](hiring-workflow-e2e.md)**" in current
+    assert "Active (Product):** **DONE**" in current
     assert "**Active Product** | External Intake program close" not in current
-    assert "**Active Product** | **DONE**" not in current
     assert "This stamp does not ship runtime" not in current
     assert "Do not start FP-5" not in current
     intake = _INTAKE.read_text(encoding="utf-8")
@@ -79,7 +79,9 @@ def test_fp1_leaves_hiring_hr_queued_and_mapping_done() -> None:
     hr = _HR.read_text(encoding="utf-8")
     hiring_header = hiring.split("## History", 1)[0]
     hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
-    assert "**ACTIVE**" in hiring_header
+    assert "**DONE**" in hiring_header
+    assert "**ACTIVE**" not in hiring_header
+    assert "Hiring E2E program close recorded" in hiring_header
     assert "HE-1" in hiring_header
     assert "**QUEUED**" in hr_header
     assert "not scheduled" in hr_header.lower()

@@ -14,18 +14,16 @@ from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_evidence import CandidateEvidence, CandidateEvidenceDocument
 from backend.app.models.document import Document
 from backend.app.models.enums import CandidateEvidenceStatus
-from backend.app.requirement_rules.constants import RULE_TYPE_DOCUMENT_SLOT_REQUIRED
 from backend.app.requirement_rules.readiness_bridge import (
     build_normalized_payload_from_candidate,
     load_candidate_documents_snapshot,
-    resolve_entity_profile_code_for_candidate,
 )
 from backend.app.requirement_rules.slot_evaluator import (
     evaluate_document_slot,
     evaluate_slot_alternatives,
     expand_type_codes_for_slot,
+    satisfaction_slot,
 )
-from backend.app.requirement_rules.slot_registry import get_slot_definition
 from backend.app.services.document_catalog import normalize_doc_type
 from backend.app.services.requirement_document_data import (
     enrich_document_snapshot_for_checklist,
@@ -59,7 +57,7 @@ def _status_value(row: CandidateEvidence) -> str:
 
 
 def _variant_codes_for_requirement(requirement_code: str) -> set[str]:
-    slot = get_slot_definition(requirement_code)
+    slot = satisfaction_slot(requirement_code)
     if not slot:
         return set()
     out: set[str] = set()
@@ -74,7 +72,7 @@ def _variant_codes_for_requirement(requirement_code: str) -> set[str]:
 
 
 def _variant_definition(requirement_code: str, variant_code: str) -> Optional[dict[str, Any]]:
-    slot = get_slot_definition(requirement_code)
+    slot = satisfaction_slot(requirement_code)
     if not slot:
         return None
     target = _norm(variant_code)
@@ -674,31 +672,24 @@ async def resolve_required_requirement_codes(
     tenant_id: str,
     candidate: Candidate,
 ) -> list[str]:
-    entity_profile_code = await resolve_entity_profile_code_for_candidate(
-        db,
-        tenant_id=str(tenant_id),
-        candidate=candidate,
-    )
-    if not entity_profile_code:
-        return []
-    from backend.app.requirement_rules.facade import resolve_requirement_rule_set
+    """Applicable required set for this candidate: the RPM result.
 
-    rule_set = await resolve_requirement_rule_set(
-        db,
-        tenant_id=str(tenant_id),
-        entity_profile_code=entity_profile_code,
-        context="readiness",
+    Same ``r5_required_set(owner_context, tenant_delta)`` the stage refusal
+    consumes. Slot rules are not a second required set.
+    """
+    from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
+    from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
+    from backend.app.services.candidate_doc_pipeline_guard import _owner_context_for_docs
+
+    extra = candidate._get_extra() if hasattr(candidate, "_get_extra") else {}
+    personal = candidate._get_personal_data() if hasattr(candidate, "_get_personal_data") else {}
+    owner_ctx = _owner_context_for_docs(
+        candidate_id=str(candidate.id),
+        extra=extra if isinstance(extra, dict) else {},
+        personal=personal if isinstance(personal, dict) else {},
     )
-    codes: list[str] = []
-    for rule in rule_set.get("rules") or []:
-        if not isinstance(rule, dict):
-            continue
-        if str(rule.get("rule_type") or "") != RULE_TYPE_DOCUMENT_SLOT_REQUIRED:
-            continue
-        code = _norm(rule.get("slot_code") or rule.get("target") or rule.get("requirement_code"))
-        if code:
-            codes.append(code)
-    return codes
+    tenant_delta = await load_persisted_tenant_delta(db, str(tenant_id))
+    return sorted(r5_required_set(owner_ctx, tenant_delta))
 
 
 def map_requirements_checklist_to_pipeline_blockers(
@@ -764,7 +755,7 @@ async def build_requirements_checklist(
 
     items: list[dict[str, Any]] = []
     for req_code in requirement_codes:
-        slot = get_slot_definition(req_code) or {}
+        slot = satisfaction_slot(req_code) or {}
         evidence_row = await get_active_evidence(
             db,
             tenant_id=str(tenant_id),
@@ -890,7 +881,7 @@ async def build_requirement_fulfillments_for_candidate(
     rows = list((await db.execute(stmt)).scalars().all())
     fulfillments: list[dict[str, Any]] = []
     for evidence in rows:
-        slot = get_slot_definition(evidence.requirement_code) or {}
+        slot = satisfaction_slot(evidence.requirement_code) or {}
         documents_out: list[dict[str, Any]] = []
         for junction in evidence.documents or []:
             doc = junction.document or await db.get(Document, str(junction.document_id))

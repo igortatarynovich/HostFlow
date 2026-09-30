@@ -45,9 +45,9 @@ def test_rpm_close_names_ma1_active_feat_locked() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "Active Product → **[MA-1](mapping-authority.md)**" in queue
     current = queue.split("## 8. History", 1)[0]
-    assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in current
-    assert "Active (Product):** **[HE-1](hiring-workflow-e2e.md)**" in current
-    assert "**Active Product** | **DONE**" not in current
+    assert "**Active Product** | **DONE**" in current
+    assert "Active (Product):** **DONE**" in current
+    assert "Hiring E2E program close recorded" in current
     assert "feat locked this PR" in queue
     assert "Active (Product):** **Consumer Cutover Gate" not in current
     mapping = _MAPPING.read_text(encoding="utf-8")
@@ -68,9 +68,10 @@ def test_rpm_close_leaves_intake_hiring_hr_queued() -> None:
     hr = _HR.read_text(encoding="utf-8")
     hiring_header = hiring.split("## History", 1)[0] if "## History" in hiring else hiring
     hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
-    assert "**ACTIVE**" in hiring_header
+    assert "**DONE**" in hiring_header
+    assert "**ACTIVE**" not in hiring_header
+    assert "Hiring E2E program close recorded" in hiring_header
     assert "HE-1" in hiring_header
-    assert "MA-4" in hiring
     assert "**QUEUED**" in hr_header
     assert "not scheduled" in hr_header.lower()
     assert "MA-4" in hr

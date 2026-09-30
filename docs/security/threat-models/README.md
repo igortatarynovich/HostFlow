@@ -27,5 +27,6 @@
 | [user-report-intake.md](./user-report-intake.md) | User Report Intake (ADR-040): free text / later attachments; tenant vs elevated inbox; correlation best-effort; no severity SoT; INV-UR-01; runtime STOP without this model |
 | [verified-self-service-signup.md](./verified-self-service-signup.md) | Verified Growth signup (ADR-041): SignupIntent, verification token, registration session, atomic Tenant+trial; not candidate magic_links; runtime STOP without this model |
 | [hiring-stage-writes.md](./hiring-stage-writes.md) | HE-2 hiring-path candidate stage writes: LI-1 existence, `Candidate.stage` occupancy, leftover registries fail closed (422); not portal / handoff / HE-3 |
+| [hiring-required-document-request.md](./hiring-required-document-request.md) | HE-4 required document request from the outstanding RPM set; ad-hoc asks stay out of eligibility; public upload keeps request identity; `ready_for_employment.v1` does not accept the handoff |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).

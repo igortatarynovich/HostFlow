@@ -176,6 +176,40 @@ def _assert_not_production_db(url: str) -> None:
         )
 
 
+def _load_async_loop_diag():
+    name = "hostflow_async_loop_diag"
+    mod = sys.modules.get(name)
+    if mod is not None:
+        return mod
+    import importlib.util
+
+    path = Path(__file__).resolve().with_name("async_loop_diag.py")
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _diag_trace(phase: str, nodeid: str = "", session=None, error: BaseException | None = None) -> None:
+    mod = sys.modules.get("hostflow_async_loop_diag")
+    if mod is None:
+        return
+    mod.trace(phase, nodeid, session=session, error=error)
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    diag_on = os.environ.get("HOSTFLOW_ASYNC_LOOP_DIAG", "").strip().lower() in ("1", "true", "yes")
+    if not diag_on and os.environ.get("GITHUB_ACTIONS", "").strip().lower() != "true":
+        return
+    mod = _load_async_loop_diag()
+    if mod is None:
+        return
+    mod.maybe_install(config, items)
+
+
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Apply Alembic migrations so ORM columns (e.g. FTS tsvector) exist on the test DB."""
     if os.environ.get("HOSTFLOW_ALLOW_NON_TEST_DB", "").strip().lower() not in ("1", "true", "yes"):
@@ -264,22 +298,28 @@ def _pytest_block_real_email_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def _clear_meta_lead_credentials_between_tests() -> None:
+async def _clear_meta_lead_credentials_between_tests(request: pytest.FixtureRequest) -> None:
     """Admin Meta tests leave active ``meta_lead_credentials``; later ingest helpers
     that sign with ``settings.meta_webhook_secret`` (often empty) then get 401
     Signature mismatch. Clear default-tenant credentials every test.
     """
+    nodeid = request.node.nodeid
+    _diag_trace("CLEAR-ENTER", nodeid)
     try:
         async with async_session_maker() as session:
+            _diag_trace("CLEAR-SESSION", nodeid, session=session)
             await session.execute(
                 sa.text("DELETE FROM meta_lead_credentials WHERE tenant_id = :tenant_id"),
                 {"tenant_id": DEFAULT_TENANT_ID},
             )
             await session.commit()
-    except Exception:
+            _diag_trace("CLEAR-COMMIT", nodeid, session=session)
+    except Exception as exc:
         # Table may be missing before migrations in some unit-only paths.
-        pass
+        _diag_trace("CLEAR-ERROR", nodeid, error=exc)
+    _diag_trace("CLEAR-YIELD", nodeid)
     yield
+    _diag_trace("CLEAR-TEARDOWN", nodeid)
 
 
 @pytest.fixture
@@ -307,6 +347,7 @@ async def _set_tenant(session, tenant_id: str) -> None:
 async def _init_data() -> Dict[str, str]:
     """Initialise minimal data set for integration tests (idempotent)."""
     if _BOOTSTRAP:
+        _diag_trace("INIT-CACHE-HIT")
         return _BOOTSTRAP
 
     async with _BOOTSTRAP_LOCK:
@@ -327,6 +368,7 @@ async def _init_data() -> Dict[str, str]:
         candidate_id: str | None = None
 
         async with async_session_maker() as session:
+            _diag_trace("INIT-SESSION", session=session)
             await _set_tenant(session, DEFAULT_TENANT_ID)
 
             if session.get_bind().dialect.name == "postgresql":
@@ -693,12 +735,17 @@ def _build_token(user_id: str, email: str, role: str, tenant_id: str, supervisor
 
 
 @pytest_asyncio.fixture
-async def db():
+async def db(request: pytest.FixtureRequest):
     """Async DB session for unit tests (e.g. audit, services)."""
+    nodeid = request.node.nodeid
+    _diag_trace("DB-ENTER", nodeid)
     await _init_data()
     async with async_session_maker() as session:
+        _diag_trace("DB-SESSION", nodeid, session=session)
         await _set_tenant(session, DEFAULT_TENANT_ID)
+        _diag_trace("DB-YIELD", nodeid, session=session)
         yield session
+    _diag_trace("DB-EXIT", nodeid)
 
 
 @pytest_asyncio.fixture

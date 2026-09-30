@@ -1,7 +1,9 @@
-"""Queue amendment opens HE-4 after Eligibility Composition Gate PASS.
+"""Queue amendment opened HE-4. The acceptance gate is now PASS.
 
-Current Active Product is HE-4. Feat is open. Hiring E2E Acceptance Gate
-is not PASS. This stamp does not execute RS-7. min HR stays queued.
+History keeps the opening stamp (gate not PASS, RS-7 not executed).
+Current text records evidence `315cb710` and RS-7 PASS. Program close
+is not started. min HR stays queued. The legal employability matrix
+is a separate unscheduled slice.
 """
 
 from __future__ import annotations
@@ -28,19 +30,24 @@ def test_he4_amendment_opens_feat_without_rs7() -> None:
     assert "HE-4 Acceptance walk feat opened" in history
     assert "Hiring E2E Acceptance Gate **not PASS**" in history
     assert "HE-4 feat locked" in history
-    assert "**Active Product** | **[HE-4](hiring-workflow-e2e.md)**" in current
+    assert "**Active Product** | **DONE**" in current
     assert "**Active Product** | **[HE-3](hiring-workflow-e2e.md)**" not in current
+    assert "**Active Product** | **[HE-4](hiring-workflow-e2e.md)**" not in current
+    assert "Hiring E2E program close recorded" in current
     assert "feat/hiring-e2e-he4-acceptance-walk" in current
-    assert "Hiring E2E Acceptance Gate **not PASS**" in current
-    assert "Hiring E2E Acceptance Gate **PASS**" not in current
-    assert "does not execute RS-7" in current
+    assert "Hiring E2E Acceptance Gate **not PASS**" not in current
+    assert "Hiring E2E Acceptance Gate **PASS** (`315cb710`)" in current
+    assert "RS-7 **PASS** (`315cb710`)" in current
     assert "8d5a9fef" in current
     hiring = _HIRING.read_text(encoding="utf-8")
     hiring_current = hiring.split("## History", 1)[0]
     hiring_history = hiring.split("## History", 1)[1]
-    assert "**ACTIVE**" in hiring_current
+    assert "Hiring E2E program close recorded" in hiring_current or "program close recorded" in hiring_current.lower()
     assert "feat/hiring-e2e-he4-acceptance-walk" in hiring_current
-    assert "Hiring E2E Acceptance Gate **not PASS**" in hiring_current
+    assert "Hiring E2E Acceptance Gate **not PASS**" not in hiring_current
+    assert "Hiring E2E Acceptance Gate **PASS**" in hiring_current
+    assert "315cb710" in hiring_current
+    assert "legal-eligibility-requirement-policy.md" in hiring_current
     assert "seed_documents_for_ready_for_handoff" in hiring_current
     assert "candidate_evidence_helpers" in hiring_current
     assert "GET /transfer-readiness" in hiring_current
@@ -52,10 +59,11 @@ def test_he4_amendment_opens_feat_without_rs7() -> None:
     assert "feat/hiring-e2e-he4-acceptance-walk" in agents
     goal = _GOAL.read_text(encoding="utf-8")
     assert "HE-4" in goal
-    assert "Hiring E2E Acceptance Gate **not PASS**" in goal
+    assert "Hiring E2E Acceptance Gate **PASS** (`315cb710`)" in goal
+    assert "Hiring E2E Acceptance Gate **not PASS**" not in goal
 
 
-def test_he4_leaves_hr_queued_and_program_close_unstarted() -> None:
+def test_he4_program_close_leaves_hr_unscheduled() -> None:
     hr = _HR.read_text(encoding="utf-8")
     hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
     assert "**QUEUED**" in hr_header
@@ -66,12 +74,15 @@ def test_he4_leaves_hr_queued_and_program_close_unstarted() -> None:
     lowered = current.lower()
     assert "min hr" in lowered or "minimal recruitment" in lowered
     assert "feat locked" in lowered
-    assert "program close" in lowered
+    assert "hiring e2e program close recorded" in lowered
+    assert "not scheduled" in lowered
     assert "not inherited" in lowered or "inherited dr1" in lowered
     hiring = _HIRING.read_text(encoding="utf-8")
     hiring_current = hiring.split("## History", 1)[0]
-    assert "program close" in hiring_current.lower()
-    assert "not** started" in hiring_current.lower() or "not** started here" in hiring_current.lower() or "**not** started" in hiring_current
+    assert "Goal Completion Gate" in hiring_current
+    assert "Outcome: PASS" in hiring_current
+    assert "legal-eligibility-requirement-policy.md" in hiring_current
+    assert "not** scheduled" in hiring_current.lower() or "**not** scheduled" in hiring_current or "not scheduled" in hiring_current.lower()
 
 
 def test_he4_amendment_named_ci() -> None:
