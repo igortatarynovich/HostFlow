@@ -929,6 +929,11 @@ async def create_candidate_document(
         has_files=bool(files_list),
         expire_date=_to_date(payload.expires_at),
     )
+    # A type picked by hand is an ad-hoc ask. It does not become a vacancy
+    # requirement. Required requests are created from the outstanding set.
+    if auto_status_value == DocumentStatus.requested:
+        meta_payload["request_kind"] = "ad_hoc"
+        meta_payload.pop("requirement_code", None)
     verified_at = _utc_aware() if auto_status_value == DocumentStatus.approved else None
 
     await documents_crud.ensure_document_type(db, str(cand.tenant_id), doc_type)

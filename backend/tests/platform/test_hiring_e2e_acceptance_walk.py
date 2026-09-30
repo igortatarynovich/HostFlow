@@ -1,8 +1,10 @@
 """HE-4 Hiring E2E Acceptance walk (RS-7).
 
 One candidate on product HTTP surfaces: operator policy, stage moves,
-document requested → provided → accepted, Document Link + Candidate Evidence,
-readable refusal while an RPM requirement is unmet, then transfer.
+a required request taken from the outstanding set, candidate provision,
+direct operator upload of the other outstanding documents, Document Link
+and Candidate Evidence, readable refusal while an RPM requirement is unmet,
+then transfer. An ad-hoc request outside the set does not become a requirement.
 
 Inadmissible and not used: ``seed_documents_for_ready_for_handoff``,
 ``candidate_evidence_helpers``, SQL/fixture inserts, ``GET /transfer-readiness``.
@@ -23,6 +25,7 @@ from backend.app.reference.hiring_eligibility_composition import requirement_ref
 pytestmark = pytest.mark.anyio
 
 _REQUIRED_CODE = "adr_certificate"
+_OUTSIDER_CODE = "visa"
 _OPERATOR_DELTA = {
     "vacancy": {"additions": [{"when": {}, "require": [_REQUIRED_CODE]}]},
 }
@@ -46,34 +49,19 @@ def _extraction_meta(code: str) -> dict[str, Any]:
     return meta
 
 
-async def _request_requirement_document(
+async def _outstanding(
     client: AsyncClient,
     headers: dict[str, str],
     candidate_id: str,
-    code: str,
-) -> str:
-    """Operator ask: create the document in status requested, then read it back."""
-    requested = await client.post(
-        f"/api/v1/candidates/{candidate_id}/documents",
-        headers=headers,
-        json={"doc_type": code, "status": "requested", "title": code},
-    )
-    assert requested.status_code == 201, requested.text
-    document_id = str(requested.json()["id"])
-    assert requested.json().get("status") == "requested", requested.text
-
-    listed = await client.get(
-        f"/api/v1/candidates/{candidate_id}/documents",
+) -> dict[str, Any]:
+    response = await client.get(
+        f"/api/v1/candidates/{candidate_id}/requirements/outstanding",
         headers=headers,
     )
-    assert listed.status_code == 200, listed.text
-    match = next(
-        (row for row in listed.json() if str(row.get("id")) == document_id),
-        None,
-    )
-    assert match is not None, listed.text
-    assert match.get("status") == "requested", match
-    return document_id
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert isinstance(body, dict), body
+    return body
 
 
 async def _provide_requirement_document(
@@ -248,13 +236,14 @@ async def test_rs7_operator_surface_walk(client: AsyncClient, manager_headers: d
     )
     assert clause.status_code == 201, clause.text
 
+    candidate_email = f"he4-{uuid.uuid4().hex[:8]}@example.com"
     created = await client.post(
         "/api/v1/candidates",
         headers=headers,
         json={
             "first_name": "Helena",
             "last_name": "Walk",
-            "email": f"he4-{uuid.uuid4().hex[:8]}@example.com",
+            "email": candidate_email,
             "phone": "+48111222333",
             "stage": "new",
             "vacancy_id": vacancy_id,
@@ -303,27 +292,113 @@ async def test_rs7_operator_surface_walk(client: AsyncClient, manager_headers: d
     reason = str(refusal.get("refusal_reason") or refusal.get("message") or "")
     assert reason == requirement_refusal(tuple(sorted(set(unmet)))), refusal
 
-    # Request, then provide. The request row stays requested; the file-bearing
-    # upload is a new instance and continues the approval lifecycle.
-    requested_ids: dict[str, str] = {}
-    provided: dict[str, str] = {}
-    for code in sorted(set(unmet)):
-        requested_ids[code] = await _request_requirement_document(
-            client, headers, candidate_id, code
-        )
-        provided[code] = await _provide_requirement_document(
-            client, headers, candidate_id, code
-        )
+    outstanding = await _outstanding(client, headers, candidate_id)
+    outstanding_codes = [str(code) for code in outstanding.get("outstanding_codes") or []]
+    assert set(outstanding_codes) == set(unmet), outstanding
+    assert _REQUIRED_CODE in outstanding_codes
+    assert _OUTSIDER_CODE not in outstanding_codes
+    assert _OUTSIDER_CODE not in unmet
+
+    # Vacancy-driven request refuses a type the policy does not have outstanding.
+    outsider_request = await client.post(
+        f"/api/v1/candidates/{candidate_id}/requirements/{_OUTSIDER_CODE}/request",
+        headers=headers,
+    )
+    assert outsider_request.status_code == 409, outsider_request.text
+    outsider_detail = _detail(outsider_request)
+    assert isinstance(outsider_detail, dict), outsider_detail
+    assert outsider_detail.get("code") == "not_outstanding_requirement", outsider_detail
+
+    # A recruiter may still ask for that type. The ask stays ad-hoc and does
+    # not enter the outstanding set or the eligibility refusal.
+    ad_hoc = await client.post(
+        f"/api/v1/candidates/{candidate_id}/documents",
+        headers=headers,
+        json={"doc_type": _OUTSIDER_CODE, "status": "requested", "title": _OUTSIDER_CODE},
+    )
+    assert ad_hoc.status_code == 201, ad_hoc.text
+    assert ad_hoc.json().get("status") == "requested", ad_hoc.text
+    assert (ad_hoc.json().get("meta") or {}).get("request_kind") == "ad_hoc", ad_hoc.text
+    assert not (ad_hoc.json().get("meta") or {}).get("requirement_code"), ad_hoc.text
+
+    still_outstanding = await _outstanding(client, headers, candidate_id)
+    assert _OUTSIDER_CODE not in (still_outstanding.get("outstanding_codes") or [])
+    assert set(still_outstanding.get("outstanding_codes") or []) == set(unmet)
+
+    still_refused = await _stage(client, headers, candidate_id, "ready_for_handoff")
+    assert still_refused.status_code == 409, still_refused.text
+    still_detail = _detail(still_refused)
+    assert isinstance(still_detail, dict), still_detail
+    still_unmet = [str(code) for code in (still_detail.get("missing_types") or [])]
+    assert _OUTSIDER_CODE not in still_unmet, still_detail
+    assert _REQUIRED_CODE in still_unmet, still_detail
+
+    required_request = await client.post(
+        f"/api/v1/candidates/{candidate_id}/requirements/{_REQUIRED_CODE}/request",
+        headers=headers,
+    )
+    assert required_request.status_code == 200, required_request.text
+    required_body = required_request.json()
+    assert required_body.get("request_kind") == "required", required_body
+    assert required_body.get("requirement_code") == _REQUIRED_CODE, required_body
+    assert required_body.get("status") == "requested", required_body
+    candidate_link = str(required_body.get("candidate_link") or "")
+    assert candidate_link.startswith("/public/status/"), required_body
+    request_id = str(required_body["document_id"])
+    share_token = candidate_link.rstrip("/").rsplit("/", 1)[-1]
+
+    # The candidate provides the requested document on that same row.
+    upload_headers = {k: v for k, v in headers.items() if k.lower() != "content-type"}
+    provided_upload = await client.post(
+        f"/api/v1/public/status/{share_token}/documents/upload",
+        headers=upload_headers,
+        data={"doc_type": _REQUIRED_CODE, "email": candidate_email},
+        files={"file": (f"{_REQUIRED_CODE}.txt", f"{_REQUIRED_CODE} scan".encode(), "text/plain")},
+    )
+    assert provided_upload.status_code == 200, provided_upload.text
 
     listed = await client.get(
         f"/api/v1/candidates/{candidate_id}/documents",
         headers=headers,
     )
     assert listed.status_code == 200, listed.text
-    by_id = {str(row.get("id")): row for row in listed.json()}
-    for code, request_id in requested_ids.items():
-        assert request_id != provided[code]
-        assert by_id[request_id].get("status") == "requested", by_id.get(request_id)
+    requested_row = next(
+        (row for row in listed.json() if str(row.get("id")) == request_id),
+        None,
+    )
+    assert requested_row is not None, listed.text
+    assert requested_row.get("status") in {"submitted", "received", "uploaded"}, requested_row
+    assert (requested_row.get("meta") or {}).get("request_kind") == "required", requested_row
+    assert (requested_row.get("meta") or {}).get("requirement_code") == _REQUIRED_CODE
+
+    accepted = await client.patch(
+        f"/api/v1/candidates/{candidate_id}/documents/{request_id}",
+        headers=headers,
+        json={"status": "approved"},
+    )
+    assert accepted.status_code == 200, accepted.text
+    adr_meta = _extraction_meta(_REQUIRED_CODE)
+    recorded = await client.patch(
+        f"/api/v1/candidates/{candidate_id}/documents/{request_id}",
+        headers=headers,
+        json={
+            "number": adr_meta["number"],
+            "issued_at": adr_meta["issued_at"],
+            "expires_at": adr_meta["expires_at"],
+            "meta": {**adr_meta, "request_kind": "required", "requirement_code": _REQUIRED_CODE},
+        },
+    )
+    assert recorded.status_code == 200, recorded.text
+
+    # The other outstanding documents are already in the operator's hands.
+    # Providing them does not invent a request row.
+    provided: dict[str, str] = {_REQUIRED_CODE: request_id}
+    for code in sorted(set(outstanding_codes)):
+        if code == _REQUIRED_CODE:
+            continue
+        provided[code] = await _provide_requirement_document(
+            client, headers, candidate_id, code
+        )
 
     resolved_docs = await client.get(
         "/api/v1/platform/documents/resolve",
@@ -343,6 +418,12 @@ async def test_rs7_operator_surface_walk(client: AsyncClient, manager_headers: d
         await _bind_requirement_evidence(
             client, headers, manager_headers, candidate_id, code, document_id
         )
+
+    closed = await _outstanding(client, headers, candidate_id)
+    still_open = set(closed.get("outstanding_codes") or [])
+    assert still_open.isdisjoint(set(outstanding_codes)), closed
+    assert _OUTSIDER_CODE not in still_open
+    assert _REQUIRED_CODE in (closed.get("satisfied_codes") or []), closed
 
     transferred = await _stage(client, headers, candidate_id, "ready_for_handoff")
     if transferred.status_code == 409:

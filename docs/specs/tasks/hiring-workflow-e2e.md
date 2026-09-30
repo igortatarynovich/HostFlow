@@ -104,11 +104,20 @@ Feat `feat/hiring-e2e-he4-acceptance-walk` is open from `8d5a9fef`. This amendme
 PASS when, on an operator-configured tenant, one candidate:
 
 1. moves through operator-defined stages on product surfaces;
-2. a document is requested, provided, and accepted;
+2. a missing document that Recruitment asks the candidate for is requested from the outstanding required set (`r5_required_set` minus already satisfied requirements), the candidate provides it, and it is accepted; a document may also be provided directly by the operator, with no request row; an ad-hoc request outside that set does not become an eligibility requirement;
 3. Document Link and Candidate Evidence bind (`candidate_evidence_binds_document_link`);
 4. transfer is refused with one operator-readable reason while an RPM requirement is unmet;
 5. that requirement is satisfied;
 6. transfer succeeds (`ready_for_employment.v1`).
+
+Request authority, not a universal requested→provided→accepted machine:
+
+1. `X ∈ r5_required_set` and X is not satisfied → X is an outstanding requirement.
+2. A persisted required request and a candidate link can be created from that outstanding requirement.
+3. `X ∉ r5_required_set` → the vacancy-driven request path does not create a required request for X, and missing X does not block eligibility. A recruiter may still create an ad-hoc request; that request does not enter the required set.
+4. After accepted evidence, X leaves the outstanding set and stops blocking eligibility.
+
+Conditional legal status is not an HE-4 PASS criterion. RS-7 is one candidate and the policy the operator set in RS-4. The platform pack does branch on `residency_status`, but the candidate card stores a different vocabulary, and citizenship, employment country, licence-issuing country, and qualification-card jurisdiction do not change `r5_required_set`. That policy gap is outside this gate.
 
 Inadmissible as proof: `seed_documents_for_ready_for_handoff`, `candidate_evidence_helpers`, SQL or fixture inserts, `GET /transfer-readiness`.
 
