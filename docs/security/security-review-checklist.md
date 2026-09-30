@@ -79,6 +79,7 @@
 - [ ] Documents Platform (E3–E5 public resolve): см. [`threat-models/documents-platform.md`](threat-models/documents-platform.md) (authenticated Hub metadata + Document Link; tenant bind; closed entity/relation types; no file bytes / second Adapter; `candidate_id` column dropped).
 - [ ] Verified self-service signup (ADR-041): см. [`threat-models/verified-self-service-signup.md`](threat-models/verified-self-service-signup.md) (SignupIntent pre-tenant; token hash; enumeration; concurrent complete; invite vs new tenant; registration session; cutover of `/auth/register`).
 - [ ] Hiring-path candidate stage writes (HE-2): см. [`threat-models/hiring-stage-writes.md`](threat-models/hiring-stage-writes.md) (LI-1 `is_stage_registered` existence; `Candidate.stage` occupancy; unregistered / funnel-local target 422; no new public route; Funnel is not existence SoT).
+- [ ] Required document request and employment manifest (HE-4): см. [`threat-models/hiring-required-document-request.md`](threat-models/hiring-required-document-request.md) (outstanding code only or 409; ad-hoc create cannot set `requirement_code`; public upload preserves request identity; manifest emit does not accept or mint an employee).
 
 ---
 
