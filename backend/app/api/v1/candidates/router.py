@@ -1272,6 +1272,8 @@ async def list_candidates(
             "short_id": getattr(c, "short_id", None),
             "first_name": getattr(c, "first_name", None),
             "last_name": getattr(c, "last_name", None),
+            "first_name_latin": getattr(c, "first_name_latin", None),
+            "last_name_latin": getattr(c, "last_name_latin", None),
             "phone": getattr(c, "phone", None),
             "phone_country_code": getattr(c, "phone_country_code", None),
             "email": getattr(c, "email", None),

@@ -538,6 +538,24 @@ def _candidate_scope_clause(
     return or_(*clauses)
 
 
+# Fold Polish diacritics and Cyrillic ё so "Pawel" matches "Paweł" and "Петр" matches "Пётр".
+# Both cases are listed: Postgres lower() does not fold these in the C locale.
+_SEARCH_FOLD_FROM = "ąćęłńóśźżёĄĆĘŁŃÓŚŹŻЁ"
+_SEARCH_FOLD_TO = "acelnoszzеacelnoszzе"
+
+
+def _fold_search_query(value: str) -> str:
+    return value.lower().translate(str.maketrans("ąćęłńóśźżё", "acelnoszzе"))
+
+
+def _fold_sql(expr: Any) -> Any:
+    return func.translate(func.lower(expr), _SEARCH_FOLD_FROM, _SEARCH_FOLD_TO)
+
+
+def _phone_digits_expr(expr: Any) -> Any:
+    return func.regexp_replace(func.coalesce(expr, ""), "[^0-9]", "", "g")
+
+
 def _coerce_naive_utc_datetime(value: Any) -> datetime | None:
     """Normalize filter datetimes to naive UTC for timestamp-without-tz columns."""
     if not isinstance(value, datetime):
@@ -559,25 +577,20 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
     q = q_raw.lower()
     if len(q) >= 2:
         like = f"%{q}%"
-        full_name = func.lower(
-            func.concat(
-                func.coalesce(Candidate.first_name, ""),
-                " ",
-                func.coalesce(Candidate.last_name, ""),
-            )
-        )
-        full_name_reverse = func.lower(
-            func.concat(
-                func.coalesce(Candidate.last_name, ""),
-                " ",
-                func.coalesce(Candidate.first_name, ""),
-            )
-        )
+        folded_like = f"%{_fold_search_query(q)}%"
+        fn = func.coalesce(Candidate.first_name, "")
+        ln = func.coalesce(Candidate.last_name, "")
+        fn_lat = func.coalesce(Candidate.first_name_latin, "")
+        ln_lat = func.coalesce(Candidate.last_name_latin, "")
         q_clauses = [
-            func.lower(func.coalesce(Candidate.first_name, "")).like(like),
-            func.lower(func.coalesce(Candidate.last_name, "")).like(like),
-            full_name.like(like),
-            full_name_reverse.like(like),
+            _fold_sql(fn).like(folded_like),
+            _fold_sql(ln).like(folded_like),
+            _fold_sql(fn_lat).like(folded_like),
+            _fold_sql(ln_lat).like(folded_like),
+            _fold_sql(func.concat(fn, " ", ln)).like(folded_like),
+            _fold_sql(func.concat(ln, " ", fn)).like(folded_like),
+            _fold_sql(func.concat(fn_lat, " ", ln_lat)).like(folded_like),
+            _fold_sql(func.concat(ln_lat, " ", fn_lat)).like(folded_like),
             func.lower(func.coalesce(Candidate.email, "")).like(like),
             func.lower(func.coalesce(Candidate.phone, "")).like(like),
             func.lower(func.coalesce(Candidate.short_id, "")).like(like),
@@ -592,16 +605,33 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
                 "g",
             )
             q_clauses.append(phone_squash.like(f"%{q_no_ws}%"))
-        # Also compare digit-only strings so "+48 123 …" matches "+48123…" in DB.
+        # Digit match: "+48 666…" must hit a national number stored as "666…",
+        # and a national query must hit a number stored with the country code.
         q_digits = "".join(ch for ch in q_raw if ch.isdigit())
         if len(q_digits) >= 7:
-            phone_digits = func.regexp_replace(
-                func.coalesce(Candidate.phone, ""),
-                "[^0-9]",
-                "",
-                "g",
-            )
-            q_clauses.append(phone_digits.like(f"%{q_digits}%"))
+            contact_phone = Candidate.contacts["phone"].as_string()
+            digit_exprs = [
+                _phone_digits_expr(Candidate.phone),
+                _phone_digits_expr(
+                    func.concat(
+                        func.coalesce(Candidate.phone_country_code, ""),
+                        func.coalesce(Candidate.phone, ""),
+                    )
+                ),
+                _phone_digits_expr(contact_phone),
+            ]
+            for digits_expr in digit_exprs:
+                q_clauses.append(digits_expr.like(f"%{q_digits}%"))
+            if len(q_digits) >= 9:
+                tail = q_digits[-9:]
+                for digits_expr in digit_exprs:
+                    q_clauses.append(func.right(digits_expr, 9) == tail)
+                    q_clauses.append(
+                        and_(
+                            func.length(digits_expr) >= 9,
+                            func.strpos(literal(q_digits), digits_expr) > 0,
+                        )
+                    )
 
         conds.append(or_(*q_clauses))
 

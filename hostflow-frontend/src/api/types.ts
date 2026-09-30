@@ -706,6 +706,8 @@ export interface Candidate {
   id: UUID;
   first_name: string;
   last_name: string;
+  first_name_latin?: string | null;
+  last_name_latin?: string | null;
   email?: string | null;
   phone?: string | null;                 // уже может приходить с префиксом
   phone_country_code?: string | null;
