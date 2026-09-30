@@ -1,6 +1,6 @@
 # Hiring workflow E2E
 
-**Status:** **ACTIVE** — HE-4 Acceptance Gate **PASS**. Evidence `315cb710`. RS-7 **PASS**. Feat `feat/hiring-e2e-he4-acceptance-walk` from `8d5a9fef`. Eligibility Composition Gate **PASS**. SoT: [hiring-eligibility-composition.md](../architecture/hiring-eligibility-composition.md) (`hiring_eligibility_composition.v1`). Stage Authority Consumption Gate **PASS**. Hiring Acceptance Contract Gate **PASS**. This PASS does not prove the [legal employability matrix](legal-eligibility-requirement-policy.md). min HR remains queued (feat locked; **not scheduled**). Hiring E2E program close is **not** started. External Intake program **DONE**.
+**Status:** **DONE** — Hiring E2E program close recorded. Hiring E2E Acceptance Gate **PASS** (`315cb710`). RS-7 **PASS**. Goal Completion Gate **PASS**. This close does not prove the [legal employability matrix](legal-eligibility-requirement-policy.md). [Minimal Recruitment → HR](recruitment-hr-minimal-handoff.md) is startable and **not** scheduled (feat locked). Product **DONE** with no named successor until a queue amendment. HostFlow v1 is not release-ready.
 **Phase class:** platform
 **Branch (docs):** `docs/queue-amendment-he4`
 **Branch (code):** `feat/hiring-e2e-he4-acceptance-walk` from `8d5a9fef`. This amendment authorizes the walk and does not ship it.
@@ -125,6 +125,22 @@ Out: Hiring E2E program close; min HR (feat locked; not scheduled); executing RS
 
 ---
 
+## Program close
+
+Goal Completion Gate against [Original Goal → Completion Proof](#original-goal--completion-proof). Evidence is the HE-4 walk at `315cb710`, not a new run.
+
+```text
+Goal Completion Gate — Hiring workflow E2E
+G1 Original problem: one candidate had never been walked through operator-configured stages, with one readable refusal from the policy the operator manages, without test-only seeding.
+G2 Now forbidden local implementations: a hiring-specific eligibility rule set outside RPM; seed_documents_for_ready_for_handoff; candidate_evidence_helpers; SQL/fixture document inserts; GET /transfer-readiness as the proof.
+G3 Next consumer without new primitive? yes — Minimal Recruitment → HR consumes ready_for_employment.v1. It does not need a new hiring stage machine.
+G4 End-to-end proof: product HTTP walk on a clean database (315cb710, 10 passed). It does not fork a second requirement authority.
+G5 Remaining allowed workarounds: legal employability matrix (legal-eligibility-requirement-policy.md, not scheduled); RS-5 expiry not re-run here (separate scenario); min HR feat locked until a later amendment.
+Outcome: PASS
+```
+
+This PASS is not legal employability. `poland_stay_basis` values `visa_d`, `visa_c`, `karta_pobytu`, and `waiting_for_trc` still do not change `r5_required_set`. Citizenship, employment country, and document issuing jurisdiction do not either.
+
 ## Program close = two results
 
 | Field | Meaning |
@@ -137,8 +153,8 @@ Out: Hiring E2E program close; min HR (feat locked; not scheduled); executing RS
 ## Queue position
 
 **Depends on:** Eligibility Composition Gate **PASS** [#391](https://github.com/igortatarynovich/HostFlow/pull/391) / `8d5a9fef`  
-**Unlocks:** Hiring E2E program close — **not** started in the acceptance transition. [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) stays behind that close: the close makes it startable, and it stays **not** auto-scheduled (feat locked)  
-**Does not:** start program close; start min HR; prove the [legal employability matrix](legal-eligibility-requirement-policy.md); inherited DR1 / Mapping fixes; leftover-store deletion; LI-2+; RS-3
+**Unlocks:** [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) is startable after this close and stays **not** auto-scheduled (feat locked). [Legal Eligibility](legal-eligibility-requirement-policy.md) stays queued and not scheduled.  
+**Does not:** schedule min HR; prove the legal employability matrix; mark HostFlow v1 release-ready; inherited DR1 / Mapping fixes; leftover-store deletion; LI-2+; RS-3
 
 ---
 
@@ -154,6 +170,7 @@ Out: Hiring E2E program close; min HR (feat locked; not scheduled); executing RS
 - [CL7 Engine evaluation](entity-field-composition-cl7-engine-eval.md) ✅ — structured `ready` / `not_ready` + blockers (not boolean)
 
 ## History
+- 2026-09-29: **Hiring E2E program close.** Goal Completion Gate **PASS**. Evidence remains `315cb710` / RS-7 **PASS**. Product **DONE** with no named successor until a queue amendment. min HR is startable and not scheduled. Legal employability stays [queued](legal-eligibility-requirement-policy.md), not scheduled. Not Release Readiness Gate. HostFlow v1 is not release-ready. Foundation stays 🔄.
 - 2026-09-29: **Hiring E2E Acceptance Gate PASS.** Evidence `315cb710`. Clean DB `hostflow_he4_walk_test`, 10 passed (`test_hiring_e2e_acceptance_walk.py`, `test_ready_for_employment_contract_gate.py`). RS-7 **PASS**: operator overlay → `r5_required_set` → readable refusal → outstanding required request and candidate upload, plus direct operator upload → Document Link + Candidate Evidence → requirement leaves outstanding → eligible → `ready_for_handoff` → `ready_for_employment.v1`. An ad-hoc request outside the set does not enter eligibility. This PASS does not prove the [legal employability matrix](legal-eligibility-requirement-policy.md). Not Hiring E2E program close. min HR remains queued (feat locked; not scheduled). Not Release Readiness Gate. HostFlow v1 is not release-ready.
 - 2026-09-22: **HE-4 Acceptance walk feat opened.** Queue amendment from `8d5a9fef`. Active Product → **HE-4**. Branch `feat/hiring-e2e-he4-acceptance-walk`. Hiring E2E Acceptance Gate **not PASS**. RS-7 is not executed in this stamp. Close path = operator-configured tenant → product-surface stage moves → request/provide/accept document → Document Link + Candidate Evidence bind → readable refusal while an RPM requirement is unmet → requirement satisfied → successful transfer / `ready_for_employment.v1`. Inadmissible: `seed_documents_for_ready_for_handoff`, `candidate_evidence_helpers`, SQL/fixture inserts, `GET /transfer-readiness`. min HR remains queued (feat locked; not scheduled). Not Hiring E2E program close. Not inherited DR1 / Mapping fixes. Foundation stays 🔄. HostFlow v1 is not release-ready.
 - 2026-09-22: **Eligibility Composition Gate PASS.** SoT [hiring-eligibility-composition.md](../architecture/hiring-eligibility-composition.md) (`hiring_eligibility_composition.v1`). One composed decision. Requirement conjunct = RPM `r5_required_set`. v1 and v2 are not eligibility authorities. Active Product → **HE-3**. HE-4 feat locked. Do not start RS-7 / min HR in this PR. Not a HE-2 stage-authority change. Not inherited DR1 / Mapping reds. Foundation stays 🔄. HostFlow v1 is not release-ready.
