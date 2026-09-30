@@ -1,7 +1,7 @@
 """Queue amendment named FP-1; Contract Gate then named FP-2.
 
 History still records the 2026-09-20 FP-1 naming amendment.
-Current Active Product is HE-1 after External Intake program close.
+Current Active Product is Legal Eligibility (brief; feat locked).
 min HR remain queued. Leftover-store deletion, RS-3, embed snippet,
 and a new form architecture stay unauthorized. FP-5 PASS is not Release
 Acceptance PASS.
@@ -31,7 +31,7 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "Queue amendment names FP-1 Active Product" in history
-    assert "**Active Product** | **DONE**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
     assert "Hiring E2E program close recorded" in current
     assert "feat/forms-publish-fp2-publish-action" in queue
     assert "feat/forms-publish-fp3-public-serve" in current
@@ -42,7 +42,7 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     assert "Operator Publish Gate **PASS**" in current
     assert "External Intake Acceptance Gate **PASS**" in current
     assert "Forms Publish Contract Gate **PASS**" in current or "Forms Publish Contract Gate = PASS" in current
-    assert "Active (Product):** **DONE**" in current
+    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
     assert "**Active Product** | External Intake program close" not in current
     assert "This stamp does not ship runtime" not in current
     assert "Do not start FP-5" not in current

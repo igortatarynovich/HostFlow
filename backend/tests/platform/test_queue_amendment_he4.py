@@ -1,9 +1,8 @@
-"""Queue amendment opened HE-4. The acceptance gate is now PASS.
+"""Queue amendment opened HE-4. The acceptance gate is PASS.
 
-History keeps the opening stamp (gate not PASS, RS-7 not executed).
-Current text records evidence `315cb710` and RS-7 PASS. Program close
-is not started. min HR stays queued. The legal employability matrix
-is a separate unscheduled slice.
+History keeps the opening stamp (gate not PASS, RS-7 not executed)
+and the later program-close stamp. Current Active Product is Legal
+Eligibility. min HR stays queued.
 """
 
 from __future__ import annotations
@@ -30,7 +29,7 @@ def test_he4_amendment_opens_feat_without_rs7() -> None:
     assert "HE-4 Acceptance walk feat opened" in history
     assert "Hiring E2E Acceptance Gate **not PASS**" in history
     assert "HE-4 feat locked" in history
-    assert "**Active Product** | **DONE**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
     assert "**Active Product** | **[HE-3](hiring-workflow-e2e.md)**" not in current
     assert "**Active Product** | **[HE-4](hiring-workflow-e2e.md)**" not in current
     assert "Hiring E2E program close recorded" in current

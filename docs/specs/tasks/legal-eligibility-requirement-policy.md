@@ -1,11 +1,12 @@
 # Legal Eligibility / Requirement Policy Normalization
 
-**Status:** **QUEUED** — not scheduled. Not Active Product.  
-**Date:** 2026-09-29  
-**Parents:** [Hiring workflow E2E](hiring-workflow-e2e.md) · [document policy platform pack](../platform/document-policy-platform-pack-v1.json) · [Requirement Policy Management](requirement-policy-management.md)
+**Status:** **NAMED** — Active Product this amendment. Brief only. Feat locked. Business rules are not written here.  
+**Date:** 2026-09-29 (named 2026-09-30)  
+**Parents:** [Hiring workflow E2E](hiring-workflow-e2e.md) · [document policy platform pack](../platform/document-policy-platform-pack-v1.json) · [Requirement Policy Management](requirement-policy-management.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
 
 > Hiring E2E Acceptance Gate **PASS** does **not** prove a legal employability matrix.  
-> This slice is the place that matrix is defined. It is not started here.
+> This slice is the place that matrix is defined. The queue amendment names it and does not write the rules.  
+> `visa_d` is not mapped onto `visa`. Minimal Recruitment → HR stays **not** scheduled.
 
 ---
 
@@ -33,4 +34,4 @@ Two candidates on one vacancy, with different recorded legal facts, receive diff
 2. Normalize those facts into the inputs `r5_required_set` already evaluates.
 3. Only then change the pack or the engine.
 
-Unlock does not schedule this slice. Minimal Recruitment → HR stays behind Hiring E2E program close and is not this slice.
+This amendment schedules the brief and does not write step 1. Steps 2 and 3 stay locked. Minimal Recruitment → HR stays behind Hiring E2E program close and is not this slice.

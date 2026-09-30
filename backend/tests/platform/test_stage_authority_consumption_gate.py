@@ -151,7 +151,7 @@ def test_he2_queue_names_he2_active_he3_locked() -> None:
     history = text.split("## 8. History", 1)[1]
     assert "Stage Authority Consumption Gate **PASS**" in current
     assert "Stage Authority Consumption Gate PASS" in history
-    assert "**Active Product** | **DONE**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
     assert "Hiring E2E program close recorded" in current
     assert "Hiring Acceptance Contract Gate **PASS**" in current
     assert "Do not start HE-3" in history
