@@ -1,7 +1,9 @@
-"""Queue amendment opens HE-4 after Eligibility Composition Gate PASS.
+"""Queue amendment opened HE-4. The acceptance gate is now PASS.
 
-Current Active Product is HE-4. Feat is open. Hiring E2E Acceptance Gate
-is not PASS. This stamp does not execute RS-7. min HR stays queued.
+History keeps the opening stamp (gate not PASS, RS-7 not executed).
+Current text records evidence `315cb710` and RS-7 PASS. Program close
+is not started. min HR stays queued. The legal employability matrix
+is a separate unscheduled slice.
 """
 
 from __future__ import annotations
@@ -31,16 +33,19 @@ def test_he4_amendment_opens_feat_without_rs7() -> None:
     assert "**Active Product** | **[HE-4](hiring-workflow-e2e.md)**" in current
     assert "**Active Product** | **[HE-3](hiring-workflow-e2e.md)**" not in current
     assert "feat/hiring-e2e-he4-acceptance-walk" in current
-    assert "Hiring E2E Acceptance Gate **not PASS**" in current
-    assert "Hiring E2E Acceptance Gate **PASS**" not in current
-    assert "does not execute RS-7" in current
+    assert "Hiring E2E Acceptance Gate **not PASS**" not in current
+    assert "Hiring E2E Acceptance Gate **PASS** (`315cb710`)" in current
+    assert "RS-7 **PASS** (`315cb710`)" in current
     assert "8d5a9fef" in current
     hiring = _HIRING.read_text(encoding="utf-8")
     hiring_current = hiring.split("## History", 1)[0]
     hiring_history = hiring.split("## History", 1)[1]
     assert "**ACTIVE**" in hiring_current
     assert "feat/hiring-e2e-he4-acceptance-walk" in hiring_current
-    assert "Hiring E2E Acceptance Gate **not PASS**" in hiring_current
+    assert "Hiring E2E Acceptance Gate **not PASS**" not in hiring_current
+    assert "Hiring E2E Acceptance Gate **PASS**" in hiring_current
+    assert "315cb710" in hiring_current
+    assert "legal-eligibility-requirement-policy.md" in hiring_current
     assert "seed_documents_for_ready_for_handoff" in hiring_current
     assert "candidate_evidence_helpers" in hiring_current
     assert "GET /transfer-readiness" in hiring_current
@@ -52,7 +57,8 @@ def test_he4_amendment_opens_feat_without_rs7() -> None:
     assert "feat/hiring-e2e-he4-acceptance-walk" in agents
     goal = _GOAL.read_text(encoding="utf-8")
     assert "HE-4" in goal
-    assert "Hiring E2E Acceptance Gate **not PASS**" in goal
+    assert "Hiring E2E Acceptance Gate **PASS** (`315cb710`)" in goal
+    assert "Hiring E2E Acceptance Gate **not PASS**" not in goal
 
 
 def test_he4_leaves_hr_queued_and_program_close_unstarted() -> None:

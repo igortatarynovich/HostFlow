@@ -189,6 +189,7 @@ Reject: a new Hiring Product; sealing the walk while leaving `candidate_evidence
 
 ## History
 
+- 2026-09-29: **Hiring E2E Acceptance Gate PASS.** Evidence `315cb710`. RS-7 **PASS**. No new walk step. This PASS does not prove the legal employability matrix. Not Hiring E2E program close. min HR remains queued.
 - 2026-09-29: HE-4 request authority. The outstanding required set is `r5_required_set` minus satisfied requirements. A required candidate request is created only from that set and carries a candidate link. Direct operator upload does not need a request row. An ad-hoc request does not enter the required set. No new walk step. Hiring E2E Acceptance Gate stays **not PASS**. RS-7 is not executed.
 - 2026-09-22: **HE-4 Acceptance walk feat opened.** Active Product → **HE-4**. Hiring E2E Acceptance Gate **not PASS**. RS-7 is not executed. min HR remains queued. Not a change to this acceptance contract.
 - 2026-09-22: Eligibility Composition Gate **PASS**. Eligibility step consumes `hiring_eligibility_composition.v1`. Requirement conjunct = RPM. Active Product → **HE-3**. HE-4 feat locked. min HR remains queued.
