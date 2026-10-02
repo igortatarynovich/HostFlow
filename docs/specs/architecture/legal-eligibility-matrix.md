@@ -76,6 +76,18 @@ A later encoding must be able to express these as separate chains. This file doe
 
 ---
 
+## Default policy
+
+The chain is default policy, not a ban. An authorized operator may `waive_requirement` for one document on this candidate and this process, or `override_readiness` while other system blockers stay listed. An administrator `update_preset` changes the default for later cases. The system does not. Five `rule_changed` waives of the same requirement are a review signal, not an edit.
+
+The reason is one of `not_required`, `rule_changed`, `different_procedure`, `authority_confirmed`, `other`, with the actor and the timestamp. The audit keeps the system requirement.
+
+`r5_required_set` is what policy requires. Evidence is what was obtained. A waiver is the requirement an operator lifted for this process and this candidate. Effective readiness is required − satisfied − waived. `r5_required_set` does not mutate, and a waive does not rewrite it. `override_readiness` does not mark a requirement satisfied or waived: the blockers stay, and the audit records the exception. A requirement is not an upload slot. One evidence object may satisfy more than one requirement and more than one source. An EU driving licence with a valid Code 95 may satisfy both the licence requirement and Code 95. A licence without Code 95 leaves Code 95 unsatisfied when policy requires it. This matrix writes no driver preset and no extraction.
+
+`operator_verification` is not this override. `kod zawodu` is not this section. Work Authorization Procedure is not opened.
+
+---
+
 ## Legal Eligibility Matrix Gate
 
 **Outcome:** **not PASS**. The decision model is recorded. The evidence rules are not encoded.

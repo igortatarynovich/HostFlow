@@ -222,4 +222,43 @@ A procedure preset is country + procedure type + `kod zawodu`. The occupation co
 
 Legal document lists that would prove this chain are not encoded here. They are not a `kod zawodu` list and they are not a procedure preset.
 
+### Default policy
+
+A preset is default policy. It is not an absolute prohibition. Legal Eligibility is not an insurmountable system ban: an authorized operator may continue only by an explicit audited override. The same principle is reserved for a later profession preset and for Work Authorization Procedure. This amendment does not open those slices and does not add a column.
+
+`operator_verification` and an operator hold are chain states. They are not this override.
+
+| Action | Who | Effect |
+|---|---|---|
+| `waive_requirement` | authorized operator | this requirement is lifted for this candidate and this process |
+| `override_readiness` | authorized operator | the process may continue; no requirement becomes satisfied or waived |
+| `update_preset` | administrator | the default rule changes for later cases |
+
+A waive and a readiness override each record one reason from this closed set: `not_required`, `rule_changed`, `different_procedure`, `authority_confirmed`, `other`. Each record has the actor and the timestamp.
+
+Four facts stay separate. `r5_required_set` does not mutate.
+
+| Fact | Meaning |
+|---|---|
+| `r5_required_set` | what policy requires |
+| evidence | what was actually obtained |
+| waiver | which requirement the operator explicitly lifted for this process and this candidate |
+| effective readiness | required − satisfied − waived |
+
+`r5_required_set` stays the sole writer of the system required set. A waive does not delete that requirement and does not rewrite `r5_required_set`. Satisfaction is Candidate Evidence bound to Document Link. A requirement is missing only when policy requires it, evidence does not satisfy it, and no waiver lifts it. HostFlow does not treat “present in `r5_required_set` and no new upload” as the whole of missing.
+
+`override_readiness` does not mark a requirement satisfied and does not mark it waived. The blockers stay. The operator allows the transition, and the audit records that exception. A later reader can tell a lifted requirement from a process that continued with the requirement still open.
+
+The audit keeps the system requirement, then the operator action, then that the process continued.
+
+Five `rule_changed` waives of the same requirement are a review signal for the administrator. The system does not edit the preset from that count. Only `update_preset` changes the default for later cases.
+
+### Requirement and evidence
+
+A requirement is not an upload slot. A document is evidence. One evidence object may satisfy more than one requirement, and more than one source of that requirement: vacancy, profession preset, Legal Eligibility, or a later Work Authorization Procedure. Provenance stays on the requirement. The same physical document is not uploaded again only because another source names it.
+
+An EU driving licence that carries a valid Code 95 may satisfy both the applicable driving-licence requirement and the Code 95 requirement. A driving licence without Code 95 satisfies only the licence requirement. Code 95 stays unsatisfied on its own when policy requires it. Driving licence, Code 95, and work-authorization evidence are not separate upload slots when one document supplies that evidence. The same rule covers a residence card and its decision, a passport, and an ADR certificate. This amendment writes no driver preset, no Code 95 legal rule, and no extraction.
+
+Code 95 is not a Legal Eligibility input. It shows the later layer: policy can still require it, evidence can satisfy it from a licence that already carries it, and an authorized operator can waive that requirement with `rule_changed`. The system row stays in the audit. The submission is ready when effective readiness has no remaining blocker. `override_readiness` is not that ready state.
+
 Feat stays locked. Runtime is not authorized. Minimal Recruitment → HR stays not scheduled. HostFlow v1 is not release-ready. The Matrix Gate is not passed by this amendment. Work Authorization Procedure is not opened.
