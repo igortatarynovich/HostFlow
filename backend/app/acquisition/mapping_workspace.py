@@ -703,6 +703,11 @@ def build_workspace_rows(
         dest = dest_by_key.get(dest_code.lower()) if dest_code else None
         dest_type = str((dest or {}).get("field_type") or "")
         dest_label = str((dest or {}).get("label") or dest_code)
+        # Mapped, but not a qualified write. Keep the question visible in the
+        # operator projection. ``destination_code`` stays empty so target is
+        # not a second write vocabulary.
+        if binding == "mapped" and not dest_code:
+            dest_label = source
         dest_options = list((dest or {}).get("options") or [])
         source_type = _source_type(field_type, options)
         source_choice = _is_choice_type(source_type) or bool(options)
@@ -750,7 +755,7 @@ def build_workspace_rows(
                 "sample_example": sample_by_source.get(key) or None,
                 "binding": binding,
                 "destination_code": dest_code or None,
-                "destination_label": dest_label if dest_code else None,
+                "destination_label": dest_label or None,
                 "destination_type": dest_type or None,
                 "choice": choice,
                 "option_map": option_map,

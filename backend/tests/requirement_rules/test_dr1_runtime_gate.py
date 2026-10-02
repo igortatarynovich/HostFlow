@@ -319,8 +319,10 @@ def test_dr1_runtime_classifies_requested_and_problem_states() -> None:
     by_type = {row["doc_type"]: row["state"] for row in written["outstanding_asks"]}
     assert by_type.get("passport") == "requested"
     assert by_type.get("driver_license") == "problem"
-    assert "driver_qualification_card" not in by_type
-    assert "tachograph_card" not in by_type
+    # Verified without a file is not satisfied. Aliases still resolve
+    # (code95 → driver_qualification_card, tacho_card → tachograph_card).
+    assert by_type.get("driver_qualification_card") == "missing"
+    assert by_type.get("tachograph_card") == "missing"
 
 
 def test_dr1_runtime_evaluate_still_does_not_write() -> None:

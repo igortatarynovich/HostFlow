@@ -51,7 +51,10 @@ def validate_mapping_rules_for_profile(
     if not rules:
         return MappingValidationResult()
 
-    if not allowed_qualified_codes:
+    # A resolved profile with no fields, and a legacy candidate profile, still
+    # reject every rule. ``not_specified`` has no profile scope: qualified_code
+    # writes stay, leftover targets and Ignore do not become a second vocabulary.
+    if not allowed_qualified_codes and resolution_source != "not_specified":
         warning = "entity_profile_empty_no_mapping_allowed"
         if resolution_source == "legacy_candidate_profile":
             warning = "legacy_candidate_profile_unscoped_mapping_rejected"
@@ -63,6 +66,8 @@ def validate_mapping_rules_for_profile(
     accepted: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     warnings: list[str] = []
+    if not allowed_qualified_codes:
+        warnings.append("entity_profile_unscoped_qualified_code_only")
 
     for rule in rules:
         if not isinstance(rule, dict):
@@ -72,7 +77,7 @@ def validate_mapping_rules_for_profile(
             rejected.append(dict(rule))
             warnings.append(f"mapping_target_unresolved:{rule.get('source')}")
             continue
-        if qualified not in allowed_qualified_codes:
+        if allowed_qualified_codes and qualified not in allowed_qualified_codes:
             rejected.append({**dict(rule), "qualified_field_code": qualified})
             warnings.append(f"mapping_target_rejected:{qualified}")
             continue

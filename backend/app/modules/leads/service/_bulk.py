@@ -540,6 +540,7 @@ async def reprocess_stored_lead_payload(
     )
     ingest_envelope.normalized_payload = dict(normalized)
     stamp_ingest_envelope_v1(normalized, ingest_envelope)
+    authority_rules = (ingest_envelope.mapping_result or {}).get("authority_rules")
     stamp_mapping_applied_from_envelope(
         normalized,
         rules=list(validated_mapping or []),
@@ -548,6 +549,7 @@ async def reprocess_stored_lead_payload(
             (ingest_envelope.mapping_result or {}).get("profile_updated_at") or ""
         ).strip()
         or None,
+        fingerprint_rules=list(authority_rules) if isinstance(authority_rules, list) else None,
     )
     normalized["intake_routing_v1"] = intake_route.to_intake_routing_v1()
     normalized["intake_route_v1"] = intake_route.to_normalized_block()
@@ -634,6 +636,7 @@ async def process_generic_inbound_webhook_lead(
     )
     ingest_envelope.normalized_payload = dict(normalized)
     stamp_ingest_envelope_v1(normalized, ingest_envelope)
+    authority_rules = (ingest_envelope.mapping_result or {}).get("authority_rules")
     stamp_mapping_applied_from_envelope(
         normalized,
         rules=list(validated_mapping or []),
@@ -642,6 +645,7 @@ async def process_generic_inbound_webhook_lead(
             (ingest_envelope.mapping_result or {}).get("profile_updated_at") or ""
         ).strip()
         or None,
+        fingerprint_rules=list(authority_rules) if isinstance(authority_rules, list) else None,
     )
     normalized["intake_routing_v1"] = intake_route.to_intake_routing_v1()
     normalized["intake_route_v1"] = intake_route.to_normalized_block()

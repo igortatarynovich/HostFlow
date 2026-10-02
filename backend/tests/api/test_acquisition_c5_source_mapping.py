@@ -633,6 +633,36 @@ def test_schema_identity_without_fields_is_not_ready_claim() -> None:
     assert identity["human"] == "No schema yet"
 
 
+def test_mapped_question_without_qualified_destination_still_projects() -> None:
+    from backend.app.acquisition.mapping_workspace import build_projection, build_workspace_rows
+
+    rows, summary = build_workspace_rows(
+        schema_fields=[
+            {
+                "source": "document_validity",
+                "label": "Document validity",
+                "options": ["Under 3 months", "Over 8 months"],
+            }
+        ],
+        mapping_rules=[
+            {
+                "source": "document_validity",
+                "target": "document_validity",
+                "option_map": {"Over 8 months": "GT_8_MONTHS"},
+            }
+        ],
+        sample_by_source={},
+        destinations=[],
+        has_schema=True,
+    )
+    assert rows[0]["binding"] == "mapped"
+    assert rows[0]["destination_code"] is None
+    projection = build_projection(rows)
+    assert projection
+    assert "document_validity" in projection[0]["sentence"]
+    assert summary["headline"] == "option_drift"
+
+
 def test_workspace_rows_do_not_require_sample() -> None:
     from backend.app.acquisition.mapping_workspace import build_workspace_rows
 
