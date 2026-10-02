@@ -54,12 +54,14 @@ def test_external_intake_close_product_done_no_named_successor() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "External Intake program close" in current
-    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "no named successor until amendment" in current.lower()
     assert "External Intake program close." in history or "External Intake program close**" in history
     assert "Product **DONE** with no named successor until amendment" in history
-    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "**Active Product** | External Intake program close" not in current
     intake = _BRIEF.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]

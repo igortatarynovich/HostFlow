@@ -7,7 +7,7 @@
 > Hiring E2E Acceptance Gate **PASS** does **not** prove a legal employability matrix.  
 > This brief records the legal facts the product already stores and the distinctions `r5_required_set` does not express.  
 > The [contract](../architecture/legal-eligibility-contract.md) is Accepted. Legal Eligibility Contract Gate **PASS**. The live model is the [decision chain](../architecture/legal-eligibility-contract.md#decision-chain). Legal Eligibility Matrix Gate **not PASS**. Evidence rules are not encoded.  
-> `visa_d` is not mapped onto `visa`. Minimal Recruitment → HR stays **not** scheduled. HostFlow v1 is not release-ready.
+> `visa_d` is not mapped onto `visa`. The next product slice is [Work Authorization Procedure](work-authorization-procedure.md). This brief does not define it. Minimal Recruitment → HR stays **not** scheduled. HostFlow v1 is not release-ready.
 
 ---
 
