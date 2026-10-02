@@ -24,7 +24,7 @@ The vocabulary is the contract decision chain. This file does not add a value.
 | `work_authorization_basis` | `not_required`, `included_in_stay`, `separate_required` | an operator hold is not a fourth value |
 | `valid_for_this_employment` | `yes`, `no`, `operator_verification` | not a country axis |
 
-`employment_country`, `residence_permit_country`, `licence_issuing_country`, and `qualification_jurisdiction` are not steps. Driving licence, Code 95, ADR, profession, and `kod zawodu` are not steps. A procedure preset is country + procedure type + `kod zawodu`, and that preset is not this matrix. Work Authorization Procedure is not opened.
+`employment_country`, `residence_permit_country`, `licence_issuing_country`, and `qualification_jurisdiction` are not steps. Driving licence, Code 95, ADR, profession, and `kod zawodu` are not steps. A procedure preset is country + procedure type + `kod zawodu`, and that preset is not this matrix. Work Authorization Procedure is opened in its own contract and is not defined here.
 
 There is no six-tuple cell and no default cell. A combination that this chain does not determine matches nothing.
 
@@ -84,7 +84,7 @@ The reason is one of `not_required`, `rule_changed`, `different_procedure`, `aut
 
 `r5_required_set` is what policy requires. Evidence is what was obtained. A waiver is the requirement an operator lifted for this process and this candidate. Effective readiness is required − satisfied − waived. `r5_required_set` does not mutate, and a waive does not rewrite it. `override_readiness` does not mark a requirement satisfied or waived: the blockers stay, and the audit records the exception. A requirement is not an upload slot. One evidence object may satisfy more than one requirement and more than one source. An EU driving licence with a valid Code 95 may satisfy both the licence requirement and Code 95. A licence without Code 95 leaves Code 95 unsatisfied when policy requires it. This matrix writes no driver preset and no extraction.
 
-`operator_verification` is not this override. `kod zawodu` is not this section. Work Authorization Procedure is not opened.
+`operator_verification` is not this override. `kod zawodu` is not this section. Work Authorization Procedure is opened in its own contract and is not defined here.
 
 ---
 

@@ -214,7 +214,7 @@ Three layers meet only in RPM. This canon is the first layer. The other two are 
 |---|---|---|
 | Legal Eligibility | lawful stay in Poland, and a lawful basis for this employment | the chain above |
 | Profession / vacancy | professional documents for the vacancy | not Legal Eligibility |
-| Work Authorization Procedure | what a submission requires | next product slice; not opened |
+| Work Authorization Procedure | what a submission requires | [opened](work-authorization-procedure-contract.md); this file does not define it |
 
 A profession preset belongs to the vacancy layer. A Driver CE preset may name a CE licence, Code 95, and a tachograph card, and a vacancy may add ADR. This canon does not write that preset.
 
@@ -261,4 +261,4 @@ An EU driving licence that carries a valid Code 95 may satisfy both the applicab
 
 Code 95 is not a Legal Eligibility input. It shows the later layer: policy can still require it, evidence can satisfy it from a licence that already carries it, and an authorized operator can waive that requirement with `rule_changed`. The system row stays in the audit. The submission is ready when effective readiness has no remaining blocker. `override_readiness` is not that ready state.
 
-Feat stays locked. Runtime is not authorized. Minimal Recruitment → HR stays not scheduled. HostFlow v1 is not release-ready. The Matrix Gate is not passed by this amendment. Work Authorization Procedure is not opened.
+Feat stays locked. Runtime is not authorized. Minimal Recruitment → HR stays not scheduled. HostFlow v1 is not release-ready. The Matrix Gate is not passed by this amendment. Work Authorization Procedure is opened in its own contract and is not defined here.

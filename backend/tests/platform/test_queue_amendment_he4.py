@@ -29,7 +29,8 @@ def test_he4_amendment_opens_feat_without_rs7() -> None:
     assert "HE-4 Acceptance walk feat opened" in history
     assert "Hiring E2E Acceptance Gate **not PASS**" in history
     assert "HE-4 feat locked" in history
-    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "**Active Product** | **[HE-3](hiring-workflow-e2e.md)**" not in current
     assert "**Active Product** | **[HE-4](hiring-workflow-e2e.md)**" not in current
     assert "Hiring E2E program close recorded" in current

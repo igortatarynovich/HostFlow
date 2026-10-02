@@ -139,8 +139,10 @@ def test_fp1_queue_names_successor_not_runtime() -> None:
     assert "feat/forms-publish-fp3-public-serve" in current
     assert "feat/forms-publish-fp4-operator-surface" in current
     assert "feat/forms-publish-fp5-runtime" in current
-    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
-    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "Publish Action Gate **PASS**" in current
     assert "Public Serve Gate **PASS**" in current

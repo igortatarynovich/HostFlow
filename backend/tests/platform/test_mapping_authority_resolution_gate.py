@@ -95,9 +95,12 @@ def test_ma2_brief_resolution_gate_pass() -> None:
 def test_ma2_queue_names_ma3_successor() -> None:
     text = _QUEUE.read_text(encoding="utf-8")
     current = text.split("## 8. History", 1)[0]
+    history = text.split("## 8. History", 1)[1]
     assert "Mapping Resolution Gate" in text
-    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
-    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "feat locked" in text
     assert "Active (Product):** **[MA-2](mapping-authority.md)**" not in current

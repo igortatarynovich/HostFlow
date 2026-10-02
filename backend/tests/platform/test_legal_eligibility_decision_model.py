@@ -51,7 +51,7 @@ def test_legal_eligibility_decision_chain_is_the_live_model() -> None:
     assert "`qualification_jurisdiction` are not inputs" in contract
     assert "It does not take `kod zawodu`." in contract
     assert "country + procedure type + `kod zawodu`" in contract
-    assert "Work Authorization Procedure is not opened." in contract
+    assert "Work Authorization Procedure is opened in its own contract and is not defined here." in contract
     assert "A preset is default policy." in contract
     assert "Legal Eligibility is not an insurmountable system ban" in contract
     assert "`waive_requirement`" in contract

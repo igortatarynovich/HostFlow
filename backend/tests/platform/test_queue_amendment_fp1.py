@@ -31,7 +31,8 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "Queue amendment names FP-1 Active Product" in history
-    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "feat/forms-publish-fp2-publish-action" in queue
     assert "feat/forms-publish-fp3-public-serve" in current
@@ -42,7 +43,8 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     assert "Operator Publish Gate **PASS**" in current
     assert "External Intake Acceptance Gate **PASS**" in current
     assert "Forms Publish Contract Gate **PASS**" in current or "Forms Publish Contract Gate = PASS" in current
-    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "**Active Product** | External Intake program close" not in current
     assert "This stamp does not ship runtime" not in current
     assert "Do not start FP-5" not in current
