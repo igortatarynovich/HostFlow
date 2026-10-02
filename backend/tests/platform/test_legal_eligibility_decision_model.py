@@ -52,6 +52,23 @@ def test_legal_eligibility_decision_chain_is_the_live_model() -> None:
     assert "It does not take `kod zawodu`." in contract
     assert "country + procedure type + `kod zawodu`" in contract
     assert "Work Authorization Procedure is not opened." in contract
+    assert "A preset is default policy." in contract
+    assert "Legal Eligibility is not an insurmountable system ban" in contract
+    assert "`waive_requirement`" in contract
+    assert "`override_readiness`" in contract
+    assert "`update_preset`" in contract
+    assert "`rule_changed`" in contract
+    assert "Five `rule_changed` waives of the same requirement are a review signal" in contract
+    assert "The system does not edit the preset from that count." in contract
+    assert "A waive does not delete that requirement" in contract
+    assert "effective readiness" in contract
+    assert "required − satisfied − waived" in contract
+    assert "`override_readiness` does not mark a requirement satisfied and does not mark it waived." in contract
+    assert "A requirement is not an upload slot." in contract
+    assert "One evidence object may satisfy more than one requirement" in contract
+    assert "An EU driving licence that carries a valid Code 95 may satisfy both" in contract
+    assert "This amendment writes no driver preset, no Code 95 legal rule, and no extraction." in contract
+    assert "Code 95 is not a Legal Eligibility input." in contract
     assert "RPM `r5_required_set` stays the only writer." in contract
     assert "This amendment assigns neither id" in contract
     assert "exclusively `r5_required_set`" in contract
@@ -71,3 +88,8 @@ def test_legal_eligibility_decision_chain_is_the_live_model() -> None:
     assert "`karta_pobytu` is not given the pack row for `card`" in live
     assert "assigned to no chain result" in live
     assert "Legal Eligibility Matrix Gate **not PASS**" in live
+    assert "The chain is default policy, not a ban." in live
+    assert "Effective readiness is required − satisfied − waived." in live
+    assert "`override_readiness` does not mark a requirement satisfied or waived" in live
+    assert "One evidence object may satisfy more than one requirement" in live
+    assert "Five `rule_changed` waives of the same requirement are a review signal, not an edit." in live
