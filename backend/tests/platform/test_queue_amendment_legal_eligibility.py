@@ -1,9 +1,9 @@
 """Queue amendment names Legal Eligibility after Hiring E2E program close.
 
-History keeps the close stamp (Product DONE, no named successor).
-Current Active Product is the legal-eligibility brief. The business
-rules are not written here. min HR stays unscheduled. visa_d is not
-mapped onto visa.
+History keeps the close stamp (Product DONE, no named successor) and
+the later naming stamp. The brief is opened. The contract is not
+opened and the matrix is not written. min HR stays unscheduled.
+visa_d is not mapped onto visa.
 """
 
 from __future__ import annotations
@@ -35,19 +35,29 @@ def test_legal_eligibility_amendment_names_brief_without_rules() -> None:
     assert "**Active Product** | **DONE**" not in current
     assert "**Active Product** | **[HE-4](hiring-workflow-e2e.md)**" not in current
     assert "feat locked" in current
+    assert "brief opened" in current
+    assert "contract not opened" in current
     assert "Do not map `visa_d` onto `visa`" in current
     assert "not a join-graph edge" in current.lower()
     assert "Do not write the matrix in this PR" in current
+    assert "Legal Eligibility brief opened" in history
     assert "Hiring E2E program close recorded" in current
     assert "Hiring E2E Acceptance Gate **PASS** (`315cb710`)" in current
     assert "not scheduled" in current.lower()
     legal = _LEGAL.read_text(encoding="utf-8")
-    assert "**NAMED**" in legal
-    assert "Feat locked" in legal
-    assert "Business rules are not written here" in legal
-    assert "visa_d" in legal
-    assert "not mapped onto `visa`" in legal
-    assert "**QUEUED**" not in legal.split("## Problem", 1)[0]
+    legal_header, legal_rest = legal.split("## Problem", 1)
+    assert "**OPENED**" in legal_header
+    assert "**NAMED**" not in legal_header
+    assert "Feat locked" in legal_header
+    assert "Contract not opened" in legal_header
+    assert "Matrix not written" in legal_header
+    assert "Business rules are not written here" in legal_header
+    assert "visa_d" in legal_header
+    assert "not mapped onto `visa`" in legal_header
+    assert "**QUEUED**" not in legal_header
+    assert "**NAMED**" in legal_rest
+    assert "It is not the matrix" in legal_rest
+    assert "Document-type aliases are not this rule" in legal_rest
     hiring = _HIRING.read_text(encoding="utf-8")
     hiring_current = hiring.split("## History", 1)[0]
     assert "**DONE**" in hiring_current
