@@ -57,7 +57,9 @@ def test_legal_eligibility_contract_gate_pass_is_current_canon() -> None:
     assert "Legal Eligibility Matrix Gate **not PASS**" in current
     assert "feat locked" in current.lower()
     assert "Do not map `visa_d` onto `visa`" in current
-    assert "Do not assign documents or outcome ids in this opening" in current
+    assert "Decision model amendment" in current
+    assert "Evidence rules are not encoded" in current
+    assert "Do not assign documents or outcome ids in this opening" in history
     assert "not scheduled" in current.lower()
     assert "Legal Eligibility Contract Gate **not PASS**" in history
     assert "Legal Eligibility Contract Gate PASS" in history

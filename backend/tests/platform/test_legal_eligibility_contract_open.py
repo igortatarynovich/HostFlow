@@ -67,7 +67,8 @@ def test_legal_eligibility_contract_is_current_and_unaccepted() -> None:
     assert "Legal Eligibility Contract Gate **not PASS**" not in current
     assert "contract opened; not accepted" not in current
     assert "Legal Eligibility Matrix Gate **not PASS**" in current
-    assert "Do not assign documents" in current
+    assert "Decision model amendment" in current
+    assert "Evidence rules are not encoded" in current
     assert "Runtime not authorized" in current or "runtime not authorized" in current.lower()
     assert "feat locked" in current.lower() or "Feat stays locked" in current
     assert "not scheduled" in current.lower()

@@ -1,8 +1,7 @@
-"""Legal Eligibility Matrix is opened and not PASS.
+"""Legal Eligibility Matrix stays not PASS.
 
-The cell key is the contract's closed fact set. visa_d, karta_pobytu,
-and empty stay_basis are distinct cells. No outcome id and no document
-is assigned. r5_required_set stays the only required-document authority.
+The live geometry is the decision chain. The six-tuple opening remains
+history. No evidence list is assigned.
 """
 
 from __future__ import annotations
@@ -24,43 +23,30 @@ def test_legal_eligibility_matrix_open_filename() -> None:
 
 def test_legal_eligibility_matrix_structure_is_opened_not_pass() -> None:
     text = _MATRIX.read_text(encoding="utf-8")
-    assert "**Opened**" in text
-    assert "Legal Eligibility Matrix Gate **not PASS**" in text
+    live, history = text.split("## History", 1)
+    assert "**Decision model**" in live
+    assert "Legal Eligibility Matrix Gate **not PASS**" in live
     assert "Legal Eligibility Matrix Gate **PASS**" not in text
-    assert "**Accepted**" not in text.split("## Cell", 1)[0]
-    order = [
-        "1. `stay_basis`",
-        "2. `citizenship`",
-        "3. `employment_country`",
-        "4. `residence_permit_country`",
-        "5. `licence_issuing_country`",
-        "6. `qualification_jurisdiction`",
-    ]
-    positions = [text.index(item) for item in order]
-    assert positions == sorted(positions)
-    assert "exactly these six facts, in this order, and no other key" in text
-    assert "`residence_permit_type` is not a key" in text
-    assert "does not rewrite `visa_d` as `visa`" in text
-    assert "`stay_basis` is never **absent**" in text
-    assert "**absent** is not `''`" in text
-    assert "| `visa_d` | absent | **unassigned** |" in text
-    assert "| `karta_pobytu` | absent | **unassigned** |" in text
-    assert "| `''` | absent | **unassigned** |" in text
-    assert "matches at most one cell" in text
-    assert "does not add a default cell" in text
-    assert "It is not an outcome id" in text
-    assert "does not receive the required document set" in text
-    assert "future outcome schema" in text
-    assert "assigned to no cell" in text
-    assert "hands RPM nothing" in text
-    assert "sole writer of the required set" in text
-    assert "require list" in text
-    assert "This opening has none" in text
-    assert "does not authorize a runtime module" in text
-    assert "Feat stays locked" in text
-    assert "not scheduled" in text.lower()
-    assert "not release-ready" in text.lower()
-    assert "No runtime module" in text
+    assert "**Accepted**" not in live
+    assert "`citizenship_class`" in live
+    assert "`work_authorization_basis`" in live
+    assert "`valid_for_this_employment`" in live
+    assert "There is no six-tuple cell and no default cell." in live
+    assert "are not steps" in live
+    assert "An operator hold is not an outcome id" in live
+    assert "does not receive the required document set" in live or "not a required document set" in live
+    assert "future outcome schema" in live
+    assert "assigned to no chain result" in live
+    assert "hands RPM nothing" in live
+    assert "sole writer of the required set" in live
+    assert "This amendment has none" in live
+    assert "does not authorize a runtime module" in live
+    assert "Feat stays locked" in live
+    assert "not scheduled" in live.lower()
+    assert "not release-ready" in live.lower()
+    assert "No runtime module" in live
+    assert "exactly these six facts, in this order, and no other key" in history
+    assert "That geometry is not live." in history
     assert not (_REPO_ROOT / "backend" / "app" / "reference" / "legal_eligibility.py").exists()
     contract = _CONTRACT.read_text(encoding="utf-8")
     assert "Legal Eligibility Contract Gate **PASS**" in contract
@@ -74,7 +60,9 @@ def test_legal_eligibility_matrix_open_is_current_and_hr_unscheduled() -> None:
     assert "Legal Eligibility Matrix Gate **not PASS**" in current
     assert "Legal Eligibility Matrix Gate **PASS**" not in current
     assert "Legal Eligibility Contract Gate **PASS**" in current
-    assert "Do not assign documents or outcome ids in this opening" in current
+    assert "Decision model amendment" in current
+    assert "Evidence rules are not encoded" in current
+    assert "Do not assign documents or outcome ids in this opening" in history
     assert "matrix not written" not in current
     assert "not scheduled" in current.lower()
     assert "Legal Eligibility Matrix opened" in history

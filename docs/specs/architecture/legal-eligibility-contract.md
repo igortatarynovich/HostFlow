@@ -13,7 +13,8 @@
 > Legal Eligibility interprets those facts into normalized inputs and an outcome shape. It is not a second authority for required documents. The final required set stays exclusively `r5_required_set`.  
 > It does not assign a document type to a fact. That assignment is the matrix, and the matrix is not written.  
 > It does not change the pack or the engine. Feat stays locked. Runtime is not authorized.  
-> `visa_d` is not mapped onto `visa`. Minimal Recruitment → HR stays not scheduled. HostFlow v1 is not release-ready.
+> `visa_d` is not mapped onto `visa`. Minimal Recruitment → HR stays not scheduled. HostFlow v1 is not release-ready.  
+> **Live model:** the [decision chain](#decision-chain). It replaces the six-tuple lookup. The Contract Gate **PASS** record below keeps the vocabulary, the authority, and the outcome shape. This amendment assigns no evidence list.
 
 ---
 
@@ -144,3 +145,81 @@ This PASS does not assign `required_set_override` or `candidate_default` to a le
 - Minimal Recruitment → HR.  
 - Mapping `visa_d` onto `visa`.  
 - Release Readiness Gate. HostFlow v1 stays not release-ready.
+
+---
+
+## Decision chain
+
+This amendment is the live Legal Eligibility model. It is dated after `5b68286f` ([#399](https://github.com/igortatarynovich/HostFlow/pull/399)). The six-tuple lookup is not the live geometry. A population of that lookup is not accepted. No database column is added. No runtime module is added.
+
+Legal Eligibility answers two questions, for employment in Poland:
+
+1. Does this person have a lawful basis to be in Poland?
+2. Does this person have a lawful basis to perform this employment?
+
+A level is determined only when the previous level makes it unambiguous. Otherwise the chain stops for the operator and names no document.
+
+```text
+citizenship_class
+  → stay_basis
+  → work_authorization_basis
+  → valid_for_this_employment
+```
+
+This chain is the whole Legal Eligibility model. It does not take `kod zawodu`.
+
+`employment_country`, `residence_permit_country`, `licence_issuing_country`, and `qualification_jurisdiction` are not inputs of this chain. Driving licence, Code 95, ADR, and profession are not inputs of this chain.
+
+### citizenship_class
+
+Closed: `pl`, `eu_eea_ch`, `third_country`.
+
+The class is derived from recorded citizenship. Absent citizenship does not become `third_country`. `eu_member` on the country registry is a reference the later encoding may read. This amendment does not publish the EU/EEA/Swiss country list. The card token `eu_citizen` is not this class.
+
+### stay_basis
+
+Closed: `not_required`, `visa_d`, `visa_c`, `karta_pobytu`, `visa_free`, `waiting_for_trc`, `special_protection`, `other`, `none`.
+
+`not_required` is the determined stay for `pl` and for `eu_eea_ch` on ordinary employment in Poland. It is not a card token. Empty card `stay_basis` (`''`) is not `none`, not `not_required`, not `visa_d`, and not `karta_pobytu`. `none` means there is no stay basis yet. It is not ineligible: the employer may still be obtaining the stay and the work authorization. A work authorization does not replace a stay basis.
+
+`visa_d` and `visa_c` stay distinct. Neither is the pack token `visa`. `visa_free` is named here and is not a card token today. `special_protection` is the group for special status or protection. This amendment does not enumerate those statuses and does not give them one work rule. `karta_pobytu` is not a sufficient stay fact for work: the card is the document issued after a permit, and the decision determines the kind of permit. `residence_permit_type` is still not a fact key, and this amendment adds no column for it.
+
+### work_authorization_basis
+
+Closed: `not_required`, `included_in_stay`, `separate_required`.
+
+`not_required` means no separate permit. `included_in_stay` means the right to work follows from the residence status or its decision. `separate_required` means a separate permit or declaration. Lawful stay does not by itself select one of these, except for the two citizenship classes below. `waiting_for_trc` does not select one: a pending procedure may keep stay lawful and does not create the right to work. `karta_pobytu` does not select one until the decision is known. `visa_d` and `visa_c` do not select one until the visa type and purpose are known. `other`, `visa_free`, `special_protection`, and `none` do not select one in this amendment.
+
+When the chain cannot choose one closed value, the step is an operator hold. An operator hold is not a fourth basis and it names no document.
+
+For `pl` and for `eu_eea_ch`, stay is `not_required` and work authorization is `not_required`.
+
+### valid_for_this_employment
+
+Closed: `yes`, `no`, `operator_verification`.
+
+This is the link to this employment. It is not another country axis. A decision or a separate authorization may name the employer and the conditions; work outside those conditions is not authorized. When work authorization is `not_required`, this step is `yes`. When it is `included_in_stay` or `separate_required`, this step is `operator_verification` until a later rule matches the decision or the authorization to this employment. This amendment does not match them.
+
+### Evidence
+
+The only handoff to RPM is still one outcome id, `required_set_override` or `candidate_default`. RPM `r5_required_set` stays the sole writer of the required set. This amendment assigns neither id and names no require list and no remove list.
+
+A later encoding must be able to express, without collapsing the steps, a third-country `karta_pobytu` whose decision includes work and is valid for this employment, a third-country `visa_d` whose work authorization is separate, and a third-country `none` that is not yet eligible to work and is not ineligible as a candidate. That encoding is not this amendment. `visa_d` is not mapped onto `visa`.
+
+### Other layers
+
+Three layers meet only in RPM. This canon is the first layer. The other two are not opened here.
+
+| Layer | Question | This canon |
+|---|---|---|
+| Legal Eligibility | lawful stay in Poland, and a lawful basis for this employment | the chain above |
+| Profession / vacancy | professional documents for the vacancy | not Legal Eligibility |
+| Work Authorization Procedure | what a submission requires | next product slice; not opened |
+
+A profession preset belongs to the vacancy layer. A Driver CE preset may name a CE licence, Code 95, and a tachograph card, and a vacancy may add ADR. This canon does not write that preset.
+
+A procedure preset is country + procedure type + `kod zawodu`. The occupation code does not by itself list documents: the same driver can use different work-authorization procedures. Submission readiness, milestones, and a reason on each required document belong to that slice. RPM `r5_required_set` stays the only writer. This canon adds no preset, no milestone, and no second writer.
+
+Legal document lists that would prove this chain are not encoded here. They are not a `kod zawodu` list and they are not a procedure preset.
+
+Feat stays locked. Runtime is not authorized. Minimal Recruitment → HR stays not scheduled. HostFlow v1 is not release-ready. The Matrix Gate is not passed by this amendment. Work Authorization Procedure is not opened.
