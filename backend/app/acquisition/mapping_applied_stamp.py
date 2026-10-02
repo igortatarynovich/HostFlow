@@ -28,25 +28,37 @@ def fingerprint_mapping_rules(rules: Sequence[Mapping[str, Any]] | None) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
+def _rule_dicts(rules: Sequence[Mapping[str, Any]] | None) -> list[dict[str, Any]]:
+    return [dict(r) for r in (rules or []) if isinstance(r, Mapping)]
+
+
 def build_mapping_applied_stamp(
     *,
     rules: Sequence[Mapping[str, Any]] | None,
     source_id: str | None,
     rules_source: str | None,
     profile_updated_at: str | None = None,
+    fingerprint_rules: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    rule_list = [dict(r) for r in (rules or []) if isinstance(r, Mapping)]
+    """Stamp the rules that actually wrote, fingerprinted as the operator saved them.
+
+    ``rules`` is the executable subset (qualified_code writes). ``fingerprint_rules``
+    is the authority list the workspace also fingerprints, including Ignore.
+    Drift compares those two authority snapshots, not the filtered write subset.
+    """
+    executed = _rule_dicts(rules)
+    fingerprinted = executed if fingerprint_rules is None else _rule_dicts(fingerprint_rules)
     from backend.app.modules.leads.conversion_mapping import compact_executable_rules
 
     stamp: dict[str, Any] = {
         "source_id": str(source_id).strip() if source_id else None,
         "rules_source": str(rules_source or "").strip() or None,
-        "rules_count": len(rule_list),
-        "rules_fingerprint": fingerprint_mapping_rules(rule_list),
+        "rules_count": len(fingerprinted),
+        "rules_fingerprint": fingerprint_mapping_rules(fingerprinted),
         "profile_updated_at": profile_updated_at,
         "stamped_at": datetime.now(timezone.utc).isoformat(),
     }
-    executable = compact_executable_rules(rule_list)
+    executable = compact_executable_rules(executed)
     if executable:
         stamp["executable_rules"] = executable
     return stamp
@@ -59,6 +71,7 @@ def stamp_mapping_applied_v1(
     source_id: str | None,
     rules_source: str | None,
     profile_updated_at: str | None = None,
+    fingerprint_rules: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Write ``mapping_applied_v1`` onto ``normalized`` (in-place). Returns the stamp."""
     stamp = build_mapping_applied_stamp(
@@ -66,6 +79,7 @@ def stamp_mapping_applied_v1(
         source_id=source_id,
         rules_source=rules_source,
         profile_updated_at=profile_updated_at,
+        fingerprint_rules=fingerprint_rules,
     )
     normalized[MAPPING_APPLIED_V1_KEY] = stamp
     return stamp

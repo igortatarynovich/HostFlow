@@ -61,8 +61,13 @@ def stamp_mapping_applied_from_envelope(
     rules: list[dict[str, Any]],
     envelope: IngestEnvelope,
     profile_updated_at: str | None = None,
+    fingerprint_rules: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Diagnostics PR5 — persist mapping revision fingerprint used at ingest."""
+    """Diagnostics PR5 — persist mapping revision fingerprint used at ingest.
+
+    ``rules`` are the qualified writes. ``fingerprint_rules`` is the authority
+    list the operator workspace reads, so drift is a real rule change.
+    """
     from backend.app.acquisition.mapping_applied_stamp import stamp_mapping_applied_v1
 
     stamp_mapping_applied_v1(
@@ -71,6 +76,7 @@ def stamp_mapping_applied_from_envelope(
         source_id=envelope.intake_source_profile_id,
         rules_source=envelope.mapping_rules_source,
         profile_updated_at=profile_updated_at,
+        fingerprint_rules=fingerprint_rules,
     )
 
 def _minimal_normalized_for_routing(payload: dict[str, Any], *, source: str) -> dict[str, Any]:
@@ -182,6 +188,7 @@ async def prepare_meta_ingest_runtime(
     envelope.mapping_result = {
         **envelope.mapping_result,
         "profile_updated_at": profile_updated_at,
+        "authority_rules": raw_rules,
     }
     return validation.accepted_rules, envelope, intake_route, profile_view
 

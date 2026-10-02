@@ -152,6 +152,28 @@ def test_public_payload_consumes_canonical_facts() -> None:
     assert payload["vacancy_id"] == "vac-1"
 
 
+def test_not_specified_accepts_qualified_code_and_rejects_leftover_target() -> None:
+    result = validate_mapping_rules_for_profile(
+        [
+            {
+                "source": "email",
+                "qualified_field_code": "recruitment.candidate.contacts.email",
+            },
+            {"source": "favourite_color", "action": "ignore"},
+            {"source": "document_validity", "target": "document_validity"},
+        ],
+        allowed_qualified_codes=set(),
+        entity_profile_code=None,
+        resolution_source="not_specified",
+    )
+    assert [row["source"] for row in result.accepted_rules] == ["email"]
+    assert {row["source"] for row in result.rejected_rules} == {
+        "favourite_color",
+        "document_validity",
+    }
+    assert "entity_profile_unscoped_qualified_code_only" in result.warnings
+
+
 def test_legacy_candidate_profile_does_not_accept_unscoped_rules() -> None:
     result = validate_mapping_rules_for_profile(
         [{"source": "phone", "target": "phone"}],
