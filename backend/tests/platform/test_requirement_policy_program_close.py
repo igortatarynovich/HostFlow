@@ -1,7 +1,7 @@
 """Requirement Policy program close / Mapping Authority schedule.
 
 RPM program DONE. Mapping Authority Contract Gate PASS.
-Current Active Product = MA-3 (brief; feat locked).
+Current Active Product is Legal Eligibility (brief; feat locked).
 Does not open Mapping feat. External Intake / Hiring / min HR remain queued.
 """
 
@@ -45,8 +45,8 @@ def test_rpm_close_names_ma1_active_feat_locked() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     assert "Active Product → **[MA-1](mapping-authority.md)**" in queue
     current = queue.split("## 8. History", 1)[0]
-    assert "**Active Product** | **DONE**" in current
-    assert "Active (Product):** **DONE**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
+    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
     assert "Hiring E2E program close recorded" in current
     assert "feat locked this PR" in queue
     assert "Active (Product):** **Consumer Cutover Gate" not in current

@@ -2,7 +2,7 @@
 
 External Intake program DONE. External Intake Acceptance Gate PASS.
 History records Product DONE with no named successor until amendment.
-Current Active Product is HE-1 after the queue amendment.
+Current Active Product is Legal Eligibility (brief; feat locked).
 Does not start leftover-store deletion / RS-3.
 FP-5 PASS is not Release Acceptance PASS.
 """
@@ -54,12 +54,12 @@ def test_external_intake_close_product_done_no_named_successor() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "External Intake program close" in current
-    assert "**Active Product** | **DONE**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
     assert "Hiring E2E program close recorded" in current
     assert "no named successor until amendment" in current.lower()
     assert "External Intake program close." in history or "External Intake program close**" in history
     assert "Product **DONE** with no named successor until amendment" in history
-    assert "Active (Product):** **DONE**" in current
+    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
     assert "**Active Product** | External Intake program close" not in current
     intake = _BRIEF.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]

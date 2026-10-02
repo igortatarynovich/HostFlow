@@ -1,7 +1,7 @@
 """Queue amendment named HE-1 after External Intake program close.
 
 History records the stamp: Active Product HE-1, contract gate NOT PASS.
-Current Active Product is **DONE** after Hiring E2E program close. No named successor. Hiring Acceptance Contract Gate is PASS.
+Current Active Product is Legal Eligibility (brief; feat locked). Hiring E2E program close stays recorded. Hiring Acceptance Contract Gate is PASS.
 min HR / leftover-store deletion / RS-3 stay unauthorized.
 FP-5 PASS is not Release Acceptance PASS.
 """
@@ -35,8 +35,8 @@ def test_he1_amendment_history_then_current() -> None:
     assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in history or (
         "Active Product stays **[HE-1]" in history
     )
-    assert "**Active Product** | **DONE**" in current
-    assert "Active (Product):** **DONE**" in current
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
+    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in current
     assert "Hiring E2E program close recorded" in current
     assert "no named successor" in current.lower()
     assert "Hiring Acceptance Contract Gate **PASS**" in current
