@@ -1,0 +1,146 @@
+# Legal Eligibility Contract
+
+**Status:** **Accepted** (L2 contract — Legal Eligibility Contract Gate **PASS**).  
+**Date:** 2026-10-02  
+**Trusted base:** `integration/release-product-a-b` @ `71f46e46`  
+**Evidence:** the corrected contract-open on `docs/legal-eligibility-contract-open`. No new legal fact, vocabulary token, policy outcome, or document rule.  
+**Machine id:** `legal_eligibility.v1` — named here. No runtime module in this slice.  
+**Related:** [Legal Eligibility brief](../tasks/legal-eligibility-requirement-policy.md) · [Requirement Policy Authority](requirement-policy-authority.md) (`requirement_policy_authority.v1`) · [Hiring eligibility composition](hiring-eligibility-composition.md) · [document policy platform pack](../platform/document-policy-platform-pack-v1.json) · [Sequential queue](../tasks/sales-to-comms-sequential-queue.md)
+
+**L0 checklist:** No new P-rule. No Passport or Manifest shape change. No Architecture RFC. Applies **P-02** (the requirement write stays on RPM) and **INV-01** (one authority for “must this candidate provide type X?”). Does not rewrite L0. Does not mint a second policy writer, a legal-eligibility engine, or a document matrix.
+
+> This file is the SoT for which legal facts exist, which vocabulary they use, which authority may turn them into a required set, and what shape that policy outcome has.  
+> Legal Eligibility interprets those facts into normalized inputs and an outcome shape. It is not a second authority for required documents. The final required set stays exclusively `r5_required_set`.  
+> It does not assign a document type to a fact. That assignment is the matrix, and the matrix is not written.  
+> It does not change the pack or the engine. Feat stays locked. Runtime is not authorized.  
+> `visa_d` is not mapped onto `visa`. Minimal Recruitment → HR stays not scheduled. HostFlow v1 is not release-ready.
+
+---
+
+## Operator question (one)
+
+For one candidate on one vacancy, **which normalized legal facts may change the required document set, in which vocabulary, under whose authority, and what kind of policy outcome is that change?**
+
+No second question is this contract. Which document each fact value requires is the matrix. Satisfaction, eligibility, and transfer stay on the authorities already sealed for Hiring.
+
+---
+
+## Facts
+
+A fact is an input the later matrix may branch on. A fact is not a document requirement. The list is closed. Storage below is what the [brief](../tasks/legal-eligibility-requirement-policy.md) measured on `9269fa19`. This contract does not add a column.
+
+| Fact key | Recorded today | What it is not |
+|---|---|---|
+| `stay_basis` | `extra.poland_stay_basis`, copied unchanged into owner-context `residency_status` | a pack token; a document type |
+| `citizenship` | `extra.citizenship` or `personal.citizenship`, copied into the owner context; not a `when` key of the candidate overrides | a stay-basis token |
+| `employment_country` | not a `when` key of the candidate overrides; this contract names no column | a stay-basis token |
+| `residence_permit_country` | not a `when` key of the candidate overrides; this contract names no column | a stay-basis token |
+| `licence_issuing_country` | not a `when` key of the candidate overrides; this contract names no column | a stay-basis token |
+| `qualification_jurisdiction` | Code 95 / qualification-card jurisdiction; not a `when` key; this contract names no column | a stay-basis token |
+
+The list above is closed. `residence_permit_type` is not a fact key. The card does not store a permit type apart from `stay_basis`, and this contract does not add that column.
+
+`eu_member` on the country registry and `oswiadczenie_eligible_alpha2` on the pack (`UA`, `BY`, `MD`, `GE`) are reference lists. They are not fact keys and they are not a second writer. A later matrix may read them. This contract does not.
+
+Empty `stay_basis` (`''` in `POLAND_BASIS_VALUES`) is a recorded state. It is not a silent synonym of `visa_d` or `karta_pobytu`.
+
+---
+
+## Vocabulary
+
+Three vocabularies. They are not aliases of each other.
+
+**Card vocabulary** — the closed fact vocabulary of `stay_basis`, from `POLAND_BASIS_VALUES`:
+
+`''`, `visa_d`, `visa_c`, `karta_pobytu`, `eu_citizen`, `waiting_for_trc`, `other`.
+
+**Legal-policy vocabulary** — the vocabulary of normalized inputs Legal Eligibility may supply to RPM. This contract does not list its tokens and does not map a card token onto a pack token.
+
+**Pack tokens** — the closed vocabulary `r5_required_set` already matches on `residency_status`:
+
+`eu_citizen`, `visa`, `none`, `no_residence_card`, `card`.
+
+Normative:
+
+1. `visa_d` is not the pack token `visa`. `visa_c` is not `visa`. `karta_pobytu` is not `card`. `waiting_for_trc` and `other` are not pack tokens. Empty `stay_basis` is not a pack token.
+2. The only spelling shared by the card vocabulary and the pack tokens is `eu_citizen`. That shared spelling is not an alias rule for any other token, and it does not make the legal-policy vocabulary either of those two lists.
+3. The intake map that stores pack-like tokens as card values (`visa` / `visa_d` → `visa_d`, `card` / `residence_card` / `residence_permit` / `karta_pobytu` → `karta_pobytu`) is a one-way write. It is not the inverse normalization and it is not the legal-policy vocabulary.
+4. Document-type aliases (`visa_d` and `visa_c` onto document type `visa`; `karta_pobytu` onto `residence_card`) are document identity. They are not card vocabulary, not legal-policy vocabulary, and not a policy rule.
+5. This contract does not add a vocabulary of document types. Canonical document types stay the RPM outcome vocabulary.
+
+---
+
+## Authority
+
+Recorded legal facts go to Legal Eligibility. Legal Eligibility interprets them into normalized inputs and an outcome shape for RPM. It is not a second authority for required documents. The final required set is exclusively `r5_required_set`.
+
+One policy question remains the RPM question: must this candidate provide document type X?
+
+| Question | Authority | Role |
+|---|---|---|
+| Which stay basis, citizenship, and jurisdiction are recorded? | Candidate card fields, copied into the document owner context without translation | **fact source** |
+| Must this candidate provide canonical type X? | RPM `r5_required_set` ([requirement-policy-authority.md](requirement-policy-authority.md)) | **sole policy write** |
+| Is requirement R satisfied? | Candidate Evidence bound to Document Link | **not this contract** |
+| May this candidate transfer, and why not? | HE-3 composer consuming RPM | **consumer** |
+| Does a document-type alias change `stay_basis`? | nobody | **not an authority** |
+| Does the intake map define `visa_d` → `visa`? | nobody | **not an authority** |
+
+Roles are closed: `fact source` · `sole policy write` · `consumer` · `reference input` · `not an authority` · `not this contract`.
+
+A later slice may normalize a fact into an input `r5_required_set` already evaluates. It may not add a second answer to “must provide type X?”, and it may not make eligibility or transfer compute a legal matrix of their own.
+
+---
+
+## Expected policy outcomes
+
+A policy outcome is one required document-type set for one candidate on one vacancy, produced by `r5_required_set`. The required-request flow already consumes that set. This contract does not add an outcome channel, a request state, or a transfer decision.
+
+| Outcome id | Shape | Assigned by this contract |
+|---|---|---|
+| `required_set_override` | a require list and a remove list, the shape of the existing pack `when.residency_status` rows | to no fact value |
+| `candidate_default` | no legal-fact override; the required set is whatever `r5_required_set` already returns when no legal override matches. The pack's current unmatched default (`driver_license`, `driver_qualification_card`, `tachograph_card`, `passport`) describes that existing path. It is not assigned to empty `stay_basis` or to any other fact | to no fact value |
+
+No row of this contract pairs `visa_d`, `visa_c`, `karta_pobytu`, `waiting_for_trc`, `other`, a citizenship, or a country with a document type. That pairing is the matrix.
+
+What a later matrix must be able to express, because the brief measured these as collapsed or as the only split:
+
+| Distinction | Observed on `9269fa19` | Expected expressibility |
+|---|---|---|
+| `eu_citizen` vs `visa_d` | different required sets | must remain two fact values; aliasing `visa_d` onto `eu_citizen` or onto `visa` is not the rule |
+| `visa_d` vs `karta_pobytu` | the same required set (candidate default) | must be expressible as two outcomes; this contract does not say which documents |
+| `visa_d` vs empty `stay_basis` | the same required set | must be expressible as two outcomes; this contract does not say which documents |
+| `visa_c` vs `visa_d` | the same required set | two fact values; whether the outcomes differ is a matrix cell |
+| citizenship, employment country, permit country, licence country, qualification jurisdiction | not matched | fact keys exist; whether any of them changes the set is a matrix cell |
+
+“Expressible as two outcomes” means the matrix has a cell for each value. It does not mean this contract fills the cell, and it does not mean the two cells must differ. The [brief](../tasks/legal-eligibility-requirement-policy.md) completion proof is that they differ when the business rules say they must, and that they match when the rules say they must not. Those rules are the matrix.
+
+---
+
+## Legal Eligibility Contract Gate
+
+**Outcome:** **PASS**. Evidence is this Accepted file. The matrix stays empty and is the next separate stage. It is not opened. Feat stays locked. Runtime is not authorized.
+
+PASS holds because all of the following are true:
+
+1. This file is **Accepted** and is the SoT for facts, vocabulary, authority, and outcome shape.  
+2. The fact table, the three vocabularies, the authority table, and the two outcome ids are unchanged except by a later slice that the queue names.  
+3. The matrix is still not in this file: no fact value is paired with a require list or a remove list. `required_set_override` and `candidate_default` stay shapes assigned to no fact value.  
+4. `visa_d` is not defined as pack token `visa`. Empty `stay_basis` stays its own card state. Document-type aliases are not adopted as the stay-basis match.  
+5. `r5_required_set` remains the exclusive authority for the final required set. Eligibility, transfer, and `ready_for_employment.v1` are unchanged.  
+6. No pack change, no engine change, no new column, and no runtime module of `legal_eligibility.v1`. Feat stays locked.  
+7. Minimal Recruitment → HR is not scheduled. HostFlow v1 is not declared release-ready.
+
+This PASS does not assign `required_set_override` or `candidate_default` to a legal fact, does not fill the matrix, and does not change RPM, eligibility, transfer, `ready_for_employment.v1`, HR, or the database schema.
+
+---
+
+## Out of this slice
+
+- The legal matrix (which documents each distinction requires).  
+- Normalization of card tokens into pack inputs.  
+- Pack or engine edits.  
+- A Python or JSON machine copy. The id `legal_eligibility.v1` is reserved; it is not shipped.  
+- Employee creation, auto-accept, `ready_for_employment.v1` changes.  
+- Minimal Recruitment → HR.  
+- Mapping `visa_d` onto `visa`.  
+- Release Readiness Gate. HostFlow v1 stays not release-ready.

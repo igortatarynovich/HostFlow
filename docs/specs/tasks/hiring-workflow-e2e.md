@@ -1,6 +1,6 @@
 # Hiring workflow E2E
 
-**Status:** **DONE** — Hiring E2E program close recorded. Hiring E2E Acceptance Gate **PASS** (`315cb710`). RS-7 **PASS**. Goal Completion Gate **PASS**. This close does not prove the [legal employability matrix](legal-eligibility-requirement-policy.md). [Minimal Recruitment → HR](recruitment-hr-minimal-handoff.md) is startable and **not** scheduled (feat locked). Queue amendment names [Legal Eligibility](legal-eligibility-requirement-policy.md) Active Product (brief opened; feat locked; contract not opened; matrix not written). HostFlow v1 is not release-ready.
+**Status:** **DONE** — Hiring E2E program close recorded. Hiring E2E Acceptance Gate **PASS** (`315cb710`). RS-7 **PASS**. Goal Completion Gate **PASS**. This close does not prove the [legal employability matrix](legal-eligibility-requirement-policy.md). [Minimal Recruitment → HR](recruitment-hr-minimal-handoff.md) is startable and **not** scheduled (feat locked). Queue amendment names [Legal Eligibility](legal-eligibility-requirement-policy.md) Active Product (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**; matrix not written). HostFlow v1 is not release-ready.
 **Phase class:** platform
 **Branch (docs):** `docs/queue-amendment-he4`
 **Branch (code):** `feat/hiring-e2e-he4-acceptance-walk` from `8d5a9fef`. This amendment authorizes the walk and does not ship it.
@@ -153,7 +153,7 @@ This PASS is not legal employability. `poland_stay_basis` values `visa_d`, `visa
 ## Queue position
 
 **Depends on:** Eligibility Composition Gate **PASS** [#391](https://github.com/igortatarynovich/HostFlow/pull/391) / `8d5a9fef`  
-**Unlocks:** [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) is startable after this close and stays **not** auto-scheduled (feat locked). [Legal Eligibility](legal-eligibility-requirement-policy.md) is Active Product (brief opened; feat locked; contract not opened).  
+**Unlocks:** [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) is startable after this close and stays **not** auto-scheduled (feat locked). [Legal Eligibility](legal-eligibility-requirement-policy.md) is Active Product (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**).  
 **Does not:** schedule min HR; prove the legal employability matrix; mark HostFlow v1 release-ready; inherited DR1 / Mapping fixes; leftover-store deletion; LI-2+; RS-3
 
 ---

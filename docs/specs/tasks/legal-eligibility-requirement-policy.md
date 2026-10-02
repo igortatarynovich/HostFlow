@@ -1,12 +1,12 @@
 # Legal Eligibility / Requirement Policy Normalization
 
-**Status:** **OPENED** — brief opened 2026-10-02. Feat locked. Contract not opened. Matrix not written. Implementation not authorized. Business rules are not written here.  
-**Date:** 2026-09-29 (named 2026-09-30 by [#394](https://github.com/igortatarynovich/HostFlow/pull/394) / `9269fa19`; brief opened 2026-10-02)  
-**Parents:** [Hiring workflow E2E](hiring-workflow-e2e.md) · [document policy platform pack](../platform/document-policy-platform-pack-v1.json) · [Requirement Policy Management](requirement-policy-management.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
+**Status:** **OPENED** — brief opened 2026-10-02. Legal Eligibility Contract Gate **PASS**. Feat locked. Matrix empty and not opened; it is the next separate stage. Implementation not authorized. Runtime not authorized. Business rules are not written here.  
+**Date:** 2026-09-29 (named 2026-09-30 by [#394](https://github.com/igortatarynovich/HostFlow/pull/394) / `9269fa19`; brief opened 2026-10-02; contract opened 2026-10-02 from `71f46e46`)  
+**Parents:** [Hiring workflow E2E](hiring-workflow-e2e.md) · [Legal Eligibility contract](../architecture/legal-eligibility-contract.md) (`legal_eligibility.v1`, Legal Eligibility Contract Gate **PASS**) · [document policy platform pack](../platform/document-policy-platform-pack-v1.json) · [Requirement Policy Management](requirement-policy-management.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
 
 > Hiring E2E Acceptance Gate **PASS** does **not** prove a legal employability matrix.  
 > This brief records the legal facts the product already stores and the distinctions `r5_required_set` does not express.  
-> It does not open the contract and does not write the matrix.  
+> The [contract](../architecture/legal-eligibility-contract.md) is Accepted. Legal Eligibility Contract Gate **PASS**. This brief does not write the matrix. The matrix is the next separate stage and is not opened.  
 > `visa_d` is not mapped onto `visa`. Minimal Recruitment → HR stays **not** scheduled. HostFlow v1 is not release-ready.
 
 ---
@@ -89,9 +89,9 @@ This table is the observed collapse. It is not the matrix of documents each dist
 
 | Slice | State |
 |---|---|
-| Contract — which normalized legal facts exist, and which distinctions the system must be able to express | not opened |
-| Matrix — which documents each of those distinctions requires | not written |
-| Pack change, engine change, and any other implementation | not authorized; feat locked |
+| Contract — facts, vocabulary, authority, outcome shape | [Legal Eligibility Contract Gate **PASS**](../architecture/legal-eligibility-contract.md) |
+| Matrix — which documents each of those distinctions requires | empty; next separate stage; not opened |
+| Pack change, engine change, runtime, and any other implementation | not authorized; feat locked |
 | Mapping `visa_d` onto pack token `visa` | forbidden as a false close |
 | Minimal Recruitment → HR | queued, not scheduled |
 | `ready_for_employment.v1`, employee creation, auto-accept | unchanged |
@@ -100,13 +100,15 @@ This table is the observed collapse. It is not the matrix of documents each dist
 ## Order
 
 1. This brief: recorded facts, and the distinctions the required set does not express.
-2. Contract: the normalized legal facts and the distinctions the system must be able to express. Not opened here.
-3. Matrix: the business rules for those distinctions. Not written until that contract is approved.
+2. Contract: facts, vocabulary, authority, and the shape of a policy outcome. [legal-eligibility-contract.md](../architecture/legal-eligibility-contract.md). Legal Eligibility Contract Gate **PASS**.
+3. Matrix: the business rules for those distinctions. Empty. Next separate stage. Not opened. Not written in this PASS.
 4. Only then normalize the facts into the inputs `r5_required_set` already evaluates, and only then change the pack or the engine.
 
-Steps 2–4 stay locked. Minimal Recruitment → HR is not this slice.
+Steps 3 and 4 stay locked. Runtime is not authorized. Minimal Recruitment → HR is not this slice.
 
 ## History
 
+- 2026-10-02: **Legal Eligibility Contract Gate PASS.** Evidence is the corrected contract-open. Closed fact set accepted. Card vocabulary, legal-policy vocabulary, and pack tokens stay separate. `visa_d` is not `visa`. Empty `stay_basis` stays its own state. `r5_required_set` stays the only required-document authority. `required_set_override` and `candidate_default` stay outcome shapes with no fact assigned. Matrix stays empty and is the next separate stage. Feat stays locked. Runtime not authorized. min HR stays not scheduled. HostFlow v1 is not release-ready.
+- 2026-10-02: **Contract opened.** SoT [legal-eligibility-contract.md](../architecture/legal-eligibility-contract.md) (`legal_eligibility.v1`). Facts, vocabulary, authority, and outcome shape are named. Not accepted. Legal Eligibility Contract Gate **not PASS**. Matrix not written. Runtime not authorized. Feat locked. `visa_d` is not mapped onto `visa`. min HR stays not scheduled. HostFlow v1 is not release-ready.
 - 2026-10-02: **Brief opened.** Facts and collapsed distinctions recorded from `9269fa19`. Feat locked. Contract not opened. Matrix not written. `visa_d` is not mapped onto `visa`. Implementation not authorized. min HR stays not scheduled.
 - 2026-09-30: **NAMED** by queue amendment [#394](https://github.com/igortatarynovich/HostFlow/pull/394). The amendment scheduled this brief and did not write the business rules.
