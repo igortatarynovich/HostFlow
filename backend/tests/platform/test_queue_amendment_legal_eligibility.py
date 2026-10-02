@@ -2,8 +2,9 @@
 
 History keeps the close stamp (Product DONE, no named successor) and
 the later naming stamp and the contract-open stamp. Current
-state is Legal Eligibility Contract Gate PASS. The matrix is empty
-and not opened. Feat stays locked. min HR stays unscheduled.
+state is Legal Eligibility Contract Gate PASS. The matrix
+structure is opened and Matrix Gate is not PASS. Documents are
+not assigned. Feat stays locked. min HR stays unscheduled.
 visa_d is not mapped onto visa.
 """
 
@@ -47,7 +48,10 @@ def test_legal_eligibility_amendment_names_brief_without_rules() -> None:
     assert "Contract not opened" in history
     assert "Do not map `visa_d` onto `visa`" in current
     assert "not a join-graph edge" in current.lower()
-    assert "Do not write the matrix in this PR" in current
+    assert "Do not assign documents or outcome ids in this opening" in current
+    assert "Legal Eligibility Matrix Gate **not PASS**" in current
+    assert "Do not write the matrix in this PR" not in current
+    assert "Legal Eligibility Matrix opened" in history
     assert "Legal Eligibility brief opened" in history
     assert "Hiring E2E program close recorded" in current
     assert "Hiring E2E Acceptance Gate **PASS** (`315cb710`)" in current
@@ -60,7 +64,8 @@ def test_legal_eligibility_amendment_names_brief_without_rules() -> None:
     assert "Legal Eligibility Contract Gate **PASS**" in legal_header
     assert "not accepted" not in legal_header
     assert "Contract not opened" not in legal_header
-    assert "Matrix empty and not opened" in legal_header
+    assert "Legal Eligibility Matrix Gate **not PASS**" in legal_header
+    assert "Matrix empty and not opened" not in legal_header
     assert "Runtime not authorized" in legal_header
     assert "Business rules are not written here" in legal_header
     assert "visa_d" in legal_header

@@ -618,7 +618,9 @@ jobs:
               - 'backend/tests/platform/test_queue_amendment_legal_eligibility.py'
               - 'backend/tests/platform/test_legal_eligibility_contract_open.py'
               - 'backend/tests/platform/test_legal_eligibility_contract_gate.py'
+              - 'backend/tests/platform/test_legal_eligibility_matrix_open.py'
               - 'docs/specs/architecture/legal-eligibility-contract.md'
+              - 'docs/specs/architecture/legal-eligibility-matrix.md'
               - 'docs/specs/tasks/legal-eligibility-requirement-policy.md'
               - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
               - 'docs/specs/tasks/hiring-workflow-e2e.md'
@@ -1604,7 +1606,7 @@ jobs:
       - uses: ./.github/actions/backend-pytest
         if: hashFiles('backend/tests/platform/test_queue_amendment_legal_eligibility.py') != ''
         with:
-          tests: tests/platform/test_queue_amendment_legal_eligibility.py tests/platform/test_legal_eligibility_contract_open.py tests/platform/test_legal_eligibility_contract_gate.py
+          tests: tests/platform/test_queue_amendment_legal_eligibility.py tests/platform/test_legal_eligibility_contract_open.py tests/platform/test_legal_eligibility_contract_gate.py tests/platform/test_legal_eligibility_matrix_open.py
 
   fp5-acceptance-gate:
     name: External Intake Acceptance Gate

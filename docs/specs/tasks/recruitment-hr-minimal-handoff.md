@@ -10,7 +10,7 @@
 > v1 blocker 5: **hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy.**
 > Full HR operations (Kadry, payroll, extended lifecycle) stay **later**.
 > **Not** Hiring E2E (that is [the predecessor](hiring-workflow-e2e.md)). **Not** a Documents phase. **Not** an HR product build-out. **Not** D10.
-> Opening this brief does **not** schedule it. Active Product is [Legal Eligibility](legal-eligibility-requirement-policy.md) (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**; matrix not written). Hiring E2E program close is recorded (Acceptance Gate **PASS** `315cb710`). That close makes min HR startable, and this amendment does not schedule it. MA-4 Cutover Gate PASS. Leftover-store deletion is not this program.
+> Opening this brief does **not** schedule it. Active Product is [Legal Eligibility](legal-eligibility-requirement-policy.md) (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**; matrix opened; Legal Eligibility Matrix Gate **not PASS**; documents not assigned). Hiring E2E program close is recorded (Acceptance Gate **PASS** `315cb710`). That close makes min HR startable, and this amendment does not schedule it. MA-4 Cutover Gate PASS. Leftover-store deletion is not this program.
 
 ---
 
