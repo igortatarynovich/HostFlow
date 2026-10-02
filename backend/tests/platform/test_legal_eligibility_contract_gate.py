@@ -53,10 +53,11 @@ def test_legal_eligibility_contract_gate_pass_is_current_canon() -> None:
     current, history = queue.split("## 8. History", 1)
     assert "Legal Eligibility Contract Gate **PASS**" in current
     assert "Legal Eligibility Contract Gate **not PASS**" not in current
-    assert "Matrix stays empty and is the next separate stage" in current
+    assert "Matrix stays empty and is the next separate stage" in history
+    assert "Legal Eligibility Matrix Gate **not PASS**" in current
     assert "feat locked" in current.lower()
     assert "Do not map `visa_d` onto `visa`" in current
-    assert "Do not write the matrix in this PR" in current
+    assert "Do not assign documents or outcome ids in this opening" in current
     assert "not scheduled" in current.lower()
     assert "Legal Eligibility Contract Gate **not PASS**" in history
     assert "Legal Eligibility Contract Gate PASS" in history
@@ -64,7 +65,7 @@ def test_legal_eligibility_contract_gate_pass_is_current_canon() -> None:
     header = legal.split("## Problem", 1)[0]
     assert "Legal Eligibility Contract Gate **PASS**" in header
     assert "Feat locked" in header
-    assert "Matrix empty and not opened" in header
+    assert "Legal Eligibility Matrix Gate **not PASS**" in header
     assert "Runtime not authorized" in header
     for path in (_AGENTS, _GOAL, _ROADMAP):
         body = path.read_text(encoding="utf-8")
