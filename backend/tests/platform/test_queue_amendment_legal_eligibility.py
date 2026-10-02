@@ -48,7 +48,9 @@ def test_legal_eligibility_amendment_names_brief_without_rules() -> None:
     assert "Contract not opened" in history
     assert "Do not map `visa_d` onto `visa`" in current
     assert "not a join-graph edge" in current.lower()
-    assert "Do not assign documents or outcome ids in this opening" in current
+    assert "Decision model amendment" in current
+    assert "Evidence rules are not encoded" in current
+    assert "Do not assign documents or outcome ids in this opening" in history
     assert "Legal Eligibility Matrix Gate **not PASS**" in current
     assert "Do not write the matrix in this PR" not in current
     assert "Legal Eligibility Matrix opened" in history

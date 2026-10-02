@@ -1,103 +1,97 @@
 # Legal Eligibility Matrix
 
-**Status:** **Opened** — structure only. Legal Eligibility Matrix Gate **not PASS**.  
+**Status:** **Decision model** — six-tuple lookup stopped. Legal Eligibility Matrix Gate **not PASS**.  
 **Date:** 2026-10-02  
-**Trusted base:** `integration/release-product-a-b` @ `9cec4895` ([#398](https://github.com/igortatarynovich/HostFlow/pull/398))  
-**Contract:** [legal-eligibility-contract.md](legal-eligibility-contract.md) (`legal_eligibility.v1`, Legal Eligibility Contract Gate **PASS**). This file does not amend that contract. It adds no fact, no legal-policy token, and no alias.  
+**Trusted base:** `integration/release-product-a-b` @ `5b68286f` ([#399](https://github.com/igortatarynovich/HostFlow/pull/399))  
+**Contract:** [legal-eligibility-contract.md](legal-eligibility-contract.md) (`legal_eligibility.v1`, Legal Eligibility Contract Gate **PASS**, [decision chain](legal-eligibility-contract.md#decision-chain)).  
 **Machine id:** none. No runtime module.
 
-> A cell key is exactly the contract's six closed facts, in the contract's order.  
-> This opening shows that `visa_d`, `karta_pobytu`, and `stay_basis` `''` are different coordinates. It does not assign `required_set_override` or `candidate_default` to any of them, and it names no document.  
-> A filled cell may hand RPM only that cell's outcome id, not a required document set. This opening hands nothing: every cell is **unassigned**. `r5_required_set` stays the sole writer of the required set.  
-> Feat stays locked. Runtime is not authorized. Minimal Recruitment → HR stays not scheduled. HostFlow v1 is not release-ready.
+> Legal Eligibility answers two questions for employment in Poland: whether the person has a lawful basis to be in Poland, and whether the person has a lawful basis to perform this employment.  
+> The live geometry is `citizenship_class` → `stay_basis` → `work_authorization_basis` → `valid_for_this_employment`. It does not take `kod zawodu`.  
+> A level is filled only when the previous level makes it unambiguous. This file assigns no evidence list.  
+> `r5_required_set` stays the sole writer of the required set. Feat stays locked. Runtime is not authorized. Minimal Recruitment → HR stays not scheduled. HostFlow v1 is not release-ready.
 
 ---
 
-## Cell
+## Chain
 
-A cell key is exactly these six facts, in this order, and no other key:
+The vocabulary is the contract decision chain. This file does not add a value.
 
-1. `stay_basis`
-2. `citizenship`
-3. `employment_country`
-4. `residence_permit_country`
-5. `licence_issuing_country`
-6. `qualification_jurisdiction`
-
-`residence_permit_type` is not a key. `eu_member` and `oswiadczenie_eligible_alpha2` are not keys.
-
-`stay_basis` uses only the card vocabulary already closed by the contract: `''`, `visa_d`, `visa_c`, `karta_pobytu`, `eu_citizen`, `waiting_for_trc`, `other`. The cell keeps that card token. This opening does not rewrite `visa_d` as `visa`, `karta_pobytu` as `card`, or `''` as `none` or `no_residence_card`. It does not list legal-policy tokens and does not map a card token onto a pack token.
-
-`stay_basis` is never **absent**. Its empty recorded state is the card value `''`. **absent** is a coordinate only for `citizenship`, `employment_country`, `residence_permit_country`, `licence_issuing_country`, and `qualification_jurisdiction`, and only when that fact is not recorded. **absent** is not `''`. It is not a card token, not a pack token, and not a legal-policy token.
-
-Two cells differ when any key differs. Holding the other five keys **absent**, these three `stay_basis` values are three coordinates. The word absent in that column is those other keys, not `stay_basis`:
-
-| `stay_basis` | other five keys | outcome slot |
+| Step | Closed values | This amendment |
 |---|---|---|
-| `visa_d` | absent | **unassigned** |
-| `karta_pobytu` | absent | **unassigned** |
-| `''` | absent | **unassigned** |
+| `citizenship_class` | `pl`, `eu_eea_ch`, `third_country` | derived from recorded citizenship; absent citizenship is not `third_country` |
+| `stay_basis` | `not_required`, `visa_d`, `visa_c`, `karta_pobytu`, `visa_free`, `waiting_for_trc`, `special_protection`, `other`, `none` | `''` is an empty card field, not one of these values |
+| `work_authorization_basis` | `not_required`, `included_in_stay`, `separate_required` | an operator hold is not a fourth value |
+| `valid_for_this_employment` | `yes`, `no`, `operator_verification` | not a country axis |
 
-The key space can hold every other combination of the six facts. This opening does not enumerate them and does not add a default cell.
+`employment_country`, `residence_permit_country`, `licence_issuing_country`, and `qualification_jurisdiction` are not steps. Driving licence, Code 95, ADR, profession, and `kod zawodu` are not steps. A procedure preset is country + procedure type + `kod zawodu`, and that preset is not this matrix. Work Authorization Procedure is not opened.
 
-**unassigned** is the state of every cell in this opening. It means the cell has no outcome id. It is not an outcome id. It is not `candidate_default` and it is not `required_set_override`.
-
----
-
-## Selection
-
-A recorded fact set matches at most one cell. The match key is the six-tuple above. `stay_basis` contributes its card value, and `''` is that value when the card records empty. Each of the other five facts contributes its recorded value or **absent**. Two cells cannot share one six-tuple. A six-tuple that is not one of the three cells in the table matches no cell.
+There is no six-tuple cell and no default cell. A combination that this chain does not determine matches nothing.
 
 ---
 
-## Payload to RPM
+## Determined levels
 
-When a cell has an outcome id, RPM receives that outcome id. RPM does not receive the required document set from the matrix. `r5_required_set` consumes the outcome and stays the sole writer of the required set. The matrix does not answer “must this candidate provide type X?”. Eligibility and transfer keep consuming `r5_required_set`. They do not read the matrix.
+| From | Stay | Work authorization | Valid for this employment |
+|---|---|---|---|
+| `pl` | `not_required` | `not_required` | `yes` |
+| `eu_eea_ch` | `not_required` | `not_required` | `yes` |
+| `third_country` | not skipped | not chosen by citizenship | not chosen by citizenship |
 
-`required_set_override` and `candidate_default` are future outcome schema. They are assigned to no cell.
+`not_required` on stay is not the card token `eu_citizen` and not `''`.
 
-| Outcome id | Schema, not a live payload | This opening |
-|---|---|---|
-| `required_set_override` | a require list and a remove list, the contract shape | assigned to no cell |
-| `candidate_default` | no legal-fact override; `r5_required_set` keeps the path it already uses when no legal override matches | assigned to no cell |
+These stays do not choose a work authorization. The step is an operator hold, and it names no document:
 
-An **unassigned** cell hands RPM nothing. That is not the `candidate_default` schema.
+| Stay | Why the next step stays open |
+|---|---|
+| `visa_d` | visa type and purpose are still required; `visa_d` is not the pack token `visa` |
+| `visa_c` | same, and it is not `visa_d` |
+| `karta_pobytu` | the card is not sufficient; the decision determines the permit and may set work conditions |
+| `waiting_for_trc` | a pending procedure does not create the right to work |
+| `visa_free` | no work rule is recorded here |
+| `special_protection` | no single work rule is recorded here |
+| `other` | the operator selects it, or a later rule does |
+| `none` | no stay basis yet; the candidate is not ineligible |
+| `''` | the card field is empty; the stay is not determined |
 
-```text
-recorded six-tuple
-  → at most one cell
-  → that cell's outcome id, only when one is assigned
-  → RPM r5_required_set writes the required set
-  → eligibility / transfer consume that set
-```
+A `separate_required` or `included_in_stay` result does not satisfy stay. Lawful stay does not by itself choose the work authorization, except the `pl` and `eu_eea_ch` rows above. When work authorization is `included_in_stay` or `separate_required`, `valid_for_this_employment` is `operator_verification` until a later rule matches that authorization to this employment.
 
-This opening stops before the outcome id. The arrow into RPM is the later handoff shape. It is not a payload sent now.
+An operator hold is not an outcome id. It is not `candidate_default`.
+
+---
+
+## Evidence
+
+RPM receives the evidence outcome of a fully determined chain, not a required document set. `r5_required_set` consumes that outcome and stays the sole writer of the required set. This amendment assigns no outcome, so it hands RPM nothing.
+
+`required_set_override` remains a require list and a remove list. `candidate_default` remains future outcome schema and is assigned to no chain result. An unassigned chain result has no require list and no remove list.
+
+A later encoding must be able to express these as separate chains. This file does not assign their documents:
+
+- `third_country` → `karta_pobytu` → a decision that includes work → `yes` for this employment → the card and the decision.
+- `third_country` → `visa_d` → `separate_required` → `yes` for this employment → the visa and the separate authorization.
+- `third_country` → `none` → not yet able to work, and not ineligible as a candidate.
+
+`visa_d` is not given the pack row for `visa`. `karta_pobytu` is not given the pack row for `card`. `''` is not given the pack row for `none` or `no_residence_card`.
 
 ---
 
 ## Legal Eligibility Matrix Gate
 
-**Outcome:** **not PASS**. This opening is the structure, not the filled rules.
+**Outcome:** **not PASS**. The decision model is recorded. The evidence rules are not encoded.
 
 PASS when, and only when, all of the following hold:
 
-1. This file is **Accepted** and the cell key is still exactly the contract's closed fact set.  
-2. `visa_d`, `karta_pobytu`, and `''` remain three cells when the other keys are equal.  
-3. Every cell the business rules include has exactly one assigned outcome id, `required_set_override` or `candidate_default`. **Unassigned** is no longer the live slot.  
-4. A `required_set_override` cell names its require list and its remove list in the RPM document-type vocabulary. Those lists are the matrix content. This opening has none.  
-5. The payload path above is unchanged. `r5_required_set` is still the only required-document authority.  
-6. No new fact, no new legal-policy token, no alias, no pack change, no engine change, no new column, and no runtime module. Feat stays locked. Minimal Recruitment → HR is not scheduled. HostFlow v1 is not declared release-ready.
-
-That PASS assigns outcome ids to the business cells. It does not authorize a runtime module, a pack change, an engine change, or a change to eligibility, transfer, `ready_for_employment.v1`, HR, or the database schema. Feat stays locked after that PASS. Minimal Recruitment → HR stays not scheduled. HostFlow v1 stays not release-ready. Implementation remains a later queue step.
-
-Evidence for that future PASS is an Accepted matrix whose cells satisfy 2–5, plus a test that reads those cells and does not find a second writer. This opening does not produce that evidence.
+1. The chain order and the closed values above are unchanged.  
+2. `visa_d`, `visa_c`, `karta_pobytu`, `waiting_for_trc`, `none`, and `''` remain distinct.  
+3. Every unambiguous Polish rule has exactly one outcome id. An operator hold still has no require list and no remove list.  
+4. A `required_set_override` names its require list and its remove list. This amendment has none.  
+5. Licence, Code 95, ADR, profession, and qualification jurisdiction stay outside Legal Eligibility. `r5_required_set` is still the only required-document authority.  
+6. No pack change, no engine change, no new column, and no runtime module. That PASS does not authorize a runtime module. Feat stays locked. Minimal Recruitment → HR is not scheduled. HostFlow v1 is not declared release-ready.
 
 ---
 
-## Out of this opening
+## History
 
-- Assigning `required_set_override` or `candidate_default` to any legal fact.  
-- Any require list or remove list.  
-- A legal-policy token list, or a map from `visa_d` onto `visa`.  
-- Normalization into pack inputs, pack edits, engine edits, runtime, eligibility, transfer, `ready_for_employment.v1`, HR, or a database column.  
-- Unlocking feat. Scheduling Minimal Recruitment → HR.
+- 2026-10-02: **Decision model.** The six-tuple lookup is stopped. Its population is not accepted.  
+- 2026-10-02: **Opened** at [#399](https://github.com/igortatarynovich/HostFlow/pull/399). The cell key was exactly these six facts, in this order, and no other key: `stay_basis`, `citizenship`, `employment_country`, `residence_permit_country`, `licence_issuing_country`, `qualification_jurisdiction`. That geometry is not live.
