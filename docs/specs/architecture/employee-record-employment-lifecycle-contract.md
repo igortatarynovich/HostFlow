@@ -1,6 +1,6 @@
 # Employee Record & Employment Lifecycle
 
-**Status:** **Opened** — Employee Record & Employment Lifecycle — Contract Gate **not PASS**. No schema. No runtime module.  
+**Status:** **Accepted** — Employee Record & Employment Lifecycle — Contract Gate **PASS**. No schema is written in this file. The next slice is Employment Persistence Schema. No runtime module.  
 **Date:** 2026-10-03  
 **Machine id:** `employee_record_employment_lifecycle.v1` — named here. No runtime module.  
 **Parents:** [brief](../tasks/employee-record-employment-lifecycle.md) · [ready_for_employment.v1](ready-for-employment-contract.md) · [handoff contract](handoff-contract.md) · [legal_eligibility.v1](legal-eligibility-contract.md)
@@ -9,6 +9,8 @@
 > Legal eligibility, employee data, employment terms, and pre-employment requirements are gates and process state around `preparing`. They are not further Employment states.  
 > HR handoff transfers process ownership of the next process for the same person. It does not create a person and it does not copy person or evidence data.  
 > Creating `WorkforceEmployee` is the current runtime of opening the HR context. It is not the canonical meaning of the handoff.  
+> Employment moves only `preparing → active → ended`. Ready to Start is the only path into `active`. There is no reverse transition.  
+> `workforce_employments` stays the contract card. One Employment has many cards. The repository already stores them that way.  
 > This file adds no table, no column, no screen, and no document requirement. It does not merge Lead, Candidate, and Employee into one table.  
 > Legal Eligibility and Work Authorization stay the upstream authorities. HR reads them at its own checkpoint and does not grow a second legalization engine.  
 > Feat stays locked. HostFlow v1 is not release-ready.
@@ -45,7 +47,7 @@ The names below are the records the repository already stores. This opening does
 
 The `WorkforceEmployee` row also holds `hire_date`, `termination_date`, `probation_end`, `company_id`, `vacancy_id`, `recruiter_user_id`, `handoff_at`, and `handoff_by_user_id`. `workforce_employments` holds `start_date`, `end_date`, and `probation_end` as dates of that contract card. Those contract dates are not the bounds of the labour relationship.
 
-The structural gap is that the canonical Employment is not a persistence entity. `WorkforceEmployee` carries the HR context and the relationship dates together. `workforce_employments` carries contract terms and a document lifecycle, and it points only at `employee_id`.
+The structural gap in the store is that the canonical Employment is not yet a table. `WorkforceEmployee` carries the HR context and the relationship dates together. `workforce_employments` carries contract terms and a document lifecycle, and it points only at `employee_id`. The persistence section defines the table and the backfill that close that gap. This file does not create the table.
 
 ---
 
@@ -220,7 +222,7 @@ Today each `workforce_employments` row points at `employee_id` only. The link th
 | `candidate_snapshot` | `workforce_employees` | The handoff that started one Employment. A later hire does not overwrite the only copy on the person as its canonical home |
 | `hire_date` | `workforce_employees` | Employment. The start of this labour relationship. Not `workforce_employments.start_date` |
 | `termination_date` | `workforce_employees` | Employment. The end of this labour relationship. Not `workforce_employments.end_date` |
-| `company_id` | `workforce_employees` | Employment. The employer of this hire |
+| `company_id` | `workforce_employees` | Employment. The client of this hire. The directory reads `company_id` as the client and `own_company_id` as the employer. They are not the same column |
 | `vacancy_id` | both rows | Employment. The vacancy this hire came from. The copy on a contract row is not a second vacancy |
 | `recruiter_user_id` | `workforce_employees` | Employment. The recruiter of this hire |
 | `handoff_at`, `handoff_by_user_id` | `workforce_employees` | Employment. The handoff that initiated this relationship. `meta.internal_hr_handoff_id` is that handoff's id |
@@ -228,7 +230,7 @@ Today each `workforce_employments` row points at `employee_id` only. The link th
 | `contract_type`, `employer_name`, `rate_model`, `schedule`, `conditions_text`, `latest_annex_ref` | `workforce_employments` | That contract/terms record. Already off the person row. This boundary does not move them |
 | `WorkforceEmployment.lifecycle_status` | `workforce_employments` | Contract-document lifecycle, default `issued`. Words include `signed`, `active`, `expiring`, `renewed`, and `terminated`. Not `preparing`, `active`, or `ended` on the Employment |
 
-The canonical Employment, once persisted, owns `employee_id`, the state `preparing | active | ended`, the employer, the start and the end of the relationship, and the initiating handoff. Its contract/terms records own the contractual terms. Position, workplace, working time, and remuneration are such terms. They are not columns of `workforce_employees` today, and this boundary adds no column for them.
+The canonical Employment owns `employee_id`, the state `preparing | active | ended`, the client company, the start and the end of the relationship, the vacancy of the hire, the recruiter of the hire, and the initiating handoff. `own_company_id` stays the HR workspace company on the Employee context. Its contract/terms records own the contractual terms. Position, workplace, working time, and remuneration are such terms. They are not columns of `workforce_employees` today, and this boundary adds no column for them.
 
 `meta` on `workforce_employees` mixes the handoff id with the HR pipeline. This boundary assigns `internal_hr_handoff_id` to the Employment and does not split the rest of the blob.
 
@@ -236,10 +238,74 @@ Tax, insurance, compliance, work eligibility, payroll, ZUS, document context, on
 
 ---
 
+## Repository discovery
+
+This reading is of the schema and of the writers and readers. It is not a count of live rows.
+
+`workforce_employments` has no unique constraint on `employee_id`. `ix_workforce_employments_tenant_employee` is not unique. The model allows a history of rows for one employee.
+
+`ensure_hr_profiles_bundle` inserts one row only when the employee has none. That row has `contract_type = unknown` and `meta.source = auto_bundle`. `create_employment` and `POST /employees/{id}/employments` always insert another row. A renewal can instead set `lifecycle_status` to `renewed` on the existing row. `latest_annex_ref` stays on that row.
+
+`get_hr_bundle` returns every row, newest `created_at` first. The directory, document merge, and the operational profile take that newest row when they need one value. The operational profile also counts every row as `contracts_total` and lists each row. `is_active` on that list is `start_date` and `end_date` of the card. Contract-control tasks and the ledger are per card: `contract:{id}`, `contract_issued`, `contract_signed`, `contract_renewed`, `contract_terminated`, `contract_expiring`. The employee rail shows the rows as contracts. The journey marks the contract step done when the list is not empty.
+
+`lifecycle_status` defaults to `issued`. The patch path also writes `signed`, `active`, `expiring`, `renewed`, and `terminated`. Those words are the contract document.
+
+The card holds `contract_type`, `employer_name`, `rate_model`, `schedule`, `start_date`, `end_date`, `probation_end`, `signed_at`, `latest_annex_ref`, `expiry_date`, `next_action`, `conditions_text`, `vacancy_id`, and `meta`. It has no relationship state, no recruiter, and no handoff id. `employer_name` is a free string. It is not `company_id` and it is not `own_company_id`.
+
+The relationship facts on `workforce_employees` are single-valued. `handoff_from_candidate` writes them when it inserts the employee: `own_company_id`, `company_id`, `vacancy_id`, `recruiter_user_id`, `hire_date`, `handoff_at`, `handoff_by_user_id`, and `candidate_snapshot`. A later accept updates `handoff_at`, `handoff_by_user_id`, and `candidate_snapshot` only when the status is `returned` or `returned_to_recruitment`. It does not insert a second relationship and it does not change `hire_date`. `PATCH` of the employee writes `termination_date` and `status`. It can stamp `candidate.extra.workforce_termination`. It does not end a contract card.
+
+The directory calls `own_company_id` the employer and `company_id` the client. A displayed start date is the newest card `start_date`, otherwise `hire_date`. `probation_end` is stored on both rows. `meta.internal_hr_handoff_id` sits in the employee `meta` beside the HR pipeline.
+
+The store already has many contract cards for one employee, and one set of relationship facts on that employee. It has no second labour relationship. Several cards are the contract history of that one hire.
+
+---
+
+## Employment persistence
+
+This section defines the entity and the backfill. It adds no table and no migration. The next slice is Employment Persistence Schema. That slice writes the table, runs this backfill, and cuts readers over to the new owner. The HR Legal Eligibility Gate, the kwestionariusz, employment-terms editing, requirements, and the Ready to Start runtime wait until Employment exists.
+
+### Creation
+
+An accepted `internal_hr` handoff opens one new Employment in `preparing` on the Employee context. A repeat hire opens another Employment in `preparing` on the existing Employee context. The previous Employment stays as it was. The handoff does not create a person.
+
+### Ownership
+
+Employment owns `employee_id`, the state `preparing | active | ended`, the client company, the start, the end, the vacancy of the hire, the recruiter of the hire, the handoff provenance, and the candidate snapshot of that handoff.
+
+`own_company_id` stays on the Employee context. It is the HR workspace company. `WorkforceEmployee.status` stays on the Employee context. After the backfill it does not move Employment.
+
+`workforce_employments` stays the contract card. The cardinality is Employee 1:N Employment 1:N contract cards. Each card links to the Employment it belongs to. A new card, or a change of `lifecycle_status` on a card, does not create an Employment and does not end one. `lifecycle_status` is not mapped onto `preparing`, `active`, or `ended`.
+
+`hire_date` is the start of the relationship. It is not `workforce_employments.start_date`. `termination_date` is the end of the relationship. It is not `workforce_employments.end_date`. `probation_end` is a term of the card.
+
+### Lifecycle
+
+The only edges are `preparing → active` and `active → ended`.
+
+`preparing → active` happens only through the Ready to Start Gate. `active → ended` is the end of that relationship. No reverse edge exists.
+
+### Backfill
+
+Each existing `WorkforceEmployee` becomes one Employment. Every `workforce_employments` row of that employee attaches to that Employment, including the `auto_bundle` placeholder. The rows are not split across Employments and they are not deleted.
+
+The backfill state is:
+
+- `ended` when `termination_date` is set, or `status` is `terminated`, `returned`, or `returned_to_recruitment`
+- `active` when `status` is `active`, `on_sick_leave`, `on_vacation`, `on_leave`, `suspended`, or `contract_ending`
+- `preparing` otherwise, including `onboarding`
+
+`hire_date` does not choose that state. A date on an employee who is still `onboarding` is the intended start. The Employment stays `preparing`. This reading of `status` is the backfill only.
+
+The same migration copies the relationship facts onto Employment and then they cease to be owners on `workforce_employees`. The columns `hire_date`, `termination_date`, `company_id`, `vacancy_id`, `recruiter_user_id`, `handoff_at`, `handoff_by_user_id`, and `candidate_snapshot` are dropped in that migration after the copy. `meta.internal_hr_handoff_id` is removed from the employee `meta`. The rest of `meta` stays. A `vacancy_id` on a contract card stays on the card. When `probation_end` is set on the employee and the newest card has none, the value is copied onto that card and the employee column is dropped with the others. A second populated copy on the employee is forbidden. The history remains on the Employment and on the contract cards.
+
+---
+
 ## Employee Record & Employment Lifecycle — Contract Gate
 
-The handoff rule is recorded. The handoff is a process and context transition over the same person identity. Creating `WorkforceEmployee` is the current runtime of that transition and is not the canonical meaning of the handoff. The rule does not persist Employment, so it does not pass this gate.
+The handoff is a process and context transition over the same person identity. Creating `WorkforceEmployee` is the current runtime of opening the HR context and is not the canonical meaning of the handoff.
 
-**Outcome:** **not PASS**. One reason: the canonical Employment is defined above and is not a persistence entity. `WorkforceEmployee` still holds the relationship dates, and `workforce_employments` is the contract-terms satellite. This opening does not authorize the schema or a runtime that would separate them.
+The repository discovery fixes the card. `workforce_employments` is already 1:N contract history per employee. It is not the labour relationship and it is not 1:1 with Employment. The backfill gives each existing employee one Employment, attaches those cards, and moves the relationship facts to that Employment in the same migration. That is the single owner. The structural gap closes when that migration runs. This file does not run it.
 
-Feat stays locked. Runtime is not authorized.
+**Outcome:** **PASS**. The next slice is Employment Persistence Schema. This file writes no table.
+
+Feat stays locked. Runtime is not authorized. The HR Legal Eligibility Gate is not this slice.

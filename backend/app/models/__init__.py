@@ -107,6 +107,7 @@ WorkforceZusWorkspaceTask = _load_model_module("workforce_zus_workspace_task").W
 WorkforceHrDocumentControlTask = _load_model_module("workforce_hr_document_control_task").WorkforceHrDocumentControlTask  # type: ignore[attr-defined]
 WorkforceLifecycleEvent = _load_model_module("workforce_lifecycle_event").WorkforceLifecycleEvent  # type: ignore[attr-defined]
 WorkforceEmployment = _load_model_module("workforce_employment").WorkforceEmployment  # type: ignore[attr-defined]
+Employment = _load_model_module("hr_employment").Employment  # type: ignore[attr-defined]
 AutomationRule = _load_model_module("automation_rule").AutomationRule  # type: ignore[attr-defined]
 campaign_module = _load_model_module("campaign")
 Campaign = campaign_module.Campaign  # type: ignore[attr-defined]
@@ -373,6 +374,7 @@ __all__ = [
     "WorkforceHrDocumentControlTask",
     "WorkforceLifecycleEvent",
     "WorkforceEmployment",
+    "Employment",
     "AutomationRule",
     "Campaign",
     "CampaignRun",

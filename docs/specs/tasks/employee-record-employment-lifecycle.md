@@ -1,12 +1,12 @@
 # Employee Record & Employment Lifecycle
 
-**Status:** **OPENED** — contract opened. Employee Record & Employment Lifecycle — Contract Gate **not PASS**. No schema. No runtime. Feat locked.  
+**Status:** **OPENED** — contract opened. Employee Record & Employment Lifecycle — Contract Gate **PASS**. Employment Persistence Schema opened: migration and storage proofs. Accepted handoff does not create an Employment. No runtime of that creation. Feat locked.  
 **Phase class:** platform  
 **Date:** 2026-10-03  
 **Trusted base:** Poland Work Authorization Presets program close `37439bc5` on `integration/release-product-a-b` @ `020cb4e5` ([#402](https://github.com/igortatarynovich/HostFlow/pull/402))  
 **Parents:** [contract](../architecture/employee-record-employment-lifecycle-contract.md) (`employee_record_employment_lifecycle.v1`) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · superseded [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md)
 
-> The [contract](../architecture/employee-record-employment-lifecycle-contract.md) is opened. The Contract Gate is **not PASS**. This brief does not write a schema or a runtime.  
+> The [contract](../architecture/employee-record-employment-lifecycle-contract.md) is opened. The Contract Gate is **PASS**. Employment Persistence Schema is the migration and the storage proofs. Accepted handoff does not create an Employment.  
 > HR handoff opens HR process ownership for the existing person and activates the Employee context. It does not create a person, it does not copy person or evidence data, and it does not turn the Candidate row into an Employee.  
 > Creating `WorkforceEmployee` is the current runtime of that transition. It is not the canonical meaning of the handoff. Lead, Candidate, and Employee are not merged into one table.  
 > Legal Eligibility and Work Authorization stay upstream. This product does not become a second legalization engine.  
@@ -30,9 +30,9 @@ One accepted candidate can be read along `Person + Candidate context → ready_f
 
 ## Order
 
-1. This brief. The chain and the contexts are named. Employee Record & Employment Lifecycle — Contract Gate **not PASS**.
-2. The [contract](../architecture/employee-record-employment-lifecycle-contract.md) is opened. Person, the Employee context, Employment, the HR handoff, and `preparing → active → ended` are named. The handoff is a process and context transition over the same person identity. Legal eligibility, data, terms, and requirements are gates around `preparing`. Employee Record & Employment Lifecycle — Contract Gate **not PASS**.
-3. Runtime. Not authorized.
+1. This brief. The chain and the contexts are named.
+2. The [contract](../architecture/employee-record-employment-lifecycle-contract.md) is opened. Person, the Employee context, Employment, the HR handoff, and `preparing → active → ended` are named. The handoff is a process and context transition over the same person identity. Legal eligibility, data, terms, and requirements are gates around `preparing`. `workforce_employments` is the contract card, 1:N under Employment. The backfill is one Employment per existing employee. Employee Record & Employment Lifecycle — Contract Gate **PASS**.
+3. Employment Persistence Schema is opened. It is the persistence model, the migration and backfill, and the storage proofs. Accepted handoff does not create an Employment. The HR Legal Eligibility Gate and the later HR steps wait.
 
 ## Chain
 
@@ -61,11 +61,11 @@ The [contract](../architecture/employee-record-employment-lifecycle-contract.md)
 | Employment | One labour relationship of that Employee. An Employee may have more than one over time |
 | `preparing` | The Employment exists and is not yet in force |
 | Active | The Employment is in force |
-| Ended | The Employment has finished. The Employee context, the Person, and the evidence remain |
+| Ended | The Employment has finished. The Employee and the evidence remain. The Person remains |
 
 ## What this opening does not assign
 
-No schema is written. No runtime module is authorized. Polish HR documents are not a list inside Employee. A later policy may attach, to an Employment, an employment contract (`umowa`), ZUS, BHP, risk assessment (`ocena ryzyka`), confidentiality (`tajemnica`), medical examinations (`badania`), a work certificate (`świadectwo pracy`), and other company-defined requirements. Those defaults are configuration. They are not fields of this domain.
+The contract writes no schema. Employment Persistence Schema is the migration in this slice. No runtime module is authorized. Polish HR documents are not a list inside Employee. A later policy may attach, to an Employment, an employment contract (`umowa`), ZUS, BHP, risk assessment (`ocena ryzyka`), confidentiality (`tajemnica`), medical examinations (`badania`), a work certificate (`świadectwo pracy`), and other company-defined requirements. Those defaults are configuration. They are not fields of this domain.
 
 Person and evidence already collected are not copied. HR reads them through the existing evidence model.
 
@@ -79,12 +79,14 @@ Legal Eligibility and Work Authorization remain upstream facts and processes. Th
 | Poland Work Authorization Presets | program close recorded; Gate **PASS**; not reopened |
 | Legal Eligibility | Contract Gate **PASS**; Matrix Gate **not PASS** |
 | Work Authorization Procedure | Contract Gate **PASS** |
-| Contract | opened; Employee Record & Employment Lifecycle — Contract Gate **not PASS** |
+| Contract | opened; Employee Record & Employment Lifecycle — Contract Gate **PASS**. Employment Persistence Schema opened. Accepted handoff does not create an Employment |
 | Schema and runtime | not authorized; feat locked |
 | Release readiness | separate; this opening does not declare v1 ready |
 
 ## History
 
+- 2026-10-03: **Employment Persistence Schema opened.** `hr_employments` is the labour relationship. `workforce_employments.employment_id` points at it. One backfilled Employment per existing employee. Accepted handoff does not create an Employment. No runtime of that creation. Feat locked.
+- 2026-10-03: **Contract Gate PASS.** Repository discovery: `workforce_employments` is already 1:N contract history per employee, not the labour relationship. Backfill is one Employment per existing `WorkforceEmployee`, with those cards attached. Relationship facts move to Employment in the same migration. `hire_date` does not choose `active`. Ready to Start is the only `preparing → active`. No reverse edge. Next slice is Employment Persistence Schema. No schema. No runtime. Feat locked.
 - 2026-10-03: **Handoff recorded as a process transition.** The handoff opens HR process ownership for the existing person and activates the Employee context. It does not create a person and it does not copy person or evidence data. Creating `WorkforceEmployee` stays the current runtime of that transition. Lead, Candidate, and Employee are not merged into one table. A later hire without Recruitment creates no Candidate. Employee Record & Employment Lifecycle — Contract Gate **not PASS**. No schema. No runtime. Feat locked.
 - 2026-10-03: **Contract cardinality recorded.** Employee 1:N Employment 1:N contract/terms records. `workforce_employments` stays the contract card of one Employment. A renewal does not create an Employment and does not end one. `hire_date` is not `start_date`. Employee Record & Employment Lifecycle — Contract Gate **not PASS**. No schema. No runtime. Feat locked.
 - 2026-10-03: **Persistence boundary recorded.** `hire_date` and `termination_date` belong to Employment. `workforce_employments` stays the contract-terms satellite and is not the canonical Employment. Employee Record & Employment Lifecycle — Contract Gate **not PASS** for that one reason. No schema. No runtime. No HR document policy. Feat locked.

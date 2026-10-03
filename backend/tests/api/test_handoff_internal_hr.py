@@ -201,7 +201,7 @@ async def test_internal_hr_handoff_not_in_client_portal_default_list(
     assert len(rows) == 1, rows
     assert rows[0].get("status") == "onboarding"
     meta = rows[0].get("meta") or {}
-    assert meta.get("internal_hr_handoff_id") == ho.json()["id"]
+    assert "internal_hr_handoff_id" not in meta
     bundle = await client.get(
         f"/api/v1/workforce/employees/{rows[0]['id']}/hr-bundle",
         headers=manager_headers,

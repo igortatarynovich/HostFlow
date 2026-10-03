@@ -51,18 +51,23 @@ def _candidate_dict(c: Candidate, *, include_identity: bool = False) -> Dict[str
     return out
 
 
-def _employee_dict(e: WorkforceEmployee) -> Dict[str, Any]:
+def _employee_dict(
+    e: WorkforceEmployee,
+    *,
+    relationship: Any = None,
+    probation_end: Optional[date] = None,
+) -> Dict[str, Any]:
     return {
         "id": e.id,
         "display_name": e.display_name,
         "status": e.status,
-        "hire_date": _date_iso(e.hire_date),
-        "probation_end": _date_iso(e.probation_end),
-        "termination_date": _date_iso(e.termination_date),
+        "hire_date": _date_iso(relationship.started_on) if relationship is not None else None,
+        "probation_end": _date_iso(probation_end),
+        "termination_date": _date_iso(relationship.ended_on) if relationship is not None else None,
         "candidate_id": e.candidate_id,
         "own_company_id": e.own_company_id,
-        "company_id": e.company_id,
-        "vacancy_id": e.vacancy_id,
+        "company_id": relationship.client_company_id if relationship is not None else None,
+        "vacancy_id": relationship.vacancy_id if relationship is not None else None,
     }
 
 
@@ -119,7 +124,10 @@ async def build_merge_context(
 
     oc_id: Optional[str] = None
     if employee is not None:
-        ctx["employee"] = _employee_dict(employee)
+        from backend.app.services.employment_records import display_employment
+
+        relationship = await display_employment(session, tenant_id, str(employee.id))
+        ctx["employee"] = _employee_dict(employee, relationship=relationship)
         prep = await evaluate_contract_merge_identity(session, tenant_id, str(employee.id))
         if prep.blocked:
             ctx["identity"] = {
@@ -158,6 +166,8 @@ async def build_merge_context(
         )
         emp_row = (await session.execute(stmt)).scalar_one_or_none()
         ctx["employment"] = _employment_dict(emp_row) if emp_row else {}
+        if emp_row is not None and getattr(emp_row, "probation_end", None) is not None:
+            ctx["employee"]["probation_end"] = _date_iso(emp_row.probation_end)
 
     if candidate is not None:
         # Never use candidate snapshot for legal identity when workforce employee exists.

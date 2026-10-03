@@ -24,6 +24,10 @@ from backend.app.services.workforce_downstream_identity import (
     evaluate_payroll_preparation,
 )
 
+class ContractCardRequiresEmployment(Exception):
+    """A contract card needs an Employment. This slice does not open one."""
+
+
 PAYROLL_STATUSES = frozenset(
     {
         "missing_data",
@@ -126,10 +130,16 @@ async def create_employment(
 ) -> Optional[WorkforceEmployment]:
     if not await get_employee(db, tenant_id, employee_id):
         return None
+    from backend.app.services.employment_records import display_employment
+
+    target = await display_employment(db, tenant_id, employee_id)
+    if target is None:
+        raise ContractCardRequiresEmployment()
     row = WorkforceEmployment(
         id=str(uuid4()),
         tenant_id=tenant_id,
         employee_id=employee_id,
+        employment_id=target.id,
         contract_type=str(payload.get("contract_type") or "unknown")[:64],
         lifecycle_status=str(payload.get("lifecycle_status") or "issued")[:32],
         employer_name=(str(payload.get("employer_name") or "").strip()[:160] or None),

@@ -1,8 +1,8 @@
-"""Employee Record & Employment Lifecycle brief is opened and not passed.
+"""Employee Record & Employment Lifecycle brief is opened and the contract is passed.
 
-The chain is Candidate to ready_for_employment to HR handoff to
-Employee to Employment to Active to Ended. No schema and no runtime
-are authorized. The minimal HR brief is superseded.
+The chain is Person and Candidate context to Employment to Active to
+Ended. No schema and no runtime are authorized. The next slice is
+Employment Persistence Schema. The minimal HR brief is superseded.
 """
 
 from __future__ import annotations
@@ -26,8 +26,9 @@ def test_employee_record_brief_names_the_chain_without_runtime() -> None:
     text = _BRIEF.read_text(encoding="utf-8")
     current, history = text.split("## History", 1)
     assert "**OPENED**" in current
-    assert "Employee Record & Employment Lifecycle — Contract Gate **not PASS**" in current
-    assert "Employee Record & Employment Lifecycle — Contract Gate **PASS**" not in current
+    assert "Employee Record & Employment Lifecycle — Contract Gate **PASS**" in current
+    assert "Employee Record & Employment Lifecycle — Contract Gate **not PASS**" not in current
+    assert "Employment Persistence Schema" in current
     assert "Candidate" in current
     assert "ready_for_employment" in current
     assert "HR handoff" in current
@@ -69,9 +70,12 @@ def test_employee_record_is_the_active_product() -> None:
         "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**"
         in history
     )
-    assert "Employee Record & Employment Lifecycle — Contract Gate **not PASS**" in current
-    assert "Employee Record & Employment Lifecycle — Contract Gate **PASS**" not in current
-    assert "no schema" in current
+    assert "Employee Record & Employment Lifecycle — Contract Gate **PASS**" in current
+    assert "Employee Record & Employment Lifecycle — Contract Gate **not PASS**" not in current
+    assert "Employee Record & Employment Lifecycle — Contract Gate **not PASS**" in history
+    assert "Employment Persistence Schema opened" in current
+    assert "accepted handoff does not create an Employment" in current
+    assert "no runtime of that creation" in current
     assert "superseded" in current.lower()
     assert "Poland Work Authorization Presets Gate **PASS**" in current
     assert "Poland Work Authorization Presets Gate **not PASS**" not in current

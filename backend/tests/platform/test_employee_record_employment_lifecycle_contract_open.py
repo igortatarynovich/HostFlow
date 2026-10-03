@@ -1,8 +1,8 @@
-"""Employee Record contract is opened and the Contract Gate is not passed.
+"""Employee Record contract is accepted and the Contract Gate is passed.
 
 The contract names the handoff as a process transition over the same
-person, Employee as the HR context, Employment, and Active to Ended.
-It writes no schema, no runtime module, and no HR document requirement.
+person, Employment as the labour relationship, and workforce_employments
+as the contract card. It writes no schema and no runtime module.
 """
 
 from __future__ import annotations
@@ -29,19 +29,19 @@ def test_employee_record_contract_filename() -> None:
     )
 
 
-def test_employee_record_contract_is_opened_and_not_passed() -> None:
+def test_employee_record_contract_is_accepted() -> None:
     text = _CONTRACT.read_text(encoding="utf-8")
     current, _history = (
         text.split("## History", 1) if "## History" in text else (text, "")
     )
-    assert "**Opened**" in current
+    assert "**Accepted**" in current
     assert "employee_record_employment_lifecycle.v1" in current
     assert (
-        "Employee Record & Employment Lifecycle — Contract Gate **not PASS**"
+        "Employee Record & Employment Lifecycle — Contract Gate **PASS**"
         in current
     )
     assert (
-        "Employee Record & Employment Lifecycle — Contract Gate **PASS**"
+        "Employee Record & Employment Lifecycle — Contract Gate **not PASS**"
         not in current
     )
     assert "Candidate" in current
@@ -75,7 +75,14 @@ def test_employee_record_contract_is_opened_and_not_passed() -> None:
     assert "ZUS registration is a post-start obligation" in current
     assert "another plane" in current
     assert "## Persistence boundary" in current
-    assert "canonical Employment is not a persistence entity" in current
+    assert "canonical Employment is not yet a table" in current
+    assert "## Repository discovery" in current
+    assert "ix_workforce_employments_tenant_employee" in current
+    assert "The client of this hire" in current
+    assert "Employment Persistence Schema" in current
+    assert "No reverse edge exists." in current
+    assert "`hire_date` does not choose that state." in current
+    assert "auto_bundle" in current
     assert "`hire_date` | `workforce_employees` | Employment" in current
     assert "`termination_date` | `workforce_employees` | Employment" in current
     assert "Not `workforce_employments.start_date`" in current
@@ -85,7 +92,6 @@ def test_employee_record_contract_is_opened_and_not_passed() -> None:
     assert "contract-terms satellite" in current
     assert "default `issued`" in current
     assert "HR document policy stays untouched" in current
-    assert "One reason:" in current
     assert "This file writes no HR document requirement" in current
     assert "No schema is written." in current
     assert "No runtime module is authorized." in current
@@ -103,10 +109,14 @@ def test_employee_record_contract_is_opened_and_not_passed() -> None:
     assert "preparing → active → ended" in brief_current
     assert "Ready to Start Gate" in brief_current
     assert (
-        "Employee Record & Employment Lifecycle — Contract Gate **not PASS**"
+        "Employee Record & Employment Lifecycle — Contract Gate **PASS**"
         in brief_current
     )
     assert (
-        "Employee Record & Employment Lifecycle — Contract Gate **PASS**"
+        "Employee Record & Employment Lifecycle — Contract Gate **not PASS**"
         not in brief_current
     )
+    assert "Employment Persistence Schema" in brief_current
+    assert "Employee Record & Employment Lifecycle — Contract Gate **not PASS**" in brief.split(
+        "## History", 1
+    )[1]
