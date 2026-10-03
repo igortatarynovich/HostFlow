@@ -136,7 +136,7 @@ def test_ma1_leaves_intake_hiring_hr_queued() -> None:
     assert "Hiring E2E program close recorded" in hiring_header
     assert "HE-1" in hiring_header
     assert "**QUEUED**" not in hiring_header
-    assert "**QUEUED**" in hr_header
+    assert "**SUPERSEDED**" in hr_header
     assert "not scheduled" in hr_header.lower()
     intake = _INTAKE.read_text(encoding="utf-8")
     assert "**DONE**" in intake.split("## History", 1)[0]

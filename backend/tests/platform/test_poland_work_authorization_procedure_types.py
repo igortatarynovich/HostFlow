@@ -104,12 +104,16 @@ def test_poland_procedure_type_set_is_closed_without_documents() -> None:
     assert "**not PASS**" not in contract
 
 
-def test_poland_procedure_types_are_the_active_product() -> None:
+def test_poland_procedure_types_stay_closed() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     current, history = queue.split("## 8. History", 1)
     assert (
-        "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**"
+        "**Active Product** | **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**"
         in current
+    )
+    assert (
+        "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**"
+        in history
     )
     assert "Poland Work Authorization Presets Gate **PASS**" in current
     assert "Poland Work Authorization Presets Gate **not PASS**" not in current

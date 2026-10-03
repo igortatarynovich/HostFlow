@@ -152,7 +152,8 @@ def test_he3_brief_and_queue() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     header = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
-    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in header
+    assert "**Active Product** | **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in header
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
     assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in header
@@ -168,7 +169,7 @@ def test_he3_brief_and_queue() -> None:
 def test_he3_leaves_hr_queued() -> None:
     text = _HR.read_text(encoding="utf-8")
     header = text.split("## History", 1)[0] if "## History" in text else text
-    assert "**QUEUED**" in header
+    assert "**SUPERSEDED**" in header
     assert "not scheduled" in header.lower()
 
 

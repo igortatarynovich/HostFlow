@@ -33,7 +33,8 @@ def test_legal_eligibility_amendment_names_brief_without_rules() -> None:
     assert "Queue amendment names Legal Eligibility Active Product" in history
     assert "Product **DONE** with no named successor until amendment" in history
     assert "Hiring E2E Acceptance Gate **not PASS**" in history
-    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in current
+    assert "**Active Product** | **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
     assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert _CELL in history
     assert "**Active Product** | **DONE**" not in current
@@ -85,7 +86,7 @@ def test_legal_eligibility_amendment_names_brief_without_rules() -> None:
     assert "legal-eligibility-requirement-policy.md" in hiring_current
     hr = _HR.read_text(encoding="utf-8")
     hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
-    assert "**QUEUED**" in hr_header
+    assert "**SUPERSEDED**" in hr_header
     assert "not scheduled" in hr_header.lower()
     assert "feat locked" in hr_header.lower()
     assert "legal-eligibility-requirement-policy.md" in hr_header

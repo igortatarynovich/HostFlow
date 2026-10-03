@@ -144,7 +144,7 @@ def test_he1_queue_names_pass_not_he3_runtime() -> None:
 def test_he1_leaves_hr_queued() -> None:
     text = _HR.read_text(encoding="utf-8")
     header = text.split("## History", 1)[0] if "## History" in text else text
-    assert "**QUEUED**" in header
+    assert "**SUPERSEDED**" in header
     assert "not scheduled" in header.lower()
     assert "hiring-workflow-e2e.md" in header
 

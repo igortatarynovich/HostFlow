@@ -626,6 +626,11 @@ jobs:
               - 'docs/specs/architecture/poland-work-authorization-presets.md'
               - 'docs/specs/tasks/poland-work-authorization-presets.md'
               - 'docs/specs/tasks/oswiadczenie-country-set-drift.md'
+              - 'docs/specs/tasks/employee-record-employment-lifecycle.md'
+              - 'docs/specs/architecture/employee-record-employment-lifecycle-contract.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'backend/tests/platform/test_employee_record_employment_lifecycle_open.py'
+              - 'backend/tests/platform/test_employee_record_employment_lifecycle_contract_open.py'
               - 'docs/specs/architecture/work-authorization-procedure-contract.md'
               - 'docs/specs/tasks/work-authorization-procedure.md'
               - 'docs/specs/architecture/legal-eligibility-contract.md'
@@ -1615,7 +1620,7 @@ jobs:
       - uses: ./.github/actions/backend-pytest
         if: hashFiles('backend/tests/platform/test_queue_amendment_legal_eligibility.py') != ''
         with:
-          tests: tests/platform/test_queue_amendment_legal_eligibility.py tests/platform/test_legal_eligibility_contract_open.py tests/platform/test_legal_eligibility_contract_gate.py tests/platform/test_legal_eligibility_matrix_open.py tests/platform/test_legal_eligibility_decision_model.py tests/platform/test_work_authorization_procedure_contract_open.py tests/platform/test_work_authorization_procedure_contract_gate.py tests/platform/test_poland_work_authorization_procedure_types.py
+          tests: tests/platform/test_queue_amendment_legal_eligibility.py tests/platform/test_legal_eligibility_contract_open.py tests/platform/test_legal_eligibility_contract_gate.py tests/platform/test_legal_eligibility_matrix_open.py tests/platform/test_legal_eligibility_decision_model.py tests/platform/test_work_authorization_procedure_contract_open.py tests/platform/test_work_authorization_procedure_contract_gate.py tests/platform/test_poland_work_authorization_procedure_types.py tests/platform/test_employee_record_employment_lifecycle_open.py tests/platform/test_employee_record_employment_lifecycle_contract_open.py
 
   fp5-acceptance-gate:
     name: External Intake Acceptance Gate

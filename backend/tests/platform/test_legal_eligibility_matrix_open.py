@@ -74,7 +74,7 @@ def test_legal_eligibility_matrix_open_is_current_and_hr_unscheduled() -> None:
     assert "Runtime not authorized" in header
     hr = _HR.read_text(encoding="utf-8")
     hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
-    assert "**QUEUED**" in hr_header
+    assert "**SUPERSEDED**" in hr_header
     assert "not scheduled" in hr_header.lower()
     assert "feat locked" in hr_header.lower()
     ci = _CI.read_text(encoding="utf-8")

@@ -29,7 +29,8 @@ def test_he4_amendment_opens_feat_without_rs7() -> None:
     assert "HE-4 Acceptance walk feat opened" in history
     assert "Hiring E2E Acceptance Gate **not PASS**" in history
     assert "HE-4 feat locked" in history
-    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in current
+    assert "**Active Product** | **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
     assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "**Active Product** | **[HE-3](hiring-workflow-e2e.md)**" not in current
@@ -67,7 +68,7 @@ def test_he4_amendment_opens_feat_without_rs7() -> None:
 def test_he4_program_close_leaves_hr_unscheduled() -> None:
     hr = _HR.read_text(encoding="utf-8")
     hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
-    assert "**QUEUED**" in hr_header
+    assert "**SUPERSEDED**" in hr_header
     assert "not scheduled" in hr_header.lower()
     assert "feat locked" in hr_header.lower()
     queue = _QUEUE.read_text(encoding="utf-8")
