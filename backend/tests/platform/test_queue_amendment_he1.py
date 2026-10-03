@@ -35,9 +35,11 @@ def test_he1_amendment_history_then_current() -> None:
     assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in history or (
         "Active Product stays **[HE-1]" in history
     )
-    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in current
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
-    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "Active (Product):** **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in current
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "no named successor" in current.lower()

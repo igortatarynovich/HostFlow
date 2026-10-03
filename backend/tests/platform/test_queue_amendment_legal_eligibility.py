@@ -33,7 +33,8 @@ def test_legal_eligibility_amendment_names_brief_without_rules() -> None:
     assert "Queue amendment names Legal Eligibility Active Product" in history
     assert "Product **DONE** with no named successor until amendment" in history
     assert "Hiring E2E Acceptance Gate **not PASS**" in history
-    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in current
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert _CELL in history
     assert "**Active Product** | **DONE**" not in current
     assert "**Active Product** | **[HE-4](hiring-workflow-e2e.md)**" not in current

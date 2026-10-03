@@ -97,9 +97,11 @@ def test_ma2_queue_names_ma3_successor() -> None:
     current = text.split("## 8. History", 1)[0]
     history = text.split("## 8. History", 1)[1]
     assert "Mapping Resolution Gate" in text
-    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in current
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
-    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "Active (Product):** **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in current
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "feat locked" in text

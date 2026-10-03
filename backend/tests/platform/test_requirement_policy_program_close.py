@@ -46,9 +46,11 @@ def test_rpm_close_names_ma1_active_feat_locked() -> None:
     assert "Active Product → **[MA-1](mapping-authority.md)**" in queue
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
-    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in current
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
-    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "Active (Product):** **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in current
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "feat locked this PR" in queue

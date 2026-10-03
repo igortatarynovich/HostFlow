@@ -90,11 +90,13 @@ def test_ma4_brief_gate_pass() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     queue_current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
-    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in queue_current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in queue_current
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in queue_current
     assert "Mapping program close" in queue_current
-    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in queue_current
+    assert "Active (Product):** **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in queue_current
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Mapping Consumer Cutover Gate **PASS**" in queue_current
     assert "feat/mapping-authority-ma4-consumer-cutover" in queue

@@ -1,6 +1,6 @@
 # Minimal Recruitment → HR handoff
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [Work Authorization Procedure](work-authorization-procedure.md)
+**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [Poland Work Authorization Presets](poland-work-authorization-presets.md)
 **Phase class:** platform
 **Branch (docs):** `docs/v1-blocker-briefs`
 **Branch (code):** none — later slices `feat/min-hr-handoff-hhN-…`
@@ -10,7 +10,7 @@
 > v1 blocker 5: **hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy.**
 > Full HR operations (Kadry, payroll, extended lifecycle) stay **later**.
 > **Not** Hiring E2E (that is [the predecessor](hiring-workflow-e2e.md)). **Not** a Documents phase. **Not** an HR product build-out. **Not** D10.
-> Opening this brief does **not** schedule it. Active Product is [Work Authorization Procedure](work-authorization-procedure.md) (contract opened; Work Authorization Procedure Contract Gate **PASS**; no preset row). Predecessor [Legal Eligibility](legal-eligibility-requirement-policy.md) (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**; matrix opened; Legal Eligibility Matrix Gate **not PASS**; decision model amendment; evidence rules are not encoded). Hiring E2E program close is recorded (Acceptance Gate **PASS** `315cb710`). That close makes min HR startable, and this amendment does not schedule it. MA-4 Cutover Gate PASS. Leftover-store deletion is not this program.
+> Opening this brief does **not** schedule it. Active Product is [Poland Work Authorization Presets](poland-work-authorization-presets.md) (procedure types named; Poland Work Authorization Presets Gate **PASS**; no `kod_zawodu` row; no document list; preset schema named; baselines filled). Predecessor [Work Authorization Procedure](work-authorization-procedure.md) (contract opened; Work Authorization Procedure Contract Gate **PASS**; no preset row). Predecessor [Legal Eligibility](legal-eligibility-requirement-policy.md) (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**; matrix opened; Legal Eligibility Matrix Gate **not PASS**; decision model amendment; evidence rules are not encoded). Hiring E2E program close is recorded (Acceptance Gate **PASS** `315cb710`). That close makes min HR startable, and this amendment does not schedule it. MA-4 Cutover Gate PASS. Leftover-store deletion is not this program.
 
 ---
 
