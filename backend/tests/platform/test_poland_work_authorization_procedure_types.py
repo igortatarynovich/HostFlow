@@ -118,12 +118,17 @@ def test_poland_procedure_types_are_the_active_product() -> None:
     assert "Work Authorization Procedure Contract Gate **not PASS**" not in current
     assert "Poland procedure types named." in history
     assert "Poland Work Authorization Presets Gate **not PASS**" in history
+    assert "Poland Work Authorization Presets program close recorded" in current
+    assert "Product **DONE** with no named successor until amendment" in current
     brief = _BRIEF.read_text(encoding="utf-8")
     brief_current, brief_history = brief.split("## History", 1)
-    assert "**OPENED**" in brief_current
+    assert "**DONE**" in brief_current
+    assert "program close recorded" in brief_current
+    assert "**OPENED**" not in brief_current
     assert "`employer_declaration` and `work_permit_a`" in brief_current
     assert "Poland Work Authorization Presets Gate **PASS**" in brief_current
     assert "Poland Work Authorization Presets Gate **not PASS**" not in brief_current
     assert "Poland Work Authorization Presets Gate **not PASS**" in brief_history
+    assert "no named successor until amendment" in brief_current
     assert "Feat locked" in brief_current
     assert "Runtime not authorized" in brief_current

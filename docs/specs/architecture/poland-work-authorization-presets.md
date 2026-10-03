@@ -278,4 +278,4 @@ The open question is the ministry's procedure for connecting an external system 
 - `r5_required_set` remains the only writer.
 - The country-set drift stays a separate blocker. This PASS does not correct it.
 
-Feat stays locked. Runtime is not authorized. The Work Authorization Procedure contract stays accepted. The Legal Eligibility chain is unchanged. The Legal Eligibility Matrix Gate is not passed.
+Feat stays locked. Runtime is not authorized. The Work Authorization Procedure contract stays accepted. The Legal Eligibility chain is unchanged. The Legal Eligibility Matrix Gate is not passed. The program close is recorded on the brief. Product is **DONE** with no named successor until amendment.

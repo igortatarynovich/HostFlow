@@ -625,6 +625,7 @@ jobs:
               - 'backend/tests/platform/test_poland_work_authorization_procedure_types.py'
               - 'docs/specs/architecture/poland-work-authorization-presets.md'
               - 'docs/specs/tasks/poland-work-authorization-presets.md'
+              - 'docs/specs/tasks/oswiadczenie-country-set-drift.md'
               - 'docs/specs/architecture/work-authorization-procedure-contract.md'
               - 'docs/specs/tasks/work-authorization-procedure.md'
               - 'docs/specs/architecture/legal-eligibility-contract.md'

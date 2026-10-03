@@ -1,6 +1,6 @@
 # Poland Work Authorization Presets
 
-**Status:** **OPENED** — Poland Work Authorization Presets Gate **PASS**, 2026-10-03. No `kod_zawodu` row. Feat locked. Runtime not authorized.  
+**Status:** **DONE** — Poland Work Authorization Presets program close recorded, 2026-10-03. Poland Work Authorization Presets Gate **PASS**. No `kod_zawodu` row. Feat locked. Runtime not authorized. Product **DONE** with no named successor until amendment. Minimal Recruitment → HR stays **not** scheduled.  
 **Date:** 2026-10-02  
 **Trusted base:** `integration/release-product-a-b` @ `020cb4e5` ([#402](https://github.com/igortatarynovich/HostFlow/pull/402))  
 **Parents:** [presets](../architecture/poland-work-authorization-presets.md) · [Work Authorization Procedure](work-authorization-procedure.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
@@ -47,8 +47,28 @@ For country `PL`, a preset selects one of the closed procedure types, and a docu
 | Runtime, pack, engine | not authorized; feat locked |
 | Minimal Recruitment → HR | queued, not scheduled |
 
+## Program close
+
+The boundary in [poland-work-authorization-presets.md](../architecture/poland-work-authorization-presets.md) is final for this Product. This close does not open a successor.
+
+```text
+Goal Completion Gate — Poland Work Authorization Presets
+G1 Original problem: an operator cannot tell which Poland work-authorization procedure a preset belongs to, because the product stores that choice as a document code.
+G2 Now forbidden local implementations: one preset row per kod_zawodu; a KZiS-to-regulated mapping; a Driver CE default treated as the attachment list of Dz.U. 2025 poz. 1629; a second writer beside r5_required_set.
+G3 Next consumer without new primitive? The same evidence object can be read later by employment. This close does not open that record.
+G4 End-to-end proof: the closed procedure set, the two official baselines, and the filing boundary in the presets canon. No runtime module.
+G5 Remaining allowed workarounds: oswiadczenie-country-set-drift.md stays OPEN; praca.gov.pl connection, urząd practice, and submission automation stay future work; profession_is_regulated stays optional.
+Outcome: PASS
+```
+
+| Field | Meaning |
+|---|---|
+| **Program outcome** | For `PL`, a preset selects `employer_declaration` or `work_permit_a`. The two official baselines are filled. `employer_declaration` files as `PSZ-OPPC`. `work_permit_a` files as `ZC-WWZPP`. KZiS identifies the profession and does not derive `profession_is_regulated`. `r5_required_set` stays the only writer. |
+| **Release delta** | Poland Work Authorization Presets Gate **PASS**. HostFlow v1 is not release-ready. Minimal Recruitment → HR stays queued and not scheduled. No runtime. No public submission API is assumed. |
+
 ## History
 
+- 2026-10-03: **Poland Work Authorization Presets program close.** Gate **PASS** stands. Product **DONE** with no named successor until amendment. `profession_is_regulated` stays optional and does not block the gate. Country-set drift stays [open](oswiadczenie-country-set-drift.md). praca.gov.pl connection, urząd practice, and submission automation stay future work. Feat stays locked. Runtime is not authorized. Minimal Recruitment → HR stays not scheduled. HostFlow v1 is not release-ready.
 - 2026-10-03: **Filing workflow named.** `employer_declaration` files as `PSZ-OPPC`. `work_permit_a` files as `ZC-WWZPP`. Attachment origin stays visible. No public submit API was found. HRappka's published path is the employer's portal session. Browser automation is not the first path. Further research of `profession_is_regulated` stops.
 - 2026-10-03: **Profession preset is company policy.** Official baselines stay the system Poland preset. A requirement purpose is `employment`, `submission`, or `both`. `profession_is_regulated` is optional and does not block the gate. A Driver CE default is not the official attachment list. `r5_required_set` stays the only writer.
 - 2026-10-03: **Poland Work Authorization Presets Gate PASS.** Two baselines. Shared requirement schema. Fee policy differs. Temporary-agency agreement is conditional. Authority-requested extras stay outside the baseline. No `kod_zawodu` row. Existing evidence is reused. `r5_required_set` stays the only writer. Country-set drift stays a separate blocker. Feat stays locked. Runtime is not authorized.
