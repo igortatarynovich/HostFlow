@@ -1,8 +1,8 @@
 """Employee Record contract is opened and the Contract Gate is not passed.
 
-The contract names Employee, Employment, the internal_hr handoff, and
-Active to Ended. It writes no schema, no runtime module, and no HR
-document requirement.
+The contract names the handoff as a process transition over the same
+person, Employee as the HR context, Employment, and Active to Ended.
+It writes no schema, no runtime module, and no HR document requirement.
 """
 
 from __future__ import annotations
@@ -56,6 +56,14 @@ def test_employee_record_contract_is_opened_and_not_passed() -> None:
     assert "That Employment has finished" in current
     assert "The Employee remains" in current
     assert "does not turn the Candidate row into an Employee" in current
+    assert "HR process ownership opened for that Person" in current
+    assert "does not create a person and it does not copy person or evidence data" in current
+    assert "not the canonical meaning of the handoff" in current
+    assert "No Person table is authorized" in current
+    assert "does not merge Lead, Candidate, and Employee into one table" in current
+    assert "existing Employee context" in current
+    assert "That path creates no Candidate and no person." in current
+    assert "current runtime link" in current
     assert "HR Legal Eligibility Gate" in current
     assert "Ready to Start Gate" in current
     assert "legal_eligibility.v1" in current
@@ -70,6 +78,10 @@ def test_employee_record_contract_is_opened_and_not_passed() -> None:
     assert "canonical Employment is not a persistence entity" in current
     assert "`hire_date` | `workforce_employees` | Employment" in current
     assert "`termination_date` | `workforce_employees` | Employment" in current
+    assert "Not `workforce_employments.start_date`" in current
+    assert "Employee 1:N Employment 1:N contract/terms records" in current
+    assert "not Employment 1:1 `workforce_employments`" in current
+    assert "A new contract record does not create a new Employment" in current
     assert "contract-terms satellite" in current
     assert "default `issued`" in current
     assert "HR document policy stays untouched" in current
@@ -84,6 +96,10 @@ def test_employee_record_contract_is_opened_and_not_passed() -> None:
     brief_current = brief.split("## History", 1)[0]
     assert "employee-record-employment-lifecycle-contract.md" in brief_current
     assert "contract opened" in brief_current
+    assert "does not create a person" in brief_current
+    assert "HR process ownership opened" in brief_current
+    assert "not the canonical meaning of the handoff" in brief_current
+    assert "not merged into one table" in brief_current
     assert "preparing → active → ended" in brief_current
     assert "Ready to Start Gate" in brief_current
     assert (
