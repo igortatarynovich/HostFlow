@@ -115,6 +115,7 @@ HrEmploymentTerms = _load_model_module("hr_employment_terms").HrEmploymentTerms 
 HrEmploymentRequirement = _load_model_module(
     "hr_employment_requirement"
 ).HrEmploymentRequirement  # type: ignore[attr-defined]
+HrReadyToStartDecision = _load_model_module("hr_ready_to_start").HrReadyToStartDecision  # type: ignore[attr-defined]
 AutomationRule = _load_model_module("automation_rule").AutomationRule  # type: ignore[attr-defined]
 campaign_module = _load_model_module("campaign")
 Campaign = campaign_module.Campaign  # type: ignore[attr-defined]
@@ -385,6 +386,7 @@ __all__ = [
     "HrLegalEligibilityGateDecision",
     "HrEmploymentTerms",
     "HrEmploymentRequirement",
+    "HrReadyToStartDecision",
     "AutomationRule",
     "Campaign",
     "CampaignRun",

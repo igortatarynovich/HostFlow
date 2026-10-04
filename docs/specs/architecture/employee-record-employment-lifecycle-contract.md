@@ -175,14 +175,9 @@ What already exists, and the two axes of one Employment's requirements, are [Pre
 
 ### Ready to Start Gate
 
-This gate is the permission to move `preparing → active`. It can require, at the moment of the check:
+This gate is the permission to move `preparing → active`. The four inputs, the aggregation, and the stale rule are [Ready to Start Gate Contract](#ready-to-start-gate-contract). This opening does not evaluate them and does not perform the transition.
 
-- HR Legal Eligibility Gate PASS for this Employment now
-- every required pre-start requirement `satisfied` or `waived`
-- Employment terms complete
-- the agreements and formalities that policy marks as required for start, done
-
-A `blocking` pre-start requirement holds this gate. It does not add an Employment state.
+A blocked input holds the Employment at `preparing`. It does not add an Employment state.
 
 ---
 
@@ -610,6 +605,86 @@ Ready to Start, when a later slice evaluates it, admits an applicable row only w
 
 This migration inserts nothing. It does not generate instances from policy, does not copy `candidate_evidence`, does not list a Polish set, does not write `hr_employments.state`, and does not create `workforce_onboarding_tasks` or `workforce_employments`.
 
-The next slice is Pre-employment Requirements Runtime: materialize the applicable set from policy, resolve an instance through existing evidence or a document or a waiver, tell `unresolved` from `blocking`, and compute completeness of the set. That runtime is not this slice. Ready to Start Gate Contract stays closed. A stored row leaves `hr_employments.state` at `preparing`.
+The next slice is Pre-employment Requirements Runtime: materialize the applicable set from policy, resolve an instance through existing evidence or a document or a waiver, tell `unresolved` from `blocking`, and compute completeness of the set. That runtime is not this slice. The Ready to Start Gate Contract is not this slice. A stored row leaves `hr_employments.state` at `preparing`.
 
 Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Pre-employment Requirements Runtime
+
+The materialized set of one Employment is stable. `materialize_pre_employment_requirements` writes it once, from the policy reading supplied for that `Employment(preparing)`. Each definition carries `definition_key`, `policy_id`, `policy_version`, applicability, and `applicability_basis`. Those three provenance fields are the policy and the context of the applicability decision. An applicable row starts at `unresolved`. A `not_applicable` row stores no resolution. An empty reading does not define the set and writes nothing.
+
+A later call for the same Employment returns the stored rows and does not write. A later policy does not add a definition, does not delete one, and does not rewrite applicability, `policy_id`, `policy_version`, `applicability_basis`, or resolution. The stored provenance remains the way to see which policy and context decided the row. Reconciliation of a changed policy is not this runtime. Another Employment of the same person receives its own rows. Employee history does not write them.
+
+`satisfy_pre_employment_requirement` links an applicable `unresolved` or `blocking` row to an existing `candidate_evidence` row, an existing `documents` row, or both. The link is the id the caller names. The runtime does not search the Employee for a similar document and does not copy the evidence. `waive_pre_employment_requirement` records actor, time, and a non-empty reason on an applicable `unresolved` or `blocking` row. `block_pre_employment_requirement` records the reason of a found problem on an applicable `unresolved` row. `unresolved` is not that finding. A `not_applicable` row accepts none of these acts. A `satisfied` or `waived` row is not rewritten. A second waive with a different reason is refused.
+
+`evaluate_pre_employment_requirements` is true only when that set is defined and every applicable row is `satisfied` or `waived`. `not_applicable` stays outside the check. `unresolved` and `blocking` are both false, and the row keeps which of the two it is. The result does not write `hr_employments.state`. It does not insert `workforce_onboarding_tasks` or `workforce_employments`. It does not list a Polish set. It does not open the Ready to Start Gate.
+
+A true result is one input of that gate. This runtime does not aggregate the other inputs and does not move the Employment to `active`. An Employment that is not `preparing` is not materialized and is not resolved. Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Ready to Start Gate Contract
+
+**Machine id:** `ready_to_start.v1` — named here. No runtime module.  
+**Outcome:** **PASS**. The model below is the permission for one `Employment(preparing)` to move to `active`. This section adds no table, no column, and no boolean. It does not choose a store. It does not perform the transition. It does not close a schema gate and it does not close a runtime gate. It does not open a Polish pre-employment sequence.
+
+This gate aggregates. It does not re-decide legal eligibility, person facts, agreed terms, or requirement resolution. Each input is the canonical reading of that layer. A second checklist of the same facts is not this gate.
+
+### Four inputs
+
+| Input | PASS | What this gate reads | What a miss is |
+|---|---|---|---|
+| HR Legal Eligibility | A recorded decision for this Employment has outcome `pass`, and `decision_is_current` still matches the chain and this Employment context | That decision and its fingerprint. Not a new derivation of `citizenship_class`, `stay_basis`, `work_authorization_basis`, or `valid_for_this_employment` | No decision, a legal `fail`, a legal `blocked`, or a stale fingerprint |
+| Employee Data | The person-fact set of Employee Data ownership is complete for this Employment | That sufficient-set answer. Not a second list of person facts, and not a write onto an owner | The set is not complete |
+| Employment Terms | The current `employment_terms.v1` row exists and `evaluate_employment_terms` on it is complete | That current row only. Not the vacancy, and not the contract card | No current row, or the current row is incomplete |
+| Pre-employment Requirements | The set is materialized and `evaluate_pre_employment_requirements` is true | That boolean. Not a new resolution of any row | The set is not defined, or an applicable row is `unresolved` or `blocking` |
+
+`not_applicable` stays outside the requirements reading, as that evaluator already defines. HR Legal Eligibility PASS, Employee Data complete, and Employment Terms complete are not rows of the requirements set. This gate still reads them as their own inputs.
+
+### Outcome
+
+The outcome of this gate is `pass` or `blocked`.
+
+`pass` means all four inputs pass for this `Employment(preparing)` at the time of the decision. `blocked` means at least one input does not. Missing data, a stale legal decision, a legal `fail`, no current terms, an incomplete current snapshot, an unmaterialized requirements set, an applicable `unresolved` row, and an applicable `blocking` row are blocked reasons. They are why the Employment cannot start now. They are not Employment states. A legal `fail` stays the outcome of the legal gate. On this gate it is a blocked reason.
+
+One decision may carry more than one blocked reason. The gate does not stop at the first.
+
+An Employment that is not `preparing` is outside the question. The outcome is not `pass`, and the state is not changed.
+
+### Audit
+
+A decision records `employment_id`, the outcome, the actor, the time, the result of each of the four inputs, and the blocked reasons. The legal result includes the fingerprint that `decision_is_current` compares. This section does not decide whether that record is its own table. A later slice chooses the store. This section does not open that slice, does not write it, and does not fix a physical enum.
+
+### Stale
+
+A recorded `pass` is permission only while the four readings still match the readings captured on that decision. A later change of the legal chain or of this Employment context, of Employee Data completeness, of the current terms snapshot, or of requirements readiness makes that `pass` stale.
+
+The move `preparing → active` is allowed only when a `pass` is current against those upstream readings at the moment of the move. A stale `pass` is not that permission. The move itself is not this slice.
+
+### Boundary
+
+The question is: may this `Employment(preparing)` move to `active`?
+
+A `pass` answers yes and leaves `hr_employments.state` at `preparing`. A `blocked` answers no and leaves it at `preparing`. Neither inserts `workforce_employments` or `workforce_onboarding_tasks`. Neither canonizes a Polish pre-employment document list.
+
+The next slice is Ready to Start persistence and runtime together with Activation Runtime. That slice stores the decision, re-reads the four evaluators at activation, and is the only writer of `preparing → active`. It is not this slice. Migrations onto a shared database, and a manual path from handoff to `active`, wait until that slice exists.
+
+This section writes no schema and authorizes no runtime module. `backend/app/reference/ready_to_start.py` is not created. Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Ready to Start Persistence and Activation
+
+The store is `hr_ready_to_start_decisions`. One row is one `ready_to_start.v1` decision for one `hr_employments` row. Rows are appended. A later decision does not update an earlier row. There is no unique current row. The latest row is the one with the latest `decided_at`.
+
+The row stores `employment_id`, the outcome `pass` or `blocked`, the actor, the time, the result of each of the four inputs, the blocked reasons, and the version of each input. The legal version is `legal_decision_id` and `legal_fingerprint`. Employee Data stores the fingerprint from `read_employee_data_set`. Terms store `terms_id` and a fingerprint of that current snapshot. Requirements store a fingerprint of the materialized rows. `read_employee_data_set` returns the ownership answer and that fingerprint. It does not choose which person facts are required.
+
+`record_ready_to_start` calls `decision_is_current`, `read_employee_data_set`, `evaluate_employment_terms`, and `evaluate_pre_employment_requirements`. It does not derive the legal chain, does not list person facts, does not judge a term field, and does not resolve a requirement. A `pass` is written only when all four readings pass. Any miss is `blocked`, including a legal `fail`, and the reasons are stored. The call does not write `hr_employments.state`.
+
+`ready_to_start_is_current` is true only for a stored `pass` whose four results and four fingerprints still match a fresh call of those same readings.
+
+`activate_employment` is the only writer of `preparing → active`. It locks the Employment, reads the latest decision, calls the four readings again, and updates the state only when that decision is a current `pass`. The check and the update are one transaction: this function does not commit between them. A missing decision, a `blocked` decision, and a stale `pass` leave the state at `preparing`. Activation does not record a replacement decision and does not fill a legal decision, a person fact, a terms snapshot, or a requirement. It does not insert `workforce_employments` or `workforce_onboarding_tasks`.
+
+An Employment that is not `preparing` is not recorded and is not activated. Feat stays locked. HostFlow v1 is not release-ready. The manual path from handoff to `active` is the next integration, not this slice.
