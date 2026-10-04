@@ -108,6 +108,9 @@ WorkforceHrDocumentControlTask = _load_model_module("workforce_hr_document_contr
 WorkforceLifecycleEvent = _load_model_module("workforce_lifecycle_event").WorkforceLifecycleEvent  # type: ignore[attr-defined]
 WorkforceEmployment = _load_model_module("workforce_employment").WorkforceEmployment  # type: ignore[attr-defined]
 Employment = _load_model_module("hr_employment").Employment  # type: ignore[attr-defined]
+HrLegalEligibilityGateDecision = _load_model_module(
+    "hr_legal_eligibility_gate"
+).HrLegalEligibilityGateDecision  # type: ignore[attr-defined]
 AutomationRule = _load_model_module("automation_rule").AutomationRule  # type: ignore[attr-defined]
 campaign_module = _load_model_module("campaign")
 Campaign = campaign_module.Campaign  # type: ignore[attr-defined]
@@ -375,6 +378,7 @@ __all__ = [
     "WorkforceLifecycleEvent",
     "WorkforceEmployment",
     "Employment",
+    "HrLegalEligibilityGateDecision",
     "AutomationRule",
     "Campaign",
     "CampaignRun",

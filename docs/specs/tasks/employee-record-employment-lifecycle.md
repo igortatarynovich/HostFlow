@@ -1,12 +1,12 @@
 # Employee Record & Employment Lifecycle
 
-**Status:** **OPENED** — contract opened. Employee Record & Employment Lifecycle — Contract Gate **PASS**. Employment Persistence Schema opened: migration and storage proofs. Accepted handoff does not create an Employment. No runtime of that creation. Feat locked.  
+**Status:** **OPENED** — contract opened. Employee Record & Employment Lifecycle — Contract Gate **PASS**. Employment Persistence Schema opened. Employment Runtime opened: an accepted `internal_hr` handoff creates `Employment(preparing)` on the existing Employee. HR Legal Eligibility Gate opened on that Employment. PASS does not move it to active. Next layer is Employee Data / kwestionariusz. Feat locked.  
 **Phase class:** platform  
 **Date:** 2026-10-03  
 **Trusted base:** Poland Work Authorization Presets program close `37439bc5` on `integration/release-product-a-b` @ `020cb4e5` ([#402](https://github.com/igortatarynovich/HostFlow/pull/402))  
 **Parents:** [contract](../architecture/employee-record-employment-lifecycle-contract.md) (`employee_record_employment_lifecycle.v1`) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · superseded [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md)
 
-> The [contract](../architecture/employee-record-employment-lifecycle-contract.md) is opened. The Contract Gate is **PASS**. Employment Persistence Schema is the migration and the storage proofs. Accepted handoff does not create an Employment.  
+> The [contract](../architecture/employee-record-employment-lifecycle-contract.md) is opened. The Contract Gate is **PASS**. Employment Persistence Schema is the migration and the storage proofs. Employment Runtime opens `Employment(preparing)` when an `internal_hr` handoff is accepted. The HR Legal Eligibility Gate reads `legal_eligibility.v1` for that Employment. PASS does not move it to active. The next layer is Employee Data / kwestionariusz, not Employment terms.  
 > HR handoff opens HR process ownership for the existing person and activates the Employee context. It does not create a person, it does not copy person or evidence data, and it does not turn the Candidate row into an Employee.  
 > Creating `WorkforceEmployee` is the current runtime of that transition. It is not the canonical meaning of the handoff. Lead, Candidate, and Employee are not merged into one table.  
 > Legal Eligibility and Work Authorization stay upstream. This product does not become a second legalization engine.  
@@ -32,7 +32,9 @@ One accepted candidate can be read along `Person + Candidate context → ready_f
 
 1. This brief. The chain and the contexts are named.
 2. The [contract](../architecture/employee-record-employment-lifecycle-contract.md) is opened. Person, the Employee context, Employment, the HR handoff, and `preparing → active → ended` are named. The handoff is a process and context transition over the same person identity. Legal eligibility, data, terms, and requirements are gates around `preparing`. `workforce_employments` is the contract card, 1:N under Employment. The backfill is one Employment per existing employee. Employee Record & Employment Lifecycle — Contract Gate **PASS**.
-3. Employment Persistence Schema is opened. It is the persistence model, the migration and backfill, and the storage proofs. Accepted handoff does not create an Employment. The HR Legal Eligibility Gate and the later HR steps wait.
+3. Employment Persistence Schema is opened. It is the persistence model, the migration and backfill, and the storage proofs.
+4. Employment Runtime is opened. An accepted `internal_hr` handoff finds the existing Employee context and creates a new `Employment(preparing)`. A repeat hire adds another Employment and leaves the previous one unchanged. A contract card does not create an Employment.
+5. HR Legal Eligibility Gate is opened on that `Employment(preparing)`. It reads `legal_eligibility.v1` (`citizenship_class → stay_basis → work_authorization_basis → valid_for_this_employment`) and the Employment context. It does not copy evidence and it does not create a second legalization model. PASS, FAIL, and BLOCKED leave the Employment `preparing`. A later change of the chain or of that Employment context makes the recorded decision stale. The next layer is Employee Data / kwestionariusz, not Employment terms. Requirements and Ready to Start wait.
 
 ## Chain
 
@@ -79,12 +81,16 @@ Legal Eligibility and Work Authorization remain upstream facts and processes. Th
 | Poland Work Authorization Presets | program close recorded; Gate **PASS**; not reopened |
 | Legal Eligibility | Contract Gate **PASS**; Matrix Gate **not PASS** |
 | Work Authorization Procedure | Contract Gate **PASS** |
-| Contract | opened; Employee Record & Employment Lifecycle — Contract Gate **PASS**. Employment Persistence Schema opened. Accepted handoff does not create an Employment |
-| Schema and runtime | not authorized; feat locked |
+| Contract | opened; Employee Record & Employment Lifecycle — Contract Gate **PASS**. Employment Persistence Schema opened. Employment Runtime opened |
+| Schema | opened; migration and storage proofs |
+| Employment Runtime | opened; accepted `internal_hr` handoff creates `Employment(preparing)`. Feat locked |
+| HR Legal Eligibility Gate | opened on `Employment(preparing)`. Reads `legal_eligibility.v1`. PASS does not move the Employment to active. Next is Employee Data / kwestionariusz. Feat locked |
 | Release readiness | separate; this opening does not declare v1 ready |
 
 ## History
 
+- 2026-10-04: **HR Legal Eligibility Gate opened.** The checkpoint is bound to one `Employment(preparing)`. It reads `legal_eligibility.v1` and does not copy evidence. PASS does not move the Employment to active. FAIL and BLOCKED leave it `preparing`. A change of the chain or of the Employment context makes the recorded decision stale. Next layer is Employee Data / kwestionariusz. Feat locked.
+- 2026-10-03: **Employment Runtime opened.** An accepted `internal_hr` handoff creates `Employment(preparing)` on the existing Employee. A repeat handoff adds another Employment and does not rewrite the previous one. HR Legal Eligibility Gate is not this slice. Feat locked.
 - 2026-10-03: **Employment Persistence Schema opened.** `hr_employments` is the labour relationship. `workforce_employments.employment_id` points at it. One backfilled Employment per existing employee. Accepted handoff does not create an Employment. No runtime of that creation. Feat locked.
 - 2026-10-03: **Contract Gate PASS.** Repository discovery: `workforce_employments` is already 1:N contract history per employee, not the labour relationship. Backfill is one Employment per existing `WorkforceEmployee`, with those cards attached. Relationship facts move to Employment in the same migration. `hire_date` does not choose `active`. Ready to Start is the only `preparing → active`. No reverse edge. Next slice is Employment Persistence Schema. No schema. No runtime. Feat locked.
 - 2026-10-03: **Handoff recorded as a process transition.** The handoff opens HR process ownership for the existing person and activates the Employee context. It does not create a person and it does not copy person or evidence data. Creating `WorkforceEmployee` stays the current runtime of that transition. Lead, Candidate, and Employee are not merged into one table. A later hire without Recruitment creates no Candidate. Employee Record & Employment Lifecycle — Contract Gate **not PASS**. No schema. No runtime. Feat locked.

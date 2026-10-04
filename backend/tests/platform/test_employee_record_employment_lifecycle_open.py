@@ -74,8 +74,10 @@ def test_employee_record_is_the_active_product() -> None:
     assert "Employee Record & Employment Lifecycle — Contract Gate **not PASS**" not in current
     assert "Employee Record & Employment Lifecycle — Contract Gate **not PASS**" in history
     assert "Employment Persistence Schema opened" in current
-    assert "accepted handoff does not create an Employment" in current
-    assert "no runtime of that creation" in current
+    assert "Employment Runtime opened" in current
+    assert "accepted internal_hr handoff creates Employment(preparing)" in current
+    assert "HR Legal Eligibility Gate opened on Employment(preparing)" in current
+    assert "PASS does not move Employment to active" in current
     assert "superseded" in current.lower()
     assert "Poland Work Authorization Presets Gate **PASS**" in current
     assert "Poland Work Authorization Presets Gate **not PASS**" not in current
