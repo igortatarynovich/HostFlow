@@ -32,7 +32,7 @@ def _headers(tenant_id: str) -> dict[str, str]:
     return {"X-Tenant-Id": tenant_id}
 
 
-async def _seed_form(tenant_id: str, *, slug: str) -> str:
+async def _seed_form(tenant_id: str, *, slug: str, publish: bool = True) -> str:
     fid = str(uuid4())
     async with async_session_maker() as session:
         session.add(
@@ -44,6 +44,11 @@ async def _seed_form(tenant_id: str, *, slug: str) -> str:
                 is_active=True,
             )
         )
+        await session.flush()
+        if publish:
+            from backend.tests.forms_platform.publish_fixtures import commit_live_publication
+
+            await commit_live_publication(session, tenant_id=tenant_id, form_id=fid)
         await session.commit()
     return fid
 

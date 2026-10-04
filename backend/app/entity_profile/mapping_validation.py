@@ -5,10 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.app.field_registry.intake_mapping import (
-    qualified_code_from_legacy_target,
-    resolve_intake_mapping_target,
-)
+from backend.app.field_registry.intake_mapping import rule_write_qualified_code
 
 
 @dataclass(frozen=True)
@@ -28,15 +25,8 @@ class MappingValidationResult:
 
 
 def rule_qualified_code(rule: dict[str, Any]) -> str | None:
-    explicit = str(rule.get("qualified_field_code") or rule.get("qualified_code") or "").strip()
-    if explicit:
-        return explicit
-    target = str(rule.get("target") or "").strip()
-    if not target:
-        return None
-    if "." in target:
-        return target
-    return qualified_code_from_legacy_target(target)
+    code = rule_write_qualified_code(rule)
+    return code or None
 
 
 def allowed_qualified_codes_from_profile_view(profile_view: dict[str, Any]) -> set[str]:
@@ -61,20 +51,23 @@ def validate_mapping_rules_for_profile(
     if not rules:
         return MappingValidationResult()
 
-    if not allowed_qualified_codes:
-        if resolution_source in {"legacy_candidate_profile", "not_specified"}:
-            return MappingValidationResult(
-                accepted_rules=[dict(r) for r in rules if isinstance(r, dict)],
-                warnings=["entity_profile_unscoped_mapping_legacy_allowed"],
-            )
+    # A resolved profile with no fields, and a legacy candidate profile, still
+    # reject every rule. ``not_specified`` has no profile scope: qualified_code
+    # writes stay, leftover targets and Ignore do not become a second vocabulary.
+    if not allowed_qualified_codes and resolution_source != "not_specified":
+        warning = "entity_profile_empty_no_mapping_allowed"
+        if resolution_source == "legacy_candidate_profile":
+            warning = "legacy_candidate_profile_unscoped_mapping_rejected"
         return MappingValidationResult(
             rejected_rules=[dict(r) for r in rules if isinstance(r, dict)],
-            warnings=["entity_profile_empty_no_mapping_allowed"],
+            warnings=[warning],
         )
 
     accepted: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     warnings: list[str] = []
+    if not allowed_qualified_codes:
+        warnings.append("entity_profile_unscoped_qualified_code_only")
 
     for rule in rules:
         if not isinstance(rule, dict):
@@ -84,7 +77,7 @@ def validate_mapping_rules_for_profile(
             rejected.append(dict(rule))
             warnings.append(f"mapping_target_unresolved:{rule.get('source')}")
             continue
-        if qualified not in allowed_qualified_codes:
+        if allowed_qualified_codes and qualified not in allowed_qualified_codes:
             rejected.append({**dict(rule), "qualified_field_code": qualified})
             warnings.append(f"mapping_target_rejected:{qualified}")
             continue

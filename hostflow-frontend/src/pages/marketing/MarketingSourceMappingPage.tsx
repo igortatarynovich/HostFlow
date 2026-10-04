@@ -153,7 +153,7 @@ function formatEvidenceWhen(iso: string | null | undefined, locale: string): str
 
 const CLOSE_PATH_STEP_TONE: Record<MappingClosePathStepState, string> = {
   done: 'bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200',
-  current: 'bg-sky-50 text-sky-950 ring-2 ring-sky-400',
+  current: 'bg-blue-50 text-blue-900 ring-2 ring-blue-200',
   upcoming: 'bg-slate-50 text-slate-500 ring-1 ring-slate-200',
 }
 

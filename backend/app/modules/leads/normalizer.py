@@ -6,7 +6,8 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 from uuid import UUID
 
 from backend.app.field_registry.option_map import OPTION_IGNORE_VALUE, lookup_option_map
-from backend.app.field_registry.intake_mapping import resolve_intake_mapping_target
+from backend.app.field_registry.canonical_facts import write_canonical_fact
+from backend.app.field_registry.intake_mapping import rule_write_qualified_code
 from backend.app.services.integration_inbound_normalization import (
     normalize_inbound_country_alpha2,
 )
@@ -258,34 +259,6 @@ def _is_additional_meta_answer(raw_name: str) -> bool:
     return key not in _STRUCTURED_FIELD_ALIAS_KEYS
 
 
-def _set_nested_value(target: Dict[str, Any], path: str, value: Any) -> None:
-    parts = [part.strip() for part in str(path or "").split(".") if part.strip()]
-    if not parts:
-        return
-    node: Dict[str, Any] = target
-    for part in parts[:-1]:
-        child = node.get(part)
-        if not isinstance(child, dict):
-            child = {}
-            node[part] = child
-        node = child
-    node[parts[-1]] = value
-
-
-def _has_nested_value(target: Dict[str, Any], path: str) -> bool:
-    parts = [part.strip() for part in str(path or "").split(".") if part.strip()]
-    if not parts:
-        return False
-    node: Any = target
-    for index, part in enumerate(parts):
-        if not isinstance(node, dict) or part not in node:
-            return False
-        if index == len(parts) - 1:
-            return True
-        node = node.get(part)
-    return False
-
-
 def _coerce_mapping_rules(field_mapping: Any) -> List[Dict[str, Any]]:
     if not field_mapping:
         return []
@@ -384,11 +357,16 @@ def _apply_custom_field_mapping(
     if not rules:
         return
     for rule in rules:
-        target = resolve_intake_mapping_target(rule)
-        if not target:
+        qualified = rule_write_qualified_code(rule)
+        if not qualified:
             continue
         overwrite = bool(rule.get("overwrite", True))
-        if not overwrite and _has_nested_value(normalized, target):
+        facts = normalized.get("canonical_facts_v1")
+        if (
+            not overwrite
+            and isinstance(facts, dict)
+            and facts.get(qualified) not in (None, "")
+        ):
             continue
         raw_values, has_values = _extract_source_values(source_mapping, rule.get("source"))
         if not has_values:
@@ -407,7 +385,7 @@ def _apply_custom_field_mapping(
         converted = _convert_mapped_value(raw_values, str(rule.get("format") or "string"))
         if converted is None:
             continue
-        _set_nested_value(normalized, target, converted)
+        write_canonical_fact(normalized, qualified, converted, overwrite=overwrite)
 
 def _as_list(value: Any) -> List[str]:
     if value is None:

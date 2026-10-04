@@ -285,6 +285,9 @@ async def test_p3_public_intake_runtime_builds_envelope(db, tenant_id: str) -> N
         entity_profile_code=DRIVER_CE_PROFILE_CODE,
     )
     assert envelope.entity_profile_code == DRIVER_CE_PROFILE_CODE
-    assert envelope.normalized_payload.get("contacts.phone") == "+48123456789"
-    assert validation.accepted_rules
+    assert envelope.mapping_rules_source == "authority"
+    facts = (envelope.normalized_payload or {}).get("canonical_facts_v1") or {}
+    assert facts.get("contacts.phone") is None
+    assert "recruitment.candidate.contacts.phone" not in facts
+    assert not validation.accepted_rules
     assert profile_view["bridge_source"] == "entity_profile_registry"

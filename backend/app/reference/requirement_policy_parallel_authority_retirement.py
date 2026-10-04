@@ -10,7 +10,9 @@ from typing import Any, Final, NoReturn
 
 from fastapi import HTTPException
 
-REQUIREMENT_POLICY_PATH: Final[str] = "/app/settings/requirement-policy"
+from backend.app.constants.spa_paths import SETTINGS_REQUIREMENT_POLICY
+
+REQUIREMENT_POLICY_PATH: Final[str] = SETTINGS_REQUIREMENT_POLICY
 
 DOCUMENT_POLICIES_WRITES_RETIRED: Final[str] = "document_policies_writes_retired"
 RULESET_WRITES_RETIRED: Final[str] = "ruleset_authority_writes_retired"

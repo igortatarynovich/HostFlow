@@ -20,9 +20,9 @@ Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) 
 6. **Forms Sprint 5:** ✅ **COMPLETE** ([`../tasks/forms-sprint-5.md`](../tasks/forms-sprint-5.md) · PR #40 · `a6df02f0`).
 7. **Forms Sprint 6:** ✅ **COMPLETE** ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md) · PR #41 · `7e259f22`) — backend platform contour closed.
 8. **Forms Product Layer P1:** ✅ **CLOSED** (`97aac4e3` / #54 · status #55) — Catalog v1 **FROZEN**.
-9. **P2 Builder MVP:** ✅ **COMPLETE** (P2.1–P2.5). P3–P5 **LOCKED**.  
+9. **P2 Builder MVP:** ✅ **COMPLETE** (P2.1–P2.5). P3 Publish contract sealed ([forms-publish-contract.md](forms-publish-contract.md)). P4 / P5 **LOCKED**.  
 10. **P2.5 UI gate:** ✅ **COMPLETE** (minimal Builder UI delivered).  
-11. **Intake Canonical Input Matrix:** ✅ **ACCEPTED / FROZEN** — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md); **Runtime Split** R1–R4 + **R3.5 Flights dispatch** ✅ ([`../tasks/intake-runtime-split-v1.md`](../tasks/intake-runtime-split-v1.md) · [`../tasks/intake-r35-flights-dispatch-boundary.md`](../tasks/intake-r35-flights-dispatch-boundary.md)); **Communication Context V1** [`READY`](../tasks/intake-domain-separation-communication-context-v1.md); Forms P3–P5 **LOCKED**.  
+11. **Intake Canonical Input Matrix:** ✅ **ACCEPTED / FROZEN** — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md); **Runtime Split** R1–R4 + **R3.5 Flights dispatch** ✅ ([`../tasks/intake-runtime-split-v1.md`](../tasks/intake-runtime-split-v1.md) · [`../tasks/intake-r35-flights-dispatch-boundary.md`](../tasks/intake-r35-flights-dispatch-boundary.md)); **Communication Context V1** [`READY`](../tasks/intake-domain-separation-communication-context-v1.md); Forms P3 Publish contract sealed; P4 / P5 **LOCKED**.  
 12. **Decision Priority (INV-16):** [`decision-priority-rule.md`](decision-priority-rule.md) — L0 → ownership → contracts → only then convenience.  
 13. **Outbound Communication (INV-17):** sole entry is the Communication Pipeline ([`../tasks/intake-communication-context-c5.md`](../tasks/intake-communication-context-c5.md)).
 13. **Каждая новая L1 capability** идёт только по [`capability-contract.md`](capability-contract.md).  

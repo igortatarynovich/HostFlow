@@ -1,6 +1,6 @@
 # Minimal Recruitment → HR handoff
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [MA-3](mapping-authority.md)
+**Status:** **SUPERSEDED** by [Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md). This brief is not a second HR product. Feat locked. **Not scheduled.**
 **Phase class:** platform
 **Branch (docs):** `docs/v1-blocker-briefs`
 **Branch (code):** none — later slices `feat/min-hr-handoff-hhN-…`
@@ -10,7 +10,7 @@
 > v1 blocker 5: **hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy.**
 > Full HR operations (Kadry, payroll, extended lifecycle) stay **later**.
 > **Not** Hiring E2E (that is [the predecessor](hiring-workflow-e2e.md)). **Not** a Documents phase. **Not** an HR product build-out. **Not** D10.
-> Opening this brief does **not** schedule it. Hiring remains queued after RPM close. The queue’s Active Product is [MA-3](mapping-authority.md).
+> This brief is **superseded** by [Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md). HH-1…HH-4 are not scheduled as their own product. The closed product was [Poland Work Authorization Presets](poland-work-authorization-presets.md) (procedure types named; Poland Work Authorization Presets Gate **PASS**; no `kod_zawodu` row; no document list; preset schema named; baselines filled; Poland Work Authorization Presets program close recorded; Product **DONE** with no named successor until amendment). Predecessor [Work Authorization Procedure](work-authorization-procedure.md) (contract opened; Work Authorization Procedure Contract Gate **PASS**; no preset row). Predecessor [Legal Eligibility](legal-eligibility-requirement-policy.md) (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**; matrix opened; Legal Eligibility Matrix Gate **not PASS**; decision model amendment; evidence rules are not encoded). Hiring E2E program close is recorded (Acceptance Gate **PASS** `315cb710`). That close makes min HR startable, and this amendment does not schedule it. MA-4 Cutover Gate PASS. Leftover-store deletion is not this program.
 
 ---
 
@@ -107,8 +107,8 @@ RS-8 on the real hire. The PE HR inbound placeholder gets an explicit dispositio
 ## Queue position
 
 **Depends on:** Hiring E2E program close (known acceptance edge: handoff acceptance needs a completed hire) + queue amendment
-**Unlocks:** entry condition EC-1 of the Release Readiness Gate, if all other blockers are closed
-**Does not:** schedule itself; open full HR operations; rebuild Documents; reopen E3 / E4; bind remaining D-series consumers
+**Unlocks:** nothing as its own product. [Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md) is the Active Product.
+**Does not:** stay queued beside that product; schedule HH-1…HH-4; open full HR operations; rebuild Documents; reopen E3 / E4; bind remaining D-series consumers
 
 ---
 

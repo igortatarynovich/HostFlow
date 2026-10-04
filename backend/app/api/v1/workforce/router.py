@@ -128,28 +128,104 @@ class EmployeeOut(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm_row(cls, row: Any) -> "EmployeeOut":
+    def from_orm_row(
+        cls,
+        row: Any,
+        *,
+        employment: Any = None,
+        probation_end: Optional[date] = None,
+    ) -> "EmployeeOut":
         return cls(
             id=row.id,
             tenant_id=row.tenant_id,
             own_company_id=row.own_company_id,
             candidate_id=row.candidate_id,
-            company_id=row.company_id,
-            vacancy_id=row.vacancy_id,
-            recruiter_user_id=row.recruiter_user_id,
+            company_id=getattr(employment, "client_company_id", None),
+            vacancy_id=getattr(employment, "vacancy_id", None),
+            recruiter_user_id=getattr(employment, "recruiter_user_id", None),
             display_name=row.display_name,
             status=row.status,
-            hire_date=row.hire_date,
-            probation_end=row.probation_end,
-            termination_date=row.termination_date,
-            handoff_at=row.handoff_at.isoformat() if row.handoff_at else None,
-            handoff_by_user_id=row.handoff_by_user_id,
+            hire_date=getattr(employment, "started_on", None),
+            probation_end=probation_end,
+            termination_date=getattr(employment, "ended_on", None),
+            handoff_at=(
+                employment.handoff_at.isoformat()
+                if employment is not None and employment.handoff_at
+                else None
+            ),
+            handoff_by_user_id=getattr(employment, "handoff_by_user_id", None),
             notes=row.notes,
-            candidate_snapshot=row.candidate_snapshot,
+            candidate_snapshot=(
+                employment.candidate_snapshot
+                if employment is not None and isinstance(employment.candidate_snapshot, dict)
+                else None
+            ),
             meta=row.meta,
             created_at=row.created_at.isoformat() if row.created_at else "",
             updated_at=row.updated_at.isoformat() if row.updated_at else "",
         )
+
+
+_RELATIONSHIP_PATCH = {
+    "company_id": "client_company_id",
+    "vacancy_id": "vacancy_id",
+    "recruiter_user_id": "recruiter_user_id",
+    "hire_date": "started_on",
+    "termination_date": "ended_on",
+    "handoff_at": "handoff_at",
+    "handoff_by_user_id": "handoff_by_user_id",
+    "candidate_snapshot": "candidate_snapshot",
+}
+_EMPLOYEE_PATCH = {"display_name", "status", "own_company_id", "candidate_id", "notes", "meta"}
+
+
+async def _probation_by_employee(
+    db: AsyncSession,
+    tenant_id: str,
+    employee_ids: list[str],
+) -> dict[str, date]:
+    if not employee_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(WorkforceEmployment)
+            .where(
+                WorkforceEmployment.tenant_id == tenant_id,
+                WorkforceEmployment.employee_id.in_(employee_ids),
+            )
+            .order_by(WorkforceEmployment.created_at.desc())
+        )
+    ).scalars().all()
+    out: dict[str, date] = {}
+    for card in rows:
+        key = str(card.employee_id)
+        if key not in out and card.probation_end is not None:
+            out[key] = card.probation_end
+    return out
+
+
+async def _employee_out(db: AsyncSession, tenant_id: str, row: Any) -> EmployeeOut:
+    from backend.app.services.employment_records import display_employment
+
+    relationship = await display_employment(db, tenant_id, str(row.id))
+    probation = (await _probation_by_employee(db, tenant_id, [str(row.id)])).get(str(row.id))
+    return EmployeeOut.from_orm_row(row, employment=relationship, probation_end=probation)
+
+
+async def _employees_out(db: AsyncSession, tenant_id: str, rows: list[Any]) -> list[EmployeeOut]:
+    from backend.app.services.employment_records import display_employments_by_employee
+
+    ids = [str(row.id) for row in rows]
+    relationships = await display_employments_by_employee(db, tenant_id, ids)
+    probation = await _probation_by_employee(db, tenant_id, ids)
+    return [
+        EmployeeOut.from_orm_row(
+            row,
+            employment=relationships.get(str(row.id)),
+            probation_end=probation.get(str(row.id)),
+        )
+        for row in rows
+    ]
 
 
 class EmployeeCreate(BaseModel):
@@ -831,7 +907,7 @@ async def list_employees(
     db, tid = db_tenant
     tenant_id = str(tid)
     rows = await we_svc.list_employees(db, tenant_id, status=status, limit=limit, offset=offset)
-    return [EmployeeOut.from_orm_row(r) for r in rows]
+    return await _employees_out(db, tenant_id, rows)
 
 
 @router.get(
@@ -891,7 +967,7 @@ async def get_employee_by_candidate(
     status_l = str(getattr(row, "status", "") or "").strip().lower()
     if status_l in ("returned_to_recruitment", "returned", "terminated"):
         raise HTTPException(status_code=404, detail="workforce_employee_not_active")
-    return EmployeeOut.from_orm_row(row)
+    return await _employee_out(db, tenant_id, row)
 
 
 @router.get(
@@ -907,7 +983,7 @@ async def get_employee(
     row = await we_svc.get_employee(db, str(tid), employee_id)
     if not row:
         raise HTTPException(status_code=404, detail="Employee not found")
-    return EmployeeOut.from_orm_row(row)
+    return await _employee_out(db, tenant_id, row)
 
 
 @router.get(
@@ -968,7 +1044,7 @@ async def get_employee_operational_profile(
     ]
     hb = _hr_bundle_out(bundle)
     return EmployeeOperationalProfileOut(
-        employee=EmployeeOut.from_orm_row(emp),
+        employee=await _employee_out(db, tenant_id, emp),
         operational_summary=OperationalSummaryOut.model_validate(raw["operational_summary"]),
         transfer=TransferMetadataOut.model_validate(raw["transfer"]),
         recruiter_summary=RecruiterSummaryOut.model_validate(raw["recruiter_summary"]),
@@ -1336,7 +1412,7 @@ async def create_employee_endpoint(
         logger.exception("ledger employee_hired emit failed employee=%s", getattr(row, "id", None))
     await db.commit()
     await db.refresh(row)
-    return EmployeeOut.from_orm_row(row)
+    return await _employee_out(db, tenant_id, row)
 
 
 @router.patch(
@@ -1351,33 +1427,59 @@ async def patch_employee(
     current_user: UserCtx = Depends(get_current_user),
 ) -> EmployeeOut:
     db, tid = db_tenant
+    tenant_id = str(tid)
     data = payload.model_dump(exclude_unset=True)
-    row = await we_svc.get_employee(db, str(tid), employee_id)
+    row = await we_svc.get_employee(db, tenant_id, employee_id)
     if not row:
         raise HTTPException(status_code=404, detail="Employee not found")
+    from backend.app.services.employment_records import display_employment
+
+    relationship = await display_employment(db, tenant_id, employee_id)
     prev_status = row.status
-    prev_term = row.termination_date
+    prev_term = relationship.ended_on if relationship is not None else None
     candidate_link = (row.candidate_id or "").strip() or None
-    for k, v in data.items():
-        setattr(row, k, v)
+    for key, value in data.items():
+        if key in _EMPLOYEE_PATCH:
+            setattr(row, key, value)
+    if relationship is not None:
+        for key, column in _RELATIONSHIP_PATCH.items():
+            if key in data:
+                setattr(relationship, column, data[key])
+        if "probation_end" in data:
+            card = (
+                await db.execute(
+                    select(WorkforceEmployment)
+                    .where(
+                        WorkforceEmployment.tenant_id == tenant_id,
+                        WorkforceEmployment.employee_id == employee_id,
+                    )
+                    .order_by(WorkforceEmployment.created_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if card is not None:
+                card.probation_end = data["probation_end"]
     if hasattr(row, "updated_at"):
         from datetime import datetime, timezone
 
         row.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(row)
+    if relationship is not None:
+        await db.refresh(relationship)
 
     touched_term = "termination_date" in data or "status" in data
     became_terminated = (row.status or "").lower() == "terminated" and (prev_status or "").lower() != "terminated"
-    term_date_changed = "termination_date" in data and prev_term != row.termination_date
+    new_term = relationship.ended_on if relationship is not None and "termination_date" in data else prev_term
+    term_date_changed = "termination_date" in data and prev_term != new_term
     term_signal = bool(candidate_link and touched_term and (became_terminated or term_date_changed))
     if term_signal:
         try:
             await we_svc.stamp_candidate_workforce_termination(
                 db,
-                str(tid),
+                tenant_id,
                 candidate_id=candidate_link,
-                termination_date=row.termination_date,
+                termination_date=new_term,
                 employee_status=str(row.status or ""),
                 actor_user_id=str(current_user.sub),
             )
@@ -1394,10 +1496,10 @@ async def patch_employee(
                 pass
     if became_terminated or term_date_changed:
         try:
-            term_day = row.termination_date or date.today()
+            term_day = new_term or date.today()
             await ledger_svc.create_event(
                 db,
-                tenant_id=str(tid),
+                tenant_id=tenant_id,
                 employee_id=str(row.id),
                 event_code="employee_terminated",
                 category="employment",
@@ -1420,7 +1522,7 @@ async def patch_employee(
             except Exception:
                 pass
 
-    return EmployeeOut.from_orm_row(row)
+    return await _employee_out(db, tenant_id, row)
 
 
 @router.post(
@@ -1471,7 +1573,7 @@ async def handoff_employee_from_candidate(
     )
     await db.commit()
     await db.refresh(row)
-    return EmployeeOut.from_orm_row(row)
+    return await _employee_out(db, tenant_id, row)
 
 
 @router.patch(
@@ -1809,7 +1911,10 @@ async def create_employment_endpoint(
 ) -> EmploymentOut:
     db, tid = db_tenant
     tenant_id = str(tid)
-    row = await wh_sat.create_employment(db, tenant_id, employee_id, payload.model_dump(exclude_unset=True))
+    try:
+        row = await wh_sat.create_employment(db, tenant_id, employee_id, payload.model_dump(exclude_unset=True))
+    except wh_sat.ContractCardRequiresEmployment:
+        raise HTTPException(status_code=409, detail="employment_required") from None
     if not row:
         raise HTTPException(status_code=404, detail="Employee not found")
     await log_activity(

@@ -60,10 +60,15 @@ async def accept_internal_hr_handoff(
         hire_date=None,
         actor_user_id=actor,
     )
-    md = dict(emp.meta or {})
-    md["internal_hr_handoff_id"] = handoff.id
-    emp.meta = md
-    await db.flush()
+    from backend.app.services.employment_runtime import open_preparing_employment_for_accepted_handoff
+
+    await open_preparing_employment_for_accepted_handoff(
+        db,
+        tenant_id=tid,
+        handoff=handoff,
+        candidate=candidate,
+        employee=emp,
+    )
     await ensure_hr_operational_context(db, tid, emp)
     await _ensure_internal_hr_handoff_checklist_activities(
         db,
@@ -110,9 +115,6 @@ async def approve_employment_for_handoff(
             actor_user_id=actor_user_id,
             seed_hr_bundle=True,
         )
-        md = dict(emp.meta or {})
-        md["internal_hr_handoff_id"] = handoff.id
-        emp.meta = md
         review.employee_id = emp.id
         if not review.candidate_id:
             review.candidate_id = str(cand.id)

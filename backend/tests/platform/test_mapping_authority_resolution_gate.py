@@ -94,25 +94,43 @@ def test_ma2_brief_resolution_gate_pass() -> None:
 
 def test_ma2_queue_names_ma3_successor() -> None:
     text = _QUEUE.read_text(encoding="utf-8")
+    current = text.split("## 8. History", 1)[0]
+    history = text.split("## 8. History", 1)[1]
     assert "Mapping Resolution Gate" in text
-    assert "**Active Product** | **[MA-3](mapping-authority.md)**" in text
-    assert "Active (Product):** **[MA-3](mapping-authority.md)**" in text
-    assert "feat locked this PR" in text
-    assert "Active (Product):** **[MA-2](mapping-authority.md)**" not in text
+    assert "**Active Product** | **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
+    assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
+    assert "Active (Product):** **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in current
+    assert "Active (Product):** **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
+    assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
+    assert "Hiring E2E program close recorded" in current
+    assert "feat locked" in text
+    assert "Active (Product):** **[MA-2](mapping-authority.md)**" not in current
     agents = _AGENTS.read_text(encoding="utf-8")
     assert "mapping-authority.md" in agents
-    assert "MA-3" in agents
-    assert "Mapping Resolution Gate" in agents or "MA-2" in agents
+    assert "MA-4" in agents
+    assert "Mapping Operator Gate" in agents or "MA-3" in agents
     assert "CL8" in text
 
 
 def test_ma2_leaves_intake_hiring_hr_queued() -> None:
-    for path in (_HIRING, _INTAKE, _HR):
-        text = path.read_text(encoding="utf-8")
-        assert "**QUEUED**" in text
-        assert "not scheduled" in text.lower()
-        assert "MA-3" in text
-        assert "mapping-authority.md" in text
+    hiring = _HIRING.read_text(encoding="utf-8")
+    hr = _HR.read_text(encoding="utf-8")
+    hiring_header = hiring.split("## History", 1)[0] if "## History" in hiring else hiring
+    hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
+    assert "**DONE**" in hiring_header
+    assert "**ACTIVE**" not in hiring_header
+    assert "Hiring E2E program close recorded" in hiring_header
+    assert "HE-1" in hiring_header
+    assert "**SUPERSEDED**" in hr_header
+    assert "not scheduled" in hr_header.lower()
+    assert "MA-4" in hr
+    intake = _INTAKE.read_text(encoding="utf-8")
+    assert "**DONE**" in intake.split("## History", 1)[0]
+    assert "**ACTIVE**" not in intake.split("## History", 1)[0]
+    assert "mapping-authority.md" in intake
 
 
 def test_ma2_named_ci_gate() -> None:

@@ -7,7 +7,7 @@ evaluator, overlay store, or write of the operator question.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any, Final
 
 CONTRACT_ID: Final[str] = "requirement_policy_consumer_parity.v1"
@@ -53,6 +53,38 @@ def r5_required_set(
         if code:
             out.add(code)
     return frozenset(out)
+
+
+def canonical_rpm_unmet(
+    labels: Iterable[str],
+    rpm_required: frozenset[str] | set[str],
+) -> frozenset[str]:
+    """Unmet members of the RPM required set, in canonical codes.
+
+    Owner summary classifies R5 codes through the module catalog, so a
+    required ``adr_certificate`` is emitted as ``adr`` and
+    ``tachograph_card`` as ``tacho_card``. Intersecting those labels with
+    ``r5_required_set`` drops operator requirements that do not round-trip.
+    Membership stays the RPM set: a label is kept only when it names a
+    member of ``rpm_required``. This does not add codes to that set.
+    """
+    from backend.app.services.document_hub_delivery_contract import (
+        persist_canonical_type_identity_via_contract,
+    )
+
+    required = {str(code).strip().lower() for code in rpm_required if str(code).strip()}
+    unmet: set[str] = set()
+    for raw in labels:
+        code = str(raw or "").strip().lower()
+        if not code:
+            continue
+        if code in required:
+            unmet.add(code)
+            continue
+        canonical = persist_canonical_type_identity_via_contract(code)
+        if canonical and canonical in required:
+            unmet.add(canonical)
+    return frozenset(unmet)
 
 
 def engine_document_required_set(

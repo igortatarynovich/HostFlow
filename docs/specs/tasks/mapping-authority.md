@@ -1,9 +1,9 @@
 # Mapping Authority
 
-**Status:** **ACTIVE** — MA-1 Contract Gate **PASS**. Mapping Resolution Gate **PASS**. Active Product = **MA-3** (UX contract **Accepted**; Mapping Operator Gate **not PASS**; feat open).  
+**Status:** **DONE** — MA-1…MA-4 PASS · Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`) · Mapping program **DONE** (outcome + release delta). External Intake program **DONE**. Active Product is [HE-1](hiring-workflow-e2e.md) (brief; feat locked) after External Intake Acceptance Gate **PASS**. Feat `feat/forms-publish-fp5-runtime`. Operator Publish Gate **PASS**. Public Serve Gate **PASS**. Publish Action Gate **PASS**. Forms Publish Contract Gate **PASS**.  
 **Phase class:** platform
-**Branch (docs):** `docs/mapping-authority-ma3-operator-brief`  
-**Branch (code):** `feat/mapping-authority-ma3-operator-gate`. Mapping Operator Gate not PASS. Close path (Meta): Connect Meta → Page/Form → schema → test/latest lead → schema+sample → map → Ready → projection → another lead → applied evidence, plus leftover writer retirement.
+**Branch (docs):** `docs/mapping-authority-program-close`  
+**Branch (code):** none this amendment — External Intake feat `feat/forms-publish-fp5-runtime`; External Intake Acceptance Gate **PASS**; Operator Publish Gate **PASS**; feat `feat/forms-publish-fp4-operator-surface`; Public Serve Gate **PASS**; FP-3 feat `feat/forms-publish-fp3-public-serve`; Publish Action Gate **PASS**. Cutover feat `feat/mapping-authority-ma4-consumer-cutover` ✅ `fddadd39`. Mapping Consumer Cutover Gate **PASS**. Consumer cutover did not require leftover-store deletion. RS-3 named; the [Release Readiness Gate](../gates/release-readiness-gate.md) has not run it.
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 2) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-3](../journeys/release-readiness-acceptance-suite.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [ADR-021](../architecture/ADR-021-unified-intake-resolution-model.md) · [Entity Profile Definition Registry](../platform/entity-profile-definition-registry.md) · [Field Registry](../platform/field-registry-card-configuration.md) · [CL6 Flight map](entity-field-composition-cl6-flight-map.md) · [C-5 mapping workspace](acquisition-ui-cutover-c5-mapping-workspace.md)
 **Estimate:** 4–6 slices (1 slice = one docs PR + one feat PR)
 
@@ -11,7 +11,7 @@
 > Not “build another mapping editor” — there are already three editors writing three stores.
 > **Not** Forms Publish (that is [External Intake](external-intake-forms-publish.md), which consumes this). **Not** Requirement Policy. **Not** CL8. **Not** OCR. **Not** a Zapier product.
 > Zapier is a **UX reference** for Meta: Page + Form → test/latest lead → map fields. HostFlow adds what Zapier is not required to solve: schema as structure SoT (sample cannot hide a question), typed Field Registry destinations, option maps, binding vs contract-health scales, versioning, drift, and evaluator isolation.
-> [RPM program close](requirement-policy-management.md) named MA-1 Active Product. MA-1 sealed the [Mapping Authority Contract](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`). MA-2 sealed the [one resolver](../architecture/mapping-authority-resolution.md). [#350](https://github.com/igortatarynovich/HostFlow/pull/350) **Accepted** the [MA-3 UX contract](../architecture/mapping-authority-operator.md). Feat `feat/mapping-authority-ma3-operator-gate` is open. Mapping Operator Gate stays **not PASS**. External Intake / Hiring E2E / min HR remain queued.
+> Queue names Active Product **[HE-1](hiring-workflow-e2e.md)** (brief; feat locked) after External Intake program close ([brief](external-intake-forms-publish.md)). min HR remains queued. Unlock ≠ schedule. RS-3 stays Mapping’s proof.
 
 ---
 
@@ -77,7 +77,7 @@ Four parallel ways answers become entity-shaped data: Forms answers (`forms.norm
 
 ## Internal ladder (this program only)
 
-One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **MA-3 is Active Product** (UX contract Accepted; Mapping Operator Gate not PASS; feat open).
+One Active Product slice at a time. RPM program is **DONE**. **MA-1 Contract Gate PASS**. **Mapping Resolution Gate PASS**. **Mapping Operator Gate PASS**. **Mapping Consumer Cutover Gate PASS**. **Mapping program = DONE**. Forms Publish Contract Gate **PASS**. Publish Action Gate **PASS**. Public Serve Gate **PASS**. External Intake program **DONE**. Active Product is [HE-1](hiring-workflow-e2e.md) (brief; feat locked).
 
 ```text
 MA-1 Authority contract
@@ -91,8 +91,9 @@ MA-1 Authority contract
 |---|-------|------------|---------------------|------------|----------|
 | **MA-1** | Authority contract | `map-authority` | **Mapping Authority Contract Gate** ✅ — one operator question; one write authority named; twelve answerers classified; contract shape (option map, schema ≠ sample, binding vs health, version/drift, evaluator isolation, uncertainty ≠ failure) is SoT; no fourth store. SoT: [mapping-authority-contract.md](../architecture/mapping-authority-contract.md) (`mapping_authority.v1`) | RPM program close (queue amendment) | 1 slice (docs) |
 | **MA-2** | Resolution runtime | `map-resolve` | **Mapping Resolution Gate** ✅ — exactly one store answers “which rule applies to this source?”; leftover stores are read-through or migrated; precedence chain removed. SoT: [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md) (`resolve_mapping_authority`) | MA-1 Gate | 1–2 slices |
-| **MA-3** | Operator surface | `map-operator` | **Mapping Operator Gate** — UX SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). PASS only when an untrained operator connects a source, sees schema, maps every answer, reaches **ready**, and can explain the next submission — on **one** editor (many entry points). Remaining writable surfaces must cease to be editors. | MA-2 Gate | 1 slice (docs this PR + later feat) |
-| **MA-4** | Consumer cutover | `map-cutover` | **Mapping Consumer Cutover Gate** — canonical `qualified_code` is the only write vocabulary on the intake path; hardcoded extractors read the authority or are named leftovers with owner + expiry | MA-3 Gate | 1–2 slices |
+| **MA-3** | Operator surface | `map-operator` | **Mapping Operator Gate** ✅ — UX SoT: [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). Untrained operator on a real Meta source: schema + examples, map every answer, Ready, next-submission projection, applied evidence — on **one** editor (many entry points). Remaining writable surfaces ceased to be editors (HTTP 410; leftover stores stay read-through). | MA-2 Gate | 1 slice |
+| **MA-4** | Consumer cutover | `map-cutover` | **Mapping Consumer Cutover Gate** ✅ — canonical `qualified_code` is the only write vocabulary on the intake path; hardcoded extractors read the authority or are named leftovers with owner + expiry. Feat locked. Gate **PASS** (`fddadd39`). | MA-3 Gate | 1–2 slices |
+| **MA-X** | Program close | `map-close` | **Mapping program DONE** — outcome + release delta; four-checks PASS (RS-3 named). Evidence `92206f40`. Consumer cutover did not require leftover-store deletion. | MA-4 Gate | 1 slice (docs) |
 
 ---
 
@@ -210,7 +211,7 @@ This slice **closes** the Resolution Gate. Feat remains locked until **MA-3**. D
 
 ---
 
-## MA-3 — Operator surface (UX contract Accepted; feat open; Operator Gate not PASS)
+## MA-3 — Operator surface (**PASS**)
 
 **SoT:** [mapping-authority-operator.md](../architecture/mapping-authority-operator.md).
 
@@ -222,48 +223,63 @@ For **Meta**, the primary operator setup is Form → test or latest lead → Map
 
 **Main screen (human language):** “All set — 8 of 8 questions” is the **Ready** projection (not a third status). Binding (`Mapped` / `Ignored` / `Unmapped`) and contract health (`Valid` / `Needs review` / `Invalid`) stay two scales. **Ignored** is always an explicit operator decision; absence of a destination is `Unmapped`. Choice destinations open option map in-row; a choice binding is not Ready while a known source option lacks a canonical binding or explicit ignore. Unknown runtime options must not pass through as raw text. Type belongs to Field Registry. Sample is an example, not schema SoT. Missing sample is “no example answers yet”, not a dead end. Preview is a projection from the saved contract + Field Registry via the same resolver as ingestion — not a second evaluator.
 
-Measured gap (2026-09-04): three writable screens (C-5, Meta Settings, Intake form admin); Connect returns to the campaign; C-5 rows are rules ∪ sample, not schema; health is `ready` / `needs_review` / `broken`; diagnostics drift is a fingerprint boolean; save does not project “next application writes Code 95 = Yes”.
+Measured gap at feat start (2026-09-04): three writable screens (C-5, Meta Settings, Intake form admin); Connect returns to the campaign; C-5 rows are rules ∪ sample, not schema; health is `ready` / `needs_review` / `broken`; diagnostics drift is a fingerprint boolean; save does not project “next application writes Code 95 = Yes”.
 
 Out: themes, analytics, bulk rule import, a fourth editor, Zapier-style conditions.
 
 #### Mapping Operator Gate
 
-**Outcome:** not PASS. UX contract **Accepted**. Feat `feat/mapping-authority-ma3-operator-gate` is open. An existing mapping page is not Mapping Operator Gate PASS.
+**Outcome:** **PASS** (2026-09-18). Live `f65edf28`. Operator acceptance on DANEMA TSL / Metafora TSL C/CE 110 (`7b0e286c-4d8b-4014-a5cb-570e0a8ea01e`). UX contract remains **Accepted**. An existing mapping page is still not Mapping Operator Gate PASS by itself.
 
-PASS when:
+Evidence:
 
-1. This UX contract is merged and the queue Active Product is **MA-3** (or a later MA slice after this gate).  
-2. An untrained operator connects a Meta source, sees its questions **with example answers**, understands where each answer will land, brings mapping to **ready**, and can explain what the next submission will write — without switching between several Settings / admin screens. This is the MA-3 acceptance statement. Preview is a projection through the same resolver as ingestion, not a second evaluator.  
-3. One editor writes the authority. Remaining writable surfaces must cease to be editors. Entry points (Connect, form, diagnostics, “1 field is not configured”) open that same workspace.  
-4. Schema ≠ sample; no-sample is not a dead end; drift uses the minimum taxonomy (field/option added or removed, type changed, destination no longer valid) and keeps removed fields as historical bindings; save shows a canonical-fact projection; a real submission shows applied evidence (RS-3 remains program proof). Ready, complete option-map, and explicit Ignore follow [mapping-authority-operator.md](../architecture/mapping-authority-operator.md).  
-5. RPM / Intake / Hiring E2E / min HR / MA-4 vocabulary cutover are not this slice.
+1. UX contract merged; queue Active Product was **MA-3** and is now **MA-4** after this gate.  
+2. Operator accepted: Campaigns / Questions → Mapping; questions with example answers; Ready 8/8; projection of the next write; mapped fields on candidate Andrei `f0f8a806`. Preview is a projection through the same resolver as ingestion, not a second evaluator.  
+3. One editor writes the authority. Leftover Meta form / tenant / Intake mapping PUTs return 410. Entry points (Connect, campaign list, campaign source cards, form, diagnostics, “1 field is not configured”) open that same workspace.  
+4. Schema ≠ sample; five-step close path on Mapping; applied evidence on the workspace. Ready, complete option-map, and explicit Ignore follow [mapping-authority-operator.md](../architecture/mapping-authority-operator.md). RS-3 remains program proof.  
+5. RPM / External Intake / Hiring E2E / min HR / MA-4 vocabulary cutover are not this slice. Leftover stores remain read-through (not leftover-store deletion).
 
-This feat **does not** PASS Mapping Operator Gate because a page exists. PASS requires the Meta close path on a real source: Connect Meta → Page/Form → schema → test/latest lead → schema+sample → map → Ready → projection → another lead → applied evidence, plus leftover mapping surfaces ceasing to be writers. MA-4 / External Intake / Forms Publish / Hiring are not this feat.
+This stamp is **not** MA-4 start, leftover-store deletion, External Intake, Forms Publish, Hiring, Foundation ✅, or HostFlow v1 release-ready.
 
 ---
 
-## MA-4 — Consumer cutover (queued)
+## MA-4 — Consumer cutover (**PASS**)
 
-Retire the dual vocabulary on the intake path and make the hardcoded extractors consume the authority. Evaluators and intake consumers read **canonical facts only**; provider payload stays evidence under the contract, not an evaluation input. Anything that cannot be cut over in this slice (OCR mapping, Telegram bootstrap) must be listed with owner and expiry — silent leftovers make the gate STOP.
+**Outcome:** **PASS** (2026-09-19). Cutover code `fddadd39`. Feat `feat/mapping-authority-ma4-consumer-cutover` locked. Mapping Consumer Cutover Gate **PASS**. Leftover Meta stores remain read-through. OCR / Telegram stay named leftovers with owner + expiry. Not leftover-store deletion.
 
-Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of modules outside intake.
+Evidence:
+
+1. Canonical Field Registry `qualified_code` is the only write vocabulary on the intake path. Leftover flat `target` is inferred, never minted as a second write key.  
+2. Hardcoded extractors consume Mapping Authority or are retired: `enrich_mapping_rule_for_storage` does not mint `target`; `PUBLIC_INTAKE_FIELD_TO_QUALIFIED` is not a production writer; conversion and `build_candidate_payload_from_intake_state` consume canonical facts; CandidateProfile unscoped accept-all is rejected.  
+3. Intake writes `canonical_facts_v1[qualified_code]`. Phone / email on the lead are a storage projection for matching, not a mapping decision. Provider payload stays evidence.  
+4. OCR mapping and Telegram bootstrap are listed with owner + expiry. Silent leftovers would STOP.  
+5. External Intake / Forms Publish / Hiring E2E / min HR / leftover-store deletion are not this slice. RS-3 remains program proof.
+
+Out: Sales convert mapping rewrite; CL6 re-fork; leftover-store deletion; a canonical-write refactor of modules outside intake.
+
+This stamp is **not** Mapping program close (outcome + release delta), leftover-store deletion, External Intake, Forms Publish, Hiring, Foundation ✅, or HostFlow v1 release-ready.
 
 ---
 
 ## Program close = two results
 
-| Field | Meaning |
+Recorded this amendment. Reaching this horizon is **not** a release. Mapping Consumer Cutover Gate proved consumer cutover; leftover Meta stores remain read-through.
+
+| Field | Value |
 |-------|---------|
-| **Program outcome** | One authority answers source answer (+ option) → canonical entity field; one editor writes it; intake consumers and evaluators read canonical facts only; binding and contract health stay separate scales |
-| **Release delta** | Mapping Authority four-checks PASS. External Intake acceptance becomes provable (its acceptance edge is satisfied). Hiring E2E and min HR handoff remain **OPEN** unless separately closed. HostFlow v1 is not release-ready until the [Release Readiness Gate](../gates/release-readiness-gate.md) passes |
+| **Program outcome** | One authority answers source answer (+ option) → canonical entity field; one editor writes it; intake consumers and evaluators read canonical facts only; binding and contract health stay separate scales. `qualified_code` is the only intake write vocabulary. |
+| **Release delta** | Mapping Authority four-checks **PASS** (RS-3 named; the [Release Readiness Gate](../gates/release-readiness-gate.md) has not run it). External Intake acceptance becomes provable (its acceptance edge is satisfied) and stays **unlocked, not scheduled**. Hiring E2E and min HR handoff remain **OPEN**. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄 |
 
 ---
 
 ## Queue position
 
 **Depends on:** [RPM program close](requirement-policy-management.md). The [DAG](../gates/hostflow-v1-release-goal.md) does **not** make RPM a predecessor of Mapping — one-Active-Product serialized them.  
-**Unlocks:** Mapping Operator Gate after this feat (not PASS yet); [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance remains a later edge — **not** scheduled here  
-**Does not:** mark Mapping Operator Gate PASS; absorb Forms Publish; reopen CL6 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR; MA-4 vocabulary cutover
+**MA-1…MA-4:** **PASS**. Cutover evidence `92206f40`; production cutover `fddadd39`.  
+**Program:** **DONE** (outcome + release delta this amendment).  
+**Active Product after close:** named **[FP-1](external-intake-forms-publish.md)** (brief; feat locked). Forms Publish Contract Gate **PASS** moved Active Product to **[FP-2](external-intake-forms-publish.md)**. Publish Action Gate **PASS** moved Active Product to **[FP-3](external-intake-forms-publish.md)**. Public Serve Gate **PASS** moved Active Product to **[FP-4](external-intake-forms-publish.md)**. Feat `feat/forms-publish-fp4-operator-surface` shipped the operator surface. Operator Publish Gate **PASS**. Feat `feat/forms-publish-fp5-runtime` shipped the stranger submit path. External Intake Acceptance Gate **PASS**. External Intake program **DONE**. Active Product is [HE-1](hiring-workflow-e2e.md) (brief; feat locked).  
+**External Intake / Forms Publish:** **DONE** (outcome + release delta; Acceptance Gate PASS `4f454556`). Hiring E2E is Active Product ([HE-1](hiring-workflow-e2e.md); brief; feat locked). min HR remains queued.  
+**Does not:** leftover-store deletion; absorb Forms Publish; reopen Architecture / CL6 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry); open intake qualification / `lead_criteria_v1` as a Mapping write; collapse mapping uncertainty into candidate `no_fit`; start Hiring E2E / min HR; run RS-3; mark Foundation ✅; declare HostFlow v1 release-ready
 
 ---
 
@@ -283,7 +299,22 @@ Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of m
 ---
 
 ## History
-
+- 2026-09-21: **Queue amendment names HE-1 Active Product.** External Intake program close recorded (`741a4b2e`; [#387](https://github.com/igortatarynovich/HostFlow/pull/387)). External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Active Product → **[HE-1](hiring-workflow-e2e.md)** (brief; feat locked this PR). Hiring Acceptance Contract Gate **not PASS**. Do not open HE-1 contract seal in this PR. min HR remains queued. Not leftover-store deletion. Not RS-3. Not Mapping Operator Surface / DR1 Runtime inherited reds. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-21: **External Intake program close.** External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Program outcome + release delta recorded. FP-1…FP-5 = External Intake **DONE**. Product **DONE** with no named successor until amendment. FP-5 PASS is not Release Acceptance PASS. Hiring E2E / min HR remain queued. Mapping Operator Surface / DR1 Runtime inherited reds unchanged. Not leftover-store deletion. Not RS-3. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-21: **External Intake Acceptance Gate PASS.** Feat `feat/forms-publish-fp5-runtime` from `de6383aa` ([#385](https://github.com/igortatarynovich/HostFlow/pull/385)). Close path = operator live public URL → stranger without auth opens → fills → submit → existing public submission/intake contract → production intake → intake/person/application visible in HostFlow workspace. Browser E2E through that published URL. Rate limit remains fail-open when Redis is unavailable. No second submit engine. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice. Active Product → External Intake program close (brief; feat locked).
+- 2026-09-21: **FP-5 External submission feat opened.** Branch `feat/forms-publish-fp5-external-submit` from `5e2a8f59` ([#384](https://github.com/igortatarynovich/HostFlow/pull/384)). Close path = live public URL → stranger without auth opens it → fills → submit → production intake accepts → real intake/person/application per existing contracts. Browser E2E through that published URL is the later runtime proof, not API composition. External Intake Acceptance Gate **not PASS**. This stamp does not ship runtime. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not a new form architecture. Not P4 / P5.
+- 2026-09-20: **Operator Publish Gate PASS.** Never published → Publish (`commit_publish`) → Live v1 + public URL → Unpublish (`deactivate_endpoint`) → Inactive + URL absent. After each act the operator surface re-reads backend publication authority. UI does not compute live. Embed snippet is a later product slice. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
+- 2026-09-20: **FP-4 Operator Publish Surface feat opened.** Branch `feat/forms-publish-fp4-operator-surface` from `9cc986ce` ([#382](https://github.com/igortatarynovich/HostFlow/pull/382)). Close path = operator opens form → sees current publication state/version → publish or unpublish → sees resulting live state → obtains public URL from product UI. Publish uses closed FP-2 `commit_publish` authority. Live/public URL uses closed FP-3 serve authority. Embed snippet is a later product slice (one serve surface). Operator Publish Gate **not PASS**. This stamp does not ship operator UI. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
+- 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.
+- 2026-09-20: **FP-3 Public Serve feat opened.** Branch `feat/forms-publish-fp3-public-serve` from `41be635a`. Active Product remains **[FP-3](external-intake-forms-publish.md)** (feat open; Public Serve Gate **not PASS**). This stamp does not ship runtime. Hiring E2E / min HR remain queued. Not leftover-store deletion.
+- 2026-09-20: **FP-2 Publish Action feat opened.** Branch `feat/forms-publish-fp2-publish-action` from `7112279e`. Active Product remains **[FP-2](external-intake-forms-publish.md)** (feat open; Publish Action Gate **not PASS**). This stamp does not ship runtime. Hiring E2E / min HR remain queued. Not leftover-store deletion.
+- 2026-09-20: **Forms Publish Contract Gate PASS.** SoT [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`). Active Product → **[FP-2](external-intake-forms-publish.md)** (brief; feat locked). Hiring E2E / min HR remain queued. Not leftover-store deletion. Not RS-3 execution. Architecture stays CLOSED / PASS. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-20: **Queue amendment names FP-1 Active Product.** Mapping program **DONE**. Active Product → **[FP-1](external-intake-forms-publish.md)** (brief; feat locked). Forms Publish Contract Gate **not PASS**. Do not open FP-1 contract seal in this PR. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not RS-3 execution. Architecture stays CLOSED / PASS. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-20: **Mapping program close.** Mapping Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). Program outcome + release delta recorded. Mapping Authority four-checks PASS (RS-3 named; Release Readiness Gate has not run it). Product **DONE** with no named successor until amendment. External Intake unlocked, **not** scheduled. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not RS-3 execution. Architecture stays CLOSED / PASS. Not CL8. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. `qualified_code` is the only intake write vocabulary; leftover `target` is inference only. Conversion / public intake / CandidateProfile consume Mapping Authority or canonical facts. OCR / Telegram named leftovers with owner + expiry. Leftover Meta stores remain read-through. Feat locked. Active Product → Mapping program close (brief; feat locked). Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. Not Foundation ✅. RS-3 remains program proof.
+- 2026-09-19: **MA-4 vocabulary cutover in the feat.** Intake writes `canonical_facts_v1[qualified_code]`. `enrich_mapping_rule_for_storage` no longer mints leftover `target`. Conversion / public intake / CandidateProfile allow-list consume Mapping Authority or presentation facts. OCR / Telegram stay named leftovers with owner + expiry. Mapping Consumer Cutover Gate **not PASS**. Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. RS-3 remains program proof.
+- 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Close path = `qualified_code` is the only intake write vocabulary; hardcoded extractors consume the authority or are named leftovers with owner + expiry. Mapping Consumer Cutover Gate **not PASS**. Dual vocabulary still live is not PASS. Not leftover-store deletion. Not External Intake / Forms Publish / Hiring. RS-3 remains program proof.
+- 2026-09-18: **Mapping Operator Gate PASS.** Operator acceptance on DANEMA TSL / Metafora TSL C/CE 110 (`7b0e286c-4d8b-4014-a5cb-570e0a8ea01e`). Live `f65edf28`. Ready 8/8; mapped fields on candidate Andrei `f0f8a806`; five-step close path; campaign list + source cards open the same workspace; leftover mapping HTTP writers 410. Leftover stores remain read-through. Active Product → **MA-4** (brief; feat locked). Not leftover-store deletion. Not MA-4 start / External Intake / Forms Publish / Hiring. Not Foundation ✅. RS-3 remains program proof.
 - 2026-09-18: Campaign list and campaign source cards show the same mapping assessment and open the Mapping workspace. Operators do not have to go to Sources first. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-18: Mapping workspace shows the Meta close path as five visible steps (questions → example → map → next write → last write). Projection stays on the page when empty. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-18: Named red ingest→candidate fields proven at `8dabcfb9` (`which_licence` → `recruitment.candidate.personal.residency_status` on GET candidate after real `POST /api/v1/leads/meta`; Ignore does not land; blocked_duplicate RODO shells receive the same conversion payload). Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Pytest is not Gate PASS. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring. Unlock ≠ schedule.

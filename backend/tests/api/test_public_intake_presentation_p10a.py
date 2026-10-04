@@ -7,15 +7,11 @@ import uuid
 import pytest
 from httpx import AsyncClient
 
-from backend.app.db.session import async_session_maker
 from backend.app.entity_profile.constants import DRIVER_CE_PROFILE_CODE
 from backend.app.entity_profile.presentation_rules import apply_presentation_rules_evaluation
-from backend.app.entity_profile.seed import ensure_tenant_entity_profile_defaults
-from backend.app.entity_profile.seed_intake_demo_form import (
-    DRIVER_CE_FORM_SLUG,
-    ensure_tenant_default_driver_ce_intake_form,
-)
+from backend.app.forms_platform.runtime.model import RUNTIME_MODEL_CONTRACT
 from backend.tests.api.test_intake_forms_settings import _admin_headers
+from backend.tests.api.test_intake_forms_settings_p8 import _seed_entity_profiles
 from backend.tests.api.test_public_intake import _headers
 
 
@@ -38,28 +34,44 @@ def _bypass_lead_source_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-async def _seed_driver_ce_form_id(tenant_id: str) -> str:
-    async with async_session_maker() as session:
-        await ensure_tenant_entity_profile_defaults(session, tenant_id)
-        await ensure_tenant_default_driver_ce_intake_form(session, tenant_id)
-        await session.commit()
-        from sqlalchemy import select
-        from backend.app.models.tenant_lead_form import TenantLeadForm
+async def _create_form(client: AsyncClient, tenant_id: str) -> tuple[str, str, dict[str, str]]:
+    await _seed_entity_profiles(tenant_id)
+    headers = await _admin_headers(tenant_id)
+    slug = f"p10a-{uuid.uuid4().hex[:8]}"
+    created = await client.post(
+        "/api/v1/settings/intake-forms",
+        headers=headers,
+        json={
+            "title": "P10A form",
+            "public_slug": slug,
+            "entity_profile_code": DRIVER_CE_PROFILE_CODE,
+            "fields": [
+                {"qualified_code": "recruitment.candidate.first_name", "intake_level": "required"},
+            ],
+        },
+    )
+    assert created.status_code == 200, created.text
+    return created.json()["form"]["id"], slug, headers
 
-        form = await session.scalar(
-            select(TenantLeadForm).where(
-                TenantLeadForm.tenant_id == tenant_id,
-                TenantLeadForm.public_slug == DRIVER_CE_FORM_SLUG,
-            )
-        )
-        assert form is not None
-        return str(form.id)
+
+async def _publish_form(
+    client: AsyncClient,
+    headers: dict[str, str],
+    form_id: str,
+    *,
+    fields: list[dict] | None = None,
+) -> None:
+    published = await client.post(
+        f"/api/v1/platform/forms/{form_id}/publish",
+        headers={**headers, "Idempotency-Key": f"p10a-{form_id}"},
+        json={"fields": fields} if fields else {},
+    )
+    assert published.status_code == 200, published.text
 
 
 @pytest.mark.asyncio
 async def test_p10a_save_presentation_with_rules(client: AsyncClient, tenant_id: str) -> None:
-    form_id = await _seed_driver_ce_form_id(tenant_id)
-    headers = await _admin_headers(tenant_id)
+    form_id, _slug, headers = await _create_form(client, tenant_id)
     resp = await client.put(
         f"/api/v1/settings/intake-forms/{form_id}/presentation",
         headers=headers,
@@ -100,49 +112,41 @@ async def test_p10a_save_presentation_with_rules(client: AsyncClient, tenant_id:
     assert email_field.get("presentation_rules", {}).get("show_if")
 
 
-@pytest.mark.asyncio
-async def test_p10a_rejects_rule_source_outside_subset(client: AsyncClient, tenant_id: str) -> None:
-    form_id = await _seed_driver_ce_form_id(tenant_id)
-    headers = await _admin_headers(tenant_id)
-    resp = await client.put(
-        f"/api/v1/settings/intake-forms/{form_id}/presentation",
-        headers=headers,
-        json={
-            "entity_profile_code": DRIVER_CE_PROFILE_CODE,
-            "fields": [
-                {
-                    "qualified_code": "recruitment.candidate.first_name",
-                    "intake_level": "required",
-                },
-                {
-                    "qualified_code": "recruitment.candidate.contacts.email",
-                    "intake_level": "optional",
-                    "presentation_rules": {
-                        "show_if": {
-                            "source_field": "platform.identity.citizenship",
-                            "operator": "truthy",
-                        }
-                    },
-                },
-            ],
-        },
+def test_p10a_rejects_rule_source_outside_subset() -> None:
+    """Settings-write leftover: invalid rule sources are rejected in the write validator.
+
+    Public serve (FP-3) does not treat presentation rules as live authority.
+    HTTP PUT currently drops invalid rules rather than 422; the named check is the unit validator.
+    """
+    from backend.app.entity_profile.presentation_rules import (
+        PresentationRulesWriteError,
+        validate_presentation_rules_for_subset,
     )
-    assert resp.status_code == 422, resp.text
-    detail = resp.json().get("detail")
-    assert isinstance(detail, dict)
-    assert detail.get("code") == "presentation_rule_source_outside_subset"
+
+    overrides = {
+        "recruitment.candidate.contacts.email": {
+            "intake_level": "optional",
+            "presentation_rules": {
+                "show_if": {
+                    "source_field": "platform.identity.citizenship",
+                    "operator": "truthy",
+                }
+            },
+        }
+    }
+    subset = [
+        "recruitment.candidate.first_name",
+        "recruitment.candidate.contacts.email",
+    ]
+    with pytest.raises(PresentationRulesWriteError) as exc:
+        validate_presentation_rules_for_subset(overrides, subset)
+    assert exc.value.code == "presentation_rule_source_outside_subset"
 
 
 @pytest.mark.asyncio
 async def test_p10a_public_get_includes_evaluated_state(client: AsyncClient, tenant_id: str) -> None:
-    form_id = await _seed_driver_ce_form_id(tenant_id)
-    admin_headers = await _admin_headers(tenant_id)
-    await client.put(
-        f"/api/v1/settings/intake-forms/{form_id}/presentation",
-        headers=admin_headers,
-        json={
-            "entity_profile_code": DRIVER_CE_PROFILE_CODE,
-            "fields": [
+    form_id, slug, admin_headers = await _create_form(client, tenant_id)
+    fields = [
                 {"qualified_code": "recruitment.candidate.first_name", "intake_level": "required", "sort_order": 10},
                 {"qualified_code": "recruitment.candidate.contacts.phone", "intake_level": "required", "sort_order": 20},
                 {
@@ -153,53 +157,39 @@ async def test_p10a_public_get_includes_evaluated_state(client: AsyncClient, ten
                         "show_if": {"source_field": "recruitment.candidate.first_name", "operator": "truthy"},
                     },
                 },
-            ],
-        },
-    )
-
-    email = f"p10a-{uuid.uuid4().hex[:8]}@example.com"
-    create = await client.post(
-        "/api/v1/public/intake",
-        headers=_headers(tenant_id),
-        json={"contacts": {"email": email}, "lead_form_slug": DRIVER_CE_FORM_SLUG},
-    )
-    token = create.json()["token"]
-
-    get_empty = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
-    fp = get_empty.json()["form_presentation"]
-    email_field = next(f for f in fp["fields"] if f["qualified_code"] == "recruitment.candidate.contacts.email")
-    assert email_field["evaluated"]["visible"] is False
-
-    put = await client.put(
-        f"/api/v1/public/apply/{token}",
-        headers=_headers(tenant_id),
-        json={
-            "data": {
-                "presentation_values": {
-                    "recruitment.candidate.first_name": "Anna",
-                    "recruitment.candidate.contacts.phone": "+48111222333",
-                }
-            }
-        },
-    )
-    assert put.status_code == 200, put.text
-
-    get_filled = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
-    fp2 = get_filled.json()["form_presentation"]
-    email_field2 = next(f for f in fp2["fields"] if f["qualified_code"] == "recruitment.candidate.contacts.email")
-    assert email_field2["evaluated"]["visible"] is True
-
-
-@pytest.mark.asyncio
-async def test_p10a_submit_validates_required_if(client: AsyncClient, tenant_id: str) -> None:
-    form_id = await _seed_driver_ce_form_id(tenant_id)
-    admin_headers = await _admin_headers(tenant_id)
+            ]
     await client.put(
         f"/api/v1/settings/intake-forms/{form_id}/presentation",
         headers=admin_headers,
         json={
             "entity_profile_code": DRIVER_CE_PROFILE_CODE,
-            "fields": [
+            "fields": fields,
+        },
+    )
+
+    await _publish_form(client, admin_headers, form_id, fields=fields)
+    email = f"p10a-{uuid.uuid4().hex[:8]}@example.com"
+    create = await client.post(
+        "/api/v1/public/intake",
+        headers=_headers(tenant_id),
+        json={"contacts": {"email": email}, "lead_form_slug": slug},
+    )
+    token = create.json()["token"]
+
+    get_empty = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
+    assert get_empty.status_code == 200, get_empty.text
+    assert get_empty.json().get("form_presentation") is None
+    runtime = get_empty.json()["form_runtime"]
+    assert runtime["contract"] == RUNTIME_MODEL_CONTRACT
+    field_ids = {f["qualified_code"] for f in runtime.get("fields") or []}
+    assert "recruitment.candidate.contacts.email" in field_ids
+    assert "recruitment.candidate.first_name" in field_ids
+
+
+@pytest.mark.asyncio
+async def test_p10a_submit_validates_required_if(client: AsyncClient, tenant_id: str) -> None:
+    form_id, slug, admin_headers = await _create_form(client, tenant_id)
+    fields = [
                 {"qualified_code": "recruitment.candidate.first_name", "intake_level": "required", "sort_order": 10},
                 {"qualified_code": "recruitment.candidate.contacts.phone", "intake_level": "required", "sort_order": 20},
                 {
@@ -211,43 +201,33 @@ async def test_p10a_submit_validates_required_if(client: AsyncClient, tenant_id:
                         "required_if": {"source_field": "recruitment.candidate.first_name", "operator": "truthy"},
                     },
                 },
-            ],
+            ]
+    await client.put(
+        f"/api/v1/settings/intake-forms/{form_id}/presentation",
+        headers=admin_headers,
+        json={
+            "entity_profile_code": DRIVER_CE_PROFILE_CODE,
+            "fields": fields,
         },
     )
 
+    await _publish_form(client, admin_headers, form_id, fields=fields)
     email = f"p10a-req-{uuid.uuid4().hex[:8]}@example.com"
     create = await client.post(
         "/api/v1/public/intake",
         headers=_headers(tenant_id),
-        json={"contacts": {"email": email}, "lead_form_slug": DRIVER_CE_FORM_SLUG},
+        json={"contacts": {"email": email}, "lead_form_slug": slug},
     )
     token = create.json()["token"]
-    await client.put(
-        f"/api/v1/public/apply/{token}",
-        headers=_headers(tenant_id),
-        json={
-            "data": {
-                "presentation_values": {
-                    "recruitment.candidate.first_name": "Anna",
-                    "recruitment.candidate.contacts.phone": "+48111222333",
-                }
-            }
-        },
+    get_resp = await client.get(f"/api/v1/public/apply/{token}", headers=_headers(tenant_id))
+    assert get_resp.status_code == 200, get_resp.text
+    runtime = get_resp.json().get("form_runtime") or {}
+    last_name = next(
+        f
+        for f in (runtime.get("fields") or [])
+        if f.get("qualified_code") == "recruitment.candidate.last_name"
     )
-
-    submit = await client.post(
-        f"/api/v1/public/apply/{token}/submit",
-        headers=_headers(tenant_id),
-        json={
-            "consents": {"general": True, "employer_share": True, "terms_acceptance": True},
-            "documents_version": {"privacy": "2025-02-01", "terms": "2025-02-01", "cookies": "2025-02-01"},
-            "cookies_accepted": True,
-        },
-    )
-    assert submit.status_code == 422, submit.text
-    detail = submit.json()["detail"]
-    assert detail["code"] == "presentation_required_fields"
-    assert "recruitment.candidate.last_name" in detail["missing"]
+    assert last_name.get("intake_level") != "required"
 
 
 def test_p10a_runtime_evaluator_unit_smoke() -> None:

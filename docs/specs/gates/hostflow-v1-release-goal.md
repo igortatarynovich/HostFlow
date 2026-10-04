@@ -6,12 +6,12 @@
 **Trusted base:** `integration/release-product-a-b`  
 **Parents:** [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](goal-completion-gate.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md) · [Documents Platform E8-eval](../tasks/documents-platform-e8-eval.md)  
 **Close-out instruments:** [Release Readiness Gate](release-readiness-gate.md) (who declares v1 ready) · [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md) (how it is proven)  
-**Product Track:** **[MA-3](../tasks/mapping-authority.md)** (brief; feat locked) after Mapping Resolution Gate PASS — scheduled in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md). This file does not invent slice order.
+**Product Track:** **[Employee Record & Employment Lifecycle](../tasks/employee-record-employment-lifecycle.md)** (brief opened; Employee Record & Employment Lifecycle — Contract Gate **PASS**; no schema; no runtime; supersedes [Minimal Recruitment → HR handoff](../tasks/recruitment-hr-minimal-handoff.md)). Predecessor **[Poland Work Authorization Presets](../tasks/poland-work-authorization-presets.md)** (procedure types named; Poland Work Authorization Presets Gate **PASS**; program close recorded). Predecessor **[Work Authorization Procedure](../tasks/work-authorization-procedure.md)** (contract opened; Work Authorization Procedure Contract Gate **PASS**; no preset row). Predecessor **[Legal Eligibility](../tasks/legal-eligibility-requirement-policy.md)** (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**; matrix opened; Legal Eligibility Matrix Gate **not PASS**; decision model amendment; evidence rules are not encoded). Hiring E2E program close recorded ([hiring-workflow-e2e.md](../tasks/hiring-workflow-e2e.md); Hiring E2E Acceptance Gate **PASS** (`315cb710`); RS-7 **PASS** (`315cb710`)). Eligibility Composition Gate **PASS**; SoT [hiring-eligibility-composition.md](../architecture/hiring-eligibility-composition.md); `hiring_eligibility_composition.v1`; Stage Authority Consumption Gate **PASS**; Hiring Acceptance Contract Gate **PASS**. After External Intake program close — scheduled in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md). External Intake Acceptance Gate **PASS**. Operator Publish Gate **PASS**. Public Serve Gate **PASS**. Publish Action Gate **PASS**. Forms Publish Contract Gate **PASS** ([forms-publish-contract.md](../architecture/forms-publish-contract.md); `forms_publish.v1`). This file does not invent slice order.
 
 > This document is the **v1 in-scope vs later** SoT.  
 > The [sequential queue](../tasks/sales-to-comms-sequential-queue.md) remains the **slice schedule** SoT (one Active Product).  
 > Horizon letters in the [roadmap](../architecture/platform-completion-roadmap.md) (OCR, packages, Billing, AI) are **not** v1.  
-> First Product from § Release DAG was **Requirement Policy Management**. RPM program is **DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). Mapping Authority Contract Gate is **PASS**. Mapping Resolution Gate is **PASS**. Active Product is [MA-3](../tasks/mapping-authority.md) (brief; feat locked). This file does **not** lock a linear program order of the five blockers. External Intake / Hiring E2E / min HR remain queued — not auto-scheduled here.
+> First Product from § Release DAG was **Requirement Policy Management**. RPM program is **DONE** (Authority / Operator / 3A / 3B / Consumer Cutover `918274d1` + program close). Mapping Authority Contract Gate is **PASS**. Mapping Resolution Gate is **PASS**. Mapping Operator Gate is **PASS**. Mapping Consumer Cutover Gate is **PASS**. Mapping program is **DONE**. Forms Publish Contract Gate is **PASS**. Publish Action Gate is **PASS**. Public Serve Gate is **PASS**. External Intake Acceptance Gate is **PASS**. External Intake program is **DONE**. Hiring Acceptance Contract Gate is **PASS**. Stage Authority Consumption Gate is **PASS**. Eligibility Composition Gate is **PASS**. Hiring E2E program close is recorded. Acceptance Gate **PASS** (`315cb710`). RS-7 **PASS**. Active Product is [Employee Record & Employment Lifecycle](../tasks/employee-record-employment-lifecycle.md) (brief opened; Employee Record & Employment Lifecycle — Contract Gate **PASS**; predecessor [Poland Work Authorization Presets](../tasks/poland-work-authorization-presets.md) program close recorded; Poland Work Authorization Presets Gate **PASS**; predecessor [Work Authorization Procedure](../tasks/work-authorization-procedure.md) contract opened; Work Authorization Procedure Contract Gate **PASS**; predecessor [Legal Eligibility](../tasks/legal-eligibility-requirement-policy.md) brief opened; feat locked; Legal Eligibility Contract Gate **PASS**). This file does not write the legal matrix. `visa_d` is not mapped onto `visa`. This file does **not** lock a linear program order of the five blockers. min HR remains queued — not auto-scheduled here.
 
 ---
 
@@ -53,15 +53,15 @@ A Settings page that edits non-authority JSON is **not** ready. All four must ho
 | # | Capability | v1 boundary (acceptance) |
 |---|------------|--------------------------|
 | **1** | **Requirement Policy Management** — [brief](../tasks/requirement-policy-management.md) (**DONE**; Consumer Cutover Gate PASS `918274d1`; program close recorded) | For this tenant / client / vacancy / profile / country: these requirements apply; base rule; override; reason; result. Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin product. |
-| **2** | **Mapping Authority** — [brief](../tasks/mapping-authority.md) (Active: MA-3; Mapping Resolution Gate PASS; MA-1 Contract Gate PASS; brief; feat locked) | One operator-visible model from source answers to **canonical entity fields**. Not “build another mapping editor.” |
-| **3** | **External Intake / Forms Publish** — [brief](../tasks/external-intake-forms-publish.md) (queued) | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
-| **4** | **Hiring workflow E2E** — [brief](../tasks/hiring-workflow-e2e.md) (queued) | One candidate: `stage → requirements/docs → eligibility → transfer`. Acceptance over existing funnels, gates, policy authority, and transfer — **not** a new Hiring Product. |
+| **2** | **Mapping Authority** — [brief](../tasks/mapping-authority.md) (**DONE**; Consumer Cutover Gate PASS `fddadd39`; program close recorded) | One operator-visible model from source answers to **canonical entity fields**. Not “build another mapping editor.” |
+| **3** | **External Intake / Forms Publish** — [brief](../tasks/external-intake-forms-publish.md) (**DONE**; Acceptance Gate PASS `4f454556`; program close recorded) | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
+| **4** | **Hiring workflow E2E** — [brief](../tasks/hiring-workflow-e2e.md) (**DONE**; Acceptance Gate **PASS** `315cb710`; program close recorded). Not the legal employability matrix. | One candidate: `stage → requirements/docs → eligibility → transfer`. Acceptance over existing funnels, gates, policy authority, and transfer — **not** a new Hiring Product. |
 | **5** | **Minimal Recruitment → HR handoff** — [brief](../tasks/recruitment-hr-minimal-handoff.md) (queued) | Hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy. Full HR operations (Kadry, payroll, extended lifecycle) are later. |
 | **6** | **Operate & Launch** — [brief](../tasks/operate-and-launch.md) (**active**; **Launch-ops track** opened 2026-08-31, [OL-1](launch-ownership-gate.md) done, OL-2 next) | Deployed, rolled back, monitored, backed up and restored from written procedures; tenant created, loaded, exported and erased as product; support and incident path named. Not an SRE programme, not IaC, not steady-state operations. |
 
 Blockers 1–5 are **capability** blockers: they make the product complete. Blocker 6 is an **operability** blocker: it makes the product sellable. Blocker 6 is not a capability node in the DAG and does not consume a Product slot — it runs as the parallel **Launch-ops** track, because a paying tenant cannot be served by features alone.
 
-Every blocker now has a brief with `Original Goal → Completion Proof`, an internal slice ladder with named gates, and an estimate. A brief is **not** a schedule: only the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) activates a slice, and the Active Product is MA-3 after Mapping Resolution Gate PASS.
+Every blocker now has a brief with `Original Goal → Completion Proof`, an internal slice ladder with named gates, and an estimate. A brief is **not** a schedule: only the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) activates a slice. Active Product is [Employee Record & Employment Lifecycle](../tasks/employee-record-employment-lifecycle.md) (brief opened; Employee Record & Employment Lifecycle — Contract Gate **PASS**; predecessor [Poland Work Authorization Presets](../tasks/poland-work-authorization-presets.md) program close recorded; Poland Work Authorization Presets Gate **PASS**; predecessor [Work Authorization Procedure](../tasks/work-authorization-procedure.md) contract opened; Work Authorization Procedure Contract Gate **PASS**; predecessor [Legal Eligibility](../tasks/legal-eligibility-requirement-policy.md) brief opened; feat locked; Legal Eligibility Contract Gate **PASS**). HE-1 remains a passed gate, not the live slice.
 
 ### Supporting (must work for the five; not separate programs)
 
@@ -176,18 +176,34 @@ A program may not close with only “horizon reached.” Both lines are mandator
 | **Program outcome** | Operator manages document-requirement policy through one authority (R5 `merge(pack, tenant_delta)` + overlay). Classified consumers do not contradict. Parallel writers of “need X?” are retired. D4 matches the operator write. |
 | **Release delta** | Requirement Policy Management four-checks **PASS** (Documents domain; RS-4 named). Mapping Authority, External Intake, Hiring E2E, and min HR remain **OPEN**. Hiring E2E is **unlocked, not scheduled**. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄. |
 
+### Mapping Authority (this close)
+
+| Field | Value |
+|-------|--------|
+| **Program outcome** | One authority answers source answer (+ option) → canonical entity field; one editor writes it; intake consumers and evaluators read canonical facts only; binding and contract health stay separate scales. `qualified_code` is the only intake write vocabulary. Consumer cutover did not require leftover-store deletion. |
+| **Release delta** | Mapping Authority four-checks **PASS** (RS-3 named; the [Release Readiness Gate](release-readiness-gate.md) has not run it). External Intake is **unlocked, not scheduled**. Hiring E2E and min HR remain **OPEN**. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄. |
+
+---
+
+### External Intake / Forms Publish (this close)
+
+| Field | Value |
+|-------|--------|
+| **Program outcome** | An operator publishes their own form, obtains a live public URL, a stranger completes it without auth, submission uses production public intake, and the candidate appears in the workspace. |
+| **Release delta** | External Intake authority / operator surface / E2E consumption **PASS** (FP-1 Contract · FP-2 Publish · FP-3 Serve · FP-4 Operator Surface · FP-5 Stranger Submission; named gate + Playwright on [#386](https://github.com/igortatarynovich/HostFlow/pull/386) / `4f454556`). Release Acceptance (RS-2) is **named** and has that program proof; it is **not** Release Acceptance PASS — the [Release Readiness Gate](release-readiness-gate.md) has not run RS-2. Hiring E2E and min HR remain **OPEN**. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄. |
+
 ---
 
 ## Current four-check snapshot (not acceptance)
 
-Recorded at RPM program close (2026-09-04). RS-4 is named; the [Release Readiness Gate](release-readiness-gate.md) has not run it.
+Recorded at External Intake program close (2026-09-21). RS-2, RS-3, and RS-4 are named; the [Release Readiness Gate](release-readiness-gate.md) has not run them. FP-5 PASS is not Release Acceptance PASS.
 
 | Capability | Authority | Operator surface | E2E consumption | Acceptance |
 |------------|-----------|------------------|-----------------|------------|
 | Requirement Policy Management | **PASS** (sole write = R5 merge; parallel writers retired; [requirement-policy-authority.md](../architecture/requirement-policy-authority.md)) | **PASS** (overlay; `tenant_document_policy_deltas`) | **PASS** (D4 + classified consumers; Consumer Cutover `918274d1`) | **PASS** (Documents domain; RS-4 named). v1 not release-ready |
-| Mapping Authority | **PASS** (sole write = intake_source_profiles.mapping_rules; leftovers classified; [mapping-authority-contract.md](../architecture/mapping-authority-contract.md)) | partial (C-5 / intake editors; leftover Meta admin UI) | **PASS** (one resolver; [mapping-authority-resolution.md](../architecture/mapping-authority-resolution.md)) | OPEN (operator editor / RS-3 not this close) |
-| External Intake / Forms Publish | partial (Foundation serve→execute) | no (P3 locked) | partial | OPEN |
-| Hiring workflow E2E | partial (funnels / gates / transfer; policy authority now exists) | partial | not proven vs policy authority | OPEN |
+| Mapping Authority | **PASS** (sole write = intake_source_profiles.mapping_rules; leftovers classified; [mapping-authority-contract.md](../architecture/mapping-authority-contract.md)) | **PASS** (one editor; leftover HTTP writers 410; [mapping-authority-operator.md](../architecture/mapping-authority-operator.md)) | **PASS** (one resolver + `qualified_code` write vocabulary; Consumer Cutover `fddadd39`) | **PASS** (RS-3 named). v1 not release-ready |
+| External Intake / Forms Publish | **PASS** (publish = `commit_publish`; leftovers classified; [forms-publish-contract.md](../architecture/forms-publish-contract.md)) | **PASS** (operator surface; FP-4; Operator Publish Gate) | **PASS** (public serve from frozen publication + stranger submit; FP-3 ∧ FP-5) | named (External Intake Acceptance Gate + Playwright). **Not** Release Acceptance PASS. RS-2 not run by Release Readiness Gate |
+| Hiring workflow E2E | **PASS** (consumes RPM `r5_required_set`; no second eligibility writer) | **PASS** (operator overlay + product HTTP) | **PASS** (`315cb710`) | **PASS** (RS-7). Not the legal employability matrix. Not the Release Readiness Gate. v1 not release-ready |
 | Minimal HR handoff | partial (E3/E4 Document Link) | partial | partial | OPEN |
 | Operate & Launch (blocker 6, added 2026-08-28) | no (no deploy / rollback / backup procedure — RB-1…RB-10 all MISSING, now owned and countable via [OL-1](launch-ownership-gate.md)) | partial (tenant create only; no delete, no export, no bulk import; contract accepted in [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md), capability absent) | no (in-process queue + local disk are the defaults) | OPEN |
 
@@ -195,8 +211,9 @@ Recorded at RPM program close (2026-09-04). RS-4 is named; the [Release Readines
 
 ## What this document does not do
 
-- Does not schedule External Intake, Hiring E2E, or min HR (MA-3 is scheduled in the sequential queue, not by this file; the Launch-ops track is opened by a queue amendment)  
-- Does not mark Mapping Operator Gate PASS (MA-1 / MA-2 PASS; MA-3 UX contract Accepted; feat `feat/mapping-authority-ma3-operator-gate` open; a mapping page is not PASS)  
+- Does not invent HE-1 (scheduled in the sequential queue, not by this file). Does not schedule min HR. Launch-ops stays a second track  
+- Does not convert FP-5 PASS into Release Acceptance PASS (RS-2 remains unrun by the Release Readiness Gate)  
+- Does not run RS-3 or leftover-store deletion (Mapping program close names RS-3; the Release Readiness Gate has not run it)  
 - Does not lock a linear program / slice order (that is the sequential queue)  
 - Does not reopen E8-eval, Overlay, CL7, DR1-runtime, E8-bind, or RPM  
 - Does not mark Documents Foundation ✅  
@@ -208,7 +225,11 @@ Recorded at RPM program close (2026-09-04). RS-4 is named; the [Release Readines
 
 ## Refs
 
-- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [MA-3](../tasks/mapping-authority.md) after Mapping Resolution Gate PASS  
+- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [Legal Eligibility](../tasks/legal-eligibility-requirement-policy.md) (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**). Hiring workflow E2E HE-4 Acceptance Gate **PASS**. Hiring E2E Acceptance Gate **PASS** (`315cb710`); Eligibility Composition Gate **PASS**; Stage Authority Consumption Gate **PASS**; Hiring Acceptance Contract Gate **PASS**
+- [Hiring Eligibility Composition](../architecture/hiring-eligibility-composition.md) — HE-3 SoT (`hiring_eligibility_composition.v1`)
+- [Hiring Stage Authority Consumption](../architecture/hiring-stage-authority-consumption.md) — HE-2 SoT (`hiring_stage_authority.v1`)
+- [Hiring Acceptance Contract](../architecture/hiring-acceptance-contract.md) — HE-1 SoT (`hiring_acceptance.v1`)
+- [Forms Publish Contract](../architecture/forms-publish-contract.md) — FP-1 SoT (`forms_publish.v1`)  
 - [Mapping Authority Resolution](../architecture/mapping-authority-resolution.md) — one resolver (`resolve_mapping_authority`)  
 - [Mapping Authority Contract](../architecture/mapping-authority-contract.md) — operator question + write (`mapping_authority.v1`)  
 - [Requirement Policy Authority](../architecture/requirement-policy-authority.md) — operator question + write  

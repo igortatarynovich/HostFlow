@@ -208,7 +208,7 @@ describe('salesQuestionnaireSubmissionDisplay', () => {
     expect(rows.map((row) => row.label)).toEqual([
       'Jaki wynik jest dla Państwa najważniejszy?',
       'Jakie stanowisko?',
-      'Materiały',
+      'Czy mają Państwo materiały reklamowe?',
     ])
     expect(rows[0].value).toBe('Więcej zapytań od klientów')
     expect(rows[1].value).toBe('Warehouse pickers')
@@ -239,7 +239,7 @@ describe('salesQuestionnaireSubmissionDisplay', () => {
 
     expect(rows).toHaveLength(2)
     expect(rows[0]).toMatchObject({
-      label: 'Jakie stanowisko?',
+      label: 'Which role?',
       value: 'Warehouse pickers',
     })
     expect(rows[1]).toMatchObject({

@@ -11,6 +11,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
+from backend.app.field_registry.intake_mapping import rule_write_qualified_code
+
 MAPPING_APPLIED_V1_KEY = "mapping_applied_v1"
 
 
@@ -26,25 +28,37 @@ def fingerprint_mapping_rules(rules: Sequence[Mapping[str, Any]] | None) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
+def _rule_dicts(rules: Sequence[Mapping[str, Any]] | None) -> list[dict[str, Any]]:
+    return [dict(r) for r in (rules or []) if isinstance(r, Mapping)]
+
+
 def build_mapping_applied_stamp(
     *,
     rules: Sequence[Mapping[str, Any]] | None,
     source_id: str | None,
     rules_source: str | None,
     profile_updated_at: str | None = None,
+    fingerprint_rules: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    rule_list = [dict(r) for r in (rules or []) if isinstance(r, Mapping)]
+    """Stamp the rules that actually wrote, fingerprinted as the operator saved them.
+
+    ``rules`` is the executable subset (qualified_code writes). ``fingerprint_rules``
+    is the authority list the workspace also fingerprints, including Ignore.
+    Drift compares those two authority snapshots, not the filtered write subset.
+    """
+    executed = _rule_dicts(rules)
+    fingerprinted = executed if fingerprint_rules is None else _rule_dicts(fingerprint_rules)
     from backend.app.modules.leads.conversion_mapping import compact_executable_rules
 
     stamp: dict[str, Any] = {
         "source_id": str(source_id).strip() if source_id else None,
         "rules_source": str(rules_source or "").strip() or None,
-        "rules_count": len(rule_list),
-        "rules_fingerprint": fingerprint_mapping_rules(rule_list),
+        "rules_count": len(fingerprinted),
+        "rules_fingerprint": fingerprint_mapping_rules(fingerprinted),
         "profile_updated_at": profile_updated_at,
         "stamped_at": datetime.now(timezone.utc).isoformat(),
     }
-    executable = compact_executable_rules(rule_list)
+    executable = compact_executable_rules(executed)
     if executable:
         stamp["executable_rules"] = executable
     return stamp
@@ -57,6 +71,7 @@ def stamp_mapping_applied_v1(
     source_id: str | None,
     rules_source: str | None,
     profile_updated_at: str | None = None,
+    fingerprint_rules: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Write ``mapping_applied_v1`` onto ``normalized`` (in-place). Returns the stamp."""
     stamp = build_mapping_applied_stamp(
@@ -64,6 +79,7 @@ def stamp_mapping_applied_v1(
         source_id=source_id,
         rules_source=rules_source,
         profile_updated_at=profile_updated_at,
+        fingerprint_rules=fingerprint_rules,
     )
     normalized[MAPPING_APPLIED_V1_KEY] = stamp
     return stamp
@@ -163,14 +179,19 @@ def compose_applied_evidence(
         if not isinstance(raw, Mapping):
             continue
         source = str(raw.get("source") or "").strip()
-        dest_code = str(
-            raw.get("qualified_field_code") or raw.get("normalized_target") or ""
-        ).strip()
+        dest_code = rule_write_qualified_code(dict(raw))
         entry = dest_index.get(dest_code.lower()) if dest_code else None
         dest_label = str((entry or {}).get("label") or dest_code or source).strip()
+        facts = (normalized or {}).get("canonical_facts_v1")
+        fact_value = None
+        if isinstance(facts, Mapping) and dest_code:
+            raw_fact = facts.get(dest_code)
+            if raw_fact not in (None, "",):
+                fact_value = str(raw_fact).strip() or None
         value = (
-            _scalar_at(normalized or {}, str(raw.get("normalized_target") or "").strip())
+            fact_value
             or _scalar_at(normalized or {}, dest_code)
+            or _scalar_at(normalized or {}, str(raw.get("normalized_target") or "").strip())
             or _scalar_at(normalized or {}, dest_code.split(".")[-1] if dest_code else "")
             or _scalar_at(normalized or {}, source)
         )

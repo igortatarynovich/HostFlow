@@ -1,7 +1,7 @@
 """MA-3 mapping workspace envelope — schema-first, sample optional.
 
-Does not open a fourth store. Does not cut over vocabulary (MA-4).
-Does not absorb Sales convert, OCR, or CL6.
+Destination identity is ``qualified_code`` (MA-4 consume). Does not open a
+fourth store. Does not absorb Sales convert, OCR, or CL6.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from typing import Any, Mapping, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.field_registry.intake_mapping import rule_write_qualified_code
 from backend.app.field_registry.option_map import (
     OPTION_IGNORE_VALUE,
     lookup_option_map,
@@ -691,7 +692,7 @@ def build_workspace_rows(
         dest_code = ""
         option_map: dict[str, str] = {}
         if rule:
-            dest_code = str(rule.get("qualified_field_code") or rule.get("target") or "").strip()
+            dest_code = rule_write_qualified_code(dict(rule))
             raw_map = rule.get("option_map")
             if isinstance(raw_map, dict):
                 option_map = {
@@ -702,6 +703,11 @@ def build_workspace_rows(
         dest = dest_by_key.get(dest_code.lower()) if dest_code else None
         dest_type = str((dest or {}).get("field_type") or "")
         dest_label = str((dest or {}).get("label") or dest_code)
+        # Mapped, but not a qualified write. Keep the question visible in the
+        # operator projection. ``destination_code`` stays empty so target is
+        # not a second write vocabulary.
+        if binding == "mapped" and not dest_code:
+            dest_label = source
         dest_options = list((dest or {}).get("options") or [])
         source_type = _source_type(field_type, options)
         source_choice = _is_choice_type(source_type) or bool(options)
@@ -749,7 +755,7 @@ def build_workspace_rows(
                 "sample_example": sample_by_source.get(key) or None,
                 "binding": binding,
                 "destination_code": dest_code or None,
-                "destination_label": dest_label if dest_code else None,
+                "destination_label": dest_label or None,
                 "destination_type": dest_type or None,
                 "choice": choice,
                 "option_map": option_map,

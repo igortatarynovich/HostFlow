@@ -1,6 +1,6 @@
 # Mapping Authority Operator Surface
 
-**Status:** **Accepted** (L2 UX contract — Mapping Operator Gate **not PASS**; feat open)  
+**Status:** **Accepted** (L2 UX contract — Mapping Operator Gate **PASS** 2026-09-18; live `f65edf28`)  
 **Date:** 2026-09-04  
 **Trusted base:** `integration/release-product-a-b` @ `4073f3a7` ([#350](https://github.com/igortatarynovich/HostFlow/pull/350))  
 **Related:** [`mapping-authority-contract.md`](mapping-authority-contract.md) (`mapping_authority.v1`) · [`mapping-authority-resolution.md`](mapping-authority-resolution.md) (`resolve_mapping_authority`) · [`../tasks/mapping-authority.md`](../tasks/mapping-authority.md) · [`ADR-021`](ADR-021-unified-intake-resolution-model.md)
@@ -8,7 +8,7 @@
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (one owner of this write), **INV-01** (one SoT for the operator question), **INV-16** (contract before a second editor). Does not rewrite L0. Does not mint a fourth mapping store or a Field Registry fork.
 
 > This file is the **SoT** for MA-3 product surface: one editor, many entry points, human-language health. Schema remains SoT; sample is not. For Meta, the primary operator setup is Form → test/latest lead → Mapping.  
-> UX contract **Accepted** on [#350](https://github.com/igortatarynovich/HostFlow/pull/350). Feat `feat/mapping-authority-ma3-operator-gate` is **open**. Mapping Operator Gate stays **not PASS** until the close path below is proven. A page that exists is not that proof. MA-4 / External Intake / Forms Publish / Hiring are not this feat.  
+> UX contract **Accepted** on [#350](https://github.com/igortatarynovich/HostFlow/pull/350). Mapping Operator Gate **PASS** 2026-09-18 on live `f65edf28` (operator acceptance, DANEMA TSL / Metafora TSL C/CE 110). A page that exists is still not that proof; this stamp is the close path below on a real Meta source. MA-4 / External Intake / Forms Publish / Hiring are not this feat.  
 > Binding / option map / evaluator isolation remain [MA-1](mapping-authority-contract.md). One resolver remains [MA-2](mapping-authority-resolution.md).
 
 ---
@@ -189,7 +189,7 @@ Connect Meta → select Page/Form → load form schema
 
 plus retirement of write access on leftover mapping surfaces.
 
-Until that path is proven, Mapping Operator Gate is **not PASS** — even if parts of the UI already work.
+That path was proven 2026-09-18 on Metafora TSL C/CE 110. Mapping Operator Gate is **PASS**. An editor that exists remains insufficient; this stamp is operator acceptance on that path, not the presence of a mapping page.
 
 The shorter line `source → schema → bindings → Ready → projection → submission → applied evidence` is still the architecture. For Meta, “schema” in that line is not “map with no example.” The operator’s primary path includes a test or latest lead as the way to see answers. Schema still guarantees completeness and drift.
 
@@ -205,11 +205,11 @@ If answering those requires Diagnostics + Meta Settings + Marketing Mapping, MA-
 
 ---
 
-## Remaining product gap (this feat)
+## Close-path evidence (Mapping Operator Gate PASS)
 
-UX contract is **Accepted**. Mapping Operator Gate is **not PASS**. Do not fit this file to the current UI. Do not close MA-3 because a mapping page exists.
+UX contract remains **Accepted**. Mapping Operator Gate **PASS** 2026-09-18. Live `f65edf28`. Operator acceptance on DANEMA TSL / Metafora TSL C/CE 110 (`7b0e286c-4d8b-4014-a5cb-570e0a8ea01e`).
 
-This feat must close:
+Proven:
 
 ```text
 Connect Meta → select Page/Form → load form schema
@@ -218,17 +218,11 @@ Connect Meta → select Page/Form → load form schema
   → another test/real lead → applied evidence
 ```
 
-and leftover mapping surfaces must cease to be writers.
+plus leftover mapping HTTP writers returning 410 (stores remain read-through; not leftover-store deletion). Campaign list and source cards open the same Mapping workspace. Candidate Andrei `f0f8a806` received mapped fields. Ready 8/8 on Metafora.
 
-Until then, at least these remain open:
+This stamp is **not** MA-4 vocabulary cutover, leftover-store deletion, External Intake, Forms Publish, Hiring E2E, min HR, Foundation ✅, or HostFlow v1 release-ready. RS-3 remains program proof.
 
-- projection must not use a raw-text fallback;
-- incomplete option map must not produce Ready;
-- Meta Settings and other leftover surfaces must cease to be writers;
-- schema-first mapping must still work without a sample (architecture / no-sample semantics); that is not the primary Meta operator setup;
-- preview must use the same resolution/transform contract as ingestion, not a private evaluator.
-
-Schema + no sample + no binding → “Needs a check — 1 question to set” is required no-sample semantics. It is not Operator Gate PASS. For Meta, Operator Gate PASS uses the test/latest-lead close path above.
+Schema + no sample + no binding → “Needs a check — 1 question to set” remains required no-sample semantics. For Meta, Operator Gate PASS used the test/latest-lead close path above.
 
 ### Meta test-lead capability (capability check — not Gate PASS)
 
@@ -246,15 +240,15 @@ HostFlow **can** already:
 
 `field_data` is Meta’s `[{ "name": "<key>", "values": ["…"] }]`. Graph `questions` carry `key` / `label` (and options when present). Preview already **merges** questions + latest `field_data`, so a missing sample value does not delete a schema question.
 
-Mapping workspace uses this as evidence: Get latest example pulls Graph `field_data` or the latest HostFlow lead; Wait for next application arms capture-next. HostFlow still cannot mint a Facebook test lead. C-4 Test lead remains a leftover diagnostic, not a second mapping authority. This is not Operator Gate PASS.
+Mapping workspace uses this as evidence: Get latest example pulls Graph `field_data` or the latest HostFlow lead; Wait for next application arms capture-next. HostFlow still cannot mint a Facebook test lead. C-4 Test lead remains a leftover diagnostic, not a second mapping authority. Minting a Facebook test lead is not part of Gate PASS.
 
 MA-4 vocabulary cutover, External Intake, Forms Publish, and Hiring E2E are **not** this feat.
 
 ---
 
-## Measurement (2026-09-04 — current surfaces)
+## Measurement (2026-09-04 — surfaces at feat start)
 
-Measured on `3a4297b0` after Mapping Resolution Gate PASS. This is the gap the feat must close; it is not today’s product.
+Measured on `3a4297b0` after Mapping Resolution Gate PASS. This was the gap the feat closed; it is not today’s product.
 
 ### 1. Where does the operator enter Mapping?
 
@@ -320,7 +314,7 @@ Minimum workspace:
 5. **Projection** after save (same resolver/transform contract as ingestion, not a second evaluator); **applied evidence** after a real submission (RS-3 stays the program proof).
 6. **No-sample state** — full schema still listed; copy is “no example yet”. Actions in this workspace: Get latest example / Wait for next application. For Meta this is a pause to get a test/latest lead, not a dead end and not a licence to treat placeholders as schema. C-4 Test lead is leftover diagnostic, not a second mapping authority.
 7. Entry CTAs from Connect, **campaign source cards / campaign list**, form, diagnostics, and “1 field is not configured” — all `open` the same editor. Sources inventory is not the only door.
-8. **Visible close path** — the same workspace lists the five operator steps (questions → example → map → next write → last write) and marks which is current. Buttons without this sequence are not the path. This sequence is not Mapping Operator Gate PASS.
+8. **Visible close path** — the same workspace lists the five operator steps (questions → example → map → next write → last write) and marks which is current. Buttons without this sequence are not the path. The panel is evidence of the path, not the PASS stamp; PASS is operator acceptance on a real Meta source.
 
 C-5, Meta Field mapping, and Intake form mapping must **cease to be editors**. They may only deep-link/redirect into this workspace or expose narrowly scoped read-only diagnostics where separately owned.
 
@@ -355,14 +349,27 @@ Reject: a fourth editor; renaming C-5 as “the authority” while Meta admin st
 
 ## Consequences
 
-- Mapping Operator Gate **PASS** only when this feat proves the close path on a real source and leftover mapping surfaces have ceased to be writers. An existing page is not that PASS.  
-- Remaining writable screens must cease to be editors (deep-link/redirect or separately owned read-only diagnostics).  
-- MA-4 still owns vocabulary cutover (`qualified_code` only). This file does not open MA-4.
+- Mapping Operator Gate **PASS** 2026-09-18: close path proven on Metafora TSL C/CE 110; leftover mapping HTTP writers return 410. An existing page remains insufficient as a stamp by itself.  
+- Remaining writable screens must stay non-editors (deep-link/redirect or separately owned read-only diagnostics). Leftover stores stay read-through.  
+- MA-4 still owns vocabulary cutover (`qualified_code` only). Mapping Consumer Cutover Gate **PASS** (`fddadd39`). Feat locked. This file remains MA-3 UX SoT and does not absorb Mapping program close.
 
 ---
 
 ## History
-
+- 2026-09-21: **Queue amendment names HE-1 Active Product.** External Intake program close recorded (`741a4b2e`; [#387](https://github.com/igortatarynovich/HostFlow/pull/387)). External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Active Product → **[HE-1](../tasks/hiring-workflow-e2e.md)** (brief; feat locked this PR). Hiring Acceptance Contract Gate **not PASS**. Do not open HE-1 contract seal in this PR. min HR remains queued. Not leftover-store deletion. Not RS-3. Not Mapping Operator Surface / DR1 Runtime inherited reds. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-21: **External Intake Acceptance Gate PASS.** Feat `feat/forms-publish-fp5-runtime` from `de6383aa` ([#385](https://github.com/igortatarynovich/HostFlow/pull/385)). Close path = operator live public URL → stranger without auth opens → fills → submit → existing public submission/intake contract → production intake → intake/person/application visible in HostFlow workspace. Browser E2E through that published URL. Rate limit remains fail-open when Redis is unavailable. No second submit engine. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice. Active Product → External Intake program close (brief; feat locked).
+- 2026-09-21: **FP-5 External submission feat opened.** Branch `feat/forms-publish-fp5-external-submit` from `5e2a8f59` ([#384](https://github.com/igortatarynovich/HostFlow/pull/384)). Close path = live public URL → stranger without auth opens it → fills → submit → production intake accepts → real intake/person/application per existing contracts. Browser E2E through that published URL is the later runtime proof, not API composition. External Intake Acceptance Gate **not PASS**. This stamp does not ship runtime. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not a new form architecture. Not P4 / P5.
+- 2026-09-20: **Operator Publish Gate PASS.** Never published → Publish (`commit_publish`) → Live v1 + public URL → Unpublish (`deactivate_endpoint`) → Inactive + URL absent. After each act the operator surface re-reads backend publication authority. UI does not compute live. Embed snippet is a later product slice. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
+- 2026-09-20: **FP-4 Operator Publish Surface feat opened.** Branch `feat/forms-publish-fp4-operator-surface` from `9cc986ce`. Operator Publish Gate **not PASS**. This stamp does not ship operator UI. Embed snippet is a later product slice. Mapping program **DONE**.
+- 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.
+- 2026-09-20: **FP-3 Public Serve feat opened.** Branch `feat/forms-publish-fp3-public-serve` from `41be635a`. Public Serve Gate **not PASS**. This stamp does not ship runtime. This file remains MA-3 UX SoT. Mapping program **DONE**.
+- 2026-09-20: **FP-2 Publish Action feat opened.** Branch `feat/forms-publish-fp2-publish-action` from `7112279e`. Publish Action Gate **not PASS**. This stamp does not ship runtime. This file remains MA-3 UX SoT. Mapping program **DONE**.
+- 2026-09-20: **Forms Publish Contract Gate PASS.** Active Product → **FP-2** (brief; feat locked). This file remains MA-3 UX SoT. Mapping program **DONE**.
+- 2026-09-20: Queue amendment names **FP-1** Active Product (brief; feat locked). This file remains MA-3 UX SoT. Mapping program **DONE**.
+- 2026-09-20: Mapping program close. Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). This file remains MA-3 UX SoT. Product **DONE** with no named successor until amendment.
+- 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. Feat locked. This file remains MA-3 UX SoT. Active Product → Mapping program close (brief; feat locked).
+- 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Mapping Consumer Cutover Gate **not PASS**. This file remains MA-3 UX SoT.
+- 2026-09-18: **Mapping Operator Gate PASS.** Operator acceptance on DANEMA TSL / Metafora TSL C/CE 110 (`7b0e286c-4d8b-4014-a5cb-570e0a8ea01e`). Live `f65edf28`. Ready 8/8; mapped fields on candidate Andrei `f0f8a806`; five-step close path; campaign list + source cards open the same workspace; leftover mapping HTTP writers 410. Leftover stores remain read-through. Active Product → **MA-4** (brief; feat locked). Not leftover-store deletion. Not MA-4 start / External Intake / Forms Publish / Hiring. Not Foundation ✅. RS-3 remains program proof.
 - 2026-09-18: Campaign list and campaign source cards show the same mapping assessment and open the Mapping workspace. Operators do not have to go to Sources first. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-18: Mapping workspace shows the Meta close path as five visible steps (questions → example → map → next write → last write). Projection stays on the page when empty. Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring.
 - 2026-09-18: Named red ingest→candidate fields proven at `8dabcfb9` (`which_licence` → `recruitment.candidate.personal.residency_status` on GET candidate after real `POST /api/v1/leads/meta`; Ignore does not land; blocked_duplicate RODO shells receive the same conversion payload). Mapping Operator Gate **not PASS**. Close-path proof remains an untrained operator on a real Meta source. Pytest is not Gate PASS. Not leftover-store deletion. Not MA-4 / External Intake / Forms Publish / Hiring. Unlock ≠ schedule.

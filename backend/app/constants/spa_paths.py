@@ -41,6 +41,7 @@ MARKETING_SOURCES = "/app/marketing/sources"
 MARKETING_FORMS = "/app/marketing/forms"
 MARKETING_DIAGNOSTICS = "/app/marketing/diagnostics"
 SETTINGS_LEAD_FORMS = "/app/settings/lead-forms"
+SETTINGS_REQUIREMENT_POLICY = "/app/settings/requirement-policy"
 
 def spa_candidate(candidate_id: str) -> str:
     return f"{CANDIDATES}/{candidate_id}"

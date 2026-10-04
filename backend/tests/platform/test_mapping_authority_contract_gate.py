@@ -127,11 +127,21 @@ def test_ma1_queue_names_successor_not_runtime() -> None:
 
 
 def test_ma1_leaves_intake_hiring_hr_queued() -> None:
-    for path in (_HIRING, _INTAKE, _HR):
-        text = path.read_text(encoding="utf-8")
-        assert "**QUEUED**" in text
-        assert "not scheduled" in text.lower()
-        assert "mapping-authority.md" in text
+    hiring = _HIRING.read_text(encoding="utf-8")
+    hr = _HR.read_text(encoding="utf-8")
+    hiring_header = hiring.split("## History", 1)[0] if "## History" in hiring else hiring
+    hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
+    assert "**DONE**" in hiring_header
+    assert "**ACTIVE**" not in hiring_header
+    assert "Hiring E2E program close recorded" in hiring_header
+    assert "HE-1" in hiring_header
+    assert "**QUEUED**" not in hiring_header
+    assert "**SUPERSEDED**" in hr_header
+    assert "not scheduled" in hr_header.lower()
+    intake = _INTAKE.read_text(encoding="utf-8")
+    assert "**DONE**" in intake.split("## History", 1)[0]
+    assert "**ACTIVE**" not in intake.split("## History", 1)[0]
+    assert "mapping-authority.md" in intake
 
 
 def test_ma1_adr021_points_at_authority() -> None:

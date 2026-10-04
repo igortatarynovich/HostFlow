@@ -7,11 +7,11 @@
 **Authors:** Product + Platform architecture  
 **Supersedes / clarifies:** partial product behaviour documented across [ADR-013](ADR-013-public-intake-strategy.md), [ui-constitution-v1.md](ui-constitution-v1.md), [applications-operating-model.md](applications-operating-model.md), [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md)
 
-**Related (not replaced):** [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) (Sales-to-Engagement commercial model), [ADR-007](ADR-007-forms-platform-capability.md) (Forms Platform), [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) (Form Purpose + Submission Policy — Intake Platform entry contract; **still Proposed** — see process note below), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Decision Layer / Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md), [mapping-authority-contract.md](mapping-authority-contract.md) (who may write source→canonical placement; `mapping_authority.v1` / MA-1)
+**Related (not replaced):** [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) (Sales-to-Engagement commercial model), [ADR-007](ADR-007-forms-platform-capability.md) (Forms Platform), [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) (Form Purpose + Submission Policy — Intake Platform entry contract; **Accepted** 2026-09-20 — FP-1; publish definition is [forms-publish-contract.md](forms-publish-contract.md)), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Decision Layer / Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md), [mapping-authority-contract.md](mapping-authority-contract.md) (who may write source→canonical placement; `mapping_authority.v1` / MA-1)
 
 **Review artifact:** [ADR-021-review-checklist.md](ADR-021-review-checklist.md)
 
-> **Process note (tracked, not a silent ratification):** Accepting ADR-021 does **not** accept [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md). ADR-022 Phase 1 backend already exists on `integration/release-product-a-b` while ADR-022 remains **Proposed**. That drift is tracked separately and requires its own sign-off before Phase 1A/1B contracts treat ADR-022 as settled canon.
+> **Process note:** Accepting ADR-021 did **not** accept [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md). FP-1 (2026-09-20) accepted ADR-022 as the Purpose + Policy model without expanding it. What publish **is** lives in [forms-publish-contract.md](forms-publish-contract.md) (`forms_publish.v1`).
 
 > **Terminology (обязательно):** **`Lead`** — внутренний transport intake (как OAuth token / message envelope). **Не product object.** В UI — только продуктовые проекции (**Отклик**, **Обращение**, **Заявка на услугу**, **Заявка на разбор**). Оператор **никогда** не работает с универсальным объектом «Лид».
 
@@ -494,7 +494,7 @@ Phase 1 uses Lead-backed facade if it exposes §3–§9 contracts at the API/pro
 - [ ] Engineering: Phase 1 feasible without `applications` table *(countersignature tracked on accepting PR)*
 - [ ] Security: tenant isolation on decision + submission audit *(countersignature tracked on accepting PR)*
 
-**After Architecture acceptance:** Phase 1A and Phase 1B implementation contracts in `docs/specs/tasks/` (do not treat ADR-022 as Accepted until its own sign-off).
+**After Architecture acceptance:** Phase 1A and Phase 1B implementation contracts in `docs/specs/tasks/`. ADR-022 is **Accepted** (FP-1, 2026-09-20); publish definition is [forms-publish-contract.md](forms-publish-contract.md).
 
 ---
 

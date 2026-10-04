@@ -17867,7 +17867,7 @@
       "conflict_title": "Szkic na serwerze się zmienił (konflikt rewizji)",
       "dirty": "Niezapisane zmiany",
       "no_config": "Ten komponent nie ma config_fields.",
-      "no_publish": "Zapis tylko szkicu — publikacja pozostaje osobną akcją (P3 locked).",
+      "no_publish": "Zapis szkicu zostaje na tym płótnie. Publikacja i publiczny URL pochodzą z bloku publikacji powyżej.",
       "palette": "Paleta",
       "palette_empty": "Brak komponentów",
       "properties": "Właściwości",
@@ -17876,7 +17876,34 @@
       "save": "Zapisz szkic",
       "saved": "Szkic zapisany",
       "search": "Szukaj komponentów…",
-      "select_instance": "Wybierz instancję na canvas."
+      "select_instance": "Wybierz instancję na canvas.",
+      "publication": {
+        "title": "Publikacja",
+        "state": "Stan",
+        "version": "Wersja",
+        "no_url": "Publiczny URL jest dostępny, gdy formularz jest na żywo.",
+        "copy_url": "Kopiuj URL",
+        "copied": "Skopiowano publiczny URL",
+        "copy_failed": "Nie udało się skopiować publicznego URL",
+        "publish": "Opublikuj",
+        "unpublish": "Wycofaj publikację",
+        "publishing": "Publikowanie…",
+        "unpublishing": "Wycofywanie publikacji…",
+        "published": "Formularz opublikowany",
+        "unpublished": "Publikację wycofano",
+        "errors": {
+          "publish": "Nie udało się opublikować formularza",
+          "unpublish": "Nie udało się wycofać publikacji"
+        },
+        "states": {
+          "never_published": "Nigdy nie publikowany",
+          "live": "Na żywo",
+          "inactive": "Nieaktywny",
+          "published": "Opublikowany",
+          "draft": "Szkic",
+          "unknown": "—"
+        }
+      }
     },
     "lead_forms": {
       "header_kicker": "Publiczne linki do formularzy; każdy formularz jest liczony osobno.",

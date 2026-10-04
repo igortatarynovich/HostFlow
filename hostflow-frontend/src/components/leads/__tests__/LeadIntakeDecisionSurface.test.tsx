@@ -41,7 +41,7 @@ describe('recruitment intake decision surface', () => {
   it('shows submitted answers as the primary information', () => {
     wrap(<LeadIntakeFormAnswers lead={metaLead()} />)
     expect(screen.getByRole('heading', { name: /candidate answers/i })).toBeInTheDocument()
-    expect(screen.getByText('какая категория водительских прав у вас открыта?')).toBeInTheDocument()
+    expect(screen.getByText('Какая категория водительских прав у вас открыта?')).toBeInTheDocument()
     expect(screen.getByText('C+E')).toBeInTheDocument()
   })
 

@@ -320,6 +320,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
               <button
                 key={lang}
                 type="button"
+                data-testid={`public-intake-lang-${lang}`}
                 className="btn-secondary rounded-lg px-4 py-2 text-sm font-semibold uppercase"
                 onClick={() => chooseLanguage(lang)}
               >
@@ -454,6 +455,7 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
 
         <button
           type="button"
+          data-testid="public-intake-submit"
           className="btn-primary w-full"
           disabled={submitting || saving}
           onClick={() => void handleSubmit()}

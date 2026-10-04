@@ -22,6 +22,13 @@ from backend.app.services.candidate_evidence_service import (
     select_evidence_variant,
     serialize_candidate_evidence,
 )
+from backend.app.services.outstanding_requirement_requests import (
+    NotOutstandingRequirement,
+    create_required_document_request,
+    outstanding_requirement_view,
+)
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
+from backend.app.services import billing_restrictions
 from backend.app.services.operational_requirements_service import (
     complete_operational_requirement_activity,
 )
@@ -120,6 +127,64 @@ async def get_requirements_checklist(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found")
 
     return await build_requirements_checklist(db, tenant_id=tenant_str, candidate=candidate)
+
+
+@router.get(
+    "/{candidate_id}/requirements/outstanding",
+    dependencies=[Depends(require_trust_read())],
+)
+async def get_outstanding_requirements(
+    candidate_id: uuid.UUID,
+    db_tenant: Tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Required set minus satisfied requirements. This is the request authority."""
+    db, tenant_id = db_tenant
+    tenant_str = str(tenant_id)
+    if current_user.role in RESTRICTED_ROLES:
+        await ensure_candidate_access(db, tenant_str, str(candidate_id), current_user)
+
+    candidate = await db.get(Candidate, str(candidate_id))
+    if not candidate or str(candidate.tenant_id) != tenant_str:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidate not found")
+
+    return await outstanding_requirement_view(db, tenant_id=tenant_str, candidate=candidate)
+
+
+@router.post(
+    "/{candidate_id}/requirements/{requirement_code}/request",
+    dependencies=[Depends(require_trust_write())],
+)
+async def post_request_outstanding_requirement(
+    candidate_id: uuid.UUID,
+    requirement_code: str,
+    db_tenant: Tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str | None = Depends(resolve_active_own_company_id_optional),
+) -> dict[str, Any]:
+    """Create a persisted required request and candidate link from one outstanding code."""
+    db, tenant_id = db_tenant
+    tenant_str = str(tenant_id)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_str)
+    candidate = await _ensure_candidate_write(db, tenant_str, str(candidate_id), current_user)
+    try:
+        return await create_required_document_request(
+            db,
+            tenant_id=tenant_str,
+            candidate=candidate,
+            requirement_code=requirement_code,
+            own_company_id=own_company_id,
+        )
+    except NotOutstandingRequirement as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "not_outstanding_requirement",
+                "message": "Vacancy policy does not have this document outstanding, so it is not a required request.",
+                "requirement_code": exc.requirement_code,
+                "outstanding_codes": exc.outstanding_codes,
+            },
+        ) from exc
 
 
 @router.get(

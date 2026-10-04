@@ -16,6 +16,10 @@ from backend.app.entity_profile.mapping_validation import (
     validate_mapping_rules_for_profile,
 )
 from backend.app.entity_profile.mapping_resolve import resolve_mapping_authority
+from backend.app.field_registry.canonical_facts import (
+    apply_authority_rules_to_sources,
+    merge_canonical_facts,
+)
 from backend.app.modules.leads.intake_route import IntakeRouteContext, resolve_intake_route_for_ingest
 from backend.app.modules.leads.normalizer import extract_meta_lead_form_context
 
@@ -57,8 +61,13 @@ def stamp_mapping_applied_from_envelope(
     rules: list[dict[str, Any]],
     envelope: IngestEnvelope,
     profile_updated_at: str | None = None,
+    fingerprint_rules: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Diagnostics PR5 — persist mapping revision fingerprint used at ingest."""
+    """Diagnostics PR5 — persist mapping revision fingerprint used at ingest.
+
+    ``rules`` are the qualified writes. ``fingerprint_rules`` is the authority
+    list the operator workspace reads, so drift is a real rule change.
+    """
     from backend.app.acquisition.mapping_applied_stamp import stamp_mapping_applied_v1
 
     stamp_mapping_applied_v1(
@@ -67,6 +76,7 @@ def stamp_mapping_applied_from_envelope(
         source_id=envelope.intake_source_profile_id,
         rules_source=envelope.mapping_rules_source,
         profile_updated_at=profile_updated_at,
+        fingerprint_rules=fingerprint_rules,
     )
 
 def _minimal_normalized_for_routing(payload: dict[str, Any], *, source: str) -> dict[str, Any]:
@@ -178,24 +188,9 @@ async def prepare_meta_ingest_runtime(
     envelope.mapping_result = {
         **envelope.mapping_result,
         "profile_updated_at": profile_updated_at,
+        "authority_rules": raw_rules,
     }
     return validation.accepted_rules, envelope, intake_route, profile_view
-
-
-# Public candidate intake: structural field keys → qualified codes
-PUBLIC_INTAKE_FIELD_TO_QUALIFIED: dict[str, str] = {
-    "contacts.phone": "recruitment.candidate.contacts.phone",
-    "contacts.email": "recruitment.candidate.contacts.email",
-    "contacts.phone_country_code": "recruitment.candidate.contacts.phone_country_code",
-    "contacts.preferred_messenger": "recruitment.candidate.contacts.preferred_messenger",
-    "personal.full_name": "recruitment.candidate.first_name",
-    "personal.citizenship": "platform.identity.citizenship",
-    "personal.birth_date": "platform.identity.birth_date",
-    "personal.in_poland": "recruitment.candidate.personal.in_poland",
-    "personal.current_location": "recruitment.candidate.personal.current_location",
-    "experience.years_ce": "recruitment.candidate.experience.years_ce",
-    "experience.intl_experience": "recruitment.candidate.experience.intl_experience",
-}
 
 
 def _flatten_public_intake_state(intake_state: dict[str, Any]) -> dict[str, Any]:
@@ -205,7 +200,47 @@ def _flatten_public_intake_state(intake_state: dict[str, Any]) -> dict[str, Any]
         if isinstance(bucket, dict):
             for key, value in bucket.items():
                 flat[f"{section}.{key}"] = value
+    presentation = intake_state.get("presentation_values_v1")
+    if isinstance(presentation, dict):
+        for key, value in presentation.items():
+            code = str(key or "").strip()
+            if code:
+                flat[code] = value
     return flat
+
+
+def _presentation_canonical_facts(intake_state: dict[str, Any]) -> dict[str, Any]:
+    presentation = intake_state.get("presentation_values_v1")
+    if not isinstance(presentation, dict):
+        return {}
+    return {
+        str(code).strip(): value
+        for code, value in presentation.items()
+        if str(code or "").strip() and value not in (None, "")
+    }
+
+
+def _contact_identity_canonical_facts(intake_state: dict[str, Any]) -> dict[str, Any]:
+    """Session start identity (email/phone) uses existing candidate write destinations.
+
+    Public intake collects contact on the start page, not as a published field.
+    Mapping Operator Surface is not this path — destinations already exist on
+    ``CANDIDATE_WRITE_BY_QUALIFIED``.
+    """
+    contacts = intake_state.get("contacts")
+    if not isinstance(contacts, dict):
+        return {}
+    out: dict[str, Any] = {}
+    email = str(contacts.get("email") or "").strip()
+    if email:
+        out["recruitment.candidate.contacts.email"] = email
+    phone = str(contacts.get("phone") or "").strip()
+    if phone:
+        out["recruitment.candidate.contacts.phone"] = phone
+    phone_cc = str(contacts.get("phone_country_code") or "").strip()
+    if phone_cc:
+        out["recruitment.candidate.contacts.phone_country_code"] = phone_cc
+    return out
 
 
 async def prepare_public_intake_runtime(
@@ -241,25 +276,26 @@ async def prepare_public_intake_runtime(
         include_presentations=True,
     )
 
-    pseudo_rules = [
-        {"source": key, "qualified_field_code": qualified, "target": key}
-        for key, qualified in PUBLIC_INTAKE_FIELD_TO_QUALIFIED.items()
-        if key in flat and flat.get(key) not in (None, "")
-    ]
+    resolved = await resolve_mapping_authority(
+        db,
+        tenant_id=str(tenant_id),
+        intake_source_profile_id=intake_source_profile_id,
+        payload=raw_payload,
+        source="public_intake",
+    )
     allowed = allowed_qualified_codes_from_profile_view(profile_view)
     validation = validate_mapping_rules_for_profile(
-        pseudo_rules,
+        list(resolved.rules),
         allowed_qualified_codes=allowed,
         entity_profile_code=str(profile_view.get("entity_profile_code") or "").strip() or None,
         resolution_source=str(profile_view.get("resolution_source") or "not_specified"),
     )
 
-    normalized_payload = {
-        key: flat[key]
-        for rule in validation.accepted_rules
-        for key in [str(rule.get("source") or "")]
-        if key in flat
-    }
+    mapped_facts = apply_authority_rules_to_sources(flat, validation.accepted_rules)
+    normalized_payload: dict[str, Any] = {}
+    merge_canonical_facts(normalized_payload, _contact_identity_canonical_facts(intake_state), overwrite=False)
+    merge_canonical_facts(normalized_payload, _presentation_canonical_facts(intake_state), overwrite=False)
+    merge_canonical_facts(normalized_payload, mapped_facts, overwrite=True)
 
     warnings = list(profile_view.get("warnings") or []) + list(validation.warnings)
     override = str(route_intent_override or "").strip() or None
@@ -296,7 +332,18 @@ async def prepare_public_intake_runtime(
         warnings=warnings,
         resolution_source=str(profile_view.get("resolution_source") or "not_specified"),
         bridge_source=profile_view.get("bridge_source"),
-        intake_source_profile_id=intake_source_profile_id,
+        intake_source_profile_id=resolved.intake_source_profile_id or intake_source_profile_id,
+        mapping_rules_source=resolved.rules_source,
+    )
+    envelope.mapping_result = {
+        **envelope.mapping_result,
+        "profile_updated_at": resolved.profile_updated_at,
+    }
+    stamp_mapping_applied_from_envelope(
+        normalized_payload,
+        rules=validation.accepted_rules,
+        envelope=envelope,
+        profile_updated_at=resolved.profile_updated_at,
     )
     return envelope, profile_view, validation
 

@@ -300,7 +300,7 @@ async def test_authoritative_apply_ready_mints_and_links_handoff() -> None:
     assert result.employee_created is True
     assert result.employee_id == "e-new"
     assert result.linked_handoff_id == "h-apply"
-    assert emp.meta.get("internal_hr_handoff_id") == "h-apply"
+    assert "internal_hr_handoff_id" not in (emp.meta or {})
 
 
 @pytest.mark.anyio
@@ -353,7 +353,7 @@ async def test_repeat_apply_same_handoff_same_employee_id() -> None:
 
 @pytest.mark.anyio
 async def test_cross_context_rebrands_linkage_without_second_mint_authority() -> None:
-    """Same candidate → same Employee (existing semantics); linkage moves to current handoff."""
+    """Same candidate → same Employee. This slice does not store the handoff id on the employee."""
     handoff_b = SimpleNamespace(id="h-b", candidate_id="c1")
     candidate = SimpleNamespace(id="c1")
     emp = SimpleNamespace(id="e1", meta={"internal_hr_handoff_id": "h-a"})
@@ -388,8 +388,8 @@ async def test_cross_context_rebrands_linkage_without_second_mint_authority() ->
 
     assert result.employee_id == "e1"
     assert result.linked_handoff_id == "h-b"
-    assert emp.meta.get("internal_hr_handoff_id") == "h-b"
-    assert employee_linked_handoff_id(emp) == "h-b"
+    assert emp.meta.get("internal_hr_handoff_id") == "h-a"
+    assert employee_linked_handoff_id(emp) is None
 
 
 @pytest.mark.anyio
@@ -460,7 +460,7 @@ async def test_start_allowed_uses_handoff_linked_employee_before_eso5_confirm() 
 
     assert minted.employee_id == "e-linked"
     assert minted.linked_handoff_id == "h1"
-    assert emp.meta.get("internal_hr_handoff_id") == "h1"
+    assert "internal_hr_handoff_id" not in (emp.meta or {})
 
     # Wrong employee (other candidate case) must not be confused with linked one.
     foreign = "e-foreign"

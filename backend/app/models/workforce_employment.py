@@ -28,6 +28,9 @@ class WorkforceEmployment(Base, TimestampMixin):
     employee_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("workforce_employees.id", ondelete="CASCADE"), index=True, nullable=False
     )
+    employment_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("hr_employments.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     contract_type: Mapped[str] = mapped_column(String(64), nullable=False, default="unknown")
     lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False, default="issued")
     employer_name: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)

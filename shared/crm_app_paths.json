@@ -333,6 +333,10 @@
       {
         "name": "SETTINGS_LEAD_FORMS",
         "path_key": "settingsLeadForms"
+      },
+      {
+        "name": "SETTINGS_REQUIREMENT_POLICY",
+        "path_key": "settingsRequirementPolicy"
       }
     ],
     "functions": [

@@ -59,7 +59,7 @@ def _public_form_profile_code(public_slug: str) -> str:
     max_len = _INTAKE_SOURCE_CODE_MAX_LEN - len(prefix)
     if len(safe) <= max_len:
         return f"{prefix}{safe}"
-    digest = hashlib.sha1(safe.encode("utf-8")).hexdigest()[:8]
+    digest = hashlib.sha1(safe.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
     keep = max(8, max_len - 9)
     return f"{prefix}{safe[:keep].rstrip('-')}-{digest}"
 
@@ -447,9 +447,9 @@ async def create_public_intake_form(
     apply_form_definition_fields(
         lead_form,
         target_entity_profile_code=entity_profile_code,
-        published_version=1,
         supported_languages=supported_languages_csv,
     )
+    lead_form.published_version = 0
     policy = default_submission_policy_for_entity_profile(entity_profile_code)
     validate_form_definition_triple(
         purpose=str(lead_form.purpose),
@@ -656,7 +656,6 @@ async def upsert_public_intake_form_presentation(
 
     intake_profile.entity_profile_code = str(entity_profile_code).strip()
     intake_profile.presentation_code = presentation_code
-    lead_form.published_version = int(getattr(lead_form, "published_version", None) or 0) + 1
     await db.commit()
     return await build_intake_form_admin_context(db, tenant_id=str(tenant_id), form_id=str(form_id))
 

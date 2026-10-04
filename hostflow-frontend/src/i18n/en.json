@@ -17867,7 +17867,7 @@
       "conflict_title": "Server draft changed (revision conflict)",
       "dirty": "Unsaved changes",
       "no_config": "No config_fields on this component.",
-      "no_publish": "Save draft only — publish remains a separate action (P3 locked).",
+      "no_publish": "Draft save stays on this canvas. Publish and the public URL use the publication authority above.",
       "palette": "Palette",
       "palette_empty": "No components",
       "properties": "Properties",
@@ -17876,7 +17876,34 @@
       "save": "Save draft",
       "saved": "Draft saved",
       "search": "Search components…",
-      "select_instance": "Select a canvas instance."
+      "select_instance": "Select a canvas instance.",
+      "publication": {
+        "title": "Publication",
+        "state": "State",
+        "version": "Version",
+        "no_url": "Public URL available when the form is live.",
+        "copy_url": "Copy URL",
+        "copied": "Public URL copied",
+        "copy_failed": "Could not copy public URL",
+        "publish": "Publish",
+        "unpublish": "Unpublish",
+        "publishing": "Publishing…",
+        "unpublishing": "Unpublishing…",
+        "published": "Form published",
+        "unpublished": "Form unpublished",
+        "errors": {
+          "publish": "Failed to publish form",
+          "unpublish": "Failed to unpublish form"
+        },
+        "states": {
+          "never_published": "Never published",
+          "live": "Live",
+          "inactive": "Inactive",
+          "published": "Published",
+          "draft": "Draft",
+          "unknown": "—"
+        }
+      }
     },
     "lead_forms": {
       "header_kicker": "Public intake links you can share; each form is tracked separately.",

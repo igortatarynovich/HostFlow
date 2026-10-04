@@ -6,9 +6,8 @@ Does **not** invent a second mint authority.
 Locks:
 - Mint only when ``authoritative_apply=True`` and ``ready_to_create_employee=True``.
 - Formalize evaluate / read with ``ready_to_create_employee=True`` must not mint.
-- Idempotency uses existing candidate-scoped ``handoff_from_candidate``; this seam
-  stamps ``meta.internal_hr_handoff_id`` for the current handoff so start_allowed
-  evaluates the Employee linked to this employment case.
+- Idempotency uses existing candidate-scoped ``handoff_from_candidate``.
+  Handoff id is an Employment fact. This slice does not write it onto the employee.
 """
 
 from __future__ import annotations
@@ -68,22 +67,17 @@ def should_mint_employee_after_formalize(
 
 
 def employee_linked_handoff_id(employee: WorkforceEmployee | None) -> str | None:
-    if employee is None:
-        return None
-    raw = (employee.meta or {}).get("internal_hr_handoff_id")
-    text = str(raw or "").strip()
-    return text or None
+    """Handoff id lives on Employment. This slice does not read it from the employee."""
+
+    _ = employee
+    return None
 
 
 def _stamp_handoff_linkage(employee: WorkforceEmployee, handoff_id: str) -> bool:
-    """Bind Employee meta to this handoff. Returns True when meta changed."""
-    hid = str(handoff_id).strip()
-    md = dict(employee.meta or {})
-    if str(md.get("internal_hr_handoff_id") or "").strip() == hid:
-        return False
-    md["internal_hr_handoff_id"] = hid
-    employee.meta = md
-    return True
+    """Employment runtime will store the handoff id. This slice does not."""
+
+    _ = (employee, handoff_id)
+    return False
 
 
 async def ensure_employee_after_formalize_apply(
@@ -106,7 +100,6 @@ async def ensure_employee_after_formalize_apply(
 
     Apply / complete path (``authoritative_apply=True`` + ready):
       - ``handoff_from_candidate`` (idempotent by candidate)
-      - stamp ``meta.internal_hr_handoff_id`` to this handoff
       - ``ensure_hr_operational_context`` (accept-path parity)
     """
     tid = str(tenant_id).strip()

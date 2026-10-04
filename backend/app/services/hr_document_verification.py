@@ -102,6 +102,32 @@ def _dig(data: dict[str, Any], path: str) -> Any:
     return cur
 
 
+async def _employee_snapshot(
+    db: AsyncSession,
+    tenant_id: str,
+    employee: Optional[WorkforceEmployee],
+) -> dict[str, Any]:
+    if employee is None:
+        return {}
+    from backend.app.services.employment_records import snapshot_for_employee
+
+    loaded = await snapshot_for_employee(db, tenant_id, str(employee.id))
+    return dict(loaded) if isinstance(loaded, dict) else {}
+
+
+async def _employee_started_on(
+    db: AsyncSession,
+    tenant_id: str,
+    employee: Optional[WorkforceEmployee],
+):
+    if employee is None:
+        return None
+    from backend.app.services.employment_records import display_employment
+
+    row = await display_employment(db, tenant_id, str(employee.id))
+    return row.started_on if row is not None else None
+
+
 def _build_profile_context(
     employee: Optional[WorkforceEmployee],
     document: Optional[Document],
@@ -110,8 +136,10 @@ def _build_profile_context(
     *,
     handoff: Optional[dict[str, Any]] = None,
     candidate_live: Optional[dict[str, Any]] = None,
+    snapshot: Optional[dict[str, Any]] = None,
+    hire_date: Any = None,
 ) -> dict[str, Any]:
-    snap = dict(employee.candidate_snapshot) if employee and isinstance(employee.candidate_snapshot, dict) else {}
+    snap = dict(snapshot or {})
     if candidate_live:
         for k, v in candidate_live.items():
             if v is not None and str(v).strip() and k not in snap:
@@ -139,7 +167,7 @@ def _build_profile_context(
     ctx: dict[str, Any] = {
         "employee": {
             "display_name": employee.display_name if employee else None,
-            "hire_date": str(employee.hire_date) if employee and employee.hire_date else None,
+            "hire_date": str(hire_date) if hire_date else None,
             "meta": meta,
         },
         "snapshot": {
@@ -455,6 +483,8 @@ async def enrich_approval_rows_with_verification(
     )
     _, _, candidate_flat = await _load_live_candidate_fields(db, cid or None)
     eligibility_full = dict(eligibility or {})
+    employee_snapshot = await _employee_snapshot(db, tenant_id, employee)
+    employee_started_on = await _employee_started_on(db, tenant_id, employee)
     if employee and review.employee_id:
         from backend.app.services.workforce_employees import get_work_eligibility_profile
 
@@ -487,6 +517,8 @@ async def enrich_approval_rows_with_verification(
             eligibility_full,
             handoff=handoff_ns,
             candidate_live=candidate_flat,
+            snapshot=employee_snapshot,
+            hire_date=employee_started_on,
         )
         fields = build_fields_to_review(key, profile_ctx, v.reviewed_fields_json)
         is_data_only = key in DATA_ONLY_VERIFICATION_KEYS

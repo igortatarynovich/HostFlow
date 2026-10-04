@@ -367,8 +367,7 @@ def _handoff_meta_from_snapshot(
             "vacancy_title": vacancy_ctx.get("title"),
         },
     }
-    if internal_hr_handoff_id:
-        meta["internal_hr_handoff_id"] = internal_hr_handoff_id
+    _ = internal_hr_handoff_id
     return meta
 
 
@@ -617,15 +616,20 @@ async def ensure_hr_profiles_bundle(db: AsyncSession, tenant_id: str, employee_i
         )
     ).scalar_one()
     if not int(emp_cnt or 0):
-        db.add(
-            WorkforceEmployment(
-                id=str(uuid4()),
-                tenant_id=tenant_id,
-                employee_id=employee_id,
-                contract_type="unknown",
-                meta={"source": "auto_bundle"},
+        from backend.app.services.employment_records import display_employment
+
+        target = await display_employment(db, tenant_id, employee_id)
+        if target is not None:
+            db.add(
+                WorkforceEmployment(
+                    id=str(uuid4()),
+                    tenant_id=tenant_id,
+                    employee_id=employee_id,
+                    employment_id=target.id,
+                    contract_type="unknown",
+                    meta={"source": "auto_bundle"},
+                )
             )
-        )
 
     pay_cnt = (
         await db.execute(
@@ -737,20 +741,16 @@ async def create_employee(
             explicit_funnel_id=explicit_funnel_id,
             pipeline_stage=pipeline_stage,
         )
+    # Relationship facts belong on Employment. This slice does not open one.
+    _ = (company_id, vacancy_id, recruiter_user_id, candidate_snapshot, hire_date, probation_end)
     row = WorkforceEmployee(
         id=str(uuid4()),
         tenant_id=tenant_id,
         own_company_id=own_company_id,
         candidate_id=candidate_id,
-        company_id=company_id,
-        vacancy_id=vacancy_id,
-        recruiter_user_id=recruiter_user_id,
         display_name=display_name.strip(),
         status=st,
-        hire_date=hire_date,
-        probation_end=probation_end,
         notes=notes,
-        candidate_snapshot=candidate_snapshot,
         meta=meta_out,
     )
     db.add(row)
@@ -827,12 +827,8 @@ async def handoff_from_candidate(
     if existing:
         status_l = str(getattr(existing, "status", "") or "").strip().lower()
         if status_l in ("returned_to_recruitment", "returned"):
-            now = _now()
             existing.status = "onboarding"
-            existing.handoff_at = now
-            existing.handoff_by_user_id = actor_user_id
             snap = await _candidate_snapshot_with_experience(db, tenant_id, candidate)
-            existing.candidate_snapshot = snap
             md = dict(existing.meta or {})
             md.update(_handoff_meta_from_snapshot(candidate, snap))
             existing.meta = await _apply_recruitment_handoff_pipeline_meta(
@@ -857,25 +853,18 @@ async def handoff_from_candidate(
 
     parts = [candidate.first_name or "", candidate.last_name or ""]
     display_name = " ".join(p for p in parts if p).strip() or (candidate.email or "Employee")
-    now = _now()
     snap = await _candidate_snapshot_with_experience(db, tenant_id, candidate)
     meta = _handoff_meta_from_snapshot(candidate, snap)
     meta = await _apply_recruitment_handoff_pipeline_meta(db, tenant_id, candidate, meta)
+    _ = (hire_date, actor_user_id)
     row = WorkforceEmployee(
         id=str(uuid4()),
         tenant_id=tenant_id,
         own_company_id=candidate.own_company_id,
         candidate_id=str(candidate.id),
-        company_id=candidate.company_id,
-        vacancy_id=str(candidate.vacancy_id) if candidate.vacancy_id else None,
-        recruiter_user_id=str(candidate.recruiter_id) if candidate.recruiter_id else None,
         display_name=display_name,
         status="onboarding",
-        hire_date=hire_date,
-        handoff_at=now,
-        handoff_by_user_id=actor_user_id,
         notes=str(candidate.note or "").strip() or None,
-        candidate_snapshot=snap,
         meta=meta,
     )
     db.add(row)

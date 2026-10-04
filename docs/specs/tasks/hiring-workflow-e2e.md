@@ -1,16 +1,16 @@
 # Hiring workflow E2E
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [MA-3](mapping-authority.md)
+**Status:** **DONE** — Hiring E2E program close recorded. Hiring E2E Acceptance Gate **PASS** (`315cb710`). RS-7 **PASS**. Goal Completion Gate **PASS**. This close does not prove the [legal employability matrix](legal-eligibility-requirement-policy.md). [Minimal Recruitment → HR](recruitment-hr-minimal-handoff.md) is startable and **not** scheduled (feat locked). Active Product is [Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md) (brief opened; Employee Record & Employment Lifecycle — Contract Gate **PASS**). [Poland Work Authorization Presets](poland-work-authorization-presets.md) program close recorded. The closed slice was Active Product (procedure types named; Poland Work Authorization Presets Gate **PASS**; no `kod_zawodu` row; no document list; preset schema named; baselines filled; Poland Work Authorization Presets program close recorded; Product **DONE** with no named successor until amendment). Predecessor [Work Authorization Procedure](work-authorization-procedure.md) (contract opened; Work Authorization Procedure Contract Gate **PASS**; no preset row). Predecessor [Legal Eligibility](legal-eligibility-requirement-policy.md) (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**; matrix opened; Legal Eligibility Matrix Gate **not PASS**; decision model amendment; evidence rules are not encoded). HostFlow v1 is not release-ready.
 **Phase class:** platform
-**Branch (docs):** `docs/v1-blocker-briefs`
-**Branch (code):** none — later slices `feat/hiring-e2e-heN-…`
+**Branch (docs):** `docs/queue-amendment-he4`
+**Branch (code):** `feat/hiring-e2e-he4-acceptance-walk` from `8d5a9fef`. This amendment authorizes the walk and does not ship it.
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 4) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-7](../journeys/release-readiness-acceptance-suite.md) · [Requirement Policy Management](requirement-policy-management.md) · [Lifecycle Identity](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md) · [CL7 Engine evaluation](entity-field-composition-cl7-engine-eval.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md)
 **Estimate:** 4–6 slices (1 slice = one docs PR + one feat PR)
 
 > v1 blocker 4: **one candidate walks `stage → requirements/docs → eligibility → transfer`.**
 > Acceptance **over existing** funnels, gates, policy authority and transfer — explicitly **not a new Hiring Product**, not a funnel builder, not a workflow engine.
 > **Not** Requirement Policy Management (consumed). **Not** min HR handoff (that is [the next node](recruitment-hr-minimal-handoff.md)). **Not** LI-2+ Lifecycle cutover. **Not** CL8.
-> Opening this brief does **not** schedule it. RPM program close **unlocks** Hiring (policy-authority edge). Unlock ≠ schedule. The queue’s Active Product is [MA-3](mapping-authority.md).
+> RPM program close **unlocked** Hiring (policy-authority edge). Queue amendment [#388](https://github.com/igortatarynovich/HostFlow/pull/388) **scheduled** HE-1. Hiring Acceptance Contract Gate **PASS** [#389](https://github.com/igortatarynovich/HostFlow/pull/389) / `34a1db6b`. Stage Authority Consumption Gate **PASS** [#390](https://github.com/igortatarynovich/HostFlow/pull/390) / `28eb0d81`. Eligibility Composition Gate **PASS** [#391](https://github.com/igortatarynovich/HostFlow/pull/391) / `8d5a9fef`. This amendment moved Active Product HE-3 → HE-4 and opened `feat/hiring-e2e-he4-acceptance-walk`. Hiring E2E Acceptance Gate **PASS** (`315cb710`). RS-7 **PASS**. min HR stays queued (feat locked; not scheduled). Not Hiring E2E program close. Not the [legal employability matrix](legal-eligibility-requirement-policy.md). Not inherited DR1 / Mapping fixes.
 >
 > **Related (not a schedule):** [Recruitment Spine Orchestrator v1](recruitment-spine-orchestrator-v1.md) (Recruitment → Ready for employment) · [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) (handoff → Started) · [Ready for employment contract](../architecture/ready-for-employment-contract.md) (`ready_for_employment.v1`). Separate module ownership; seamless user handoff — not one mega-orchestrator creating Employee from Recruitment.
 
@@ -70,32 +70,76 @@ HE-1 Acceptance contract (which authority answers which step)
 
 | # | Slice | Machine id | Named gate (PASS =) | Depends on | Estimate |
 |---|-------|------------|---------------------|------------|----------|
-| **HE-1** | Acceptance contract | `he-contract` | **Hiring Acceptance Contract Gate** — the walk is defined step by step with the authoritative answerer per step; “not a new Hiring Product” restated as a forbidden-implementation list; test-only seeding declared inadmissible as proof | RPM program close (queue amendment) | 1 slice (docs) |
-| **HE-2** | Stage authority consumption | `he-stages` | **Stage Authority Consumption Gate** — stage existence comes from the LI-1 producer for every consumer on the hiring path; legacy static list and tenant dictionary stop answering existence; order/allowed-transition semantics stated (even if “all forward moves guarded, jumps rejected”) | HE-1 Gate ∧ LI-1 ✅ | 1–2 slices |
-| **HE-3** | Eligibility answer collapse | `he-eligibility` | **Eligibility Answer Gate** — one composed decision with a single operator-readable reason; v1/v2 engine split resolved or explicitly contracted; the answer is the RPM authority’s result, not a parallel rule set | HE-2 Gate ∧ RPM-3 Gate | 1–2 slices |
-| **HE-4** | Acceptance walk proof | `he-accept` | **Hiring E2E Acceptance Gate** — RS-7 passes on an operator-configured tenant with no test-only seeding; refusal and success both demonstrated | HE-3 Gate | 1 slice |
+| **HE-1** | Acceptance contract | `he-contract` | **Hiring Acceptance Contract Gate** ✅ — the walk is defined step by step with the authoritative answerer per step; dual-evidence disposition sealed (`candidate_evidence_binds_document_link`); “not a new Hiring Product” restated as a forbidden-implementation list; test-only seeding declared inadmissible as proof. SoT: [hiring-acceptance-contract.md](../architecture/hiring-acceptance-contract.md) (`hiring_acceptance.v1`). Not HE-2 runtime. Not min HR. Not RS-7 | External Intake program close (queue amendment) | 1 slice (docs) |
+| **HE-2** | Stage authority consumption | `he-stages` | **Stage Authority Consumption Gate** ✅ — stage existence comes from the LI-1 producer for every consumer on the hiring path; legacy static list and tenant dictionary stop answering existence; order/allowed-transition semantics stated (`forward_moves_guarded_jumps_rejected`). SoT: [hiring-stage-authority-consumption.md](../architecture/hiring-stage-authority-consumption.md) (`hiring_stage_authority.v1`). Not HE-3. Not min HR. Not RS-7 | HE-1 Gate ∧ LI-1 ✅ | 1–2 slices |
+| **HE-3** | Eligibility composition | `he-eligibility` | **Eligibility Composition Gate** ✅ — one composed decision with a single operator-readable reason; v1/v2 explicitly not eligibility authorities; the requirement conjunct is the RPM result (`r5_required_set`). SoT: [hiring-eligibility-composition.md](../architecture/hiring-eligibility-composition.md) (`hiring_eligibility_composition.v1`). Not RS-7. Not min HR. Not a HE-2 stage-authority change | HE-2 Gate ∧ RPM-3 Gate | 1–2 slices |
+| **HE-4** | Acceptance walk proof | `he-accept` | **Hiring E2E Acceptance Gate** ✅ — **PASS** (`315cb710`). RS-7 **PASS**. One operator-configured candidate, product HTTP, no test-only seeding. Refusal and `ready_for_employment.v1` both demonstrated. Not the legal employability matrix | HE-3 Gate | 1 slice |
 
 ---
 
-## HE-1 — Acceptance contract (queued, docs only)
+## HE-1 — Acceptance contract (Gate **PASS**)
 
-Defines, per step of `stage → requirements/docs → eligibility → transfer`, which component is the authority and which components are consumers. Also fixes the dual-evidence disposition for the hiring path: whether requirement satisfaction is answered by `candidate_evidence`, by Document Link, or by an explicit contract between them — a decision this program **must not** leave open, because RS-5 and RS-7 both depend on it.
+Sealed in [hiring-acceptance-contract.md](../architecture/hiring-acceptance-contract.md) (`hiring_acceptance.v1`). Nine walk steps of `stage → requirements/docs → eligibility → transfer` each have an authority or an explicit `compose_later` owner. Dual-evidence disposition: **Candidate Evidence binds Document Link** — CE is the satisfaction fact; Document Link is instance identity; RPM remains the policy write. Test-only seeding (`seed_documents_for_ready_for_handoff`, `candidate_evidence_helpers`) is inadmissible as proof. Forbidden implementation is a closed list.
 
-Out: new stage machine; funnel builder; workflow automation; auto-progression.
+Hiring Acceptance Contract Gate **PASS**. Stage steps are consumed by HE-2.
 
-## HE-2 — Stage authority consumption (queued)
+Out: new stage machine; funnel builder; workflow automation; auto-progression; HE-3 collapse; RS-7 execution; min HR.
 
-LI-1 created one existence producer; this slice makes the hiring path consume it and states the transition-order rule. Out: full Lifecycle cutover (LI-2+), Funnel UI rework, universalizing `FunnelStage.code`.
+## HE-2 — Stage authority consumption (Gate **PASS**)
 
-## HE-3 — Eligibility answer collapse (queued)
+Sealed in [hiring-stage-authority-consumption.md](../architecture/hiring-stage-authority-consumption.md) (`hiring_stage_authority.v1`). Production hiring-path consumers ask LI-1 `is_stage_registered` for existence. `Candidate.stage` remains occupancy. Transition-order rule `forward_moves_guarded_jumps_rejected` is production. This slice does not edit that rule.
 
-Ten answerers must produce one decision with one reason an operator can read. Anything that remains a separate answerer must be named with owner and expiry. Out: re-deciding requirement policy (RPM owns that write).
+Out: full Lifecycle cutover (LI-2+), Funnel UI rework, universalizing `FunnelStage.code`, RS-7 execution, min HR.
 
-## HE-4 — Acceptance walk proof (queued)
+## HE-3 — Eligibility composition (Gate **PASS**)
 
-The proof is a walk, not a suite. If a step still needs a developer, the gate is STOP.
+Sealed in [hiring-eligibility-composition.md](../architecture/hiring-eligibility-composition.md) (`hiring_eligibility_composition.v1`). The ten classified answerers are inputs to one decision and one operator-readable refusal. The requirement conjunct is the RPM result (`r5_required_set`). v1 and v2 are not eligibility authorities.
+
+Out: re-deciding requirement policy (RPM owns that write); RS-7 / HE-4 acceptance walk; min HR; LI-2+; HE-2 stage-authority change; reopening Candidate Evidence ↔ Document Link; inherited DR1 / Mapping reds.
+
+## HE-4 — Acceptance walk proof (Gate **PASS**)
+
+Evidence SHA `315cb710` on `feat/hiring-e2e-he4-acceptance-walk` from `8d5a9fef`. Clean database `hostflow_he4_walk_test`: `test_hiring_e2e_acceptance_walk.py` and `test_ready_for_employment_contract_gate.py`, 10 passed. Hiring E2E Acceptance Gate **PASS**. RS-7 **PASS**. This PASS does not prove the [legal employability matrix](legal-eligibility-requirement-policy.md). Hiring E2E program close is not this stamp.
+
+PASS when, on an operator-configured tenant, one candidate:
+
+1. moves through operator-defined stages on product surfaces;
+2. a missing document that Recruitment asks the candidate for is requested from the outstanding required set (`r5_required_set` minus already satisfied requirements), the candidate provides it, and it is accepted; a document may also be provided directly by the operator, with no request row; an ad-hoc request outside that set does not become an eligibility requirement;
+3. Document Link and Candidate Evidence bind (`candidate_evidence_binds_document_link`);
+4. transfer is refused with one operator-readable reason while an RPM requirement is unmet;
+5. that requirement is satisfied;
+6. transfer succeeds (`ready_for_employment.v1`).
+
+Request authority, not a universal requested→provided→accepted machine:
+
+1. `X ∈ r5_required_set` and X is not satisfied → X is an outstanding requirement.
+2. A persisted required request and a candidate link can be created from that outstanding requirement.
+3. `X ∉ r5_required_set` → the vacancy-driven request path does not create a required request for X, and missing X does not block eligibility. A recruiter may still create an ad-hoc request; that request does not enter the required set.
+4. After accepted evidence, X leaves the outstanding set and stops blocking eligibility.
+
+Conditional legal status is not an HE-4 PASS criterion. RS-7 is one candidate and the policy the operator set in RS-4. The platform pack does branch on `residency_status`, but the candidate card stores a different vocabulary, and citizenship, employment country, licence-issuing country, and qualification-card jurisdiction do not change `r5_required_set`. That policy gap is outside this gate.
+
+Inadmissible as proof: `seed_documents_for_ready_for_handoff`, `candidate_evidence_helpers`, SQL or fixture inserts, `GET /transfer-readiness`.
+
+Out: Hiring E2E program close; min HR (feat locked; not scheduled); executing RS-7 in this amendment; inherited DR1 / Mapping fixes; LI-2+; a new Hiring Product.
 
 ---
+
+## Program close
+
+Goal Completion Gate against [Original Goal → Completion Proof](#original-goal--completion-proof). Evidence is the HE-4 walk at `315cb710`, not a new run.
+
+```text
+Goal Completion Gate — Hiring workflow E2E
+G1 Original problem: one candidate had never been walked through operator-configured stages, with one readable refusal from the policy the operator manages, without test-only seeding.
+G2 Now forbidden local implementations: a hiring-specific eligibility rule set outside RPM; seed_documents_for_ready_for_handoff; candidate_evidence_helpers; SQL/fixture document inserts; GET /transfer-readiness as the proof.
+G3 Next consumer without new primitive? yes — Minimal Recruitment → HR consumes ready_for_employment.v1. It does not need a new hiring stage machine.
+G4 End-to-end proof: product HTTP walk on a clean database (315cb710, 10 passed). It does not fork a second requirement authority.
+G5 Remaining allowed workarounds: legal employability matrix (legal-eligibility-requirement-policy.md, not scheduled); RS-5 expiry not re-run here (separate scenario); min HR feat locked until a later amendment.
+Outcome: PASS
+```
+
+This PASS is not legal employability. `poland_stay_basis` values `visa_d`, `visa_c`, `karta_pobytu`, and `waiting_for_trc` still do not change `r5_required_set`. Citizenship, employment country, and document issuing jurisdiction do not either.
 
 ## Program close = two results
 
@@ -108,16 +152,28 @@ The proof is a walk, not a suite. If a step still needs a developer, the gate is
 
 ## Queue position
 
-**Depends on:** RPM program close ✅ (known acceptance edge: Hiring acceptance walks against policy authority) + a later queue amendment  
-**Unlocks:** [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) acceptance  
-**Does not:** schedule itself this amendment; start LI-2+; rebuild funnels; unfreeze C2.4; create a hiring automation plane
+**Depends on:** Eligibility Composition Gate **PASS** [#391](https://github.com/igortatarynovich/HostFlow/pull/391) / `8d5a9fef`  
+**Unlocks:** [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) is startable after this close and stays **not** auto-scheduled (feat locked). [Legal Eligibility](legal-eligibility-requirement-policy.md) is Active Product (brief opened; feat locked; Legal Eligibility Contract Gate **PASS**).  
+**Does not:** schedule min HR; prove the legal employability matrix; mark HostFlow v1 release-ready; inherited DR1 / Mapping fixes; leftover-store deletion; LI-2+; RS-3
 
 ---
 
 ## Refs
 
+- [Hiring Eligibility Composition](../architecture/hiring-eligibility-composition.md) — HE-3 SoT (`hiring_eligibility_composition.v1`)
+- [Hiring Stage Authority Consumption](../architecture/hiring-stage-authority-consumption.md) — HE-2 SoT (`hiring_stage_authority.v1`)
+- [Hiring Acceptance Contract](../architecture/hiring-acceptance-contract.md) — HE-1 SoT (`hiring_acceptance.v1`)
 - [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) — blocker 4; acceptance edges
 - [Acceptance suite RS-7](../journeys/release-readiness-acceptance-suite.md) — the proof this program must satisfy
 - [Requirement Policy Management](requirement-policy-management.md) — the authority this program consumes (nine answerers classified there)
 - [Lifecycle Identity](lifecycle-identity-l0-contract-seal.md) · [LI-1](lifecycle-identity-li1-existence-guard.md) ✅ — stage existence producer
 - [CL7 Engine evaluation](entity-field-composition-cl7-engine-eval.md) ✅ — structured `ready` / `not_ready` + blockers (not boolean)
+
+## History
+- 2026-09-29: **Hiring E2E program close.** Goal Completion Gate **PASS**. Evidence remains `315cb710` / RS-7 **PASS**. Product **DONE** with no named successor until a queue amendment. min HR is startable and not scheduled. Legal employability stays [queued](legal-eligibility-requirement-policy.md), not scheduled. Not Release Readiness Gate. HostFlow v1 is not release-ready. Foundation stays 🔄.
+- 2026-09-29: **Hiring E2E Acceptance Gate PASS.** Evidence `315cb710`. Clean DB `hostflow_he4_walk_test`, 10 passed (`test_hiring_e2e_acceptance_walk.py`, `test_ready_for_employment_contract_gate.py`). RS-7 **PASS**: operator overlay → `r5_required_set` → readable refusal → outstanding required request and candidate upload, plus direct operator upload → Document Link + Candidate Evidence → requirement leaves outstanding → eligible → `ready_for_handoff` → `ready_for_employment.v1`. An ad-hoc request outside the set does not enter eligibility. This PASS does not prove the [legal employability matrix](legal-eligibility-requirement-policy.md). Not Hiring E2E program close. min HR remains queued (feat locked; not scheduled). Not Release Readiness Gate. HostFlow v1 is not release-ready.
+- 2026-09-22: **HE-4 Acceptance walk feat opened.** Queue amendment from `8d5a9fef`. Active Product → **HE-4**. Branch `feat/hiring-e2e-he4-acceptance-walk`. Hiring E2E Acceptance Gate **not PASS**. RS-7 is not executed in this stamp. Close path = operator-configured tenant → product-surface stage moves → request/provide/accept document → Document Link + Candidate Evidence bind → readable refusal while an RPM requirement is unmet → requirement satisfied → successful transfer / `ready_for_employment.v1`. Inadmissible: `seed_documents_for_ready_for_handoff`, `candidate_evidence_helpers`, SQL/fixture inserts, `GET /transfer-readiness`. min HR remains queued (feat locked; not scheduled). Not Hiring E2E program close. Not inherited DR1 / Mapping fixes. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-22: **Eligibility Composition Gate PASS.** SoT [hiring-eligibility-composition.md](../architecture/hiring-eligibility-composition.md) (`hiring_eligibility_composition.v1`). One composed decision. Requirement conjunct = RPM `r5_required_set`. v1 and v2 are not eligibility authorities. Active Product → **HE-3**. HE-4 feat locked. Do not start RS-7 / min HR in this PR. Not a HE-2 stage-authority change. Not inherited DR1 / Mapping reds. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-21: **Stage Authority Consumption Gate PASS.** SoT [hiring-stage-authority-consumption.md](../architecture/hiring-stage-authority-consumption.md) (`hiring_stage_authority.v1`). Hiring-path existence consumes LI-1. Occupancy stays `Candidate.stage`. Transition-order rule `forward_moves_guarded_jumps_rejected` is production. Active Product → **HE-2**. HE-3 feat locked. Do not start HE-3 / min HR / RS-7 in this PR. Not leftover-store deletion. Not RS-3. Not Mapping Operator Surface / DR1 Runtime inherited reds. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-21: **Hiring Acceptance Contract Gate PASS.** SoT [hiring-acceptance-contract.md](../architecture/hiring-acceptance-contract.md) (`hiring_acceptance.v1`). Nine-step walk frozen. Dual-evidence disposition = `candidate_evidence_binds_document_link`. Test-only seeding inadmissible. Forbidden-implementation list frozen. Active Product stays **HE-1**. Do not start HE-2 / min HR / RS-7 in this PR. Not leftover-store deletion. Not RS-3. Not Mapping Operator Surface / DR1 Runtime inherited reds. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-21: **Queue amendment names HE-1 Active Product.** External Intake program close recorded (`741a4b2e`; [#387](https://github.com/igortatarynovich/HostFlow/pull/387)). External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Active Product → **[HE-1](hiring-workflow-e2e.md)** (brief; feat locked this PR). Hiring Acceptance Contract Gate **not PASS**. Do not open HE-1 contract seal in this PR. min HR remains queued. Not leftover-store deletion. Not RS-3. Not Mapping Operator Surface / DR1 Runtime inherited reds. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.

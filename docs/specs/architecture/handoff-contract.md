@@ -85,6 +85,12 @@
 - При успешном **`handoff_from_candidate`:** строка **`WorkforceEmployee`** (если ещё нет), спутники bundle (как в сервисе), **`DocumentEntityLink`** (`reused_for_hr`); **`meta.employee_pipeline`** — после закрытия [`hr-handoff-runtime-p0.md`](hr-handoff-runtime-p0.md) gate.
 - При **`CandidateHandoff` (internal HR):** pending на create; workforce + HR checklist на **`accept_handoff`** (PR-4).
 
+### B.5a Semantic rule (Employee Record contract)
+
+Путь accept не меняется: `accept_handoff` вызывает `handoff_from_candidate`, который возвращает или вставляет `WorkforceEmployee`.
+
+Смысл этого перехода для [Employee Record & Employment Lifecycle](employee-record-employment-lifecycle-contract.md) — владение следующим процессом для того же человека. Вставка строки — текущий runtime открытия HR context. Она не создаёт человека и не копирует person или evidence. Этот подраздел не меняет поведение T2 и не разрешает схему.
+
 ### B.6 Readonly и запреты (forbidden)
 
 - **Forbidden:** копирование бинарных файлов документов при handoff (инвариант 1 invariants).

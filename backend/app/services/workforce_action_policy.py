@@ -50,12 +50,15 @@ async def assert_operation_allowed(
     eid = str(employee.id) if employee is not None else None
 
     citizenship, work_country, residence_status, position_category = _candidate_ctx(candidate)
-    if employee is not None and isinstance(employee.candidate_snapshot, dict):
-        snap = employee.candidate_snapshot
-        citizenship = citizenship or str(snap.get("citizenship") or "").strip() or None
-        work_country = work_country or str(snap.get("work_country") or "").strip() or None
-        residence_status = residence_status or str(snap.get("legal_status") or "").strip() or None
-        position_category = position_category or str(snap.get("position_category") or "").strip() or None
+    if employee is not None:
+        from backend.app.services.employment_records import snapshot_for_employee
+
+        snap = await snapshot_for_employee(db, str(tenant_id), str(employee.id))
+        if isinstance(snap, dict):
+            citizenship = citizenship or str(snap.get("citizenship") or "").strip() or None
+            work_country = work_country or str(snap.get("work_country") or "").strip() or None
+            residence_status = residence_status or str(snap.get("legal_status") or "").strip() or None
+            position_category = position_category or str(snap.get("position_category") or "").strip() or None
 
     runtime = await resolve_workforce_eligibility_via_contract(
         db,

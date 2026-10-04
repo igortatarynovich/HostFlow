@@ -10,13 +10,31 @@ from backend.app.modules.leads.conversion_mapping import (
 )
 
 
-def test_registry_copies_in_poland_and_experience() -> None:
+def test_leftover_flat_keys_are_not_a_write_vocabulary() -> None:
     mapped = apply_executable_intake_mapping(
         {
             "in_poland": True,
             "experience_eu_years": 2,
             "phone": "+48111",
             "first_name": "Jan",
+        }
+    )
+    assert mapped.extra.get("in_poland") is None
+    assert mapped.personal.get("in_poland") is None
+    assert mapped.extra.get("experience_eu_years") is None
+    assert mapped.columns.get("phone") is None
+    assert mapped.columns.get("first_name") is None
+
+
+def test_canonical_facts_write_candidate_fields() -> None:
+    mapped = apply_executable_intake_mapping(
+        {
+            "canonical_facts_v1": {
+                "recruitment.candidate.personal.in_poland": True,
+                "recruitment.candidate.experience.years_ce": 2,
+                "recruitment.candidate.contacts.phone": "+48111",
+                "recruitment.candidate.first_name": "Jan",
+            }
         }
     )
     assert mapped.extra.get("in_poland") is True

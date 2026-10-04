@@ -16,11 +16,9 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
 from backend.app.acquisition.mapping_applied_stamp import read_mapping_applied_stamp
+from backend.app.field_registry.canonical_facts import canonical_facts_of
+from backend.app.field_registry.intake_mapping import rule_write_qualified_code
 from backend.app.field_registry.option_map import OPTION_IGNORE_VALUE, lookup_option_map
-from backend.app.field_registry.intake_mapping import (
-    LEAD_INTAKE_QUALIFIED_TO_NORMALIZED,
-    resolve_intake_mapping_target,
-)
 
 # qualified_code → where to write on the candidate payload.
 # Lead-only hints (recruitment.lead.*) are intentionally omitted.
@@ -55,17 +53,6 @@ CANDIDATE_WRITE_BY_QUALIFIED: dict[str, dict[str, str]] = {
     "recruitment.candidate.experience.years_ce": {"extra": "experience_eu_years"},
     "recruitment.candidate.experience.intl_experience": {"extra": "intl_experience"},
 }
-
-_LEAD_ONLY_TARGETS = frozenset(
-    {
-        "vacancy_hint",
-        "vacancy_id",
-        "vacancy_id_hint",
-        "company_id",
-        "company_id_hint",
-        "company_name_hint",
-    }
-)
 
 _SKIP_ANSWER_NAMES = frozenset(
     {
@@ -125,15 +112,12 @@ def compact_executable_rules(rules: Sequence[Mapping[str, Any]] | None) -> list[
         if str(raw.get("action") or "").strip().lower() == "ignore":
             continue
         source = str(raw.get("source") or "").strip()
-        qualified = str(raw.get("qualified_field_code") or "").strip() or None
-        target = resolve_intake_mapping_target(dict(raw))
-        if not source or (not qualified and not target):
+        qualified = rule_write_qualified_code(dict(raw))
+        if not source or not qualified:
             continue
-        if str(target or "") in _LEAD_ONLY_TARGETS:
+        if qualified.startswith("recruitment.lead."):
             continue
-        if qualified and qualified.startswith("recruitment.lead."):
-            continue
-        key = (source.lower(), (qualified or target or "").lower())
+        key = (source.lower(), qualified.lower())
         if key in seen:
             continue
         seen.add(key)
@@ -141,11 +125,7 @@ def compact_executable_rules(rules: Sequence[Mapping[str, Any]] | None) -> list[
             str(raw.get("label") or raw.get("source_label") or raw.get("question") or "").strip()
             or None
         )
-        item: dict[str, Any] = {"source": source}
-        if qualified:
-            item["qualified_field_code"] = qualified
-        if target:
-            item["normalized_target"] = target
+        item: dict[str, Any] = {"source": source, "qualified_field_code": qualified}
         if label:
             item["label"] = label
         raw_map = raw.get("option_map")
@@ -330,36 +310,32 @@ def conversion_payload_from_normalized(normalized: Mapping[str, Any] | None) -> 
 
 
 def apply_executable_intake_mapping(normalized: Mapping[str, Any] | None) -> ConversionFieldWrite:
-    """Map executable intake answers onto candidate columns / extra / personal."""
+    """Map executable intake answers and canonical facts onto candidate fields."""
     n = dict(normalized) if isinstance(normalized, Mapping) else {}
     out = ConversionFieldWrite()
-
-    for qualified, target in LEAD_INTAKE_QUALIFIED_TO_NORMALIZED.items():
-        if qualified.startswith("recruitment.lead."):
-            continue
-        value = _value_from_normalized(n, target)
-        if _write_qualified(qualified, value, out):
-            out.mapped_sources.append(target)
 
     for rule in _executable_rules_from_normalized(n):
         source = str(rule.get("source") or "").strip()
         if source and _is_skippable_source(source):
             continue
-        qualified = str(rule.get("qualified_field_code") or "").strip()
-        target = str(rule.get("normalized_target") or rule.get("target") or "").strip()
+        qualified = rule_write_qualified_code(dict(rule))
+        if not qualified:
+            continue
         option_map = rule.get("option_map") if isinstance(rule.get("option_map"), dict) else None
         value = _value_from_field_answers(n, source) if source else None
-        if value is None and target:
-            value = _value_from_normalized(n, target)
+        if value is None:
+            value = canonical_facts_of(n).get(qualified)
+        if value is None:
+            value = _value_from_normalized(n, source)
         value = _apply_option_map(value, option_map)
-        wrote = False
-        if qualified:
-            wrote = _write_qualified(qualified, value, out, overwrite=True)
-        elif target and target not in _LEAD_ONLY_TARGETS and value not in (None, ""):
-            out.extra[target] = value
-            wrote = True
-        if wrote and source:
+        if _write_qualified(qualified, value, out, overwrite=True) and source:
             out.mapped_sources.append(source)
+
+    for qualified, value in canonical_facts_of(n).items():
+        if str(qualified).startswith("recruitment.lead."):
+            continue
+        if _write_qualified(str(qualified), value, out):
+            out.mapped_sources.append(str(qualified))
 
     return out
 

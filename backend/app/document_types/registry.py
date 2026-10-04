@@ -92,6 +92,14 @@ def requirement_participating_codes() -> frozenset[str]:
     )
 
 
+def _default_other_would_clobber(out: dict[str, str], key: str, canonical: str) -> bool:
+    """True when the definition only carries the ``other`` default."""
+    if canonical != "other" or not key:
+        return False
+    current = out.get(key)
+    return bool(current) and current != "other"
+
+
 @lru_cache(maxsize=1)
 def build_legacy_to_canonical_map() -> dict[str, str]:
     """All legacy/module strings → canonical code (input normalization only)."""
@@ -124,11 +132,16 @@ def build_legacy_to_canonical_map() -> dict[str, str]:
     for definition in DOCUMENT_TYPE_DEFINITIONS:
         module_code = _norm(definition.code)
         canonical = _norm(definition.canonical_ref_code or "")
-        if canonical in canonical_codes():
+        # Default ``canonical_ref_code="other"`` is not an identity. Registry
+        # bindings and the alias file already named the real code; do not
+        # overwrite them with the dataclass default.
+        if canonical in canonical_codes() and not _default_other_would_clobber(out, module_code, canonical):
             out[module_code] = canonical
         for alias in definition.aliases:
             alias_key = _norm(alias)
-            if alias_key and canonical in canonical_codes():
+            if alias_key and canonical in canonical_codes() and not _default_other_would_clobber(
+                out, alias_key, canonical
+            ):
                 out[alias_key] = canonical
 
     for code in canonical_codes():

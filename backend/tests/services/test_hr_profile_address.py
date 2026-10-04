@@ -24,7 +24,13 @@ def test_build_profile_context_flattens_candidate_extra_address() -> None:
         id="e1",
         tenant_id="t1",
         display_name="Jan",
-        candidate_snapshot={
+    )
+    ctx = _build_profile_context(
+        emp,
+        None,
+        None,
+        None,
+        snapshot={
             "extra": {
                 "address": {
                     "country": "UA",
@@ -36,7 +42,6 @@ def test_build_profile_context_flattens_candidate_extra_address() -> None:
             "email": "jan@example.com",
         },
     )
-    ctx = _build_profile_context(emp, None, None, None)
     snap = ctx["snapshot"]
     assert snap.get("address_country") == "UA"
     assert snap.get("city") == "Lviv"

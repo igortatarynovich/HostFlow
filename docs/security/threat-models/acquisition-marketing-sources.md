@@ -126,6 +126,17 @@
 - Technical IDs (`form_id`, `meta_form_id`, `page_id`, profile id) are secondary; UI keeps them behind «Подробнее»
 - OAuth credentials remain Integrations SoT — cards never embed tokens
 
+## Follow-up surface — MA-3 Mapping Operator Gate
+
+**What changed:** leftover Meta form / tenant / Intake mapping HTTP writers return **410**; campaign list and campaign source cards expose the same mapping assessment and open the **one** Mapping workspace. Leftover stores stay **read-through** (not table deletion).
+
+| Concern | Mitigation |
+|---------|------------|
+| Second mapping writer | Leftover PUTs/PATCHes fail closed (`410`); SPA write clients removed; operator edits `IntakeSourceProfile.mapping_rules` only |
+| Discoverability without a second editor | Campaign Questions column / source-card CTA deep-link into `/app/marketing/sources/:id/mapping` — same tenant-scoped workspace, no new public route |
+| Cross-tenant mapping | Unchanged: profile loaded by `(tenant_id, source_id)` → 404 |
+| Leftover-store deletion | Out of this gate; stores remain MA-2 read-through |
+
 ## Тесты
 
 - `backend/tests/api/test_acquisition_c3_marketing_sources.py`

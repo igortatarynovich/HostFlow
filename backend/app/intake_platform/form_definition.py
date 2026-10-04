@@ -116,7 +116,6 @@ def apply_form_definition_fields(
     purpose: Optional[str] = None,
     target_entity_profile_code: Optional[str] = None,
     submission_policy: Optional[dict[str, Any]] = None,
-    published_version: Optional[int] = None,
     is_system_preset: Optional[bool] = None,
     lifecycle_status: Optional[str] = None,
     supported_languages: Optional[str] = None,
@@ -132,10 +131,6 @@ def apply_form_definition_fields(
         form.submission_policy = dict(submission_policy)
     elif not getattr(form, "submission_policy", None):
         form.submission_policy = default_submission_policy_for_entity_profile(ep)
-    if published_version is not None:
-        form.published_version = int(published_version)
-    elif getattr(form, "published_version", None) is None:
-        form.published_version = 1
     if is_system_preset is not None:
         form.is_system_preset = bool(is_system_preset)
     if lifecycle_status is not None:

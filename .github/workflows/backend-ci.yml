@@ -109,6 +109,20 @@ jobs:
       ma1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma1 == 'true' }}
       ma2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma2 == 'true' }}
       ma3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma3 == 'true' }}
+      ma4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma4 == 'true' }}
+      ma_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ma_close == 'true' }}
+      fp1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp1 == 'true' }}
+      fp2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp2 == 'true' }}
+      fp3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp3 == 'true' }}
+      fp4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp4 == 'true' }}
+      fp5: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp5 == 'true' }}
+      fp_close: ${{ github.event_name != 'pull_request' || steps.filter.outputs.fp_close == 'true' }}
+      he1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he1 == 'true' }}
+      he1_contract: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he1_contract == 'true' }}
+      he2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he2 == 'true' }}
+      he3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he3 == 'true' }}
+      he4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.he4 == 'true' }}
+      le: ${{ github.event_name != 'pull_request' || steps.filter.outputs.le == 'true' }}
       rfe1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rfe1 == 'true' }}
       esa1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa1 == 'true' }}
       esa2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.esa2 == 'true' }}
@@ -443,6 +457,191 @@ jobs:
               - 'hostflow-frontend/src/pages/marketing/MarketingSourceMappingPage.tsx'
               - 'docs/specs/architecture/mapping-authority-operator.md'
               - 'docs/specs/tasks/mapping-authority.md'
+            ma4:
+              - 'backend/app/field_registry/intake_mapping.py'
+              - 'backend/app/field_registry/canonical_facts.py'
+              - 'backend/app/entity_profile/ingest_runtime.py'
+              - 'backend/app/entity_profile/public_intake_draft_session.py'
+              - 'backend/app/entity_profile/mapping_validation.py'
+              - 'backend/app/modules/leads/conversion_mapping.py'
+              - 'backend/app/modules/leads/normalizer.py'
+              - 'backend/app/reference/mapping_authority.py'
+              - 'backend/tests/platform/test_mapping_authority_consumer_cutover.py'
+              - 'backend/tests/platform/test_mapping_authority_consumer_cutover_gate.py'
+              - 'docs/specs/tasks/mapping-authority.md'
+            ma_close:
+              - 'backend/tests/platform/test_mapping_authority_program_close.py'
+              - 'docs/specs/tasks/mapping-authority.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            fp1:
+              - 'backend/app/reference/forms_publish_contract.py'
+              - 'backend/tests/platform/test_forms_publish_contract_gate.py'
+              - 'backend/tests/platform/test_queue_amendment_fp1.py'
+              - 'scripts/architecture/check_forms_publish_boundary.py'
+              - 'scripts/architecture/forms_publish_boundary_*'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/architecture/forms-publish-contract.md'
+              - 'docs/specs/architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md'
+              - 'docs/specs/architecture/ADR-022-review-checklist.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            fp2:
+              - 'backend/app/api/v1/platform/forms_publications.py'
+              - 'backend/app/forms_platform/adapter.py'
+              - 'backend/app/services/intake_form_write_service.py'
+              - 'backend/app/intake_platform/form_definition.py'
+              - 'backend/app/models/tenant_lead_form.py'
+              - 'backend/app/reference/forms_publish_contract.py'
+              - 'backend/tests/platform/test_forms_publish_action_gate.py'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/architecture/forms-publish-contract.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'AGENTS.md'
+            fp3:
+              - 'backend/app/forms_platform/public_serve_bridge.py'
+              - 'backend/app/api/public/intake.py'
+              - 'backend/app/forms_platform/adapter.py'
+              - 'backend/app/reference/forms_publish_contract.py'
+              - 'backend/tests/platform/test_forms_publish_public_serve_gate.py'
+              - 'hostflow-frontend/src/pages/public/PublicIntakeNew.tsx'
+              - 'hostflow-frontend/src/api/publicIntake.ts'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/architecture/forms-publish-contract.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'AGENTS.md'
+            fp4:
+              - 'backend/app/forms_platform/operator_publication.py'
+              - 'backend/app/forms_platform/publication_bridge.py'
+              - 'backend/app/api/v1/platform/forms_publications.py'
+              - 'backend/app/reference/forms_publish_contract.py'
+              - 'backend/tests/platform/test_forms_publish_operator_gate.py'
+              - 'hostflow-frontend/src/pages/admin/FormsBuilderPage.tsx'
+              - 'hostflow-frontend/src/api/formsPublications.ts'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/architecture/forms-publish-contract.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'AGENTS.md'
+            fp5:
+              - 'backend/app/api/public/intake.py'
+              - 'backend/app/forms_platform/public_submit_bridge.py'
+              - 'backend/app/core/rate_limit.py'
+              - 'backend/app/reference/forms_publish_contract.py'
+              - 'backend/tests/platform/test_forms_publish_acceptance_gate.py'
+              - 'hostflow-frontend/src/api/http.ts'
+              - 'hostflow-frontend/src/pages/public/PublicIntakeStart.tsx'
+              - 'hostflow-frontend/src/pages/public/PublicIntakePresentationForm.tsx'
+              - 'hostflow-frontend/src/pages/admin/FormsBuilderPage.tsx'
+              - 'e2e/forms-publish-fp5-external-submit.ui.spec.ts'
+              - '.github/workflows/fp5-external-intake-e2e.yml'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/architecture/forms-publish-contract.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'AGENTS.md'
+            fp_close:
+              - 'backend/tests/platform/test_external_intake_program_close.py'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            he1:
+              - 'backend/tests/platform/test_queue_amendment_he1.py'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/external-intake-forms-publish.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            he1_contract:
+              - 'backend/app/reference/hiring_acceptance.py'
+              - 'backend/tests/platform/test_hiring_acceptance_contract_gate.py'
+              - 'scripts/architecture/check_hiring_acceptance_boundary.py'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/architecture/hiring-acceptance-contract.md'
+              - 'docs/specs/architecture/ADR-016-requirement-evidence-document-separation.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            he2:
+              - 'backend/app/reference/hiring_stage_authority.py'
+              - 'backend/app/reference/hiring_acceptance.py'
+              - 'backend/app/api/v1/candidates/helpers.py'
+              - 'backend/app/services/candidate_doc_pipeline_guard.py'
+              - 'backend/tests/platform/test_stage_authority_consumption_gate.py'
+              - 'backend/tests/api/test_candidate_funnel_stage_write.py'
+              - 'scripts/architecture/check_hiring_stage_authority_boundary.py'
+              - 'docs/specs/architecture/hiring-stage-authority-consumption.md'
+              - 'docs/specs/architecture/hiring-acceptance-contract.md'
+              - 'docs/specs/architecture/ADR-037-lifecycle-identity-canon.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            he3:
+              - 'backend/app/reference/hiring_eligibility_composition.py'
+              - 'backend/app/reference/hiring_acceptance.py'
+              - 'backend/app/services/transfer_policy_resolver.py'
+              - 'backend/app/services/candidate_doc_pipeline_guard.py'
+              - 'backend/app/process_engine/evaluator_adapter.py'
+              - 'backend/tests/platform/test_eligibility_composition_gate.py'
+              - 'scripts/architecture/check_hiring_eligibility_composition_boundary.py'
+              - 'docs/specs/architecture/hiring-eligibility-composition.md'
+              - 'docs/specs/architecture/hiring-acceptance-contract.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'AGENTS.md'
+            he4:
+              - 'backend/tests/platform/test_queue_amendment_he4.py'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'docs/specs/architecture/platform-completion-roadmap.md'
+              - 'docs/specs/architecture/hiring-eligibility-composition.md'
+              - 'docs/specs/architecture/hiring-acceptance-contract.md'
+              - 'docs/specs/architecture/hiring-stage-authority-consumption.md'
+              - 'AGENTS.md'
+            le:
+              - 'backend/tests/platform/test_queue_amendment_legal_eligibility.py'
+              - 'backend/tests/platform/test_legal_eligibility_contract_open.py'
+              - 'backend/tests/platform/test_legal_eligibility_contract_gate.py'
+              - 'backend/tests/platform/test_legal_eligibility_matrix_open.py'
+              - 'backend/tests/platform/test_legal_eligibility_decision_model.py'
+              - 'backend/tests/platform/test_work_authorization_procedure_contract_open.py'
+              - 'backend/tests/platform/test_work_authorization_procedure_contract_gate.py'
+              - 'backend/tests/platform/test_poland_work_authorization_procedure_types.py'
+              - 'docs/specs/architecture/poland-work-authorization-presets.md'
+              - 'docs/specs/tasks/poland-work-authorization-presets.md'
+              - 'docs/specs/tasks/oswiadczenie-country-set-drift.md'
+              - 'docs/specs/tasks/employee-record-employment-lifecycle.md'
+              - 'docs/specs/architecture/employee-record-employment-lifecycle-contract.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'backend/tests/platform/test_employee_record_employment_lifecycle_open.py'
+              - 'backend/tests/platform/test_employee_record_employment_lifecycle_contract_open.py'
+              - 'docs/specs/architecture/work-authorization-procedure-contract.md'
+              - 'docs/specs/tasks/work-authorization-procedure.md'
+              - 'docs/specs/architecture/legal-eligibility-contract.md'
+              - 'docs/specs/architecture/legal-eligibility-matrix.md'
+              - 'docs/specs/tasks/legal-eligibility-requirement-policy.md'
+              - 'docs/specs/tasks/sales-to-comms-sequential-queue.md'
+              - 'docs/specs/tasks/hiring-workflow-e2e.md'
+              - 'docs/specs/tasks/recruitment-hr-minimal-handoff.md'
+              - 'docs/specs/gates/hostflow-v1-release-goal.md'
+              - 'docs/specs/architecture/platform-completion-roadmap.md'
+              - 'AGENTS.md'
 
   guards:
     name: guards
@@ -1169,6 +1368,289 @@ jobs:
           skip-alembic: "0"
           tests: tests/api/test_acquisition_c5_source_mapping.py
 
+  ma4-consumer-cutover-gate:
+    name: Mapping Consumer Cutover Gate
+    needs: changes
+    if: needs.changes.outputs.ma4 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Mapping Consumer Cutover gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_mapping_authority_consumer_cutover_gate.py') == ''
+        run: echo "Mapping Consumer Cutover gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_mapping_authority_consumer_cutover_gate.py') != ''
+        with:
+          tests: >-
+            tests/platform/test_mapping_authority_consumer_cutover_gate.py
+            tests/platform/test_mapping_authority_consumer_cutover.py
+
+  ma-close-gate:
+    name: Mapping Authority Program Close
+    needs: changes
+    if: needs.changes.outputs.ma_close == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Mapping program close gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_mapping_authority_program_close.py') == ''
+        run: echo "Mapping program close gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_mapping_authority_program_close.py') != ''
+        with:
+          tests: tests/platform/test_mapping_authority_program_close.py
+
+  fp1-amendment-gate:
+    name: Queue Amendment FP-1
+    needs: changes
+    if: needs.changes.outputs.fp1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when FP-1 queue amendment gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_queue_amendment_fp1.py') == ''
+        run: echo "FP-1 queue amendment gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_queue_amendment_fp1.py') != ''
+        with:
+          tests: tests/platform/test_queue_amendment_fp1.py
+
+  fp1-contract-gate:
+    name: Forms Publish Contract Gate
+    needs: changes
+    if: needs.changes.outputs.fp1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Forms Publish Contract gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_forms_publish_contract_gate.py') == ''
+        run: echo "Forms Publish Contract gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_forms_publish_contract_gate.py') != ''
+        with:
+          tests: tests/platform/test_forms_publish_contract_gate.py
+
+  fp2-publish-action-gate:
+    name: Publish Action Gate
+    needs: changes
+    if: needs.changes.outputs.fp2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Publish Action gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_forms_publish_action_gate.py') == ''
+        run: echo "Publish Action gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_forms_publish_action_gate.py') != ''
+        with:
+          skip-alembic: "0"
+          tests: tests/platform/test_forms_publish_action_gate.py
+
+  fp3-public-serve-gate:
+    name: Public Serve Gate
+    needs: changes
+    if: needs.changes.outputs.fp3 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Public Serve gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_forms_publish_public_serve_gate.py') == ''
+        run: echo "Public Serve gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_forms_publish_public_serve_gate.py') != ''
+        with:
+          skip-alembic: "0"
+          tests: tests/platform/test_forms_publish_public_serve_gate.py
+
+  fp4-operator-publish-gate:
+    name: Operator Publish Gate
+    needs: changes
+    if: needs.changes.outputs.fp4 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Operator Publish gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_forms_publish_operator_gate.py') == ''
+        run: echo "Operator Publish gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_forms_publish_operator_gate.py') != ''
+        with:
+          skip-alembic: "0"
+          tests: tests/platform/test_forms_publish_operator_gate.py
+
+  fp-close-gate:
+    name: External Intake Program Close
+    needs: changes
+    if: needs.changes.outputs.fp_close == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when External Intake program close gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_external_intake_program_close.py') == ''
+        run: echo "External Intake program close gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_external_intake_program_close.py') != ''
+        with:
+          tests: tests/platform/test_external_intake_program_close.py
+
+  he1-amendment-gate:
+    name: Queue Amendment HE-1
+    needs: changes
+    if: needs.changes.outputs.he1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when HE-1 queue amendment gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_queue_amendment_he1.py') == ''
+        run: echo "HE-1 queue amendment gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_queue_amendment_he1.py') != ''
+        with:
+          tests: tests/platform/test_queue_amendment_he1.py
+
+  he1-contract-gate:
+    name: Hiring Acceptance Contract Gate
+    needs: changes
+    if: needs.changes.outputs.he1_contract == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Hiring Acceptance Contract gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_hiring_acceptance_contract_gate.py') == ''
+        run: echo "Hiring Acceptance Contract gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_hiring_acceptance_contract_gate.py') != ''
+        with:
+          tests: tests/platform/test_hiring_acceptance_contract_gate.py
+
+  he2-stage-authority-gate:
+    name: Stage Authority Consumption Gate
+    needs: changes
+    if: needs.changes.outputs.he2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Stage Authority Consumption gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_stage_authority_consumption_gate.py') == ''
+        run: echo "Stage Authority Consumption gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_stage_authority_consumption_gate.py') != ''
+        with:
+          tests: tests/platform/test_stage_authority_consumption_gate.py tests/api/test_candidate_funnel_stage_write.py
+
+  he3-eligibility-gate:
+    name: Eligibility Composition Gate
+    needs: changes
+    if: needs.changes.outputs.he3 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Eligibility Composition gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_eligibility_composition_gate.py') == ''
+        run: echo "Eligibility Composition gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_eligibility_composition_gate.py') != ''
+        with:
+          tests: tests/platform/test_eligibility_composition_gate.py
+
+  he4-amendment-gate:
+    name: Queue Amendment HE-4
+    needs: changes
+    if: needs.changes.outputs.he4 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when HE-4 queue amendment gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_queue_amendment_he4.py') == ''
+        run: echo "HE-4 queue amendment gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_queue_amendment_he4.py') != ''
+        with:
+          tests: tests/platform/test_queue_amendment_he4.py
+
+  legal-eligibility-amendment-gate:
+    name: Queue Amendment Legal Eligibility
+    needs: changes
+    if: needs.changes.outputs.le == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Legal Eligibility queue amendment gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_queue_amendment_legal_eligibility.py') == ''
+        run: echo "Legal Eligibility queue amendment gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_queue_amendment_legal_eligibility.py') != ''
+        with:
+          tests: tests/platform/test_queue_amendment_legal_eligibility.py tests/platform/test_legal_eligibility_contract_open.py tests/platform/test_legal_eligibility_contract_gate.py tests/platform/test_legal_eligibility_matrix_open.py tests/platform/test_legal_eligibility_decision_model.py tests/platform/test_work_authorization_procedure_contract_open.py tests/platform/test_work_authorization_procedure_contract_gate.py tests/platform/test_poland_work_authorization_procedure_types.py tests/platform/test_employee_record_employment_lifecycle_open.py tests/platform/test_employee_record_employment_lifecycle_contract_open.py
+
+  fp5-acceptance-gate:
+    name: External Intake Acceptance Gate
+    needs: changes
+    if: needs.changes.outputs.fp5 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when External Intake Acceptance gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_forms_publish_acceptance_gate.py') == ''
+        run: echo "External Intake Acceptance gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_forms_publish_acceptance_gate.py') != ''
+        with:
+          skip-alembic: "0"
+          tests: tests/platform/test_forms_publish_acceptance_gate.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -1218,7 +1700,18 @@ jobs:
       - ma1-contract-gate
       - ma2-resolution-gate
       - ma3-operator-surface
+      - ma4-consumer-cutover-gate
+      - ma-close-gate
       - dr1-runtime-gate
+      - fp2-publish-action-gate
+      - fp3-public-serve-gate
+      - fp4-operator-publish-gate
+      - fp5-acceptance-gate
+      - fp-close-gate
+      - he1-amendment-gate
+      - he1-contract-gate
+      - he2-stage-authority-gate
+      - he3-eligibility-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed

@@ -1,11 +1,11 @@
 # Forms Product Layer — Epic
 
-**Status:** **OPEN** · Phase C C1–C6 ✅ / Foundation ✅ · **P3 Publish = v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md) (queued; feat locked until its FP-1 slice) · P4 / P5 **LOCKED**  
+**Status:** **OPEN** · Phase C C1–C6 ✅ / Foundation ✅ · **P3 Publish = v1 blocker 3 DONE** — [external-intake-forms-publish.md](external-intake-forms-publish.md) (External Intake program close recorded; Forms Publish Contract Gate **PASS**; Publish Action Gate **PASS**; Public Serve Gate **PASS**; Operator Publish Gate **PASS**; External Intake Acceptance Gate **PASS**; feat `feat/forms-publish-fp5-runtime`; feat `feat/forms-publish-fp4-operator-surface`; FP-3 feat `feat/forms-publish-fp3-public-serve`) · P4 / P5 **LOCKED**  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
-**P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Builder MVP **COMPLETE** (P2.1–P2.5) · P3 LOCKED  
-**Out of this Product Track slice:** Stage 5 settings/enable-disable · R6 table-cutover · P3 Publish UI / P4 Themes / P5 Analytics (locked)
+**P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Builder MVP **COMPLETE** (P2.1–P2.5) · P3 = v1 blocker 3 (contract sealed)  
+**Out of this Product Track slice:** Stage 5 settings/enable-disable · R6 table-cutover · P4 Themes / P5 Analytics (locked). P3 Publish is closed through FP-5. Embed snippet stays a later slice. Active Product is [HE-1](hiring-workflow-e2e.md) (brief; feat locked).
 
 ---
 
@@ -19,8 +19,8 @@ Sprint 1–6 built the **L0 Forms platform** (publish → validate → normalize
 Platform (COMPLETE)                     Product Layer
 ─────────────────────────────────       ─────────────────────────────────
 Runtime / Publication / Ledger          P1 Field Catalog ✅ CLOSED (v1 FROZEN)
-Validation / Normalization           →  P2 Builder MVP COMPLETE (P2.1–P2.5) · P3 Publish UI LOCKED
-Submission / Shared Intake / Audit      P3 Publish UI LOCKED
+Validation / Normalization           →  P2 Builder MVP COMPLETE (P2.1–P2.5)
+Submission / Shared Intake / Audit      P3 Publish = v1 blocker 3 (contract sealed; feat open)
                                         P4 Themes LOCKED
                                         P5 Analytics LOCKED
 ```
@@ -142,7 +142,7 @@ Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](fo
 | Field Catalog contracts v1 | **FROZEN** |
 | P2.1–P2.5 Builder | ✅ **COMPLETE** (MVP) |
 | Builder Catalog Consumption | ✅ **ACTIVE** |
-| P3 Publish UI | **v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md); feat locked until FP-1 + queue amendment (C5 is Form Execution, not Publish UI — [forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md)) |
+| P3 Publish UI | **v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md); Forms Publish Contract Gate **PASS**; Publish Action Gate **PASS**; Public Serve Gate **PASS**; Operator Publish Gate **PASS**; External Intake Acceptance Gate **PASS**; feat `feat/forms-publish-fp5-runtime`; feat `feat/forms-publish-fp4-operator-surface`; FP-3 feat `feat/forms-publish-fp3-public-serve` (C5 is Form Execution, not Publish UI — [forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md)) |
 | P4 Themes / P5 Analytics | **LOCKED** |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 | Executable logic inside descriptors | **FORBIDDEN** |
@@ -155,7 +155,16 @@ Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](fo
 ---
 
 ## History
-
+- 2026-09-21: **Queue amendment names HE-1 Active Product.** External Intake program close recorded (`741a4b2e`; [#387](https://github.com/igortatarynovich/HostFlow/pull/387)). External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Active Product → **[HE-1](hiring-workflow-e2e.md)** (brief; feat locked this PR). Hiring Acceptance Contract Gate **not PASS**. Do not open HE-1 contract seal in this PR. min HR remains queued. Not leftover-store deletion. Not RS-3. Not Mapping Operator Surface / DR1 Runtime inherited reds. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-21: **External Intake program close.** External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Program outcome + release delta recorded. FP-1…FP-5 = External Intake **DONE**. Product **DONE** with no named successor until amendment. FP-5 PASS is not Release Acceptance PASS. Hiring E2E / min HR remain queued. Mapping Operator Surface / DR1 Runtime inherited reds unchanged. Not leftover-store deletion. Not RS-3. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-21: **External Intake Acceptance Gate PASS.** Feat `feat/forms-publish-fp5-runtime` from `de6383aa` ([#385](https://github.com/igortatarynovich/HostFlow/pull/385)). Close path = operator live public URL → stranger without auth opens → fills → submit → existing public submission/intake contract → production intake → intake/person/application visible in HostFlow workspace. Browser E2E through that published URL. Rate limit remains fail-open when Redis is unavailable. No second submit engine. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice. Active Product → External Intake program close (brief; feat locked).
+- 2026-09-21: **FP-5 External submission feat opened.** Branch `feat/forms-publish-fp5-external-submit` from `5e2a8f59` ([#384](https://github.com/igortatarynovich/HostFlow/pull/384)). Close path = live public URL → stranger without auth opens it → fills → submit → production intake accepts → real intake/person/application per existing contracts. Browser E2E through that published URL is the later runtime proof, not API composition. External Intake Acceptance Gate **not PASS**. This stamp does not ship runtime. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not a new form architecture. Not P4 / P5.
+- 2026-09-20: **Operator Publish Gate PASS.** Never published → Publish (`commit_publish`) → Live v1 + public URL → Unpublish (`deactivate_endpoint`) → Inactive + URL absent. After each act the operator surface re-reads backend publication authority. UI does not compute live. Embed snippet is a later product slice. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
+- 2026-09-20: **FP-4 Operator Publish Surface feat opened.** Branch `feat/forms-publish-fp4-operator-surface` from `9cc986ce` ([#382](https://github.com/igortatarynovich/HostFlow/pull/382)). Close path = operator opens form → sees current publication state/version → publish or unpublish → sees resulting live state → obtains public URL from product UI. Publish uses closed FP-2 `commit_publish` authority. Live/public URL uses closed FP-3 serve authority. Embed snippet is a later product slice (one serve surface). Operator Publish Gate **not PASS**. This stamp does not ship operator UI. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
+- 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.
+- 2026-09-20: FP-3 Public Serve feat opened (`feat/forms-publish-fp3-public-serve` from `41be635a`). Public Serve Gate **not PASS**. Close path = public request → resolve live publication → frozen snapshot → Form Runtime. This stamp does not ship runtime. P4 / P5 stay locked.
+- 2026-09-20: FP-2 Publish Action feat opened (`feat/forms-publish-fp2-publish-action` from `7112279e`). Publish Action Gate **not PASS**. This stamp does not ship runtime. P4 / P5 stay locked.
+- 2026-09-20: FP-1 Forms Publish Contract Gate **PASS**. P3 = v1 blocker 3, contract sealed; FP-2 brief feat locked. P4 / P5 stay locked.
 - 2026-08-28: P3 Publish reclassified from `LOCKED` to **v1 blocker 3** with a brief — [external-intake-forms-publish.md](external-intake-forms-publish.md); roadmap anti-pattern 2 amended to name the unlock instrument (FP-1 + queue amendment). P4 / P5 stay locked. Feat still locked; nothing scheduled.
 - 2026-07-18: Opened after Sprint 6 COMPLETE (`7e259f22` / #41). Backend contour closed; product surface next.  
 - 2026-07-18: Canon merged PR #43 (`29f4057f`). P1 framed as component registry (not type enum).  

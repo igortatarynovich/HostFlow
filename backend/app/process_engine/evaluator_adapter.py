@@ -183,9 +183,16 @@ class TransitionEvaluatorAdapter:
             allowed = report.get("handoff_create_allowed") if require_destination else report.get("transfer_allowed")
             if allowed:
                 return {}
+            decision = report.get("eligibility_decision") or {}
+            if require_destination:
+                message = report.get("handoff_refusal_reason") or decision.get("refusal_reason")
+            else:
+                message = decision.get("refusal_reason")
+            message = message or "Transfer is blocked by transfer policy"
             return {
                 "code": "transfer_blocked",
-                "message": "Transfer is blocked by transfer policy",
+                "message": message,
+                "refusal_reason": message,
                 "policy_version": report.get("policy_version"),
                 "blocking_reasons": report.get("blocking_reasons") or [],
                 "missing_types": sorted(

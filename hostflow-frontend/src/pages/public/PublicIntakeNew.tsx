@@ -14,6 +14,10 @@ import { buildCountryOptions } from '../../data/countries'
 import { usePublicIntake } from '../../modules/public-intake/usePublicIntake'
 import PublicIntakePresentationForm from './PublicIntakePresentationForm'
 import type { IntakeData, IntakeEmployment } from '../../api/publicIntake'
+import {
+  FORM_RUNTIME_MODEL_CONTRACT,
+  formRuntimeToPresentation,
+} from '../../api/publicIntake'
 import { presignPublicDocument, uploadPublicDocument, updatePublicIntake } from '../../api/publicIntake'
 import { subscribeToNotifications } from '../../api/publicNotifications'
 import http from '../../api/http'
@@ -892,30 +896,40 @@ export default function PublicIntakeNew() {
     )
   }
 
+  const runtimeModel = apiState?.form_runtime
   const presentationRuntime = apiState?.form_presentation
+  const intakeFormProps = {
+    loading: apiLoading,
+    saving: apiSaving,
+    submitting,
+    error: error || apiError,
+    state: apiState,
+    formData: apiFormData,
+    refresh,
+    updateContacts: apiUpdateContacts,
+    updatePersonal: apiUpdatePersonal,
+    updateExperience: apiUpdateExperience,
+    upsertEmployment: apiUpsertEmployment,
+    removeEmployment: apiRemoveEmployment,
+    updateAgreements: apiUpdateAgreements,
+    updatePresentationValues: apiUpdatePresentationValues,
+    submit: apiSubmit,
+  }
+  if (runtimeModel?.contract === FORM_RUNTIME_MODEL_CONTRACT && !documentsOnlyMode) {
+    return (
+      <PublicIntakePresentationForm
+        intake={intakeFormProps}
+        presentation={formRuntimeToPresentation(runtimeModel)}
+      />
+    )
+  }
   if (
     presentationRuntime?.contract_version === 'form_presentation_runtime_v1' &&
     !documentsOnlyMode
   ) {
     return (
       <PublicIntakePresentationForm
-        intake={{
-          loading: apiLoading,
-          saving: apiSaving,
-          submitting,
-          error: error || apiError,
-          state: apiState,
-          formData: apiFormData,
-          refresh,
-          updateContacts: apiUpdateContacts,
-          updatePersonal: apiUpdatePersonal,
-          updateExperience: apiUpdateExperience,
-          upsertEmployment: apiUpsertEmployment,
-          removeEmployment: apiRemoveEmployment,
-          updateAgreements: apiUpdateAgreements,
-          updatePresentationValues: apiUpdatePresentationValues,
-          submit: apiSubmit,
-        }}
+        intake={intakeFormProps}
         presentation={presentationRuntime}
       />
     )

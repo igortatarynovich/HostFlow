@@ -1,18 +1,18 @@
 # External Intake / Forms Publish
 
-**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product is [MA-3](mapping-authority.md)
+**Status:** **DONE** — FP-1…FP-5 PASS · Forms Publish Contract Gate **PASS** · Publish Action Gate **PASS** · Public Serve Gate **PASS** · Operator Publish Gate **PASS** · External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)) · program **DONE** (outcome + release delta). Active Product is [HE-1](hiring-workflow-e2e.md) (brief; feat locked).
 **Phase class:** platform
-**Branch (docs):** `docs/v1-blocker-briefs`
-**Branch (code):** none — later slices `feat/forms-publish-fpN-…`
-**Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 3) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-2](../journeys/release-readiness-acceptance-suite.md) · [Forms product layer epic](forms-product-layer-epic.md) · [Forms Platform C6](forms-platform-c6-optimization.md) ✅ · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Mapping Authority](mapping-authority.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
+**Branch (docs):** `docs/forms-publish-fp1-contract-seal`
+**Branch (code):** `feat/forms-publish-fp5-runtime`. External Intake Acceptance Gate **PASS**.
+**Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 3) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-2](../journeys/release-readiness-acceptance-suite.md) · [Forms product layer epic](forms-product-layer-epic.md) · [Forms Platform C6](forms-platform-c6-optimization.md) ✅ · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Publish Contract](../architecture/forms-publish-contract.md) (`forms_publish.v1`) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Mapping Authority](mapping-authority.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
 **Estimate:** 5–7 slices (1 slice = one docs PR + one feat PR)
 
 > v1 blocker 3: **`publish → public form → submit → mapping → canonical entity → visible in workspace`.**
-> This is the work the [Forms product layer epic](forms-product-layer-epic.md) calls **P3 Publish UI** and marks `LOCKED`. The Release Goal makes it a **v1 blocker**. FP-1 resolves that contradiction in the canon before any code.
+> This is the work the [Forms product layer epic](forms-product-layer-epic.md) calls **P3 Publish UI**. The Release Goal makes it a **v1 blocker**. FP-1 sealed the publish contract.
 > **Not** P4 Themes. **Not** P5 Analytics. **Not** FormTemplate SoT migration. **Not** a second submit engine. **Not** Mapping Authority (consumed, not rebuilt).
 >
-> **Amended 2026-08-28 (U-2 decision):** accepting [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) *is* in FP-1 scope. v1 does not ship intake acceptance over a `Proposed` contract whose backend already runs.
-> Opening this brief does **not** schedule it. Mapping Resolution Gate is PASS; Active Product is MA-3 (feat locked). Intake stays behind Mapping close. The queue’s Active Product is [MA-3](mapping-authority.md).
+> **U-2:** [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) is **Accepted** (Purpose + Policy unchanged). Publish definition SoT: [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`).
+> Mapping program is **DONE**. External Intake program is **DONE**. Queue amendment names [HE-1](hiring-workflow-e2e.md) Active Product (brief; feat locked). Unlock ≠ schedule of leftover-store deletion / min HR / RS-3. FP-5 PASS is not Release Acceptance PASS.
 >
 > Операторский продукт шире FP-1…FP-5 (бренд, embed, Responses, consent UI, откат версии). Его контракт и замер — [Forms Operator Product Contract](../architecture/forms-operator-product-contract.md) и [Forms Operator Product Acceptance](../gates/forms-operator-product-acceptance.md) (**OPEN**). Они не планируют этот brief и не подменяют `commit_publish`.
 
@@ -37,9 +37,9 @@ HostFlow cannot acquire an external candidate through a form that an operator pu
 | [Release Goal](../gates/hostflow-v1-release-goal.md) | Blocker 3 — `publish → public form → submit → mapping → canonical entity`; “Forms P4 / P5 stay later” |
 | [Roadmap](../architecture/platform-completion-roadmap.md) § Anti-patterns 2 / § Phase C | **Amended with this brief:** P3 is v1 blocker 3; unlock instrument = FP-1 + queue amendment; P4 / P5 stay locked |
 | [Forms product layer epic](forms-product-layer-epic.md) | `P3 Publish UI … LOCKED` → **amended with this brief** to “v1 blocker 3, feat locked until FP-1” |
-| Status echoes not yet amended | [capability catalog](../architecture/platform-capability-catalog.md) · [capability contract](../architecture/capability-contract.md) · [capability settings manifest](../architecture/capability-settings-manifest.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [forms module-scope](../../forms/module-scope.md) — all still print `P3 LOCKED` |
+| Status echoes | [capability catalog](../architecture/platform-capability-catalog.md) · [capability contract](../architecture/capability-contract.md) · [capability settings manifest](../architecture/capability-settings-manifest.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [forms module-scope](../../forms/module-scope.md) — P3 = v1 blocker 3 (contract sealed); P4 / P5 stay locked |
 
-The roadmap no longer forbids the work v1 cannot ship without, and the epic no longer contradicts the Release Goal. **FP-1 propagates the status to the echoing documents above** and seals the publish semantics. Until FP-1 merges and the queue schedules it, no FP feat slice may start — that is the process rule, not a preference.
+The roadmap no longer forbids the work v1 cannot ship without, and the epic no longer contradicts the Release Goal. **FP-1 sealed the publish semantics** (`forms_publish.v1`). Publish Action Gate **PASS**. Public Serve Gate **PASS**. Feat `feat/forms-publish-fp4-operator-surface` shipped the operator surface. Operator Publish Gate **PASS**. Feat `feat/forms-publish-fp5-runtime` shipped the stranger submit path. External Intake Acceptance Gate **PASS**.
 
 ---
 
@@ -79,70 +79,99 @@ FP-1 Publish contract seal + roadmap unlock (docs)
   → FP-2 Publish action runtime
   → FP-3 Public serve from frozen publication
   → FP-4 Operator publish surface
-  → FP-5 External intake acceptance bind (needs Mapping Authority)
+  → FP-5 External submission (RS-2 path)
   → External Intake program close (outcome + release delta)
 ```
 
 | # | Slice | Machine id | Named gate (PASS =) | Depends on | Estimate |
 |---|-------|------------|---------------------|------------|----------|
-| **FP-1** | Publish contract seal + unlock + **ADR-022 accept** | `fp-contract` | **Forms Publish Contract Gate** — publish is defined as `commit_publish` only; roadmap anti-pattern 2 amended to unlock **P3 only**; epic status updated; out-of-band `published_version` bumps declared forbidden; [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) moves `Proposed` → `Accepted` with its review checklist closed | Queue amendment | 1–1.5 slices (docs) |
-| **FP-2** | Publish action runtime | `fp-publish` | **Publish Action Gate** — an authenticated product route commits a publication version; presentation save no longer bumps versions; republish is idempotent per identity | FP-1 Gate | 1–2 slices |
-| **FP-3** | Public serve from publication | `fp-serve` | **Public Serve Gate** — the public form is served from the frozen snapshot; draft markers rejected; one definition reaches the renderer | FP-2 Gate | 1–2 slices |
-| **FP-4** | Operator publish surface | `fp-operator` | **Forms Publish Operator Gate** — operator publishes / unpublishes, sees version history and draft-vs-published state, and obtains the public URL from the product | FP-3 Gate | 1 slice |
-| **FP-5** | Acceptance bind | `fp-accept` | **External Intake Acceptance Gate** — RS-2 passes end to end on a fresh tenant: publish → stranger submit → canonical entity visible; abuse protections stated (rate limit is fail-open when Redis is unavailable — declare or fix) | FP-4 Gate **∧** Mapping Authority program close | 1 slice |
+| **FP-1** | Publish contract seal + unlock + **ADR-022 accept** | `fp-contract` | **Forms Publish Contract Gate** ✅ — publish is defined as `commit_publish` only; SoT [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`); P3 unlocked in echoing canon; out-of-band `published_version` bumps forbidden; [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) **Accepted** without expanding Purpose / Policy / Match Matrix | Queue amendment [#377](https://github.com/igortatarynovich/HostFlow/pull/377) / `54537f00` | 1–1.5 slices (docs) |
+| **FP-2** | Publish action runtime | `fp-publish` | **Publish Action Gate** ✅ — an authenticated product route commits a publication version; presentation save no longer bumps versions; republish is idempotent per identity | FP-1 Gate | 1–2 slices |
+| **FP-3** | Public serve from publication | `fp-serve` | **Public Serve Gate** ✅ — public request → resolve live publication → frozen snapshot → Form Runtime; unpublished/inactive not live; one renderer; FP-2 write unchanged | FP-2 Gate | 1–2 slices |
+| **FP-4** | Operator publish surface | `fp-operator` | **Operator Publish Gate** ✅ — Never published → Publish (`commit_publish`) → Live v1 + public URL → Unpublish (`deactivate_endpoint`) → Inactive + URL absent. Feat `feat/forms-publish-fp4-operator-surface`. UI re-reads backend authority | FP-3 Gate | 1 slice |
+| **FP-5** | External submission | `fp-accept` | **External Intake Acceptance Gate** ✅ — operator live public URL → stranger without auth opens → fills → submit → existing C6 / public-submit contracts → production intake → intake/person/application visible in workspace. Feat `feat/forms-publish-fp5-runtime`. Browser E2E through that URL | Operator Publish Gate | 1 slice |
 
 ---
 
-## FP-1 — Publish contract seal (queued, docs only)
+## FP-1 — Publish contract seal (**PASS**)
 
-Seals: publish = `commit_publish`; the publication ledger is the only publish record; `published_version` is derived from the ledger and never incremented elsewhere; Builder draft is not a publication; the public renderer consumes the frozen snapshot.
+Sealed: publish = `commit_publish`; the publication ledger is the only publish record; `published_version` is derived from the ledger and never incremented elsewhere; Builder draft is not a publication; the public renderer **must** consume the frozen snapshot (leftover presentation serve named, expiry FP-3).
 
-Also performs the **canon unlock**: amends roadmap anti-pattern 2 and the Phase C “still locked” line to unlock **P3 only**, and updates the [epic](forms-product-layer-epic.md) status from `P3 LOCKED` to `P3 = v1 blocker, scheduled by the queue`. P4 / P5 remain locked.
+SoT: [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`). Named CI + boundary guard. The FP-1 PR kept the feat locked.
 
----
+Canon unlock: P3 only. P4 / P5 remain locked. ADR-022 Accepted without expanding the model.
 
-## FP-2 — Publish action runtime (queued)
+## FP-2 — Publish action runtime (**PASS**; feat `feat/forms-publish-fp2-publish-action`)
 
-Wire the orphaned operation. Out: themes, analytics, FormTemplate migration, a second submit engine, changing validation semantics.
+Wired the orphaned operation: authenticated `POST /api/v1/platform/forms/{form_id}/publish` → Adapter `commit_publish` → `form_publication_versions`. Presentation save and Form Definition leftover version bumps retired. Republish is idempotent per identity. Out: themes, analytics, FormTemplate migration, a second submit engine, changing validation semantics, public serve/embed.
 
-## FP-3 — Public serve from frozen publication (queued)
+## FP-3 — Public serve from frozen publication (**PASS**; feat `feat/forms-publish-fp3-public-serve`)
 
-Resolve the dual definition. If Builder composition cannot yet drive the public renderer, the surviving definition must be stated in FP-1 and the other declared a named leftover with owner and expiry — not left ambiguous.
+Close path (narrow): **public request → resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime render**. Public link and later embed remain two access methods to **one** serve surface, not two renderer or publish mechanisms. Embed may be counted as serve-surface compatibility; distribution UX / snippet is a later product slice (not this FP-4 operator surface).
 
-## FP-4 — Operator publish surface (queued)
+`/public/intake` driven by Entity Profile `form_presentation_runtime_v1` is no longer the working authority for HostFlow-form public serve. Leftover handling followed the named expiry already sealed in [forms-publish-contract.md](../architecture/forms-publish-contract.md) — not a pretext for general cleanup.
 
-The operator job: publish, unpublish, see what is live, get the URL. Out: theming, A/B, analytics dashboards.
+Unpublished / inactive forms are not served as live. The public renderer does not treat `form_presentation_runtime_v1` as authority. No second public renderer. FP-2 publish-write semantics are unchanged.
 
-## FP-5 — Acceptance bind (queued)
+## FP-4 — Operator publish surface (**PASS**; feat `feat/forms-publish-fp4-operator-surface`)
 
-Depends on [Mapping Authority](mapping-authority.md) program close — the acceptance chain contains “mapping”, and the Release Goal names `Mapping Authority → External Intake` as a known acceptance edge.
+Close path (operator): **Never published → Publish (`commit_publish`) → Live v1 + public URL → Unpublish (`deactivate_endpoint`) → Inactive + URL absent**. After each act the operator surface re-reads backend publication authority. Publish / unpublish call closed FP-2 authority (`commit_publish` / lifecycle). Live state and public URL read closed FP-3 authority (live publication → frozen snapshot → Form Runtime `serve()`). UI displays authority; it is not a new authority. No new publication or serve semantics. Embed snippet is a later product slice and keeps the one-serve-surface invariant. Out: embed snippet; themes / analytics; a second serve or publish mechanism; leftover-store deletion; Hiring; P4 / P5; Mapping Operator Surface inherited red at `54537f00`.
+
+## FP-5 — External submission (**PASS**; feat `feat/forms-publish-fp5-runtime`)
+
+Close path (RS-2 path): **live public URL (FP-4) → stranger without auth opens it → fills → submit → production intake accepts → real intake/person/application per existing contracts**, visible on the HostFlow candidates surface. Create → Publish → Serve → Operator controls live URL is **closed**. This slice is **Stranger opens → fills → submits → HostFlow receives**. Production intake consumes closed FP-3 serve and existing C6 / public-submit contracts. No second submit engine. No new form architecture.
+
+Browser E2E through the real published URL is the close proof (`e2e/forms-publish-fp5-external-submit.ui.spec.ts`), together with named CI `test_forms_publish_acceptance_gate.py`. Rate limit remains fail-open when Redis is unavailable.
+
+Out: Mapping / RS-3 field placement; Hiring E2E; min HR; embed snippet; leftover-store deletion; a new form architecture; a second submit engine; P4 / P5. Mapping program is **DONE**; RS-3 remains Mapping’s proof and is not this gate.
 
 ---
 
 ## Program close = two results
 
-| Field | Meaning |
+Recorded this amendment. Ladder **FP-1 Contract → FP-2 Publish → FP-3 Serve → FP-4 Operator Surface → FP-5 Stranger Submission = External Intake DONE**. Reaching this horizon is **not** a release. External Intake Acceptance Gate PASS is program proof, **not** [Release Readiness](../gates/release-readiness-gate.md) RS-2 PASS.
+
+| Field | Value |
 |-------|---------|
-| **Program outcome** | Operators publish forms as versioned publications; the public form is served from that publication; submissions execute on the platform path |
-| **Release delta** | External Intake / Forms Publish four-checks PASS. Forms P4 / P5 stay later. Hiring E2E and min HR handoff remain **OPEN** unless separately closed. HostFlow v1 is not release-ready until the [Release Readiness Gate](../gates/release-readiness-gate.md) passes |
+| **Program outcome** | An operator publishes their own form, obtains a live public URL, a stranger completes it without auth, submission uses production public intake, and the candidate appears in the workspace. |
+| **Release delta** | External Intake authority / operator surface / E2E consumption **PASS** (FP-1…FP-5; named gate + Playwright on [#386](https://github.com/igortatarynovich/HostFlow/pull/386) / `4f454556`). Release Acceptance (RS-2) is **named** and has that program proof; it is **not** Release Acceptance PASS — the Release Readiness Gate has not run RS-2. Forms P4 / P5 stay later. Hiring E2E and min HR remain **OPEN**. Mapping Operator Surface / DR1 Runtime inherited reds are baseline, not this hop. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄 |
 
 ---
 
 ## Queue position
 
-**Depends on:** queue amendment; FP-5 additionally on Mapping Authority close
-**Unlocks:** nothing automatically — “unlock ≠ schedule”
-**Does not:** open P4 / P5; migrate `TenantLeadForm` → FormTemplate SoT (U-5 residual: Publish ships on the bridge, and **no new writer may be added to it**); rebuild Shared Intake; touch C2.4
+**Depends on:** queue amendment [#377](https://github.com/igortatarynovich/HostFlow/pull/377). External Intake Acceptance Gate **PASS** `4f454556`. Mapping program is already **DONE**; this close does not write Mapping and does not prove RS-3.  
+**Program:** **DONE** (outcome + release delta this amendment).  
+**Active Product after close:** named **[HE-1](hiring-workflow-e2e.md)** by a later queue amendment (brief; feat locked). min HR remains queued.  
+**Unlocks:** nothing automatically — “unlock ≠ schedule”  
+**Does not:** mix Mapping / RS-3; add embed snippet; mint a second renderer, publication state, or submit engine; open P4 / P5; migrate `TenantLeadForm` → FormTemplate SoT (U-5 residual: Publish ships on the bridge, and **no new writer may be added to it**); rebuild Shared Intake; touch C2.4; start leftover-store deletion / Hiring / min HR; invent a new form architecture; expand Mapping Operator Surface or DR1 Runtime inherited reds; convert FP-5 PASS into Release Acceptance PASS
 
-**Does (added 2026-08-28):** accept ADR-022 and close [`ADR-022-review-checklist.md`](../architecture/ADR-022-review-checklist.md).
+**Does:** record External Intake program close against sealed [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`). Close path remains `operator publish → live URL → stranger without auth → production intake → candidate in workspace`, proven by External Intake Acceptance Gate + Playwright. ADR-022 stays Accepted without expansion.
 
 ---
 
 ## Refs
 
-- [Forms product layer epic](forms-product-layer-epic.md) — P3 / P4 / P5 definitions and the current `LOCKED` status
+- [Forms Publish Contract](../architecture/forms-publish-contract.md) — FP-1 SoT (`forms_publish.v1`)
+- [Forms product layer epic](forms-product-layer-epic.md) — P3 / P4 / P5 definitions
 - [Forms Platform C6](forms-platform-c6-optimization.md) — Foundation ✅ and what it explicitly excluded
-- [Acceptance suite RS-2](../journeys/release-readiness-acceptance-suite.md) — the proof this program must satisfy
-- [Mapping Authority](mapping-authority.md) — the acceptance edge FP-5 consumes
+- [Acceptance suite RS-2](../journeys/release-readiness-acceptance-suite.md) — the path this slice must close (stranger through the published URL into production intake). RS-3 / Mapping stay out.
+- [Mapping Authority](mapping-authority.md) — **DONE**. RS-3 remains Mapping’s proof; not this slice.
 - [ADR-007](../architecture/ADR-007-forms-platform-capability.md) — Forms as capability; publication DTO
 - [Intake canonical input matrix](../architecture/intake-canonical-input-matrix.md) — Forms does not own domain mapping
+
+---
+
+## History
+- 2026-09-21: **Queue amendment names HE-1 Active Product.** External Intake program close recorded (`741a4b2e`; [#387](https://github.com/igortatarynovich/HostFlow/pull/387)). External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Active Product → **[HE-1](hiring-workflow-e2e.md)** (brief; feat locked this PR). Hiring Acceptance Contract Gate **not PASS**. Do not open HE-1 contract seal in this PR. min HR remains queued. Not leftover-store deletion. Not RS-3. Not Mapping Operator Surface / DR1 Runtime inherited reds. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-21: **External Intake program close.** External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Program outcome + release delta recorded. FP-1…FP-5 = External Intake **DONE**. Product **DONE** with no named successor until amendment. FP-5 PASS is not Release Acceptance PASS. Hiring E2E / min HR remain queued. Mapping Operator Surface / DR1 Runtime inherited reds unchanged. Not leftover-store deletion. Not RS-3. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
+- 2026-09-21: **External Intake Acceptance Gate PASS.** Feat `feat/forms-publish-fp5-runtime` from `de6383aa` ([#385](https://github.com/igortatarynovich/HostFlow/pull/385)). Close path = operator live public URL → stranger without auth opens → fills → submit → existing public submission/intake contract → production intake → intake/person/application visible in HostFlow workspace. Browser E2E through that published URL. Rate limit remains fail-open when Redis is unavailable. No second submit engine. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice. Active Product → External Intake program close (brief; feat locked).
+- 2026-09-21: **FP-5 External submission feat opened.** Branch `feat/forms-publish-fp5-external-submit` from `5e2a8f59` ([#384](https://github.com/igortatarynovich/HostFlow/pull/384)). Close path = live public URL → stranger without auth opens it → fills → submit → production intake accepts → real intake/person/application per existing contracts. Browser E2E through that published URL is the later runtime proof, not API composition. External Intake Acceptance Gate **not PASS**. This stamp does not ship runtime. Not Mapping/RS-3. Not leftover-store deletion. Not Hiring. Not embed snippet. Not a new form architecture. Not P4 / P5.
+- 2026-09-20: **Operator Publish Gate PASS.** Never published → Publish (`commit_publish`) → Live v1 + public URL → Unpublish (`deactivate_endpoint`) → Inactive + URL absent. After each act the operator surface re-reads backend publication authority. UI does not compute live. Embed snippet is a later product slice. Active Product → **FP-5** (brief; feat locked). Do not start FP-5 / embed in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
+- 2026-09-20: **FP-4 Operator Publish Surface feat opened.** Branch `feat/forms-publish-fp4-operator-surface` from `9cc986ce` ([#382](https://github.com/igortatarynovich/HostFlow/pull/382)). Close path = operator opens form → sees current publication state/version → publish or unpublish → sees resulting live state → obtains public URL from product UI. Publish uses closed FP-2 `commit_publish` authority. Live/public URL uses closed FP-3 serve authority. Embed snippet is a later product slice (one serve surface). Operator Publish Gate **not PASS**. This stamp does not ship operator UI. Not leftover-store deletion. Not Hiring. Not P4 / P5. Mapping Operator Surface inherited red at `54537f00` is not this slice.
+- 2026-09-20: **Public Serve Gate PASS.** public request → Adapter resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime. Unpublished/inactive not served as live. `form_presentation_runtime_v1` is not HostFlow-form public-serve authority. No second renderer. FP-2 publish-write unchanged. Active Product → **FP-4** (brief; feat locked). Do not start FP-4 in this PR. Not leftover-store deletion. Not Hiring. Not P4 / P5.
+- 2026-09-20: **FP-3 Public Serve feat opened.** Branch `feat/forms-publish-fp3-public-serve` from `41be635a` ([#380](https://github.com/igortatarynovich/HostFlow/pull/380)). Close path = public request → resolve live publication → frozen `form_publication_versions` snapshot → canonical Form Runtime render. Leftover `/public/intake` → `form_presentation_runtime_v1` follows named expiry, not general cleanup. Embed is serve-surface compatibility, not FP-4 snippet UX. Public Serve Gate **not PASS**. This stamp does not ship runtime. Not Hiring / leftover-store deletion. Not P4 / P5.
+- 2026-09-20: **Publish Action Gate PASS.** Authenticated `POST /api/v1/platform/forms/{form_id}/publish` → Adapter `commit_publish` → `form_publication_versions`. Leftover presentation / Form Definition version bumps retired. Republish idempotent per identity. Active Product → **FP-3** (brief; feat locked). Do not start FP-3 in this PR. Not Hiring / leftover-store deletion. Not P4 / P5.
+- 2026-09-20: **FP-2 Publish Action feat opened.** Branch `feat/forms-publish-fp2-publish-action` from `7112279e` ([#378](https://github.com/igortatarynovich/HostFlow/pull/378)). Close path = authenticated product route → Adapter `commit_publish` → `form_publication_versions`; leftover presentation / Form Definition version bumps retire; republish is idempotent per identity. Publish Action Gate **not PASS**. This stamp does not ship runtime. Not FP-3 / Hiring / leftover-store deletion. Not P4 / P5.
+- 2026-09-20: **Forms Publish Contract Gate PASS.** SoT = [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`). ADR-022 **Accepted** without expanding Purpose / Policy / Match Matrix. P3 unlocked in echoing canon; P4 / P5 stay locked. Feat still locked. Active Product → **FP-2** (brief; feat locked this PR). Do not start FP-2 in this PR. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not P4 / P5.
+- 2026-09-20: Queue amendment names **FP-1** Active Product (brief; feat locked). Mapping program **DONE**. Forms Publish Contract Gate **not PASS**. Do not seal the publish contract in this PR. Hiring E2E / min HR remain queued. Not leftover-store deletion. Not FP-2. Not P4 / P5.

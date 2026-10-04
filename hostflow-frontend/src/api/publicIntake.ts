@@ -124,6 +124,36 @@ export type FormPresentationRuntime = {
   warnings?: string[]
 }
 
+export const FORM_RUNTIME_MODEL_CONTRACT = 'forms.runtime.model.v1'
+
+export type FormRuntimeModel = {
+  contract: string
+  form_id: string
+  published_version: number
+  field_schema?: Record<string, unknown> | null
+  title?: string | null
+  public_slug?: string | null
+  entity_profile_code?: string | null
+  presentation_code?: string | null
+  fields?: FormPresentationRuntimeField[]
+}
+
+export function formRuntimeToPresentation(runtime: FormRuntimeModel): FormPresentationRuntime {
+  const schema =
+    runtime.field_schema && typeof runtime.field_schema === 'object' ? runtime.field_schema : {}
+  return {
+    contract_version: FORM_RUNTIME_MODEL_CONTRACT,
+    entity_profile_code: String(
+      runtime.entity_profile_code || (schema as { entity_profile_code?: string }).entity_profile_code || '',
+    ),
+    presentation_code: String(
+      runtime.presentation_code || (schema as { presentation_code?: string }).presentation_code || '',
+    ),
+    profile_name: runtime.title ?? null,
+    fields: runtime.fields || [],
+  }
+}
+
 export type PublicChecklist = {
   requiredTypes?: string[]
   optionalTypes?: string[]
@@ -208,6 +238,7 @@ export type PublicIntakeState = {
   timeline?: PublicTimelineEntry[]
   status_share_token?: string | null
   form_presentation?: FormPresentationRuntime | null
+  form_runtime?: FormRuntimeModel | null
 }
 
 export type PublicStatusState = {

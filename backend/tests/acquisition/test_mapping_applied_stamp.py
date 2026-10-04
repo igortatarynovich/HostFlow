@@ -89,3 +89,46 @@ def test_compose_applied_evidence_sentences_and_drift() -> None:
         destinations=[],
     )
     assert drifted["drift"] is True
+
+
+def test_fingerprint_follows_authority_list_not_write_subset() -> None:
+    from backend.app.acquisition.mapping_applied_stamp import compose_applied_evidence
+
+    authority = [
+        {
+            "source": "email",
+            "qualified_field_code": "recruitment.candidate.contacts.email",
+        },
+        {"source": "favourite_color", "action": "ignore"},
+    ]
+    executed = [authority[0]]
+    normalized: dict = {
+        "canonical_facts_v1": {
+            "recruitment.candidate.contacts.email": "anna@example.com",
+        }
+    }
+    stamp_mapping_applied_v1(
+        normalized,
+        rules=executed,
+        fingerprint_rules=authority,
+        source_id="src-1",
+        rules_source="authority",
+    )
+    evidence = compose_applied_evidence(
+        lead_id="lead-1",
+        normalized=normalized,
+        current_rules=authority,
+        destinations=[
+            {
+                "code": "recruitment.candidate.contacts.email",
+                "label": "Email",
+                "aliases": [],
+                "options": [],
+            }
+        ],
+    )
+    assert evidence["drift"] is False
+    assert evidence["rules_fingerprint"] == fingerprint_mapping_rules(authority)
+    assert "anna@example.com" in evidence["sentences"][0]["sentence"]
+    assert normalized[MAPPING_APPLIED_V1_KEY]["executable_rules"][0]["source"] == "email"
+    assert len(normalized[MAPPING_APPLIED_V1_KEY]["executable_rules"]) == 1

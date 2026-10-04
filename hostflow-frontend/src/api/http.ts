@@ -22,7 +22,8 @@ function isAnonymousPublicIntakePath(url?: string): boolean {
   return (
     path.includes('/public/apply/') ||
     path.includes('/public/status/') ||
-    path.includes('/public/magic-link/')
+    path.includes('/public/magic-link/') ||
+    path.includes('/public/intake')
   )
 }
 

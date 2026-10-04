@@ -18,6 +18,7 @@ from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.services.employment_records import display_employments_by_employee
 from backend.app.services import reminder_tasks
 from backend.app.services.hr_documents_queue import list_hr_documents_expiring, list_hr_documents_missing
 from backend.app.services.hr_inbox import list_internal_hr_handoffs_for_hr_inbox
@@ -366,8 +367,12 @@ async def list_operational_risk_items(
     wf_rows = (
         await db.execute(select(WorkforceEmployee).where(WorkforceEmployee.tenant_id == tid))
     ).scalars().all()
+    relationships = await display_employments_by_employee(
+        db, tid, [str(emp.id) for emp in wf_rows]
+    )
     for emp in wf_rows:
-        hid = (emp.meta or {}).get("internal_hr_handoff_id")
+        rel = relationships.get(str(emp.id))
+        hid = str(rel.handoff_id or "").strip() if rel is not None else ""
         if not hid:
             continue
         if handoff_id and str(hid) != str(handoff_id):
@@ -387,7 +392,7 @@ async def list_operational_risk_items(
             continue
         if emp.updated_at >= inact_cutoff:
             continue
-        snap = emp.candidate_snapshot if isinstance(emp.candidate_snapshot, dict) else {}
+        snap = rel.candidate_snapshot if rel is not None and isinstance(rel.candidate_snapshot, dict) else {}
         items.append(
             _risk_item(
                 risk_code="hr_inactivity",

@@ -197,13 +197,14 @@ export default function PublicIntakeStart() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">{t('public.start.form.email')}</label>
-            <input
-              type="email"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
-              placeholder={t('public.start.form.placeholders.email', { defaultValue: 'you@example.com' })}
-              value={form.email}
-              onChange={(e) => handleChange('email', e.target.value)}
-            />
+              <input
+                type="email"
+                data-testid="public-intake-email"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
+                placeholder={t('public.start.form.placeholders.email', { defaultValue: 'you@example.com' })}
+                value={form.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+              />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
@@ -248,6 +249,7 @@ export default function PublicIntakeStart() {
 
           <button
             type="submit"
+            data-testid="public-intake-start-submit"
             disabled={!canSubmit || loading}
             className="w-full rounded-xl bg-brand-600 px-4 py-3 text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
@@ -262,7 +264,11 @@ export default function PublicIntakeStart() {
               {(typeof window !== 'undefined' ? window.location.origin : '')}
               {result.apply_url}
             </p>
-            <Link to={result.apply_url} className="mt-4 inline-flex rounded-lg bg-green-600 px-4 py-2 text-white">
+            <Link
+              to={result.apply_url}
+              data-testid="public-intake-open-apply"
+              className="mt-4 inline-flex rounded-lg bg-green-600 px-4 py-2 text-white"
+            >
               {t('public.start.form.open')}
             </Link>
           </div>

@@ -95,7 +95,8 @@ Phase 0–1 slot code remains valid **bridge** until `candidate_evidence` table 
 - Handoff: [`handoff-contract.md`](handoff-contract.md)  
 - Requirement Engine: [`requirement-rules-engine-p0.md`](../platform/requirement-rules-engine-p0.md)  
 - Document Hub: [ADR-009](ADR-009-document-hub-platform-layer.md)  
-- Recruitment / HR boundary: [ADR-002](ADR-002-modular-recruitment-hr-boundary.md)
+- Recruitment / HR boundary: [ADR-002](ADR-002-modular-recruitment-hr-boundary.md)  
+- Hiring walk disposition: [`hiring-acceptance-contract.md`](hiring-acceptance-contract.md) (`candidate_evidence_binds_document_link`)
 
 ## AI Agent Notes
 

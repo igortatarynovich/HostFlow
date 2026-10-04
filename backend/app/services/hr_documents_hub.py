@@ -18,7 +18,7 @@ from backend.app.models.workforce_hr_document_context import WorkforceHrDocument
 from backend.app.models.workforce_work_eligibility_payment_requirement import (
     WorkforceWorkEligibilityPaymentRequirement,
 )
-from backend.app.services.document_catalog import normalize_doc_type
+from backend.app.services.employment_records import display_employments_by_employee
 from backend.app.services.hr_documents_queue import (
     HR_HIGH_RISK_DOC_TYPES,
     _expiring_recommended,
@@ -29,11 +29,8 @@ from backend.app.services.hr_documents_queue import (
 MAX_SCAN = 5000
 
 
-def _handoff_id_from_employee_meta(meta: dict[str, Any] | None) -> str | None:
-    if not meta or not isinstance(meta, dict):
-        return None
-    raw = meta.get("internal_hr_handoff_id")
-    s = str(raw).strip() if raw is not None else ""
+def _handoff_id_from_relationship(handoff_id: str | None) -> str | None:
+    s = str(handoff_id or "").strip()
     return s or None
 
 
@@ -159,10 +156,16 @@ async def list_hr_documents_hub(
 
     res = await db.execute(stmt)
     pairs = res.all()
+    relationships = await display_employments_by_employee(
+        db,
+        tid,
+        [str(emp.id) for _ctx, emp, _doc, _cs in pairs],
+    )
 
     handoff_ids: set[str] = set()
-    for ctx, emp, _doc, _cs in pairs:
-        hid = _handoff_id_from_employee_meta(emp.meta if isinstance(emp.meta, dict) else None)
+    for _ctx, emp, _doc, _cs in pairs:
+        rel = relationships.get(str(emp.id))
+        hid = _handoff_id_from_relationship(rel.handoff_id if rel is not None else None)
         if hid:
             handoff_ids.add(hid)
 
@@ -210,7 +213,8 @@ async def list_hr_documents_hub(
     for ctx, emp, doc, compliance in pairs:
         if wanted_doc_type and normalize_doc_type(str(doc.doc_type or "")) != wanted_doc_type:
             continue
-        hid = _handoff_id_from_employee_meta(emp.meta if isinstance(emp.meta, dict) else None)
+        rel = relationships.get(str(emp.id))
+        hid = _handoff_id_from_relationship(rel.handoff_id if rel is not None else None)
         ho = handoff_by_id.get(hid) if hid else None
         assignee = str(ho.assigned_to_user_id).strip() if ho and ho.assigned_to_user_id else None
         if not team and assignee and assignee != viewer:

@@ -52,7 +52,8 @@ def test_r5_merge_rejects_tenant_fork_defaults() -> None:
 def test_r5_pack_definitions_use_country_registry_not_local_eu_set() -> None:
     source = _PACK_DEFINITIONS.read_text(encoding="utf-8")
     assert "_DEFAULT_EU_COUNTRIES" not in source
-    assert "eu_member_alpha2_lower" in source
+    merge = _MERGE.read_text(encoding="utf-8")
+    assert "eu_member_alpha2_lower" in merge
     tree = ast.parse(source)
     assigns = [
         node

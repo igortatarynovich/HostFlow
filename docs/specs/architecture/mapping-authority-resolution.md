@@ -62,12 +62,18 @@ Reject: documenting the old chain as “still how ingest works”; a second reso
 
 ## Consequences
 
-- MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Remaining writable surfaces must cease to be editors (deep-link/redirect or separately owned read-only diagnostics). Feat stays locked until that slice.  
-- MA-4 makes `qualified_code` the only write vocabulary on the intake path.  
+- MA-3 ships one editor over this authority. UX SoT: [mapping-authority-operator.md](mapping-authority-operator.md). Mapping Operator Gate **PASS** 2026-09-18. Remaining leftover HTTP writers return 410; leftover stores stay read-through.  
+- MA-4 made `qualified_code` the only write vocabulary on the intake path. Mapping Consumer Cutover Gate **PASS** (`fddadd39`).  
 - RPM / evaluators still consume canonical facts only.
 
 ---
 
 ## History
+- 2026-09-21: **Queue amendment names HE-1 Active Product.** External Intake program close recorded (`741a4b2e`; [#387](https://github.com/igortatarynovich/HostFlow/pull/387)). External Intake Acceptance Gate **PASS** (`4f454556`; [#386](https://github.com/igortatarynovich/HostFlow/pull/386)). Active Product → **[HE-1](../tasks/hiring-workflow-e2e.md)** (brief; feat locked this PR). Hiring Acceptance Contract Gate **not PASS**. Do not open HE-1 contract seal in this PR. min HR remains queued. Not leftover-store deletion. Not RS-3. Not Mapping Operator Surface / DR1 Runtime inherited reds. Not P4 / P5. Foundation stays 🔄. HostFlow v1 is not release-ready.
 
+- 2026-09-20: Queue amendment names **FP-1** Active Product (brief; feat locked). Mapping program **DONE**.
+- 2026-09-20: Mapping program close. Consumer Cutover Gate **PASS** (`fddadd39`; evidence `92206f40`). Product **DONE** with no named successor until amendment.
+- 2026-09-19: **Mapping Consumer Cutover Gate PASS.** Cutover code `fddadd39`. `qualified_code` is the only intake write vocabulary. Feat locked. Active Product → Mapping program close (brief; feat locked).
+- 2026-09-18: **MA-4 Consumer cutover feat opened.** Branch `feat/mapping-authority-ma4-consumer-cutover` from `c20f7987`. Mapping Consumer Cutover Gate **not PASS**.
+- 2026-09-18: Mapping Operator Gate **PASS**. Active Product → MA-4 (brief; feat locked).
 - 2026-09-04: Mapping Resolution Gate **PASS**. One resolver over `intake_source_profiles.mapping_rules`. Active Product → MA-3 (brief; feat locked).

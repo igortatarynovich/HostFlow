@@ -226,6 +226,48 @@ def _base_slot_result(
     }
 
 
+def document_kind_satisfaction_slot(slot_code: str) -> Optional[dict[str, Any]]:
+    """Satisfaction shape of one canonical document type.
+
+    Membership of the required set stays with RPM. This only says how a
+    document-kind member that is already required is fulfilled: one evidence
+    variant whose document type is that canonical code. It does not add the
+    code to a pack, a slot catalog, or a second required set.
+    """
+    code = _norm(slot_code)
+    if not code:
+        return None
+    from backend.app.services.document_hub_delivery_contract import (
+        persist_canonical_type_identity_via_contract,
+    )
+
+    canonical = _norm(persist_canonical_type_identity_via_contract(code))
+    if not canonical:
+        return None
+    variant = {
+        "evidence_variant_code": canonical,
+        "alternative_code": canonical,
+        "any_of": [canonical],
+        "document_type_codes": [canonical],
+    }
+    return {
+        "requirement_code": canonical,
+        "slot_code": canonical,
+        "level": "blocking",
+        "public_name": canonical,
+        "accepted_evidence_variants": [variant],
+        "satisfaction_alternatives": [variant],
+    }
+
+
+def satisfaction_slot(slot_code: str) -> Optional[dict[str, Any]]:
+    """Catalog slot when one exists; otherwise the document-kind shape of a canonical type."""
+    slot = get_slot_definition(slot_code)
+    if slot is not None:
+        return slot
+    return document_kind_satisfaction_slot(slot_code)
+
+
 def evaluate_document_slot(
     slot_code: str,
     *,
@@ -236,7 +278,7 @@ def evaluate_document_slot(
     require_explicit_choice: bool = False,
 ) -> dict[str, Any]:
     """Evaluate one requirement against Candidate Evidence (no document-type guessing)."""
-    slot = get_slot_definition(slot_code)
+    slot = satisfaction_slot(slot_code)
     if slot is None:
         return {
             "slot_code": _norm(slot_code),

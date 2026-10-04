@@ -119,6 +119,20 @@ async def test_evaluate_host_surfaces_ui_primary_only_semantics() -> None:
 
     with (
         patch(
+            "backend.app.services.employment_records.display_employment",
+            new=AsyncMock(
+                return_value=SimpleNamespace(
+                    client_company_id="cccccccc-cccc-cccc-cccc-cccccccccccc",
+                    started_on=None,
+                    handoff_id="h1",
+                )
+            ),
+        ),
+        patch(
+            "backend.app.services.employment_records.handoff_id_for_employee",
+            new=AsyncMock(return_value="h1"),
+        ),
+        patch(
             "backend.app.services.employment_start_allowed_orchestrator.resolve_employee_for_handoff",
             new=AsyncMock(return_value=emp),
         ),

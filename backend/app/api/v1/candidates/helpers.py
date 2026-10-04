@@ -9,13 +9,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.constants.catalogs import DIAL_CODES
-from fastapi import HTTPException
 
 from backend.app.constants.stages_adapter import STAGES
-from backend.app.constants.stages import LABELS
 from backend.app.models import Candidate
 from backend.app.models.candidate import next_candidate_short_id
 from backend.app.models.document import Document
+from backend.app.reference.hiring_stage_authority import (
+    assert_hiring_stage_transition,
+    hiring_stage_exists,
+    normalize_hiring_stage_key,
+    resolve_hiring_stage_key,
+)
 
 
 def _utc_naive() -> datetime:
@@ -42,39 +46,23 @@ def _iter_stages():
 def is_stage_code(value: str) -> bool:
     if not value:
         return False
-    v = value.strip()
-    for code, _ in _iter_stages():
-        if code == v:
-            return True
-    return False
+    return hiring_stage_exists(value.strip())
 
 def code_for_label(label: str) -> Optional[str]:
     if not label:
         return None
+    mapped = normalize_hiring_stage_key(label)
+    if mapped:
+        return mapped
     norm_label = label.strip().casefold()
     for code, meta in _iter_stages():
         name = str((meta or {}).get("label", "")).strip().casefold()
-        if name == norm_label:
+        if name == norm_label and hiring_stage_exists(code):
             return code
     return None
 
-_STAGE_CODE_ALIASES = {
-    "planning_arrival": "trip_plan",
-    "plan_arrival": "trip_plan",
-    "planning-trip": "trip_plan",
-}
-
 def _normalize_stage_to_code(value: Optional[str]) -> Optional[str]:
-    if not value:
-        return None
-    v = value.strip()
-    v_lower = v.lower()
-    alias = _STAGE_CODE_ALIASES.get(v_lower)
-    if alias:
-        return alias
-    if is_stage_code(v_lower):
-        return v_lower
-    return code_for_label(v) or code_for_label(v_lower) or None
+    return normalize_hiring_stage_key(value)
 
 
 def _validate_stage_transition(
@@ -84,23 +72,15 @@ def _validate_stage_transition(
     allow_revert: bool = True,
     max_skip: int = 1,
 ) -> None:
-    """
-    Validate stage code but DO NOT restrict transition order.
+    """Hiring-path transition-order rule (HE-2).
 
-    Исторически функция ограничивала переходы по пайплайну (нельзя было
-    «перепрыгивать» через несколько этапов). По факту это мешает работе
-    в нестандартных ситуациях, когда рекрутеру или клиенту нужно
-    вручную проставить любой этап в любой момент.
-
-    Текущая политика:
-    - Запрещаем только пустой код стадии.
-    - Известность кода проверяет ``resolve_writable_stage_code`` (глобальный
-      каталог **или** ``funnel_stages`` тенанта).
-    - Любые переходы между валидными стадиями разрешены (вперёд, назад,
-      через сколько угодно шагов).
+    Existence = LI-1 ``is_stage_registered``. Occupancy = ``Candidate.stage``.
+    Leftover static list / tenant dictionary / funnel_stages do not grant
+    existence. Jumps onto leftover-only codes are rejected.
+    Forward registered moves remain subject to leftover pipeline guards.
     """
-    if not target:
-        raise HTTPException(status_code=422, detail="Stage must not be empty")
+    _ = allow_revert, max_skip
+    assert_hiring_stage_transition(current, target)
 
 
 async def resolve_writable_stage_code(
@@ -109,35 +89,14 @@ async def resolve_writable_stage_code(
     tenant_id: str,
     raw: str,
 ) -> str:
-    """Accept a global pipeline code **or** a tenant funnel stage code.
+    """Accept a LI-1 registered hiring stage only.
 
-    Candidate PATCH used to 422 any funnel-local code (e.g. a custom
-    ``skontaktowac__sie_pozniej`` row) because ``_normalize_stage_to_code``
-    only knows ``constants/stages.py``.
+    Funnel-local codes and leftover dictionaries do not answer existence
+    on the hiring path (HE-2). ``db`` / ``tenant_id`` stay on the signature
+    so callers do not change; they are not existence inputs.
     """
-    text = str(raw or "").strip()
-    if not text:
-        raise HTTPException(status_code=422, detail="Stage must not be empty")
-    normalized = _normalize_stage_to_code(text)
-    if normalized:
-        return normalized
-
-    from backend.app.models.funnel import Funnel, FunnelStage
-
-    found = (
-        await db.execute(
-            select(FunnelStage.id)
-            .join(Funnel, Funnel.id == FunnelStage.funnel_id)
-            .where(
-                Funnel.tenant_id == str(tenant_id),
-                FunnelStage.code == text,
-            )
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-    if found is None:
-        raise HTTPException(status_code=422, detail=f"Unknown stage '{text}'")
-    return text
+    _ = db, tenant_id
+    return resolve_hiring_stage_key(raw)
 
 def _parse_dt(s: Optional[str]) -> Optional[datetime]:
     if not s:

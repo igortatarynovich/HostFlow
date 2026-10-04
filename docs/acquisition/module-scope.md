@@ -92,7 +92,7 @@ Campaign → Audience(s) → Flight → Channels
 8. **Stage 5** — PR-1 ✅ DONE · PR-2 **may resume** after cutover PASS — [`../specs/tasks/acquisition-stage-5-optimization.md`](../specs/tasks/acquisition-stage-5-optimization.md)  
 9. **Stage 6** — **FUTURE** — Analytics (ADR-024 §14.1 maturity ladder)
 
-**Forms Builder MVP COMPLETE** (P2.1–P2.5); Marketing Forms IA cutover **C-6 DONE**. Forms P3 Publish UI **LOCKED**.  
+**Forms Builder MVP COMPLETE** (P2.1–P2.5); Marketing Forms IA cutover **C-6 DONE**. Forms P3 Publish = v1 blocker 3 (contract sealed). P4 Themes / P5 Analytics remain **LOCKED**.  
 See [`capability-contract.md`](../specs/architecture/capability-contract.md).
 
 V1 chain + maturity ladder:
