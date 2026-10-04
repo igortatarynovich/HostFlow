@@ -157,9 +157,13 @@ After Legal Eligibility PASS, HR completes the employee data the later formaliti
 
 `kwestionariusz osobowy` is a representation of that canonical employee data. It is not a second copy of the person. This contract names the representation and does not design the form.
 
+Who already owns each person fact is [Employee Data ownership](#employee-data-ownership). That section adds no store.
+
 ### Employment terms
 
 The facts of this relationship include the employer, the position or profession, the employment basis or type, the workplace, the start date, the working time, and the remuneration, plus any further term the relationship needs. This opening names those facts and adds no column.
+
+Where each of those facts already lives is [Employment Terms discovery](#employment-terms-discovery). The agreed-terms model is [Employment Terms Contract Gate](#employment-terms-contract-gate). Neither section adds a column.
 
 ### Pre-employment requirements
 
@@ -309,3 +313,160 @@ The repository discovery fixes the card. `workforce_employments` is already 1:N 
 **Outcome:** **PASS**. The next slice is Employment Persistence Schema. This file writes no table.
 
 Feat stays locked. Runtime is not authorized. The HR Legal Eligibility Gate is not this slice.
+
+---
+
+## Employee Data ownership
+
+This section names the live owner of each person fact the HR process reads. It adds no table, no column, and no runtime module. It does not close a schema gate and it does not close a runtime gate. The sentences in this file that say no schema is written, and that no runtime module is authorized, stay in force.
+
+The layer uses the Employee context already linked to the current `Employment(preparing)`. `kwestionariusz osobowy` is a view of the owners below. It is not a stored questionnaire.
+
+### One owner
+
+A person fact has one live owner. HR reads that owner. A missing fact, or a fact that must be brought up to date, is written on that owner. The address of the person is that one owner. An employee address and a kwestionariusz address are not opened beside it.
+
+`Candidate` remains the temporary identity anchor. No Person table is authorized.
+
+### Live person facts
+
+| Fact | Live owner | Copies that are not the owner |
+|---|---|---|
+| Legal name | `candidates.first_name`, `candidates.last_name` (`recruitment.candidate.first_name`, `recruitment.candidate.last_name`) | `WorkforceEmployee.display_name` is the HR label. `CandidateHandoffSnapshot.payload` and `hr_employments.candidate_snapshot` are the snapshot already saved for the handoff |
+| Latin name | `candidates.first_name_latin`, `candidates.last_name_latin` | the same snapshot |
+| Phone, phone country code, email | columns `candidates.phone`, `candidates.phone_country_code`, `candidates.email` | `candidates.contacts` may repeat them. That JSON owns `preferred_messenger` |
+| Birth date | `candidates.personal_data.birth_date` (`platform.identity.birth_date`) | the property setter also writes `extra.birth_date`. That extra key is the legacy mirror of the same write |
+| Citizenship | `candidates.personal_data.citizenship` (`platform.identity.citizenship`) | `extra.citizenship`. `workforce_work_eligibility_profiles.citizenship` is a legalization projection. The legalization truth stays `legal_eligibility.v1` |
+| Address, city, country, latin address | `candidates.personal_data` keys `address`, `city`, `country_code`, `city_latin`, `address_latin`. `platform.identity.address` is the address | the property setter also writes `extra`. The Employee row has no address column, and this section adds none |
+| Languages | `candidates.languages` | |
+| PESEL | `candidates.personal_data.pesel` | no PESEL column exists. Readers also look at `extra.pesel`, `employee.meta.pesel`, and the snapshot. Those paths are not a second PESEL. This section adds no column and does not move the copies |
+| Residency status, current location, in Poland | `candidates.personal_data` under `recruitment.candidate.personal.residency_status`, `personal.current_location`, `personal.in_poland` | not an Employment term |
+
+The number, issue date, and expiry of an identity document belong to that `documents` row (`number`, `issue_date`, `expire_date`, `meta`). Employee Data may refer to the document. It does not copy those values onto the Employee or into a questionnaire row.
+
+`candidate_evidence` records which variant satisfies a recruitment requirement. It is not a person store. Evidence already held stays on the existing evidence model.
+
+`workforce_hr_verified_fields.verified_value` records who confirmed a value and from which document. The confirmation is not the person.
+
+`CandidateHandoffSnapshot.payload` is the snapshot already saved at handoff. `hr_employments.candidate_snapshot` holds that payload for the Employment. This layer does not make another copy of the person or of the evidence, and the snapshot does not become the live owner.
+
+### Outside this layer
+
+| Store | What it owns |
+|---|---|
+| `hr_employments` | `client_company_id`, `vacancy_id`, `started_on`, `ended_on`, the recruiter, and the handoff. `started_on` and `ended_on` stay empty in this layer. Substantive terms are [Employment Terms discovery](#employment-terms-discovery) |
+| `workforce_employments` | the contract card: type, rate, schedule, card dates, `lifecycle_status` |
+| `WorkforceEmployee` | the HR context: `candidate_id`, `own_company_id`, `display_name`, `status`, `notes`. `status` stays the other plane |
+| `candidate_profiles`, `ep_entity_profiles` | which fields a card or an intake shows. They store no person value |
+| `candidate_employments` | prior jobs captured at intake. A view may read them. This layer does not copy them, and they are not this Employment |
+| `workforce_tax_profiles`, `workforce_insurance_profiles`, `workforce_zus_profiles`, `workforce_payroll_profiles`, `workforce_work_eligibility_profiles` | tax, insurance, ZUS, payroll, and work-eligibility process. This layer does not re-home them and does not read them as the person. Pay and the bank account wait with terms or payroll. ZUS registration stays a post-start obligation |
+| Candidate stage, source, recruiter, vacancy, agreements, experience | Recruitment participation of that person |
+
+Parents' names, place of birth, and a maiden name are not stored as canonical fields. This section does not take them from a Polish form and does not add a key for them. A later completeness rule that needs a missing person fact writes it once on `candidates.personal_data`.
+
+### Gate question
+
+The only question of this layer is: is the person-fact set sufficient to continue the HR process for this `Employment(preparing)`?
+
+The reading uses the owners above. HR fills only a fact that is missing or that must be brought up to date, and writes it on its owner. An insufficient set leaves the Employment `preparing`. A sufficient set leaves the Employment `preparing`. It does not move the Employment to `active`. It is not the Ready to Start Gate. Employment terms, pre-employment requirements, and Ready to Start wait.
+
+The order around `preparing` stays: HR Legal Eligibility PASS, then Employee Data sufficient, then Employment terms, then pre-employment requirements, then the Ready to Start Gate, then `active`.
+
+A later kwestionariusz osobowy document may be generated from these owners. The PDF, a template, and Polish document policy are not the source of truth.
+
+This section writes no schema and authorizes no runtime module. `backend/app/reference/employee_data.py` is not created. Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Employment Terms discovery
+
+This section reads the columns that already exist. It adds no table, no column, and no runtime module. It does not close a schema gate and it does not close a runtime gate. It does not list which terms a Polish `umowa` requires, and it does not name a document to generate.
+
+Three layers stay distinct.
+
+A vacancy holds the offer: title, location, `employment_type`, and a salary range. Those values may default a later agreement. They are not the agreed terms of one Employment.
+
+The agreed terms belong to that Employment. The relationship context already has columns on `hr_employments`. The substantive terms have no second table. Where a substantive term already has one column, that column is the current store. This section does not open a parallel salary, FTE, workplace, or contract-type field.
+
+`workforce_employments` is the contract card. It represents an agreement document and its `lifecycle_status`. It is not the Employment. One Employment has many cards.
+
+### Relationship context
+
+| Fact | Canonical owner | What else is stored |
+|---|---|---|
+| Employer / workspace | `workforce_employees.own_company_id`, inside the tenant | `vacancies.own_company_id` is the vacancy's workspace. `workforce_employments.employer_name` is a free label on the card. Neither is a second employer |
+| Client | `hr_employments.client_company_id` | There is no `hr_employments.company_id`. `hr.employee.company_id` reads `client_company_id`. `vacancies.company_id` is the client of the offer |
+| Vacancy of this hire | `hr_employments.vacancy_id` | `workforce_employments.vacancy_id` is a copy on the card. It is not a second vacancy |
+| Start of the relationship | `hr_employments.started_on` | `workforce_employments.start_date` is the start printed on that card. The two dates are different facts |
+| End of the relationship | `hr_employments.ended_on` | `workforce_employments.end_date` and `expiry_date` are dates of that card |
+| Recruiter and handoff | `hr_employments.recruiter_user_id`, `handoff_at`, `handoff_by_user_id`, `handoff_id`, `candidate_snapshot` | The snapshot remains the payload already saved at handoff |
+
+`started_on` and `ended_on` stay empty while this layer only names them. Writing those dates is not this slice.
+
+### Substantive terms
+
+| Fact | Where a value lives today | Canonical reading |
+|---|---|---|
+| Position of this Employment | No position column on `hr_employments` or on `workforce_employments`. `vacancies.title` is the offer title. `position_category` appears in candidate extra and on `workforce_work_eligibility_profiles`. `conditions_text` is free text on the card | The agreed position belongs to this Employment. The offer title may default it. This section adds no position column |
+| Contract basis | `workforce_employments.contract_type`, default `unknown`. `vacancies.employment_type` is `full_time`, `part_time`, or `b2b`. `workforce_work_eligibility_profiles.contract_type` and `workforce_zus_profiles.employment_basis` are other strings | The card's `contract_type` is the current store of the agreed basis. The vacancy enum is the offer shape. The eligibility and ZUS strings are process copies. This section adds no second contract-type column |
+| Working time | No FTE column. `vacancies.employment_type` is the coarse offer. `workforce_employments.schedule` is an unstructured JSON | Agreed working time belongs to this Employment. The current blob, when present, is `schedule` on the card. This section adds no FTE column and does not define the JSON |
+| Workplace | No workplace column. `vacancies.location` is the offer location | The agreed workplace belongs to this Employment. The vacancy location may default it. This section adds no workplace column |
+| Remuneration, currency, period | `vacancies.salary_from`, `salary_to`, and `currency` are offer strings. `workforce_employments.rate_model` is an unstructured JSON with no amount, currency, or period keys. `workforce_payroll_profiles.base_rate`, `currency`, and `pay_type` are the payroll satellite. `sales_order_lines.unit_rate` is the client commercial rate | Agreed pay belongs to this Employment. The current HR store is `rate_model` on the card. The vacancy range is the offer. Payroll is a later copy. The sales rate is not the worker's pay. This section adds no salary column and does not define `rate_model` |
+| Fixed or indefinite term | No such flag. `ended_on`, `end_date`, and `expiry_date` are dates | An empty end date is not defined as indefinite. This section adds no flag |
+| Probation | `workforce_employments.probation_end` only. `workforce_employees` has no `probation_end` column. `hr.employee.probation_end` reads the card | Probation is a term of that contract card. It is not `started_on` and it is not an Employment state. This section does not copy it onto `hr_employments` |
+
+`lifecycle_status`, `signed_at`, `latest_annex_ref`, `next_action`, and `conditions_text` stay document facts of the card.
+
+### Gate question
+
+The only question of this layer is: are the terms of this Employment defined enough to continue to pre-employment requirements?
+
+A complete reading and an incomplete reading both leave `hr_employments.state` at `preparing`. Neither moves the Employment to `active`. Neither is the Ready to Start Gate. Pre-employment requirements stay the next layer.
+
+This section writes no schema and authorizes no runtime module. `backend/app/reference/employment_terms.py` is not created. Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Employment Terms Contract Gate
+
+**Machine id:** `employment_terms.v1` — named here. No runtime module.  
+**Outcome:** **PASS**. The model below is the agreed terms of one Employment. This section adds no table and no column. It does not choose a store. It does not close a schema gate and it does not close a runtime gate.
+
+The discovery found the bytes that exist today. None of them is a snapshot of the agreement. This gate defines that snapshot and the mapping. A later schema slice chooses whether the snapshot is columns on `hr_employments`, a separate terms structure, or another store.
+
+### Agreed terms
+
+The agreed terms belong to one Employment. They are the snapshot of what was agreed for that Employment. They are not a live reading of the vacancy. They are not the contract card.
+
+| Term | Semantics | Mapping of what exists today |
+|---|---|---|
+| Position | The position agreed for this Employment | `vacancies.title` may be copied once as the default. After the snapshot exists, the vacancy title is not the position |
+| Contract basis | The canonical type of this relationship. The vocabulary is not `vacancies.employment_type` | `full_time`, `part_time`, and `b2b` stay the offer shape. `workforce_employments.contract_type`, `workforce_work_eligibility_profiles.contract_type`, and `workforce_zus_profiles.employment_basis` are other strings. This contract does not list `umowa` types |
+| Work time | A structured magnitude and unit | `workforce_employments.schedule` is an unstructured blob. It is not this pair. This contract does not close the unit vocabulary and does not parse the blob |
+| Workplace | The place of work agreed for this Employment | `vacancies.location` may be copied once as the default |
+| Compensation | Amount, currency, and unit or period | `vacancies.salary_from`, `salary_to`, and `currency` are an offer range. `workforce_employments.rate_model` has no amount, currency, or period keys. `workforce_payroll_profiles.base_rate` is payroll. `sales_order_lines.unit_rate` is the client rate |
+| Duration | `fixed` or `indefinite` | No flag exists today. An empty `hr_employments.ended_on` does not mean `indefinite`. An empty card `end_date` does not mean `indefinite` |
+| Fixed-term end | The agreed end date of a fixed term. Present when duration is `fixed`. Absent when duration is `indefinite` | `hr_employments.ended_on` is the end of the relationship. `workforce_employments.end_date` and `expiry_date` are dates of the card |
+| Probation | A term of this Employment. An agreed end date, or an explicit none | `workforce_employments.probation_end` may show that date on a card. The card date is not the source of truth |
+
+### Snapshot
+
+A default is copied at the moment of agreement, and only then. Position may start from `vacancies.title`. Workplace may start from `vacancies.location`. The salary range does not become the compensation amount. `employment_type` does not become the contract basis. `schedule` does not become work time. `rate_model` does not become compensation.
+
+After the snapshot exists, a change to `vacancies.title`, `vacancies.location`, `vacancies.salary_from`, `vacancies.salary_to`, `vacancies.currency`, or `vacancies.employment_type` leaves the agreed terms as they were.
+
+A contract card may be filled from the snapshot when the document is created. A later edit of that card, including `contract_type`, `rate_model`, `schedule`, `probation_end`, `start_date`, `end_date`, and `conditions_text`, does not write the agreed terms.
+
+### Complete
+
+Employment Terms complete means this Employment holds a sufficient structured set of agreed terms, independent of the current vacancy and independent of the contract document.
+
+The set is sufficient when position, contract basis, work time, workplace, compensation, and duration are present, probation is an agreed end date or an explicit none, and the fixed-term end is present only when duration is `fixed`.
+
+An incomplete set leaves `hr_employments.state` at `preparing`. A complete set leaves `hr_employments.state` at `preparing`. Completeness is the permission to continue to pre-employment requirements. It does not open that layer. It does not move the Employment to `active`. It is not the Ready to Start Gate.
+
+### Store
+
+No column and no JSON in the current model is this snapshot. Employment Terms Schema is the indicated next slice. It will choose the store. This section does not open that slice and does not write it.
+
+This section writes no schema and authorizes no runtime module. `backend/app/reference/employment_terms.py` is not created. Feat stays locked. HostFlow v1 is not release-ready.
