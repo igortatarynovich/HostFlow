@@ -171,6 +171,8 @@ Once the data and the terms the policy needs are present, policy forms the requi
 
 A later company policy may express a Polish sequence such as a medical examination, BHP, occupational-risk acknowledgements, an agreement, declarations, and company requirements. This contract does not canonize a Polish pre-employment document list. A draft agreement need not wait for a medical examination; that is an example of a dependency, not a required order.
 
+What already exists, and the two axes of one Employment's requirements, are [Pre-employment Requirements discovery](#pre-employment-requirements-discovery) and [Pre-employment Requirements Contract Gate](#pre-employment-requirements-contract-gate). Neither section adds a column. Neither fixes a physical enum.
+
 ### Ready to Start Gate
 
 This gate is the permission to move `preparing → active`. It can require, at the moment of the check:
@@ -504,3 +506,110 @@ Feat stays locked. HostFlow v1 is not release-ready. Pre-employment requirements
 Confirmation does not move `hr_employments.state`. It does not insert `workforce_employments`. It does not open pre-employment requirements or Ready to Start.
 
 The next slice is Pre-employment Requirements. Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Pre-employment Requirements discovery
+
+This section reads the requirement, checklist, compliance, and task mechanisms that already exist. It adds no table, no column, no boolean on Employee or Employment, and no runtime module. It does not close a schema gate and it does not close a runtime gate. It does not fix a physical enum. It does not open a Polish pre-employment sequence.
+
+Three readings stay distinct. A requirement definition is policy. A requirement instance belongs to one Employment. A resolution points at evidence or records a waiver. None of the stores below is all three for one `hr_employments` row.
+
+| Mechanism | What it already is | What it is not |
+|---|---|---|
+| Requirement Rules policy and `r5_required_set` | The system required set for a candidate. Policy supplies the definition. `dependency_rules` can exclude, activate, or satisfy codes in that candidate graph. Applicability is `RequirementApplicability`: `applicable`, `not_applicable`, `unresolved` | The pre-employment set of one Employment. This layer does not write `r5_required_set` |
+| `RequirementEvaluationStatus` | A computed candidate-stage reading: `fulfilled`, `missing`, `pending_review`, `invalid`, `expired`, `not_applicable`, `not_required_yet`, `not_selected`, `process_pending`, `waived`, `unresolved`. `not_applicable` also sits on the applicability enum | The resolution enum of an Employment requirement. `pending_review` is not `blocking`. This section does not adopt the enum |
+| `requirement_type_definitions` | A tenant catalog of recruitment codes such as `id_evidence`, `code95_evidence`, and `right_to_work_basis`, with `satisfaction_rules` | An instance hanging on `hr_employments` |
+| `tenant_requirement_overrides` | A policy edit: `relax`, `add`, or `severity`, level `blocking` or `warning`, with reason and `approved_by_user_id` | A waiver of one Employment's requirement. `blocking` here is severity of a rule |
+| `candidate_evidence` and `candidate_evidence_documents` | Recruitment's chosen variant for one `candidate_id` and one `requirement_code`. Status is `CandidateEvidenceStatus`: `draft`, `selected`, `pending_review`, `approved`, `rejected`, `superseded`. The document link is `document_id` | An Employment instance. The table has no `employment_id`. `approved` is not this layer's `satisfied`. A later Employment does not inherit the row |
+| Legal Eligibility and Work Authorization | `legal_eligibility.v1` and submission requirements with provenance `work_authorization_submission`. `waive_requirement` lifts one requirement for one candidate and one process, with actor, time, and reason, and does not rewrite the policy. `override_readiness` leaves the blocker in place | HR Legal Eligibility Gate, and not this set. The gate row is `hr_legal_eligibility_gate_decisions`, bound to `employment_id`, outcome `pass`, `fail`, or `blocked` |
+| Hub `outstanding_asks` | A document request: a required type for an entity through Document Link | A pre-employment requirement row. This layer does not mint a second request table |
+| `workforce_onboarding_tasks` | An operational checklist on `employee_id`: `title`, `status` default `open`, `due_at`, `completed_at` | A definition, an evidence link, a waiver, or an Employment instance. Fee tasks from work-eligibility automation stay in that process |
+| `workforce_hr_document_control_tasks` | One open control row per `employee_id` and `document_code` | A requirement instance |
+| `workforce_compliance_states` | One rollup per employee: counts and `cannot_work` | A set of requirements |
+| HR profiles | `workforce_work_eligibility_profiles`, tax, insurance, ZUS, and payroll. Each hangs on `employee_id` | Requirement rows. Work eligibility remains the legalization projection |
+| `automation_rules` | A tenant trigger with conditions and actions | A requirement graph |
+
+No current table is a requirement instance of one Employment. `candidate_evidence` has no `employment_id`. Onboarding tasks, document-control tasks, compliance, and the HR profiles hang on the employee. The legal-eligibility gate decision is the upstream checkpoint, not a member of this set.
+
+The evaluator already separates applicability from status, and then stores `not_applicable` on both. That split is evidence that one status word cannot carry both axes. This section records the split and does not choose the stored spellings.
+
+### Gate question
+
+For this `Employment(preparing)`, is the applicable set of pre-employment requirements defined, and is every requirement that blocks Ready to Start resolved?
+
+A yes and a no both leave `hr_employments.state` at `preparing`. Neither moves the Employment to `active`. A yes is the entrance to the Ready to Start Gate. It is not that gate.
+
+This section writes no schema and authorizes no runtime module. `backend/app/reference/pre_employment_requirements.py` is not created. Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Pre-employment Requirements Contract Gate
+
+**Machine id:** `pre_employment_requirements.v1` — named here. No runtime module.  
+**Outcome:** **PASS**. The model below is the pre-employment requirements of one Employment. This section adds no table, no column, and no boolean. It does not fix a physical enum. It does not choose a store. It does not close a schema gate and it does not close a runtime gate. It does not open a Polish pre-employment sequence.
+
+HR Legal Eligibility PASS, Employee Data complete, and Employment Terms complete stay upstream gates. They are the permission to begin this layer. They are not three requirements inside it.
+
+### Three readings
+
+| Reading | Semantics |
+|---|---|
+| Definition | Policy or configuration names the requirement. The code is not a column of Employee and not a column of Employment |
+| Instance | One applicable or not-applicable occurrence for one Employment. A later Employment gets its own instances |
+| Resolution | How that applicable instance stands: a link to existing evidence or a document, a waiver, a blocking finding, or not yet resolved |
+
+### Axes
+
+Applicability and resolution stay two axes.
+
+An instance is applicable or not applicable for this Employment from policy and from this Employment's context. Not applicable is outside the set that Ready to Start reads. It is not a resolution, and it is not `blocking`.
+
+Resolution of an applicable instance uses the business words already named for this lifecycle. `satisfied` is a link to existing evidence or an existing document. The file is not copied. `waived` is an explicit decision with actor, time, and reason. It does not rewrite the definition. `blocking` is a found problem that holds Ready to Start. Not yet resolved means none of those three has been recorded. Not yet resolved is not `blocking`, and `blocking` is not a synonym of pending.
+
+`RequirementEvaluationStatus`, `RequirementApplicability`, and `CandidateEvidenceStatus` stay the enums of their own mechanisms. This contract does not adopt them as the stored values of `pre_employment_requirements.v1`.
+
+### Answers
+
+| Question | Required semantics |
+|---|---|
+| What does a requirement belong to? | One Employment. The instance is not a flag on the Employee and not a flag on `hr_employments` |
+| Where does it come from? | Policy or configuration. Not a hard-coded column |
+| Which words are already fixed? | `satisfied`, `waived`, and `blocking`, read on the resolution axis. Applicability is the other axis |
+| What is evidence? | A reference to existing evidence or an existing document. Not a copy |
+| What is a waiver? | An explicit decision for this instance, with actor, time, and reason. `override_readiness` is not this waiver. A `tenant_requirement_overrides` row is not this waiver |
+| May one requirement depend on another? | Yes, on another requirement of this same Employment. Independent requirements may proceed together. `dependency_rules` on the candidate policy graph are not copied here |
+| May a requirement be not applicable? | Yes. Context of this Employment can make a defined requirement not applicable. Not applicable does not block Ready to Start |
+| What does a repeat hire get? | The new Employment gets its own instances |
+| What does Employee history do? | It does not mark a new Employment's instance `satisfied`. A document already held may be linked later, as a resolution of this instance |
+| What happens to Employment state? | Every applicability and every resolution leaves `hr_employments.state` at `preparing` |
+
+### Gate
+
+The gate question is the discovery question. Every applicable instance must be `satisfied` or `waived` before that entrance is open. An applicable `unresolved` instance keeps the entrance closed. An applicable `blocking` instance keeps it closed because a problem was found. A `not_applicable` instance stores no resolution and stays outside the check.
+
+A yes does not move the Employment to `active`. It is the entrance to the Ready to Start Gate. Ready to Start remains a separate gate.
+
+### Store
+
+No column and no JSON in the current model is this instance. `candidate_evidence` has no `employment_id`. A later schema slice chooses the store. This section does not open that slice, does not write it, and does not fix the physical enum.
+
+This section writes no schema and authorizes no runtime module. `backend/app/reference/pre_employment_requirements.py` is not created. Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Pre-employment Requirements Schema
+
+The store is `hr_employment_requirements`. One row is one `pre_employment_requirements.v1` instance and it belongs to one `hr_employments` row. `definition_key` is the stable policy identity. `policy_id` and `policy_version` record provenance. Neither is a foreign key. Uniqueness is (`employment_id`, `definition_key`). The table has no `employee_id`. Two Employments of one person can hold the same `definition_key` as two rows.
+
+Applicability and resolution are separate columns. Applicability is `applicable` or `not_applicable`. `applicability_basis` may record why. Resolution is stored only for an applicable row, and then it is `unresolved`, `satisfied`, `waived`, or `blocking`. A `not_applicable` row has no resolution. `RequirementEvaluationStatus` is not this column.
+
+`satisfied` stores `satisfaction_evidence_id` or `satisfaction_document_id`, or both. Those columns are foreign keys to `candidate_evidence` and `documents`. They are references. The row does not copy the evidence. `waived` stores `waiver_actor_id`, `waiver_at`, and `waiver_reason`. `blocking` stores `blocking_reason`, the reason and context of the finding. `unresolved` stores none of those payloads. A payload that belongs to another resolution is absent.
+
+Ready to Start, when a later slice evaluates it, admits an applicable row only when resolution is `satisfied` or `waived`. `unresolved` refuses that entrance because the requirement is still open. `blocking` refuses it because a problem was found. This section does not evaluate that entrance.
+
+This migration inserts nothing. It does not generate instances from policy, does not copy `candidate_evidence`, does not list a Polish set, does not write `hr_employments.state`, and does not create `workforce_onboarding_tasks` or `workforce_employments`.
+
+The next slice is Pre-employment Requirements Runtime: materialize the applicable set from policy, resolve an instance through existing evidence or a document or a waiver, tell `unresolved` from `blocking`, and compute completeness of the set. That runtime is not this slice. Ready to Start Gate Contract stays closed. A stored row leaves `hr_employments.state` at `preparing`.
+
+Feat stays locked. HostFlow v1 is not release-ready.
