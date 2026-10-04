@@ -111,6 +111,7 @@ Employment = _load_model_module("hr_employment").Employment  # type: ignore[attr
 HrLegalEligibilityGateDecision = _load_model_module(
     "hr_legal_eligibility_gate"
 ).HrLegalEligibilityGateDecision  # type: ignore[attr-defined]
+HrEmploymentTerms = _load_model_module("hr_employment_terms").HrEmploymentTerms  # type: ignore[attr-defined]
 AutomationRule = _load_model_module("automation_rule").AutomationRule  # type: ignore[attr-defined]
 campaign_module = _load_model_module("campaign")
 Campaign = campaign_module.Campaign  # type: ignore[attr-defined]
@@ -379,6 +380,7 @@ __all__ = [
     "WorkforceEmployment",
     "Employment",
     "HrLegalEligibilityGateDecision",
+    "HrEmploymentTerms",
     "AutomationRule",
     "Campaign",
     "CampaignRun",

@@ -60,7 +60,8 @@ def test_employment_terms_contract_gate_defines_the_snapshot() -> None:
     current, history = brief.split("## History", 1)
     assert "Employment Terms Contract Gate **PASS**" in current
     assert "employment_terms.v1" in current
-    assert "Employment Terms Schema is indicated and is not opened." in current
+    assert "Employment Terms Schema opened" in current
+    assert "hr_employment_terms" in current
     assert "No schema is written." in current
     assert "Feat locked" in current
     assert "not release-ready" in current

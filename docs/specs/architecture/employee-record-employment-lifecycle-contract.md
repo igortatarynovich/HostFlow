@@ -470,3 +470,37 @@ An incomplete set leaves `hr_employments.state` at `preparing`. A complete set l
 No column and no JSON in the current model is this snapshot. Employment Terms Schema is the indicated next slice. It will choose the store. This section does not open that slice and does not write it.
 
 This section writes no schema and authorizes no runtime module. `backend/app/reference/employment_terms.py` is not created. Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Employment Terms Schema
+
+The store is `hr_employment_terms`. One row is one `employment_terms.v1` snapshot and it belongs to one `hr_employments` row. `hr_employments` keeps the identity and the lifecycle of the relationship. At most one row for an Employment has `is_current`. A later row may record an earlier snapshot with `is_current` false. This section writes that table. It does not authorize a runtime module.
+
+The row holds position, contract basis, work-time value and unit, workplace, compensation amount, currency, and unit or period, duration, the conditional fixed-term end, and probation. Duration is `fixed` or `indefinite`. A fixed-term end is stored when duration is `fixed` and is absent when duration is `indefinite`. That absence is the duration value. It is not read from `hr_employments.ended_on`.
+
+Probation status is `dated` with an end date, `none` with no end date, or `undetermined` with no end date. `none` is an agreed absence. `undetermined` is not yet decided. An Employment with no `hr_employment_terms` row is Terms incomplete. This migration copies nothing from a vacancy and nothing from a contract card.
+
+`default_vacancy_id` may record which vacancy supplied a default. It is not a foreign key. The agreed columns are not read from that vacancy.
+
+`workforce_employments` is not this table and gains no term column. This slice has no writer from a contract card, a vacancy, a payroll profile, or from `hr_employments.state` into the snapshot.
+
+The next slice is Employment Terms Runtime: one-time defaults from the vacancy, an operator confirmation or change, then the snapshot, then Terms complete. That runtime is not this slice. A complete set and an incomplete set both leave `hr_employments.state` at `preparing`.
+
+Feat stays locked. HostFlow v1 is not release-ready. Pre-employment requirements stay closed.
+
+---
+
+## Employment Terms Runtime
+
+`is_current` is the latest confirmed agreement. It is not the latest edit. An unresolved operator input stays on the proposal. It is not a row in `hr_employment_terms`, and it does not clear the current snapshot.
+
+`propose_employment_terms_defaults` reads `vacancies.title` into position and `vacancies.location` into workplace, once. `default_vacancy_id` records that vacancy as provenance. `salary_from` and `salary_to` stay off the proposal. `employment_type` stays off the proposal. The proposal is not a live binding.
+
+`confirm_employment_terms` writes a new current row only when the confirmation resolves position, contract basis, work time, workplace, compensation, duration, the fixed-term end, and probation as `none` or `dated`. `probation_status = undetermined` is refused. A refusal writes nothing. When a current row already exists, that row becomes `is_current` false and keeps its values. The new row is current.
+
+`evaluate_employment_terms` reads that current row. No current row is incomplete. A row that is not current is incomplete. `undetermined` probation is incomplete. Vacancy, the contract card, and payroll are not inputs. The result does not write `hr_employments.state`.
+
+Confirmation does not move `hr_employments.state`. It does not insert `workforce_employments`. It does not open pre-employment requirements or Ready to Start.
+
+The next slice is Pre-employment Requirements. Feat stays locked. HostFlow v1 is not release-ready.
