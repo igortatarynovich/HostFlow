@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
+import { SearchableSelect } from '../../components/candidate/shared/FormComponents'
 import { buildCountryOptions } from '../../data/countries'
 import { useI18n } from '../../i18n'
 
@@ -81,20 +82,49 @@ export function OperatorFactsForm({
   const uploads = view.upload_codes ?? view.ce_code95?.upload_codes ?? []
   const shape = view.ce_code95?.evidence_shape ?? code95?.evidence_shape ?? null
 
+  const unknownLabel = t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })
+  const countryOptions = useMemo(
+    () => [{ value: 'unknown', label: unknownLabel }, ...countries],
+    [countries, unknownLabel],
+  )
   const countrySelect = (value: string | null | undefined, onChange: (next: string) => void, testId: string) => (
+    <div data-testid={testId}>
+      <SearchableSelect
+        options={countryOptions}
+        value={value || 'unknown'}
+        onChange={onChange}
+        disabled={disabled}
+        placeholder={t('app.candidate_card.select.empty')}
+        searchPlaceholder={t('app.candidate_card.select.search')}
+        noResultsLabel={t('app.candidate_card.select.no_results')}
+      />
+    </div>
+  )
+  const field = (label: string, control: ReactNode, testId?: string, hint?: ReactNode) => (
+    <label className="block" data-testid={testId}>
+      <div className="label">{label}</div>
+      {control}
+      {hint}
+    </label>
+  )
+  const presenceSelect = (
+    value: boolean | null | undefined,
+    onChange: (next: true | false | 'unknown') => void,
+    testId?: string,
+  ) => (
     <select
       data-testid={testId}
-      className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+      className="input"
       disabled={disabled}
-      value={value || 'unknown'}
-      onChange={(event) => onChange(event.target.value)}
+      value={value === true ? 'yes' : value === false ? 'no' : 'unknown'}
+      onChange={(event) => {
+        const next = event.target.value
+        onChange(next === 'yes' ? true : next === 'no' ? false : 'unknown')
+      }}
     >
-      <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
-      {countries.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
+      <option value="unknown">{unknownLabel}</option>
+      <option value="yes">{t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' })}</option>
+      <option value="no">{t('app.candidate_card.operator_facts.no', { defaultValue: 'No' })}</option>
     </select>
   )
 
@@ -104,240 +134,223 @@ export function OperatorFactsForm({
     (valid?.visible ? valid.stored : null) ||
     null
 
+  const hint = (text: string, testId?: string) => (
+    <p className="mt-1 text-xs text-slate-500" data-testid={testId}>
+      {text}
+    </p>
+  )
+
   return (
     <div className="space-y-4" data-testid="operator-facts-form">
-      <section className="space-y-4" data-testid="operator-facts-driver">
-        <h3 className="text-sm font-semibold text-slate-900">
+      <section className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4" data-testid="operator-facts-driver">
+        <div className="text-sm font-semibold text-slate-900">
           {t('app.candidate_card.operator_facts.driver_block', {
             defaultValue: 'Dane i uprawnienia kierowcy',
           })}
-        </h3>
-      <section data-testid="operator-facts-citizenship">
-        <label className="block text-xs font-medium text-slate-700">
-          {t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' })}
-        </label>
-        {countrySelect(citizenship?.stored, (next) => onPatch({ citizenship: next }), 'operator-facts-citizenship-input')}
-      </section>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {field(
+        t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' }),
+        countrySelect(citizenship?.stored, (next) => onPatch({ citizenship: next }), 'operator-facts-citizenship-input'),
+        'operator-facts-citizenship',
+      )}
 
-      {stay?.visible ? (
-        <section data-testid="operator-facts-stay">
-          <label className="block text-xs font-medium text-slate-700">
-            {t('app.candidate_card.operator_facts.stay', { defaultValue: 'Stay basis' })}
-          </label>
-          <select
-            data-testid="operator-facts-stay-input"
-            className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
-            disabled={disabled}
-            value={stay.stored || 'unknown'}
-            onChange={(event) => onPatch({ stay_basis: event.target.value })}
-          >
-            <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
-            {['visa_d', 'visa_c', 'karta_pobytu', 'visa_free', 'waiting_for_trc', 'special_protection', 'other', 'none'].map((code) => (
-              <option key={code} value={code}>
-                {t(`app.candidate_card.operator_facts.stay_${code}`, { defaultValue: code })}
-              </option>
-            ))}
-          </select>
-        </section>
-      ) : null}
+      {stay?.visible
+        ? field(
+            t('app.candidate_card.operator_facts.stay', { defaultValue: 'Stay basis' }),
+            <select
+              data-testid="operator-facts-stay-input"
+              className="input"
+              disabled={disabled}
+              value={stay.stored || 'unknown'}
+              onChange={(event) => onPatch({ stay_basis: event.target.value })}
+            >
+              <option value="unknown">{unknownLabel}</option>
+              {['visa_d', 'visa_c', 'karta_pobytu', 'visa_free', 'waiting_for_trc', 'special_protection', 'other', 'none'].map((code) => (
+                <option key={code} value={code}>
+                  {t(`app.candidate_card.operator_facts.stay_${code}`, { defaultValue: code })}
+                </option>
+              ))}
+            </select>,
+            'operator-facts-stay',
+          )
+        : null}
 
       {parameters?.visible ? (
-        <section data-testid="operator-facts-stay-parameters" className="grid gap-2 sm:grid-cols-2">
-          <label className="block text-xs font-medium text-slate-700">
-            {t('app.candidate_card.operator_facts.visa_type', { defaultValue: 'Visa type' })}
+        <div className="contents" data-testid="operator-facts-stay-parameters">
+          {field(
+            t('app.candidate_card.operator_facts.visa_type', { defaultValue: 'Visa type' }),
             <input
-              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+              className="input"
               disabled={disabled}
               value={parameters.visa_type || ''}
               onChange={(event) => onPatch({ visa_type: event.target.value || 'unknown' })}
-            />
-          </label>
-          <label className="block text-xs font-medium text-slate-700">
-            {t('app.candidate_card.operator_facts.visa_purpose', { defaultValue: 'Visa purpose' })}
+            />,
+          )}
+          {field(
+            t('app.candidate_card.operator_facts.visa_purpose', { defaultValue: 'Visa purpose' }),
             <input
-              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+              className="input"
               disabled={disabled}
               value={parameters.visa_purpose || ''}
               onChange={(event) => onPatch({ visa_purpose: event.target.value || 'unknown' })}
-            />
-          </label>
-        </section>
+            />,
+          )}
+        </div>
       ) : null}
 
-      <section data-testid="operator-facts-licence">
-        <label className="block text-xs font-medium text-slate-700">
-          {t('app.candidate_card.operator_facts.licence_country', { defaultValue: 'Driving licence issuing country' })}
-        </label>
-        {countrySelect(
-          licence?.issuing_country,
-          (next) => onPatch({ licence_issuing_country: next }),
-          'operator-facts-licence-country',
+      <div className="lg:col-span-2 grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="operator-facts-licence">
+        {field(
+          t('app.candidate_card.operator_facts.licence_country', { defaultValue: 'Driving licence issuing country' }),
+          countrySelect(
+            licence?.issuing_country,
+            (next) => onPatch({ licence_issuing_country: next }),
+            'operator-facts-licence-country',
+          ),
         )}
-        <div className="mt-2 flex flex-wrap gap-2">
-          {LICENCE_CATEGORIES.map((code) => {
-            const selected = (licence?.categories ?? []).includes(code)
-            return (
-              <label key={code} className="flex items-center gap-1 text-xs text-slate-700">
-                <input
-                  type="checkbox"
-                  disabled={disabled}
-                  checked={selected}
-                  onChange={() => {
-                    const current = new Set(licence?.categories ?? [])
-                    if (selected) current.delete(code)
-                    else current.add(code)
-                    onPatch({ licence_categories: current.size ? Array.from(current) : 'unknown' })
-                  }}
-                />
-                {code}
-              </label>
-            )
-          })}
+        <div>
+          <div className="label">
+            {t('app.candidate_card.operator_facts.licence_categories', { defaultValue: 'Category' })}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {LICENCE_CATEGORIES.map((code) => {
+              const selected = (licence?.categories ?? []).includes(code)
+              return (
+                <label key={code} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    disabled={disabled}
+                    checked={selected}
+                    onChange={() => {
+                      const current = new Set(licence?.categories ?? [])
+                      if (selected) current.delete(code)
+                      else current.add(code)
+                      onPatch({ licence_categories: current.size ? Array.from(current) : 'unknown' })
+                    }}
+                  />
+                  <span>{code}</span>
+                </label>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {field(
+        t('app.candidate_card.operator_facts.code95', { defaultValue: 'Code 95' }),
+        presenceSelect(code95?.presence, (next) => onPatch({ code95_presence: next }), 'operator-facts-code95-presence'),
+        'operator-facts-code95',
+        <>
+          {hint(
+            shape === 'shared'
+              ? t('app.candidate_card.operator_facts.shared', { defaultValue: 'Shared evidence: one licence for CE and Code 95' })
+              : shape === 'separate'
+                ? t('app.candidate_card.operator_facts.separate', { defaultValue: 'Separate evidence: licence and qualification card' })
+                : t('app.candidate_card.operator_facts.no_file', { defaultValue: 'No file is requested' }),
+            'operator-facts-evidence',
+          )}
+          {uploads.length > 0 ? (
+            <p className="mt-1 text-xs text-slate-500" data-testid="operator-facts-uploads">
+              {uploads.join(', ')}
+            </p>
+          ) : (
+            <p className="sr-only" data-testid="operator-facts-uploads-empty">
+              {t('app.candidate_card.operator_facts.no_file', { defaultValue: 'No file is requested' })}
+            </p>
+          )}
+        </>,
+      )}
+
+      <div className="lg:col-span-2 grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="operator-facts-tachograph">
+        {field(
+          t('app.candidate_card.operator_facts.tachograph', { defaultValue: 'Tachograph card' }),
+          presenceSelect(tacho?.presence, (next) => onPatch({ tachograph_presence: next })),
+          undefined,
+          hint(t('app.candidate_card.operator_facts.fact_only', { defaultValue: 'Recorded as a fact. No file is requested.' })),
+        )}
+        {field(
+          t('app.candidate_card.operator_facts.tachograph_country', { defaultValue: 'Issuing country' }),
+          countrySelect(
+            tacho?.issuing_country,
+            (next) => onPatch({ tachograph_issuing_country: next }),
+            'operator-facts-tacho-country',
+          ),
+        )}
+      </div>
+
+      <div className="lg:col-span-2 grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="operator-facts-adr">
+        {field(
+          t('app.candidate_card.operator_facts.adr', { defaultValue: 'ADR' }),
+          presenceSelect(adr?.presence, (next) => onPatch({ adr_presence: next })),
+          undefined,
+          hint(t('app.candidate_card.operator_facts.fact_only', { defaultValue: 'Recorded as a fact. No file is requested.' })),
+        )}
+        {field(
+          t('app.candidate_card.operator_facts.adr_country', { defaultValue: 'Issuing country' }),
+          countrySelect(adr?.issuing_country, (next) => onPatch({ adr_issuing_country: next }), 'operator-facts-adr-country'),
+        )}
+      </div>
         </div>
       </section>
 
-      <section data-testid="operator-facts-code95">
-        <label className="block text-xs font-medium text-slate-700">
-          {t('app.candidate_card.operator_facts.code95', { defaultValue: 'Code 95' })}
-        </label>
-        <select
-          data-testid="operator-facts-code95-presence"
-          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
-          disabled={disabled}
-          value={code95?.presence === true ? 'yes' : code95?.presence === false ? 'no' : 'unknown'}
-          onChange={(event) => {
-            const next = event.target.value
-            onPatch({ code95_presence: next === 'yes' ? true : next === 'no' ? false : 'unknown' })
-          }}
-        >
-          <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
-          <option value="yes">{t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' })}</option>
-          <option value="no">{t('app.candidate_card.operator_facts.no', { defaultValue: 'No' })}</option>
-        </select>
-        <p className="mt-1 text-xs text-slate-500" data-testid="operator-facts-evidence">
-          {shape === 'shared'
-            ? t('app.candidate_card.operator_facts.shared', { defaultValue: 'Shared evidence: one licence for CE and Code 95' })
-            : shape === 'separate'
-              ? t('app.candidate_card.operator_facts.separate', { defaultValue: 'Separate evidence: licence and qualification card' })
-              : t('app.candidate_card.operator_facts.no_file', { defaultValue: 'No file is requested' })}
-        </p>
-        {uploads.length > 0 ? (
-          <p className="text-xs text-slate-600" data-testid="operator-facts-uploads">
-            {uploads.join(', ')}
-          </p>
-        ) : (
-          <p className="sr-only" data-testid="operator-facts-uploads-empty">
-            {t('app.candidate_card.operator_facts.no_file', { defaultValue: 'No file is requested' })}
-          </p>
-        )}
-      </section>
-
-      <section data-testid="operator-facts-tachograph">
-        <label className="block text-xs font-medium text-slate-700">
-          {t('app.candidate_card.operator_facts.tachograph', { defaultValue: 'Tachograph card' })}
-        </label>
-        <select
-          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
-          disabled={disabled}
-          value={tacho?.presence === true ? 'yes' : tacho?.presence === false ? 'no' : 'unknown'}
-          onChange={(event) => {
-            const next = event.target.value
-            onPatch({ tachograph_presence: next === 'yes' ? true : next === 'no' ? false : 'unknown' })
-          }}
-        >
-          <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
-          <option value="yes">{t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' })}</option>
-          <option value="no">{t('app.candidate_card.operator_facts.no', { defaultValue: 'No' })}</option>
-        </select>
-        {countrySelect(
-          tacho?.issuing_country,
-          (next) => onPatch({ tachograph_issuing_country: next }),
-          'operator-facts-tacho-country',
-        )}
-        <p className="mt-1 text-xs text-slate-500">
-          {t('app.candidate_card.operator_facts.fact_only', { defaultValue: 'Recorded as a fact. No file is requested.' })}
-        </p>
-      </section>
-
-      <section data-testid="operator-facts-adr">
-        <label className="block text-xs font-medium text-slate-700">
-          {t('app.candidate_card.operator_facts.adr', { defaultValue: 'ADR' })}
-        </label>
-        <select
-          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
-          disabled={disabled}
-          value={adr?.presence === true ? 'yes' : adr?.presence === false ? 'no' : 'unknown'}
-          onChange={(event) => {
-            const next = event.target.value
-            onPatch({ adr_presence: next === 'yes' ? true : next === 'no' ? false : 'unknown' })
-          }}
-        >
-          <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
-          <option value="yes">{t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' })}</option>
-          <option value="no">{t('app.candidate_card.operator_facts.no', { defaultValue: 'No' })}</option>
-        </select>
-        {countrySelect(adr?.issuing_country, (next) => onPatch({ adr_issuing_country: next }), 'operator-facts-adr-country')}
-        <p className="mt-1 text-xs text-slate-500">
-          {t('app.candidate_card.operator_facts.fact_only', { defaultValue: 'Recorded as a fact. No file is requested.' })}
-        </p>
-      </section>
-      </section>
-
-      <section className="space-y-4 border-t border-slate-200 pt-4" data-testid="operator-facts-work-rights">
-        <h3 className="text-sm font-semibold text-slate-900">
+      <section className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4" data-testid="operator-facts-work-rights">
+        <div className="text-sm font-semibold text-slate-900">
           {t('app.candidate_card.operator_facts.work_block', { defaultValue: 'Prawo do pracy' })}
-        </h3>
-        {work?.visible ? (
-          <section data-testid="operator-facts-work">
-            <label className="block text-xs font-medium text-slate-700">
-              {t('app.candidate_card.operator_facts.work', { defaultValue: 'Podstawa pracy' })}
-            </label>
-            <select
-              data-testid="operator-facts-work-input"
-              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
-              disabled={disabled}
-              value={workLabel(work)}
-              onChange={(event) => onPatch({ work_label: event.target.value })}
-            >
-              <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
-              <option value="work_permit">
-                {t('app.candidate_card.operator_facts.work_permit', { defaultValue: 'Work permit' })}
-              </option>
-              <option value="oswiadczenie">
-                {t('app.candidate_card.operator_facts.oswiadczenie', { defaultValue: 'Oświadczenie' })}
-              </option>
-              <option value="included_in_stay">
-                {t('app.candidate_card.operator_facts.included_in_stay', { defaultValue: 'Right to work is included in the stay' })}
-              </option>
-            </select>
-            {work.procedure_type ? (
-              <p className="mt-1 text-xs text-slate-600" data-testid="operator-facts-procedure">
-                {t('app.candidate_card.operator_facts.procedure', { defaultValue: 'Typ procedury' })}: {work.procedure_type}
-              </p>
-            ) : null}
-          </section>
-        ) : null}
-        {valid?.visible ? (
-          <section data-testid="operator-facts-valid">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                data-testid="operator-facts-valid-no"
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {work?.visible
+          ? field(
+              t('app.candidate_card.operator_facts.work', { defaultValue: 'Podstawa pracy' }),
+              <select
+                data-testid="operator-facts-work-input"
+                className="input"
                 disabled={disabled}
-                checked={valid.stored === 'no'}
-                onChange={(event) =>
-                  onPatch({ valid_for_this_employment: event.target.checked ? 'no' : 'unknown' })
-                }
-              />
-              {t('app.candidate_card.operator_facts.valid_no', { defaultValue: 'Not valid for this employment' })}
-            </label>
-          </section>
+                value={workLabel(work)}
+                onChange={(event) => onPatch({ work_label: event.target.value })}
+              >
+                <option value="unknown">{unknownLabel}</option>
+                <option value="work_permit">
+                  {t('app.candidate_card.operator_facts.work_permit', { defaultValue: 'Work permit' })}
+                </option>
+                <option value="oswiadczenie">
+                  {t('app.candidate_card.operator_facts.oswiadczenie', { defaultValue: 'Oświadczenie' })}
+                </option>
+                <option value="included_in_stay">
+                  {t('app.candidate_card.operator_facts.included_in_stay', { defaultValue: 'Right to work is included in the stay' })}
+                </option>
+              </select>,
+              'operator-facts-work',
+              work.procedure_type
+                ? hint(
+                    `${t('app.candidate_card.operator_facts.procedure', { defaultValue: 'Typ procedury' })}: ${work.procedure_type}`,
+                    'operator-facts-procedure',
+                  )
+                : null,
+            )
+          : null}
+        {valid?.visible ? (
+          <label className="flex items-center gap-2" data-testid="operator-facts-valid">
+            <input
+              type="checkbox"
+              data-testid="operator-facts-valid-no"
+              disabled={disabled}
+              checked={valid.stored === 'no'}
+              onChange={(event) =>
+                onPatch({ valid_for_this_employment: event.target.checked ? 'no' : 'unknown' })
+              }
+            />
+            <span>{t('app.candidate_card.operator_facts.valid_no', { defaultValue: 'Not valid for this employment' })}</span>
+          </label>
         ) : null}
-        <p className="text-xs text-slate-600" data-testid="operator-facts-legal-status">
-          {t('app.candidate_card.operator_facts.legal_status', { defaultValue: 'Status Legal Eligibility' })}
-          {': '}
-          {legalStatus || t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}
-        </p>
+        <div data-testid="operator-facts-legal-status">
+          <div className="label">
+            {t('app.candidate_card.operator_facts.legal_status', { defaultValue: 'Status Legal Eligibility' })}
+          </div>
+          <p className="text-sm text-slate-800">
+            {legalStatus || unknownLabel}
+          </p>
+        </div>
+        </div>
       </section>
     </div>
   )
@@ -397,12 +410,9 @@ export default function OperatorFactsSurface({
   )
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4" data-testid="operator-facts-surface">
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">
-        {t('app.candidate_card.operator_facts.title', { defaultValue: 'Candidate facts' })}
-      </h2>
-      {error ? <p className="mb-2 text-xs text-red-600">{error}</p> : null}
+    <div className="space-y-4" data-testid="operator-facts-surface">
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
       {view ? <OperatorFactsForm view={view} disabled={busy} onPatch={(patch) => void onPatch(patch)} /> : null}
-    </section>
+    </div>
   )
 }
