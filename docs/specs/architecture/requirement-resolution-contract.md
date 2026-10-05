@@ -193,3 +193,15 @@ A new Employment gets new rows. They stay `unresolved` until this resolver runs 
 Ready to Start reads the stored rows through `evaluate_pre_employment_requirements`. It does not call the resolver.
 
 Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Legal eligibility evidence
+
+**Outcome:** shipped for the Belarus case. The resolver is unchanged as a rule set. `legal_eligibility_evidence` names the requirement and the accepted variant. `resolve_requirement` only reads that variant.
+
+`legal_stay_confirmation` and `labor_market_access` are the registry requirements. An empty stay is `needs_input` and asks for no file. `visa_d` and `visa_c` accept the document type `visa`; the fact is not renamed to that type. `karta_pobytu` accepts `all_of(residence_card, temporary_residence_decision)`. `none` is `blocking`. `included_in_stay` and `not_required` ask for no work file. `separate_required` with `work_permit_a` accepts `work_permit`. `separate_required` with `employer_declaration` accepts the same registry code, because `oswiadczenie` is that code's alias, and the variant is `employer_declaration`. `valid_for_this_employment = no` is `blocking`.
+
+The fact does not write the required set. The resolver returns `needs_evidence`, and `r5_required_set` materializes those codes for this Employment. Approved evidence that matches the current variant writes `satisfied` on this row. A later basis that no longer matches reopens that row. The old Candidate Evidence row stays stored and does not satisfy the new variant.
+
+Other stay values are not this case. The Legal Eligibility matrix is not passed by this section. Feat stays locked. HostFlow v1 is not release-ready.

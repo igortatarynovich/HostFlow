@@ -94,6 +94,9 @@ def resolve_requirement(
     level = str(requirement.get("level") or "REQUIRED").strip().upper()
     if level not in REQUIREMENT_LEVELS:
         level = "REQUIRED"
+    accepted_evidence = requirement.get("accepted_evidence")
+    if isinstance(accepted_evidence, Mapping):
+        return _resolve_accepted_evidence(code, level, evidence or [], accepted_evidence)
     if code not in {CE_REQUIREMENT, CODE95_REQUIREMENT}:
         return _untouched(code, level)
     if level == "NOT_REQUIRED":
@@ -254,6 +257,98 @@ def _parse_date(value: Any) -> date | None:
         return date.fromisoformat(raw)
     except ValueError:
         return None
+
+
+def _resolve_accepted_evidence(
+    code: str,
+    level: str,
+    evidence: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Progress for a variant the caller already accepted.
+
+    The variant and its documents come from policy. This function does not
+    choose them.
+    """
+
+    outcome = str(spec.get("outcome") or "").strip()
+    variant = _text(spec.get("variant"))
+    documents = [str(item).strip().lower() for item in (spec.get("document_codes") or []) if str(item).strip()]
+    if outcome == "not_required":
+        return _row(code, level, applicable=False, progress=None, resolution=None, shape=None, variant=None)
+    if outcome == "needs_input":
+        return _row(code, level, applicable=True, progress="needs_input", resolution="unresolved", shape=None, variant=None)
+    if outcome == "blocking":
+        return _row(code, level, applicable=True, progress="blocking", resolution="blocking", shape=None, variant=variant)
+    accepted, evidence_id = _matching_declared_evidence(code, evidence, variant, documents)
+    if accepted == "satisfied":
+        return _row(
+            code,
+            level,
+            applicable=True,
+            progress="satisfied",
+            resolution="satisfied",
+            shape=None,
+            variant=variant,
+            evidence_id=evidence_id,
+        )
+    if accepted == "under_review":
+        return _row(
+            code,
+            level,
+            applicable=True,
+            progress="under_review",
+            resolution="unresolved",
+            shape=None,
+            variant=variant,
+            evidence_id=evidence_id,
+        )
+    return _row(
+        code,
+        level,
+        applicable=True,
+        progress="needs_evidence",
+        resolution="unresolved",
+        shape=None,
+        variant=variant,
+        document_codes=documents,
+    )
+
+
+def _matching_declared_evidence(
+    requirement_code: str,
+    evidence: Sequence[Mapping[str, Any]],
+    variant: str | None,
+    documents: Sequence[str],
+) -> tuple[str | None, str | None]:
+    needed = {code for code in documents if code}
+    satisfied_id: str | None = None
+    review_id: str | None = None
+    for row in evidence:
+        if str(row.get("requirement_code") or "").strip().lower() != requirement_code:
+            continue
+        status = str(row.get("status") or "").strip().lower()
+        if status in {"draft", "rejected", "superseded"}:
+            continue
+        stored_variant = str(row.get("evidence_variant_code") or "").strip()
+        if variant is not None and stored_variant != variant:
+            continue
+        linked = row.get("document_ids") or []
+        if not isinstance(linked, Sequence) or isinstance(linked, (str, bytes)) or not list(linked):
+            continue
+        covered = {str(code).strip().lower() for code in (row.get("document_codes") or []) if str(code).strip()}
+        if needed and not needed <= covered:
+            continue
+        evidence_id = str(row.get("id") or "").strip() or None
+        if status in _APPROVED and satisfied_id is None:
+            satisfied_id = evidence_id or ""
+        elif status in _IN_REVIEW and review_id is None:
+            review_id = evidence_id or ""
+    if satisfied_id is not None:
+        return "satisfied", satisfied_id or None
+    if review_id is not None:
+        return "under_review", review_id or None
+    return None, None
 
 
 def _matching_evidence(

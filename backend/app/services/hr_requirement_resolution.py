@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from backend.app.models.hr_employment import Employment
 from backend.app.models.hr_employment_requirement import (
     APPLICABILITY_APPLICABLE,
+    APPLICABILITY_NOT_APPLICABLE,
     RESOLUTION_BLOCKING,
     RESOLUTION_SATISFIED,
     RESOLUTION_UNRESOLVED,
@@ -26,6 +27,12 @@ from backend.app.models.hr_employment_requirement import (
 )
 from backend.app.reference.document_policy_merge import platform_ruleset_base
 from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
+from backend.app.reference.legal_eligibility_evidence import (
+    STAY_REQUIREMENT,
+    WORK_REQUIREMENT,
+    stay_accepted_evidence,
+    work_accepted_evidence,
+)
 from backend.app.reference.requirement_resolution import (
     CE_REQUIREMENT,
     CODE95_REQUIREMENT,
@@ -35,21 +42,24 @@ from backend.app.requirement_rules.requirement_definition_registry import (
     get_requirement_definition_v1,
     requirement_definitions_version,
 )
+from backend.app.services.operator_facts_surface import chain_reading
 from backend.app.services.pre_employment_requirements_runtime import (
     RequirementDefinition,
     block_pre_employment_requirement,
     materialize_pre_employment_requirements,
+    realign_pre_employment_requirement,
     satisfy_pre_employment_requirement,
 )
 
 POLICY_ID = "requirement_definitions.v1"
 
-# Registry keys the shared resolver already accepts. No other policy key is
-# translated here. Legal stay and work authorization stay for a later case.
+# Registry keys the shared resolver already accepts. Legal stay and work
+# authorization pass their accepted evidence in; they are not extra rules.
 _RESOLVER_CODE = {
     "driver_entitlement": CE_REQUIREMENT,
     "professional_qualification": CODE95_REQUIREMENT,
 }
+_LEGAL = {STAY_REQUIREMENT, WORK_REQUIREMENT}
 
 _CLOSED = {RESOLUTION_SATISFIED, RESOLUTION_WAIVED, RESOLUTION_BLOCKING}
 
@@ -64,15 +74,20 @@ class HrRequirementResolution:
 
 
 def hr_policy_definitions() -> tuple[RequirementDefinition, ...]:
-    """CE and Code 95 as the registry already names them.
+    """Registry requirements HR already names.
 
-    A fact that the person holds ADR or a tachograph card adds nothing.
-    Identity, stay, and work authorization are not materialized here.
+    CE, Code 95, legal stay, and work authorization. A fact that the person
+    holds ADR or a tachograph card adds nothing. Identity is not a row.
     """
 
     version = requirement_definitions_version()
     rows: list[RequirementDefinition] = []
-    for key in ("driver_entitlement", "professional_qualification"):
+    for key in (
+        "driver_entitlement",
+        "professional_qualification",
+        STAY_REQUIREMENT,
+        WORK_REQUIREMENT,
+    ):
         if get_requirement_definition_v1(key) is None:
             continue
         rows.append(
@@ -183,6 +198,8 @@ def _apply_row(
     *,
     today: date | None,
 ) -> dict[str, Any]:
+    if row.definition_key in _LEGAL:
+        return _apply_legal_row(db, tenant_id, employment, row, facts, evidence, today=today)
     if row.applicability != APPLICABILITY_APPLICABLE or row.resolution in _CLOSED or row.resolution is None:
         return _stored_reading(row)
     code = _RESOLVER_CODE.get(row.definition_key)
@@ -197,6 +214,124 @@ def _apply_row(
     resolved = dict(resolved)
     resolved["definition_key"] = row.definition_key
     resolved["employment_id"] = str(employment.id)
+    progress = resolved.get("progress")
+    if progress == "satisfied" and resolved.get("evidence_id"):
+        satisfy_pre_employment_requirement(
+            db,
+            tenant_id=tenant_id,
+            employment=employment,
+            definition_key=row.definition_key,
+            evidence_id=str(resolved["evidence_id"]),
+        )
+    elif progress == "blocking":
+        block_pre_employment_requirement(
+            db,
+            tenant_id=tenant_id,
+            employment=employment,
+            definition_key=row.definition_key,
+            blocking_reason="requirement_resolution.v1",
+        )
+    return resolved
+
+
+def _legal_spec(definition_key: str, facts: Mapping[str, Any], employment_id: str) -> dict[str, Any]:
+    chain = chain_reading(facts, employment_id=employment_id)
+    if definition_key == STAY_REQUIREMENT:
+        return stay_accepted_evidence(chain.get("stay_basis"))
+    work = _employment_work(facts, employment_id)
+    return work_accepted_evidence(
+        work_authorization_basis=chain.get("work_authorization_basis"),
+        procedure_type=work.get("procedure_type"),
+        valid_for_this_employment=chain.get("valid_for_this_employment"),
+    )
+
+
+def _employment_work(facts: Mapping[str, Any], employment_id: str) -> Mapping[str, Any]:
+    employments = facts.get("employments")
+    if isinstance(employments, Mapping) and isinstance(employments.get(employment_id), Mapping):
+        return employments[employment_id]
+    work = facts.get("work")
+    return work if isinstance(work, Mapping) else {}
+
+
+def _evidence_by_id(evidence: Sequence[Mapping[str, Any]], evidence_id: str | None) -> Mapping[str, Any] | None:
+    if not evidence_id:
+        return None
+    for row in evidence:
+        if str(row.get("id") or "") == evidence_id:
+            return row
+    return None
+
+
+def _legal_still_holds(
+    row: HrEmploymentRequirement,
+    spec: Mapping[str, Any],
+    evidence: Sequence[Mapping[str, Any]],
+) -> bool:
+    outcome = spec.get("outcome")
+    if row.resolution == RESOLUTION_WAIVED:
+        return True
+    if outcome == "not_required":
+        return row.applicability == APPLICABILITY_NOT_APPLICABLE and row.resolution is None
+    if outcome == "blocking":
+        return row.resolution == RESOLUTION_BLOCKING
+    if outcome == "needs_evidence" and row.resolution == RESOLUTION_SATISFIED:
+        linked = _evidence_by_id(evidence, row.satisfaction_evidence_id)
+        if linked is None:
+            return False
+        if str(linked.get("evidence_variant_code") or "") != str(spec.get("variant") or ""):
+            return False
+        covered = {str(code).strip().lower() for code in (linked.get("document_codes") or [])}
+        needed = {str(code).strip().lower() for code in (spec.get("document_codes") or [])}
+        return needed <= covered
+    return False
+
+
+def _apply_legal_row(
+    db: Session,
+    tenant_id: str,
+    employment: Employment,
+    row: HrEmploymentRequirement,
+    facts: Mapping[str, Any],
+    evidence: Sequence[Mapping[str, Any]],
+    *,
+    today: date | None,
+) -> dict[str, Any]:
+    spec = _legal_spec(row.definition_key, facts, str(employment.id))
+    if row.resolution == RESOLUTION_WAIVED or _legal_still_holds(row, spec, evidence):
+        reading = _stored_reading(row)
+        reading["evidence_variant"] = spec.get("variant")
+        return reading
+    if row.resolution in _CLOSED or row.applicability == APPLICABILITY_NOT_APPLICABLE:
+        realign_pre_employment_requirement(
+            db,
+            tenant_id=tenant_id,
+            employment=employment,
+            definition_key=row.definition_key,
+            applicable=True,
+        )
+    resolved = resolve_requirement(
+        {
+            "requirement_code": row.definition_key,
+            "level": "REQUIRED",
+            "accepted_evidence": spec,
+        },
+        facts,
+        evidence,
+        today=today,
+    )
+    resolved = dict(resolved)
+    resolved["definition_key"] = row.definition_key
+    resolved["employment_id"] = str(employment.id)
+    if resolved.get("applicable") is False:
+        realign_pre_employment_requirement(
+            db,
+            tenant_id=tenant_id,
+            employment=employment,
+            definition_key=row.definition_key,
+            applicable=False,
+        )
+        return resolved
     progress = resolved.get("progress")
     if progress == "satisfied" and resolved.get("evidence_id"):
         satisfy_pre_employment_requirement(

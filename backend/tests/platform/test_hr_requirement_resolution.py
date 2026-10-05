@@ -102,7 +102,12 @@ def _by_key(result) -> dict:
 
 def test_hr_policy_names_ce_and_code95_and_not_a_fact() -> None:
     keys = [row.definition_key for row in hr_policy_definitions()]
-    assert keys == ["driver_entitlement", "professional_qualification"]
+    assert keys == [
+        "driver_entitlement",
+        "professional_qualification",
+        "legal_stay_confirmation",
+        "labor_market_access",
+    ]
 
 
 def test_handoff_reuses_approved_evidence_on_the_employment_row() -> None:
@@ -126,6 +131,8 @@ def test_handoff_reuses_approved_evidence_on_the_employment_row() -> None:
     assert {row.definition_key for row in opened.requirements} == {
         "driver_entitlement",
         "professional_qualification",
+        "legal_stay_confirmation",
+        "labor_market_access",
     }
     assert {row.resolution for row in opened.requirements} == {RESOLUTION_UNRESOLVED}
     assert employment.state == "preparing"
@@ -294,7 +301,7 @@ def test_under_review_asks_for_no_second_file() -> None:
         evidence=evidence,
     )
     assert resolved.required_set == ()
-    assert {row["progress"] for row in resolved.readings} == {"under_review"}
+    assert {row["progress"] for row in resolved.readings if row["definition_key"] in {"driver_entitlement", "professional_qualification"}} == {"under_review"}
     assert {row.resolution for row in resolved.requirements} == {RESOLUTION_UNRESOLVED}
 
 
@@ -335,7 +342,7 @@ def test_ready_to_start_reads_the_stored_rows(monkeypatch: pytest.MonkeyPatch) -
         session,
         tenant_id="tenant-1",
         employment=employment,
-        facts=_facts(),
+        facts=_facts(citizenship="PL"),
         evidence=_shared_evidence(),
     )
 
