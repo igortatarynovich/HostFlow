@@ -112,9 +112,11 @@ describe('OperatorFactsForm', () => {
       />,
     )
     const input = screen.getByTestId('operator-facts-stay-valid-to') as HTMLInputElement
-    fireEvent.change(input, { target: { value: '' } })
+    fireEvent.change(input, { target: { value: '1' } })
+    fireEvent.blur(input)
     expect(onPatch).not.toHaveBeenCalled()
-    fireEvent.change(input, { target: { value: '2027-01-15' } })
+    fireEvent.change(input, { target: { value: '15.01.2027' } })
+    fireEvent.blur(input)
     expect(onPatch).toHaveBeenCalledWith({ stay_valid_to: '2027-01-15' })
   })
 
