@@ -5,6 +5,7 @@
 import { memo } from "react";
 import type { DocumentFieldConfig } from "../documentFieldsConfig";
 import { getDocumentFieldsConfig } from "../documentFieldsConfig";
+import DateInput from "../../../components/controls/DateInput";
 import { useI18n } from "../../../i18n";
 
 interface DocumentFieldInputProps {
@@ -44,11 +45,10 @@ export const DocumentFieldInput = memo(function DocumentFieldInput({
     return (
       <label className="block">
         <div className="text-[11px] text-slate-500">{label}</div>
-        <input
-          className="input input-sm mt-1"
-          type="date"
+        <DateInput
+          className="mt-1"
           value={value ? String(value).slice(0, 10) : ""}
-          onChange={(e) => onChange(e.target.value)}
+          onValueChange={onChange}
           disabled={disabled}
         />
       </label>

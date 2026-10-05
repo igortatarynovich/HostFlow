@@ -443,8 +443,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
+export function useAuthOptional() {
+  return useContext(Ctx)
+}
+
 export function useAuth() {
-  const ctx = useContext(Ctx)
+  const ctx = useAuthOptional()
   if (!ctx) throw new Error('useAuth must be used within <AuthProvider>')
   return ctx
 }

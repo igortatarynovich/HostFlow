@@ -44,7 +44,8 @@
       "hide": "Ukryj",
       "load_more": "Wczytaj więcej",
       "select": "Wybierz…",
-      "show": "Pokaż"
+      "show": "Pokaż",
+      "calendar": "Kalendarz"
     },
     "errors": {
       "unknown": "Nieznany błąd",

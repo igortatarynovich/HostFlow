@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
 import { SearchableSelect } from '../../components/candidate/shared/FormComponents'
+import DateInput from '../../components/controls/DateInput'
 import { useI18n } from '../../i18n'
 
 type CountryOption = { value: string; label: string }
@@ -64,47 +65,6 @@ export type OperatorFactsView = {
 }
 
 type Patch = Record<string, unknown>
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-
-function DateFactInput({
-  value,
-  disabled,
-  testId,
-  onCommit,
-}: {
-  value: string | null | undefined
-  disabled?: boolean
-  testId: string
-  onCommit: (next: string) => void
-}) {
-  const ref = useRef<HTMLInputElement>(null)
-  const focused = useRef(false)
-  useEffect(() => {
-    if (!focused.current && ref.current) ref.current.value = value || ''
-  }, [value])
-  return (
-    <input
-      ref={ref}
-      data-testid={testId}
-      type="date"
-      className="input"
-      disabled={disabled}
-      defaultValue={value || ''}
-      onFocus={() => {
-        focused.current = true
-      }}
-      onChange={(event) => {
-        const next = event.target.value
-        if (ISO_DATE.test(next)) onCommit(next)
-      }}
-      onBlur={(event) => {
-        focused.current = false
-        if (!event.currentTarget.value && value) onCommit('unknown')
-      }}
-    />
-  )
-}
 
 function stepOf(view: OperatorFactsView, key: string): Step | undefined {
   return view.steps.find((step) => step.key === key)
@@ -218,7 +178,12 @@ export function OperatorFactsForm({
     </select>
   )
   const dateInput = (value: string | null | undefined, onChange: (next: string) => void, testId: string) => (
-    <DateFactInput value={value} disabled={disabled} testId={testId} onCommit={onChange} />
+    <DateInput
+      value={value}
+      disabled={disabled}
+      testId={testId}
+      onValueChange={(next) => onChange(next || 'unknown')}
+    />
   )
 
   return (
