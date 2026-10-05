@@ -166,6 +166,20 @@ export const isProbablyHtmlBlob = async (blob: Blob, contentType?: string | null
 
 export const computeTodayIso = (): string => new Date().toISOString().slice(0, 10);
 
+export const isSyntheticDocumentId = (value?: string | null): boolean =>
+  String(value || "").startsWith("synthetic::");
+
+/** True when a stored code is one of the projected required types, including combined-licence aliases. */
+export const documentTypeMatchesRequiredSet = (
+  typeCode: string | null | undefined,
+  requiredTypes: readonly string[],
+): boolean => {
+  const norms = new Set(requiredTypes.map((item) => normalizeDocTypeCode(item)).filter(Boolean));
+  if (norms.size === 0) return false;
+  const keys = coverageKeysForStoredDocType(typeCode);
+  return keys.some((key) => norms.has(normalizeDocTypeCode(key)));
+};
+
 export const normalizeDocTypeCode = (value?: string | null): string => {
   const raw = String(value || "").trim();
   if (!raw) return "";
