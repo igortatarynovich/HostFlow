@@ -141,6 +141,7 @@ export function OperatorFactsForm({
     options: readonly (readonly [string, string])[],
     onChange: (next: string) => void,
     testId: string,
+    group: 'stay_option' | 'work_option',
   ) => (
     <select
       data-testid={testId}
@@ -152,7 +153,7 @@ export function OperatorFactsForm({
       <option value="unknown">{unknownLabel}</option>
       {options.map(([code, label]) => (
         <option key={code} value={code}>
-          {label}
+          {t(`app.candidate_card.operator_facts.${group}.${code}`, { defaultValue: label })}
         </option>
       ))}
     </select>
@@ -201,31 +202,30 @@ export function OperatorFactsForm({
             'operator-facts-citizenship',
           )}
 
-          {stay?.visible
-            ? field(
-                t('app.candidate_card.operator_facts.stay_question', {
+          {stay?.visible ? (
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-stay">
+              <div className="text-xs font-semibold text-slate-700">
+                {t('app.candidate_card.operator_facts.stay_question', {
                   defaultValue: 'Na jakiej podstawie przebywa w Polsce?',
-                }),
-                choice(stayCode, STAY_CHOICES, (next) => onPatch({ stay_basis: next }), 'operator-facts-stay-input'),
-                'operator-facts-stay',
-              )
-            : null}
-
-          {visaOpen ? (
-            <div className="space-y-4" data-testid="operator-facts-stay-parameters">
-              {field(
-                t('app.candidate_card.operator_facts.valid_to', { defaultValue: 'Ważna do' }),
-                dateInput(stay?.valid_to, (next) => onPatch({ stay_valid_to: next }), 'operator-facts-stay-valid-to'),
-              )}
-            </div>
-          ) : null}
-
-          {cardOpen ? (
-            <div className="space-y-4" data-testid="operator-facts-card-parameters">
-              {field(
-                t('app.candidate_card.operator_facts.card_valid_to', { defaultValue: 'Karta ważna do' }),
-                dateInput(stay?.valid_to, (next) => onPatch({ stay_valid_to: next }), 'operator-facts-stay-valid-to'),
-              )}
+                })}
+              </div>
+              {choice(stayCode, STAY_CHOICES, (next) => onPatch({ stay_basis: next }), 'operator-facts-stay-input', 'stay_option')}
+              {visaOpen ? (
+                <div data-testid="operator-facts-stay-parameters">
+                  {field(
+                    t('app.candidate_card.operator_facts.valid_to', { defaultValue: 'Ważna do' }),
+                    dateInput(stay?.valid_to, (next) => onPatch({ stay_valid_to: next }), 'operator-facts-stay-valid-to'),
+                  )}
+                </div>
+              ) : null}
+              {cardOpen ? (
+                <div data-testid="operator-facts-card-parameters">
+                  {field(
+                    t('app.candidate_card.operator_facts.card_valid_to', { defaultValue: 'Karta ważna do' }),
+                    dateInput(stay?.valid_to, (next) => onPatch({ stay_valid_to: next }), 'operator-facts-stay-valid-to'),
+                  )}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -244,17 +244,17 @@ export function OperatorFactsForm({
                 })}
               </p>
             ) : null}
-            {work?.visible
-              ? field(
+            {work?.visible ? (
+              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                {field(
                   t('app.candidate_card.operator_facts.work_question', {
                     defaultValue: 'Na jakiej podstawie może pracować?',
                   }),
-                  choice(selectedWork, WORK_CHOICES, (next) => onPatch({ work_label: next }), 'operator-facts-work-input'),
+                  choice(selectedWork, WORK_CHOICES, (next) => onPatch({ work_label: next }), 'operator-facts-work-input', 'work_option'),
                   'operator-facts-work',
-                )
-              : null}
-            {procedureOpen ? (
-              <div className="space-y-4" data-testid="operator-facts-work-parameters">
+                )}
+                {procedureOpen ? (
+                  <div className="space-y-4" data-testid="operator-facts-work-parameters">
                 {field(
                   t('app.candidate_card.operator_facts.authorization_from', { defaultValue: 'Ważne od' }),
                   dateInput(
@@ -280,6 +280,8 @@ export function OperatorFactsForm({
                     onChange={(event) => onPatch({ authorization_conditions: event.target.value || 'unknown' })}
                   />,
                 )}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -291,7 +293,10 @@ export function OperatorFactsForm({
           {t('app.candidate_card.operator_facts.qualifications', { defaultValue: 'Uprawnienia kierowcy' })}
         </div>
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="space-y-4" data-testid="operator-facts-licence">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-licence">
+            <div className="text-xs font-semibold text-slate-700">
+              {t('app.candidate_card.operator_facts.licence_title', { defaultValue: 'Prawo jazdy' })}
+            </div>
             {field(
               t('app.candidate_card.operator_facts.licence_country', { defaultValue: 'Prawo jazdy — kraj wydania' }),
               countrySelect(
@@ -340,7 +345,7 @@ export function OperatorFactsForm({
             ) : null}
           </div>
 
-          <div className="space-y-4" data-testid="operator-facts-code95">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-code95">
             {field(
               t('app.candidate_card.operator_facts.code95', { defaultValue: 'Code 95' }),
               presenceSelect(code95?.presence, (next) => onPatch({ code95_presence: next }), 'operator-facts-code95-presence'),
@@ -355,13 +360,13 @@ export function OperatorFactsForm({
             ) : null}
           </div>
 
-          <div className="space-y-4" data-testid="operator-facts-tachograph">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-tachograph">
             {field(
               t('app.candidate_card.operator_facts.tachograph', { defaultValue: 'Karta kierowcy' }),
               presenceSelect(tacho?.presence, (next) => onPatch({ tachograph_presence: next })),
             )}
             {tacho?.presence === true ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {field(
                   t('app.candidate_card.operator_facts.tachograph_country', { defaultValue: 'Kraj' }),
                   countrySelect(
@@ -378,13 +383,13 @@ export function OperatorFactsForm({
             ) : null}
           </div>
 
-          <div className="space-y-4" data-testid="operator-facts-adr">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-adr">
             {field(
               t('app.candidate_card.operator_facts.adr', { defaultValue: 'ADR' }),
               presenceSelect(adr?.presence, (next) => onPatch({ adr_presence: next })),
             )}
             {adr?.presence === true ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {field(
                   t('app.candidate_card.operator_facts.adr_country', { defaultValue: 'Kraj' }),
                   countrySelect(adr?.issuing_country, (next) => onPatch({ adr_issuing_country: next }), 'operator-facts-adr-country'),
@@ -397,19 +402,19 @@ export function OperatorFactsForm({
             ) : null}
           </div>
 
-          <div className="space-y-4" data-testid="operator-facts-medical">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-medical">
             {field(
               t('app.candidate_card.operator_facts.medical', { defaultValue: 'Badania lekarskie' }),
               presenceSelect(stepOf(view, 'medical')?.presence, (next) => onPatch({ medical_presence: next })),
             )}
           </div>
-          <div className="space-y-4" data-testid="operator-facts-psych">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-psych">
             {field(
               t('app.candidate_card.operator_facts.psych', { defaultValue: 'Testy psychologiczne' }),
               presenceSelect(stepOf(view, 'psych')?.presence, (next) => onPatch({ psych_presence: next })),
             )}
           </div>
-          <div className="space-y-4" data-testid="operator-facts-pesel">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-pesel">
             {field(
               t('app.candidate_card.operator_facts.pesel', { defaultValue: 'PESEL' }),
               presenceSelect(stepOf(view, 'pesel')?.presence, (next) => onPatch({ pesel_presence: next })),
@@ -426,7 +431,7 @@ export function OperatorFactsForm({
               )
             ) : null}
           </div>
-          <div className="space-y-4" data-testid="operator-facts-additional">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-additional">
             {field(
               t('app.candidate_card.operator_facts.additional', { defaultValue: 'Dodatkowy dokument' }),
               presenceSelect(stepOf(view, 'additional')?.presence, (next) => onPatch({ additional_presence: next })),
