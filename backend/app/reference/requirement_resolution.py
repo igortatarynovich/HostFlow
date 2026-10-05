@@ -1,9 +1,10 @@
-"""Recruitment runtime of ``requirement_resolution.v1``.
+"""Runtime of ``requirement_resolution.v1``.
 
-One recruitment requirement, the shared facts, and Candidate Evidence in.
-Progress and the accepted evidence variant out. This module does not name the
-requirement and does not write the required set. ``r5_required_set`` remains
-the writer. HR requirements are not an input.
+One requirement the caller already named, the shared facts, and Candidate
+Evidence in. Progress and the accepted evidence variant out. Recruitment and
+HR both call this function. This module does not name the requirement, does
+not add a rule, and does not write the required set. ``r5_required_set``
+remains the writer.
 """
 
 from __future__ import annotations
@@ -64,23 +65,23 @@ def requirements_named_by_documents(canonical_codes: Iterable[str]) -> list[dict
     return named
 
 
-def resolve_recruitment_requirements(
+def resolve_requirements(
     requirements: Sequence[Mapping[str, Any]],
     facts: Mapping[str, Any],
     evidence: Sequence[Mapping[str, Any]] | None = None,
     *,
     today: date | None = None,
 ) -> list[dict[str, Any]]:
-    """Resolve each named recruitment requirement. Does not invent one."""
+    """Resolve each requirement the caller named. Does not invent one."""
 
     rows = list(evidence or [])
     return [
-        resolve_recruitment_requirement(requirement, facts, rows, today=today)
+        resolve_requirement(requirement, facts, rows, today=today)
         for requirement in requirements
     ]
 
 
-def resolve_recruitment_requirement(
+def resolve_requirement(
     requirement: Mapping[str, Any],
     facts: Mapping[str, Any],
     evidence: Sequence[Mapping[str, Any]] | None = None,
@@ -100,9 +101,18 @@ def resolve_recruitment_requirement(
     country = _text(facts.get("licence_issuing_country"))
     shape = issuing_evidence_shape(country)
     variant = _variant(shape)
-    accepted = _matching_evidence(code, evidence or [], variant)
+    accepted, evidence_id = _matching_evidence(code, evidence or [], variant)
     if accepted == "satisfied":
-        return _row(code, level, applicable=True, progress="satisfied", resolution="satisfied", shape=shape, variant=variant)
+        return _row(
+            code,
+            level,
+            applicable=True,
+            progress="satisfied",
+            resolution="satisfied",
+            shape=shape,
+            variant=variant,
+            evidence_id=evidence_id,
+        )
     if accepted == "under_review":
         return _row(
             code,
@@ -112,6 +122,7 @@ def resolve_recruitment_requirement(
             resolution="unresolved",
             shape=shape,
             variant=variant,
+            evidence_id=evidence_id,
         )
     if shape is None:
         return _row(code, level, applicable=True, progress="needs_input", resolution="unresolved", shape=None, variant=None)
@@ -175,6 +186,7 @@ def _row(
     shape: str | None,
     variant: str | None,
     document_codes: Sequence[str] = (),
+    evidence_id: str | None = None,
     resolved: bool = True,
 ) -> dict[str, Any]:
     holds = bool(applicable and level == "REQUIRED" and progress in {"needs_input", "needs_evidence", "under_review", "blocking"})
@@ -188,6 +200,7 @@ def _row(
         "evidence_shape": shape,
         "evidence_variant": variant,
         "document_codes": list(document_codes),
+        "evidence_id": evidence_id,
         "holds_entrance": holds,
         "resolved": resolved,
     }
@@ -247,11 +260,11 @@ def _matching_evidence(
     requirement_code: str,
     evidence: Sequence[Mapping[str, Any]],
     variant: str | None,
-) -> str | None:
+) -> tuple[str | None, str | None]:
     """``satisfied`` or ``under_review`` when Candidate Evidence already covers the row."""
 
-    satisfied = False
-    review = False
+    satisfied_id: str | None = None
+    review_id: str | None = None
     for row in evidence:
         if str(row.get("requirement_code") or "").strip().lower() != requirement_code:
             continue
@@ -266,12 +279,17 @@ def _matching_evidence(
         documents = row.get("document_ids") or []
         if not isinstance(documents, Sequence) or isinstance(documents, (str, bytes)) or not list(documents):
             continue
-        if status in _APPROVED:
-            satisfied = True
-        elif status in _IN_REVIEW:
-            review = True
-    if satisfied:
-        return "satisfied"
-    if review:
-        return "under_review"
-    return None
+        evidence_id = str(row.get("id") or "").strip() or None
+        if status in _APPROVED and satisfied_id is None:
+            satisfied_id = evidence_id or ""
+        elif status in _IN_REVIEW and review_id is None:
+            review_id = evidence_id or ""
+    if satisfied_id is not None:
+        return "satisfied", satisfied_id or None
+    if review_id is not None:
+        return "under_review", review_id or None
+    return None, None
+
+
+resolve_recruitment_requirements = resolve_requirements
+resolve_recruitment_requirement = resolve_requirement
