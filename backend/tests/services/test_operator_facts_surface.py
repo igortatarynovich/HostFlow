@@ -1,0 +1,180 @@
+"""Operator Facts Surface runtime. Four operator scenarios, no new vocabulary."""
+
+from __future__ import annotations
+
+from datetime import date
+
+from backend.app.services.operator_facts_surface import (
+    apply_operator_facts_patch,
+    build_operator_facts_view,
+    chain_reading,
+    drop_withheld_document_codes,
+    empty_facts,
+    project_required_document_types,
+)
+
+_UNCONDITIONAL = [
+    "driver_license",
+    "code95",
+    "tacho_card",
+    "medical_certificate",
+    "psychotest",
+    "visa",
+    "work_permit",
+    "residence_permit",
+]
+
+
+def _view(patch: dict, *, base: dict | None = None, today: date | None = None) -> dict:
+    facts = apply_operator_facts_patch(base or empty_facts(), patch, employment_id="emp-1")
+    return build_operator_facts_view(facts, employment_id="emp-1", today=today), facts
+
+
+def _step(view: dict, key: str) -> dict:
+    return next(step for step in view["steps"] if step["key"] == key)
+
+
+def test_pl_and_eu_hide_stay_and_work_and_do_not_ask_for_those_files() -> None:
+    view, facts = _view({"citizenship": "PL"})
+    assert view["citizenship_class"] == "pl"
+    assert view["chain"] == {
+        "citizenship_class": "pl",
+        "stay_basis": "not_required",
+        "work_authorization_basis": "not_required",
+        "valid_for_this_employment": "yes",
+    }
+    assert _step(view, "stay_basis")["visible"] is False
+    assert _step(view, "work")["visible"] is False
+    assert "unknown" not in view["chain"].values()
+    asked = project_required_document_types(_UNCONDITIONAL, facts, employment_id="emp-1")
+    assert "visa" not in asked
+    assert "work_permit" not in asked
+    assert "residence_permit" not in asked
+    assert "medical_certificate" in asked
+    assert "psychotest" in asked
+
+    eu, eu_facts = _view({"citizenship": "DE"})
+    assert eu["citizenship_class"] == "eu_eea_ch"
+    assert eu["chain"]["stay_basis"] == "not_required"
+    assert eu["chain"]["valid_for_this_employment"] == "yes"
+    assert _step(eu, "stay_basis")["visible"] is False
+    ch, _ = _view({"citizenship": "CH"})
+    assert ch["citizenship_class"] == "eu_eea_ch"
+    assert facts["stay_basis"] is None
+    assert eu_facts["work"]["work_authorization_basis"] is None
+
+
+def test_third_country_needs_input_does_not_ask_for_a_file() -> None:
+    view, facts = _view({"citizenship": "BY"})
+    assert view["citizenship_class"] == "third_country"
+    assert view["chain"]["stay_basis"] is None
+    assert view["chain"]["work_authorization_basis"] is None
+    assert _step(view, "stay_basis")["visible"] is True
+    assert _step(view, "work")["visible"] is False
+    assert view["asks_file"] is False
+    asked = project_required_document_types(_UNCONDITIONAL, facts, employment_id="emp-1")
+    for code in ("driver_license", "code95", "tacho_card", "visa", "work_permit", "residence_permit"):
+        assert code not in asked
+    assert "medical_certificate" in asked
+
+    unknown, unknown_facts = _view({"citizenship": "unknown"})
+    assert unknown["citizenship_class"] is None
+    assert unknown_facts["citizenship"] is None
+    assert _step(unknown, "stay_basis")["visible"] is False
+    assert chain_reading(unknown_facts)["citizenship_class"] is None
+
+
+def test_work_permit_and_oswiadczenie_project_onto_existing_values() -> None:
+    base = apply_operator_facts_patch(
+        empty_facts(),
+        {"citizenship": "BY", "stay_basis": "karta_pobytu"},
+        employment_id="emp-1",
+    )
+    permit, permit_facts = _view({"work_label": "work_permit"}, base=base)
+    assert permit["chain"]["work_authorization_basis"] == "separate_required"
+    assert permit["chain"]["valid_for_this_employment"] == "operator_verification"
+    stored = permit_facts["employments"]["emp-1"]
+    assert stored["procedure_type"] == "work_permit_a"
+    assert stored["work_authorization_basis"] == "separate_required"
+    assert "oswiadczenie" not in stored.values()
+    assert "zezwolenie_A" not in stored.values()
+
+    declaration, declaration_facts = _view({"work_label": "oswiadczenie"}, base=base)
+    decl = declaration_facts["employments"]["emp-1"]
+    assert declaration["chain"]["work_authorization_basis"] == "separate_required"
+    assert decl["procedure_type"] == "employer_declaration"
+    assert "declaration" not in decl.values()
+
+    included, _ = _view({"work_label": "included_in_stay"}, base=base)
+    assert included["chain"]["work_authorization_basis"] == "included_in_stay"
+    assert included["chain"]["valid_for_this_employment"] == "operator_verification"
+
+    refused, _ = _view(
+        {"work_label": "work_permit", "valid_for_this_employment": "no"},
+        base=base,
+    )
+    assert refused["chain"]["valid_for_this_employment"] == "no"
+    assert project_required_document_types(_UNCONDITIONAL, permit_facts, employment_id="emp-1").count("work_permit") == 0
+
+
+def test_ce_code95_unknown_country_asks_no_file_then_shared_or_separate() -> None:
+    base = apply_operator_facts_patch(empty_facts(), {"citizenship": "PL"}, employment_id="emp-1")
+    unknown, unknown_facts = _view({"licence_issuing_country": "unknown"}, base=base)
+    ce = unknown["ce_code95"]
+    assert ce["progress"] == "needs_input"
+    assert ce["evidence_shape"] is None
+    assert ce["asks_file"] is False
+    assert ce["upload_codes"] == []
+    assert ce["ce"]["resolution"] == "unresolved"
+    assert ce["ce"]["holds_entrance"] is True
+    asked = project_required_document_types(_UNCONDITIONAL, unknown_facts, employment_id="emp-1")
+    assert "driver_license" not in asked
+    assert "code95" not in asked
+    assert "tacho_card" not in asked
+    assert "driver_license_code95" not in asked
+
+    shared, shared_facts = _view({"licence_issuing_country": "PL"}, base=base)
+    assert shared["ce_code95"]["evidence_shape"] == "shared"
+    assert shared["ce_code95"]["evidence_variant"] == "combined_eu_license"
+    assert shared["ce_code95"]["upload_codes"] == ["driver_license_code95"]
+    shared_asked = project_required_document_types(_UNCONDITIONAL, shared_facts, employment_id="emp-1")
+    assert "driver_license_code95" in shared_asked
+    assert "code95" not in shared_asked
+    assert "tacho_card" not in shared_asked
+
+    separate, separate_facts = _view({"licence_issuing_country": "BY"}, base=base)
+    assert separate["ce_code95"]["evidence_shape"] == "separate"
+    assert separate["ce_code95"]["evidence_variant"] == "separate_license_and_code95"
+    assert separate["ce_code95"]["upload_codes"] == ["driver_license", "code95"]
+    separate_asked = project_required_document_types(_UNCONDITIONAL, separate_facts, employment_id="emp-1")
+    assert "driver_license" in separate_asked
+    assert "code95" in separate_asked
+    assert "driver_license_code95" not in separate_asked
+
+    blocked, blocked_facts = _view(
+        {
+            "licence_issuing_country": "PL",
+            "licence_categories": ["B"],
+            "code95_presence": False,
+        },
+        base=base,
+        today=date(2026, 10, 5),
+    )
+    assert blocked["ce_code95"]["ce"]["resolution"] == "blocking"
+    assert blocked["ce_code95"]["code95"]["resolution"] == "blocking"
+    assert blocked["ce_code95"]["upload_codes"] == []
+    blocked_asked = drop_withheld_document_codes(
+        ["driver_license", "code95", "tacho_card", "adr"],
+        blocked_facts,
+        employment_id="emp-1",
+        today=date(2026, 10, 5),
+    )
+    assert blocked_asked == []
+
+    unrelated = project_required_document_types(
+        ["passport", "medical_certificate"],
+        shared_facts,
+        employment_id="emp-1",
+    )
+    assert "driver_license_code95" not in unrelated
+    assert "passport" in unrelated

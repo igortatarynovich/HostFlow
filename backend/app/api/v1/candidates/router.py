@@ -3094,6 +3094,8 @@ async def delete_candidate(
 
 from backend.app.api.v1.candidates import pipeline_overrides_api as _pipeline_overrides_api  # noqa: E402
 from backend.app.api.v1.candidates import next_action_api as _next_action_api  # noqa: E402
+from backend.app.api.v1.candidates import operator_facts_api as _operator_facts_api  # noqa: E402
 
 router.include_router(_pipeline_overrides_api.router)
 router.include_router(_next_action_api.router)
+router.include_router(_operator_facts_api.router)

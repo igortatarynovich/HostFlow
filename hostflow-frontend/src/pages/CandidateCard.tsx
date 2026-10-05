@@ -25,6 +25,7 @@ import { createDeleteRequest } from '../api/deletionRequests'
 import { sendRodo } from '../api/legalDocuments'
 import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
+import OperatorFactsSurface from '../modules/candidates/OperatorFactsSurface'
 import { exportCandidateBundle } from '../api/documents'
 import { createCandidateUploadLink, recreateCandidateFromApplication, type CandidateUploadLinkResponse } from '../api/candidates'
 import { useCandidateNextAction } from '../components/candidate/useCandidateNextAction'
@@ -1048,6 +1049,7 @@ export default function CandidateCard(){
   })
   const [requirementBlockersLoading, setRequirementBlockersLoading] = useState(false)
   const [docsSummaryRefreshTrigger, setDocsSummaryRefreshTrigger] = useState(0)
+  const [operatorFactsRevision, setOperatorFactsRevision] = useState(0)
   const [docsSummarySnapshot, setDocsSummarySnapshot] = useState<Record<string, unknown> | null>(null)
   const [pipelineOverrides, setPipelineOverrides] = useState<CandidatePipelineOverride[]>([])
   const [pipelineOverrideBusy, setPipelineOverrideBusy] = useState(false)
@@ -4906,6 +4908,16 @@ export default function CandidateCard(){
                 documentsChecklistSibling
               />
 
+              {!isMasked && model?.id ? (
+                <OperatorFactsSurface
+                  candidateId={String(model.id)}
+                  onSaved={() => {
+                    setOperatorFactsRevision((value) => value + 1)
+                    setDocsSummaryRefreshTrigger((value) => value + 1)
+                  }}
+                />
+              ) : null}
+
               {!isMasked && showRecruitmentDossierChecklist ? (
                 <RecruitmentDossierChecklist
                   candidateId={String(model.id)}
@@ -5305,7 +5317,7 @@ export default function CandidateCard(){
             </div>
             <div className="h-full overflow-auto p-3">
               <CandidateDocuments
-                key={`${model.id}:${docsDrawerType || 'default'}`}
+                key={`${model.id}:${docsDrawerType || 'default'}:${operatorFactsRevision}`}
                 candidateId={String(model.id)}
                 hideHeader
                 candidateProfile={candidateProfile}
