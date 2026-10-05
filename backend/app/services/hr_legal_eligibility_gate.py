@@ -17,25 +17,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.hr_employment import Employment
 from backend.app.models.hr_legal_eligibility_gate import HrLegalEligibilityGateDecision
-
-POLICY_ID = "legal_eligibility.v1"
-
-_CITIZENSHIP = frozenset({"pl", "eu_eea_ch", "third_country"})
-_STAY = frozenset(
-    {
-        "not_required",
-        "visa_d",
-        "visa_c",
-        "karta_pobytu",
-        "visa_free",
-        "waiting_for_trc",
-        "special_protection",
-        "other",
-        "none",
-    }
+from backend.app.reference.legal_eligibility_chain import (
+    CITIZENSHIP_CLASS as _CITIZENSHIP,
+    POLICY_ID,
+    STAY_BASIS as _STAY,
+    VALID_FOR_THIS_EMPLOYMENT as _VALID,
+    WORK_AUTHORIZATION_BASIS as _WORK,
 )
-_WORK = frozenset({"not_required", "included_in_stay", "separate_required"})
-_VALID = frozenset({"yes", "no", "operator_verification"})
 
 _CHAIN_KEYS = (
     "citizenship_class",

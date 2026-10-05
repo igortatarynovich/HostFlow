@@ -317,6 +317,58 @@ def block_pre_employment_requirement(
     return ResolutionResult(accepted=True, requirement=row, reason=None)
 
 
+def realign_pre_employment_requirement(
+    db: Session,
+    *,
+    tenant_id: str,
+    employment: Employment,
+    definition_key: str,
+    applicable: bool,
+) -> ResolutionResult:
+    """Open this row again, or mark it not applicable. Evidence rows stay stored.
+
+    A waiver is left as recorded. Any other resolution is cleared so the
+    shared resolver can write this Employment's row again.
+    """
+
+    tenant = str(tenant_id).strip()
+    refusal = _preparing(employment, tenant)
+    if refusal is not None:
+        return ResolutionResult(accepted=False, requirement=None, reason=refusal)
+    key = _text(definition_key)
+    if key is None:
+        return ResolutionResult(accepted=False, requirement=None, reason="missing")
+    row = db.scalars(
+        select(HrEmploymentRequirement).where(
+            HrEmploymentRequirement.tenant_id == tenant,
+            HrEmploymentRequirement.employment_id == str(employment.id),
+            HrEmploymentRequirement.definition_key == key,
+        )
+    ).one_or_none()
+    if row is None:
+        return ResolutionResult(accepted=False, requirement=None, reason="missing")
+    if row.resolution == RESOLUTION_WAIVED:
+        return ResolutionResult(accepted=False, requirement=row, reason="closed")
+    if applicable:
+        if row.applicability == APPLICABILITY_APPLICABLE and row.resolution == RESOLUTION_UNRESOLVED:
+            return ResolutionResult(accepted=True, requirement=row, reason=None)
+        row.applicability = APPLICABILITY_APPLICABLE
+        row.resolution = RESOLUTION_UNRESOLVED
+    else:
+        if row.applicability == APPLICABILITY_NOT_APPLICABLE and row.resolution is None:
+            return ResolutionResult(accepted=True, requirement=row, reason=None)
+        row.applicability = APPLICABILITY_NOT_APPLICABLE
+        row.resolution = None
+    row.satisfaction_evidence_id = None
+    row.satisfaction_document_id = None
+    row.waiver_actor_id = None
+    row.waiver_at = None
+    row.waiver_reason = None
+    row.blocking_reason = None
+    db.flush()
+    return ResolutionResult(accepted=True, requirement=row, reason=None)
+
+
 def evaluate_pre_employment_requirements(
     db: Session,
     *,

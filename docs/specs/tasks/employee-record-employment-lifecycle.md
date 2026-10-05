@@ -103,6 +103,11 @@ Legal Eligibility and Work Authorization remain upstream facts and processes. Th
 
 ## History
 
+- 2026-10-05: **HR Employee Record Projection runtime.** One read model assembles the ten groups from the existing owners. A write follows the canonical address to that owner. `#hr-verification` is unchanged. Feat locked.
+- 2026-10-05: **HR Employee Record Projection addresses.** A canonical address is not the current `operator_facts` storage. The bag stays a mapping until the owner moves.
+- 2026-10-05: **HR Employee Record Projection opened.** The ten groups are a view of existing owners. No new fact. `#hr-verification` is not redesigned. Requirements `satisfied` stay distinct from Legal Eligibility `pass`. Feat locked.
+- 2026-10-05: **Legal Eligibility evidence, Belarus.** Stay and work facts select registry requirements and accepted variants. `requirement_resolution.v1` does not gain a legal rule. `r5_required_set` materializes the documents. A changed basis reopens that Employment row. Feat locked.
+- 2026-10-05: **HR Requirement Resolution Integration.** `hr_employment_requirements` of one Employment are an input of the existing `requirement_resolution.v1`. The resolver gains no rule. Ready to Start reads the stored rows. Legal Eligibility evidence is the next vertical case. Feat locked.
 - 2026-10-04: **Ready to Start persistence and Activation PASS.** `hr_ready_to_start_decisions` keeps every decision. Activation writes `preparing → active` only while the latest `pass` still matches the four readings, in the same transaction. Feat locked.
 - 2026-10-04: **Ready to Start Gate Contract PASS.** `ready_to_start.v1` aggregates a current legal `pass`, Employee Data complete, current complete terms, and requirements readiness. The outcome is `pass` or `blocked`. A stale `pass` is not permission to move. No table is chosen. The transition to `active` is not this slice. Feat locked.
 - 2026-10-04: **Pre-employment Requirements Runtime PASS.** The materialized set of one Employment stays as first written. A later policy does not add, delete, or rewrite it. Satisfy, waive, and block are explicit. `unresolved` and `blocking` both leave completeness false and stay different readings. Completeness does not write `hr_employments.state`. Ready to Start Gate Contract stays closed. Feat locked.

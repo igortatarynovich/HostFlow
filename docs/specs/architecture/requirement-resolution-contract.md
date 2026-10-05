@@ -1,9 +1,9 @@
 # Requirement Resolution Contract
 
-**Status:** **Accepted** — Requirement Resolution Contract Gate **PASS**. No legal rule. No document type. No authoring of the required set. No runtime module.  
+**Status:** **Accepted** — Requirement Resolution Contract Gate **PASS**. No legal rule. No document type. No authoring of the required set. Recruitment runtime of `requirement_resolution.v1` is shipped. HR is a second consumer of that same runtime. The resolver has no HR-only rule.  
 **Date:** 2026-10-05  
 **Line:** `dec5dac8` (ancestor `integration/release-product-a-b` @ `020cb4e5`)  
-**Machine id:** `requirement_resolution.v1` — named here. No runtime module.  
+**Machine id:** `requirement_resolution.v1` — runtime in `backend/app/reference/requirement_resolution.py`. HR calls it from `backend/app/services/hr_requirement_resolution.py`.  
 **Parents:** [ADR-016](ADR-016-requirement-evidence-document-separation.md) · [Requirement and Evidence model](../platform/requirement-evidence-model-p0.md) · [Legal Eligibility](legal-eligibility-contract.md) (`legal_eligibility.v1`) · [Pre-employment requirements](employee-record-employment-lifecycle-contract.md) (`pre_employment_requirements.v1`) · [Work Authorization Procedure](work-authorization-procedure-contract.md) (`work_authorization_procedure.v1`)
 
 **L0 checklist:** No new P-rule. No Passport or Manifest shape change. No Architecture RFC. Applies **P-02** and **INV-01**: one authority still answers whether this candidate must provide canonical type X, and that authority stays RPM `r5_required_set`. This contract does not rewrite L0.
@@ -160,8 +160,48 @@ Also out of this slice:
 
 - A population of the Legal Eligibility matrix.  
 - Normalization of card tokens into pack inputs.  
-- A Python or JSON machine copy. The id `requirement_resolution.v1` is reserved. It is not shipped.  
-- A change to `hr_employment_requirements`, Ready to Start, or the legal chain.  
-- Runtime.
+- A Python or JSON machine copy of the HR requirement rows.  
+- A change to the `hr_employment_requirements` columns, or to the legal chain.  
+- Legal Eligibility evidence. Belarus, karta pobytu, a residence decision, and oświadczenie are the next vertical case. This integration does not encode them.
+
+---
+
+## Recruitment runtime
+
+**Outcome:** shipped. Machine id `requirement_resolution.v1`. The recruitment caller names a recruitment requirement. HR uses the same function; that call is the next section.
+
+The input of one call is one recruitment requirement the vacancy or recruitment policy already named, the shared facts, and Candidate Evidence. The output is `needs_input`, `needs_evidence`, `under_review`, `satisfied`, or `blocking`, and the accepted evidence variant. The runtime does not name a requirement because a fact is present. ADR, a tachograph card, a passport, and a residence decision are not asked from citizenship, stay, or a professional fact.
+
+`r5_required_set` materializes the recruitment checklist. CE and Code 95 codes in that set are replaced by the document types the resolution still needs. Every other policy code stays. A new file is not added from a fact the policy did not name.
+
+The first vertical case is CE and Code 95. Candidate Evidence that is already `approved` for the matching variant reads `satisfied`. Evidence in review reads `under_review`. Neither asks for a second file.
 
 Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## HR integration
+
+**Outcome:** shipped. HR is a consumer of the same `requirement_resolution.v1`. There is no second resolver.
+
+`materialize_hr_requirements` writes `hr_employment_requirements` for one Employment from the requirement-definition registry. This slice materializes `driver_entitlement` and `professional_qualification` only. Those are the registry rows the shared resolver already accepts. Identity, stay, and work authorization are not rows of this set. A recorded ADR or tachograph fact does not add a row.
+
+`apply_hr_requirement_resolution` sends each open row through `resolve_requirement`. Shared facts and Candidate Evidence are the same inputs Recruitment used. A matching approved variant writes `satisfied` on this Employment row and links that evidence id. That write is a resolution of this row. It is not a copy of a recruitment result and not a copy of another Employment. Evidence that is still in review leaves the row `unresolved`, progress `under_review`, and asks for no second file. Missing evidence leaves `needs_evidence` and the accepted variant. `r5_required_set` materializes that HR set after the candidate pack is removed, so a passport or a tachograph card is not asked because the recruitment pack contains it.
+
+A new Employment gets new rows. They stay `unresolved` until this resolver runs against them. Evidence is reused only when the variant still fits that resolution. A closed row is not recomputed.
+
+Ready to Start reads the stored rows through `evaluate_pre_employment_requirements`. It does not call the resolver.
+
+Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
+## Legal eligibility evidence
+
+**Outcome:** shipped for the Belarus case. The resolver is unchanged as a rule set. `legal_eligibility_evidence` names the requirement and the accepted variant. `resolve_requirement` only reads that variant.
+
+`legal_stay_confirmation` and `labor_market_access` are the registry requirements. An empty stay is `needs_input` and asks for no file. `visa_d` and `visa_c` accept the document type `visa`; the fact is not renamed to that type. `karta_pobytu` accepts `all_of(residence_card, temporary_residence_decision)`. `none` is `blocking`. `included_in_stay` and `not_required` ask for no work file. `separate_required` with `work_permit_a` accepts `work_permit`. `separate_required` with `employer_declaration` accepts the same registry code, because `oswiadczenie` is that code's alias, and the variant is `employer_declaration`. `valid_for_this_employment = no` is `blocking`.
+
+The fact does not write the required set. The resolver returns `needs_evidence`, and `r5_required_set` materializes those codes for this Employment. Approved evidence that matches the current variant writes `satisfied` on this row. A later basis that no longer matches reopens that row. The old Candidate Evidence row stays stored and does not satisfy the new variant.
+
+Other stay values are not this case. The Legal Eligibility matrix is not passed by this section. Feat stays locked. HostFlow v1 is not release-ready.

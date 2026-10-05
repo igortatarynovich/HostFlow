@@ -1,19 +1,39 @@
+import type { ReactElement } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { I18nProvider } from '../../i18n'
 import { OperatorFactsForm, type OperatorFactsView } from './OperatorFactsSurface'
+
+const STAY_CHOICES = [
+  'visa_d',
+  'visa_c',
+  'karta_pobytu',
+  'visa_free',
+  'waiting_for_trc',
+  'special_protection',
+  'other',
+  'none',
+]
+const WORK_CHOICES = ['work_permit', 'oswiadczenie', 'included_in_stay', 'not_required', 'no_right']
 
 function view(partial: Partial<OperatorFactsView> & Pick<OperatorFactsView, 'steps'>): OperatorFactsView {
   return {
     upload_codes: [],
     asks_file: false,
+    stay_choices: STAY_CHOICES,
+    work_choices: WORK_CHOICES,
     ce_code95: { progress: 'needs_input', evidence_shape: null, upload_codes: [], asks_file: false },
     ...partial,
   }
 }
 
+function renderForm(node: ReactElement) {
+  return render(<I18nProvider initialLocale="pl">{node}</I18nProvider>)
+}
+
 describe('OperatorFactsForm', () => {
   it('hides stay and work for a Polish candidate', () => {
-    render(
+    renderForm(
       <OperatorFactsForm
         countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={() => undefined}
@@ -42,7 +62,7 @@ describe('OperatorFactsForm', () => {
   })
 
   it('opens stay for a third-country candidate and does not ask for a file', () => {
-    render(
+    renderForm(
       <OperatorFactsForm
         countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={() => undefined}
@@ -68,7 +88,7 @@ describe('OperatorFactsForm', () => {
   })
 
   it('treats visa C or D as the type and does not ask for a purpose', () => {
-    render(
+    renderForm(
       <OperatorFactsForm
         countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={() => undefined}
@@ -94,7 +114,7 @@ describe('OperatorFactsForm', () => {
 
   it('keeps a partial card date and saves only a complete one', () => {
     const onPatch = vi.fn()
-    render(
+    renderForm(
       <OperatorFactsForm
         countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={onPatch}
@@ -121,7 +141,7 @@ describe('OperatorFactsForm', () => {
   })
 
   it('shows the work permit label for separate_required and work_permit_a', () => {
-    render(
+    renderForm(
       <OperatorFactsForm
         countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={() => undefined}
@@ -132,6 +152,7 @@ describe('OperatorFactsForm', () => {
             {
               key: 'work',
               visible: true,
+              operator_label: 'work_permit',
               work_authorization_basis: 'separate_required',
               procedure_type: 'work_permit_a',
             },
@@ -153,7 +174,7 @@ describe('OperatorFactsForm', () => {
   })
 
   it('asks for shared evidence only after the issuing country is known', () => {
-    const { rerender } = render(
+    const { rerender } = renderForm(
       <OperatorFactsForm
         countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={() => undefined}

@@ -21,36 +21,25 @@ from backend.app.document_types.registry import (
     is_canonical_code,
     normalize_input_doc_type,
     registry_entry_for,
-    registry_entries,
 )
 from backend.app.reference.country_registry import get_country_registry_entry
-
-POLICY_REQUIREMENT_RESOLUTION = "requirement_resolution.v1"
-
-# Non-eu_member countries of the closed class ``eu_eea_ch``. EU members are
-# read from the country registry (``eu_member``). This is not a published list.
-_EEA_CH_NOT_EU = frozenset({"IS", "LI", "NO", "CH"})
-
-_STAY = frozenset(
-    {
-        "visa_d",
-        "visa_c",
-        "karta_pobytu",
-        "visa_free",
-        "waiting_for_trc",
-        "special_protection",
-        "other",
-        "none",
-    }
+from backend.app.reference.legal_eligibility_chain import (
+    OPERATOR_STAY_CHOICES as _STAY,
+    OPERATOR_WORK_CHOICES,
+    PROCEDURE_LABELS as _PROCEDURE_LABELS,
+    STAY_WITH_VISA_PARAMETERS,
+    WORK_LABELS as _WORK_LABELS,
+    citizenship_class,
 )
-_WORK_LABELS = {
-    "work_permit": ("separate_required", "work_permit_a"),
-    "oswiadczenie": ("separate_required", "employer_declaration"),
-    "included_in_stay": ("included_in_stay", None),
-    "not_required": ("not_required", None),
-}
-_PROCEDURE_LABELS = frozenset({"work_permit", "oswiadczenie"})
-_LEVELS = frozenset({"REQUIRED", "PREFERRED", "NOT_REQUIRED"})
+from backend.app.reference.requirement_resolution import (
+    CE_DOCUMENT_CODES,
+    POLICY_ID as POLICY_REQUIREMENT_RESOLUTION,
+    REQUIREMENT_LEVELS as _LEVELS,
+    apply_resolution_to_required_set,
+    issuing_evidence_shape,
+    requirements_named_by_documents,
+    resolve_recruitment_requirements,
+)
 
 class OperatorFactsRejected(ValueError):
     """A patch value is not one the accepted contracts already name."""
@@ -80,46 +69,6 @@ def registry_document_code(code: str) -> str | None:
     return entry.code
 
 
-def catalog_document_code(code: str) -> str | None:
-    """A document type the module catalog already lists."""
-
-    raw = str(code or "").strip().lower()
-    if not raw:
-        return None
-    from backend.app.document_types.definitions import DOCUMENT_TYPE_DEFINITIONS
-
-    for definition in DOCUMENT_TYPE_DEFINITIONS:
-        if definition.code == raw:
-            return definition.code
-    return None
-
-
-def _surface_document_code(code: str) -> str | None:
-    """Participating registry type, or the catalog type the operator confirmed."""
-
-    participating = registry_document_code(code)
-    if participating:
-        return participating
-    catalog = catalog_document_code(code)
-    if catalog == "additional_document":
-        return catalog
-    return None
-
-
-def _governed_document_codes() -> frozenset[str]:
-    """Candidate document types this surface may withhold. Read from the registry."""
-
-    categories = {"identity", "immigration", "driver_qualification", "medical", "work_authorization"}
-    return frozenset(
-        entry.code
-        for entry in registry_entries()
-        if entry.category_code in categories
-        and "candidate" in entry.entity_applicability
-        and entry.participates_in_requirements
-        and not entry.classification_inbox_only
-    )
-
-
 def _text(value: Any) -> str | None:
     if value is None:
         return None
@@ -142,34 +91,6 @@ def _country(value: Any) -> str | None:
     if get_country_registry_entry(raw) is None:
         raise OperatorFactsRejected(f"unknown country {raw}")
     return raw
-
-
-def citizenship_class(citizenship: str | None) -> str | None:
-    """``pl``, ``eu_eea_ch``, or ``third_country``. Absent citizenship is not a class."""
-
-    code = _text(citizenship)
-    if not code:
-        return None
-    entry = get_country_registry_entry(code.upper())
-    if entry is None:
-        return None
-    alpha2 = entry.identity.alpha2
-    if alpha2 == "PL":
-        return "pl"
-    if entry.classifications.eu_member or alpha2 in _EEA_CH_NOT_EU:
-        return "eu_eea_ch"
-    return "third_country"
-
-
-def issuing_evidence_shape(country: str | None) -> str | None:
-    """Shared for an EU/EEA/CH licence, separate otherwise. Unknown stays unknown."""
-
-    klass = citizenship_class(country)
-    if klass is None:
-        return None
-    if klass in {"pl", "eu_eea_ch"}:
-        return "shared"
-    return "separate"
 
 
 def _blank_work() -> dict[str, Any]:
@@ -208,8 +129,8 @@ def empty_facts() -> dict[str, Any]:
         "additional_presence": None,
         "pesel_presence": None,
         "pesel": None,
-        "ce_level": "REQUIRED",
-        "code95_level": "REQUIRED",
+        "ce_level": "NOT_REQUIRED",
+        "code95_level": "NOT_REQUIRED",
     }
 
 
@@ -330,7 +251,7 @@ def _level(value: Any) -> str:
     raw = str(value or "").strip().upper()
     if raw in _LEVELS:
         return raw
-    return "REQUIRED"
+    return "NOT_REQUIRED"
 
 
 def _parse_date(value: str | None) -> date | None:
@@ -403,6 +324,8 @@ def apply_operator_facts_patch(
             key in patch
             for key in (
                 "work_label",
+                "work_authorization_basis",
+                "procedure_type",
                 "valid_for_this_employment",
                 "authorization_valid_from",
                 "authorization_valid_to",
@@ -474,6 +397,24 @@ def operator_work_label(work: Mapping[str, Any]) -> str | None:
 
 def _apply_work_patch(facts: dict[str, Any], patch: Mapping[str, Any], employment_id: str | None) -> None:
     current = _work_for(facts, employment_id)
+    if "work_authorization_basis" in patch:
+        raw = patch.get("work_authorization_basis")
+        if _is_unknown(raw) or not _text(raw):
+            current["work_authorization_basis"] = None
+        else:
+            basis = str(raw).strip()
+            if basis not in {"not_required", "included_in_stay", "separate_required"}:
+                raise OperatorFactsRejected(f"work_authorization_basis {basis} is not a chain value")
+            current["work_authorization_basis"] = basis
+    if "procedure_type" in patch:
+        raw = patch.get("procedure_type")
+        if _is_unknown(raw) or not _text(raw):
+            current["procedure_type"] = None
+        else:
+            procedure = str(raw).strip()
+            if procedure not in {"work_permit_a", "employer_declaration"}:
+                raise OperatorFactsRejected(f"procedure_type {procedure} is not a chain value")
+            current["procedure_type"] = procedure
     if "work_label" in patch:
         label = patch.get("work_label")
         if _is_unknown(label) or not _text(label):
@@ -585,113 +526,47 @@ def chain_reading(facts: Mapping[str, Any], *, employment_id: str | None = None)
     }
 
 
-def _row_state(
-    *,
-    level: str,
-    applicable: bool,
-    country_known: bool,
-    blocking: bool,
-) -> dict[str, Any]:
-    if not applicable or level == "NOT_REQUIRED":
-        return {
-            "applicable": False,
-            "level": level,
-            "progress": None,
-            "resolution": None,
-            "holds_entrance": False,
-        }
-    if not country_known:
-        return {
-            "applicable": True,
-            "level": level,
-            "progress": "needs_input",
-            "resolution": "unresolved",
-            "holds_entrance": level == "REQUIRED",
-        }
-    if blocking:
-        return {
-            "applicable": True,
-            "level": level,
-            "progress": "blocking",
-            "resolution": "blocking",
-            "holds_entrance": level == "REQUIRED",
-        }
-    return {
-        "applicable": True,
-        "level": level,
-        "progress": "needs_evidence",
-        "resolution": "unresolved",
-        "holds_entrance": level == "REQUIRED",
-    }
+def _ce_aggregate(resolutions: list[dict[str, Any]]) -> dict[str, Any]:
+    """Card reading of the CE case. Absent requirements are not a case."""
 
-
-def resolve_ce_code95(
-    facts: Mapping[str, Any],
-    *,
-    today: date | None = None,
-) -> dict[str, Any]:
-    """CE + Code 95 under ``requirement_resolution.v1``. Does not write a row."""
-
-    ce_level = _level(facts.get("ce_level"))
-    code_level = _level(facts.get("code95_level"))
-    ce_applicable = ce_level != "NOT_REQUIRED"
-    code_applicable = code_level != "NOT_REQUIRED"
-    country = facts.get("licence_issuing_country")
-    country_known = bool(country) and issuing_evidence_shape(country) is not None
-    shape = issuing_evidence_shape(country) if country_known and (ce_applicable or code_applicable) else None
-    categories = list(facts.get("licence_categories") or [])
-    ce_blocking = bool(categories) and "CE" not in categories
-    presence = facts.get("code95_presence")
-    valid_to = _parse_date(facts.get("code95_valid_to"))
-    on = today or date.today()
-    # An EU/EEA/CH licence carries Code 95 on the same card. Absence of a
-    # separate code is not a block, and it is not a second file.
-    code_blocking = shape == "separate" and (
-        presence is False or (valid_to is not None and valid_to < on)
-    )
-    ce = _row_state(
-        level=ce_level,
-        applicable=ce_applicable,
-        country_known=country_known,
-        blocking=ce_blocking and country_known,
-    )
-    code95 = _row_state(
-        level=code_level,
-        applicable=code_applicable,
-        country_known=country_known,
-        blocking=code_blocking and country_known,
-    )
+    by_code = {row["requirement_code"]: row for row in resolutions}
+    ce = by_code.get("ce")
+    code95 = by_code.get("code95")
+    shape = None
+    if ce or code95:
+        shape = (ce or code95 or {}).get("evidence_shape")
     uploads: list[str] = []
-    if shape and country_known:
-        ce_file = ce["progress"] == "needs_evidence"
-        code_file = code95["progress"] == "needs_evidence"
-        if shape == "shared":
-            if ce_file:
-                shared = registry_document_code("driver_license")
-                if shared:
-                    uploads = [shared]
-        elif ce_file or code_file:
-            if ce_file:
-                licence = registry_document_code("driver_license")
-                if licence:
-                    uploads.append(licence)
-            if code_file:
-                qualification = registry_document_code("driver_qualification_card")
-                if qualification and qualification not in uploads:
-                    uploads.append(qualification)
+    for row in (ce, code95):
+        if not row:
+            continue
+        for code in row.get("document_codes") or []:
+            surfaced = registry_document_code(str(code))
+            if surfaced and surfaced not in uploads:
+                uploads.append(surfaced)
+    if ce and ce.get("progress") == "needs_input" or code95 and code95.get("progress") == "needs_input":
+        progress = "needs_input"
+    elif (ce and ce.get("resolution") == "blocking") or (code95 and code95.get("resolution") == "blocking"):
+        progress = "blocking"
+    elif uploads:
+        progress = "needs_evidence"
+    elif ce and ce.get("progress") == "satisfied" and (code95 is None or code95.get("progress") == "satisfied"):
+        progress = "satisfied"
+    elif ce and ce.get("progress") == "under_review":
+        progress = "under_review"
+    else:
+        progress = None
     variant = None
     if shape == "shared":
         variant = "combined_eu_license"
     elif shape == "separate":
         variant = "separate_license_and_code95"
-    if not country_known and (ce_applicable or code_applicable):
-        progress = "needs_input"
-    elif ce["resolution"] == "blocking" or code95["resolution"] == "blocking":
-        progress = "blocking"
-    elif uploads:
-        progress = "needs_evidence"
-    else:
-        progress = None
+    quiet = {
+        "applicable": False,
+        "level": "NOT_REQUIRED",
+        "progress": None,
+        "resolution": None,
+        "holds_entrance": False,
+    }
     return {
         "policy_id": POLICY_REQUIREMENT_RESOLUTION,
         "evidence_shape": shape,
@@ -699,42 +574,19 @@ def resolve_ce_code95(
         "progress": progress,
         "upload_codes": uploads,
         "asks_file": bool(uploads),
-        "ce": ce,
-        "code95": code95,
+        "ce": _card_row(ce) if ce else quiet,
+        "code95": _card_row(code95) if code95 else quiet,
     }
 
 
-def situation_upload_codes(facts: Mapping[str, Any]) -> list[str]:
-    """Registry types the recorded situation asks for.
-
-    Polish citizenship asks for the identity card. Every other known citizenship
-    asks for the passport. A residence card asks for the residence decision
-    already named in the registry. A professional document, including the extra
-    catalog file, is asked only when the operator says it exists. Visa, the
-    residence card, and a work permit stay unasked.
-    """
-
-    codes: list[str] = []
-
-    def add(code: str | None) -> None:
-        if code and code not in codes:
-            codes.append(code)
-
-    identity = "national_identity_card" if citizenship_class(facts.get("citizenship")) == "pl" else "passport"
-    add(registry_document_code(identity))
-    if facts.get("stay_basis") == "karta_pobytu":
-        add(registry_document_code("temporary_residence_decision"))
-    if facts.get("tachograph_presence") is True:
-        add(registry_document_code("tachograph_card"))
-    if facts.get("adr_presence") is True:
-        add(registry_document_code("adr_certificate"))
-    if facts.get("medical_presence") is True:
-        add(registry_document_code("medical_certificate"))
-    if facts.get("psych_presence") is True:
-        add(registry_document_code("psychological_certificate"))
-    if facts.get("additional_presence") is True:
-        add(catalog_document_code("additional_document"))
-    return codes
+def _card_row(row: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "applicable": row.get("applicable"),
+        "level": row.get("level"),
+        "progress": row.get("progress"),
+        "resolution": row.get("resolution"),
+        "holds_entrance": row.get("holds_entrance"),
+    }
 
 
 def build_operator_facts_view(
@@ -742,22 +594,27 @@ def build_operator_facts_view(
     *,
     employment_id: str | None = None,
     today: date | None = None,
+    requirements: list[Mapping[str, Any]] | None = None,
+    evidence: list[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     klass = citizenship_class(facts.get("citizenship"))
     chain = chain_reading(facts, employment_id=employment_id)
     work = _work_for(facts, employment_id)
     stay_visible = klass == "third_country"
-    parameters_visible = stay_visible and facts.get("stay_basis") in {"visa_d", "visa_c"}
+    parameters_visible = stay_visible and facts.get("stay_basis") in STAY_WITH_VISA_PARAMETERS
     work_visible = stay_visible and not _stay_withholds_work(facts)
     valid_visible = work_visible and chain.get("work_authorization_basis") in {
         "included_in_stay",
         "separate_required",
     }
-    ce = resolve_ce_code95(facts, today=today)
+    resolutions = resolve_recruitment_requirements(
+        list(requirements or []),
+        facts,
+        evidence,
+        today=today,
+    )
+    ce = _ce_aggregate(resolutions)
     uploads = list(ce["upload_codes"])
-    for code in situation_upload_codes(facts):
-        if code not in uploads:
-            uploads.append(code)
     steps = [
         {"key": "citizenship", "visible": True, "stored": facts.get("citizenship")},
         {
@@ -796,7 +653,7 @@ def build_operator_facts_view(
         },
         {
             "key": "code95",
-            "visible": ce["evidence_shape"] == "separate",
+            "visible": issuing_evidence_shape(facts.get("licence_issuing_country")) == "separate",
             "presence": facts.get("code95_presence"),
             "valid_to": facts.get("code95_valid_to"),
             "evidence_shape": ce["evidence_shape"],
@@ -831,37 +688,59 @@ def build_operator_facts_view(
         "upload_codes": uploads,
         "asks_file": ce["asks_file"],
         "licence_category_codes": licence_category_codes(),
+        "stay_choices": list(_STAY),
+        "work_choices": list(OPERATOR_WORK_CHOICES),
         "employment_id": employment_id,
     }
 
 
-def withheld_document_norms(facts: Mapping[str, Any], *, employment_id: str | None = None, today: date | None = None) -> frozenset[str]:
-    view = build_operator_facts_view(facts, employment_id=employment_id, today=today)
-    allowed = {canonical_document_code(code) for code in view["upload_codes"]}
-    return frozenset(code for code in _governed_document_codes() if code not in allowed)
+def _policy_codes(required_types: list[Any] | None) -> list[str]:
+    out: list[str] = []
+    for raw in required_types or []:
+        text = str(raw or "").strip()
+        if not text:
+            continue
+        code = canonical_document_code(text)
+        if code and code not in out:
+            out.append(code)
+    return out
 
 
-def _facts_for_existing_driver_ask(
+def _resolve_named(
     facts: Mapping[str, Any],
     required_types: list[Any] | None,
-) -> dict[str, Any]:
-    """CE and Code 95 stay applicable only when the current ask already names them.
+    *,
+    today: date | None = None,
+    evidence: list[Mapping[str, Any]] | None = None,
+) -> tuple[list[str], list[dict[str, Any]]]:
+    codes = _policy_codes(required_types)
+    resolutions = resolve_recruitment_requirements(
+        requirements_named_by_documents(codes),
+        facts,
+        evidence,
+        today=today,
+    )
+    return codes, resolutions
 
-    The surface replaces that ask. It does not add the requirement.
+
+def withheld_document_norms(
+    facts: Mapping[str, Any],
+    *,
+    employment_id: str | None = None,
+    today: date | None = None,
+    required_types: list[Any] | None = None,
+    evidence: list[Mapping[str, Any]] | None = None,
+) -> frozenset[str]:
+    """CE-family codes the current resolution is not asking for.
+
+    Identity, stay, and professional documents are not withheld here. They stay
+    when the recruitment policy named them.
     """
 
-    norms = {
-        canonical_document_code(str(raw))
-        for raw in (required_types or [])
-        if str(raw or "").strip()
-    }
-    named = bool(norms & {"driver_license", "driver_qualification_card"})
-    if named:
-        return dict(facts)
-    adjusted = dict(facts)
-    adjusted["ce_level"] = "NOT_REQUIRED"
-    adjusted["code95_level"] = "NOT_REQUIRED"
-    return adjusted
+    del employment_id
+    _codes, resolutions = _resolve_named(facts, required_types, today=today, evidence=evidence)
+    pending = {str(code) for row in resolutions for code in row.get("document_codes") or []}
+    return frozenset(CE_DOCUMENT_CODES - pending)
 
 
 def project_required_document_types(
@@ -870,20 +749,18 @@ def project_required_document_types(
     *,
     employment_id: str | None = None,
     today: date | None = None,
+    evidence: list[Mapping[str, Any]] | None = None,
 ) -> list[str]:
-    """Drop unconditional asks this surface governs. Keep a file only when CE asks for it."""
+    """Policy set, with CE and Code 95 replaced by the resolved evidence codes."""
 
-    facts = _facts_for_existing_driver_ask(facts, required_types)
-    withheld = withheld_document_norms(facts, employment_id=employment_id, today=today)
-    view = build_operator_facts_view(facts, employment_id=employment_id, today=today)
+    del employment_id
+    codes, resolutions = _resolve_named(facts, required_types, today=today, evidence=evidence)
+    resolved = apply_resolution_to_required_set(codes, resolutions)
     out: list[str] = []
-    seen: set[str] = set()
-    for raw in list(required_types or []) + list(view["upload_codes"]):
-        code = _surface_document_code(str(raw or ""))
-        if code is None or code in withheld or code in seen:
-            continue
-        seen.add(code)
-        out.append(code)
+    for code in resolved:
+        surfaced = registry_document_code(code)
+        if surfaced and surfaced not in out:
+            out.append(surfaced)
     return out
 
 
@@ -894,29 +771,20 @@ def drop_withheld_document_codes(
     employment_id: str | None = None,
     today: date | None = None,
     include_replacement: bool = True,
+    evidence: list[Mapping[str, Any]] | None = None,
 ) -> list[str]:
-    facts = _facts_for_existing_driver_ask(facts, codes)
-    withheld = withheld_document_norms(facts, employment_id=employment_id, today=today)
-    view = build_operator_facts_view(facts, employment_id=employment_id, today=today)
+    del employment_id
+    if include_replacement:
+        return project_required_document_types(codes, facts, today=today, evidence=evidence)
+    canonical, resolutions = _resolve_named(facts, codes, today=today, evidence=evidence)
+    pending = {str(code) for row in resolutions for code in row.get("document_codes") or []}
     out: list[str] = []
-    removed_driver = False
-    for raw in codes or []:
-        text = str(raw or "").strip()
-        if not text:
+    for code in canonical:
+        if code in CE_DOCUMENT_CODES and code not in pending:
             continue
-        code = registry_document_code(text)
-        if code is None or code in withheld:
-            if canonical_document_code(text) in {"driver_license", "driver_qualification_card"}:
-                removed_driver = True
-            continue
-        if code not in out:
-            out.append(code)
-    if removed_driver and include_replacement:
-        seen = set(out)
-        for code in view["upload_codes"]:
-            if code not in seen:
-                out.append(code)
-                seen.add(code)
+        surfaced = registry_document_code(code)
+        if surfaced and surfaced not in out:
+            out.append(surfaced)
     return out
 
 
@@ -926,12 +794,19 @@ def project_document_summary(
     *,
     employment_id: str | None = None,
     today: date | None = None,
+    evidence: list[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Operator-facing summary. Does not write ``r5_required_set``."""
 
     checklist_in = dict(summary.get("checklist") or {})
-    facts = _facts_for_existing_driver_ask(facts, list(checklist_in.get("requiredTypes") or []))
-    withheld = withheld_document_norms(facts, employment_id=employment_id, today=today)
+    policy_types = list(checklist_in.get("requiredTypes") or [])
+    withheld = withheld_document_norms(
+        facts,
+        employment_id=employment_id,
+        today=today,
+        required_types=policy_types,
+        evidence=evidence,
+    )
     out = dict(summary)
     required = dict(out.get("required") or {})
     for key in ("missing", "problematic", "ready_types", "in_progress_types"):
@@ -956,10 +831,11 @@ def project_document_summary(
     )
     checklist = dict(out.get("checklist") or {})
     checklist["requiredTypes"] = project_required_document_types(
-        list(checklist.get("requiredTypes") or []),
+        policy_types,
         facts,
         employment_id=employment_id,
         today=today,
+        evidence=evidence,
     )
     if replaced_driver:
         seen = {canonical_document_code(str(item)) for item in required["missing"]}
@@ -1026,7 +902,49 @@ def personal_data_with_facts(
         "additional_presence": facts.get("additional_presence"),
         "pesel_presence": facts.get("pesel_presence"),
         "pesel": facts.get("pesel"),
-        "ce_level": facts.get("ce_level") or "REQUIRED",
-        "code95_level": facts.get("code95_level") or "REQUIRED",
+        "ce_level": facts.get("ce_level") or "NOT_REQUIRED",
+        "code95_level": facts.get("code95_level") or "NOT_REQUIRED",
     }
     return personal
+
+
+async def load_candidate_resolution_evidence(
+    session: Any,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+) -> list[dict[str, Any]]:
+    """Candidate Evidence rows the recruitment resolver already accepts.
+
+    The row stays a recruitment record for one candidate. This slice does not
+    read an Employment requirement.
+    """
+
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    from backend.app.models.candidate_evidence import CandidateEvidence
+
+    rows = (
+        await session.scalars(
+            select(CandidateEvidence)
+            .options(selectinload(CandidateEvidence.documents))
+            .where(
+                CandidateEvidence.tenant_id == str(tenant_id),
+                CandidateEvidence.candidate_id == str(candidate_id),
+            )
+        )
+    ).all()
+    evidence: list[dict[str, Any]] = []
+    for row in rows:
+        evidence.append(
+            {
+                "requirement_code": row.requirement_code,
+                "evidence_variant_code": row.evidence_variant_code,
+                "status": row.status,
+                "document_ids": [
+                    link.document_id for link in (row.documents or []) if link.document_id
+                ],
+            }
+        )
+    return evidence

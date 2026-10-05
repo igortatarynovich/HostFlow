@@ -21,6 +21,7 @@ import HrNextActionRail from '../../components/hr/HrNextActionRail'
 import HrContractPreviewPanel from '../../components/hr/HrContractPreviewPanel'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import { EmployeeDossierView } from '../../components/hr/EmployeeDossierView'
+import { HrEmployeeRecordSurface } from '../../components/hr/HrEmployeeRecordSurface'
 import { countVerifiedDocuments, documentsFromPanel } from '../../components/hr/hrDocumentVerificationFields'
 import { isEmploymentCaseWorkspace } from '../../utils/hrEmploymentCaseMode'
 import { HrEmployeeCommunicationSlot } from './HrEmployeeCommunicationSlot'
@@ -305,6 +306,7 @@ export default function HrEmployeeDetailPage() {
               onHrPanelUpdated={handleDossierHrPanelUpdated}
               onScrollTo={scrollToAnchor}
             />
+            <HrEmployeeRecordSurface employeeId={employeeId!} />
             </div>
             {showEmploymentDecision && hrReview ? (
               <details
