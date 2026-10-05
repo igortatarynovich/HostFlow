@@ -69,6 +69,7 @@ class HrEmploymentTerms(Base, TimestampMixin):
     contract_basis: Mapped[str] = mapped_column(String(64), nullable=False)
     work_time_value: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     work_time_unit: Mapped[str] = mapped_column(String(32), nullable=False)
+    work_system: Mapped[str | None] = mapped_column(String(255), nullable=True)
     workplace: Mapped[str] = mapped_column(String(255), nullable=False)
     compensation_amount: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False)
     compensation_currency: Mapped[str] = mapped_column(String(8), nullable=False)
@@ -77,4 +78,5 @@ class HrEmploymentTerms(Base, TimestampMixin):
     fixed_term_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     probation_status: Mapped[str] = mapped_column(String(16), nullable=False)
     probation_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    intended_start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     default_vacancy_id: Mapped[str | None] = mapped_column(String(36), nullable=True)

@@ -72,7 +72,9 @@ def test_employee_record_contract_is_accepted() -> None:
     assert "does not canonize a Polish pre-employment document list" in current
     assert "kwestionariusz osobowy" in current
     assert "not a second copy of the person" in current
-    assert "ZUS registration is a post-start obligation" in current
+    assert "It is not universally pre-start and it is not universally post-start." in current
+    assert "Employment Preparation Dependency Amendment" in current
+    assert "ZUS registration is a post-start obligation" not in current
     assert "another plane" in current
     assert "## Persistence boundary" in current
     assert "canonical Employment is not yet a table" in current

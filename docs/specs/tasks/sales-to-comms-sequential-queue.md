@@ -680,6 +680,7 @@ Next branch only after:
 ---
 
 ## 8. History
+- 2026-10-05: **Employment Preparation Dependency Amendment.** Preparation inside `preparing` follows each layer's own prerequisites. Legal Eligibility PASS is not that entrance. ZUS is not universally post-start. Terms gain an intended start date and a work system. Ready to Start keeps four inputs. No screen.
 - 2026-10-04: **Ready to Start persistence and Activation PASS.** Append-only `ready_to_start.v1`. Activation is the only `preparing → active`, and only for a current pass. Feat locked.
 - 2026-10-04: **Ready to Start Gate Contract PASS.** `ready_to_start.v1` reads four upstream results. Outcome is `pass` or `blocked`. A stale `pass` does not move Employment to active. No schema. No runtime. Feat locked.
 - 2026-10-04: **Pre-employment Requirements Runtime PASS.** One Employment keeps the set first materialized from policy. Resolution is explicit. Completeness does not write Employment state. Ready to Start Gate Contract stays closed. Feat locked.
