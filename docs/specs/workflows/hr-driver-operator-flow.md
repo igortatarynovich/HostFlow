@@ -143,7 +143,7 @@ The intended start date and the work system are terms of `employment_terms.v1`. 
 
 The employee page `#hr-verification` assembles the owners in the table above for one Employment. Compact rows stay visible together. A blocked earlier gate does not hide a later fact. One next action is the open working step, and its order comes from the prerequisites of this case. Ready to Start is the four existing readings. After a current pass, Start employment calls `activate_employment`.
 
-The surface does not add a driver-card store, an Employment status, a second legal model, or a document list for the screen.
+The surface does not add a driver-card store, an Employment status, a second legal model, or a document list for the screen. It is a projection. Authority over the same facts is [Canonical Fact Authority](../architecture/canonical-fact-authority-contract.md). Canonical Fact Authority Contract Gate **PASS**. That contract does not assign a capability and does not rewrite this surface.
 
 ## Out of this reading
 

@@ -680,6 +680,8 @@ Next branch only after:
 ---
 
 ## 8. History
+- 2026-10-05: **Canonical Fact Authority Contract Gate PASS.** `canonical_fact_authority.v1` names how a capability decision is taken. It assigns no verb. The reading of current RBAC is not opened.
+- 2026-10-05: **Canonical Fact Authority Contract opened.** Handoff changes capabilities over existing fact addresses. It does not transfer a value. No schema. No runtime.
 - 2026-10-05: **Employment Preparation Dependency Amendment.** Preparation inside `preparing` follows each layer's own prerequisites. Legal Eligibility PASS is not that entrance. ZUS is not universally post-start. Terms gain an intended start date and a work system. Ready to Start keeps four inputs. No screen.
 - 2026-10-04: **Ready to Start persistence and Activation PASS.** Append-only `ready_to_start.v1`. Activation is the only `preparing → active`, and only for a current pass. Feat locked.
 - 2026-10-04: **Ready to Start Gate Contract PASS.** `ready_to_start.v1` reads four upstream results. Outcome is `pass` or `blocked`. A stale `pass` does not move Employment to active. No schema. No runtime. Feat locked.

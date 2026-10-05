@@ -6,7 +6,7 @@
 
 HR-модуль в целом должен давать тенанту ответы на **пять операционных вопросов** по каждому нанятому человеку (и в агрегате по организации).
 
-Порядок, в котором оператор смотрит одного водителя на одном Employment, записан в [hr-driver-operator-flow.md](../specs/workflows/hr-driver-operator-flow.md). Факты идут первыми, документ подтверждает факт. Пока Employment в `preparing`, слои подготовки идут по своим предпосылкам. Карточка сотрудника `#hr-verification` — это HR Driver Operator Surface: те же владельцы, без второго хранилища.
+Порядок, в котором оператор смотрит одного водителя на одном Employment, записан в [hr-driver-operator-flow.md](../specs/workflows/hr-driver-operator-flow.md). Факты идут первыми, документ подтверждает факт. Пока Employment в `preparing`, слои подготовки идут по своим предпосылкам. Карточка сотрудника `#hr-verification` — это HR Driver Operator Surface: проекция тех же владельцев, без второго хранилища. Кто что может делать с фактом, записано в [Canonical Fact Authority Contract](../specs/architecture/canonical-fact-authority-contract.md). Canonical Fact Authority Contract Gate **PASS**. Контракт не назначает права и не меняет экран.
 
 **Канонические формулировки (продукт):**
 
