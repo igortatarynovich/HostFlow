@@ -134,7 +134,7 @@ This PASS does not choose a country for a person, does not link a file, and does
 
 - A list of which issuing country selects which shape. The country is the selector. This file contains no country row.  
 - Reading Code 95 off a scan.  
-- ADR, a tachograph card, a medical certificate, or a psychotest.  
+- ADR, a tachograph card, a medical certificate, or a psychotest. The [operator facts surface](operator-candidate-employment-facts.md) may record a tachograph card and ADR as professional facts. It does not resolve them in this case.  
 - A change to `hr_employment_requirements`, Ready to Start persistence, or the legal chain.  
 - A Python or JSON machine copy.  
 - Runtime.

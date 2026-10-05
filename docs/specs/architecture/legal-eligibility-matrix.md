@@ -62,7 +62,7 @@ An operator hold is not an outcome id. It is not `candidate_default`.
 
 ## Evidence
 
-RPM receives the evidence outcome of a fully determined chain, not a required document set. `r5_required_set` consumes that outcome and stays the sole writer of the required set. This amendment assigns no outcome, so it hands RPM nothing. [Requirement Resolution](requirement-resolution-contract.md) (`requirement_resolution.v1`) is a separate contract. It assigns no cell of this matrix. The [CE, Code 95, and issuing-country case](ce-code95-issuing-country.md) assigns no cell of this matrix.
+RPM receives the evidence outcome of a fully determined chain, not a required document set. `r5_required_set` consumes that outcome and stays the sole writer of the required set. This amendment assigns no outcome, so it hands RPM nothing. [Requirement Resolution](requirement-resolution-contract.md) (`requirement_resolution.v1`) is a separate contract. It assigns no cell of this matrix. The [CE, Code 95, and issuing-country case](ce-code95-issuing-country.md) assigns no cell of this matrix. The [operator facts surface](operator-candidate-employment-facts.md) records facts and assigns no cell of this matrix.
 
 `required_set_override` remains a require list and a remove list. `candidate_default` remains future outcome schema and is assigned to no chain result. An unassigned chain result has no require list and no remove list.
 

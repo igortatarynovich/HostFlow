@@ -154,7 +154,7 @@ This PASS does not materialize a requirement, does not choose an evidence varian
 
 ## Out of this slice
 
-The first vertical case is CE + Code 95 + issuing country. It exercises `needs_input`, shared evidence, separate evidence, and REQUIRED / PREFERRED. It is opened separately in [CE, Code 95, and the Issuing Country](ce-code95-issuing-country.md). It does not enter Legal Eligibility. This contract does not encode it.
+The first vertical case is CE + Code 95 + issuing country. It exercises `needs_input`, shared evidence, separate evidence, and REQUIRED / PREFERRED. It is opened separately in [CE, Code 95, and the Issuing Country](ce-code95-issuing-country.md). It does not enter Legal Eligibility. This contract does not encode it. The [operator facts surface](operator-candidate-employment-facts.md) records the facts. It is not a source of requirements.
 
 Also out of this slice:
 

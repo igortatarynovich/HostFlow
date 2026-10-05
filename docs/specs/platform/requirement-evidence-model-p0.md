@@ -19,6 +19,7 @@
 | [`handoff-contract.md`](../architecture/handoff-contract.md) | Exports requirement fulfillment, not document copies |
 | [`requirement-resolution-contract.md`](../architecture/requirement-resolution-contract.md) | Which Employment requirement applies, which fact is missing, which accepted evidence variant may satisfy it (`requirement_resolution.v1`). Not a source of requirements. Not the author of `r5_required_set` |
 | [`ce-code95-issuing-country.md`](../architecture/ce-code95-issuing-country.md) | Issuing country selects the facts for CE and Code 95, and shared or separate evidence. REQUIRED holds Ready to Start. PREFERRED does not. No country list |
+| [`operator-candidate-employment-facts.md`](../architecture/operator-candidate-employment-facts.md) | Operator surface over facts already named. Labels project onto existing values. Legal evidence stays on the matrix. CE and Code 95 use the accepted shapes |
 
 ---
 

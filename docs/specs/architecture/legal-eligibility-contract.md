@@ -216,7 +216,7 @@ Three layers meet only in RPM. This canon is the first layer. The other two are 
 | Profession / vacancy | professional documents for the vacancy | not Legal Eligibility |
 | Work Authorization Procedure | what a submission requires | [opened](work-authorization-procedure-contract.md); this file does not define it |
 
-Requirement Resolution is not one of these layers. It consumes their definitions. [requirement-resolution-contract.md](requirement-resolution-contract.md) (`requirement_resolution.v1`) names which Employment requirement applies, which fact is missing when applicability cannot yet be resolved, and which accepted evidence variant may satisfy it. It does not define this chain and it assigns no evidence list. The CE, Code 95, and issuing-country case is [opened beside it](ce-code95-issuing-country.md). That case does not enter this chain.
+Requirement Resolution is not one of these layers. It consumes their definitions. [requirement-resolution-contract.md](requirement-resolution-contract.md) (`requirement_resolution.v1`) names which Employment requirement applies, which fact is missing when applicability cannot yet be resolved, and which accepted evidence variant may satisfy it. It does not define this chain and it assigns no evidence list. The CE, Code 95, and issuing-country case is [opened beside it](ce-code95-issuing-country.md). That case does not enter this chain. The [operator facts surface](operator-candidate-employment-facts.md) records the facts this chain already names. It adds no chain value and assigns no evidence.
 
 A profession preset belongs to the vacancy layer. A Driver CE preset may name a CE licence, Code 95, and a tachograph card, and a vacancy may add ADR. This canon does not write that preset.
 

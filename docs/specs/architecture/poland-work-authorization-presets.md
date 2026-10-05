@@ -23,7 +23,7 @@ Country is `PL`. The set has exactly these two values, and no other.
 
 `procedure_type`, `work_permit_type`, and a document or evidence code are three different things. `employer_declaration` is not the stored string `oswiadczenie` and is not the catalog token `declaration`. `work_permit_a` is not the stored string `zezwolenie_A` and is not the catalog token `type_a`. `work_permit_type` is the field the product stores today. It is not the procedure type. A document code is evidence identity. They are not aliases of these two values.
 
-The list is closed. `type_b`, `type_c`, and `other` appear in the `work_permit_types` reference domain. `type_b` also appears in `PERMIT_TYPES_CANONICAL`. No operator or runtime path starts a Poland work-authorization procedure with those values, and they are not members of the set.
+The [operator facts surface](operator-candidate-employment-facts.md) projects two labels onto this pair: a work permit stores `separate_required` and `work_permit_a`, and Oświadczenie stores `separate_required` and `employer_declaration`. It adds no procedure type. The list is closed. `type_b`, `type_c`, and `other` appear in the `work_permit_types` reference domain. `type_b` also appears in `PERMIT_TYPES_CANONICAL`. No operator or runtime path starts a Poland work-authorization procedure with those values, and they are not members of the set.
 
 ---
 
