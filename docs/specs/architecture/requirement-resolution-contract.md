@@ -1,9 +1,9 @@
 # Requirement Resolution Contract
 
-**Status:** **Accepted** — Requirement Resolution Contract Gate **PASS**. No legal rule. No document type. No authoring of the required set. No runtime module.  
+**Status:** **Accepted** — Requirement Resolution Contract Gate **PASS**. No legal rule. No document type. No authoring of the required set. Recruitment runtime of `requirement_resolution.v1` is shipped. HR is not an input of that runtime.  
 **Date:** 2026-10-05  
 **Line:** `dec5dac8` (ancestor `integration/release-product-a-b` @ `020cb4e5`)  
-**Machine id:** `requirement_resolution.v1` — named here. No runtime module.  
+**Machine id:** `requirement_resolution.v1` — recruitment runtime in `backend/app/reference/requirement_resolution.py`. HR is not an input.  
 **Parents:** [ADR-016](ADR-016-requirement-evidence-document-separation.md) · [Requirement and Evidence model](../platform/requirement-evidence-model-p0.md) · [Legal Eligibility](legal-eligibility-contract.md) (`legal_eligibility.v1`) · [Pre-employment requirements](employee-record-employment-lifecycle-contract.md) (`pre_employment_requirements.v1`) · [Work Authorization Procedure](work-authorization-procedure-contract.md) (`work_authorization_procedure.v1`)
 
 **L0 checklist:** No new P-rule. No Passport or Manifest shape change. No Architecture RFC. Applies **P-02** and **INV-01**: one authority still answers whether this candidate must provide canonical type X, and that authority stays RPM `r5_required_set`. This contract does not rewrite L0.
@@ -160,8 +160,20 @@ Also out of this slice:
 
 - A population of the Legal Eligibility matrix.  
 - Normalization of card tokens into pack inputs.  
-- A Python or JSON machine copy. The id `requirement_resolution.v1` is reserved. It is not shipped.  
+- A Python or JSON machine copy of the HR requirement rows.  
 - A change to `hr_employment_requirements`, Ready to Start, or the legal chain.  
-- Runtime.
+- An HR call of this runtime. HR Requirement Resolution Integration is the next slice.
+
+---
+
+## Recruitment runtime
+
+**Outcome:** shipped for Recruitment only. Machine id `requirement_resolution.v1`. HR is not an input.
+
+The input of one call is one recruitment requirement the vacancy or recruitment policy already named, the shared facts, and Candidate Evidence. The output is `needs_input`, `needs_evidence`, `under_review`, `satisfied`, or `blocking`, and the accepted evidence variant. The runtime does not name a requirement because a fact is present. ADR, a tachograph card, a passport, and a residence decision are not asked from citizenship, stay, or a professional fact.
+
+`r5_required_set` materializes the recruitment checklist. CE and Code 95 codes in that set are replaced by the document types the resolution still needs. Every other policy code stays. A new file is not added from a fact the policy did not name.
+
+The first vertical case is CE and Code 95. Candidate Evidence that is already `approved` for the matching variant reads `satisfied`. Evidence in review reads `under_review`. Neither asks for a second file.
 
 Feat stays locked. HostFlow v1 is not release-ready.

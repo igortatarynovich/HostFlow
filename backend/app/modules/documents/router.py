@@ -408,8 +408,9 @@ def _project_operator_facts_ask(
     summary: Dict[str, Any],
     checklist: Dict[str, Any],
     candidate: Any,
+    evidence: list[Dict[str, Any]] | None = None,
 ) -> tuple[Dict[str, Any], Dict[str, Any]]:
-    """Withhold document asks the operator facts surface does not yet allow."""
+    """Apply recruitment resolution to the checklist r5 already materialized."""
 
     from backend.app.services.operator_facts_surface import (
         facts_from_personal_data,
@@ -420,7 +421,7 @@ def _project_operator_facts_ask(
     facts = facts_from_personal_data(personal if isinstance(personal, dict) else {})
     payload = dict(summary)
     payload["checklist"] = dict(checklist)
-    projected = project_document_summary(payload, facts)
+    projected = project_document_summary(payload, facts, evidence=evidence)
     next_checklist = dict(projected.get("checklist") or {})
     return projected, next_checklist
 
@@ -1168,10 +1169,20 @@ async def _list_documents_for_candidate(
         checklist["requiredTypes"] = sorted(r5_required_set(ctx, ctx.get("tenant_delta")))
         candidate_row = await session.get(Candidate, str(candidate_id))
         if candidate_row is not None:
+            from backend.app.services.operator_facts_surface import (
+                load_candidate_resolution_evidence,
+            )
+
+            evidence = await load_candidate_resolution_evidence(
+                session,
+                tenant_id=doc_tenant_id,
+                candidate_id=str(candidate_id),
+            )
             _, checklist = _project_operator_facts_ask(
                 {"checklist": checklist, "required": {}},
                 checklist,
                 candidate_row,
+                evidence,
             )
         auto_docs = await list_candidate_documents(
             session,
@@ -2189,7 +2200,16 @@ async def fetch_candidate_documents_summary_response(
         ctx,
         ctx.get("tenant_delta") if isinstance(ctx.get("tenant_delta"), dict) else None,
     )
-    summary, checklist = _project_operator_facts_ask(summary, checklist, cand_ctx.candidate)
+    from backend.app.services.operator_facts_surface import load_candidate_resolution_evidence
+
+    resolution_evidence = await load_candidate_resolution_evidence(
+        session,
+        tenant_id=cand_ctx.owner_tenant_id,
+        candidate_id=str(candidate_id),
+    )
+    summary, checklist = _project_operator_facts_ask(
+        summary, checklist, cand_ctx.candidate, resolution_evidence
+    )
     summary["checklist"] = checklist
     auto_created = await _ensure_auto_ordered_documents(
         session,
@@ -2235,7 +2255,9 @@ async def fetch_candidate_documents_summary_response(
             ctx,
             ctx.get("tenant_delta") if isinstance(ctx.get("tenant_delta"), dict) else None,
         )
-        summary, checklist = _project_operator_facts_ask(summary, checklist, cand_ctx.candidate)
+        summary, checklist = _project_operator_facts_ask(
+            summary, checklist, cand_ctx.candidate, resolution_evidence
+        )
         summary["checklist"] = checklist
     synthetic_models = _build_synthetic_documents(
         cand_ctx.owner_tenant_id, candidate_id, checklist, serialized_docs_full

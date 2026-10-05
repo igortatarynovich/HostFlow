@@ -407,12 +407,35 @@ async def enforce_pipeline_doc_forward_block(
     from backend.app.services.operator_facts_surface import (
         drop_withheld_document_codes,
         facts_from_personal_data,
+        load_candidate_resolution_evidence,
     )
 
     operator_facts = facts_from_personal_data(personal if isinstance(personal, dict) else {})
-    missing = drop_withheld_document_codes(missing, operator_facts, include_replacement=False)
-    problematic = drop_withheld_document_codes(problematic, operator_facts, include_replacement=False)
-    in_progress = drop_withheld_document_codes(in_progress, operator_facts, include_replacement=False)
+    evidence = await load_candidate_resolution_evidence(
+        db, tenant_id=str(tenant_id), candidate_id=str(candidate_id)
+    )
+    named = [*missing, *problematic, *in_progress]
+    missing = drop_withheld_document_codes(
+        missing,
+        operator_facts,
+        include_replacement=False,
+        required_types=named,
+        evidence=evidence,
+    )
+    problematic = drop_withheld_document_codes(
+        problematic,
+        operator_facts,
+        include_replacement=False,
+        required_types=named,
+        evidence=evidence,
+    )
+    in_progress = drop_withheld_document_codes(
+        in_progress,
+        operator_facts,
+        include_replacement=False,
+        required_types=named,
+        evidence=evidence,
+    )
 
     hard_block, _soft = docs_pipeline_blocks_forward_resolved(
         canon_old, missing, problematic, in_progress, resolved_gates

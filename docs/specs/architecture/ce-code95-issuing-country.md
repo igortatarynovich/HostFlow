@@ -136,7 +136,7 @@ This PASS does not choose a country for a person, does not link a file, and does
 - Reading Code 95 off a scan.  
 - ADR, a tachograph card, a medical certificate, or a psychotest. The [operator facts surface](operator-candidate-employment-facts.md) may record a tachograph card and ADR as professional facts. It does not resolve them in this case.  
 - A change to `hr_employment_requirements`, Ready to Start persistence, or the legal chain.  
-- A Python or JSON machine copy.  
-- Runtime.
+- A Python or JSON machine copy of an HR row.  
+- The recruitment runtime of `requirement_resolution.v1` executes this case. It does not open an HR requirement.
 
 Feat stays locked. HostFlow v1 is not release-ready.
