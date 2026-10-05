@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { compareCountryOptions } from '../../data/countries'
 import Select from './Select'
 import type { Option } from './Select'
 
@@ -26,7 +27,7 @@ export default function PhoneInput({
       return { value: code, label }
     })
     // сортируем по названию страны
-    return opts.sort((a, b) => a.label.localeCompare(b.label))
+    return opts.sort((a, b) => compareCountryOptions(a, b))
   }, [countries, dialCodes])
 
   function setCountry(code: string) {

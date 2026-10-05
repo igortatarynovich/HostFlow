@@ -67,7 +67,7 @@ The country list is the platform country registry. This surface publishes no cou
 
 Chain `stay_basis` stays `not_required`, `visa_d`, `visa_c`, `karta_pobytu`, `visa_free`, `waiting_for_trc`, `special_protection`, `other`, `none`. This surface adds no value. `visa_d` is not pack token `visa`. `visa_c` is not `visa_d`. Empty card `stay_basis` (`''`) is not `none`, not `not_required`, not `visa_d`, and not `karta_pobytu`. `residence_permit_type` stays not a fact key.
 
-Parameters are only the details that chain already requires before the next step can be determined. For `visa_d` and `visa_c` those details are the visa type and the visa purpose. For `karta_pobytu` the card alone does not determine the right to work. This surface does not publish a parameter catalog and does not add a column.
+Parameters are only the details recorded under a chosen stay. `visa_d` and `visa_c` are the visa type. This surface does not ask for another type or a purpose. For `karta_pobytu` the card alone does not determine the right to work. This surface does not publish a parameter catalog and does not add a column.
 
 `work_authorization_basis` stays `not_required`, `included_in_stay`, `separate_required`. An operator hold is not a fourth value and names no document.
 
@@ -166,7 +166,7 @@ The driver facts are one sequence. The right to work for this Employment is the 
 Dane i uprawnienia kierowcy
   Obywatelstwo
   Na jakiej podstawie przebywa w Polsce?    when the chain still shows stay
-    parameters of that stay                 visa type and purpose, or the card validity
+    parameters of that stay                 visa validity, or the card validity
 
 Prawo do pracy                              after stay no longer withholds it
   Na jakiej podstawie może pracować?

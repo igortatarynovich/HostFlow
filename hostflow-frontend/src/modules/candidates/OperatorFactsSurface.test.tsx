@@ -67,6 +67,31 @@ describe('OperatorFactsForm', () => {
     expect(screen.queryByText(/Stay basis/i)).toBeNull()
   })
 
+  it('treats visa C or D as the type and does not ask for a purpose', () => {
+    render(
+      <OperatorFactsForm
+        countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
+        onPatch={() => undefined}
+        view={view({
+          citizenship_class: 'third_country',
+          steps: [
+            { key: 'citizenship', visible: true, stored: 'BY' },
+            { key: 'stay_basis', visible: true, stored: 'visa_d', valid_to: null },
+            { key: 'work', visible: true, operator_label: 'unknown' },
+            { key: 'driving_licence', visible: true, issuing_country: null, categories: [] },
+            { key: 'code95', visible: true, presence: null },
+            { key: 'tachograph', visible: true, presence: null },
+            { key: 'adr', visible: true, presence: null },
+          ],
+        })}
+      />,
+    )
+    expect(screen.getByTestId('operator-facts-stay-parameters').textContent).toMatch(/Ważna do/)
+    expect(screen.queryByText(/Typ wizy/)).toBeNull()
+    expect(screen.queryByText(/Cel wizy/)).toBeNull()
+    expect(screen.getByTestId('operator-facts-work')).toBeTruthy()
+  })
+
   it('keeps a partial card date and saves only a complete one', () => {
     const onPatch = vi.fn()
     render(

@@ -139,7 +139,6 @@ export function OperatorFactsForm({
   const { t } = useI18n()
   const citizenship = stepOf(view, 'citizenship')
   const stay = stepOf(view, 'stay_basis')
-  const parameters = stepOf(view, 'stay_parameters')
   const work = stepOf(view, 'work')
   const licence = stepOf(view, 'driving_licence')
   const code95 = stepOf(view, 'code95')
@@ -249,25 +248,7 @@ export function OperatorFactsForm({
             : null}
 
           {visaOpen ? (
-            <div className="space-y-4 lg:col-span-2 lg:grid lg:grid-cols-2 lg:gap-4" data-testid="operator-facts-stay-parameters">
-              {field(
-                t('app.candidate_card.operator_facts.visa_type', { defaultValue: 'Typ wizy' }),
-                <input
-                  className="input"
-                  disabled={disabled}
-                  value={parameters?.visa_type || ''}
-                  onChange={(event) => onPatch({ visa_type: event.target.value || 'unknown' })}
-                />,
-              )}
-              {field(
-                t('app.candidate_card.operator_facts.visa_purpose', { defaultValue: 'Cel wizy' }),
-                <input
-                  className="input"
-                  disabled={disabled}
-                  value={parameters?.visa_purpose || ''}
-                  onChange={(event) => onPatch({ visa_purpose: event.target.value || 'unknown' })}
-                />,
-              )}
+            <div className="space-y-4" data-testid="operator-facts-stay-parameters">
               {field(
                 t('app.candidate_card.operator_facts.valid_to', { defaultValue: 'Ważna do' }),
                 dateInput(stay?.valid_to, (next) => onPatch({ stay_valid_to: next }), 'operator-facts-stay-valid-to'),

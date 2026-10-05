@@ -87,6 +87,7 @@ import {
 import { useHiringPipelineGates } from '../contexts/HiringPipelineGatesContext'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
+import { compareCountryOptions } from '../data/countries'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { parseCandidateMissingError, type CandidateMissingState } from '../utils/candidateMissing'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
@@ -1427,7 +1428,7 @@ export default function CandidateCard(){
             return { value: code, label: getRegionDisplayName(code, locale) || code }
           })
           .filter((o: Option) => o.value && o.label)
-          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, locale))
+          .sort((a: Option, b: Option) => compareCountryOptions(a, b, locale))
         setCountries(countriesArr)
         const langsArr: Option[] = toArray(l.data)
           .map((x: any) => {
@@ -1463,7 +1464,7 @@ export default function CandidateCard(){
             } as Option
           })
           .filter((o: Option) => !!o.extra?.prefix)
-          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, locale))
+          .sort((a: Option, b: Option) => compareCountryOptions(a, b, locale))
         setDialCodes(dcList)
 
         // managers

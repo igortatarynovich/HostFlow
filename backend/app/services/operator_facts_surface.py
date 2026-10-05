@@ -43,7 +43,6 @@ _STAY = frozenset(
         "none",
     }
 )
-_STAY_NEEDS_PARAMETERS = frozenset({"visa_d", "visa_c"})
 _WORK_LABELS = {
     "work_permit": ("separate_required", "work_permit_a"),
     "oswiadczenie": ("separate_required", "employer_declaration"),
@@ -366,9 +365,8 @@ def apply_operator_facts_patch(
                 if stay not in _STAY:
                     raise OperatorFactsRejected(f"stay_basis {stay} is not a chain value")
                 nxt["stay_basis"] = stay
-                if stay not in _STAY_NEEDS_PARAMETERS:
-                    nxt["visa_type"] = None
-                    nxt["visa_purpose"] = None
+                nxt["visa_type"] = None
+                nxt["visa_purpose"] = None
         if "visa_type" in patch:
             nxt["visa_type"] = None if _is_unknown(patch.get("visa_type")) else _text(patch.get("visa_type"))
         if "visa_purpose" in patch:
@@ -498,12 +496,9 @@ def _apply_work_patch(facts: dict[str, Any], patch: Mapping[str, Any], employmen
 
 
 def _stay_withholds_work(facts: Mapping[str, Any]) -> bool:
-    stay = facts.get("stay_basis")
-    if stay not in _STAY:
-        return True
-    if stay in _STAY_NEEDS_PARAMETERS:
-        return not facts.get("visa_type") or not facts.get("visa_purpose")
-    return False
+    """Work stays hidden until a stay basis is chosen. Visa C and Visa D are that basis."""
+
+    return facts.get("stay_basis") not in _STAY
 
 
 def chain_reading(facts: Mapping[str, Any], *, employment_id: str | None = None) -> dict[str, str | None]:
@@ -718,7 +713,7 @@ def build_operator_facts_view(
     chain = chain_reading(facts, employment_id=employment_id)
     work = _work_for(facts, employment_id)
     stay_visible = klass == "third_country"
-    parameters_visible = stay_visible and facts.get("stay_basis") in _STAY_NEEDS_PARAMETERS
+    parameters_visible = stay_visible and facts.get("stay_basis") in {"visa_d", "visa_c"}
     work_visible = stay_visible and not _stay_withholds_work(facts)
     valid_visible = work_visible and chain.get("work_authorization_basis") in {
         "included_in_stay",
