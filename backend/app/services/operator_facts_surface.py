@@ -80,6 +80,32 @@ def registry_document_code(code: str) -> str | None:
     return entry.code
 
 
+def catalog_document_code(code: str) -> str | None:
+    """A document type the module catalog already lists."""
+
+    raw = str(code or "").strip().lower()
+    if not raw:
+        return None
+    from backend.app.document_types.definitions import DOCUMENT_TYPE_DEFINITIONS
+
+    for definition in DOCUMENT_TYPE_DEFINITIONS:
+        if definition.code == raw:
+            return definition.code
+    return None
+
+
+def _surface_document_code(code: str) -> str | None:
+    """Participating registry type, or the catalog type the operator confirmed."""
+
+    participating = registry_document_code(code)
+    if participating:
+        return participating
+    catalog = catalog_document_code(code)
+    if catalog == "additional_document":
+        return catalog
+    return None
+
+
 def _governed_document_codes() -> frozenset[str]:
     """Candidate document types this surface may withhold. Read from the registry."""
 
@@ -677,10 +703,11 @@ def resolve_ce_code95(
 def situation_upload_codes(facts: Mapping[str, Any]) -> list[str]:
     """Registry types the recorded situation asks for.
 
-    Passport is always asked. A residence card asks for the residence decision
-    already named in the registry. A professional document is asked only when
-    the operator says it exists. Visa, the residence card, and a work permit
-    stay unasked. A code the registry does not participate with is not asked.
+    Polish citizenship asks for the identity card. Every other known citizenship
+    asks for the passport. A residence card asks for the residence decision
+    already named in the registry. A professional document, including the extra
+    catalog file, is asked only when the operator says it exists. Visa, the
+    residence card, and a work permit stay unasked.
     """
 
     codes: list[str] = []
@@ -689,7 +716,8 @@ def situation_upload_codes(facts: Mapping[str, Any]) -> list[str]:
         if code and code not in codes:
             codes.append(code)
 
-    add(registry_document_code("passport"))
+    identity = "national_identity_card" if citizenship_class(facts.get("citizenship")) == "pl" else "passport"
+    add(registry_document_code(identity))
     if facts.get("stay_basis") == "karta_pobytu":
         add(registry_document_code("temporary_residence_decision"))
     if facts.get("tachograph_presence") is True:
@@ -700,6 +728,8 @@ def situation_upload_codes(facts: Mapping[str, Any]) -> list[str]:
         add(registry_document_code("medical_certificate"))
     if facts.get("psych_presence") is True:
         add(registry_document_code("psychological_certificate"))
+    if facts.get("additional_presence") is True:
+        add(catalog_document_code("additional_document"))
     return codes
 
 
@@ -845,7 +875,7 @@ def project_required_document_types(
     out: list[str] = []
     seen: set[str] = set()
     for raw in list(required_types or []) + list(view["upload_codes"]):
-        code = registry_document_code(str(raw or ""))
+        code = _surface_document_code(str(raw or ""))
         if code is None or code in withheld or code in seen:
             continue
         seen.add(code)

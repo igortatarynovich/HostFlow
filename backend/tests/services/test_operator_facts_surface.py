@@ -50,7 +50,8 @@ def test_pl_and_eu_hide_stay_and_work_and_do_not_ask_for_those_files() -> None:
     assert "visa" not in asked
     assert "work_permit" not in asked
     assert "residence_permit" not in asked
-    assert "passport" in asked
+    assert "national_identity_card" in asked
+    assert "passport" not in asked
     assert "medical_certificate" not in asked
     assert "psychotest" not in asked
     assert "temporary_residence_decision" not in asked
@@ -86,6 +87,7 @@ def test_third_country_needs_input_does_not_ask_for_a_file() -> None:
     ):
         assert code not in asked
     assert "passport" in asked
+    assert "national_identity_card" not in asked
     assert "medical_certificate" not in asked
 
     visa, _ = _view({"stay_basis": "visa_d"}, base=facts)
@@ -152,9 +154,9 @@ def test_work_permit_and_oswiadczenie_project_onto_existing_values() -> None:
         "psychological_certificate",
         "passport",
         "temporary_residence_decision",
+        "additional_document",
     ):
         assert code in confirmed_asked
-    assert "additional_document" not in confirmed_asked
     assert confirmed["upload_codes"].count("work_permit") == 0
 
     dated, dated_facts = _view(
@@ -236,7 +238,7 @@ def test_ce_code95_unknown_country_asks_no_file_then_shared_or_separate() -> Non
         employment_id="emp-1",
         today=date(2026, 10, 5),
     )
-    assert blocked_asked == ["passport"]
+    assert blocked_asked == ["national_identity_card"]
 
     unrelated = project_required_document_types(
         ["passport", "medical_certificate"],
@@ -245,4 +247,5 @@ def test_ce_code95_unknown_country_asks_no_file_then_shared_or_separate() -> Non
     )
     assert "driver_license" not in unrelated
     assert "medical_certificate" not in unrelated
-    assert "passport" in unrelated
+    assert "national_identity_card" in unrelated
+    assert "passport" not in unrelated
