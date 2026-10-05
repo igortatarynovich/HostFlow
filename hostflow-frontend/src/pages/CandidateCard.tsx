@@ -4649,6 +4649,7 @@ export default function CandidateCard(){
                   {!isMasked && model?.id ? (
                     <OperatorFactsSurface
                       candidateId={String(model.id)}
+                      countries={countries}
                       onSaved={(saved) => {
                         setOperatorFactsRevision((value) => value + 1)
                         setDocsSummaryRefreshTrigger((value) => value + 1)
