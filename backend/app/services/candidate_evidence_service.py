@@ -753,6 +753,13 @@ async def build_requirements_checklist(
     citizenship = payload.get("citizenship") or payload.get("platform.identity.citizenship")
     position_category = payload.get("position_category")
 
+    from backend.app.requirement_rules.readiness_bridge import load_candidate_documents_snapshot
+
+    uploaded_documents = await load_candidate_documents_snapshot(
+        db,
+        tenant_id=str(tenant_id),
+        candidate_id=str(candidate.id),
+    )
     items: list[dict[str, Any]] = []
     for req_code in requirement_codes:
         slot = satisfaction_slot(req_code) or {}
@@ -764,11 +771,7 @@ async def build_requirements_checklist(
         )
         evidence_snapshot = None
         if evidence_row:
-            snapshots = await load_candidate_documents_snapshot(
-                db,
-                tenant_id=str(tenant_id),
-                candidate_id=str(candidate.id),
-            )
+            snapshots = uploaded_documents
             linked_ids = {str(j.document_id) for j in evidence_row.documents or []}
             linked_snapshots = [
                 row for row in snapshots if str(row.get("document_id") or row.get("id")) in linked_ids
@@ -778,6 +781,7 @@ async def build_requirements_checklist(
 
         evaluation = evaluate_document_slot(
             req_code,
+            documents=uploaded_documents,
             candidate_evidence=evidence_snapshot,
             citizenship=str(citizenship).strip() if citizenship else None,
             position_category=str(position_category).strip() if position_category else None,

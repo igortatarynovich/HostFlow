@@ -859,6 +859,7 @@ def drop_withheld_document_codes(
     *,
     employment_id: str | None = None,
     today: date | None = None,
+    include_replacement: bool = True,
 ) -> list[str]:
     facts = _facts_for_existing_driver_ask(facts, codes)
     withheld = withheld_document_norms(facts, employment_id=employment_id, today=today)
@@ -876,7 +877,7 @@ def drop_withheld_document_codes(
             continue
         if code not in out:
             out.append(code)
-    if removed_driver:
+    if removed_driver and include_replacement:
         seen = set(out)
         for code in view["upload_codes"]:
             if code not in seen:

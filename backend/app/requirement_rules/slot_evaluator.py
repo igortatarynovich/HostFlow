@@ -194,6 +194,72 @@ def _find_variant_definition(slot: dict[str, Any], variant_code: str) -> Optiona
     return None
 
 
+def _single_type_requirement(slot: dict[str, Any], code: str) -> str | None:
+    """A requirement that is one registry document type, including its aliases.
+
+    A stay slot that accepts several different documents is not this shape.
+    """
+
+    from backend.app.document_types.registry import is_canonical_code, normalize_input_doc_type
+
+    canon = normalize_input_doc_type(code)
+    if not is_canonical_code(canon) or canon != _norm(code):
+        return None
+    mentioned: list[str] = []
+    alternatives = slot.get("accepted_evidence_variants") or slot.get("satisfaction_alternatives") or []
+    for alternative in alternatives:
+        if not isinstance(alternative, dict):
+            continue
+        for key in ("document_type_codes", "any_of", "all_of"):
+            for raw in alternative.get(key) or []:
+                text = _norm(raw)
+                if text:
+                    mentioned.append(normalize_input_doc_type(text))
+    if not mentioned or any(item != canon for item in mentioned):
+        return None
+    return canon
+
+
+def _satisfaction_from_uploaded_documents(
+    slot: dict[str, Any],
+    *,
+    code: str,
+    level: str,
+    documents: list[Any] | None,
+) -> dict[str, Any] | None:
+    canon = _single_type_requirement(slot, code)
+    if canon is None or not documents:
+        return None
+    evaluated = _alternative_status(
+        {"evidence_variant_code": canon, "any_of": [canon]},
+        doc_index=_index_documents(documents),
+    )
+    if evaluated.get("status") == "satisfied":
+        return _base_slot_result(
+            slot,
+            code=code,
+            level=level,
+            status="satisfied",
+            evidence_variant_code=canon,
+            chosen_alternative_code=evaluated.get("alternative_code"),
+            chosen_document_type_codes=evaluated.get("document_type_codes") or [],
+            satisfying_document_ids=evaluated.get("satisfying_document_ids") or [],
+            alternatives_evaluated=[evaluated],
+        )
+    if evaluated.get("status") == "pending_verification":
+        return _base_slot_result(
+            slot,
+            code=code,
+            level=level,
+            status="pending_verification",
+            evidence_variant_code=canon,
+            chosen_alternative_code=evaluated.get("alternative_code"),
+            chosen_document_type_codes=evaluated.get("document_type_codes") or [],
+            alternatives_evaluated=[evaluated],
+        )
+    return None
+
+
 def _evidence_documents(candidate_evidence: dict[str, Any]) -> list[dict[str, Any]]:
     docs = candidate_evidence.get("documents")
     if isinstance(docs, list):
@@ -294,6 +360,14 @@ def evaluate_document_slot(
         return _base_slot_result(slot, code=code, level=level, status="not_applicable")
 
     if not candidate_evidence:
+        uploaded = _satisfaction_from_uploaded_documents(
+            slot,
+            code=code,
+            level=level,
+            documents=documents,
+        )
+        if uploaded is not None:
+            return uploaded
         return _base_slot_result(
             slot,
             code=code,
