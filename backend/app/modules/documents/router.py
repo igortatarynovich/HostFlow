@@ -1166,7 +1166,7 @@ async def _list_documents_for_candidate(
         ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
         checklist = compute_candidate_checklist(ctx, ruleset_payload)
         checklist["requiredTypes"] = sorted(r5_required_set(ctx, ctx.get("tenant_delta")))
-        candidate_row = await session.get(Candidate, candidate_id)
+        candidate_row = await session.get(Candidate, str(candidate_id))
         if candidate_row is not None:
             _, checklist = _project_operator_facts_ask(
                 {"checklist": checklist, "required": {}},
