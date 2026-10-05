@@ -15,6 +15,7 @@ describe('OperatorFactsForm', () => {
   it('hides stay and work for a Polish candidate', () => {
     render(
       <OperatorFactsForm
+        countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={() => undefined}
         view={view({
           citizenship_class: 'pl',
@@ -43,6 +44,7 @@ describe('OperatorFactsForm', () => {
   it('opens stay for a third-country candidate and does not ask for a file', () => {
     render(
       <OperatorFactsForm
+        countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={() => undefined}
         view={view({
           citizenship_class: 'third_country',
@@ -68,6 +70,7 @@ describe('OperatorFactsForm', () => {
   it('shows the work permit label for separate_required and work_permit_a', () => {
     render(
       <OperatorFactsForm
+        countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={() => undefined}
         view={view({
           steps: [
@@ -99,6 +102,7 @@ describe('OperatorFactsForm', () => {
   it('asks for shared evidence only after the issuing country is known', () => {
     const { rerender } = render(
       <OperatorFactsForm
+        countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={() => undefined}
         view={view({
           steps: [
@@ -120,6 +124,7 @@ describe('OperatorFactsForm', () => {
 
     rerender(
       <OperatorFactsForm
+        countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
         onPatch={() => undefined}
         view={view({
           steps: [

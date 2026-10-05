@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
 import { SearchableSelect } from '../../components/candidate/shared/FormComponents'
-import { buildCountryOptions } from '../../data/countries'
 import { useI18n } from '../../i18n'
+
+type CountryOption = { value: string; label: string }
 
 const LICENCE_CATEGORIES = ['B', 'C', 'CE', 'C1', 'C1E', 'D', 'DE'] as const
 
@@ -86,15 +87,16 @@ function workLabel(step: Step | undefined): string {
 
 export function OperatorFactsForm({
   view,
+  countries,
   disabled,
   onPatch,
 }: {
   view: OperatorFactsView
+  countries: CountryOption[]
   disabled?: boolean
   onPatch: (patch: Patch) => void
 }) {
-  const { t, locale } = useI18n()
-  const countries = useMemo(() => buildCountryOptions(locale), [locale])
+  const { t } = useI18n()
   const citizenship = stepOf(view, 'citizenship')
   const stay = stepOf(view, 'stay_basis')
   const parameters = stepOf(view, 'stay_parameters')
@@ -466,9 +468,11 @@ export function OperatorFactsForm({
 
 export default function OperatorFactsSurface({
   candidateId,
+  countries,
   onSaved,
 }: {
   candidateId: string
+  countries: CountryOption[]
   onSaved?: (view: OperatorFactsView) => void
 }) {
   const { t } = useI18n()
@@ -520,7 +524,9 @@ export default function OperatorFactsSurface({
   return (
     <div className="space-y-4" data-testid="operator-facts-surface">
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
-      {view ? <OperatorFactsForm view={view} disabled={busy} onPatch={(patch) => void onPatch(patch)} /> : null}
+      {view ? (
+        <OperatorFactsForm view={view} countries={countries} disabled={busy} onPatch={(patch) => void onPatch(patch)} />
+      ) : null}
     </div>
   )
 }
