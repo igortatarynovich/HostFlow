@@ -404,6 +404,27 @@ def _fill_checklist_defaults(checklist: Dict[str, Any], ruleset: Dict[str, Any])
     return checklist
 
 
+def _project_operator_facts_ask(
+    summary: Dict[str, Any],
+    checklist: Dict[str, Any],
+    candidate: Any,
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Withhold document asks the operator facts surface does not yet allow."""
+
+    from backend.app.services.operator_facts_surface import (
+        facts_from_personal_data,
+        project_document_summary,
+    )
+
+    personal = getattr(candidate, "personal_data", None)
+    facts = facts_from_personal_data(personal if isinstance(personal, dict) else {})
+    payload = dict(summary)
+    payload["checklist"] = dict(checklist)
+    projected = project_document_summary(payload, facts)
+    next_checklist = dict(projected.get("checklist") or {})
+    return projected, next_checklist
+
+
 def _build_synthetic_documents(
     tenant_id: str,
     candidate_id: UUID,
@@ -2161,6 +2182,7 @@ async def fetch_candidate_documents_summary_response(
         ctx,
         ctx.get("tenant_delta") if isinstance(ctx.get("tenant_delta"), dict) else None,
     )
+    summary, checklist = _project_operator_facts_ask(summary, checklist, cand_ctx.candidate)
     summary["checklist"] = checklist
     auto_created = await _ensure_auto_ordered_documents(
         session,
@@ -2206,6 +2228,7 @@ async def fetch_candidate_documents_summary_response(
             ctx,
             ctx.get("tenant_delta") if isinstance(ctx.get("tenant_delta"), dict) else None,
         )
+        summary, checklist = _project_operator_facts_ask(summary, checklist, cand_ctx.candidate)
         summary["checklist"] = checklist
     synthetic_models = _build_synthetic_documents(
         cand_ctx.owner_tenant_id, candidate_id, checklist, serialized_docs_full

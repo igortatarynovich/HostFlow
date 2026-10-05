@@ -31,6 +31,8 @@ interface CandidatePersonalSectionProps {
   effectiveLayout?: EffectiveCardLayout | null
   candidateDataReadOnly?: boolean
   embedded?: boolean
+  /** Citizenship is edited in Operator Facts. This section only shows the stored value. */
+  citizenshipReadOnly?: boolean
 }
 
 function CandidatePersonalSection({
@@ -47,6 +49,7 @@ function CandidatePersonalSection({
   effectiveLayout,
   candidateDataReadOnly = false,
   embedded = false,
+  citizenshipReadOnly = false,
 }: CandidatePersonalSectionProps) {
   const { t } = useI18n()
   const fieldVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
@@ -146,6 +149,11 @@ function CandidatePersonalSection({
         {(!candidateProfile || fieldVisible('citizenship')) && (
           <label className="block">
             <div className="label">{fieldLabel('citizenship', t('app.candidate_card.fields.citizenship'))} {fieldRequired('citizenship') && <span className="text-red-600">*</span>}</div>
+          {citizenshipReadOnly ? (
+            <p className="mt-1 text-sm text-slate-800" data-testid="candidate-citizenship-readonly">
+              {String(extra.citizenship || '').trim() || '—'}
+            </p>
+          ) : (
           <SearchableSelect
             options={countries}
             value={(extra.citizenship as any) || ''}
@@ -155,6 +163,7 @@ function CandidatePersonalSection({
             searchPlaceholder={selectTexts.search}
             noResultsLabel={selectTexts.noResults}
           />
+          )}
         </label>
         )}
         {(!candidateProfile || fieldVisible('country_code')) && (
