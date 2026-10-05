@@ -87,7 +87,7 @@ One requirement is not one document. All three shapes are normative.
 | 1 requirement → `all_of`(A, B) | The requirement is satisfied only when every component of the variant is linked |
 | 2 requirements → 1 shared evidence | One document instance may satisfy two requirement rows, through two evidence links |
 
-Accepted Evidence already names `any_of` and `all_of`. Shared evidence is normative beside them. A Polish driving licence that carries Code 95 is why the third shape has to exist. Which issuing country uses one file, and which uses a licence plus a qualification card, is not encoded in this contract.
+Accepted Evidence already names `any_of` and `all_of`. Shared evidence is normative beside them. A Polish driving licence that carries Code 95 is why the third shape has to exist. Which issuing country uses one file, and which uses a licence plus a qualification card, is the separate case [CE, Code 95, and the Issuing Country](ce-code95-issuing-country.md). This contract does not encode that selection.
 
 A second upload is not created because a second source names the same proof.
 
@@ -154,7 +154,7 @@ This PASS does not materialize a requirement, does not choose an evidence varian
 
 ## Out of this slice
 
-The first vertical case is CE + Code 95 + issuing country. It is the case that exercises `needs_input`, shared evidence, separate evidence, and REQUIRED / PREFERRED. It is not opened. It does not enter Legal Eligibility.
+The first vertical case is CE + Code 95 + issuing country. It exercises `needs_input`, shared evidence, separate evidence, and REQUIRED / PREFERRED. It is opened separately in [CE, Code 95, and the Issuing Country](ce-code95-issuing-country.md). It does not enter Legal Eligibility. This contract does not encode it.
 
 Also out of this slice:
 

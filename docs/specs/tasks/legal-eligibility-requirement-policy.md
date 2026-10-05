@@ -92,6 +92,7 @@ This table is the observed collapse. It is not the matrix of documents each dist
 | Contract — facts, vocabulary, authority, outcome shape | [Legal Eligibility Contract Gate **PASS**](../architecture/legal-eligibility-contract.md) |
 | Matrix — decision chain; evidence rules | [decision model](../architecture/legal-eligibility-matrix.md); Legal Eligibility Matrix Gate **not PASS**; evidence rules are not encoded |
 | Requirement resolution — applicability, missing fact, accepted evidence variant | [Requirement Resolution Contract Gate **PASS**](../architecture/requirement-resolution-contract.md) (`requirement_resolution.v1`). It does not encode evidence rules and does not fill this matrix |
+| CE + Code 95 + issuing country | [CE + Code 95 Issuing Country Gate **PASS**](../architecture/ce-code95-issuing-country.md). The issuing country selects the facts and shared or separate evidence. REQUIRED holds Ready to Start. PREFERRED does not. No country list. No matrix cell |
 | Pack change, engine change, runtime, and any other implementation | not authorized; feat locked |
 | Mapping `visa_d` onto pack token `visa` | forbidden as a false close |
 | Minimal Recruitment → HR | queued, not scheduled |
@@ -107,10 +108,11 @@ This table is the observed collapse. It is not the matrix of documents each dist
 
 Step 4 stays locked. Runtime is not authorized. Minimal Recruitment → HR is not this slice.
 
-Requirement Resolution is not step 4. [requirement-resolution-contract.md](../architecture/requirement-resolution-contract.md) (`requirement_resolution.v1`) consumes definitions from the existing sources and assigns no matrix cell. The matrix stays unencoded.
+Requirement Resolution is not step 4. [requirement-resolution-contract.md](../architecture/requirement-resolution-contract.md) (`requirement_resolution.v1`) consumes definitions from the existing sources and assigns no matrix cell. The matrix stays unencoded. The [CE, Code 95, and issuing-country case](../architecture/ce-code95-issuing-country.md) is not step 4 either. It assigns no matrix cell.
 
 ## History
 
+- 2026-10-05: **CE + Code 95 Issuing Country Gate PASS.** SoT [ce-code95-issuing-country.md](../architecture/ce-code95-issuing-country.md), a case of `requirement_resolution.v1`. The issuing country selects the missing facts and shared or separate evidence. A REQUIRED row holds the Ready to Start entrance until `satisfied` or `waived`. A PREFERRED row does not. No country list. No matrix cell. No document type. No runtime. Feat stays locked. HostFlow v1 is not release-ready.
 - 2026-10-05: **Requirement Resolution Contract Gate PASS.** SoT [requirement-resolution-contract.md](../architecture/requirement-resolution-contract.md) (`requirement_resolution.v1`). Applicability, the missing fact, and the accepted evidence variant. Not a source of requirements. Not an author of `r5_required_set`. `blocking` stays a resolved negative outcome. One requirement is not one document. Satisfaction stays on the Employment row. No matrix cell. No document type. No runtime. Feat stays locked. HostFlow v1 is not release-ready.
 - 2026-10-02: **Decision model amendment.** Citizenship class → stay basis → work authorization basis → valid for this employment → evidence for RPM. Six-tuple population is not accepted. Evidence rules are not encoded. Legal Eligibility Matrix Gate **not PASS**. `r5_required_set` stays the only required-document authority. Feat stays locked. Runtime not authorized. min HR stays not scheduled. HostFlow v1 is not release-ready.
 - 2026-10-02: **Matrix opened.** SoT [legal-eligibility-matrix.md](../architecture/legal-eligibility-matrix.md). Cell key is the contract's closed fact set. `visa_d`, `karta_pobytu`, and `''` are distinct cells with the outcome slot unassigned. No document and no outcome id is assigned. Legal Eligibility Matrix Gate **not PASS**. `r5_required_set` stays the only required-document authority. Feat stays locked. Runtime not authorized. min HR stays not scheduled. HostFlow v1 is not release-ready.
