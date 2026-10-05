@@ -207,6 +207,7 @@ def test_ce_code95_unknown_country_asks_no_file_then_shared_or_separate() -> Non
     assert shared["ce_code95"]["evidence_shape"] == "shared"
     assert shared["ce_code95"]["evidence_variant"] == "combined_eu_license"
     assert shared["ce_code95"]["upload_codes"] == ["driver_license"]
+    assert _step(shared, "code95")["visible"] is False
     shared_asked = project_required_document_types(_UNCONDITIONAL, shared_facts, employment_id="emp-1")
     assert "driver_license" in shared_asked
     assert "driver_qualification_card" not in shared_asked
@@ -216,6 +217,7 @@ def test_ce_code95_unknown_country_asks_no_file_then_shared_or_separate() -> Non
     assert separate["ce_code95"]["evidence_shape"] == "separate"
     assert separate["ce_code95"]["evidence_variant"] == "separate_license_and_code95"
     assert separate["ce_code95"]["upload_codes"] == ["driver_license", "driver_qualification_card"]
+    assert _step(separate, "code95")["visible"] is True
     separate_asked = project_required_document_types(_UNCONDITIONAL, separate_facts, employment_id="emp-1")
     assert "driver_license" in separate_asked
     assert "driver_qualification_card" in separate_asked
@@ -230,8 +232,9 @@ def test_ce_code95_unknown_country_asks_no_file_then_shared_or_separate() -> Non
         today=date(2026, 10, 5),
     )
     assert blocked["ce_code95"]["ce"]["resolution"] == "blocking"
-    assert blocked["ce_code95"]["code95"]["resolution"] == "blocking"
+    assert blocked["ce_code95"]["code95"]["resolution"] != "blocking"
     assert blocked["ce_code95"]["upload_codes"] == []
+    assert _step(blocked, "code95")["visible"] is False
     blocked_asked = drop_withheld_document_codes(
         ["driver_license", "code95", "tacho_card", "adr"],
         blocked_facts,
