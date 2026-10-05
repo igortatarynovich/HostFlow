@@ -103,6 +103,7 @@ Legal Eligibility and Work Authorization remain upstream facts and processes. Th
 
 ## History
 
+- 2026-10-05: **HR Employee Record Projection opened.** The ten groups are a view of existing owners. No new fact. `#hr-verification` is not redesigned. Requirements `satisfied` stay distinct from Legal Eligibility `pass`. Feat locked.
 - 2026-10-05: **Legal Eligibility evidence, Belarus.** Stay and work facts select registry requirements and accepted variants. `requirement_resolution.v1` does not gain a legal rule. `r5_required_set` materializes the documents. A changed basis reopens that Employment row. Feat locked.
 - 2026-10-05: **HR Requirement Resolution Integration.** `hr_employment_requirements` of one Employment are an input of the existing `requirement_resolution.v1`. The resolver gains no rule. Ready to Start reads the stored rows. Legal Eligibility evidence is the next vertical case. Feat locked.
 - 2026-10-04: **Ready to Start persistence and Activation PASS.** `hr_ready_to_start_decisions` keeps every decision. Activation writes `preparing → active` only while the latest `pass` still matches the four readings, in the same transaction. Feat locked.

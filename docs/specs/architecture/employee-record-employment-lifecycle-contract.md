@@ -155,7 +155,7 @@ A material change to the Employment terms can require this gate again, because t
 
 After Legal Eligibility PASS, HR completes the employee data the later formalities need. Facts HostFlow already holds are not entered again. Missing facts are requested or filled.
 
-`kwestionariusz osobowy` is a representation of that canonical employee data. It is not a second copy of the person. This contract names the representation and does not design the form.
+`kwestionariusz osobowy` is a representation of that canonical employee data. It is not a second copy of the person. This contract names the representation and does not design the form. The HR surface that places those owners into groups is [HR Employee Record Projection](hr-employee-record-projection.md). That projection adds no fact.
 
 Who already owns each person fact is [Employee Data ownership](#employee-data-ownership). That section adds no store.
 
