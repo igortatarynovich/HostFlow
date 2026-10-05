@@ -50,8 +50,10 @@ def test_pl_and_eu_hide_stay_and_work_and_do_not_ask_for_those_files() -> None:
     assert "visa" not in asked
     assert "work_permit" not in asked
     assert "residence_permit" not in asked
-    assert "medical_certificate" in asked
-    assert "psychotest" in asked
+    assert "passport" in asked
+    assert "medical_certificate" not in asked
+    assert "psychotest" not in asked
+    assert "decision" not in asked
 
     eu, eu_facts = _view({"citizenship": "DE"})
     assert eu["citizenship_class"] == "eu_eea_ch"
@@ -73,9 +75,10 @@ def test_third_country_needs_input_does_not_ask_for_a_file() -> None:
     assert _step(view, "work")["visible"] is False
     assert view["asks_file"] is False
     asked = project_required_document_types(_UNCONDITIONAL, facts, employment_id="emp-1")
-    for code in ("driver_license", "code95", "tacho_card", "visa", "work_permit", "residence_permit"):
+    for code in ("driver_license", "code95", "tacho_card", "visa", "work_permit", "residence_permit", "decision"):
         assert code not in asked
-    assert "medical_certificate" in asked
+    assert "passport" in asked
+    assert "medical_certificate" not in asked
 
     unknown, unknown_facts = _view({"citizenship": "unknown"})
     assert unknown["citizenship_class"] is None
@@ -115,6 +118,24 @@ def test_work_permit_and_oswiadczenie_project_onto_existing_values() -> None:
     )
     assert refused["chain"]["valid_for_this_employment"] == "no"
     assert project_required_document_types(_UNCONDITIONAL, permit_facts, employment_id="emp-1").count("work_permit") == 0
+    karta_asked = project_required_document_types(_UNCONDITIONAL, permit_facts, employment_id="emp-1")
+    assert "decision" in karta_asked
+    assert "residence_permit" not in karta_asked
+
+    confirmed, confirmed_facts = _view(
+        {
+            "tachograph_presence": True,
+            "adr_presence": True,
+            "medical_presence": True,
+            "psych_presence": True,
+            "additional_presence": True,
+        },
+        base=base,
+    )
+    confirmed_asked = project_required_document_types(_UNCONDITIONAL, confirmed_facts, employment_id="emp-1")
+    for code in ("tacho_card", "adr", "medical_certificate", "psychotest", "additional_document", "passport", "decision"):
+        assert code in confirmed_asked
+    assert confirmed["upload_codes"].count("work_permit") == 0
 
     dated, dated_facts = _view(
         {
@@ -197,7 +218,7 @@ def test_ce_code95_unknown_country_asks_no_file_then_shared_or_separate() -> Non
         employment_id="emp-1",
         today=date(2026, 10, 5),
     )
-    assert blocked_asked == []
+    assert blocked_asked == ["passport"]
 
     unrelated = project_required_document_types(
         ["passport", "medical_certificate"],

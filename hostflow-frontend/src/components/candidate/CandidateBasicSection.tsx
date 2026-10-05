@@ -174,6 +174,16 @@ function CandidateBasicSection({
               required={fieldRequired('last_name')}
             />
           )}
+          {(!candidateProfile || fieldVisible('birth_date')) && (
+            <Input
+              label={fieldLabel('birth_date', t('app.candidate_card.fields.birth_date'))}
+              type="date"
+              value={(extra.birth_date as string) || ''}
+              onChange={(e) => onExtraChange({ birth_date: e.target.value })}
+              readOnly={candidateDataReadOnly}
+              required={fieldRequired('birth_date')}
+            />
+          )}
           {(hasCyrillic(candidate.first_name) || hasCyrillic(candidate.last_name)) && (
             <p className="text-xs text-amber-700">
               {t('app.candidate_card.hint.cyrillic_translit')}
@@ -257,6 +267,12 @@ function CandidateBasicSection({
             </select>
           </label>
           )}
+          <Input
+            label={t('app.candidate_card.fields.phone_additional', { defaultValue: 'Dodatkowy telefon' })}
+            value={(extra as { phone_additional?: string | null }).phone_additional || ''}
+            onChange={(e) => onExtraChange({ phone_additional: e.target.value } as Partial<CandidateExtra>)}
+            readOnly={candidateDataReadOnly}
+          />
         </div>
 
         <div className="space-y-4">

@@ -89,7 +89,7 @@ function CandidateExperienceSection({
     <section
       ref={experienceRef}
       id="section-experience"
-      className="group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl"
+      className={embedded ? 'scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4' : 'group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl'}
     >
       {!embedded ? (
         <button type="button" onClick={toggle} className="flex w-full items-center justify-between gap-3 text-left">
