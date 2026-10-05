@@ -151,7 +151,6 @@ export function OperatorFactsForm({
   const procedureOpen = selectedWork === 'work_permit' || selectedWork === 'oswiadczenie'
   const determined = view.citizenship_class === 'pl' || view.citizenship_class === 'eu_eea_ch'
   const licenceCountry = licence?.issuing_country || ''
-  const licenceCountryLabel = countries.find((option) => option.value === licenceCountry)?.label || licenceCountry
 
   const unknownLabel = t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Nie wiadomo' })
   const countryOptions = useMemo(
@@ -383,12 +382,6 @@ export function OperatorFactsForm({
             )}
             {code95?.presence === true ? (
               <div className="space-y-4" data-testid="operator-facts-code95-details">
-                <div>
-                  <div className="label">
-                    {t('app.candidate_card.operator_facts.code95_where', { defaultValue: 'Gdzie potwierdzony' })}
-                  </div>
-                  <p className="text-sm text-slate-800">{licenceCountryLabel || unknownLabel}</p>
-                </div>
                 {field(
                   t('app.candidate_card.operator_facts.code95_valid_to', { defaultValue: 'Ważny do' }),
                   dateInput(code95?.valid_to, (next) => onPatch({ code95_valid_to: next }), 'operator-facts-code95-valid-to'),

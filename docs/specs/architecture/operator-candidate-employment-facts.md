@@ -174,7 +174,7 @@ Prawo do pracy                              after stay no longer withholds it
 
 Uprawnienia kierowcy
   Prawo jazdy              issuing country, then category, then validity
-  Code 95                  presence, then the licence country already recorded, then validity
+  Code 95                  presence, then validity
   Karta kierowcy           presence, then country, then validity
   ADR                      presence, then country, then validity
 ```
