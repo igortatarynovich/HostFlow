@@ -88,6 +88,10 @@ def test_third_country_needs_input_does_not_ask_for_a_file() -> None:
     assert "passport" in asked
     assert "medical_certificate" not in asked
 
+    visa, _ = _view({"stay_basis": "visa_d"}, base=facts)
+    assert _step(visa, "work")["visible"] is True
+    assert visa["chain"]["stay_basis"] == "visa_d"
+
     unknown, unknown_facts = _view({"citizenship": "unknown"})
     assert unknown["citizenship_class"] is None
     assert unknown_facts["citizenship"] is None

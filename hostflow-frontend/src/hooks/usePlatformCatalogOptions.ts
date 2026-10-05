@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { ComboboxOption } from '../components/ui/comboboxShared'
-import { buildCountryOptions } from '../data/countries'
+import { buildCountryOptions, compareCountryOptions } from '../data/countries'
 
 type CatalogOption = { value: string; label: string }
 
@@ -19,7 +19,9 @@ export function usePlatformCountryOptions(locale?: string) {
     void api
       .get<CatalogOption[]>('/catalogs/countries/options')
       .then((res) => {
-        if (!cancelled) setOptions(mapOptions(res.data, fallback))
+        if (!cancelled) {
+          setOptions(mapOptions(res.data, fallback).sort((a, b) => compareCountryOptions(a, b, locale)))
+        }
       })
       .catch(() => {
         if (!cancelled) setOptions(fallback)
@@ -27,7 +29,7 @@ export function usePlatformCountryOptions(locale?: string) {
     return () => {
       cancelled = true
     }
-  }, [fallback])
+  }, [fallback, locale])
 
   return options
 }
