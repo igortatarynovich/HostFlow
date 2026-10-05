@@ -198,7 +198,8 @@ describe('OperatorFactsForm', () => {
       />,
     )
     expect(screen.getByTestId('operator-facts-licence-details')).toBeTruthy()
-    expect(screen.getByTestId('operator-facts-code95-details').textContent).toMatch(/Gdzie potwierdzony/)
+    expect(screen.getByTestId('operator-facts-code95-details').textContent).toMatch(/Ważny do/)
+    expect(screen.queryByText(/Gdzie potwierdzony/)).toBeNull()
     expect(screen.queryByText(/Separate evidence/i)).toBeNull()
     expect(screen.queryByText(/driver_license_code95/)).toBeNull()
   })
