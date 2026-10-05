@@ -2332,8 +2332,10 @@ export default function CandidateCard(){
     [model?.extra]
   )
   const docsOwnerContext = useMemo(
-    () => ({ citizenship: String(extra?.citizenship || '') }),
-    [extra?.citizenship],
+    () => ({
+      citizenship: String(model?.personal_data?.citizenship || extra?.citizenship || ''),
+    }),
+    [model?.personal_data?.citizenship, extra?.citizenship],
   )
   const setExtra = (patch: Partial<CandidateExtra>) =>
     setModel(m => {

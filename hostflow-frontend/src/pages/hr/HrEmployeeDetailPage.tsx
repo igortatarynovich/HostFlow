@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getWorkforceEmployeeOperationalProfile, type WorkforceEmployeeOperationalProfile } from '../../api/workforce'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import HrDriverOperatorSurface from '../../components/hr/HrDriverOperatorSurface'
+import HrEmployeeRecordSurface from '../../components/hr/HrEmployeeRecordSurface'
 import { PageShell } from '../../components/layout'
 import { PageHeader } from '../../components/nav/PageHeader'
 import { useToast } from '../../components/Toast'
@@ -127,7 +127,11 @@ export default function HrEmployeeDetailPage() {
         </div>
         <div className="mt-6 min-w-0 space-y-4">
           <div data-entity-workspace-slot="overview" className="space-y-4">
-            <HrDriverOperatorSurface employeeId={employeeId} manage={manage} />
+            <HrEmployeeRecordSurface
+              employeeId={employeeId}
+              manage={manage}
+              timeline={profile.timeline}
+            />
           </div>
           <EntityWorkspaceCompositionHost
             consumerId={HR_EMPLOYEE_COMPOSITION_CONSUMER_ID}

@@ -1583,6 +1583,53 @@ export async function recordHrDriverReady(employeeId: string): Promise<HrDriverA
   return data
 }
 
+export type HrEmployeeRecordRow = {
+  id: string
+  group: string
+  label: string
+  value: string | null
+  status: string
+  evidence: string | null
+  actions: string[]
+}
+
+export type HrEmployeeRecordGroup = {
+  id: string
+  label: string
+  rows: HrEmployeeRecordRow[]
+  empty: string | null
+}
+
+export type HrEmployeeRecordSurface = {
+  employee_id: string
+  employment_id: string | null
+  state: string | null
+  header: HrDriverOperatorSurface['header']
+  current_process: {
+    next_action: HrDriverOperatorSurface['next_action']
+    target_row_id: string | null
+  }
+  groups: HrEmployeeRecordGroup[]
+}
+
+export async function getHrEmployeeRecordSurface(employeeId: string): Promise<HrEmployeeRecordSurface> {
+  const { data } = await http.get<HrEmployeeRecordSurface>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record`,
+  )
+  return data
+}
+
+export async function updateHrEmployeeRecordCitizenship(
+  employeeId: string,
+  citizenship: string,
+): Promise<HrDriverActionResult> {
+  const { data } = await http.post<HrDriverActionResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record/citizenship`,
+    { citizenship },
+  )
+  return data
+}
+
 export async function startHrDriverEmployment(employeeId: string): Promise<HrDriverActionResult> {
   const { data } = await http.post<HrDriverActionResult>(
     `/workforce/employees/${encodeURIComponent(employeeId)}/driver-surface/start`,

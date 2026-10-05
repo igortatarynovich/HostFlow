@@ -86,6 +86,10 @@ from backend.app.services.hr_driver_operator_surface import (
     record_surface_ready,
     start_surface_employment,
 )
+from backend.app.services.hr_employee_record_surface import (
+    build_hr_employee_record_surface,
+    update_record_citizenship,
+)
 from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
 from backend.app.services.workforce_zus_task_autocreate import ensure_zus_registration_task
 from backend.app.services.workforce_action_policy import (
@@ -1264,6 +1268,58 @@ async def start_hr_driver_employment(
         blocked_reasons=list(result.get("blocked_reasons") or []),
         state=result.get("state"),
     )
+
+
+class HrEmployeeRecordOut(BaseModel):
+    employee_id: str
+    employment_id: Optional[str] = None
+    state: Optional[str] = None
+    header: dict[str, Any]
+    current_process: dict[str, Any]
+    groups: list[dict[str, Any]]
+
+
+class HrEmployeeRecordCitizenshipIn(BaseModel):
+    citizenship: str
+
+
+@router.get(
+    "/employees/{employee_id}/employee-record",
+    response_model=HrEmployeeRecordOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def get_hr_employee_record_surface(
+    employee_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrEmployeeRecordOut:
+    db, tid = db_tenant
+    employee = await we_svc.get_employee(db, str(tid), employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    payload = await build_hr_employee_record_surface(db, tenant_id=str(tid), employee=employee)
+    return HrEmployeeRecordOut.model_validate(payload)
+
+
+@router.post(
+    "/employees/{employee_id}/employee-record/citizenship",
+    response_model=HrDriverActionOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def update_hr_employee_record_citizenship(
+    employee_id: str,
+    body: HrEmployeeRecordCitizenshipIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrDriverActionOut:
+    db, tid = db_tenant
+    result = await update_record_citizenship(
+        db,
+        tenant_id=str(tid),
+        employee_id=employee_id,
+        citizenship=body.citizenship,
+    )
+    if result.get("accepted"):
+        await db.commit()
+    return HrDriverActionOut(accepted=bool(result.get("accepted")), reason=result.get("reason"))
 
 
 @router.get(

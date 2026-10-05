@@ -167,4 +167,6 @@ No schema is written. No runtime module is authorized. No field-permissions subs
 
 No Person table is authorized. Candidate fields are not moved. No `canonical_facts` store is authorized. Employment Terms are not rewritten. The HR Driver Operator Surface is not rewritten.
 
+Where a fact lives stays this contract. Why a process reads it, and how a module shows it, are [HR Employee Record Projection](hr-employee-record-projection.md). A permitted action on that projection is a capability this contract already names. That slice does not reopen this gate and does not rewrite the HR Driver Operator Surface.
+
 ADR-036 remains the trust-role ceiling. This gate does not enforce a field capability. A later reading may see where existing role, process, and tenant permissions already answer the tuple, and where one sensitive operation still needs its own check. That reading is not this gate. An ACL on every field is not indicated.
