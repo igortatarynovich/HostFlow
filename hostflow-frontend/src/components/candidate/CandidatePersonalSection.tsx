@@ -1,4 +1,4 @@
-import { memo, useRef, useState, useCallback, useEffect, useMemo } from 'react'
+import { memo, useState, useCallback } from 'react'
 import clsx from 'clsx'
 import { IconChevronDown, IconUser } from '@tabler/icons-react'
 import type { Candidate, CandidateExtra } from '../../api/types'
@@ -93,20 +93,6 @@ function CandidatePersonalSection({
       return next
     })
   }, [])
-  const [nowMs, setNowMs] = useState<number | null>(null)
-  useEffect(() => {
-    setNowMs(Date.now())
-  }, [])
-  const ageHint = useMemo(() => {
-    if (!extra.birth_date || nowMs === null) return null
-    const bd = String(extra.birth_date).slice(0, 10)
-    const d = /^\d{4}-\d{2}-\d{2}$/.test(bd) ? new Date(bd) : null
-    const age = d && !isNaN(d.getTime())
-      ? Math.floor((nowMs - d.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-      : null
-    return age != null && age >= 0 && age <= 120 ? age : null
-  }, [extra.birth_date, nowMs])
-
   return (
     <section
       ref={personalRef}
@@ -131,22 +117,7 @@ function CandidatePersonalSection({
       </button>
 
       {!collapsed && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {(!candidateProfile || fieldVisible('birth_date')) && (
-          <div>
-            <Input
-              label={fieldLabel('birth_date', t('app.candidate_card.fields.birth_date'))}
-              type="date"
-              value={(extra.birth_date as any) || ''}
-              onChange={(e) => onExtraChange({ birth_date: e.target.value })}
-              readOnly={candidateDataReadOnly}
-              required={fieldRequired('birth_date')}
-            />
-            {ageHint != null && (
-              <p className="mt-1 text-xs text-slate-500">{t('app.candidate_card.fields.age_hint', { values: { age: ageHint } })}</p>
-            )}
-          </div>
-        )}
-        {(!candidateProfile || fieldVisible('citizenship')) && (
+        {(!candidateProfile || fieldVisible('citizenship')) && !citizenshipReadOnly && (
           <label className="block">
             <div className="label">{fieldLabel('citizenship', t('app.candidate_card.fields.citizenship'))} {fieldRequired('citizenship') && <span className="text-red-600">*</span>}</div>
           {citizenshipReadOnly ? (

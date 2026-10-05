@@ -196,7 +196,7 @@ export function OperatorFactsForm({
             defaultValue: 'Dane i uprawnienia kierowcy',
           })}
         </div>
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           {field(
             t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Obywatelstwo' }),
             countrySelect(citizenship?.stored, (next) => onPatch({ citizenship: next }), 'operator-facts-citizenship-input'),
@@ -214,7 +214,7 @@ export function OperatorFactsForm({
             : null}
 
           {visaOpen ? (
-            <div className="space-y-4" data-testid="operator-facts-stay-parameters">
+            <div className="space-y-4 lg:col-span-2 lg:grid lg:grid-cols-2 lg:gap-4" data-testid="operator-facts-stay-parameters">
               {field(
                 t('app.candidate_card.operator_facts.visa_type', { defaultValue: 'Typ wizy' }),
                 <input
@@ -310,7 +310,7 @@ export function OperatorFactsForm({
         <div className="text-sm font-semibold text-slate-900">
           {t('app.candidate_card.operator_facts.qualifications', { defaultValue: 'Uprawnienia kierowcy' })}
         </div>
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-4" data-testid="operator-facts-licence">
             {field(
               t('app.candidate_card.operator_facts.licence_country', { defaultValue: 'Prawo jazdy — kraj wydania' }),
@@ -421,6 +421,42 @@ export function OperatorFactsForm({
                 )}
               </div>
             ) : null}
+          </div>
+
+          <div className="space-y-4" data-testid="operator-facts-medical">
+            {field(
+              t('app.candidate_card.operator_facts.medical', { defaultValue: 'Badania lekarskie' }),
+              presenceSelect(stepOf(view, 'medical')?.presence, (next) => onPatch({ medical_presence: next })),
+            )}
+          </div>
+          <div className="space-y-4" data-testid="operator-facts-psych">
+            {field(
+              t('app.candidate_card.operator_facts.psych', { defaultValue: 'Testy psychologiczne' }),
+              presenceSelect(stepOf(view, 'psych')?.presence, (next) => onPatch({ psych_presence: next })),
+            )}
+          </div>
+          <div className="space-y-4" data-testid="operator-facts-pesel">
+            {field(
+              t('app.candidate_card.operator_facts.pesel', { defaultValue: 'PESEL' }),
+              presenceSelect(stepOf(view, 'pesel')?.presence, (next) => onPatch({ pesel_presence: next })),
+            )}
+            {stepOf(view, 'pesel')?.presence === true ? (
+              field(
+                t('app.candidate_card.operator_facts.pesel_number', { defaultValue: 'Numer PESEL' }),
+                <input
+                  className="input"
+                  disabled={disabled}
+                  value={stepOf(view, 'pesel')?.stored || ''}
+                  onChange={(event) => onPatch({ pesel: event.target.value || 'unknown' })}
+                />,
+              )
+            ) : null}
+          </div>
+          <div className="space-y-4" data-testid="operator-facts-additional">
+            {field(
+              t('app.candidate_card.operator_facts.additional', { defaultValue: 'Dodatkowy dokument' }),
+              presenceSelect(stepOf(view, 'additional')?.presence, (next) => onPatch({ additional_presence: next })),
+            )}
           </div>
         </div>
       </section>

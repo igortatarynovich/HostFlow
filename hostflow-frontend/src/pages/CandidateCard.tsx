@@ -4723,33 +4723,6 @@ export default function CandidateCard(){
                     return null
                   })}
 
-                  {/* Статус и соответствие требованиям (на всю ширину) */}
-                  <div className="space-y-4">
-                    <CandidateStatusSection
-                      extra={extra}
-                      statusRef={statusRef}
-                      polandBasisOptions={polandBasisOptions}
-                      selectTexts={selectTexts}
-                      onExtraChange={setExtra}
-                      candidateProfile={candidateProfile}
-                      effectiveLayout={effectiveLayout}
-                      candidateDataReadOnly={candidateDataReadOnly}
-                      factsReadOnly={!isMasked && Boolean(model?.id)}
-                      embedded
-                    />
-
-                    <CandidateWorkforceTerminationSection extra={extra} />
-
-                    <CandidateCustomFieldsSection
-                      extra={extra}
-                      customFieldsRef={customFieldsRef}
-                      candidateProfile={candidateProfile}
-                      effectiveLayout={effectiveLayout}
-                      selectTexts={selectTexts}
-                      onExtraChange={setExtra}
-                    />
-                  </div>
-
                   {registrySectionsAfterStatus.map((sectionCode) => {
                     if (!registrySectionVisible(sectionCode)) return null
                     return (
@@ -4854,6 +4827,33 @@ export default function CandidateCard(){
                       </div>
                     </section>
                   )}
+
+                  {/* Статус и соответствие требованиям (на всю ширину) */}
+                  <div className="space-y-4">
+                    <CandidateStatusSection
+                      extra={extra}
+                      statusRef={statusRef}
+                      polandBasisOptions={polandBasisOptions}
+                      selectTexts={selectTexts}
+                      onExtraChange={setExtra}
+                      candidateProfile={candidateProfile}
+                      effectiveLayout={effectiveLayout}
+                      candidateDataReadOnly={candidateDataReadOnly}
+                      factsReadOnly={!isMasked && Boolean(model?.id)}
+                      embedded
+                    />
+
+                    <CandidateWorkforceTerminationSection extra={extra} />
+
+                    <CandidateCustomFieldsSection
+                      extra={extra}
+                      customFieldsRef={customFieldsRef}
+                      candidateProfile={candidateProfile}
+                      effectiveLayout={effectiveLayout}
+                      selectTexts={selectTexts}
+                      onExtraChange={setExtra}
+                    />
+                  </div>
 
                   {!isNew && model?.id && !isMasked ? (
                     <CandidateApplicationsSection

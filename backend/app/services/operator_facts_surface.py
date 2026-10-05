@@ -80,6 +80,15 @@ _GOVERNED_ALIASES = {
     "work_permit": "work_permit",
     "decision": "decision",
     "voivodeship_decision": "decision",
+    "decyzja": "decision",
+    "passport": "passport",
+    "medical_certificate": "medical_certificate",
+    "medical": "medical_certificate",
+    "badania_lekarskie": "medical_certificate",
+    "psych_tests": "psych_tests",
+    "psychotest": "psych_tests",
+    "psychotests": "psych_tests",
+    "additional_document": "additional_document",
 }
 
 
@@ -175,6 +184,11 @@ def empty_facts() -> dict[str, Any]:
         "adr_presence": None,
         "adr_issuing_country": None,
         "adr_valid_to": None,
+        "medical_presence": None,
+        "psych_presence": None,
+        "additional_presence": None,
+        "pesel_presence": None,
+        "pesel": None,
         "ce_level": "REQUIRED",
         "code95_level": "REQUIRED",
     }
@@ -221,6 +235,11 @@ def facts_from_personal_data(personal_data: Mapping[str, Any] | None) -> dict[st
     if adr_country and get_country_registry_entry(adr_country.upper()) is not None:
         facts["adr_issuing_country"] = adr_country.upper()
     facts["adr_valid_to"] = _date_text(raw.get("adr_valid_to"))
+    facts["medical_presence"] = _bool_or_none(raw.get("medical_presence"))
+    facts["psych_presence"] = _bool_or_none(raw.get("psych_presence"))
+    facts["additional_presence"] = _bool_or_none(raw.get("additional_presence"))
+    facts["pesel_presence"] = _bool_or_none(raw.get("pesel_presence"))
+    facts["pesel"] = _text(raw.get("pesel"))
     facts["ce_level"] = _level(raw.get("ce_level"))
     facts["code95_level"] = _level(raw.get("code95_level"))
     return facts
@@ -386,6 +405,18 @@ def apply_operator_facts_patch(
         _assign_country(nxt, "adr_issuing_country", patch.get("adr_issuing_country"))
     if "adr_valid_to" in patch:
         nxt["adr_valid_to"] = None if _is_unknown(patch.get("adr_valid_to")) else _date_text(patch.get("adr_valid_to"))
+    if "medical_presence" in patch:
+        nxt["medical_presence"] = None if _is_unknown(patch.get("medical_presence")) else _bool_or_none(patch.get("medical_presence"))
+    if "psych_presence" in patch:
+        nxt["psych_presence"] = None if _is_unknown(patch.get("psych_presence")) else _bool_or_none(patch.get("psych_presence"))
+    if "additional_presence" in patch:
+        nxt["additional_presence"] = None if _is_unknown(patch.get("additional_presence")) else _bool_or_none(patch.get("additional_presence"))
+    if "pesel_presence" in patch:
+        nxt["pesel_presence"] = None if _is_unknown(patch.get("pesel_presence")) else _bool_or_none(patch.get("pesel_presence"))
+        if nxt["pesel_presence"] is not True:
+            nxt["pesel"] = None
+    if "pesel" in patch:
+        nxt["pesel"] = None if _is_unknown(patch.get("pesel")) else _text(patch.get("pesel"))
     if "ce_level" in patch:
         nxt["ce_level"] = _level(patch.get("ce_level"))
     if "code95_level" in patch:
@@ -640,6 +671,30 @@ def resolve_ce_code95(
     }
 
 
+def situation_upload_codes(facts: Mapping[str, Any]) -> list[str]:
+    """Files the recorded situation already asks for.
+
+    Passport is always asked. A residence card also asks for the decision.
+    A professional document is asked only when the operator says it exists.
+    Visa, residence card, and work permit files stay unasked.
+    """
+
+    codes = ["passport"]
+    if facts.get("stay_basis") == "karta_pobytu":
+        codes.append("decision")
+    if facts.get("tachograph_presence") is True:
+        codes.append("tacho_card")
+    if facts.get("adr_presence") is True:
+        codes.append("adr")
+    if facts.get("medical_presence") is True:
+        codes.append("medical_certificate")
+    if facts.get("psych_presence") is True:
+        codes.append("psych_tests")
+    if facts.get("additional_presence") is True:
+        codes.append("additional_document")
+    return codes
+
+
 def build_operator_facts_view(
     facts: Mapping[str, Any],
     *,
@@ -657,6 +712,10 @@ def build_operator_facts_view(
         "separate_required",
     }
     ce = resolve_ce_code95(facts, today=today)
+    uploads = list(ce["upload_codes"])
+    for code in situation_upload_codes(facts):
+        if code not in uploads:
+            uploads.append(code)
     steps = [
         {"key": "citizenship", "visible": True, "stored": facts.get("citizenship")},
         {
@@ -717,13 +776,17 @@ def build_operator_facts_view(
             "valid_to": facts.get("adr_valid_to"),
             "asks_file": False,
         },
+        {"key": "medical", "visible": True, "presence": facts.get("medical_presence")},
+        {"key": "psych", "visible": True, "presence": facts.get("psych_presence")},
+        {"key": "pesel", "visible": True, "presence": facts.get("pesel_presence"), "stored": facts.get("pesel")},
+        {"key": "additional", "visible": True, "presence": facts.get("additional_presence")},
     ]
     return {
         "citizenship_class": klass,
         "chain": chain,
         "steps": steps,
         "ce_code95": ce,
-        "upload_codes": list(ce["upload_codes"]),
+        "upload_codes": uploads,
         "asks_file": ce["asks_file"],
         "employment_id": employment_id,
     }
@@ -925,6 +988,11 @@ def personal_data_with_facts(
         "adr_presence": facts.get("adr_presence"),
         "adr_issuing_country": facts.get("adr_issuing_country"),
         "adr_valid_to": facts.get("adr_valid_to"),
+        "medical_presence": facts.get("medical_presence"),
+        "psych_presence": facts.get("psych_presence"),
+        "additional_presence": facts.get("additional_presence"),
+        "pesel_presence": facts.get("pesel_presence"),
+        "pesel": facts.get("pesel"),
         "ce_level": facts.get("ce_level") or "REQUIRED",
         "code95_level": facts.get("code95_level") or "REQUIRED",
     }

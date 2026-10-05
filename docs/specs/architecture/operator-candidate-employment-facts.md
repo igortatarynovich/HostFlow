@@ -116,7 +116,7 @@ Legal Eligibility evidence is the matrix. The matrix is not filled here. Recordi
 
 The driving licence and Code 95 may name the accepted evidence shape. Shared evidence is one document and two links. Separate evidence is the licence for CE and the qualification card for Code 95. The operator's form is one of those two. A third form is not a choice. While the issuing country is absent, progress is `needs_input` and no file is requested. This surface does not link a file and does not write the Employment requirement row.
 
-Tachograph and ADR are stored as professional facts. This surface does not name their evidence, does not open a resolver, and does not request a file.
+Tachograph and ADR are stored as professional facts. When the operator says one exists, the existing document type is asked. The same applies to a medical certificate, psychological tests, and an additional document. Passport is asked. A residence card also asks for the decision. This does not fill the matrix and does not ask for a visa, the residence card itself, or a work permit.
 
 ---
 
@@ -193,7 +193,7 @@ The document checklist does not edit these facts. Legal Eligibility status in th
 
 The live path is HTTP, then Postgres, then the candidate card. A fact is stored on the owner the contracts already name. Citizenship stays `personal_data.citizenship`. Stay and the professional facts stay in `personal_data.operator_facts`. The work basis is keyed by the preparing Employment. No column was added.
 
-Unknown stores nothing and asks no file. PL and EU/EEA/CH hide stay and work. A third-country chain is citizenship, then stay, then work. A work label projects onto `separate_required` with `work_permit_a` or `employer_declaration`. A legally significant change on Employment(preparing) runs `legal_eligibility.v1` and leaves Employment.state where it is. Driver documents wait until the issuing country is known, then use the accepted shared or separate evidence. A tachograph card and ADR stay facts and ask no file.
+Unknown stores nothing and asks no file. PL and EU/EEA/CH hide stay and work. A third-country chain is citizenship, then stay, then work. A work label projects onto `separate_required` with `work_permit_a` or `employer_declaration`. A legally significant change on Employment(preparing) runs `legal_eligibility.v1` and leaves Employment.state where it is. Driver documents wait until the issuing country is known, then use the accepted shared or separate evidence. Passport is asked. A residence card also asks for the decision. A tachograph card, ADR, a medical certificate, psychological tests, and an additional document are asked only when the operator says they exist. Visa, the residence card itself, and a work permit stay unasked.
 
 On the candidate card each fact has one edit place. The operator answers citizenship, then the stay question when the chain still shows it, then the parameters of that stay, then the work question and the parameters of that basis. Driver qualifications follow: the licence country, then the category and validity, then Code 95, the tachograph card, and ADR. The checklist is the consequence of those facts. It is not a second place that edits them. The procedure code and the Legal Eligibility outcome are not labels on this surface.
 
