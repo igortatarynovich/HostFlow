@@ -410,9 +410,9 @@ async def enforce_pipeline_doc_forward_block(
     )
 
     operator_facts = facts_from_personal_data(personal if isinstance(personal, dict) else {})
-    missing = drop_withheld_document_codes(missing, operator_facts)
-    problematic = drop_withheld_document_codes(problematic, operator_facts)
-    in_progress = drop_withheld_document_codes(in_progress, operator_facts)
+    missing = drop_withheld_document_codes(missing, operator_facts, include_replacement=False)
+    problematic = drop_withheld_document_codes(problematic, operator_facts, include_replacement=False)
+    in_progress = drop_withheld_document_codes(in_progress, operator_facts, include_replacement=False)
 
     hard_block, _soft = docs_pipeline_blocks_forward_resolved(
         canon_old, missing, problematic, in_progress, resolved_gates

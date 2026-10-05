@@ -25,6 +25,27 @@ def test_slot_registry_loads() -> None:
     assert get_slot_definition("voivodeship_decision") is not None
 
 
+def _uploaded(type_code: str) -> dict:
+    return {
+        "document_id": f"doc-{type_code}",
+        "document_type_code": type_code,
+        "status": "received",
+        "has_files": True,
+    }
+
+
+def test_uploaded_document_satisfies_its_own_requirement() -> None:
+    docs = [
+        _uploaded("passport"),
+        _uploaded("driver_license"),
+        _uploaded("code95"),
+        _uploaded("tacho_card"),
+    ]
+    for code in ("passport", "driver_license", "driver_qualification_card", "tachograph_card"):
+        result = evaluate_document_slot(code, documents=docs)
+        assert result["status"] == "satisfied", code
+
+
 def test_legal_stay_requires_candidate_evidence_without_guessing() -> None:
     result = evaluate_document_slot(
         "legal_stay_confirmation",
