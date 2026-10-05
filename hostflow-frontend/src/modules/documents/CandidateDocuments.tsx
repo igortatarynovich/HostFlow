@@ -54,7 +54,6 @@ import {
   CREATION_STATUS_OPTIONS,
   CORE_METADATA_FIELDS,
   METADATA_LABEL_NS,
-  DRIVER_DEFAULT_ENRICHMENT_CODES,
   MAX_FILE_MB,
 } from "./constants";
 import { getDocumentFieldsConfig } from "./documentFieldsConfig";
@@ -568,17 +567,6 @@ export default function CandidateDocuments({
           });
         }
 
-        // Citronex broken default profile: enrich reduced legacy config to full driver set.
-        if (candidateProfile?.code === "driver_ce_default" && filteredTypes.length > 0 && filteredTypes.length <= 6) {
-          const merged = new Map(filteredTypes.map((type) => [type.code, type] as const));
-          DRIVER_DEFAULT_ENRICHMENT_CODES.forEach((code) => {
-            const normalizedCode = normalizeDocTypeCode(code);
-            const type = typeByCodeLocal.get(normalizedCode) || typeByCodeLocal.get(code);
-            if (type) merged.set(type.code, type);
-          });
-          filteredTypes = Array.from(merged.values());
-        }
-
         // Safety net: never show an empty page due to broken profile references.
         if (filteredTypes.length === 0 && allTypes.length > 0) {
           console.warn("[CandidateDocuments] Profile document refs resolved to 0 types; falling back to all document types");
@@ -618,7 +606,14 @@ export default function CandidateDocuments({
         ? checklistPayload.requiredTypes.map((item: unknown) => String(item))
         : null;
       if (projectedRequired) {
-        const byNorm = new Map(allTypes.map((type) => [normalizeDocTypeCode(type.code), type] as const));
+        const byNorm = new Map<string, DocType>();
+        allTypes.forEach((type) => {
+          const keys = [type.code, ...(type.aliases ?? [])];
+          keys.forEach((key) => {
+            const normalized = normalizeDocTypeCode(key);
+            if (normalized && !byNorm.has(normalized)) byNorm.set(normalized, type);
+          });
+        });
         const nextTypes: DocType[] = [];
         const seen = new Set<string>();
         projectedRequired.forEach((code) => {

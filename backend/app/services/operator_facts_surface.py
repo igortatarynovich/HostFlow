@@ -16,6 +16,13 @@ from __future__ import annotations
 from datetime import date
 from typing import Any, Mapping
 
+from backend.app.constants.reference_foundation import get_reference_domain
+from backend.app.document_types.registry import (
+    is_canonical_code,
+    normalize_input_doc_type,
+    registry_entry_for,
+    registry_entries,
+)
 from backend.app.reference.country_registry import get_country_registry_entry
 
 POLICY_REQUIREMENT_RESOLUTION = "requirement_resolution.v1"
@@ -44,61 +51,48 @@ _WORK_LABELS = {
     "not_required": ("not_required", None),
 }
 _PROCEDURE_LABELS = frozenset({"work_permit", "oswiadczenie"})
-_LICENCE_CATEGORIES = frozenset({"B", "C", "CE", "C1", "C1E", "D", "DE"})
 _LEVELS = frozenset({"REQUIRED", "PREFERRED", "NOT_REQUIRED"})
-
-# Document asks this surface governs. They are withheld until a fact path
-# that already exists asks for a file. Tachograph, ADR, and legal-stay
-# documents are never asked here: the matrix is not filled, and tachograph
-# and ADR are professional facts.
-_GOVERNED_ALIASES = {
-    "driver_license": "driver_license",
-    "driver_licence": "driver_license",
-    "drivers_license": "driver_license",
-    "prawo_jazdy": "driver_license",
-    "driver_license_code95": "driver_license_code95",
-    "driver_license_with_code95": "driver_license_code95",
-    "eu_license_code95": "driver_license_code95",
-    "code95": "code95",
-    "code_95": "code95",
-    "qualification_code95": "code95",
-    "qualification_card": "code95",
-    "driver_qualification_card": "code95",
-    "tacho_card": "tacho_card",
-    "tachograph": "tacho_card",
-    "tachograph_card": "tacho_card",
-    "karta_tachografu": "tacho_card",
-    "adr": "adr",
-    "adr_certificate": "adr",
-    "adr_card": "adr",
-    "visa": "visa",
-    "visa_d": "visa",
-    "visa_c": "visa",
-    "residence_permit": "residence_permit",
-    "residence_card": "residence_permit",
-    "karta_pobytu": "residence_permit",
-    "work_permit": "work_permit",
-    "decision": "decision",
-    "voivodeship_decision": "decision",
-    "decyzja": "decision",
-    "passport": "passport",
-    "medical_certificate": "medical_certificate",
-    "medical": "medical_certificate",
-    "badania_lekarskie": "medical_certificate",
-    "psych_tests": "psych_tests",
-    "psychotest": "psych_tests",
-    "psychotests": "psych_tests",
-    "additional_document": "additional_document",
-}
-
 
 class OperatorFactsRejected(ValueError):
     """A patch value is not one the accepted contracts already name."""
 
 
 def canonical_document_code(code: str) -> str:
+    """Registry code. An unknown string is not rewritten into ``other``."""
+
     raw = str(code or "").strip().lower()
-    return _GOVERNED_ALIASES.get(raw, raw)
+    if not raw:
+        return raw
+    mapped = normalize_input_doc_type(raw)
+    if mapped == "other" and not is_canonical_code(raw):
+        return raw
+    return mapped
+
+
+def registry_document_code(code: str) -> str | None:
+    """A participating registry type. Inbox and unknown codes are not asks."""
+
+    mapped = canonical_document_code(code)
+    if not is_canonical_code(mapped):
+        return None
+    entry = registry_entry_for(mapped)
+    if entry is None or not entry.participates_in_requirements or entry.classification_inbox_only:
+        return None
+    return entry.code
+
+
+def _governed_document_codes() -> frozenset[str]:
+    """Candidate document types this surface may withhold. Read from the registry."""
+
+    categories = {"identity", "immigration", "driver_qualification", "medical", "work_authorization"}
+    return frozenset(
+        entry.code
+        for entry in registry_entries()
+        if entry.category_code in categories
+        and "candidate" in entry.entity_applicability
+        and entry.participates_in_requirements
+        and not entry.classification_inbox_only
+    )
 
 
 def _text(value: Any) -> str | None:
@@ -261,13 +255,25 @@ def _read_work(value: Any) -> dict[str, Any]:
     return work
 
 
+def licence_category_codes() -> list[str]:
+    """Codes from the platform reference domain ``driver_license_categories``."""
+
+    out: list[str] = []
+    for row in get_reference_domain("driver_license_categories"):
+        code = str(row.get("code") or "").strip().upper()
+        if code and code not in out:
+            out.append(code)
+    return out
+
+
 def _categories(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
+    allowed = set(licence_category_codes())
     out: list[str] = []
     for item in value:
         code = str(item or "").strip().upper()
-        if code in _LICENCE_CATEGORIES and code not in out:
+        if code in allowed and code not in out:
             out.append(code)
     return out
 
@@ -635,17 +641,19 @@ def resolve_ce_code95(
         ce_file = ce["progress"] == "needs_evidence"
         code_file = code95["progress"] == "needs_evidence"
         if shape == "shared":
-            if ce_file and code_file:
-                uploads = ["driver_license_code95"]
-            elif ce_file:
-                uploads = ["driver_license"]
-            elif code_file:
-                uploads = ["driver_license_code95"]
+            if ce_file or code_file:
+                shared = registry_document_code("driver_license")
+                if shared:
+                    uploads = [shared]
         elif ce_file or code_file:
             if ce_file:
-                uploads.append("driver_license")
+                licence = registry_document_code("driver_license")
+                if licence:
+                    uploads.append(licence)
             if code_file:
-                uploads.append("code95")
+                qualification = registry_document_code("driver_qualification_card")
+                if qualification and qualification not in uploads:
+                    uploads.append(qualification)
     variant = None
     if shape == "shared":
         variant = "combined_eu_license"
@@ -672,26 +680,31 @@ def resolve_ce_code95(
 
 
 def situation_upload_codes(facts: Mapping[str, Any]) -> list[str]:
-    """Files the recorded situation already asks for.
+    """Registry types the recorded situation asks for.
 
-    Passport is always asked. A residence card also asks for the decision.
-    A professional document is asked only when the operator says it exists.
-    Visa, residence card, and work permit files stay unasked.
+    Passport is always asked. A residence card asks for the residence decision
+    already named in the registry. A professional document is asked only when
+    the operator says it exists. Visa, the residence card, and a work permit
+    stay unasked. A code the registry does not participate with is not asked.
     """
 
-    codes = ["passport"]
+    codes: list[str] = []
+
+    def add(code: str | None) -> None:
+        if code and code not in codes:
+            codes.append(code)
+
+    add(registry_document_code("passport"))
     if facts.get("stay_basis") == "karta_pobytu":
-        codes.append("decision")
+        add(registry_document_code("temporary_residence_decision"))
     if facts.get("tachograph_presence") is True:
-        codes.append("tacho_card")
+        add(registry_document_code("tachograph_card"))
     if facts.get("adr_presence") is True:
-        codes.append("adr")
+        add(registry_document_code("adr_certificate"))
     if facts.get("medical_presence") is True:
-        codes.append("medical_certificate")
+        add(registry_document_code("medical_certificate"))
     if facts.get("psych_presence") is True:
-        codes.append("psych_tests")
-    if facts.get("additional_presence") is True:
-        codes.append("additional_document")
+        add(registry_document_code("psychological_certificate"))
     return codes
 
 
@@ -788,6 +801,7 @@ def build_operator_facts_view(
         "ce_code95": ce,
         "upload_codes": uploads,
         "asks_file": ce["asks_file"],
+        "licence_category_codes": licence_category_codes(),
         "employment_id": employment_id,
     }
 
@@ -795,8 +809,7 @@ def build_operator_facts_view(
 def withheld_document_norms(facts: Mapping[str, Any], *, employment_id: str | None = None, today: date | None = None) -> frozenset[str]:
     view = build_operator_facts_view(facts, employment_id=employment_id, today=today)
     allowed = {canonical_document_code(code) for code in view["upload_codes"]}
-    governed = frozenset(_GOVERNED_ALIASES.values())
-    return frozenset(code for code in governed if code not in allowed)
+    return frozenset(code for code in _governed_document_codes() if code not in allowed)
 
 
 def _facts_for_existing_driver_ask(
@@ -813,7 +826,7 @@ def _facts_for_existing_driver_ask(
         for raw in (required_types or [])
         if str(raw or "").strip()
     }
-    named = bool(norms & {"driver_license", "driver_license_code95", "code95"})
+    named = bool(norms & {"driver_license", "driver_qualification_card"})
     if named:
         return dict(facts)
     adjusted = dict(facts)
@@ -836,22 +849,11 @@ def project_required_document_types(
     view = build_operator_facts_view(facts, employment_id=employment_id, today=today)
     out: list[str] = []
     seen: set[str] = set()
-    for raw in required_types or []:
-        text = str(raw or "").strip()
-        if not text:
+    for raw in list(required_types or []) + list(view["upload_codes"]):
+        code = registry_document_code(str(raw or ""))
+        if code is None or code in withheld or code in seen:
             continue
-        canon = canonical_document_code(text)
-        if canon in withheld:
-            continue
-        if canon in seen:
-            continue
-        seen.add(canon)
-        out.append(text)
-    for code in view["upload_codes"]:
-        canon = canonical_document_code(code)
-        if canon in seen:
-            continue
-        seen.add(canon)
+        seen.add(code)
         out.append(code)
     return out
 
@@ -872,18 +874,19 @@ def drop_withheld_document_codes(
         text = str(raw or "").strip()
         if not text:
             continue
-        canon = canonical_document_code(text)
-        if canon in withheld:
-            if canon in {"driver_license", "code95", "driver_license_code95"}:
+        code = registry_document_code(text)
+        if code is None or code in withheld:
+            if canonical_document_code(text) in {"driver_license", "driver_qualification_card"}:
                 removed_driver = True
             continue
-        out.append(text)
+        if code not in out:
+            out.append(code)
     if removed_driver:
-        seen = {canonical_document_code(item) for item in out}
+        seen = set(out)
         for code in view["upload_codes"]:
-            if canonical_document_code(code) not in seen:
+            if code not in seen:
                 out.append(code)
-                seen.add(canonical_document_code(code))
+                seen.add(code)
     return out
 
 
@@ -917,7 +920,7 @@ def project_document_summary(
     )
     original_missing = list((summary.get("required") or {}).get("missing") or [])
     replaced_driver = any(
-        canonical_document_code(str(item)) in {"driver_license", "code95", "driver_license_code95"}
+        canonical_document_code(str(item)) in {"driver_license", "driver_qualification_card"}
         and canonical_document_code(str(item)) in withheld
         for item in original_missing
     )
@@ -932,7 +935,7 @@ def project_document_summary(
         seen = {canonical_document_code(str(item)) for item in required["missing"]}
         for code in checklist["requiredTypes"]:
             canon = canonical_document_code(str(code))
-            if canon in {"driver_license", "code95", "driver_license_code95"} and canon not in seen:
+            if canon in {"driver_license", "driver_qualification_card"} and canon not in seen:
                 required["missing"].append(code)
                 seen.add(canon)
         required["missing_count"] = len(required["missing"])
