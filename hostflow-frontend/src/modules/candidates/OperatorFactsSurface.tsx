@@ -5,8 +5,6 @@ import { useI18n } from '../../i18n'
 
 type CountryOption = { value: string; label: string }
 
-const LICENCE_CATEGORIES = ['B', 'C', 'CE', 'C1', 'C1E', 'D', 'DE'] as const
-
 const STAY_CHOICES = [
   ['visa_d', 'Wiza D'],
   ['visa_c', 'Wiza C'],
@@ -57,6 +55,7 @@ export type OperatorFactsView = {
     asks_file?: boolean
   }
   upload_codes?: string[]
+  licence_category_codes?: string[]
   asks_file?: boolean
   legal_eligibility?: {
     outcome?: string | null
@@ -328,7 +327,7 @@ export function OperatorFactsForm({
                   {t('app.candidate_card.operator_facts.licence_categories', { defaultValue: 'Kategorie' })}
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  {LICENCE_CATEGORIES.map((code) => {
+                  {(view.licence_category_codes ?? []).map((code) => {
                     const selected = (licence?.categories ?? []).includes(code)
                     return (
                       <label key={code} className="flex items-center gap-2">

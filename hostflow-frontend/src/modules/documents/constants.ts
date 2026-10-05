@@ -123,21 +123,3 @@ export const METADATA_LABEL_NS = "documents.meta_fields";
 
 // Legacy alias strings → canonical registry codes (projection of document-type-legacy-aliases-v1.json).
 export const DOC_TYPE_CODE_ALIASES: Record<string, string> = DOC_TYPE_LEGACY_ALIASES;
-
-// Broken default profile often contains only a reduced legacy set; enrich it to full driver flow.
-export const DRIVER_DEFAULT_ENRICHMENT_CODES: string[] = [
-  "additional_document",
-  "adr",
-  "code95",
-  "decision",
-  "work_permit",
-  "passport",
-  "medical_certificate",
-  "driver_license",
-  "driver_license_code95",
-  "psych_tests",
-  "residence_permit",
-  "visa",
-  "tacho_card",
-  "driver_certificate",
-];
