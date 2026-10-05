@@ -163,7 +163,7 @@ describe('OperatorFactsForm', () => {
             { key: 'stay_basis', visible: false },
             { key: 'work', visible: false },
             { key: 'driving_licence', visible: true, issuing_country: null, categories: [] },
-            { key: 'code95', visible: true, presence: null, evidence_shape: null, asks_file: false },
+            { key: 'code95', visible: false, presence: null, evidence_shape: null, asks_file: false },
             { key: 'tachograph', visible: true, presence: null },
             { key: 'adr', visible: true, presence: null },
           ],
@@ -173,7 +173,7 @@ describe('OperatorFactsForm', () => {
       />,
     )
     expect(screen.queryByTestId('operator-facts-licence-details')).toBeNull()
-    expect(screen.queryByTestId('operator-facts-code95-details')).toBeNull()
+    expect(screen.queryByTestId('operator-facts-code95')).toBeNull()
 
     rerender(
       <OperatorFactsForm
@@ -185,7 +185,7 @@ describe('OperatorFactsForm', () => {
             { key: 'stay_basis', visible: false },
             { key: 'work', visible: false },
             { key: 'driving_licence', visible: true, issuing_country: 'PL', categories: ['CE'] },
-            { key: 'code95', visible: true, presence: true, evidence_shape: 'shared', asks_file: true },
+            { key: 'code95', visible: false, presence: true, evidence_shape: 'shared', asks_file: true },
             { key: 'tachograph', visible: true, presence: null },
             { key: 'adr', visible: true, presence: null },
           ],
@@ -200,6 +200,31 @@ describe('OperatorFactsForm', () => {
       />,
     )
     expect(screen.getByTestId('operator-facts-licence-details')).toBeTruthy()
+    expect(screen.queryByTestId('operator-facts-code95')).toBeNull()
+
+    rerender(
+      <OperatorFactsForm
+        countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
+        onPatch={() => undefined}
+        view={view({
+          steps: [
+            { key: 'citizenship', visible: true, stored: 'PL' },
+            { key: 'stay_basis', visible: false },
+            { key: 'work', visible: false },
+            { key: 'driving_licence', visible: true, issuing_country: 'BY', categories: ['CE'] },
+            { key: 'code95', visible: true, presence: true, evidence_shape: 'separate', asks_file: true },
+            { key: 'tachograph', visible: true, presence: null },
+            { key: 'adr', visible: true, presence: null },
+          ],
+          upload_codes: ['driver_license', 'driver_qualification_card'],
+          ce_code95: {
+            evidence_shape: 'separate',
+            upload_codes: ['driver_license', 'driver_qualification_card'],
+            asks_file: true,
+          },
+        })}
+      />,
+    )
     expect(screen.getByTestId('operator-facts-code95-details').textContent).toMatch(/Ważny do/)
     expect(screen.queryByText(/Gdzie potwierdzony/)).toBeNull()
     expect(screen.queryByText(/Separate evidence/i)).toBeNull()

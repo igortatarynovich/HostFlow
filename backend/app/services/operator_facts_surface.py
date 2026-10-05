@@ -644,7 +644,11 @@ def resolve_ce_code95(
     presence = facts.get("code95_presence")
     valid_to = _parse_date(facts.get("code95_valid_to"))
     on = today or date.today()
-    code_blocking = presence is False or (valid_to is not None and valid_to < on)
+    # An EU/EEA/CH licence carries Code 95 on the same card. Absence of a
+    # separate code is not a block, and it is not a second file.
+    code_blocking = shape == "separate" and (
+        presence is False or (valid_to is not None and valid_to < on)
+    )
     ce = _row_state(
         level=ce_level,
         applicable=ce_applicable,
@@ -662,7 +666,7 @@ def resolve_ce_code95(
         ce_file = ce["progress"] == "needs_evidence"
         code_file = code95["progress"] == "needs_evidence"
         if shape == "shared":
-            if ce_file or code_file:
+            if ce_file:
                 shared = registry_document_code("driver_license")
                 if shared:
                     uploads = [shared]
@@ -792,7 +796,7 @@ def build_operator_facts_view(
         },
         {
             "key": "code95",
-            "visible": True,
+            "visible": ce["evidence_shape"] == "separate",
             "presence": facts.get("code95_presence"),
             "valid_to": facts.get("code95_valid_to"),
             "evidence_shape": ce["evidence_shape"],

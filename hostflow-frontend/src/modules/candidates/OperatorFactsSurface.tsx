@@ -345,20 +345,22 @@ export function OperatorFactsForm({
             ) : null}
           </div>
 
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-code95">
-            {field(
-              t('app.candidate_card.operator_facts.code95', { defaultValue: 'Code 95' }),
-              presenceSelect(code95?.presence, (next) => onPatch({ code95_presence: next }), 'operator-facts-code95-presence'),
-            )}
-            {code95?.presence === true ? (
-              <div className="space-y-4" data-testid="operator-facts-code95-details">
-                {field(
-                  t('app.candidate_card.operator_facts.code95_valid_to', { defaultValue: 'Ważny do' }),
-                  dateInput(code95?.valid_to, (next) => onPatch({ code95_valid_to: next }), 'operator-facts-code95-valid-to'),
-                )}
-              </div>
-            ) : null}
-          </div>
+          {code95?.visible ? (
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-code95">
+              {field(
+                t('app.candidate_card.operator_facts.code95', { defaultValue: 'Code 95' }),
+                presenceSelect(code95?.presence, (next) => onPatch({ code95_presence: next }), 'operator-facts-code95-presence'),
+              )}
+              {code95?.presence === true ? (
+                <div className="space-y-4" data-testid="operator-facts-code95-details">
+                  {field(
+                    t('app.candidate_card.operator_facts.code95_valid_to', { defaultValue: 'Ważny do' }),
+                    dateInput(code95?.valid_to, (next) => onPatch({ code95_valid_to: next }), 'operator-facts-code95-valid-to'),
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-tachograph">
             {field(
