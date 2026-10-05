@@ -24,33 +24,19 @@ from backend.app.document_types.registry import (
     registry_entries,
 )
 from backend.app.reference.country_registry import get_country_registry_entry
-
-POLICY_REQUIREMENT_RESOLUTION = "requirement_resolution.v1"
-
-# Non-eu_member countries of the closed class ``eu_eea_ch``. EU members are
-# read from the country registry (``eu_member``). This is not a published list.
-_EEA_CH_NOT_EU = frozenset({"IS", "LI", "NO", "CH"})
-
-_STAY = frozenset(
-    {
-        "visa_d",
-        "visa_c",
-        "karta_pobytu",
-        "visa_free",
-        "waiting_for_trc",
-        "special_protection",
-        "other",
-        "none",
-    }
+from backend.app.reference.legal_eligibility_chain import (
+    OPERATOR_STAY_CHOICES as _STAY,
+    OPERATOR_WORK_CHOICES,
+    PROCEDURE_LABELS as _PROCEDURE_LABELS,
+    STAY_WITH_VISA_PARAMETERS,
+    WORK_LABELS as _WORK_LABELS,
+    citizenship_class,
 )
-_WORK_LABELS = {
-    "work_permit": ("separate_required", "work_permit_a"),
-    "oswiadczenie": ("separate_required", "employer_declaration"),
-    "included_in_stay": ("included_in_stay", None),
-    "not_required": ("not_required", None),
-}
-_PROCEDURE_LABELS = frozenset({"work_permit", "oswiadczenie"})
-_LEVELS = frozenset({"REQUIRED", "PREFERRED", "NOT_REQUIRED"})
+from backend.app.reference.requirement_resolution import (
+    POLICY_ID as POLICY_REQUIREMENT_RESOLUTION,
+    REQUIREMENT_LEVELS as _LEVELS,
+    issuing_evidence_shape,
+)
 
 class OperatorFactsRejected(ValueError):
     """A patch value is not one the accepted contracts already name."""
@@ -142,34 +128,6 @@ def _country(value: Any) -> str | None:
     if get_country_registry_entry(raw) is None:
         raise OperatorFactsRejected(f"unknown country {raw}")
     return raw
-
-
-def citizenship_class(citizenship: str | None) -> str | None:
-    """``pl``, ``eu_eea_ch``, or ``third_country``. Absent citizenship is not a class."""
-
-    code = _text(citizenship)
-    if not code:
-        return None
-    entry = get_country_registry_entry(code.upper())
-    if entry is None:
-        return None
-    alpha2 = entry.identity.alpha2
-    if alpha2 == "PL":
-        return "pl"
-    if entry.classifications.eu_member or alpha2 in _EEA_CH_NOT_EU:
-        return "eu_eea_ch"
-    return "third_country"
-
-
-def issuing_evidence_shape(country: str | None) -> str | None:
-    """Shared for an EU/EEA/CH licence, separate otherwise. Unknown stays unknown."""
-
-    klass = citizenship_class(country)
-    if klass is None:
-        return None
-    if klass in {"pl", "eu_eea_ch"}:
-        return "shared"
-    return "separate"
 
 
 def _blank_work() -> dict[str, Any]:
@@ -747,7 +705,7 @@ def build_operator_facts_view(
     chain = chain_reading(facts, employment_id=employment_id)
     work = _work_for(facts, employment_id)
     stay_visible = klass == "third_country"
-    parameters_visible = stay_visible and facts.get("stay_basis") in {"visa_d", "visa_c"}
+    parameters_visible = stay_visible and facts.get("stay_basis") in STAY_WITH_VISA_PARAMETERS
     work_visible = stay_visible and not _stay_withholds_work(facts)
     valid_visible = work_visible and chain.get("work_authorization_basis") in {
         "included_in_stay",
@@ -831,6 +789,8 @@ def build_operator_facts_view(
         "upload_codes": uploads,
         "asks_file": ce["asks_file"],
         "licence_category_codes": licence_category_codes(),
+        "stay_choices": list(_STAY),
+        "work_choices": list(OPERATOR_WORK_CHOICES),
         "employment_id": employment_id,
     }
 

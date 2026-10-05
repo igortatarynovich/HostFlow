@@ -6,25 +6,6 @@ import { useI18n } from '../../i18n'
 
 type CountryOption = { value: string; label: string }
 
-const STAY_CHOICES = [
-  ['visa_d', 'Wiza D'],
-  ['visa_c', 'Wiza C'],
-  ['karta_pobytu', 'Karta pobytu'],
-  ['visa_free', 'Ruch bezwizowy'],
-  ['waiting_for_trc', 'Oczekuje na kartę pobytu'],
-  ['special_protection', 'Ochrona'],
-  ['other', 'Inna'],
-  ['none', 'Brak'],
-] as const
-
-const WORK_CHOICES = [
-  ['work_permit', 'Zezwolenie na pracę'],
-  ['oswiadczenie', 'Oświadczenie'],
-  ['included_in_stay', 'Prawo do pracy wynika z pobytu'],
-  ['not_required', 'Nie wymaga zezwolenia'],
-  ['no_right', 'Brak prawa do pracy'],
-] as const
-
 type Step = {
   key: string
   visible: boolean
@@ -57,6 +38,8 @@ export type OperatorFactsView = {
   }
   upload_codes?: string[]
   licence_category_codes?: string[]
+  stay_choices?: string[]
+  work_choices?: string[]
   asks_file?: boolean
   legal_eligibility?: {
     outcome?: string | null
@@ -68,21 +51,6 @@ type Patch = Record<string, unknown>
 
 function stepOf(view: OperatorFactsView, key: string): Step | undefined {
   return view.steps.find((step) => step.key === key)
-}
-
-function workLabel(step: Step | undefined): string {
-  if (!step) return 'unknown'
-  if (step.operator_label) return step.operator_label
-  if (step.work_authorization_basis === 'not_required') return 'not_required'
-  if (step.work_authorization_basis === 'included_in_stay') return 'included_in_stay'
-  if (step.work_authorization_basis === 'separate_required' && step.procedure_type === 'work_permit_a') {
-    return 'work_permit'
-  }
-  if (step.work_authorization_basis === 'separate_required' && step.procedure_type === 'employer_declaration') {
-    return 'oswiadczenie'
-  }
-  if (step.stored === 'no' && !step.work_authorization_basis) return 'no_right'
-  return 'unknown'
 }
 
 export function OperatorFactsForm({
@@ -107,7 +75,7 @@ export function OperatorFactsForm({
   const stayCode = stay?.stored || ''
   const visaOpen = stayCode === 'visa_d' || stayCode === 'visa_c'
   const cardOpen = stayCode === 'karta_pobytu'
-  const selectedWork = workLabel(work)
+  const selectedWork = work?.operator_label && work.operator_label !== 'unknown' ? work.operator_label : 'unknown'
   const procedureOpen = selectedWork === 'work_permit' || selectedWork === 'oswiadczenie'
   const determined = view.citizenship_class === 'pl' || view.citizenship_class === 'eu_eea_ch'
   const licenceCountry = licence?.issuing_country || ''
@@ -138,7 +106,7 @@ export function OperatorFactsForm({
   )
   const choice = (
     value: string,
-    options: readonly (readonly [string, string])[],
+    options: readonly string[],
     onChange: (next: string) => void,
     testId: string,
     group: 'stay_option' | 'work_option',
@@ -151,9 +119,9 @@ export function OperatorFactsForm({
       onChange={(event) => onChange(event.target.value)}
     >
       <option value="unknown">{unknownLabel}</option>
-      {options.map(([code, label]) => (
+      {options.map((code) => (
         <option key={code} value={code}>
-          {t(`app.candidate_card.operator_facts.${group}.${code}`, { defaultValue: label })}
+          {t(`app.candidate_card.operator_facts.${group}.${code}`, { defaultValue: code })}
         </option>
       ))}
     </select>
@@ -209,7 +177,7 @@ export function OperatorFactsForm({
                   defaultValue: 'Na jakiej podstawie przebywa w Polsce?',
                 })}
               </div>
-              {choice(stayCode, STAY_CHOICES, (next) => onPatch({ stay_basis: next }), 'operator-facts-stay-input', 'stay_option')}
+              {choice(stayCode, view.stay_choices ?? [], (next) => onPatch({ stay_basis: next }), 'operator-facts-stay-input', 'stay_option')}
               {visaOpen ? (
                 <div data-testid="operator-facts-stay-parameters">
                   {field(
@@ -250,7 +218,7 @@ export function OperatorFactsForm({
                   t('app.candidate_card.operator_facts.work_question', {
                     defaultValue: 'Na jakiej podstawie może pracować?',
                   }),
-                  choice(selectedWork, WORK_CHOICES, (next) => onPatch({ work_label: next }), 'operator-facts-work-input', 'work_option'),
+                  choice(selectedWork, view.work_choices ?? [], (next) => onPatch({ work_label: next }), 'operator-facts-work-input', 'work_option'),
                   'operator-facts-work',
                 )}
                 {procedureOpen ? (

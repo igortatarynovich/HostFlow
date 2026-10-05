@@ -63,7 +63,7 @@ The operator's words are labels. The stored fact is the value already closed by 
 | Tachograph | presence, issuing country, validity | a professional fact. No evidence shape |
 | ADR | presence, issuing country, validity | a professional fact. No evidence shape |
 
-The country list is the platform country registry. This surface publishes no country list and no EU/EEA/Swiss list. The card token `eu_citizen` is not `citizenship_class`.
+The country list is the platform country registry. Citizenship class is computed from that registry. Stay choices and work labels are the `legal_eligibility.v1` vocabulary. The card renders the codes the view returns and translates them. This surface publishes no country list, no EU/EEA/Swiss list, and no second stay or work list. The card token `eu_citizen` is not `citizenship_class`.
 
 Chain `stay_basis` stays `not_required`, `visa_d`, `visa_c`, `karta_pobytu`, `visa_free`, `waiting_for_trc`, `special_protection`, `other`, `none`. This surface adds no value. `visa_d` is not pack token `visa`. `visa_c` is not `visa_d`. Empty card `stay_basis` (`''`) is not `none`, not `not_required`, not `visa_d`, and not `karta_pobytu`. `residence_permit_type` stays not a fact key.
 

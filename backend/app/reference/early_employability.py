@@ -19,6 +19,7 @@ from backend.app.reference.employment_accept_policy import (
     PACKAGE_AUTHORITATIVE_FIELD_CODES,
     assert_employment_missing_reuses_package,
 )
+from backend.app.reference.legal_eligibility_chain import eu_eea_ch_alpha2
 from backend.app.reference.ready_for_employment import (
     ACCEPTANCE_GATE_IDS,
     CONTRACT_ID as RFE_CONTRACT_ID,
@@ -46,10 +47,7 @@ DECISION_VALUES: Final[tuple[str, ...]] = (
 )
 
 # EU + EEA + CH — free-movement group for thin PL pathway uniqueness.
-EU_EEA_CH_ALPHA2: Final[frozenset[str]] = frozenset(
-    "AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE "
-    "IS LI NO CH".split()
-)
+EU_EEA_CH_ALPHA2: Final[frozenset[str]] = eu_eea_ch_alpha2()
 
 PATHWAY_PL_EU_EEA: Final[str] = "pl_eu_eea_free_movement"
 PATHWAY_PL_THIRD_COUNTRY: Final[str] = "pl_third_country_work_authorization"
