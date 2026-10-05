@@ -216,6 +216,8 @@ Three layers meet only in RPM. This canon is the first layer. The other two are 
 | Profession / vacancy | professional documents for the vacancy | not Legal Eligibility |
 | Work Authorization Procedure | what a submission requires | [opened](work-authorization-procedure-contract.md); this file does not define it |
 
+Requirement Resolution is not one of these layers. It consumes their definitions. [requirement-resolution-contract.md](requirement-resolution-contract.md) (`requirement_resolution.v1`) names which Employment requirement applies, which fact is missing when applicability cannot yet be resolved, and which accepted evidence variant may satisfy it. It does not define this chain and it assigns no evidence list.
+
 A profession preset belongs to the vacancy layer. A Driver CE preset may name a CE licence, Code 95, and a tachograph card, and a vacancy may add ADR. This canon does not write that preset.
 
 A procedure preset is country + procedure type + `kod zawodu`. The occupation code does not by itself list documents: the same driver can use different work-authorization procedures. Submission readiness, milestones, and a reason on each required document belong to that slice. RPM `r5_required_set` stays the only writer. This canon adds no preset, no milestone, and no second writer.

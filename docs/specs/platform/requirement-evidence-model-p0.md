@@ -17,6 +17,7 @@
 | [`document-type-model-standard.md`](../architecture/document-type-model-standard.md) | Document **type** = file schema + verification profile — not business requirement |
 | [`ADR-009`](../architecture/ADR-009-document-hub-platform-layer.md) | Document Instance storage |
 | [`handoff-contract.md`](../architecture/handoff-contract.md) | Exports requirement fulfillment, not document copies |
+| [`requirement-resolution-contract.md`](../architecture/requirement-resolution-contract.md) | Which Employment requirement applies, which fact is missing, which accepted evidence variant may satisfy it (`requirement_resolution.v1`). Not a source of requirements. Not the author of `r5_required_set` |
 
 ---
 

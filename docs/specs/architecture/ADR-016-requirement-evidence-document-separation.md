@@ -97,6 +97,7 @@ Phase 0–1 slot code remains valid **bridge** until `candidate_evidence` table 
 - Document Hub: [ADR-009](ADR-009-document-hub-platform-layer.md)  
 - Recruitment / HR boundary: [ADR-002](ADR-002-modular-recruitment-hr-boundary.md)  
 - Hiring walk disposition: [`hiring-acceptance-contract.md`](hiring-acceptance-contract.md) (`candidate_evidence_binds_document_link`)
+- Requirement resolution: [`requirement-resolution-contract.md`](requirement-resolution-contract.md) (`requirement_resolution.v1`). Which Employment requirement applies, which fact is missing, which accepted evidence variant may satisfy it. Not a source of requirements. Not the author of the required set.
 
 ## AI Agent Notes
 
