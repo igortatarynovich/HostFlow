@@ -116,6 +116,34 @@ def test_work_permit_and_oswiadczenie_project_onto_existing_values() -> None:
     assert refused["chain"]["valid_for_this_employment"] == "no"
     assert project_required_document_types(_UNCONDITIONAL, permit_facts, employment_id="emp-1").count("work_permit") == 0
 
+    dated, dated_facts = _view(
+        {
+            "work_label": "oswiadczenie",
+            "authorization_valid_from": "2026-03-01",
+            "authorization_valid_to": "2026-08-31",
+            "authorization_conditions": "kierowca CE",
+            "stay_valid_to": "2027-01-15",
+        },
+        base=base,
+    )
+    stored_decl = dated_facts["employments"]["emp-1"]
+    assert stored_decl["valid_from"] == "2026-03-01"
+    assert stored_decl["valid_to"] == "2026-08-31"
+    assert stored_decl["conditions"] == "kierowca CE"
+    assert dated_facts["stay_valid_to"] == "2027-01-15"
+    assert _step(dated, "work")["operator_label"] == "oswiadczenie"
+    assert "employer_declaration" == stored_decl["procedure_type"]
+
+    free, _ = _view({"work_label": "not_required"}, base=base)
+    assert free["chain"]["work_authorization_basis"] == "not_required"
+    assert free["chain"]["valid_for_this_employment"] == "yes"
+    assert _step(free, "work")["operator_label"] == "not_required"
+
+    missing, _ = _view({"work_label": "no_right"}, base=base)
+    assert missing["chain"]["work_authorization_basis"] is None
+    assert missing["chain"]["valid_for_this_employment"] == "no"
+    assert _step(missing, "work")["operator_label"] == "no_right"
+
 
 def test_ce_code95_unknown_country_asks_no_file_then_shared_or_separate() -> None:
     base = apply_operator_facts_patch(empty_facts(), {"citizenship": "PL"}, employment_id="emp-1")

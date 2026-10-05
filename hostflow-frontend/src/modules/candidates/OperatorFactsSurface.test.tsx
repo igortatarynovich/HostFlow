@@ -32,10 +32,12 @@ describe('OperatorFactsForm', () => {
     )
     expect(screen.getByTestId('operator-facts-driver')).toBeTruthy()
     expect(screen.getByTestId('operator-facts-work-rights')).toBeTruthy()
+    expect(screen.getByTestId('operator-facts-work-determined').textContent).toMatch(/nie są wymagane/i)
     expect(screen.getByTestId('operator-facts-citizenship')).toBeTruthy()
     expect(screen.queryByTestId('operator-facts-stay')).toBeNull()
     expect(screen.queryByTestId('operator-facts-work')).toBeNull()
-    expect(screen.getByTestId('operator-facts-uploads-empty')).toBeTruthy()
+    expect(screen.queryByTestId('operator-facts-licence-details')).toBeNull()
+    expect(screen.queryByText(/Legal Eligibility/i)).toBeNull()
   })
 
   it('opens stay for a third-country candidate and does not ask for a file', () => {
@@ -56,9 +58,11 @@ describe('OperatorFactsForm', () => {
         })}
       />,
     )
-    expect(screen.getByTestId('operator-facts-stay')).toBeTruthy()
+    expect(screen.getByTestId('operator-facts-stay').textContent).toMatch(/Na jakiej podstawie przebywa w Polsce/)
+    expect(screen.getByTestId('operator-facts-stay').textContent).toMatch(/Karta pobytu/)
     expect(screen.queryByTestId('operator-facts-work')).toBeNull()
-    expect(screen.getByTestId('operator-facts-evidence').textContent).toMatch(/No file/i)
+    expect(screen.queryByTestId('operator-facts-card-parameters')).toBeNull()
+    expect(screen.queryByText(/Stay basis/i)).toBeNull()
   })
 
   it('shows the work permit label for separate_required and work_permit_a', () => {
@@ -85,8 +89,11 @@ describe('OperatorFactsForm', () => {
       />,
     )
     expect((screen.getByTestId('operator-facts-work-input') as HTMLSelectElement).value).toBe('work_permit')
-    expect(screen.getByTestId('operator-facts-procedure').textContent).toMatch(/work_permit_a/)
-    expect(screen.getByTestId('operator-facts-legal-status').textContent).toMatch(/operator_verification/)
+    expect(screen.getByTestId('operator-facts-work').textContent).toMatch(/Na jakiej podstawie może pracować/)
+    expect(screen.getByTestId('operator-facts-work-parameters')).toBeTruthy()
+    expect(screen.getByTestId('operator-facts-card-parameters')).toBeTruthy()
+    expect(screen.queryByText(/employer_declaration/)).toBeNull()
+    expect(screen.queryByText(/Not valid for this employment/i)).toBeNull()
   })
 
   it('asks for shared evidence only after the issuing country is known', () => {
@@ -108,7 +115,8 @@ describe('OperatorFactsForm', () => {
         })}
       />,
     )
-    expect(screen.queryByTestId('operator-facts-uploads')).toBeNull()
+    expect(screen.queryByTestId('operator-facts-licence-details')).toBeNull()
+    expect(screen.queryByTestId('operator-facts-code95-details')).toBeNull()
 
     rerender(
       <OperatorFactsForm
@@ -119,7 +127,7 @@ describe('OperatorFactsForm', () => {
             { key: 'stay_basis', visible: false },
             { key: 'work', visible: false },
             { key: 'driving_licence', visible: true, issuing_country: 'PL', categories: ['CE'] },
-            { key: 'code95', visible: true, presence: null, evidence_shape: 'shared', asks_file: true },
+            { key: 'code95', visible: true, presence: true, evidence_shape: 'shared', asks_file: true },
             { key: 'tachograph', visible: true, presence: null },
             { key: 'adr', visible: true, presence: null },
           ],
@@ -133,7 +141,9 @@ describe('OperatorFactsForm', () => {
         })}
       />,
     )
-    expect(screen.getByTestId('operator-facts-evidence').textContent).toMatch(/Shared evidence/i)
-    expect(screen.getByTestId('operator-facts-uploads').textContent).toBe('driver_license_code95')
+    expect(screen.getByTestId('operator-facts-licence-details')).toBeTruthy()
+    expect(screen.getByTestId('operator-facts-code95-details').textContent).toMatch(/Gdzie potwierdzony/)
+    expect(screen.queryByText(/Separate evidence/i)).toBeNull()
+    expect(screen.queryByText(/driver_license_code95/)).toBeNull()
   })
 })

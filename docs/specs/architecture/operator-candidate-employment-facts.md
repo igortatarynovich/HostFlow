@@ -165,17 +165,21 @@ The driver facts are one sequence. The right to work for this Employment is the 
 ```text
 Dane i uprawnienia kierowcy
   Obywatelstwo
-  Podstawa pobytu          when the chain still shows stay
-  Prawo jazdy              issuing country, then category
-  Code 95
-  Karta kierowcy
-  ADR
+  Na jakiej podstawie przebywa w Polsce?    when the chain still shows stay
+    parameters of that stay                 visa type and purpose, or the card validity
 
-Prawo do pracy
-  Podstawa pracy
-  Typ procedury            the existing work-permit or oświadczenie label
-  Status Legal Eligibility the chain reading already recorded
+Prawo do pracy                              after stay no longer withholds it
+  Na jakiej podstawie może pracować?
+    parameters of that basis                dates and conditions of the permit or oświadczenie
+
+Uprawnienia kierowcy
+  Prawo jazdy              issuing country, then category, then validity
+  Code 95                  presence, then the licence country already recorded, then validity
+  Karta kierowcy           presence, then country, then validity
+  ADR                      presence, then country, then validity
 ```
+
+The procedure code and the Legal Eligibility outcome stay off this surface. The stored values are unchanged.
 
 Operator nie może być proszony o ponowny wybór faktu, który został już zapisany w innym miejscu. Każdy fakt ma jedno miejsce edycji; pozostałe powierzchnie mogą go wyłącznie odczytywać. Powiązane fakty kierowcy muszą być prezentowane razem, a nie rozproszone pomiędzy kartą kandydata, checklistą dokumentów i Legal Eligibility.
 
@@ -191,7 +195,7 @@ The live path is HTTP, then Postgres, then the candidate card. A fact is stored 
 
 Unknown stores nothing and asks no file. PL and EU/EEA/CH hide stay and work. A third-country chain is citizenship, then stay, then work. A work label projects onto `separate_required` with `work_permit_a` or `employer_declaration`. A legally significant change on Employment(preparing) runs `legal_eligibility.v1` and leaves Employment.state where it is. Driver documents wait until the issuing country is known, then use the accepted shared or separate evidence. A tachograph card and ADR stay facts and ask no file.
 
-On the candidate card each fact has one edit place. The driver sequence is citizenship, stay when the chain still shows it, the licence issuing country and category, Code 95, the tachograph card, and ADR. The right to work for this Employment is the neighboring block: the work basis, the procedure label already chosen, and the Legal Eligibility reading already recorded. The checklist is the consequence of those facts. It is not a second place that edits them.
+On the candidate card each fact has one edit place. The operator answers citizenship, then the stay question when the chain still shows it, then the parameters of that stay, then the work question and the parameters of that basis. Driver qualifications follow: the licence country, then the category and validity, then Code 95, the tachograph card, and ADR. The checklist is the consequence of those facts. It is not a second place that edits them. The procedure code and the Legal Eligibility outcome are not labels on this surface.
 
 One presentation note stays outside this close. The stage guard names `driver_license` where the checklist shows `driver_license_code95`. The canonical identity already maps that shared file onto `driver_license`, and the checklist path asks for `driver_license_code95`. A later change may align the stage text. It does not reopen this surface.
 

@@ -41,7 +41,9 @@ _WORK_LABELS = {
     "work_permit": ("separate_required", "work_permit_a"),
     "oswiadczenie": ("separate_required", "employer_declaration"),
     "included_in_stay": ("included_in_stay", None),
+    "not_required": ("not_required", None),
 }
+_PROCEDURE_LABELS = frozenset({"work_permit", "oswiadczenie"})
 _LICENCE_CATEGORIES = frozenset({"B", "C", "CE", "C1", "C1E", "D", "DE"})
 _LEVELS = frozenset({"REQUIRED", "PREFERRED", "NOT_REQUIRED"})
 
@@ -147,6 +149,9 @@ def _blank_work() -> dict[str, Any]:
         "work_authorization_basis": None,
         "procedure_type": None,
         "valid_no": False,
+        "valid_from": None,
+        "valid_to": None,
+        "conditions": None,
     }
 
 
@@ -156,6 +161,7 @@ def empty_facts() -> dict[str, Any]:
         "stay_basis": None,
         "visa_type": None,
         "visa_purpose": None,
+        "stay_valid_to": None,
         "work": _blank_work(),
         "employments": {},
         "licence_issuing_country": None,
@@ -190,6 +196,7 @@ def facts_from_personal_data(personal_data: Mapping[str, Any] | None) -> dict[st
         facts["stay_basis"] = stay
     facts["visa_type"] = _text(raw.get("visa_type"))
     facts["visa_purpose"] = _text(raw.get("visa_purpose"))
+    facts["stay_valid_to"] = _date_text(raw.get("stay_valid_to"))
     facts["work"] = _read_work(raw.get("work"))
     employments: dict[str, Any] = {}
     for key, value in _as_dict(raw.get("employments")).items():
@@ -223,12 +230,15 @@ def _read_work(value: Any) -> dict[str, Any]:
     raw = _as_dict(value)
     work = _blank_work()
     basis = _text(raw.get("work_authorization_basis"))
-    if basis in {"included_in_stay", "separate_required"}:
+    if basis in {"included_in_stay", "separate_required", "not_required"}:
         work["work_authorization_basis"] = basis
     procedure = _text(raw.get("procedure_type"))
     if procedure in {"work_permit_a", "employer_declaration"} and basis == "separate_required":
         work["procedure_type"] = procedure
     work["valid_no"] = raw.get("valid_no") is True or _text(raw.get("valid_for_this_employment")) == "no"
+    work["valid_from"] = _date_text(raw.get("valid_from"))
+    work["valid_to"] = _date_text(raw.get("valid_to"))
+    work["conditions"] = _text(raw.get("conditions"))
     return work
 
 
@@ -316,6 +326,7 @@ def apply_operator_facts_patch(
         nxt["stay_basis"] = None
         nxt["visa_type"] = None
         nxt["visa_purpose"] = None
+        nxt["stay_valid_to"] = None
         nxt["work"] = _blank_work()
         if employment_id:
             employments = dict(nxt["employments"])
@@ -330,11 +341,25 @@ def apply_operator_facts_patch(
                 if stay not in _STAY:
                     raise OperatorFactsRejected(f"stay_basis {stay} is not a chain value")
                 nxt["stay_basis"] = stay
+                if stay not in _STAY_NEEDS_PARAMETERS:
+                    nxt["visa_type"] = None
+                    nxt["visa_purpose"] = None
         if "visa_type" in patch:
             nxt["visa_type"] = None if _is_unknown(patch.get("visa_type")) else _text(patch.get("visa_type"))
         if "visa_purpose" in patch:
             nxt["visa_purpose"] = None if _is_unknown(patch.get("visa_purpose")) else _text(patch.get("visa_purpose"))
-        if "work_label" in patch or "valid_for_this_employment" in patch:
+        if "stay_valid_to" in patch:
+            nxt["stay_valid_to"] = None if _is_unknown(patch.get("stay_valid_to")) else _date_text(patch.get("stay_valid_to"))
+        if any(
+            key in patch
+            for key in (
+                "work_label",
+                "valid_for_this_employment",
+                "authorization_valid_from",
+                "authorization_valid_to",
+                "authorization_conditions",
+            )
+        ):
             _apply_work_patch(nxt, patch, employment_id)
     if "licence_issuing_country" in patch:
         _assign_country(nxt, "licence_issuing_country", patch.get("licence_issuing_country"))
@@ -368,6 +393,24 @@ def apply_operator_facts_patch(
     return nxt
 
 
+def operator_work_label(work: Mapping[str, Any]) -> str | None:
+    """The operator's choice. A stored procedure code is not this label."""
+
+    basis = work.get("work_authorization_basis")
+    if work.get("valid_no") and basis not in {"included_in_stay", "separate_required"}:
+        return "no_right"
+    if basis == "not_required":
+        return "not_required"
+    if basis == "included_in_stay":
+        return "included_in_stay"
+    procedure = work.get("procedure_type")
+    if basis == "separate_required" and procedure == "work_permit_a":
+        return "work_permit"
+    if basis == "separate_required" and procedure == "employer_declaration":
+        return "oswiadczenie"
+    return None
+
+
 def _apply_work_patch(facts: dict[str, Any], patch: Mapping[str, Any], employment_id: str | None) -> None:
     current = _work_for(facts, employment_id)
     if "work_label" in patch:
@@ -376,14 +419,22 @@ def _apply_work_patch(facts: dict[str, Any], patch: Mapping[str, Any], employmen
             current = _blank_work()
         else:
             key = str(label).strip()
-            if key not in _WORK_LABELS:
+            if key == "no_right":
+                current = _blank_work()
+                current["valid_no"] = True
+            elif key not in _WORK_LABELS:
                 raise OperatorFactsRejected(f"work label {key} is not a projection")
-            basis, procedure = _WORK_LABELS[key]
-            current = {
-                "work_authorization_basis": basis,
-                "procedure_type": procedure,
-                "valid_no": current.get("valid_no") is True,
-            }
+            else:
+                basis, procedure = _WORK_LABELS[key]
+                kept = current if key in _PROCEDURE_LABELS else _blank_work()
+                current = {
+                    "work_authorization_basis": basis,
+                    "procedure_type": procedure,
+                    "valid_no": False,
+                    "valid_from": kept.get("valid_from"),
+                    "valid_to": kept.get("valid_to"),
+                    "conditions": kept.get("conditions"),
+                }
     if "valid_for_this_employment" in patch:
         raw = patch.get("valid_for_this_employment")
         if _is_unknown(raw) or not _text(raw):
@@ -392,6 +443,15 @@ def _apply_work_patch(facts: dict[str, Any], patch: Mapping[str, Any], employmen
             current["valid_no"] = True
         else:
             raise OperatorFactsRejected("valid_for_this_employment accepts only no or unknown")
+    if "authorization_valid_from" in patch:
+        raw = patch.get("authorization_valid_from")
+        current["valid_from"] = None if _is_unknown(raw) else _date_text(raw)
+    if "authorization_valid_to" in patch:
+        raw = patch.get("authorization_valid_to")
+        current["valid_to"] = None if _is_unknown(raw) else _date_text(raw)
+    if "authorization_conditions" in patch:
+        raw = patch.get("authorization_conditions")
+        current["conditions"] = None if _is_unknown(raw) else _text(raw)
     if employment_id:
         employments = dict(facts.get("employments") or {})
         employments[employment_id] = current
@@ -437,6 +497,20 @@ def chain_reading(facts: Mapping[str, Any], *, employment_id: str | None = None)
         }
     work = _work_for(facts, employment_id)
     basis = work.get("work_authorization_basis")
+    if work.get("valid_no") and basis not in {"included_in_stay", "separate_required"}:
+        return {
+            "citizenship_class": klass,
+            "stay_basis": stay,
+            "work_authorization_basis": None,
+            "valid_for_this_employment": "no",
+        }
+    if basis == "not_required":
+        return {
+            "citizenship_class": klass,
+            "stay_basis": stay,
+            "work_authorization_basis": "not_required",
+            "valid_for_this_employment": "yes",
+        }
     if basis not in {"included_in_stay", "separate_required"}:
         return {
             "citizenship_class": klass,
@@ -585,7 +659,12 @@ def build_operator_facts_view(
     ce = resolve_ce_code95(facts, today=today)
     steps = [
         {"key": "citizenship", "visible": True, "stored": facts.get("citizenship")},
-        {"key": "stay_basis", "visible": stay_visible, "stored": facts.get("stay_basis") if stay_visible else None},
+        {
+            "key": "stay_basis",
+            "visible": stay_visible,
+            "stored": facts.get("stay_basis") if stay_visible else None,
+            "valid_to": facts.get("stay_valid_to") if stay_visible else None,
+        },
         {
             "key": "stay_parameters",
             "visible": parameters_visible,
@@ -595,8 +674,12 @@ def build_operator_facts_view(
         {
             "key": "work",
             "visible": work_visible,
+            "operator_label": operator_work_label(work) if work_visible else None,
             "work_authorization_basis": chain.get("work_authorization_basis") if work_visible else None,
             "procedure_type": work.get("procedure_type") if work_visible else None,
+            "valid_from": work.get("valid_from") if work_visible else None,
+            "valid_to": work.get("valid_to") if work_visible else None,
+            "conditions": work.get("conditions") if work_visible else None,
         },
         {
             "key": "valid_for_this_employment",
@@ -828,6 +911,7 @@ def personal_data_with_facts(
         "stay_basis": facts.get("stay_basis"),
         "visa_type": facts.get("visa_type"),
         "visa_purpose": facts.get("visa_purpose"),
+        "stay_valid_to": facts.get("stay_valid_to"),
         "work": facts.get("work") or _blank_work(),
         "employments": facts.get("employments") or {},
         "licence_issuing_country": facts.get("licence_issuing_country"),
