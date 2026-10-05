@@ -1,12 +1,12 @@
 # HR operator flow — driver on one Employment
 
-**Status:** operator reading. Gates are not amended. No screen. No runtime. No preset row.  
+**Status:** operator reading. The employee page `#hr-verification` is the HR Driver Operator Surface. No preset row.  
 **Date:** 2026-10-05  
 **Parents:** [Legal Eligibility](../architecture/legal-eligibility-contract.md) (`legal_eligibility.v1`) · [Employee Record & Employment Lifecycle](../architecture/employee-record-employment-lifecycle-contract.md) · [Work Authorization Procedure](../architecture/work-authorization-procedure-contract.md) (`work_authorization_procedure.v1`)
 
 > The card answers facts. A document is the evidence of a fact. A checklist of files is not the spine of the card.  
 > The driver rows below are one reading of applicability. They are not a list for every employee, and they are not a policy preset.  
-> This file does not change `#hr-verification`. HostFlow v1 is not release-ready.
+> `#hr-verification` is the HR Driver Operator Surface for one `Employment(preparing)`. HostFlow v1 is not release-ready.
 
 ---
 
@@ -139,6 +139,12 @@ The intended start date and the work system are terms of `employment_terms.v1`. 
 
 `#hr-verification` is not this amendment.
 
+## HR Driver Operator Surface
+
+The employee page `#hr-verification` assembles the owners in the table above for one Employment. Compact rows stay visible together. A blocked earlier gate does not hide a later fact. One next action is the open working step, and its order comes from the prerequisites of this case. Ready to Start is the four existing readings. After a current pass, Start employment calls `activate_employment`.
+
+The surface does not add a driver-card store, an Employment status, a second legal model, or a document list for the screen.
+
 ## Out of this reading
 
-No schema. No runtime. No seed of driver requirements. No Polish document list. No change to `r5_required_set`. The Legal Eligibility Matrix Gate is not passed. Work Authorization Procedure gains no preset. Ready to Start gains no input. `#hr-verification` stays as it is.
+No seed of driver requirements. No Polish document list. No change to `r5_required_set`. The Legal Eligibility Matrix Gate is not passed. Work Authorization Procedure gains no preset. Ready to Start gains no input.

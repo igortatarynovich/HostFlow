@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.hr_employment import Employment
+from backend.app.models.hr_employment_terms import HrEmploymentTerms
 from backend.app.models.hr_legal_eligibility_gate import HrLegalEligibilityGateDecision
 
 POLICY_ID = "legal_eligibility.v1"
@@ -173,6 +174,14 @@ def evaluate_hr_legal_eligibility_gate(
     )
 
 
+def checkpoint_planned_start(employment: Employment, intended_start: date | None) -> date | None:
+    """The plan while preparing. ``started_on`` is the actual start and stays empty until then."""
+
+    if employment.started_on is not None:
+        return employment.started_on
+    return intended_start
+
+
 def decision_is_current(
     decision: HrLegalEligibilityGateDecision,
     *,
@@ -223,13 +232,26 @@ async def record_hr_legal_eligibility_gate(
     actor = str(actor_user_id or "").strip()
     if not actor:
         raise ValueError("actor_user_id is required")
+    current_terms = (
+        await db.scalars(
+            select(HrEmploymentTerms).where(
+                HrEmploymentTerms.tenant_id == str(tenant_id).strip(),
+                HrEmploymentTerms.employment_id == str(employment.id),
+                HrEmploymentTerms.is_current.is_(True),
+            )
+        )
+    ).one_or_none()
+    planned = checkpoint_planned_start(
+        employment,
+        current_terms.intended_start_date if current_terms is not None else None,
+    )
     state_before = employment.state
     result = evaluate_hr_legal_eligibility_gate(
         employment_state=state_before,
         reading=reading,
         client_company_id=employment.client_company_id,
         vacancy_id=employment.vacancy_id,
-        planned_start=employment.started_on,
+        planned_start=planned,
     )
     if employment.state != state_before:
         raise RuntimeError("HR Legal Eligibility Gate must not change Employment.state")
@@ -248,7 +270,7 @@ async def record_hr_legal_eligibility_gate(
             valid_for_this_employment=result.chain["valid_for_this_employment"],
             client_company_id=result.employment_context["client_company_id"],
             vacancy_id=result.employment_context["vacancy_id"],
-            planned_start=employment.started_on if result.employment_context["planned_start"] else None,
+            planned_start=planned if result.employment_context["planned_start"] else None,
             fingerprint=result.fingerprint,
             actor_user_id=actor,
             decided_at=when,

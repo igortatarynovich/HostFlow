@@ -244,9 +244,10 @@ def test_d8_shell_sections_not_collapsed() -> None:
     assert "documents" in consumer
     assert sections != consumer
     page = _PAGE.read_text(encoding="utf-8")
-    assert "EmployeeDossierView" in page
-    assert "PayrollSection" in page
-    assert "ZusSection" in page
+    assert "HrDriverOperatorSurface" in page
+    assert "EmployeeDossierView" not in page
+    assert "PayrollSection" not in page
+    assert "ZusSection" not in page
     docs = _DOCS_SECTION.read_text(encoding="utf-8")
     assert "hr-employee-linked-documents" in docs
 
