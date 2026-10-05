@@ -72,6 +72,8 @@ import {
   isProbablyHtmlBlob,
   computeTodayIso,
   normalizeDocTypeCode,
+  documentTypeMatchesRequiredSet,
+  isSyntheticDocumentId,
   coverageKeysForStoredDocType,
   prefersCombinedLicenseUpload,
   isPlainLicenseWithoutCode95,
@@ -611,6 +613,23 @@ export default function CandidateDocuments({
         displayTypes = Array.from(merged.values());
       }
 
+      const checklistPayload = summaryResp?.checklist ?? summaryResp?.summary?.checklist ?? null;
+      const projectedRequired = Array.isArray(checklistPayload?.requiredTypes)
+        ? checklistPayload.requiredTypes.map((item: unknown) => String(item))
+        : null;
+      if (projectedRequired) {
+        const byNorm = new Map(allTypes.map((type) => [normalizeDocTypeCode(type.code), type] as const));
+        const nextTypes: DocType[] = [];
+        const seen = new Set<string>();
+        projectedRequired.forEach((code) => {
+          const hit = byNorm.get(normalizeDocTypeCode(code));
+          if (!hit || seen.has(hit.code)) return;
+          seen.add(hit.code);
+          nextTypes.push(hit);
+        });
+        displayTypes = nextTypes;
+      }
+
       setDocTypes(displayTypes);
       setSummaryResponse(summaryResp);
       const summaryDocsRaw = Array.isArray(summaryResp?.documents)
@@ -618,12 +637,17 @@ export default function CandidateDocuments({
         : [];
       const docsListRaw = Array.isArray(docsResp) ? docsResp : [];
       const displayTypeCodes = new Set(displayTypes.map((type) => normalizeDocTypeCode(type.code)));
-      const summaryDocs = profileFilterActive
-        ? summaryDocsRaw.filter((doc) => displayTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type)))
-        : summaryDocsRaw;
-      const docsList = profileFilterActive
-        ? docsListRaw.filter((doc) => displayTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type)))
-        : docsListRaw;
+      const keepListedDocument = (doc: Document) => {
+        if (projectedRequired) {
+          if (isSyntheticDocumentId(doc.id)) {
+            return documentTypeMatchesRequiredSet(doc.type_code || doc.doc_type, projectedRequired);
+          }
+          return true;
+        }
+        return !profileFilterActive || displayTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type));
+      };
+      const summaryDocs = summaryDocsRaw.filter(keepListedDocument);
+      const docsList = docsListRaw.filter(keepListedDocument);
       
       // Объединяем реальные документы и синтетические из summary
       // summaryDocs содержит все документы включая синтетические (missing) с fillMissing: true

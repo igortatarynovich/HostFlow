@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   coverageKeysForStoredDocType,
+  documentTypeMatchesRequiredSet,
   normalizeDocTypeCode,
   persistRecruitmentDocType,
   prefersCombinedLicenseUpload,
@@ -18,5 +19,12 @@ describe('combined EU license document type', () => {
     expect(keys).toEqual(expect.arrayContaining(['driver_license', 'code95', 'driver_qualification_card']))
     expect(prefersCombinedLicenseUpload(['driver_license', 'code95'])).toBe(true)
     expect(prefersCombinedLicenseUpload(['passport'])).toBe(false)
+  })
+
+  it('keeps a slot only when the projected required set names it', () => {
+    expect(documentTypeMatchesRequiredSet('visa', ['passport'])).toBe(false)
+    expect(documentTypeMatchesRequiredSet('residence_permit', ['passport', 'driver_license_code95'])).toBe(false)
+    expect(documentTypeMatchesRequiredSet('driver_license_code95', ['passport', 'driver_license_code95'])).toBe(true)
+    expect(documentTypeMatchesRequiredSet('work_permit', [])).toBe(false)
   })
 })
