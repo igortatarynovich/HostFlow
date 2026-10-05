@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { OperatorFactsForm, type OperatorFactsView } from './OperatorFactsSurface'
 
 function view(partial: Partial<OperatorFactsView> & Pick<OperatorFactsView, 'steps'>): OperatorFactsView {
@@ -65,6 +65,32 @@ describe('OperatorFactsForm', () => {
     expect(screen.queryByTestId('operator-facts-work')).toBeNull()
     expect(screen.queryByTestId('operator-facts-card-parameters')).toBeNull()
     expect(screen.queryByText(/Stay basis/i)).toBeNull()
+  })
+
+  it('keeps a partial card date and saves only a complete one', () => {
+    const onPatch = vi.fn()
+    render(
+      <OperatorFactsForm
+        countries={[{ value: 'PL', label: 'Polska' }, { value: 'BY', label: 'Białoruś' }]}
+        onPatch={onPatch}
+        view={view({
+          steps: [
+            { key: 'citizenship', visible: true, stored: 'BY' },
+            { key: 'stay_basis', visible: true, stored: 'karta_pobytu', valid_to: null },
+            { key: 'work', visible: true, operator_label: 'unknown' },
+            { key: 'driving_licence', visible: true, issuing_country: null, categories: [] },
+            { key: 'code95', visible: true, presence: null },
+            { key: 'tachograph', visible: true, presence: null },
+            { key: 'adr', visible: true, presence: null },
+          ],
+        })}
+      />,
+    )
+    const input = screen.getByTestId('operator-facts-stay-valid-to') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '' } })
+    expect(onPatch).not.toHaveBeenCalled()
+    fireEvent.change(input, { target: { value: '2027-01-15' } })
+    expect(onPatch).toHaveBeenCalledWith({ stay_valid_to: '2027-01-15' })
   })
 
   it('shows the work permit label for separate_required and work_permit_a', () => {
