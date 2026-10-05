@@ -6,6 +6,22 @@
 **Does not reopen:** [`forms.public_contract.v1`](../architecture/forms-public-contract.md), Field Catalog v1, C1–C6 Foundation, Mapping Authority program  
 **Does not schedule:** [FP-1…FP-5](../tasks/external-intake-forms-publish.md)
 
+Граница на 2026-09-22:
+
+| Инструмент | Состояние |
+|------------|-----------|
+| [Forms Operator Product Contract](../architecture/forms-operator-product-contract.md) | **Proposed / freeze-ready** |
+| Contract Completeness Review | **PASS** |
+| Contract Freeze | **NOT YET SET** |
+| Этот gate | **OPEN** |
+| Замер F-01…F-16 | **не перемерялся:** 0 PASS / 8 PARTIAL / 7 GAP / 1 OPEN |
+
+Дополнение контракта в тот же день (права, запись формы, окно приёма, экран успеха, файлы, спам, доступность, счётчики, смена компании) продукт не улучшило и матрицу ниже не меняет. Новые строки не добавлялись.
+
+Отсутствие многошагового мастера, черновика респондента, отдельной приёмки внутренней формы, выгрузки ответов и стирания человека не блокирует будущий PASS этого gate: они вне freeze.
+
+После freeze следующее действие — декомпозиция реализации по замороженному контракту, не новый архитектурный аудит. До freeze F-01…F-16 не закрываются.
+
 ---
 
 ## Verdict

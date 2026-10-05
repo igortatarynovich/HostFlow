@@ -22,6 +22,7 @@ import HrContractPreviewPanel from '../../components/hr/HrContractPreviewPanel'
 import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompact'
 import { EmployeeDossierView } from '../../components/hr/EmployeeDossierView'
 import { HrEmployeeRecordSurface } from '../../components/hr/HrEmployeeRecordSurface'
+import { EmploymentPathPanel } from '../../components/hr/EmploymentPathPanel'
 import { countVerifiedDocuments, documentsFromPanel } from '../../components/hr/hrDocumentVerificationFields'
 import { isEmploymentCaseWorkspace } from '../../utils/hrEmploymentCaseMode'
 import { HrEmployeeCommunicationSlot } from './HrEmployeeCommunicationSlot'
@@ -286,6 +287,11 @@ export default function HrEmployeeDetailPage() {
           kind="browse"
         />
         </div>
+        {employeeId ? (
+          <div className="mt-4">
+            <EmploymentPathPanel employeeId={employeeId} />
+          </div>
+        ) : null}
 
         <div
           className={

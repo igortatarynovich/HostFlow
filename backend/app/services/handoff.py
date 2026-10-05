@@ -649,16 +649,15 @@ async def create_handoff(
     if pkg_err:
         return None, pkg_err
 
-    link = await get_tenant_link(
-        db,
-        agency_tenant_id=agency_tenant_id,
-        client_company_id=client_company_id,
-        client_tenant_id=client_tenant_id,
-    )
-    if not link or not link.get_handoff_enabled():
-        return None, "Handoff not enabled for this client"
-    if dest == "internal_hr" and not link.get_handoff_to_internal_hr():
-        return None, "Internal HR handoff is not enabled for this client link"
+    if dest != "internal_hr":
+        link = await get_tenant_link(
+            db,
+            agency_tenant_id=agency_tenant_id,
+            client_company_id=client_company_id,
+            client_tenant_id=client_tenant_id,
+        )
+        if not link or not link.get_handoff_enabled():
+            return None, "Handoff not enabled for this client"
 
     existing = await get_pending_handoff(
         db, candidate_id, client_company_id=client_company_id, client_tenant_id=client_tenant_id

@@ -136,4 +136,13 @@ async def approve_employment_for_handoff(
         await sync_auto_tasks_after_employee_created(db, tid, emp.id)
 
     review = await approve_hr_review_record(db, tenant_id=tid, review=review, employee=emp, actor_user_id=actor_user_id)
+    from backend.app.services.employment_runtime import open_preparing_employment_for_accepted_handoff
+
+    await open_preparing_employment_for_accepted_handoff(
+        db,
+        tenant_id=tid,
+        handoff=handoff,
+        candidate=cand,
+        employee=emp,
+    )
     return emp, review

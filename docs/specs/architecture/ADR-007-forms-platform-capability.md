@@ -121,3 +121,5 @@ Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Autom
 - 2026-08-13: Product Track → Phase C C1 contract seal ([`../tasks/forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md)); P3–P5 remain locked.  
 - 2026-08-13: Next after C1 = C2 Runtime Contract ([`../tasks/forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md)); Builder locked until C2 feat.
 - 2026-09-22: Операторский продукт вынесен в [`forms-operator-product-contract.md`](forms-operator-product-contract.md). Приёмка [`../gates/forms-operator-product-acceptance.md`](../gates/forms-operator-product-acceptance.md) — **OPEN**. ADR-007, Public Contract и Field Catalog не менялись.
+- 2026-09-22: Контракт дополнен правами, жизненным циклом записи, окном приёма и границами уведомлений. Проверка полноты: спецификация готова к freeze, статус остаётся Proposed. F-01…F-16 не расширялись.
+- 2026-09-22: Contract Completeness Review **PASS**. Contract Freeze **NOT YET SET**. Приёмка остаётся OPEN на прежнем замере. Следующий шаг после freeze — декомпозиция реализации, не новый аудит.

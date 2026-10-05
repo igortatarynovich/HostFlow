@@ -3171,7 +3171,44 @@ export default function CandidateCard(){
     primaryHandoffDestination,
   ])
 
+  const showTransferToHr = useMemo(() => {
+    if (isNew || model?.masked === true || isClientTenant) return false
+    if (!can('candidates.manage')) return false
+    const stage = String(model?.stage || '').trim().toLowerCase()
+    if (stage !== 'ready_for_handoff' && stage !== 'ready_for_hr') return false
+    if (!String(model?.company_id || '').trim()) return false
+    const pendingDest = String(handoffStatus?.pending?.destination || '')
+    const acceptedDest = String(handoffStatus?.accepted?.destination || '')
+    return pendingDest !== 'internal_hr' && acceptedDest !== 'internal_hr'
+  }, [can, handoffStatus?.accepted?.destination, handoffStatus?.pending?.destination, isClientTenant, isNew, model?.company_id, model?.masked, model?.stage])
+
   const handoffActiveBlock = Boolean(handoffStatus?.pending || handoffStatus?.accepted)
+
+  const handleTransferToHr = useCallback(async () => {
+    const cid = String(model?.company_id || '').trim()
+    if (!model?.id || !cid) return
+    try {
+      setHandoffSubmitting(true)
+      await createHandoff(model.id as UUID, { client_company_id: cid, destination: 'internal_hr' })
+      await refreshHandoffMeta()
+      await handleAttemptCreated()
+      notify({
+        title: t('app.candidate_card.handoff.created_internal', { defaultValue: 'Передано в HR' }),
+        variant: 'success',
+      })
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail
+      const title =
+        typeof detail === 'string'
+          ? detail
+          : typeof detail === 'object' && detail && typeof detail.message === 'string'
+            ? detail.message
+            : e?.message || t('app.common.messages.unexpected')
+      notify({ title, variant: 'error' })
+    } finally {
+      setHandoffSubmitting(false)
+    }
+  }, [handleAttemptCreated, model?.company_id, model?.id, notify, refreshHandoffMeta, t])
 
   const handleHandoffCreate = useCallback(async () => {
     if (!model?.id || !primaryHandoffDestination) return
@@ -4579,8 +4616,9 @@ export default function CandidateCard(){
             ? () => setHandoffModalOpen(true)
             : undefined
         }
+        onOpenHrTransfer={showTransferToHr ? () => void handleTransferToHr() : undefined}
         handoffReadonlyText={showAgencyHandoffHeader ? handoffReadonlySummary : null}
-        handoffDisabled={handoffLoading}
+        handoffDisabled={handoffLoading || handoffSubmitting}
         handoffDisabledTitle={handoffLoading ? t('common.loading') : null}
         handoffLabel={handoffPrimaryActionLabel}
         onDeleteRequest={handleDeleteRequest}
