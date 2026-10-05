@@ -1272,6 +1272,7 @@ async def start_hr_driver_employment(
 
 class HrEmployeeRecordOut(BaseModel):
     employee_id: str
+    candidate_id: Optional[str] = None
     employment_id: Optional[str] = None
     state: Optional[str] = None
     header: dict[str, Any]

@@ -1,4 +1,9 @@
-"""Employee Record routes existing facts. It does not store them."""
+"""Employee Record routes existing facts. It does not store them.
+
+The browser walk is not PASS. Citizenship is the reference pattern.
+"""
+
+from pathlib import Path
 
 from backend.app.services.hr_employee_record_surface import (
     GROUP_ORDER,
@@ -55,6 +60,29 @@ def _projected(**overrides):
     }
     payload.update(overrides)
     return project_employee_record(**payload)
+
+
+def test_surface_e2e_is_not_pass() -> None:
+    brief = Path(__file__).resolve().parents[3] / "docs" / "specs" / "tasks" / "employee-record-employment-lifecycle.md"
+    current = brief.read_text(encoding="utf-8").split("## History", 1)[0]
+    assert "The E2E is not PASS." in current
+    assert (
+        "One write, one canonical value, multiple projections, "
+        "dependent decision invalidation, without synchronization."
+    ) in current
+    assert "Citizenship is the reference pattern." in current
+    assert "A later fact does not open its own architecture." in current
+
+
+def test_returned_case_does_not_ask_hr_to_keep_verifying() -> None:
+    projected = _projected(employee_status="returned_to_recruitment", employment_state="ended")
+    action = projected["current_process"]["next_action"]
+    assert action["code"] == "returned_to_recruitment"
+    assert action["title"] == "Returned to recruitment"
+    assert action["reason"] == "Waiting for Recruitment update"
+    assert projected["current_process"]["destination"] == "recruitment"
+    assert projected["current_process"]["target_row_id"] is None
+    assert "Verify" not in action["title"]
 
 
 def test_groups_follow_the_assigned_hierarchy() -> None:

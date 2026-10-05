@@ -1602,12 +1602,14 @@ export type HrEmployeeRecordGroup = {
 
 export type HrEmployeeRecordSurface = {
   employee_id: string
+  candidate_id: string | null
   employment_id: string | null
   state: string | null
   header: HrDriverOperatorSurface['header']
   current_process: {
     next_action: HrDriverOperatorSurface['next_action']
     target_row_id: string | null
+    destination: 'recruitment' | null
   }
   groups: HrEmployeeRecordGroup[]
 }

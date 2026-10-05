@@ -57,6 +57,9 @@ def apply_citizenship(personal: dict[str, Any] | None, value: str) -> dict[str, 
     return merged
 
 
+_RETURNED = frozenset({"returned_to_recruitment", "returned"})
+
+
 def project_employee_record(
     *,
     identity: dict[str, Any],
@@ -74,6 +77,8 @@ def project_employee_record(
     actual_start: str | None,
     zus_status: str | None,
     next_action: dict[str, Any] | None,
+    employee_status: str | None = None,
+    employment_state: str | None = None,
 ) -> dict[str, Any]:
     person = personal or {}
     rows: list[dict[str, Any]] = []
@@ -83,13 +88,7 @@ def project_employee_record(
     rows.extend(_employment_rows(terms, employer, client_name, actual_start))
     rows.extend(_formality_rows(zus_status))
     rows.append(
-        _row(
-            "dokumenty.access",
-            "Dokumenty",
-            None,
-            "canonical",
-            "document objects",
-        )
+        _row("dokumenty.access", "Dokumenty", None, "missing")
     )
     by_id = {row["id"]: row for row in rows}
     groups = []
@@ -105,10 +104,41 @@ def project_employee_record(
         )
     return {
         "groups": groups,
-        "current_process": {
-            "next_action": next_action,
-            "target_row_id": _target_row_id(next_action, by_id),
-        },
+        "current_process": _current_process(
+            next_action,
+            by_id,
+            employee_status=employee_status,
+            employment_state=employment_state,
+        ),
+    }
+
+
+def _current_process(
+    next_action: dict[str, Any] | None,
+    rows: dict[str, dict[str, Any]],
+    *,
+    employee_status: str | None,
+    employment_state: str | None,
+) -> dict[str, Any]:
+    status = str(employee_status or "").strip().lower()
+    if status in _RETURNED:
+        return {
+            "next_action": {
+                "code": "returned_to_recruitment",
+                "focus": "recruitment",
+                "fact_key": "",
+                "title": "Returned to recruitment",
+                "reason": "Waiting for Recruitment update",
+            },
+            "target_row_id": None,
+            "destination": "recruitment",
+        }
+    if str(employment_state or "").strip().lower() == "ended":
+        return {"next_action": None, "target_row_id": None, "destination": None}
+    return {
+        "next_action": next_action,
+        "target_row_id": _target_row_id(next_action, rows),
+        "destination": None,
     }
 
 
@@ -389,9 +419,12 @@ async def build_hr_employee_record_surface(
         actual_start=actual_start,
         zus_status=zus_status,
         next_action=driver.get("next_action"),
+        employee_status=employee.status,
+        employment_state=driver.get("state"),
     )
     return {
         "employee_id": str(employee.id),
+        "candidate_id": str(employee.candidate_id) if employee.candidate_id else None,
         "employment_id": driver.get("employment_id"),
         "state": driver.get("state"),
         "header": driver.get("header") or {},

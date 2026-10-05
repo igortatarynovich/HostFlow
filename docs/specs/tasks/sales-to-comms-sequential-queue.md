@@ -680,6 +680,8 @@ Next branch only after:
 ---
 
 ## 8. History
+- 2026-10-05: **Employee Page Cleanup.** The employee page keeps the header, Current Process, and the eight groups. Legacy verification is not rendered there. No new schema. The E2E is not PASS.
+- 2026-10-05: **HR Employee Record Surface code closed.** The E2E is not PASS until one citizenship write is seen by HR and Recruitment and stales the dependent Legal Eligibility decision.
 - 2026-10-05: **HR Employee Record Surface.** The employee page shows the assigned hierarchy and one next action. No new fact store.
 - 2026-10-05: **HR Employee Record Projection Contract Gate PASS.** The HR hierarchy is assigned. Employee Record and Current Process are two views of the same facts. The screen is not rebuilt.
 - 2026-10-05: **HR Employee Record Projection opened.** One fact may be a Recruitment decision step and an HR employee-record group. Neither projection owns the fact. The Contract Gate is not passed. Not the Legal Eligibility vertical. `#hr-verification` is not rewritten.

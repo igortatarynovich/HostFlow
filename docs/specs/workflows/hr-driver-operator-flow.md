@@ -145,7 +145,7 @@ The employee page `#hr-verification` assembles the owners in the table above for
 
 The surface does not add a driver-card store, an Employment status, a second legal model, or a document list for the screen. It is a projection. Authority over the same facts is [Canonical Fact Authority](../architecture/canonical-fact-authority-contract.md). Canonical Fact Authority Contract Gate **PASS**. That contract does not assign a capability and does not rewrite this surface.
 
-`#hr-verification` is Current Process. It answers what to do now and shows one next action from this flow. Open moves to the matching row of the Employee Record. [HR Employee Record Projection](../architecture/hr-employee-record-projection.md) Contract Gate **PASS** assigns the eight groups that answer what is known. The page reads those groups from the existing owners. It does not store them, and it does not place the old verification blocks inside the groups.
+The employee page renders three levels: the header, Current Process, and the Employee Record. [HR Employee Record Projection](../architecture/hr-employee-record-projection.md) Contract Gate **PASS** assigns the eight groups. Current Process is one next action. When the case is returned to Recruitment, that action opens the recruitment case and does not ask HR to keep verifying. Legacy verification, checklists, and debug projections are not rendered on this page. The page does not store a fact.
 
 ## Out of this reading
 

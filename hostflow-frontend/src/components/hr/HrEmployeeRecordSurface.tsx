@@ -1,13 +1,30 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   getHrEmployeeRecordSurface,
   updateHrEmployeeRecordCitizenship,
-  type HrEmployeeRecordGroup,
-  type HrEmployeeRecordRow,
   type HrEmployeeRecordSurface,
-  type WorkforceTimelineEvent,
 } from '../../api/workforce'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useI18n } from '../../i18n'
+import { getRegionDisplayName } from '../../utils/catalogLocale'
+
+const HIDDEN_STATUS = new Set(['recorded', 'missing', 'canonical', 'process'])
+const VALUE_LABELS: Record<string, string> = {
+  karta_pobytu: 'Residence card',
+  visa_d: 'Visa D',
+  visa_c: 'Visa C',
+  visa_free: 'Visa-free',
+  waiting_for_trc: 'Waiting for a residence card',
+  special_protection: 'Special protection',
+  none: '—',
+  separate_required: 'Separate authorization',
+  included_in_stay: 'Included in the stay',
+  not_required: 'Not required',
+  operator_verification: 'Needs verification',
+  yes: 'Yes',
+  no: '—',
+}
 
 function formatDay(iso: string | null | undefined): string {
   if (!iso) return '—'
@@ -23,32 +40,42 @@ function stateLabel(state: string | null): string {
   return 'No employment'
 }
 
-function withTimeline(groups: HrEmployeeRecordGroup[], timeline: WorkforceTimelineEvent[]): HrEmployeeRecordGroup[] {
-  return groups.map((group) => {
-    if (group.id !== 'historia') return group
-    const rows: HrEmployeeRecordRow[] = timeline.slice(0, 8).map((event) => ({
-      id: `historia.${event.id}`,
-      group: 'historia',
-      label: event.title,
-      value: event.kind || null,
-      status: 'process',
-      evidence: null,
-      actions: [],
-    }))
-    return { ...group, rows, empty: rows.length ? null : group.empty }
-  })
+function looksTechnical(value: string): boolean {
+  const trimmed = value.trim()
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return true
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed)
+}
+
+function displayValue(value: string | null, label: string, locale: 'en' | 'ru' | 'pl'): string {
+  if (!value) return '—'
+  if (looksTechnical(value)) return '—'
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return formatDay(value)
+  const mapped = VALUE_LABELS[value]
+  if (mapped) return mapped
+  if (label === 'Obywatelstwo' && value.trim().length === 2) return getRegionDisplayName(value, locale)
+  return value
+}
+
+function displayStatus(status: string): string | null {
+  if (HIDDEN_STATUS.has(status)) return null
+  if (status === 'not_applicable') return 'Not required'
+  if (status === 'satisfied') return 'Verified'
+  if (status === 'unresolved') return 'To verify'
+  if (status === 'pending') return 'Pending'
+  if (status === 'blocking') return 'Blocking'
+  if (status === 'waived') return 'Waived'
+  if (status === 'current') return 'Current'
+  return null
 }
 
 export default function HrEmployeeRecordSurface({
   employeeId,
   manage,
-  timeline,
 }: {
   employeeId: string
   manage: boolean
-  timeline: WorkforceTimelineEvent[]
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [surface, setSurface] = useState<HrEmployeeRecordSurface | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [highlight, setHighlight] = useState<string | null>(null)
@@ -110,14 +137,17 @@ export default function HrEmployeeRecordSurface({
     return <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</p>
   }
 
-  const groups = withTimeline(surface.groups, timeline)
+  const groups = surface.groups
   const action = surface.current_process.next_action
+  const recruitmentHref = surface.candidate_id
+    ? `${CRM_APP_PATHS.candidates}/${encodeURIComponent(surface.candidate_id)}`
+    : null
   const headerLine = [surface.header.position, surface.header.employer].filter(Boolean).join(' · ')
 
   return (
-    <div className="space-y-4">
-      <header className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-950">{surface.header.name}</h2>
+    <div className="card min-w-0 space-y-4 p-3">
+      <header className="mb-4">
+        <h2 className="text-xl font-semibold text-slate-950">{surface.header.name}</h2>
         {headerLine ? <p className="mt-1 text-sm text-slate-700">{headerLine}</p> : null}
         <p className="mt-1 text-sm text-slate-600">
           {t('app.hr.driver_surface.employment', { defaultValue: 'Employment' })}: {stateLabel(surface.state)}
@@ -127,94 +157,114 @@ export default function HrEmployeeRecordSurface({
         </p>
       </header>
 
-      <section id="hr-verification" className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-        <p className="text-xs font-semibold tracking-wide text-slate-500">
-          {t('app.hr.employee_record.current_process', { defaultValue: 'Current process' })}
-        </p>
-        {action ? (
-          <div className="mt-2">
-            <p className="text-base font-semibold text-slate-950">
-              {t('app.hr.employee_record.next_action', { defaultValue: 'Next action' })}: {action.title}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">{action.reason}</p>
-            <button
-              type="button"
-              className="mt-3 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
-              onClick={() => openTarget(surface.current_process.target_row_id)}
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start">
+        <div className="min-w-0 space-y-4 lg:pr-6">
+          {groups.map((group) => (
+            <section
+              key={group.id}
+              id={`record-group-${group.id}`}
+              className="rounded-2xl border border-slate-200 bg-white p-4"
             >
-              {t('app.hr.employee_record.open', { defaultValue: 'Open' })}
-            </button>
-          </div>
-        ) : (
-          <p className="mt-2 text-sm text-slate-600">
-            {t('app.hr.employee_record.no_action', { defaultValue: 'No open action.' })}
-          </p>
-        )}
-        {error ? <p className="mt-2 text-sm text-rose-800">{error}</p> : null}
-      </section>
-
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <p className="border-b border-slate-200 px-4 py-3 text-xs font-semibold tracking-wide text-slate-500">
-          {t('app.hr.employee_record.record', { defaultValue: 'Employee record' })}
-        </p>
-        {groups.map((group) => (
-          <div key={group.id} id={`record-group-${group.id}`} className="border-b border-slate-100 last:border-b-0">
-            <h3 className="bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900">{group.label}</h3>
-            {group.rows.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-slate-500">{emptyLabel(group.empty, t)}</p>
-            ) : (
-              group.rows.map((row) => (
-                <div
-                  key={row.id}
-                  id={`record-row-${row.id}`}
-                  className={`grid grid-cols-1 gap-1 border-t border-slate-100 px-4 py-3 sm:grid-cols-[minmax(9rem,1.1fr)_minmax(8rem,1.2fr)_7rem_7rem_auto] sm:items-center ${
-                    highlight === row.id ? 'bg-amber-50' : 'bg-white'
-                  }`}
-                >
-                  <span className="text-sm text-slate-600">{row.label}</span>
-                  {editing && row.id === 'dane_osobowe.citizenship' ? (
-                    <input
-                      className="rounded border border-slate-300 px-2 py-1 text-sm"
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      aria-label={row.label}
-                    />
-                  ) : (
-                    <span className="text-sm font-medium text-slate-950">{row.value || '—'}</span>
-                  )}
-                  <span className="text-sm text-slate-600">{row.status}</span>
-                  <span className="text-sm text-slate-500">{row.evidence || '—'}</span>
-                  <span className="flex gap-2">
-                    {row.actions.includes('edit') && manage && row.id === 'dane_osobowe.citizenship' ? (
-                      editing ? (
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-slate-900 underline"
-                          disabled={saving}
-                          onClick={() => void saveCitizenship()}
-                        >
-                          {t('common.save', { defaultValue: 'Save' })}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-slate-900 underline"
-                          onClick={() => {
-                            setDraft(row.value || '')
-                            setEditing(true)
-                          }}
-                        >
-                          {t('app.hr.employee_record.edit', { defaultValue: 'Edit' })}
-                        </button>
-                      )
-                    ) : null}
-                  </span>
+              <h3 className="text-sm font-semibold text-slate-900">{group.label}</h3>
+              {group.rows.length === 0 ? (
+                <p className="mt-4 text-sm text-slate-500">{emptyLabel(group.empty, t)}</p>
+              ) : (
+                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {group.rows.map((row) => {
+                    const status = displayStatus(row.status)
+                    const evidence = row.evidence && !looksTechnical(row.evidence) ? row.evidence : null
+                    return (
+                      <div
+                        key={row.id}
+                        id={`record-row-${row.id}`}
+                        className={highlight === row.id ? 'rounded-lg bg-amber-50 p-2' : undefined}
+                      >
+                        <div className="text-xs text-slate-500">{row.label}</div>
+                        {editing && row.id === 'dane_osobowe.citizenship' ? (
+                          <input
+                            className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                            value={draft}
+                            onChange={(event) => setDraft(event.target.value)}
+                            aria-label={row.label}
+                          />
+                        ) : (
+                          <p className="mt-1 text-sm font-medium text-slate-950">
+                            {displayValue(row.value, row.label, locale)}
+                          </p>
+                        )}
+                        {status || evidence ? (
+                          <p className="mt-1 text-xs text-slate-500">{[status, evidence].filter(Boolean).join(' · ')}</p>
+                        ) : null}
+                        {row.actions.includes('edit') && manage && row.id === 'dane_osobowe.citizenship' ? (
+                          editing ? (
+                            <button
+                              type="button"
+                              className="mt-1 text-xs font-medium text-slate-900 underline"
+                              disabled={saving}
+                              onClick={() => void saveCitizenship()}
+                            >
+                              {t('common.save', { defaultValue: 'Save' })}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="mt-1 text-xs font-medium text-slate-900 underline"
+                              onClick={() => {
+                                setDraft(row.value || '')
+                                setEditing(true)
+                              }}
+                            >
+                              {t('app.hr.employee_record.edit', { defaultValue: 'Edit' })}
+                            </button>
+                          )
+                        ) : null}
+                      </div>
+                    )
+                  })}
                 </div>
-              ))
+              )}
+            </section>
+          ))}
+        </div>
+        <aside
+          id="hr-verification"
+          data-employee-control-rail
+          className="min-w-0 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto"
+        >
+          <section className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs font-semibold tracking-wide text-slate-500">
+              {t('app.hr.employee_record.current_process', { defaultValue: 'Current process' })}
+            </p>
+            {action ? (
+              <div className="mt-2">
+                <p className="text-base font-semibold text-slate-950">{action.title}</p>
+                <p className="mt-1 text-sm text-slate-600">{action.reason}</p>
+                {surface.current_process.destination === 'recruitment' && recruitmentHref ? (
+                  <Link
+                    to={recruitmentHref}
+                    className="mt-3 inline-block rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
+                  >
+                    {t('app.hr.employee_record.open_recruitment', { defaultValue: 'Open recruitment case' })}
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-3 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
+                    onClick={() => openTarget(surface.current_process.target_row_id)}
+                  >
+                    {t('app.hr.employee_record.open', { defaultValue: 'Open' })}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-slate-600">
+                {t('app.hr.employee_record.no_action', { defaultValue: 'No open action.' })}
+              </p>
             )}
-          </div>
-        ))}
-      </section>
+            {error ? <p className="mt-2 text-sm text-rose-800">{error}</p> : null}
+          </section>
+        </aside>
+      </div>
     </div>
   )
 }

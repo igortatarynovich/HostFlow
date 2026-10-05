@@ -193,18 +193,22 @@ def test_d8_hr_employee_binding_matches_enabled_catalog() -> None:
 def test_d8_page_composes_d2_slots() -> None:
     page = _PAGE.read_text(encoding="utf-8")
     host = _HOST_TSX.read_text(encoding="utf-8")
-    assert "EntityWorkspaceCompositionHost" in page
     assert "HR_EMPLOYEE_COMPOSITION_SLOTS" in page
-    assert "HrEmployeeCommunicationSlot" in page
-    assert "HrEmployeeFormsSlot" in page
-    assert "EntityWorkspaceCapabilityHost" in page
-    assert "HR_EMPLOYEE_ENTITY_HOST_CONTRIBUTIONS" in page
+    assert "HrEmployeeRecordSurface" in page
+    assert "EntityWorkspaceCompositionHost" not in page
+    assert "HrEmployeeCommunicationSlot" not in page
+    assert "HrEmployeeFormsSlot" not in page
+    assert "EntityWorkspaceCapabilityHost" not in page
+    assert "HR_EMPLOYEE_ENTITY_HOST_CONTRIBUTIONS" not in page
     assert "HrEmployeeDocumentsSection" not in page
+    assert "EmployeeDossierView" not in page
+    assert "HrReviewPanel" not in page
+    assert "HrDossierChecklist" not in page
     assert "PageShell" in page
     assert 'data-entity-workspace-slot="overview"' in page
-    assert 'data-entity-workspace-slot="timeline"' in page
+    assert 'data-entity-workspace-slot="timeline"' not in page
     assert 'data-entity-workspace-slot="context-rail"' in page
-    assert "profile.timeline" in page
+    assert "profile.timeline" not in page
     assert "HrEmployeeActivityModal" not in page
     comm = _COMM_SLOT.read_text(encoding="utf-8")
     assert "listCommunicationThreads" in comm

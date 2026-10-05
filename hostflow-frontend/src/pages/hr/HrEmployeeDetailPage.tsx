@@ -9,15 +9,10 @@ import { useToast } from '../../components/Toast'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useI18n } from '../../i18n'
 import {
-  EntityWorkspaceCompositionHost,
   HR_EMPLOYEE_COMPOSITION_CONSUMER_ID,
   HR_EMPLOYEE_COMPOSITION_SLOTS,
   assertHrEmployeeCompositionSlots,
 } from '../../platform/entity-workspace'
-import { EntityWorkspaceCapabilityHost } from '../../platform/workspace-capability/EntityWorkspaceCapabilityHost'
-import { HR_EMPLOYEE_ENTITY_HOST_CONTRIBUTIONS } from '../../platform/workspace-capability/hrEmployeeEntity'
-import { HrEmployeeCommunicationSlot } from './HrEmployeeCommunicationSlot'
-import { HrEmployeeFormsSlot } from './HrEmployeeFormsSlot'
 
 export default function HrEmployeeDetailPage() {
   const { employeeId } = useParams<{ employeeId: string }>()
@@ -44,15 +39,6 @@ export default function HrEmployeeDetailPage() {
       setLoading(false)
     }
   }, [employeeId, notify, t])
-
-  const refreshProfile = useCallback(async () => {
-    if (!employeeId) return
-    try {
-      setProfile(await getWorkforceEmployeeOperationalProfile(employeeId))
-    } catch {
-      /* timeline stays as last loaded */
-    }
-  }, [employeeId])
 
   useEffect(() => {
     if (can('workforce.view') && employeeId) void load()
@@ -120,57 +106,12 @@ export default function HrEmployeeDetailPage() {
               },
               { label: employee.display_name },
             ]}
-            title={employee.display_name}
-            subtitle={employee.id}
             kind="browse"
           />
         </div>
-        <div className="mt-6 min-w-0 space-y-4">
-          <div data-entity-workspace-slot="overview" className="space-y-4">
-            <HrEmployeeRecordSurface
-              employeeId={employeeId}
-              manage={manage}
-              timeline={profile.timeline}
-            />
-          </div>
-          <EntityWorkspaceCompositionHost
-            consumerId={HR_EMPLOYEE_COMPOSITION_CONSUMER_ID}
-            enabledSlots={['communication', 'forms']}
-            renderers={{
-              communication: () => (
-                <HrEmployeeCommunicationSlot candidateId={String(employee.candidate_id || '')} />
-              ),
-              forms: () => <HrEmployeeFormsSlot />,
-            }}
-          />
-          <EntityWorkspaceCapabilityHost
-            entity={{ resourceType: 'workforce_employee', resourceId: employeeId }}
-            contributions={HR_EMPLOYEE_ENTITY_HOST_CONTRIBUTIONS}
-            onClose={() => undefined}
-            onRefresh={() => void refreshProfile()}
-          >
-            {(placed) => <div data-host-region="platform_slot">{placed.platform_slot}</div>}
-          </EntityWorkspaceCapabilityHost>
-          <div data-entity-workspace-slot="timeline">
-            <section className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold text-slate-900">
-                {t('app.entity_workspace.slot.timeline', { defaultValue: 'Timeline' })}
-              </p>
-              {profile.timeline.length === 0 ? (
-                <p className="text-sm text-slate-600">
-                  {t('app.hr.employee_operational.timeline_empty', { defaultValue: 'No timeline events.' })}
-                </p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {profile.timeline.slice(0, 5).map((ev) => (
-                    <li key={ev.id} className="text-slate-700">
-                      <span className="font-medium text-slate-900">{ev.title}</span>
-                      {ev.kind ? <span className="text-slate-500"> · {ev.kind}</span> : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+        <div className="mt-6 min-w-0">
+          <div data-entity-workspace-slot="overview">
+            <HrEmployeeRecordSurface employeeId={employeeId} manage={manage} />
           </div>
         </div>
       </div>
