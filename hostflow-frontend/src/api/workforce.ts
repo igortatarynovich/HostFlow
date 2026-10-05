@@ -1449,3 +1449,48 @@ export async function postContractDraftPreview(
   )
   return data
 }
+
+export type HrEmployeeRecordField = {
+  address: string
+  value: unknown
+  act: 'edit' | 'verify' | 'view'
+  storage: string
+}
+
+export type HrEmployeeRecordSection = {
+  key: string
+  label: string
+  fields: HrEmployeeRecordField[]
+}
+
+export type HrEmployeeRecord = {
+  employment_id: string
+  candidate_id: string | null
+  employee_id: string
+  employments: { id: string; state: string }[]
+  sections: HrEmployeeRecordSection[]
+}
+
+export async function getHrEmployeeRecord(
+  employeeId: string,
+  employmentId?: string,
+): Promise<HrEmployeeRecord> {
+  const { data } = await http.get<HrEmployeeRecord>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record`,
+    { params: employmentId ? { employment_id: employmentId } : undefined },
+  )
+  return data
+}
+
+export async function patchHrEmployeeRecord(
+  employeeId: string,
+  employmentId: string,
+  body: { address: string; value: unknown; evidence_id?: string },
+): Promise<HrEmployeeRecord> {
+  const { data } = await http.patch<HrEmployeeRecord>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record`,
+    body,
+    { params: { employment_id: employmentId } },
+  )
+  return data
+}

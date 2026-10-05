@@ -324,6 +324,8 @@ def apply_operator_facts_patch(
             key in patch
             for key in (
                 "work_label",
+                "work_authorization_basis",
+                "procedure_type",
                 "valid_for_this_employment",
                 "authorization_valid_from",
                 "authorization_valid_to",
@@ -395,6 +397,24 @@ def operator_work_label(work: Mapping[str, Any]) -> str | None:
 
 def _apply_work_patch(facts: dict[str, Any], patch: Mapping[str, Any], employment_id: str | None) -> None:
     current = _work_for(facts, employment_id)
+    if "work_authorization_basis" in patch:
+        raw = patch.get("work_authorization_basis")
+        if _is_unknown(raw) or not _text(raw):
+            current["work_authorization_basis"] = None
+        else:
+            basis = str(raw).strip()
+            if basis not in {"not_required", "included_in_stay", "separate_required"}:
+                raise OperatorFactsRejected(f"work_authorization_basis {basis} is not a chain value")
+            current["work_authorization_basis"] = basis
+    if "procedure_type" in patch:
+        raw = patch.get("procedure_type")
+        if _is_unknown(raw) or not _text(raw):
+            current["procedure_type"] = None
+        else:
+            procedure = str(raw).strip()
+            if procedure not in {"work_permit_a", "employer_declaration"}:
+                raise OperatorFactsRejected(f"procedure_type {procedure} is not a chain value")
+            current["procedure_type"] = procedure
     if "work_label" in patch:
         label = patch.get("work_label")
         if _is_unknown(label) or not _text(label):
