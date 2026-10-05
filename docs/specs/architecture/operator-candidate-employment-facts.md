@@ -1,6 +1,6 @@
 # Operator Candidate and Employment Facts
 
-**Status:** **Accepted** — Operator Facts Surface Gate **PASS**. No new chain value. No matrix cell. No document requirement. No runtime module.  
+**Status:** **Accepted** — Operator Facts Surface Gate **PASS**. Implementation and UI acceptance **PASS** (2026-10-05). No new chain value. No matrix cell. No document requirement. No new column.  
 **Date:** 2026-10-05  
 **Line:** `9d841cc8` (ancestor `docs/requirement-resolution-contract`)  
 **Machine id:** none. This is a surface over facts already named. It is not a domain and it is not a resolver.  
@@ -156,6 +156,51 @@ This PASS does not build a screen, does not write a requirement row, and does no
 
 ---
 
+## UI acceptance
+
+Each fact has one edit place on the candidate card. Another surface may show the stored value. It does not ask the operator to choose that fact again.
+
+The driver facts are one sequence. The right to work for this Employment is the neighboring block, not a field inside the driver sequence.
+
+```text
+Dane i uprawnienia kierowcy
+  Obywatelstwo
+  Podstawa pobytu          when the chain still shows stay
+  Prawo jazdy              issuing country, then category
+  Code 95
+  Karta kierowcy
+  ADR
+
+Prawo do pracy
+  Podstawa pracy
+  Typ procedury            the existing work-permit or oświadczenie label
+  Status Legal Eligibility the chain reading already recorded
+```
+
+Operator nie może być proszony o ponowny wybór faktu, który został już zapisany w innym miejscu. Każdy fakt ma jedno miejsce edycji; pozostałe powierzchnie mogą go wyłącznie odczytywać. Powiązane fakty kierowcy muszą być prezentowane razem, a nie rozproszone pomiędzy kartą kandydata, checklistą dokumentów i Legal Eligibility.
+
+The document checklist does not edit these facts. Legal Eligibility status in the work block is the reading already produced. It is not a second citizenship, stay, or work control.
+
+---
+
+## Implementation and UI acceptance
+
+**Outcome:** **PASS**. 2026-10-05. The Operator Facts Surface Gate above stays the contract PASS. This section records the implementation that followed it, and the operator card.
+
+The live path is HTTP, then Postgres, then the candidate card. A fact is stored on the owner the contracts already name. Citizenship stays `personal_data.citizenship`. Stay and the professional facts stay in `personal_data.operator_facts`. The work basis is keyed by the preparing Employment. No column was added.
+
+Unknown stores nothing and asks no file. PL and EU/EEA/CH hide stay and work. A third-country chain is citizenship, then stay, then work. A work label projects onto `separate_required` with `work_permit_a` or `employer_declaration`. A legally significant change on Employment(preparing) runs `legal_eligibility.v1` and leaves Employment.state where it is. Driver documents wait until the issuing country is known, then use the accepted shared or separate evidence. A tachograph card and ADR stay facts and ask no file.
+
+On the candidate card each fact has one edit place. The driver sequence is citizenship, stay when the chain still shows it, the licence issuing country and category, Code 95, the tachograph card, and ADR. The right to work for this Employment is the neighboring block: the work basis, the procedure label already chosen, and the Legal Eligibility reading already recorded. The checklist is the consequence of those facts. It is not a second place that edits them.
+
+One presentation note stays outside this close. The stage guard names `driver_license` where the checklist shows `driver_license_code95`. The canonical identity already maps that shared file onto `driver_license`, and the checklist path asks for `driver_license_code95`. A later change may align the stage text. It does not reopen this surface.
+
+After deploy, production is a smoke of this behavior. It is not a new design.
+
+Feat stays locked. HostFlow v1 is not release-ready.
+
+---
+
 ## Out of this slice
 
 - The Legal Eligibility matrix, and any document request that would come from citizenship, stay, or the work basis.  
@@ -163,6 +208,6 @@ This PASS does not build a screen, does not write a requirement row, and does no
 - A country list, and a third Code 95 form.  
 - Evidence shapes for a tachograph card or ADR.  
 - A passport, a medical certificate, or a psychotest.  
-- A screen, a column, or a runtime module.
+- A column. The stage-guard label `driver_license` for the shared file the checklist shows as `driver_license_code95`.
 
 Feat stays locked. HostFlow v1 is not release-ready.

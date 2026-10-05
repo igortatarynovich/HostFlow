@@ -34,6 +34,10 @@ export type OperatorFactsView = {
   }
   upload_codes?: string[]
   asks_file?: boolean
+  legal_eligibility?: {
+    outcome?: string | null
+    policy_id?: string | null
+  } | null
 }
 
 type Patch = Record<string, unknown>
@@ -94,8 +98,20 @@ export function OperatorFactsForm({
     </select>
   )
 
+  const legalStatus =
+    view.legal_eligibility?.outcome ||
+    view.chain?.valid_for_this_employment ||
+    (valid?.visible ? valid.stored : null) ||
+    null
+
   return (
     <div className="space-y-4" data-testid="operator-facts-form">
+      <section className="space-y-4" data-testid="operator-facts-driver">
+        <h3 className="text-sm font-semibold text-slate-900">
+          {t('app.candidate_card.operator_facts.driver_block', {
+            defaultValue: 'Dane i uprawnienia kierowcy',
+          })}
+        </h3>
       <section data-testid="operator-facts-citizenship">
         <label className="block text-xs font-medium text-slate-700">
           {t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' })}
@@ -144,49 +160,6 @@ export function OperatorFactsForm({
               value={parameters.visa_purpose || ''}
               onChange={(event) => onPatch({ visa_purpose: event.target.value || 'unknown' })}
             />
-          </label>
-        </section>
-      ) : null}
-
-      {work?.visible ? (
-        <section data-testid="operator-facts-work">
-          <label className="block text-xs font-medium text-slate-700">
-            {t('app.candidate_card.operator_facts.work', { defaultValue: 'Work authorization' })}
-          </label>
-          <select
-            data-testid="operator-facts-work-input"
-            className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
-            disabled={disabled}
-            value={workLabel(work)}
-            onChange={(event) => onPatch({ work_label: event.target.value })}
-          >
-            <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
-            <option value="work_permit">
-              {t('app.candidate_card.operator_facts.work_permit', { defaultValue: 'Work permit' })}
-            </option>
-            <option value="oswiadczenie">
-              {t('app.candidate_card.operator_facts.oswiadczenie', { defaultValue: 'Oświadczenie' })}
-            </option>
-            <option value="included_in_stay">
-              {t('app.candidate_card.operator_facts.included_in_stay', { defaultValue: 'Right to work is included in the stay' })}
-            </option>
-          </select>
-        </section>
-      ) : null}
-
-      {valid?.visible ? (
-        <section data-testid="operator-facts-valid">
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              data-testid="operator-facts-valid-no"
-              disabled={disabled}
-              checked={valid.stored === 'no'}
-              onChange={(event) =>
-                onPatch({ valid_for_this_employment: event.target.checked ? 'no' : 'unknown' })
-              }
-            />
-            {t('app.candidate_card.operator_facts.valid_no', { defaultValue: 'Not valid for this employment' })}
           </label>
         </section>
       ) : null}
@@ -308,6 +281,64 @@ export function OperatorFactsForm({
           {t('app.candidate_card.operator_facts.fact_only', { defaultValue: 'Recorded as a fact. No file is requested.' })}
         </p>
       </section>
+      </section>
+
+      <section className="space-y-4 border-t border-slate-200 pt-4" data-testid="operator-facts-work-rights">
+        <h3 className="text-sm font-semibold text-slate-900">
+          {t('app.candidate_card.operator_facts.work_block', { defaultValue: 'Prawo do pracy' })}
+        </h3>
+        {work?.visible ? (
+          <section data-testid="operator-facts-work">
+            <label className="block text-xs font-medium text-slate-700">
+              {t('app.candidate_card.operator_facts.work', { defaultValue: 'Podstawa pracy' })}
+            </label>
+            <select
+              data-testid="operator-facts-work-input"
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+              disabled={disabled}
+              value={workLabel(work)}
+              onChange={(event) => onPatch({ work_label: event.target.value })}
+            >
+              <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
+              <option value="work_permit">
+                {t('app.candidate_card.operator_facts.work_permit', { defaultValue: 'Work permit' })}
+              </option>
+              <option value="oswiadczenie">
+                {t('app.candidate_card.operator_facts.oswiadczenie', { defaultValue: 'Oświadczenie' })}
+              </option>
+              <option value="included_in_stay">
+                {t('app.candidate_card.operator_facts.included_in_stay', { defaultValue: 'Right to work is included in the stay' })}
+              </option>
+            </select>
+            {work.procedure_type ? (
+              <p className="mt-1 text-xs text-slate-600" data-testid="operator-facts-procedure">
+                {t('app.candidate_card.operator_facts.procedure', { defaultValue: 'Typ procedury' })}: {work.procedure_type}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+        {valid?.visible ? (
+          <section data-testid="operator-facts-valid">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                data-testid="operator-facts-valid-no"
+                disabled={disabled}
+                checked={valid.stored === 'no'}
+                onChange={(event) =>
+                  onPatch({ valid_for_this_employment: event.target.checked ? 'no' : 'unknown' })
+                }
+              />
+              {t('app.candidate_card.operator_facts.valid_no', { defaultValue: 'Not valid for this employment' })}
+            </label>
+          </section>
+        ) : null}
+        <p className="text-xs text-slate-600" data-testid="operator-facts-legal-status">
+          {t('app.candidate_card.operator_facts.legal_status', { defaultValue: 'Status Legal Eligibility' })}
+          {': '}
+          {legalStatus || t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}
+        </p>
+      </section>
     </div>
   )
 }
@@ -317,7 +348,7 @@ export default function OperatorFactsSurface({
   onSaved,
 }: {
   candidateId: string
-  onSaved?: () => void
+  onSaved?: (view: OperatorFactsView) => void
 }) {
   const { t } = useI18n()
   const [view, setView] = useState<OperatorFactsView | null>(null)
@@ -354,7 +385,7 @@ export default function OperatorFactsSurface({
       try {
         const response = await api.put<OperatorFactsView>(`/candidates/${candidateId}/operator-facts`, patch)
         setView(response.data)
-        onSaved?.()
+        onSaved?.(response.data)
       } catch {
         setError(t('app.candidate_card.operator_facts.save_failed', { defaultValue: 'Could not save facts' }))
         await load()

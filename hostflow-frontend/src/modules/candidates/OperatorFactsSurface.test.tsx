@@ -30,6 +30,8 @@ describe('OperatorFactsForm', () => {
         })}
       />,
     )
+    expect(screen.getByTestId('operator-facts-driver')).toBeTruthy()
+    expect(screen.getByTestId('operator-facts-work-rights')).toBeTruthy()
     expect(screen.getByTestId('operator-facts-citizenship')).toBeTruthy()
     expect(screen.queryByTestId('operator-facts-stay')).toBeNull()
     expect(screen.queryByTestId('operator-facts-work')).toBeNull()
@@ -83,6 +85,8 @@ describe('OperatorFactsForm', () => {
       />,
     )
     expect((screen.getByTestId('operator-facts-work-input') as HTMLSelectElement).value).toBe('work_permit')
+    expect(screen.getByTestId('operator-facts-procedure').textContent).toMatch(/work_permit_a/)
+    expect(screen.getByTestId('operator-facts-legal-status').textContent).toMatch(/operator_verification/)
   })
 
   it('asks for shared evidence only after the issuing country is known', () => {

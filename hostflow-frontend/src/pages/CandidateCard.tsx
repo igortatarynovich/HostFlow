@@ -2410,7 +2410,8 @@ export default function CandidateCard(){
       }
 
       // Валидация poland_stay_basis при current_location = in_poland
-      if (extra.current_location === 'in_poland' && !extra.poland_stay_basis) {
+      const factsEditedOnSurface = !isNew && !isMasked && Boolean(model.id)
+      if (extra.current_location === 'in_poland' && !extra.poland_stay_basis && !factsEditedOnSurface) {
         notify({
           title: t('app.candidate_card.validation.poland_basis_required'),
           variant: 'error',
@@ -2419,7 +2420,10 @@ export default function CandidateCard(){
         return
       }
       // Валидация обязательных полей из профиля
-      const missingFields = validateRequiredFields(candidateProfile, model, extra)
+      const ownedByFactsSurface = new Set(['citizenship', 'poland_stay_basis', 'has_adr', 'license_categories'])
+      const missingFields = validateRequiredFields(candidateProfile, model, extra).filter(
+        (field) => !factsEditedOnSurface || !ownedByFactsSurface.has(field.fieldKey),
+      )
       if (missingFields.length > 0) {
         const fieldLabels = missingFields
           .map((f) => translateCandidateFieldKey(t, f.fieldKey, f.label))
@@ -4642,6 +4646,22 @@ export default function CandidateCard(){
         <div className="min-w-0 space-y-4">
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-4 lg:pr-6">
+                  {!isMasked && model?.id ? (
+                    <OperatorFactsSurface
+                      candidateId={String(model.id)}
+                      onSaved={(saved) => {
+                        setOperatorFactsRevision((value) => value + 1)
+                        setDocsSummaryRefreshTrigger((value) => value + 1)
+                        const citizenship = saved.steps.find((step) => step.key === 'citizenship')?.stored
+                        const adr = saved.steps.find((step) => step.key === 'adr')
+                        setExtra((prev) => ({
+                          ...prev,
+                          citizenship: citizenship || '',
+                          has_adr: typeof adr?.presence === 'boolean' ? adr.presence : null,
+                        }))
+                      }}
+                    />
+                  ) : null}
                   {registrySectionsBeforeStatus.map((sectionCode) => {
                     if (!registrySectionVisible(sectionCode)) return null
                     if (sectionCode === 'basic') {
@@ -4695,6 +4715,7 @@ export default function CandidateCard(){
                           candidateProfile={candidateProfile}
                           effectiveLayout={effectiveLayout}
                           candidateDataReadOnly={candidateDataReadOnly}
+                          citizenshipReadOnly={!isMasked && Boolean(model?.id)}
                           embedded
                         />
                       )
@@ -4713,6 +4734,7 @@ export default function CandidateCard(){
                       candidateProfile={candidateProfile}
                       effectiveLayout={effectiveLayout}
                       candidateDataReadOnly={candidateDataReadOnly}
+                      factsReadOnly={!isMasked && Boolean(model?.id)}
                       embedded
                     />
 
@@ -4907,16 +4929,6 @@ export default function CandidateCard(){
                 }
                 documentsChecklistSibling
               />
-
-              {!isMasked && model?.id ? (
-                <OperatorFactsSurface
-                  candidateId={String(model.id)}
-                  onSaved={() => {
-                    setOperatorFactsRevision((value) => value + 1)
-                    setDocsSummaryRefreshTrigger((value) => value + 1)
-                  }}
-                />
-              ) : null}
 
               {!isMasked && showRecruitmentDossierChecklist ? (
                 <RecruitmentDossierChecklist

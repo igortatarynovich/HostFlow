@@ -22,6 +22,8 @@ interface CandidateStatusSectionProps {
   effectiveLayout?: EffectiveCardLayout | null
   candidateDataReadOnly?: boolean
   embedded?: boolean
+  /** Stay basis and ADR are edited in Operator Facts. This section does not ask again. */
+  factsReadOnly?: boolean
 }
 
 function CandidateStatusSection({
@@ -34,6 +36,7 @@ function CandidateStatusSection({
   effectiveLayout,
   candidateDataReadOnly = false,
   embedded = false,
+  factsReadOnly = false,
 }: CandidateStatusSectionProps) {
   const { t } = useI18n()
   const layoutVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
@@ -54,6 +57,8 @@ function CandidateStatusSection({
       return next
     })
   }, [embedded])
+
+  if (factsReadOnly) return null
 
   return (
     <section
