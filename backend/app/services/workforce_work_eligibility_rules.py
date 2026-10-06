@@ -9,9 +9,15 @@ ZUS_REGISTRATION_ALLOWED_STATUSES = frozenset({"ready_for_zus", "eligible_to_wor
 ZUS_REGISTRATION_BLOCKED_STATUSES = frozenset(
     {
         "missing_legal_stay",
+        "blocked",
+    }
+)
+# A permit that is still required or pending is not a ZUS block.
+ZUS_REGISTRATION_PERMIT_PENDING_STATUSES = frozenset(
+    {
         "work_permit_required",
         "work_permit_pending",
-        "blocked",
+        "not_evaluated",
     }
 )
 
@@ -34,19 +40,6 @@ def _is_third_country(citizenship: Optional[str]) -> bool:
     if len(c) != 2:
         return False
     return c not in _EU_EEA_CH
-
-
-def foreign_driver_work_permit_path_incomplete(wel: Any) -> bool:
-    """Heuristic v1: driver + third-country citizenship + no received work permit date."""
-    if (wel.position_category or "").strip().lower() != "driver":
-        return False
-    if not _is_third_country(wel.citizenship):
-        return False
-    if wel.work_permit_received_at is not None:
-        return False
-    if wel.requires_work_permit is False:
-        return False
-    return True
 
 
 def foreign_driver_fee_rows_expected(wel: Any) -> bool:
@@ -128,19 +121,15 @@ def evaluate_zus_registration_gate(
             return "allow", []
         return "blocked", _dedupe_blockers(blockers)
 
-    if st in ZUS_REGISTRATION_BLOCKED_STATUSES:
+    if st in ZUS_REGISTRATION_PERMIT_PENDING_STATUSES:
+        pass
+    elif st in ZUS_REGISTRATION_BLOCKED_STATUSES:
         if st == "missing_legal_stay":
             blockers.append("legal_stay")
-        elif st in ("work_permit_required", "work_permit_pending"):
-            blockers.append("work_permit")
         elif st == "blocked":
             blockers.extend(["work_permit", "legal_stay", "red_paper"])
         else:
             blockers.append(st)
-
-    elif st == "not_evaluated":
-        if foreign_driver_work_permit_path_incomplete(wel):
-            blockers.extend(["legal_stay", "work_permit"])
     else:
         blockers.append(st)
 

@@ -34,7 +34,7 @@ from backend.app.models.hr_ready_to_start import (
 )
 from backend.app.services.employee_data_reading import read_employee_data_set
 from backend.app.services.employment_terms_runtime import TERMS_COMPLETE, evaluate_employment_terms
-from backend.app.services.hr_legal_eligibility_gate import decision_is_current
+from backend.app.services.hr_legal_eligibility_gate import checkpoint_planned_start, decision_is_current
 from backend.app.services.pre_employment_requirements_runtime import evaluate_pre_employment_requirements
 
 _PASS = "pass"
@@ -124,6 +124,7 @@ def _terms_fingerprint(row: HrEmploymentTerms | None) -> str:
             "contract_basis": row.contract_basis,
             "work_time_value": format(Decimal(row.work_time_value), "f"),
             "work_time_unit": row.work_time_unit,
+            "work_system": row.work_system,
             "workplace": row.workplace,
             "compensation_amount": format(Decimal(row.compensation_amount), "f"),
             "compensation_currency": row.compensation_currency,
@@ -132,6 +133,7 @@ def _terms_fingerprint(row: HrEmploymentTerms | None) -> str:
             "fixed_term_end": row.fixed_term_end.isoformat() if row.fixed_term_end else None,
             "probation_status": row.probation_status,
             "probation_end": row.probation_end.isoformat() if row.probation_end else None,
+            "intended_start_date": row.intended_start_date.isoformat() if row.intended_start_date else None,
             "default_vacancy_id": row.default_vacancy_id,
         }
     )
@@ -169,12 +171,16 @@ def _legal_reading(
     decision = _latest_legal(db, tenant_id, str(employment.id))
     if decision is None:
         return InputReading(result=_BLOCKED, fingerprint=None, reasons=("legal_missing",), ref_id=None)
+    terms = _current_terms(db, tenant_id, str(employment.id))
     current = decision_is_current(
         decision,
         reading=legal_reading,
         client_company_id=employment.client_company_id,
         vacancy_id=employment.vacancy_id,
-        planned_start=employment.started_on,
+        planned_start=checkpoint_planned_start(
+            employment,
+            terms.intended_start_date if terms is not None else None,
+        ),
     )
     if decision.outcome == "pass" and current:
         return InputReading(

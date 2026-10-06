@@ -7035,6 +7035,7 @@
       },
       "docs_panel": {
         "kpi": "KPI",
+        "open": "Open",
         "open_full": "Open full",
         "runtime_kpi": "{ready}/{total} satisfied · {problem} blockers · {percent}%",
         "tabs": {
@@ -7081,7 +7082,7 @@
         "checklist_not_yet_required": "Not uploaded yet (not required at this stage)",
         "checklist_panel_title": "Document checklist",
         "compact_hint": "Document details are collapsed to reduce noise.",
-        "early_stage_hint": "Documents are not required at this stage (e.g. New). Upload / Open full — optional.",
+        "early_stage_hint": "Documents are not required at this stage (e.g. New). Open — optional.",
         "in_progress_label": "In progress / review",
         "in_progress_not_blocking": "Uploads in progress — not blocking this stage.",
         "next_step_not_blocking": "Not blocking pipeline at this stage — contact & qualify first.",
@@ -15864,6 +15865,7 @@
         "decision": "Decision",
         "medical_certificate": "Medical certificate",
         "psych_tests": "Psychological tests",
+        "psychological_certificate": "Psychological tests",
         "adr": "ADR",
         "work_permit": "Work permit",
         "driver_certificate": "Driver certificate",

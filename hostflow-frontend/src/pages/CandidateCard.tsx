@@ -110,7 +110,7 @@ import CandidateCustomFieldsSection from '../components/candidate/CandidateCusto
 import CandidateRodoSection from '../components/candidate/CandidateRodoSection'
 import CandidateContactAttemptsSection from '../components/candidate/CandidateContactAttemptsSection'
 import CandidateTimelinePanel from '../components/candidate/CandidateTimelinePanel'
-import CandidateStageDecisionPanel from '../components/candidate/CandidateStageDecisionPanel'
+import CandidateStageDecisionPanel, { CandidatePipelineStatus } from '../components/candidate/CandidateStageDecisionPanel'
 import { Input, SearchableSelect } from '../components/candidate/shared/FormComponents'
 // CandidateCard layout: Info (top) / Control (right) / Content (main)
 // Documents are rendered as a single compact panel inside the rail.
@@ -4587,6 +4587,34 @@ export default function CandidateCard(){
     )
   }
 
+  const pipelineStatus = !isNew && model?.id ? (
+    <CandidatePipelineStatus
+      locale={locale}
+      stageSinceAt={stageSinceAt}
+      stageJourneyStages={stageJourneyStagesPipeline}
+      journeyPanelStages={stageJourneyStagesDisplay}
+      stageOutcomeStages={stageOutcomeStages}
+      stageJourneyDisplayStage={stageJourneyDisplayStage}
+      stageJourneyOutcomeStage={stageJourneyOutcomeStage}
+      stageJourneySignals={stageJourneySignals}
+      completedStageCodes={completedStageCodes}
+      currentStageCode={model.stage}
+      candidateRowStatus={model.row_status}
+      candidateStatus={model.status}
+      stageLabelIntl={stageLabelIntl}
+      docsBlockers={effectiveDocsBlockersForPipeline}
+      blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
+      docsPipelineBlocking={docsPipelineBlockingValue}
+      docsPipelineSoftWarn={docsPipelineSoftWarnValue}
+      vacancyPipelineBlocking={vacancyPipelineBlockingValue}
+      contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
+      canEdit={model.can_edit !== false}
+      canCloseRecruitment={canCloseRecruitment}
+      onMoveStage={handleStageJourneyChange}
+      onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
+    />
+  ) : null
+
   return (
     <PageShell>
       <PageShellHeader>
@@ -4643,6 +4671,7 @@ export default function CandidateCard(){
         focusContent={!isNew && model?.id ? (
           <div className="grid gap-2">
             <CandidateStageDecisionPanel
+              layout="journey"
               locale={locale}
               stageSinceAt={stageSinceAt}
               stageJourneyStages={stageJourneyStagesPipeline}
@@ -5005,7 +5034,11 @@ export default function CandidateCard(){
                     setRequirementBlockers(blockers)
                     setRequirementBlockersLoading(loading)
                   }}
-                />
+                >
+                  {pipelineStatus}
+                </RequirementsWorkspaceSummaryCard>
+              ) : pipelineStatus ? (
+                <section className="rounded-2xl border border-slate-200 bg-white p-3">{pipelineStatus}</section>
               ) : null}
 
               {showFullRequirementsChecklist ? (
@@ -5028,7 +5061,6 @@ export default function CandidateCard(){
                 candidateId={String(model.id)}
                 ownerContext={docsOwnerContext}
                 uploadBusy={false}
-                onUpload={() => openDocsDrawer(undefined)}
                 onOpenDocs={() => openDocsDrawer(undefined)}
                 onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic, inProgress: b.inProgress })}
                 onLoadingChange={setDocsBlockersLoading}

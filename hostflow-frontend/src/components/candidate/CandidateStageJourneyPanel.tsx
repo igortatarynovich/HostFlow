@@ -20,6 +20,8 @@ type Props = {
   stageSinceAt: string | null | undefined
   completedStageCodes?: Set<string>
   canEdit?: boolean
+  /** When false, only the stage line is shown. */
+  heading?: boolean
   onStageChange?: (stage: string) => void | Promise<void>
   onOpenStageHistory?: () => void
   onOpenChangeLog?: () => void
@@ -39,6 +41,7 @@ export default function CandidateStageJourneyPanel({
   stageSinceAt,
   completedStageCodes,
   canEdit = false,
+  heading = true,
   onStageChange,
   onOpenStageHistory,
   onOpenChangeLog,
@@ -75,12 +78,13 @@ export default function CandidateStageJourneyPanel({
   return (
     <section
       className={clsx(
-        'min-w-0 rounded-2xl border p-3',
-        isHero ? 'border-white/20 bg-white/10' : 'border-slate-200 bg-white',
-        compact && 'p-2',
+        'min-w-0',
+        heading && 'rounded-2xl border p-3',
+        heading && (isHero ? 'border-white/20 bg-white/10' : 'border-slate-200 bg-white'),
+        heading && compact && 'p-2',
       )}
     >
-      <div className="flex items-start justify-between gap-3">
+      {heading ? <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className={clsx('text-xs font-semibold', titleClass)}>
             {t('app.candidate_card.stage_journey.title', { defaultValue: 'Stage journey' })}
@@ -127,10 +131,10 @@ export default function CandidateStageJourneyPanel({
             </button>
           ) : null}
         </div>
-      </div>
+      </div> : null}
 
       {variant === 'horizontal' ? (
-        <div className={clsx('mt-3', compact && 'mt-2')}>
+        <div className={clsx(heading ? 'mt-3' : 'mt-0', compact && heading && 'mt-2')}>
           <div
             className={clsx(
               'relative min-w-0 overflow-x-auto rounded-xl border px-3 py-3',

@@ -6414,6 +6414,7 @@
       },
       "docs_panel": {
         "kpi": "KPI",
+        "open": "Otwórz",
         "open_full": "Otwórz pełny widok",
         "tabs": {
           "blockers": "Blokery",
@@ -6460,7 +6461,7 @@
         "checklist_not_yet_required": "Jeszcze nie przesłano (nie wymagane na tym etapie)",
         "checklist_panel_title": "Lista kontrolna dokumentów",
         "compact_hint": "Szczegóły dokumentów są zwinięte, aby ograniczyć szum.",
-        "early_stage_hint": "Na tym etapie dokumenty nie są wymagane (np. New). Prześlij / Otwórz pełny widok — opcjonalnie.",
+        "early_stage_hint": "Na tym etapie dokumenty nie są wymagane (np. New). Otwórz — opcjonalnie.",
         "in_progress_label": "W toku / recenzja",
         "in_progress_not_blocking": "Przesyłanie w toku — nie blokuje na tym etapie.",
         "next_step_not_blocking": "Na tym etapie pipeline nie jest blokowany — najpierw skontaktuj się i zakwalifikuj.",
@@ -15859,6 +15860,7 @@
         "decision": "Decyzja",
         "medical_certificate": "Orzeczenie lekarskie",
         "psych_tests": "Badania psychologiczne",
+        "psychological_certificate": "Badania psychologiczne",
         "adr": "ADR",
         "work_permit": "Zezwolenie na pracę",
         "driver_certificate": "Świadectwo kierowcy",
