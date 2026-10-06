@@ -5,12 +5,16 @@ The browser walk is not PASS. Citizenship is the reference pattern.
 
 from pathlib import Path
 
+from datetime import date
+
 from backend.app.services.hr_employee_record_surface import (
     GROUP_ORDER,
     apply_citizenship,
     apply_person,
+    evidence_coverage,
     project_employee_record,
 )
+from backend.app.services.requirement_document_data import fact_fields_from_document
 
 
 def _projected(**overrides):
@@ -61,6 +65,19 @@ def _projected(**overrides):
     }
     payload.update(overrides)
     return project_employee_record(**payload)
+
+
+def test_evidence_boundary_stays_until_the_browser_walk() -> None:
+    flow = Path(__file__).resolve().parents[3] / "docs" / "specs" / "workflows" / "hr-driver-operator-flow.md"
+    text = flow.read_text(encoding="utf-8")
+    assert "Employee Record does not upload, replace, preview, or delete a document." in text
+    assert "One evidence may cover N facts." in text
+    assert "`missing` means the fact has no required evidence." in text
+    assert "`expired` and `rejected` stay those statuses." in text
+    assert "Handoff changes authority over the same document." in text
+    assert "Citizenship stays a person fact." in text
+    assert "The E2E is not PASS." in text
+    assert "This file does not add a further action on the record." in text
 
 
 def test_surface_e2e_is_not_pass() -> None:
@@ -166,6 +183,56 @@ def test_code_95_not_applicable_stays_a_status() -> None:
     row = _row(_projected(), "kwalifikacje.code_95")
     assert row["status"] == "not_applicable"
     assert row["value"] is None
+    assert row["evidence"] == "not_required"
+
+
+def test_one_document_covers_licence_and_code_95() -> None:
+    reading = fact_fields_from_document(
+        meta={"license_categories": ["C", "CE"]},
+        expire_date=date(2037, 1, 28),
+    )
+    projected = _projected(
+        professional_facts=[
+            {
+                "key": "driving_licence",
+                "label": "Driving licence",
+                "applicability": "applicable",
+                "resolution": "satisfied",
+                "evidence_linked": True,
+                "document_status": "approved",
+                "categories": reading["categories"],
+                "valid_until": reading["valid_until"],
+            },
+            {
+                "key": "code_95",
+                "label": "Code 95",
+                "applicability": "applicable",
+                "resolution": "satisfied",
+                "evidence_linked": True,
+                "document_status": "approved",
+                "categories": reading["categories"],
+                "valid_until": reading["valid_until"],
+            },
+            {
+                "key": "tachograph_card",
+                "label": "Tachograph card",
+                "applicability": "applicable",
+                "resolution": "unresolved",
+                "evidence_linked": False,
+            },
+        ]
+    )
+    licence = _row(projected, "kwalifikacje.driving_licence")
+    code = _row(projected, "kwalifikacje.code_95")
+    card = _row(projected, "kwalifikacje.tachograph_card")
+    assert licence["details"] == code["details"]
+    assert licence["details"][0]["value"] == "C, CE"
+    assert licence["details"][1]["value"] == "2037-01-28"
+    assert licence["evidence"] == "approved"
+    assert code["evidence"] == "approved"
+    assert card["evidence"] == "missing"
+    assert "details" not in card
+    assert evidence_coverage(applicability="applicable", linked=True, document_status="uploaded") == "in_progress"
 
 
 def _group(projected: dict, group_id: str) -> dict:

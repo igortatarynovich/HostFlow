@@ -14,13 +14,23 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from backend.app.models.candidate import Candidate
 from backend.app.models.company import Company
+from backend.app.models.document import Document
+from backend.app.models.enums import DocumentStatus
 from backend.app.models.hr_employment import Employment
+from backend.app.models.hr_employment_requirement import HrEmploymentRequirement
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_zus_workspace_task import WorkforceZusWorkspaceTask
+from backend.app.services.document_hub_delivery_contract import (
+    E4_LINKED_ENTITY_TYPE,
+    E4_RELATION_TYPE,
+    hub_status_needs_attention,
+    list_entity_link_documents_via_contract,
+)
 from backend.app.services.hr_driver_operator_surface import (
     build_hr_driver_operator_surface,
     canonical_fact_key,
 )
+from backend.app.services.requirement_document_data import fact_fields_from_document
 
 GROUP_ORDER = (
     "dane_osobowe",
@@ -47,6 +57,7 @@ _GROUP_LABELS = {
 _QUALIFICATION_KEYS = frozenset({"driving_licence", "code_95", "tachograph_card"})
 _MEDICAL_KEYS = frozenset({"medical", "psychological", "occupational_medicine"})
 _DOCUMENT_KEYS = frozenset({"passport"})
+_CONFIRMED_DOCUMENT = frozenset({DocumentStatus.approved.value, DocumentStatus.verified.value})
 
 
 def apply_citizenship(personal: dict[str, Any] | None, value: str) -> dict[str, Any]:
@@ -284,6 +295,34 @@ def _legal_rows(
     ]
 
 
+def evidence_coverage(
+    *,
+    applicability: str | None,
+    linked: bool,
+    document_status: str | None,
+    valid_until: date | None = None,
+    today: date | None = None,
+) -> str:
+    """Coverage of one fact by the evidence already linked to it.
+
+    The code is an existing document status. It is not a new vocabulary.
+    """
+
+    if applicability == "not_applicable":
+        return DocumentStatus.not_required.value
+    if not linked:
+        return DocumentStatus.missing.value
+    status = str(document_status or "").strip().lower()
+    current = today or date.today()
+    if status == DocumentStatus.expired.value or (valid_until is not None and valid_until < current):
+        return DocumentStatus.expired.value
+    if status == DocumentStatus.rejected.value:
+        return DocumentStatus.rejected.value
+    if status in _CONFIRMED_DOCUMENT:
+        return DocumentStatus.approved.value
+    return DocumentStatus.in_progress.value
+
+
 def _fact_rows(facts: list[dict[str, Any]], defined: bool) -> list[dict[str, Any]]:
     if not defined:
         return []
@@ -294,22 +333,29 @@ def _fact_rows(facts: list[dict[str, Any]], defined: bool) -> list[dict[str, Any
         if group is None:
             continue
         applicable = fact.get("applicability") != "not_applicable" and not fact.get("not_applicable")
-        if not applicable:
-            status = "not_applicable"
-            value = None
-        else:
-            status = str(fact.get("resolution") or "unresolved")
-            value = status
-        evidence = "linked" if fact.get("evidence_linked") else None
-        projected.append(
-            _row(
-                f"{group}.{key}",
-                str(fact.get("label") or key),
-                value,
-                status,
-                evidence,
-            )
+        status = "not_applicable" if not applicable else str(fact.get("resolution") or "unresolved")
+        categories = _categories_text(fact.get("categories"))
+        valid_until = _as_date(fact.get("valid_until"))
+        details = []
+        if categories:
+            details.append({"label": "Kategorie", "value": categories})
+        if valid_until is not None:
+            details.append({"label": "Ważne do", "value": valid_until.isoformat()})
+        row = _row(
+            f"{group}.{key}",
+            str(fact.get("label") or key),
+            categories,
+            status,
+            evidence_coverage(
+                applicability="not_applicable" if not applicable else "applicable",
+                linked=bool(fact.get("evidence_linked")),
+                document_status=_text(fact.get("document_status")),
+                valid_until=valid_until,
+            ),
         )
+        if details:
+            row["details"] = details
+        projected.append(row)
     return projected
 
 
@@ -412,6 +458,27 @@ def _presence(value: Any) -> str:
     return "recorded" if _text(value) else "missing"
 
 
+def _categories_text(value: Any) -> str | None:
+    if isinstance(value, (list, tuple, set)):
+        parts = [str(item).strip() for item in value if str(item).strip()]
+        return ", ".join(parts) or None
+    return _text(value)
+
+
+def _as_date(value: Any) -> date | None:
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    text = _text(value)
+    if text is None:
+        return None
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
 def _text(value: Any) -> str | None:
     if value is None:
         return None
@@ -466,6 +533,13 @@ async def build_hr_employee_record_surface(
         driver.get("work_eligibility", {}).get("status") == "eligible"
     )
     professional = driver.get("professional") or {}
+    facts = await _facts_with_evidence(
+        db,
+        tenant_id=str(tenant_id),
+        employment_id=str(driver.get("employment_id") or ""),
+        facts=list(professional.get("facts") or []),
+    )
+    documents = await _document_summary(db, tenant_id=str(tenant_id), candidate_id=str(employee.candidate_id or ""))
     projected = project_employee_record(
         identity=driver.get("identity") or {},
         personal=personal,
@@ -475,7 +549,7 @@ async def build_hr_employee_record_surface(
         legal_stay=driver.get("legal_stay") or {},
         work_eligibility=driver.get("work_eligibility") or {},
         legal_pass=legal_pass,
-        professional_facts=list(professional.get("facts") or []),
+        professional_facts=facts,
         professional_defined=bool(professional.get("defined")),
         terms=driver.get("terms"),
         employer=(driver.get("header") or {}).get("employer"),
@@ -502,7 +576,70 @@ async def build_hr_employee_record_surface(
             "valid_for_this_employment": (driver.get("work_eligibility") or {}).get("valid_for_this_employment"),
         },
         "terms": driver.get("terms"),
+        "documents": documents,
     }
+
+
+async def _facts_with_evidence(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employment_id: str,
+    facts: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not employment_id or not facts:
+        return facts
+    rows = (
+        await db.scalars(
+            select(HrEmploymentRequirement).where(
+                HrEmploymentRequirement.tenant_id == tenant_id,
+                HrEmploymentRequirement.employment_id == employment_id,
+            )
+        )
+    ).all()
+    by_key = {canonical_fact_key(row.definition_key): row for row in rows}
+    document_ids = [str(row.satisfaction_document_id) for row in rows if row.satisfaction_document_id]
+    documents: dict[str, Document] = {}
+    if document_ids:
+        loaded = (
+            await db.scalars(
+                select(Document).where(
+                    Document.tenant_id == tenant_id,
+                    Document.id.in_(document_ids),
+                    Document.deleted_at.is_(None),
+                )
+            )
+        ).all()
+        documents = {str(doc.id): doc for doc in loaded}
+    enriched: list[dict[str, Any]] = []
+    for fact in facts:
+        key = canonical_fact_key(str(fact.get("key") or ""))
+        row = by_key.get(key)
+        reading = dict(fact)
+        if row is not None and row.satisfaction_document_id:
+            document = documents.get(str(row.satisfaction_document_id))
+            if document is not None:
+                fields = fact_fields_from_document(meta=document.meta, expire_date=document.expire_date)
+                reading["categories"] = fields.get("categories")
+                reading["valid_until"] = fields.get("valid_until")
+                reading["document_status"] = getattr(document.status, "value", document.status)
+                reading["evidence_linked"] = True
+        enriched.append(reading)
+    return enriched
+
+
+async def _document_summary(db: AsyncSession, *, tenant_id: str, candidate_id: str) -> dict[str, int]:
+    if not candidate_id:
+        return {"total": 0, "attention": 0}
+    views = await list_entity_link_documents_via_contract(
+        db,
+        tenant_id=tenant_id,
+        linked_entity_type=E4_LINKED_ENTITY_TYPE,
+        linked_entity_id=candidate_id,
+        relation_type=E4_RELATION_TYPE,
+    )
+    attention = sum(1 for view in views if hub_status_needs_attention(str(view.get("status") or "")))
+    return {"total": len(views), "attention": attention}
 
 
 def _person_editor(candidate: Candidate | None, personal: dict[str, Any]) -> dict[str, Any]:

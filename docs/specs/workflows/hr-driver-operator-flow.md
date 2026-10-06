@@ -145,7 +145,25 @@ The employee page `#hr-verification` assembles the owners in the table above for
 
 The surface does not add a driver-card store, an Employment status, a second legal model, or a document list for the screen. It is a projection. Authority over the same facts is [Canonical Fact Authority](../architecture/canonical-fact-authority-contract.md). Canonical Fact Authority Contract Gate **PASS**. That contract does not assign a capability and does not rewrite this surface.
 
-The employee page renders three levels: the header, Current Process, and the Employee Record. [HR Employee Record Projection](../architecture/hr-employee-record-projection.md) Contract Gate **PASS** assigns the eight groups. The page uses the candidate card’s composition: a summary header, a compact two-column record, and a right rail. An empty group stays in place as a short state. Documents, formalities, and history are compact links. The rail holds Current Process and the existing notes and document-blocker widgets. Dane osobowe, Legalizacja, and Zatrudnienie edit through the owners that already hold those facts: the candidate person fields, the legal eligibility reading, and the employment-terms confirmation. Current Process opens that action. Qualifications and medical stay on the record without their own editor in this pass. Current Process is one next action. When the case is returned to Recruitment, that action opens the recruitment case and does not ask HR to keep verifying. Legacy verification, checklists, and debug projections are not rendered on this page. The page does not store a fact.
+The employee page renders three levels: the header, Current Process, and the Employee Record. [HR Employee Record Projection](../architecture/hr-employee-record-projection.md) Contract Gate **PASS** assigns the eight groups. The page uses the candidate card’s composition: a summary header, a compact two-column record, and a right rail. An empty group stays in place as a short state. Documents, formalities, and history are compact links. The rail holds Current Process and the existing notes widget. Dane osobowe, Legalizacja, and Zatrudnienie edit through the owners that already hold those facts: the candidate person fields, the legal eligibility reading, and the employment-terms confirmation. Current Process opens that action. Qualifications and medical show the requirement and an evidence indicator taken from the existing document status. Categories and term are read from the linked evidence because that document owns those fields. One document may cover more than one fact. They do not add a dictionary, a file editor, or a document control. The Dokumenty card is a count and a link to the Document Hub. Current Process is one next action. When the case is returned to Recruitment, that action opens the recruitment case and does not ask HR to keep verifying. Legacy verification, checklists, and debug projections are not rendered on this page. The page does not store a fact.
+
+## Evidence boundary
+
+A person fact and an Employment fact keep their owners. Employee Record shows that value. The evidence relation shows coverage. Document Hub manages the evidence.
+
+A value is read from the linked evidence only when that evidence is the canonical owner. Licence number, categories, and term are that case. Citizenship stays a person fact. A passport may evidence citizenship. It does not own citizenship.
+
+These readings stay as they are until a browser walk of the deployed page:
+
+- Employee Record does not upload, replace, preview, or delete a document.
+- Document Hub manages the document and its fields. After a change, Employee Record re-reads the result.
+- One evidence may cover N facts.
+- `missing` means the fact has no required evidence. It does not mean a separate file is mandatory.
+- `expired` and `rejected` stay those statuses. Evidence exists and is unfit. They are not `missing`.
+- Handoff changes authority over the same document. It does not create an HR copy.
+- Badges, dictionaries, document statuses, and UI primitives stay the system ones.
+
+The browser walk is Dane osobowe, Legalizacja, Zatrudnienie, Kwalifikacje and Badania, the Documents summary, Current Process, and Ready to Start. The E2E is not PASS. That walk names the next red. This file does not add a further action on the record.
 
 ## Out of this reading
 

@@ -1282,6 +1282,7 @@ class HrEmployeeRecordOut(BaseModel):
     person: dict[str, Any] = Field(default_factory=dict)
     legal: dict[str, Any] = Field(default_factory=dict)
     terms: Optional[dict[str, Any]] = None
+    documents: dict[str, int] = Field(default_factory=dict)
 
 
 class HrEmployeeRecordPersonIn(BaseModel):

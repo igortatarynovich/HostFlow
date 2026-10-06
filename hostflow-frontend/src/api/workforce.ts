@@ -1591,6 +1591,7 @@ export type HrEmployeeRecordRow = {
   status: string
   evidence: string | null
   actions: string[]
+  details?: { label: string; value: string }[]
 }
 
 export type HrEmployeeRecordGroup = {
@@ -1631,6 +1632,7 @@ export type HrEmployeeRecordSurface = {
     valid_for_this_employment: string | null
   }
   terms?: HrDriverOperatorSurface['terms']
+  documents?: { total: number; attention: number }
 }
 
 export type HrEmployeeRecordPersonIn = {
