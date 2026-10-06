@@ -31,6 +31,7 @@ from backend.app.services.hr_driver_operator_surface import (
     build_hr_driver_operator_surface,
     canonical_fact_key,
 )
+from backend.app.services.hr_verification_plan import VERIFICATION_SLOT_DEFS
 from backend.app.services.requirement_document_data import fact_fields_from_document
 
 GROUP_ORDER = (
@@ -59,6 +60,184 @@ _QUALIFICATION_KEYS = frozenset({"driving_licence", "code_95", "tachograph_card"
 _MEDICAL_KEYS = frozenset({"medical", "psychological", "occupational_medicine"})
 _DOCUMENT_KEYS = frozenset({"passport"})
 _CONFIRMED_DOCUMENT = frozenset({DocumentStatus.approved.value, DocumentStatus.verified.value})
+_ZUS_DONE = frozenset({"done", "completed"})
+_ZUS_CLOSED = frozenset({"done", "completed", "cancelled", "canceled"})
+
+
+def _slot_types(document_key: str) -> frozenset[str]:
+    for slot in VERIFICATION_SLOT_DEFS:
+        if slot.document_key == document_key:
+            return slot.catalog_types
+    return frozenset()
+
+
+def project_employment_path(
+    *,
+    phase: str,
+    identity_complete: bool,
+    facts: list[dict[str, Any]],
+    legal_pass: bool,
+    zus_status: str | None,
+    terms_complete: bool,
+    ready_status: str | None,
+) -> list[dict[str, Any]]:
+    """Marks for processes that already have a reading. Parallel marks are allowed."""
+
+    applicable = [
+        fact
+        for fact in facts
+        if fact.get("applicability") == "applicable" and not fact.get("not_applicable")
+    ]
+    blocking = any(fact.get("resolution") == "blocking" for fact in applicable)
+    unresolved = any(fact.get("resolution") == "unresolved" for fact in applicable)
+    if blocking:
+        verification = "blocked"
+    elif not identity_complete or unresolved:
+        verification = "current"
+    else:
+        verification = "completed"
+
+    legal = "completed" if legal_pass else "current"
+    if zus_status is None:
+        formalities = "not_applicable"
+    elif str(zus_status).lower() in _ZUS_DONE:
+        formalities = "completed"
+    elif str(zus_status).lower() in _ZUS_CLOSED:
+        formalities = "not_applicable"
+    else:
+        formalities = "current"
+    terms = "completed" if terms_complete else "current"
+    ready = "completed" if ready_status in {"pass", "active"} else "pending"
+    start = "completed" if phase == "active" or ready_status == "active" else "pending"
+    if ready_status == "pass" and phase == "preparing":
+        start = "current"
+    if phase == "ended":
+        start = "completed"
+
+    if phase == "returned":
+        return [
+            _path_step("handoff", "current", "recruitment"),
+            _path_step("verification", "pending", "dane_osobowe"),
+            _path_step("legal", "pending", "legalizacja"),
+            _path_step("formalities", formalities if formalities == "not_applicable" else "pending", "formalnosci"),
+            _path_step("terms", "pending", "zatrudnienie"),
+            _path_step("ready", "pending", "ready"),
+            _path_step("start", "pending", "start"),
+        ]
+
+    if phase == "active" and verification == "current":
+        verification = "blocked"
+    if phase == "active" and legal == "current":
+        legal = "blocked"
+    if phase == "active" and terms == "current":
+        terms = "blocked"
+
+    return [
+        _path_step("handoff", "completed", None),
+        _path_step("verification", verification, "dane_osobowe" if not identity_complete else "kwalifikacje"),
+        _path_step("legal", legal, "legalizacja"),
+        _path_step("formalities", formalities, "formalnosci"),
+        _path_step("terms", terms, "zatrudnienie"),
+        _path_step("ready", ready, "ready"),
+        _path_step("start", start, "start"),
+    ]
+
+
+def _path_step(step_id: str, mark: str, target: str | None) -> dict[str, Any]:
+    labels = {
+        "handoff": "Handoff",
+        "verification": _GROUP_LABELS["dane_osobowe"] if target == "dane_osobowe" else _GROUP_LABELS["kwalifikacje"],
+        "legal": _GROUP_LABELS["legalizacja"],
+        "formalities": _GROUP_LABELS["formalnosci"],
+        "terms": _GROUP_LABELS["zatrudnienie"],
+        "ready": "Ready to Start",
+        "start": "Start employment",
+    }
+    return {"id": step_id, "mark": mark, "target": target, "label": labels[step_id]}
+
+
+def _earliest(items: list[dict[str, Any]]) -> dict[str, Any] | None:
+    dated = [item for item in items if item.get("on")]
+    if not dated:
+        return None
+    return sorted(dated, key=lambda item: str(item["on"])[:10])[0]
+
+
+def project_record_overview(
+    *,
+    phase: str,
+    citizenship: str | None,
+    stay_basis: str | None,
+    work_basis: str | None,
+    work_status: str | None,
+    terms: dict[str, Any] | None,
+    start_on: str | None,
+    documents: list[dict[str, Any]],
+    facts: list[dict[str, Any]],
+    path: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """One reading of the dates and marks that already exist."""
+
+    stay_types = _slot_types("Legal stay")
+    work_types = _slot_types("Work permit")
+    stay_until = _earliest(
+        [
+            {"on": str(view.get("expires_at") or "")[:10], "label": view.get("title")}
+            for view in documents
+            if str(view.get("doc_type") or "") in stay_types and view.get("expires_at")
+        ]
+    )
+    work_until = _earliest(
+        [
+            {"on": str(view.get("expires_at") or "")[:10], "label": view.get("title")}
+            for view in documents
+            if str(view.get("doc_type") or "") in work_types and view.get("expires_at")
+        ]
+    )
+    agreed = terms or {}
+    dates: list[dict[str, Any]] = []
+    if agreed.get("duration") == "fixed" and agreed.get("fixed_term_end"):
+        dates.append({"label": agreed.get("contract_basis") or "Umowa", "on": agreed.get("fixed_term_end"), "target": "zatrudnienie"})
+    for view in documents:
+        if view.get("expires_at"):
+            dates.append({"label": view.get("title") or view.get("doc_type"), "on": str(view.get("expires_at"))[:10], "target": "dokumenty"})
+    for fact in facts:
+        until = fact.get("valid_until")
+        if until:
+            key = canonical_fact_key(str(fact.get("key") or ""))
+            target = "dokumenty" if key in _DOCUMENT_KEYS else "kwalifikacje"
+            dates.append({"label": fact.get("label") or key, "on": str(until)[:10], "target": target})
+    nearest = _earliest(dates)
+    attention = [step for step in path if step["mark"] in {"current", "blocked"}]
+    if phase == "returned":
+        notice = "returned"
+    elif phase == "ended":
+        notice = "ended"
+    elif attention:
+        notice = "attention"
+    elif phase == "active":
+        notice = "healthy"
+    else:
+        notice = "attention"
+    return {
+        "phase": phase,
+        "citizenship": citizenship,
+        "stay_basis": stay_basis,
+        "stay_until": None if stay_until is None else stay_until.get("on"),
+        "work_basis": work_basis,
+        "work_until": None if work_until is None else work_until.get("on"),
+        "work_status": work_status,
+        "contract_basis": agreed.get("contract_basis"),
+        "contract_until": agreed.get("fixed_term_end") if agreed.get("duration") == "fixed" else None,
+        "contract_duration": agreed.get("duration"),
+        "start_on": start_on,
+        "attention_count": len(attention),
+        "notice": notice,
+        "notice_target": attention[0]["target"] if attention else None,
+        "nearest_label": None if nearest is None else nearest.get("label"),
+        "nearest_on": None if nearest is None else nearest.get("on"),
+        "nearest_target": None if nearest is None else nearest.get("target"),
+    }
 
 
 def apply_citizenship(personal: dict[str, Any] | None, value: str) -> dict[str, Any]:
@@ -540,7 +719,33 @@ async def build_hr_employee_record_surface(
         employment_id=str(driver.get("employment_id") or ""),
         facts=list(professional.get("facts") or []),
     )
-    documents = await _document_summary(db, tenant_id=str(tenant_id), candidate_id=str(employee.candidate_id or ""))
+    document_views = await _linked_documents(db, tenant_id=str(tenant_id), candidate_id=str(employee.candidate_id or ""))
+    documents = {
+        "total": len(document_views),
+        "attention": sum(1 for view in document_views if hub_status_needs_attention(str(view.get("status") or ""))),
+    }
+    phase = _phase(employee.status, driver.get("state"))
+    path = project_employment_path(
+        phase=phase,
+        identity_complete=bool((driver.get("identity") or {}).get("complete")),
+        facts=facts,
+        legal_pass=legal_pass,
+        zus_status=zus_status,
+        terms_complete=bool((driver.get("terms") or {}).get("complete")),
+        ready_status=(driver.get("ready_to_start") or {}).get("status"),
+    )
+    overview = project_record_overview(
+        phase=phase,
+        citizenship=_text(personal.get("citizenship")) or _text((driver.get("identity") or {}).get("citizenship")),
+        stay_basis=(driver.get("legal_stay") or {}).get("basis"),
+        work_basis=(driver.get("work_eligibility") or {}).get("basis"),
+        work_status=(driver.get("work_eligibility") or {}).get("status"),
+        terms=driver.get("terms"),
+        start_on=actual_start or (driver.get("header") or {}).get("planned_start"),
+        documents=document_views,
+        facts=facts,
+        path=path,
+    )
     projected = project_employee_record(
         identity=driver.get("identity") or {},
         personal=personal,
@@ -581,7 +786,18 @@ async def build_hr_employee_record_surface(
         },
         "terms": driver.get("terms"),
         "documents": documents,
+        "overview": overview,
+        "path": path,
     }
+
+
+def _phase(employee_status: str | None, employment_state: str | None) -> str:
+    if recruitment_holds_returned_case(employee_status):
+        return "returned"
+    state = str(employment_state or "").strip().lower()
+    if state in {"preparing", "active", "ended"}:
+        return state
+    return "preparing"
 
 
 async def _facts_with_evidence(
@@ -632,9 +848,9 @@ async def _facts_with_evidence(
     return enriched
 
 
-async def _document_summary(db: AsyncSession, *, tenant_id: str, candidate_id: str) -> dict[str, int]:
+async def _linked_documents(db: AsyncSession, *, tenant_id: str, candidate_id: str) -> list[dict[str, Any]]:
     if not candidate_id:
-        return {"total": 0, "attention": 0}
+        return []
     views = await list_entity_link_documents_via_contract(
         db,
         tenant_id=tenant_id,
@@ -642,8 +858,7 @@ async def _document_summary(db: AsyncSession, *, tenant_id: str, candidate_id: s
         linked_entity_id=candidate_id,
         relation_type=E4_RELATION_TYPE,
     )
-    attention = sum(1 for view in views if hub_status_needs_attention(str(view.get("status") or "")))
-    return {"total": len(views), "attention": attention}
+    return [view for view in views if isinstance(view, dict)]
 
 
 _ADDRESS_KEYS = ("country", "city", "street", "house", "apt", "zip")

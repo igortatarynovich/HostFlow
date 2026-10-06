@@ -1638,6 +1638,35 @@ export type HrEmployeeRecordSurface = {
   }
   terms?: HrDriverOperatorSurface['terms']
   documents?: { total: number; attention: number }
+  overview?: HrEmployeeRecordOverview
+  path?: HrEmployeeRecordPathStep[]
+}
+
+export type HrEmployeeRecordPathStep = {
+  id: string
+  mark: 'completed' | 'current' | 'pending' | 'blocked' | 'not_applicable'
+  target: string | null
+  label: string
+}
+
+export type HrEmployeeRecordOverview = {
+  phase: string
+  citizenship: string | null
+  stay_basis: string | null
+  stay_until: string | null
+  work_basis: string | null
+  work_until: string | null
+  work_status: string | null
+  contract_basis: string | null
+  contract_until: string | null
+  contract_duration: string | null
+  start_on: string | null
+  attention_count: number
+  notice: string
+  notice_target: string | null
+  nearest_label: string | null
+  nearest_on: string | null
+  nearest_target: string | null
 }
 
 export type HrEmployeeRecordAddress = {

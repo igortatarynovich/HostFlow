@@ -25,7 +25,12 @@ import { usePlatformCountryOptions, usePlatformDialCodeOptions } from '../../hoo
 import { PREFERRED_CONTACT_VALUES } from '../../data/preferredContactChannels'
 import CandidateDocuments from '../../modules/documents/CandidateDocuments'
 import { CandidateQuickTaskModal } from '../../modules/candidates/components/CandidateQuickTaskModal'
-import { NotesCapability } from '../../platform/capabilities/notes/NotesCapability'
+import CandidateNotesRailSection from '../candidate/CandidateNotesRailSection'
+import CandidateTimelinePanel from '../candidate/CandidateTimelinePanel'
+import type { CandidateNote, StageHistoryEntry } from '../../modules/candidate-card/types'
+import { translateStageLabel } from '../../utils/stageLabels'
+import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { useToast } from '../Toast'
 import { StatusBadge } from '../ui/StatusBadge'
 import { documentSeverityToSemantic, type StatusBadgeSemantic } from '../ui/statusBadgeSemantics'
 import { getLanguageDisplayName, getRegionDisplayName } from '../../utils/catalogLocale'
@@ -220,7 +225,6 @@ export default function HrEmployeeRecordSurface({
   const recruitmentHref = surface.candidate_id
     ? `${CRM_APP_PATHS.candidates}/${encodeURIComponent(surface.candidate_id)}`
     : null
-  const status = statusSummary(surface, groups, t)
   const activeGroup = (id: string) => groupById(groups, id)
   const runAction = () => {
     if (!action) return
@@ -245,22 +249,24 @@ export default function HrEmployeeRecordSurface({
     } else openTarget(surface.current_process.target_row_id)
   }
 
+  const openPath = (target: string | null) => {
+    if (!target) return
+    if (target === 'recruitment' && recruitmentHref) navigate(recruitmentHref)
+    else if (target === 'formalnosci') navigate(CRM_APP_PATHS.hrZusWorkspace)
+    else if (target === 'ready' || target === 'start') runAction()
+    else {
+      const next = TAB_FOR_GROUP[target]
+      if (next) setTab(next)
+    }
+  }
+
   return (
-    <div className="card min-w-0 p-3">
+    <div className="min-w-0 space-y-4">
+      <EmployeeHero surface={surface} locale={locale} onOpen={openPath} />
+      {error ? <p className="alert-error">{error}</p> : null}
+      <div className="card min-w-0 p-3">
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
         <div className="min-w-0 space-y-4 lg:pr-6">
-          <EmployeeHero
-            surface={surface}
-            status={status}
-            groups={groups}
-            locale={locale}
-            onOpenGroup={(groupId) => {
-              const next = TAB_FOR_GROUP[groupId]
-              if (next) setTab(next)
-            }}
-            onOpenAction={runAction}
-          />
-          {error ? <p className="alert-error">{error}</p> : null}
 
           <div className="tabs flex-wrap gap-x-1 gap-y-0" role="tablist">
             {RECORD_TABS.map((id) => (
@@ -352,220 +358,127 @@ export default function HrEmployeeRecordSurface({
             locked={returned}
           />
           {surface.candidate_id ? (
-            <section className="card w-full p-4">
-              <NotesCapability
-                entity={{ resourceType: 'candidate', resourceId: surface.candidate_id }}
-                patching={false}
-                readOnly={returned}
-                onClose={() => undefined}
-                onRefresh={() => undefined}
-              />
-            </section>
+            <RecordNotes candidateId={surface.candidate_id} locked={returned} />
           ) : null}
-          <RecordHistory group={activeGroup('historia')} />
+          {surface.candidate_id ? <RecordTimeline candidateId={surface.candidate_id} /> : null}
         </aside>
+      </div>
       </div>
     </div>
   )
 }
 
-function statusSummary(
-  surface: HrEmployeeRecordSurface,
-  groups: HrEmployeeRecordGroup[],
-  t: Translate,
-): { headline: string; semantic: StatusBadgeSemantic; context: string[]; primary: string | null; secondary: string | null } {
-  const action = surface.current_process.next_action
-  const returned = surface.current_process.destination === 'recruitment' || action?.code === 'returned_to_recruitment'
-  const position = surface.header.position
-  const employer = surface.header.employer
-  const contract = rowById(groups, 'zatrudnienie.contract_basis')?.value
-  const actual = rowById(groups, 'zatrudnienie.actual_start')?.value
-  const planned = rowById(groups, 'zatrudnienie.planned_start')?.value || surface.header.planned_start
-  const context = [[position, employer].filter(Boolean).join(' · ')].filter(Boolean)
-  const issues = urgentIssues(groups)
-  const lead = issues[0]
-  const rest = Math.max(issues.length - 1, 0) + (surface.current_process.missing?.length || 0)
-
-  if (returned) {
-    return {
-      headline: t('app.hr.employee_record.status.returned', { defaultValue: 'Wrócił do rekrutacji' }),
-      semantic: 'info',
-      context,
-      primary: action?.reason || t('app.hr.employee_record.status.waiting_recruitment', { defaultValue: 'Oczekuje na aktualizację przez Recruitment' }),
-      secondary: null,
-    }
-  }
-  if (surface.state === 'ended') {
-    if (surface.header.ended_on) {
-      context.push(`${t('app.hr.employee_record.status.ended_on', { defaultValue: 'Zakończono' })} ${formatDay(surface.header.ended_on)}`)
-    }
-    return {
-      headline: t('app.hr.employee_record.status.ended', { defaultValue: 'Zatrudnienie zakończone' }),
-      semantic: 'neutral',
-      context,
-      primary: null,
-      secondary: null,
-    }
-  }
-  if (surface.state === 'preparing') {
-    if (planned) {
-      context.push(`${t('app.hr.employee_record.status.planned_start', { defaultValue: 'Planowany start' })}: ${formatDay(planned)}`)
-    }
-    return {
-      headline: t('app.hr.employee_record.status.preparing', { defaultValue: 'Przygotowanie do zatrudnienia' }),
-      semantic: 'warning',
-      context,
-      primary: rest > 0
-        ? `${rest} ${t('app.hr.employee_record.status.actions_required', { defaultValue: 'rzeczy wymagają działania' })}`
-        : null,
-      secondary: action ? `${t('app.hr.employee_record.status.next_action', { defaultValue: 'Następne działanie' })}: ${action.title}` : null,
-    }
-  }
-
-  if (actual || planned) {
-    const when = formatDay(actual || planned)
-    context.push([`Od ${when}`, contract].filter(Boolean).join(' · '))
-  }
-  const urgent = lead && lead.kind !== 'soon' ? lead : null
-  const attention = urgent || (action ? null : lead)
-  if (attention) {
-    return {
-      headline: t('app.hr.employee_record.status.active', { defaultValue: 'Zatrudniony · Aktywny' }),
-      semantic: attention.kind === 'soon' ? 'warning' : 'bad',
-      context,
-      primary: [issueLine(t, attention), rest > 0 ? `+ ${rest}` : null].filter(Boolean).join(' · '),
-      secondary: action ? `${t('app.hr.employee_record.status.next_action', { defaultValue: 'Następne działanie' })}: ${action.title}` : null,
-    }
-  }
-  if (action) {
-    return {
-      headline: t('app.hr.employee_record.status.active', { defaultValue: 'Zatrudniony · Aktywny' }),
-      semantic: 'warning',
-      context,
-      primary: `${t('app.hr.employee_record.status.next_action', { defaultValue: 'Następne działanie' })}: ${action.title}`,
-      secondary: lead ? issueLine(t, lead) : null,
-    }
-  }
-  return {
-    headline: surface.state === 'active'
-      ? t('app.hr.employee_record.status.active', { defaultValue: 'Zatrudniony · Aktywny' })
-      : t('app.hr.employee_record.status.none', { defaultValue: 'Brak zatrudnienia' }),
-    semantic: surface.state === 'active' ? 'ok' : 'neutral',
-    context,
-    primary: surface.state === 'active'
-      ? t('app.hr.employee_record.status.healthy', { defaultValue: 'Wszystko w porządku' })
-      : null,
-    secondary: surface.state === 'active'
-      ? t('app.hr.employee_record.status.no_action', { defaultValue: 'Brak wymaganych działań' })
-      : null,
-  }
-}
-
-function urgentIssues(groups: HrEmployeeRecordGroup[]): { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number; group: string }[] {
-  const byLabel = new Map<string, { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number; group: string }>()
-  for (const group of groups) {
-    if (group.id === 'historia') continue
-    for (const row of group.rows) {
-      const until = row.details?.find((detail) => detail.label === 'Ważne do')?.value
-      const days = until ? daysUntil(until) : null
-      let next: { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number; group: string } | null = null
-      if (row.status === 'blocking') next = { kind: 'blocking', label: row.label, days: days ?? -1, group: group.id }
-      else if (days !== null && days < 0) next = { kind: 'expired', label: row.label, days, group: group.id }
-      else if (row.evidence === 'expired' || row.evidence === 'rejected') {
-        next = { kind: 'expired', label: row.label, days: days ?? -1, group: group.id }
-      } else if (days !== null && days <= 30) next = { kind: 'soon', label: row.label, days, group: group.id }
-      if (!next) continue
-      const current = byLabel.get(row.label)
-      if (!current || rankIssue(next) < rankIssue(current) || (rankIssue(next) === rankIssue(current) && next.days < current.days)) {
-        byLabel.set(row.label, next)
-      }
-    }
-  }
-  return [...byLabel.values()].sort((left, right) => rankIssue(left) - rankIssue(right) || left.days - right.days)
-}
-
-function rankIssue(issue: { kind: 'blocking' | 'expired' | 'soon' }): number {
-  if (issue.kind === 'blocking') return 0
-  if (issue.kind === 'expired') return 1
-  return 2
-}
-
-function daysUntil(iso: string): number | null {
-  const day = iso.slice(0, 10)
-  const target = new Date(`${day}T00:00:00`)
-  if (Number.isNaN(target.getTime())) return null
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return Math.round((target.getTime() - today.getTime()) / 86400000)
-}
-
-function issueLine(t: Translate, issue: { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number; group?: string }): string {
-  if (issue.kind === 'soon') {
-    const unit = issue.days === 1
-      ? t('app.hr.employee_record.status.day', { defaultValue: 'dzień' })
-      : t('app.hr.employee_record.status.days', { defaultValue: 'dni' })
-    return `${issue.label} ${t('app.hr.employee_record.status.expires_in', { defaultValue: 'wygasa za' })} ${issue.days} ${unit}`
-  }
-  if (issue.kind === 'expired') return `${issue.label} ${t('app.hr.employee_record.status.expired_word', { defaultValue: 'wygasł' })}`
-  return issue.label
+const PATH_MARK: Record<string, string> = {
+  completed: '✓',
+  current: '●',
+  pending: '○',
+  blocked: '⚠',
+  not_applicable: '—',
 }
 
 function EmployeeHero({
   surface,
-  status,
-  groups,
   locale,
-  onOpenGroup,
-  onOpenAction,
+  onOpen,
 }: {
   surface: HrEmployeeRecordSurface
-  status: ReturnType<typeof statusSummary>
-  groups: HrEmployeeRecordGroup[]
   locale: 'en' | 'ru' | 'pl'
-  onOpenGroup: (groupId: string) => void
-  onOpenAction: () => void
+  onOpen: (target: string | null) => void
 }) {
   const { t } = useI18n()
-  const lead = urgentIssues(groups)[0]
-  const action = surface.current_process.next_action
-  const showIssue = Boolean(lead && (lead.kind !== 'soon' || !action))
-  const citizenship = surface.person?.citizenship ? getRegionDisplayName(surface.person.citizenship, locale) : ''
+  const overview = surface.overview
+  const path = surface.path || []
+  if (!overview) return null
+  const groups = surface.groups
+  const phaseLabel = t(`app.hr.employee_record.status.${overview.phase}`, {
+    defaultValue:
+      overview.phase === 'active'
+        ? 'Zatrudniony · Aktywny'
+        : overview.phase === 'preparing'
+          ? 'Przygotowanie do zatrudnienia'
+          : overview.phase === 'returned'
+            ? 'Wrócił do rekrutacji'
+            : overview.phase === 'ended'
+              ? 'Zatrudnienie zakończone'
+              : overview.phase,
+  })
+  const semantic: StatusBadgeSemantic =
+    overview.notice === 'healthy' ? 'ok' : overview.notice === 'attention' ? 'warning' : overview.notice === 'returned' ? 'info' : 'neutral'
+  const citizenship = overview.citizenship ? getRegionDisplayName(overview.citizenship, locale) : ''
   const stayRow = rowById(groups, 'legalizacja.stay_basis')
   const workRow = rowById(groups, 'legalizacja.work_basis')
-  const stay = stayRow ? displayValue(stayRow.value, stayRow.label, locale, t) : ''
-  const work = workRow ? displayValue(workRow.value, workRow.label, locale, t) : ''
-  const identity = [citizenship, stay, work].filter((part) => part && part !== '—').join(' · ')
-  const contractEnd = surface.terms?.duration === 'fixed' ? surface.terms.fixed_term_end : null
+  const contractRow = rowById(groups, 'zatrudnienie.contract_basis')
+  const startRow = rowById(groups, 'zatrudnienie.planned_start')
+  const stay = stayRow ? displayValue(overview.stay_basis, stayRow.label, locale, t) : displayValue(overview.stay_basis, '', locale, t)
+  const work = workRow ? displayValue(overview.work_basis, workRow.label, locale, t) : displayValue(overview.work_basis, '', locale, t)
+  const contract = contractRow ? displayValue(overview.contract_basis, contractRow.label, locale, t) : displayValue(overview.contract_basis, '', locale, t)
   const role = [surface.header.position, surface.header.employer].filter(Boolean).join(' · ')
-  const until = lead
-    ? groups.find((group) => group.id === lead.group)?.rows.find((row) => row.label === lead.label)?.details?.find((detail) => detail.label === 'Ważne do')?.value
-    : null
-  const needsOpen = status.semantic === 'bad' || status.semantic === 'warning'
+  const notice =
+    overview.notice === 'healthy'
+      ? t('app.hr.employee_record.status.healthy', { defaultValue: 'Wszystko w porządku' })
+      : overview.notice === 'returned'
+        ? t('app.hr.employee_record.status.waiting_recruitment', { defaultValue: 'Oczekuje na aktualizację przez Recruitment' })
+        : overview.notice === 'ended'
+          ? null
+          : `${overview.attention_count} ${t('app.hr.employee_record.status.actions_required', { defaultValue: 'rzeczy wymagają działania' })}`
   return (
     <div className="min-w-0 rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-md">
-      <h2 className="text-white">{surface.header.name}</h2>
-      {role ? <p>{role}</p> : null}
-      <StatusBadge inverse label={status.headline} semantic={status.semantic} />
-      {identity ? <p>{identity}</p> : null}
-      {contractEnd ? (
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-white">{surface.header.name}</h2>
+            <StatusBadge inverse label={phaseLabel} semantic={semantic} />
+          </div>
+          {role ? <p>{role}</p> : null}
+        </div>
+      </div>
+      <div className="mt-3 space-y-1 text-sm">
+        {citizenship ? <p>{citizenship}</p> : null}
         <p>
-          {t('app.candidate_card.employment.columns.end', { defaultValue: 'Umowa do' })} {formatDay(contractEnd)}
+          {stayRow?.label || 'Pobyt'} {stay}
+          {overview.stay_until ? ` · ${formatDay(overview.stay_until)}` : ''}
         </p>
-      ) : null}
-      {status.primary ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <p>{status.primary}{until && showIssue ? ` · ${formatDay(until)}` : ''}</p>
-          {needsOpen ? (
-            <button
-              type="button"
-              className="btn-secondary btn-sm"
-              onClick={() => (showIssue && lead ? onOpenGroup(lead.group) : onOpenAction())}
-            >
+        <p>
+          {workRow?.label || 'Praca'} {work}
+          {overview.work_until ? ` · ${formatDay(overview.work_until)}` : ''}
+        </p>
+        <p>
+          {contractRow?.label || 'Umowa'} {contract}
+          {overview.contract_until ? ` · ${formatDay(overview.contract_until)}` : ''}
+        </p>
+        {overview.start_on ? (
+          <p>
+            {startRow?.label || 'Start'} {formatDay(overview.start_on)}
+          </p>
+        ) : null}
+      </div>
+      {notice ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <p>{notice}</p>
+          {overview.notice_target ? (
+            <button type="button" className="btn-secondary btn-sm" onClick={() => onOpen(overview.notice_target)}>
               {t('common.actions.open', { defaultValue: 'Otwórz' })}
             </button>
           ) : null}
         </div>
       ) : null}
+      {overview.nearest_label && overview.nearest_on ? (
+        <button type="button" className="mt-1 text-left text-sm underline" onClick={() => onOpen(overview.nearest_target)}>
+          {overview.nearest_label} · {formatDay(overview.nearest_on)}
+        </button>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {path.map((step) => (
+          <button
+            key={step.id}
+            type="button"
+            className="inline-flex items-center rounded-lg border border-white/30 bg-white/20 px-2 py-0.5 text-[11px]"
+            onClick={() => onOpen(step.target)}
+          >
+            {PATH_MARK[step.mark] || '○'} {step.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -685,28 +598,129 @@ function RecordTasks({
   )
 }
 
-function RecordHistory({ group }: { group?: HrEmployeeRecordGroup }) {
+function RecordNotes({ candidateId, locked }: { candidateId: string; locked: boolean }) {
   const { t } = useI18n()
-  const [expanded, setExpanded] = useState(false)
-  const rows = group?.rows || []
-  const shown = expanded ? rows : rows.slice(0, 5)
+  const { notify } = useToast()
+  const [notes, setNotes] = useState<CandidateNote[]>([])
+  const [loading, setLoading] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const { data } = await api.get<CandidateNote[]>(`/candidates/${candidateId}/notes`)
+      setNotes(Array.isArray(data) ? data : [])
+    } catch {
+      setNotes([])
+    } finally {
+      setLoading(false)
+    }
+  }, [candidateId])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const add = async () => {
+    const text = draft.trim()
+    if (!text || locked) return
+    setSending(true)
+    try {
+      await api.post(`/candidates/${candidateId}/notes`, { text, visibility: 'internal' })
+      setDraft('')
+      await load()
+      notify({ title: t('app.candidate_card.messages.note_added'), variant: 'success' })
+    } catch {
+      notify({ title: t('app.candidate_card.notes.save_failed'), variant: 'error' })
+    } finally {
+      setSending(false)
+    }
+  }
+
   return (
-    <section className="card w-full p-4">
-      <h3>{group?.label || t('app.hr.employee_record.history', { defaultValue: 'Historia' })}</h3>
-      {shown.map((row) => (
-        <p key={row.id}>
-          {row.value ? `${formatDay(row.value)} ` : ''}
-          {row.label}
-        </p>
-      ))}
-      {rows.length > 5 ? (
-        <button type="button" className="btn-secondary btn-sm" onClick={() => setExpanded((value) => !value)}>
-          {expanded
-            ? t('common.actions.close', { defaultValue: 'Zamknij' })
-            : t('app.hr.employee_record.show_history', { defaultValue: 'Pokaż wszystko' })}
-        </button>
-      ) : null}
-    </section>
+    <CandidateNotesRailSection
+      notes={notes}
+      notesLoading={loading}
+      newNote={draft}
+      noteSending={sending}
+      onNewNoteChange={setDraft}
+      onAddNote={() => void add()}
+      onRefreshNotes={() => void load()}
+      readOnly={locked}
+    />
+  )
+}
+
+function RecordTimeline({ candidateId }: { candidateId: string }) {
+  const { t, locale } = useI18n()
+  const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
+  const [notes, setNotes] = useState<CandidateNote[]>([])
+  const [reminders, setReminders] = useState<ReminderRecord[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [historyResult, notesResult, remindersResult] = await Promise.allSettled([
+        api.get<Array<Record<string, unknown>>>(`/candidates/${candidateId}/stage-history`),
+        api.get<CandidateNote[]>(`/candidates/${candidateId}/notes`),
+        listReminders({
+          entityType: 'candidate',
+          entityId: candidateId,
+          status: ['pending', 'new', 'overdue', 'done', 'cancelled'],
+        }),
+      ])
+      if (historyResult.status === 'fulfilled') {
+        const entries = Array.isArray(historyResult.value.data) ? historyResult.value.data : []
+        setStageHistory(
+          entries.map((item, index) => ({
+            id: String(item.id ?? `${item.to_code ?? 'stage'}-${item.at ?? index}`),
+            from_code: item.from_code ? String(item.from_code) : null,
+            to_code: item.to_code ? String(item.to_code) : null,
+            at: item.at ? String(item.at) : null,
+            actor: item.actor ? String(item.actor) : item.actor_name ? String(item.actor_name) : null,
+            reason: item.reason ? String(item.reason) : null,
+          })),
+        )
+      }
+      if (notesResult.status === 'fulfilled') {
+        setNotes(Array.isArray(notesResult.value.data) ? notesResult.value.data : [])
+      }
+      if (remindersResult.status === 'fulfilled') {
+        const items = remindersResult.value?.items
+        setReminders(Array.isArray(items) ? items : [])
+      }
+      const failed = [historyResult, notesResult, remindersResult].find((result) => result.status === 'rejected')
+      if (failed && failed.status === 'rejected') {
+        setError(getFriendlyErrorInfo(failed.reason, t('app.candidate_card.notes.save_failed')))
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [candidateId, t])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  return (
+    <CandidateTimelinePanel
+      locale={locale}
+      stageHistory={stageHistory}
+      notes={notes}
+      reminders={reminders}
+      loading={loading}
+      timelineError={error}
+      resolveStageLabel={(code) => translateStageLabel(t, code, code)}
+      onRequestLoad={() => void load()}
+      defaultOpen
+      includeStageChanges
+      variant="info"
+      collapsedCount={8}
+    />
   )
 }
 

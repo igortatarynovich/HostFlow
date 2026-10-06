@@ -14,6 +14,8 @@ from backend.app.services.hr_employee_record_surface import (
     apply_person,
     evidence_coverage,
     project_employee_record,
+    project_employment_path,
+    project_record_overview,
 )
 from backend.app.services.requirement_document_data import fact_fields_from_document
 
@@ -253,6 +255,45 @@ def test_one_document_covers_licence_and_code_95() -> None:
     assert card["evidence"] == "missing"
     assert "details" not in card
     assert evidence_coverage(applicability="applicable", linked=True, document_status="uploaded") == "in_progress"
+
+
+def test_path_marks_existing_readings_and_skips_processes_without_a_task() -> None:
+    path = project_employment_path(
+        phase="preparing",
+        identity_complete=True,
+        facts=[
+            {"key": "driving_licence", "applicability": "applicable", "resolution": "satisfied"},
+            {"key": "medical", "applicability": "applicable", "resolution": "unresolved"},
+        ],
+        legal_pass=False,
+        zus_status=None,
+        terms_complete=False,
+        ready_status="blocked",
+    )
+    marks = {step["id"]: step["mark"] for step in path}
+    assert marks["handoff"] == "completed"
+    assert marks["verification"] == "current"
+    assert marks["legal"] == "current"
+    assert marks["formalities"] == "not_applicable"
+    assert marks["terms"] == "current"
+    assert marks["ready"] == "pending"
+    assert "bhp" not in marks
+    assert "start_documents" not in marks
+    overview = project_record_overview(
+        phase="preparing",
+        citizenship="UA",
+        stay_basis="karta_pobytu",
+        work_basis="separate_required",
+        work_status="pending",
+        terms={"contract_basis": "umowa", "duration": "fixed", "fixed_term_end": "2027-12-31"},
+        start_on="2026-11-02",
+        documents=[{"doc_type": "karta_pobytu", "title": "Karta pobytu", "expires_at": "2027-07-29"}],
+        facts=[],
+        path=path,
+    )
+    assert overview["notice"] == "attention"
+    assert overview["stay_until"] == "2027-07-29"
+    assert overview["attention_count"] == 3
 
 
 def _group(projected: dict, group_id: str) -> dict:
