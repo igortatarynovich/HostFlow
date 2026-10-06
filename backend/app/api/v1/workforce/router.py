@@ -1285,6 +1285,15 @@ class HrEmployeeRecordOut(BaseModel):
     documents: dict[str, int] = Field(default_factory=dict)
 
 
+class HrEmployeeRecordAddressIn(BaseModel):
+    country: str = ""
+    city: str = ""
+    street: str = ""
+    house: str = ""
+    apt: str = ""
+    zip: str = ""
+
+
 class HrEmployeeRecordPersonIn(BaseModel):
     first_name: str = ""
     last_name: str = ""
@@ -1292,7 +1301,7 @@ class HrEmployeeRecordPersonIn(BaseModel):
     citizenship: str = ""
     phone: str = ""
     email: str = ""
-    address: str = ""
+    address: HrEmployeeRecordAddressIn = Field(default_factory=HrEmployeeRecordAddressIn)
     pesel: str = ""
     languages: str = ""
 

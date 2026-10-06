@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../../api/client'
+import clsx from 'clsx'
+import { api, createActivity, listReminders } from '../../api/client'
+import type { ReminderRecord } from '../../api/types'
 import {
   confirmHrDriverLegal,
   confirmHrDriverTerms,
@@ -11,6 +13,7 @@ import {
   type HrDriverLegalIn,
   type HrDriverTermsIn,
   type HrEmployeeRecordGroup,
+  type HrEmployeeRecordAddress,
   type HrEmployeeRecordPersonIn,
   type HrEmployeeRecordRow,
   type HrEmployeeRecordSurface,
@@ -108,7 +111,17 @@ const EMPTY_GROUP: Record<string, string> = {
   historia: 'Brak zdarzeń',
 }
 
-const COMPACT_GROUPS = new Set(['formalnosci', 'dokumenty', 'historia'])
+const RECORD_TABS = ['dane_osobowe', 'legalizacja', 'kwalifikacje', 'zatrudnienie', 'formalnosci', 'dokumenty'] as const
+
+const TAB_FOR_GROUP: Record<string, (typeof RECORD_TABS)[number]> = {
+  dane_osobowe: 'dane_osobowe',
+  legalizacja: 'legalizacja',
+  kwalifikacje: 'kwalifikacje',
+  badania: 'kwalifikacje',
+  zatrudnienie: 'zatrudnienie',
+  formalnosci: 'formalnosci',
+  dokumenty: 'dokumenty',
+}
 
 function groupById(groups: HrEmployeeRecordGroup[], id: string): HrEmployeeRecordGroup | undefined {
   return groups.find((group) => group.id === id)
@@ -138,8 +151,8 @@ export default function HrEmployeeRecordSurface({
   const { t, locale } = useI18n()
   const [surface, setSurface] = useState<HrEmployeeRecordSurface | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [editingGroup, setEditingGroup] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [tab, setTab] = useState<(typeof RECORD_TABS)[number]>('dane_osobowe')
 
   const load = useCallback(async () => {
     const next = await getHrEmployeeRecordSurface(employeeId)
@@ -165,15 +178,20 @@ export default function HrEmployeeRecordSurface({
     }
   }, [employeeId, t])
 
+  useEffect(() => {
+    setTab('dane_osobowe')
+  }, [employeeId])
+
   const openTarget = (target: string | null) => {
     if (!target) return
-    const elementId = target.startsWith('group:') ? `record-group-${target.slice('group:'.length)}` : `record-row-${target}`
-    document.getElementById(elementId)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const groupId = target.startsWith('group:') ? target.slice('group:'.length) : target.split('.')[0]
+    const next = TAB_FOR_GROUP[groupId]
+    if (next) setTab(next)
   }
 
   const openGroup = (groupId: string) => {
-    setEditingGroup(groupId)
-    document.getElementById(`record-group-${groupId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const next = TAB_FOR_GROUP[groupId]
+    if (next) setTab(next)
   }
 
   const finishSave = async (accepted: boolean, reason?: string | null) => {
@@ -181,7 +199,6 @@ export default function HrEmployeeRecordSurface({
       setError(reason || t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
       return
     }
-    setEditingGroup(null)
     setError(null)
     await load()
   }
@@ -196,123 +213,122 @@ export default function HrEmployeeRecordSurface({
   const recruitmentHref = surface.candidate_id
     ? `${CRM_APP_PATHS.candidates}/${encodeURIComponent(surface.candidate_id)}`
     : null
-  const headerLine = [surface.header.position, surface.header.employer].filter(Boolean).join(' · ')
-  const summary = summaryLines(groups, surface.header.planned_start, locale)
-  const blockers = groups
-    .flatMap((group) => group.rows)
-    .filter((row) => row.status === 'blocking' || row.status === 'unresolved')
-  const recordGroups = groups.filter((group) => !COMPACT_GROUPS.has(group.id))
-  const compactGroups = groups.filter((group) => COMPACT_GROUPS.has(group.id))
+  const status = statusSummary(surface, groups, t)
+  const activeGroup = (id: string) => groupById(groups, id)
+  const runAction = () => {
+    if (!action) return
+    if (action.code === 'confirm_terms') openGroup('zatrudnienie')
+    else if (action.code === 'confirm_legal' || action.code === 'start_work_authorization') openGroup('legalizacja')
+    else if (action.code === 'record_ready') {
+      setSaving(true)
+      void recordHrDriverReady(employeeId)
+        .then((result) => finishSave(result.accepted !== false, result.reason))
+        .catch(() => setError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' })))
+        .finally(() => setSaving(false))
+    } else if (action.code === 'start_employment') {
+      setSaving(true)
+      void startHrDriverEmployment(employeeId)
+        .then((result) => finishSave(result.activated === true, result.reason))
+        .catch(() => setError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' })))
+        .finally(() => setSaving(false))
+    } else openTarget(surface.current_process.target_row_id)
+  }
 
   return (
     <div className="card min-w-0 p-3">
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
         <div className="min-w-0 space-y-4 lg:pr-6">
-          <header className="space-y-3">
-            <div>
-              <h2>{surface.header.name}</h2>
-              {headerLine ? <p>{headerLine}</p> : null}
-              <p>{employmentSentence(surface.state)}</p>
-            </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {summary.map((line) => (
-                <div key={line.label} className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-2">
-                  <div className="label mb-0">{line.label}</div>
-                  <p>{line.value}</p>
-                </div>
-              ))}
-            </div>
+          <header className="space-y-2">
+            <h2>{surface.header.name}</h2>
+            <StatusBadge label={status.headline} semantic={status.semantic} />
+            {status.context.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+            {status.primary ? <p>{status.primary}</p> : null}
+            {status.secondary ? <p>{status.secondary}</p> : null}
+            {error ? <p className="alert-error">{error}</p> : null}
           </header>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {recordGroups.map((group) => (
-              <section
-                key={group.id}
-                id={`record-group-${group.id}`}
-                className={group.id === 'zatrudnienie' ? 'app-surface p-4 lg:col-span-2' : 'app-surface p-4'}
+          <div className="tabs flex-wrap gap-x-1 gap-y-0" role="tablist">
+            {RECORD_TABS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                className={clsx('tab cursor-pointer border-0 bg-transparent', tab === id && 'tab-active')}
+                onClick={() => setTab(id)}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <h3>
-                    {group.label}
-                    {factCoverage(group)
-                      ? ` · ${factCoverage(group)} ${t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })}`
-                      : ''}
-                  </h3>
-                  {groupAction(group, surface, manage) ? (
-                    <button
-                      type="button"
-                      className="btn-secondary btn-sm"
-                      onClick={() => setEditingGroup(editingGroup === group.id ? null : group.id)}
-                    >
-                      {editingGroup === group.id ? 'Anuluj' : groupAction(group, surface, manage)}
-                    </button>
-                  ) : null}
-                </div>
-                {editingGroup === group.id && group.id === 'dane_osobowe' ? (
-                  <PersonForm
-                    person={surface.person}
-                    saving={saving}
-                    onSave={async (body) => {
-                      setSaving(true)
-                      try {
-                        const result = await updateHrEmployeeRecordPerson(employeeId, body)
-                        await finishSave(result.accepted !== false, result.reason)
-                      } catch {
-                        setError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
-                      } finally {
-                        setSaving(false)
-                      }
-                    }}
-                  />
-                ) : editingGroup === group.id && group.id === 'legalizacja' ? (
-                  <LegalForm
-                    group={group}
-                    legal={surface.legal}
-                    saving={saving}
-                    onSave={async (body) => {
-                      setSaving(true)
-                      try {
-                        const result = await confirmHrDriverLegal(employeeId, body)
-                        await finishSave(result.accepted !== false, result.reason)
-                      } catch {
-                        setError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
-                      } finally {
-                        setSaving(false)
-                      }
-                    }}
-                  />
-                ) : editingGroup === group.id && group.id === 'zatrudnienie' ? (
-                  <TermsForm
-                    group={group}
-                    terms={surface.terms}
-                    saving={saving}
-                    onSave={async (body) => {
-                      setSaving(true)
-                      try {
-                        const result = await confirmHrDriverTerms(employeeId, body)
-                        await finishSave(result.accepted !== false, result.reason)
-                      } catch {
-                        setError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
-                      } finally {
-                        setSaving(false)
-                      }
-                    }}
-                  />
-                ) : (
-                  <GroupBody group={group} locale={locale} />
-                )}
-              </section>
+                {activeGroup(id)?.label || id}
+              </button>
             ))}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {compactGroups.map((group) => (
-              <section key={group.id} id={`record-group-${group.id}`} className="app-surface p-4">
-                <h3>{group.label}</h3>
-                <CompactGroup group={group} locale={locale} documents={surface.documents} />
-              </section>
-            ))}
-          </div>
+          <section id={`record-group-${tab}`} className="app-surface p-4">
+            {tab === 'dane_osobowe' ? (
+              <PersonForm
+                key={employeeId}
+                employeeId={employeeId}
+                person={surface.person}
+                writable={manage}
+                onError={setError}
+                onSaved={() => {
+                  void load()
+                }}
+              />
+            ) : null}
+            {tab === 'legalizacja' && activeGroup('legalizacja') ? (
+              <LegalForm
+                key={employeeId}
+                employeeId={employeeId}
+                group={activeGroup('legalizacja')!}
+                legal={surface.legal}
+                writable={manage && surface.state === 'preparing'}
+                onError={setError}
+                onSaved={() => {
+                  void load()
+                }}
+              />
+            ) : null}
+            {tab === 'kwalifikacje' ? (
+              <div className="space-y-6">
+                {(['kwalifikacje', 'badania'] as const).map((id) => {
+                  const group = activeGroup(id)
+                  if (!group) return null
+                  return (
+                    <div key={id} id={`record-group-${id}`}>
+                      <h3>
+                        {group.label}
+                        {factCoverage(group)
+                          ? ` · ${factCoverage(group)} ${t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })}`
+                          : ''}
+                      </h3>
+                      <GroupBody group={group} locale={locale} />
+                    </div>
+                  )
+                })}
+              </div>
+            ) : null}
+            {tab === 'zatrudnienie' && activeGroup('zatrudnienie') ? (
+              <TermsForm
+                key={employeeId}
+                employeeId={employeeId}
+                group={activeGroup('zatrudnienie')!}
+                terms={surface.terms}
+                writable={manage && surface.state === 'preparing'}
+                onError={setError}
+                onSaved={() => {
+                  void load()
+                }}
+              />
+            ) : null}
+            {tab === 'formalnosci' && activeGroup('formalnosci') ? (
+              <CompactGroup group={activeGroup('formalnosci')!} locale={locale} documents={surface.documents} />
+            ) : null}
+            {tab === 'dokumenty' && activeGroup('dokumenty') ? (
+              <CompactGroup group={activeGroup('dokumenty')!} locale={locale} documents={surface.documents} />
+            ) : null}
+          </section>
         </div>
 
         <aside
@@ -320,130 +336,281 @@ export default function HrEmployeeRecordSurface({
           data-candidate-control-rail
           className="flex w-full min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto"
         >
-          <section className="card w-full p-4">
-            <h3>{t('app.hr.employee_record.current_process', { defaultValue: 'Current process' })}</h3>
-            {action ? (
-              <>
-                <p>{action.title}</p>
-                <p>{action.reason}</p>
-                {surface.current_process.missing && surface.current_process.missing.length > 0 ? (
-                  <p>Missing: {surface.current_process.missing.join(', ')}</p>
-                ) : null}
-                {surface.current_process.destination === 'recruitment' && recruitmentHref ? (
-                  <Link to={recruitmentHref} className="btn-primary btn-sm">
-                    {t('app.hr.employee_record.open_recruitment', { defaultValue: 'Open recruitment case' })}
-                  </Link>
-                ) : action.code === 'register_zus' ? (
-                  <Link to={CRM_APP_PATHS.hrZusWorkspace} className="btn-primary btn-sm">
-                    Open
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn-primary btn-sm"
-                    disabled={saving}
-                    onClick={() => {
-                      if (action.code === 'confirm_terms') openGroup('zatrudnienie')
-                      else if (action.code === 'confirm_legal' || action.code === 'start_work_authorization') openGroup('legalizacja')
-                      else if (action.code === 'record_ready') {
-                        setSaving(true)
-                        void recordHrDriverReady(employeeId)
-                          .then((result) => finishSave(result.accepted !== false, result.reason))
-                          .catch(() => setError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' })))
-                          .finally(() => setSaving(false))
-                      } else if (action.code === 'start_employment') {
-                        setSaving(true)
-                        void startHrDriverEmployment(employeeId)
-                          .then((result) => finishSave(result.activated === true, result.reason))
-                          .catch(() => setError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' })))
-                          .finally(() => setSaving(false))
-                      } else openTarget(surface.current_process.target_row_id)
-                    }}
-                  >
-                    {processButton(action.code)}
-                  </button>
-                )}
-              </>
-            ) : (
-              <p>{t('app.hr.employee_record.no_action', { defaultValue: 'No open action.' })}</p>
-            )}
-            {error ? <p className="alert-error">{error}</p> : null}
-          </section>
-
-          <section className="card w-full p-4">
-            <h3>{t('app.hr.employee_record.blockers', { defaultValue: 'Blockers' })}</h3>
-            {blockers.length === 0 ? (
-              <p>{t('app.hr.employee_record.no_blockers', { defaultValue: 'Brak blokerów' })}</p>
-            ) : (
-              blockers.map((row) => (
-                <p key={row.id}>
-                  {row.label}: {meaningfulValue(row, locale)}
-                </p>
-              ))
-            )}
-          </section>
-
+          <RecordTasks
+            candidateId={surface.candidate_id}
+            action={action}
+            recruitmentHref={surface.current_process.destination === 'recruitment' ? recruitmentHref : null}
+            zus={action?.code === 'register_zus'}
+            saving={saving}
+            onOpen={runAction}
+          />
           {surface.candidate_id ? (
-            <>
-              <section className="card w-full p-4">
-                <NotesCapability
-                  entity={{ resourceType: 'candidate', resourceId: surface.candidate_id }}
-                  patching={false}
-                  onClose={() => undefined}
-                  onRefresh={() => undefined}
-                />
-              </section>
-            </>
+            <section className="card w-full p-4">
+              <NotesCapability
+                entity={{ resourceType: 'candidate', resourceId: surface.candidate_id }}
+                patching={false}
+                onClose={() => undefined}
+                onRefresh={() => undefined}
+              />
+            </section>
           ) : null}
+          <RecordHistory group={activeGroup('historia')} />
         </aside>
       </div>
     </div>
   )
 }
 
-function employmentSentence(state: string | null): string {
-  if (state === 'ended') return 'Employment ended'
-  if (state === 'active') return 'Employment active'
-  if (state === 'preparing') return 'Employment preparing'
-  return 'No employment'
-}
-
-function summaryLines(
+function statusSummary(
+  surface: HrEmployeeRecordSurface,
   groups: HrEmployeeRecordGroup[],
-  plannedStart: string | null,
-  locale: 'en' | 'ru' | 'pl',
-): { label: string; value: string }[] {
-  const phone = rowById(groups, 'dane_osobowe.phone')
-  const email = rowById(groups, 'dane_osobowe.email')
-  const citizenship = rowById(groups, 'dane_osobowe.citizenship')
-  const actual = rowById(groups, 'zatrudnienie.actual_start')
-  const planned = rowById(groups, 'zatrudnienie.planned_start')
-  const start = displayValue(actual?.value || planned?.value || plannedStart, 'Data', locale)
-  return [
-    { label: 'Telefon', value: phone ? meaningfulValue(phone, locale) : 'Brak telefonu' },
-    { label: 'Email', value: email ? meaningfulValue(email, locale) : 'Brak adresu e-mail' },
-    { label: 'Obywatelstwo', value: citizenship ? meaningfulValue(citizenship, locale) : 'Obywatelstwo nieustalone' },
-    { label: 'Employment', value: start === '—' ? 'Termin nieustalony' : `${start} — …` },
-  ]
+  t: Translate,
+): { headline: string; semantic: StatusBadgeSemantic; context: string[]; primary: string | null; secondary: string | null } {
+  const action = surface.current_process.next_action
+  const returned = surface.current_process.destination === 'recruitment' || action?.code === 'returned_to_recruitment'
+  const position = surface.header.position
+  const employer = surface.header.employer
+  const contract = rowById(groups, 'zatrudnienie.contract_basis')?.value
+  const actual = rowById(groups, 'zatrudnienie.actual_start')?.value
+  const planned = rowById(groups, 'zatrudnienie.planned_start')?.value || surface.header.planned_start
+  const context = [[position, employer].filter(Boolean).join(' · ')].filter(Boolean)
+  const issues = urgentIssues(groups)
+  const lead = issues[0]
+  const rest = Math.max(issues.length - 1, 0) + (surface.current_process.missing?.length || 0)
+
+  if (returned) {
+    return {
+      headline: t('app.hr.employee_record.status.returned', { defaultValue: 'Wrócił do rekrutacji' }),
+      semantic: 'info',
+      context,
+      primary: action?.reason || t('app.hr.employee_record.status.waiting_recruitment', { defaultValue: 'Oczekuje na aktualizację przez Recruitment' }),
+      secondary: null,
+    }
+  }
+  if (surface.state === 'ended') {
+    if (surface.header.ended_on) {
+      context.push(`${t('app.hr.employee_record.status.ended_on', { defaultValue: 'Zakończono' })} ${formatDay(surface.header.ended_on)}`)
+    }
+    return {
+      headline: t('app.hr.employee_record.status.ended', { defaultValue: 'Zatrudnienie zakończone' }),
+      semantic: 'neutral',
+      context,
+      primary: null,
+      secondary: null,
+    }
+  }
+  if (surface.state === 'preparing') {
+    if (planned) {
+      context.push(`${t('app.hr.employee_record.status.planned_start', { defaultValue: 'Planowany start' })}: ${formatDay(planned)}`)
+    }
+    return {
+      headline: t('app.hr.employee_record.status.preparing', { defaultValue: 'Przygotowanie do zatrudnienia' }),
+      semantic: 'warning',
+      context,
+      primary: rest > 0
+        ? `${rest} ${t('app.hr.employee_record.status.actions_required', { defaultValue: 'rzeczy wymagają działania' })}`
+        : null,
+      secondary: action ? `${t('app.hr.employee_record.status.next_action', { defaultValue: 'Następne działanie' })}: ${action.title}` : null,
+    }
+  }
+
+  if (actual || planned) {
+    const when = formatDay(actual || planned)
+    context.push([`Od ${when}`, contract].filter(Boolean).join(' · '))
+  }
+  if (lead) {
+    return {
+      headline: t('app.hr.employee_record.status.active', { defaultValue: 'Zatrudniony · Aktywny' }),
+      semantic: lead.kind === 'soon' ? 'warning' : 'bad',
+      context,
+      primary: [issueLine(t, lead), rest > 0 ? `+ ${rest}` : null].filter(Boolean).join(' · '),
+      secondary: action ? `${t('app.hr.employee_record.status.next_action', { defaultValue: 'Następne działanie' })}: ${action.title}` : null,
+    }
+  }
+  return {
+    headline: surface.state === 'active'
+      ? t('app.hr.employee_record.status.active', { defaultValue: 'Zatrudniony · Aktywny' })
+      : t('app.hr.employee_record.status.none', { defaultValue: 'Brak zatrudnienia' }),
+    semantic: surface.state === 'active' ? 'ok' : 'neutral',
+    context,
+    primary: surface.state === 'active'
+      ? t('app.hr.employee_record.status.healthy', { defaultValue: 'Wszystko w porządku' })
+      : null,
+    secondary: surface.state === 'active'
+      ? t('app.hr.employee_record.status.no_action', { defaultValue: 'Brak wymaganych działań' })
+      : null,
+  }
 }
 
-function processButton(code: string): string {
-  if (code === 'confirm_terms') return 'Complete terms'
-  if (code === 'start_work_authorization') return 'Rozpocznij procedurę'
-  if (code === 'start_employment') return 'Start employment'
-  if (code === 'record_ready') return 'Record Ready to Start'
-  return 'Open'
+function urgentIssues(groups: HrEmployeeRecordGroup[]): { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number }[] {
+  const byLabel = new Map<string, { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number }>()
+  for (const group of groups) {
+    if (group.id === 'historia') continue
+    for (const row of group.rows) {
+      const until = row.details?.find((detail) => detail.label === 'Ważne do')?.value
+      const days = until ? daysUntil(until) : null
+      let next: { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number } | null = null
+      if (days !== null && days < 0) next = { kind: 'expired', label: row.label, days }
+      else if (row.evidence === 'expired' || row.evidence === 'rejected' || row.status === 'blocking') {
+        next = { kind: row.status === 'blocking' && row.evidence !== 'expired' ? 'blocking' : 'expired', label: row.label, days: days ?? -1 }
+      } else if (days !== null && days <= 30) next = { kind: 'soon', label: row.label, days }
+      if (!next) continue
+      const current = byLabel.get(row.label)
+      if (!current || next.days < current.days) byLabel.set(row.label, next)
+    }
+  }
+  return [...byLabel.values()].sort((left, right) => left.days - right.days)
 }
 
-function groupAction(group: HrEmployeeRecordGroup, surface: HrEmployeeRecordSurface, manage: boolean): string | null {
-  if (!manage) return null
-  if (group.id === 'dane_osobowe') return 'Edytuj'
-  if (surface.state !== 'preparing') return null
-  if (group.id === 'zatrudnienie') return surface.terms ? 'Edytuj' : 'Uzupełnij'
-  if (group.id !== 'legalizacja') return null
-  const stay = group.rows.find((row) => row.id === 'legalizacja.stay_basis')
-  if (!stay?.value) return 'Uzupełnij podstawę pobytu'
-  return 'Zweryfikuj'
+function daysUntil(iso: string): number | null {
+  const day = iso.slice(0, 10)
+  const target = new Date(`${day}T00:00:00`)
+  if (Number.isNaN(target.getTime())) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.round((target.getTime() - today.getTime()) / 86400000)
+}
+
+function issueLine(t: Translate, issue: { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number }): string {
+  if (issue.kind === 'soon') {
+    const unit = issue.days === 1
+      ? t('app.hr.employee_record.status.day', { defaultValue: 'dzień' })
+      : t('app.hr.employee_record.status.days', { defaultValue: 'dni' })
+    return `${issue.label} ${t('app.hr.employee_record.status.expires_in', { defaultValue: 'wygasa za' })} ${issue.days} ${unit}`
+  }
+  if (issue.kind === 'expired') return `${issue.label} ${t('app.hr.employee_record.status.expired_word', { defaultValue: 'wygasł' })}`
+  return issue.label
+}
+
+function RecordTasks({
+  candidateId,
+  action,
+  recruitmentHref,
+  zus,
+  saving,
+  onOpen,
+}: {
+  candidateId: string | null
+  action: HrEmployeeRecordSurface['current_process']['next_action']
+  recruitmentHref: string | null
+  zus: boolean
+  saving: boolean
+  onOpen: () => void
+}) {
+  const { t } = useI18n()
+  const [items, setItems] = useState<ReminderRecord[]>([])
+  const [title, setTitle] = useState('')
+  const [due, setDue] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  const loadTasks = useCallback(async () => {
+    if (!candidateId) {
+      setItems([])
+      return
+    }
+    try {
+      const response = await listReminders({
+        entityType: 'candidate',
+        entityId: candidateId,
+        status: ['pending', 'new', 'overdue'],
+        limit: 5,
+      })
+      const rows = Array.isArray(response?.items) ? response.items : []
+      setItems(rows)
+    } catch {
+      setItems([])
+    }
+  }, [candidateId])
+
+  useEffect(() => {
+    void loadTasks()
+  }, [loadTasks])
+
+  const addTask = async () => {
+    if (!candidateId || !title.trim() || !due) return
+    setAdding(true)
+    try {
+      const dueAt = new Date(due)
+      await createActivity({
+        title: title.trim(),
+        description: '',
+        type: 'custom',
+        entity_type: 'candidate',
+        entity_id: candidateId,
+        due_at: dueAt.toISOString(),
+        remind_at: dueAt.toISOString(),
+        priority: 'normal',
+        source: 'manual',
+      })
+      setTitle('')
+      setDue('')
+      await loadTasks()
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  return (
+    <section className="card w-full p-4">
+      <h3>{t('app.hr.employee_record.tasks', { defaultValue: 'Zadania' })}</h3>
+      {action ? (
+        <div className="mt-3">
+          <p>{action.title}</p>
+          {recruitmentHref ? (
+            <Link to={recruitmentHref} className="btn-secondary btn-sm">
+              {t('common.actions.open', { defaultValue: 'Otwórz' })}
+            </Link>
+          ) : zus ? (
+            <Link to={CRM_APP_PATHS.hrZusWorkspace} className="btn-secondary btn-sm">
+              {t('common.actions.open', { defaultValue: 'Otwórz' })}
+            </Link>
+          ) : (
+            <button type="button" className="btn-secondary btn-sm" disabled={saving} onClick={onOpen}>
+              {t('common.actions.open', { defaultValue: 'Otwórz' })}
+            </button>
+          )}
+        </div>
+      ) : null}
+      {items.map((item) => (
+        <p key={item.id}>
+          {item.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Zadanie' })}
+          {item.due_at ? ` · ${formatDay(item.due_at)}` : ''}
+        </p>
+      ))}
+      <div className="mt-3 space-y-2">
+        <Input label={t('app.hr.employee_record.add_task', { defaultValue: 'Dodaj zadanie' })} value={title} onChange={(event) => setTitle(event.target.value)} />
+        <Input label={t('app.candidate_card.reminders.due', { defaultValue: 'Termin' })} type="date" value={due} onChange={(event) => setDue(event.target.value)} />
+        <button type="button" className="btn-secondary btn-sm" disabled={adding || !title.trim() || !due} onClick={() => void addTask()}>
+          {t('app.hr.employee_record.add_task', { defaultValue: 'Dodaj zadanie' })}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function RecordHistory({ group }: { group?: HrEmployeeRecordGroup }) {
+  const { t } = useI18n()
+  const [expanded, setExpanded] = useState(false)
+  const rows = group?.rows || []
+  const shown = expanded ? rows : rows.slice(0, 5)
+  return (
+    <section className="card w-full p-4">
+      <h3>{group?.label || t('app.hr.employee_record.history', { defaultValue: 'Historia' })}</h3>
+      {shown.map((row) => (
+        <p key={row.id}>
+          {row.value ? `${formatDay(row.value)} ` : ''}
+          {row.label}
+        </p>
+      ))}
+      {rows.length > 5 ? (
+        <button type="button" className="btn-secondary btn-sm" onClick={() => setExpanded((value) => !value)}>
+          {expanded
+            ? t('common.actions.close', { defaultValue: 'Zamknij' })
+            : t('app.hr.employee_record.show_history', { defaultValue: 'Pokaż wszystko' })}
+        </button>
+      ) : null}
+    </section>
+  )
 }
 
 function factCoverage(group: HrEmployeeRecordGroup): string | null {
@@ -513,14 +680,60 @@ function GroupBody({ group, locale }: { group: HrEmployeeRecordGroup; locale: 'e
   )
 }
 
+const AUTO_SAVE_DELAY_MS = 1500
+
+const EMPTY_ADDRESS: HrEmployeeRecordAddress = {
+  country: '',
+  city: '',
+  street: '',
+  house: '',
+  apt: '',
+  zip: '',
+}
+
+function addressDraft(value: HrEmployeeRecordAddress | string | null | undefined): HrEmployeeRecordAddress {
+  if (value && typeof value === 'object') return { ...EMPTY_ADDRESS, ...value }
+  if (typeof value === 'string' && value.trim()) return { ...EMPTY_ADDRESS, street: value.trim() }
+  return { ...EMPTY_ADDRESS }
+}
+
+function useAutosave(fingerprint: string, enabled: boolean, save: () => Promise<boolean>) {
+  const saved = useRef<string | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveRef = useRef(save)
+  useEffect(() => {
+    saveRef.current = save
+  })
+  useEffect(() => {
+    if (saved.current === null) saved.current = fingerprint
+    if (!enabled) return
+    if (saved.current === fingerprint) return
+    if (timer.current) clearTimeout(timer.current)
+    const pending = fingerprint
+    timer.current = setTimeout(() => {
+      timer.current = null
+      void saveRef.current().then((ok) => {
+        if (ok) saved.current = pending
+      })
+    }, AUTO_SAVE_DELAY_MS)
+    return () => {
+      if (timer.current) clearTimeout(timer.current)
+    }
+  }, [fingerprint, enabled])
+}
+
 function PersonForm({
+  employeeId,
   person,
-  saving,
-  onSave,
+  writable,
+  onError,
+  onSaved,
 }: {
+  employeeId: string
   person: HrEmployeeRecordSurface['person']
-  saving: boolean
-  onSave: (body: HrEmployeeRecordPersonIn) => void
+  writable: boolean
+  onError: (message: string | null) => void
+  onSaved: () => void
 }) {
   const { t, locale } = useI18n()
   const countries = usePlatformCountryOptions(locale)
@@ -541,103 +754,146 @@ function PersonForm({
   const [citizenship, setCitizenship] = useState(person?.citizenship || '')
   const [phone, setPhone] = useState(person?.phone || '')
   const [email, setEmail] = useState(person?.email || '')
-  const [address, setAddress] = useState(person?.address || '')
+  const [address, setAddress] = useState<HrEmployeeRecordAddress>(() => addressDraft(person?.address))
   const [pesel, setPesel] = useState(person?.pesel || '')
   const [languages, setLanguages] = useState(person?.languages || '')
   const languageValues = languages.split(',').map((part) => part.trim()).filter(Boolean)
+  const payload: HrEmployeeRecordPersonIn = {
+    first_name: firstName,
+    last_name: lastName,
+    birth_date: birth,
+    citizenship,
+    phone,
+    email,
+    address,
+    pesel,
+    languages,
+  }
+  const fingerprint = JSON.stringify(payload)
+  useAutosave(fingerprint, writable && Boolean(firstName.trim() && lastName.trim()), async () => {
+    try {
+      const result = await updateHrEmployeeRecordPerson(employeeId, payload)
+      if (result.accepted === false) {
+        onError(result.reason || t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
+        return false
+      }
+      onError(null)
+      onSaved()
+      return true
+    } catch {
+      onError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
+      return false
+    }
+  })
+  const setAddressPart = (key: keyof HrEmployeeRecordAddress, value: string) => {
+    setAddress((current) => ({ ...current, [key]: value }))
+  }
   return (
-    <form
-      className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
-      onSubmit={(event) => {
-        event.preventDefault()
-        onSave({
-          first_name: firstName,
-          last_name: lastName,
-          birth_date: birth,
-          citizenship,
-          phone,
-          email,
-          address,
-          pesel,
-          languages,
-        })
-      }}
-    >
-      <Input label={t('app.candidate_card.fields.first_name')} value={firstName} onChange={(event) => setFirstName(event.target.value)} />
-      <Input label={t('app.candidate_card.fields.last_name')} value={lastName} onChange={(event) => setLastName(event.target.value)} />
-      <Input label={t('app.candidate_card.fields.birth_date')} type="date" value={birth} onChange={(event) => setBirth(event.target.value)} />
+    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <Input label={t('app.candidate_card.fields.first_name')} value={firstName} readOnly={!writable} onChange={(event) => setFirstName(event.target.value)} />
+      <Input label={t('app.candidate_card.fields.last_name')} value={lastName} readOnly={!writable} onChange={(event) => setLastName(event.target.value)} />
+      <Input label={t('app.candidate_card.fields.birth_date')} type="date" value={birth} readOnly={!writable} onChange={(event) => setBirth(event.target.value)} />
       <label className="block">
         <div className="label">{t('app.candidate_card.fields.citizenship')}</div>
         <SearchableSelect
           options={countries}
           value={citizenship}
           onChange={setCitizenship}
+          disabled={!writable}
           placeholder={selectTexts.empty}
           searchPlaceholder={selectTexts.search}
           noResultsLabel={selectTexts.noResults}
         />
       </label>
-      <Input label={t('app.candidate_card.fields.phone')} value={phone} onChange={(event) => setPhone(event.target.value)} />
-      <Input label={t('app.candidate_card.fields.email')} value={email} onChange={(event) => setEmail(event.target.value)} />
-      <Input
-        label={t('app.candidate_card.sections.personal.address_current')}
-        value={address}
-        onChange={(event) => setAddress(event.target.value)}
-      />
-      <Input label="PESEL" value={pesel} onChange={(event) => setPesel(event.target.value)} />
+      <Input label={t('app.candidate_card.fields.phone')} value={phone} readOnly={!writable} onChange={(event) => setPhone(event.target.value)} />
+      <Input label={t('app.candidate_card.fields.email')} value={email} readOnly={!writable} onChange={(event) => setEmail(event.target.value)} />
+      <label className="block">
+        <div className="label">{t('app.candidate_card.fields.address.country')}</div>
+        <SearchableSelect
+          options={countries}
+          value={address.country}
+          onChange={(value) => setAddressPart('country', value)}
+          disabled={!writable}
+          placeholder={selectTexts.empty}
+          searchPlaceholder={selectTexts.search}
+          noResultsLabel={selectTexts.noResults}
+        />
+      </label>
+      <Input label={t('app.candidate_card.fields.address.city')} value={address.city} readOnly={!writable} onChange={(event) => setAddressPart('city', event.target.value)} />
+      <Input label={t('app.candidate_card.fields.address.zip')} value={address.zip} readOnly={!writable} onChange={(event) => setAddressPart('zip', event.target.value)} />
+      <div className="lg:col-span-2">
+        <Input label={t('app.candidate_card.fields.address.street')} value={address.street} readOnly={!writable} onChange={(event) => setAddressPart('street', event.target.value)} />
+      </div>
+      <Input label={t('app.candidate_card.fields.address.house')} value={address.house} readOnly={!writable} onChange={(event) => setAddressPart('house', event.target.value)} />
+      <Input label={t('app.candidate_card.fields.address.apt')} value={address.apt} readOnly={!writable} onChange={(event) => setAddressPart('apt', event.target.value)} />
+      <Input label="PESEL" value={pesel} readOnly={!writable} onChange={(event) => setPesel(event.target.value)} />
       <div className="lg:col-span-2">
         <div className="label">{t('app.candidate_card.fields.languages')}</div>
         <CheckboxMultiSelect
           options={languagesCatalog}
           values={languageValues}
           onChange={(values) => setLanguages(values.join(','))}
+          disabled={!writable}
           placeholder={selectTexts.multiNone}
           searchPlaceholder={selectTexts.search}
           noResultsLabel={selectTexts.noResults}
           multiSelectedLabel={selectTexts.multiSelected}
         />
       </div>
-      <button type="submit" className="btn-primary btn-sm" disabled={saving}>
-        {saving ? t('common.saving') : t('common.actions.save')}
-      </button>
-    </form>
+    </div>
   )
 }
 
 function LegalForm({
+  employeeId,
   group,
   legal,
-  saving,
-  onSave,
+  writable,
+  onError,
+  onSaved,
 }: {
+  employeeId: string
   group: HrEmployeeRecordGroup
   legal: HrEmployeeRecordSurface['legal']
-  saving: boolean
-  onSave: (body: HrDriverLegalIn) => void
+  writable: boolean
+  onError: (message: string | null) => void
+  onSaved: () => void
 }) {
   const { t } = useI18n()
   const [citizenshipClass, setCitizenshipClass] = useState(legal?.citizenship_class || 'third_country')
   const [stay, setStay] = useState(legal?.stay_basis && legal.stay_basis !== 'none' ? legal.stay_basis : 'none')
   const [basis, setBasis] = useState(legal?.work_authorization_basis || 'separate_required')
   const [valid, setValid] = useState(legal?.valid_for_this_employment || 'operator_verification')
+  const payload: HrDriverLegalIn = {
+    citizenship_class: citizenshipClass,
+    stay_basis: stay,
+    work_authorization_basis: basis,
+    valid_for_this_employment: valid,
+  }
+  const fingerprint = JSON.stringify(payload)
+  useAutosave(fingerprint, writable, async () => {
+    try {
+      const result = await confirmHrDriverLegal(employeeId, payload)
+      if (result.reason === 'not_preparing') {
+        onError(result.reason)
+        return false
+      }
+      onError(null)
+      onSaved()
+      return true
+    } catch {
+      onError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
+      return false
+    }
+  })
   return (
-    <form
-      className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
-      onSubmit={(event) => {
-        event.preventDefault()
-        onSave({
-          citizenship_class: citizenshipClass,
-          stay_basis: stay,
-          work_authorization_basis: basis,
-          valid_for_this_employment: valid,
-        })
-      }}
-    >
+    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
       <CatalogSelect
         label={t('app.candidate_card.fields.citizenship')}
         value={citizenshipClass}
         options={['pl', 'eu_eea_ch', 'third_country']}
         onChange={setCitizenshipClass}
+        disabled={!writable}
         t={t}
       />
       <CatalogSelect
@@ -645,6 +901,7 @@ function LegalForm({
         value={stay}
         options={['not_required', 'visa_d', 'visa_c', 'karta_pobytu', 'visa_free', 'waiting_for_trc', 'special_protection', 'other', 'none']}
         onChange={setStay}
+        disabled={!writable}
         t={t}
       />
       <CatalogSelect
@@ -652,6 +909,7 @@ function LegalForm({
         value={basis}
         options={['not_required', 'included_in_stay', 'separate_required']}
         onChange={setBasis}
+        disabled={!writable}
         t={t}
       />
       <CatalogSelect
@@ -659,25 +917,27 @@ function LegalForm({
         value={valid}
         options={['yes', 'no', 'operator_verification']}
         onChange={setValid}
+        disabled={!writable}
         t={t}
       />
-      <button type="submit" className="btn-primary btn-sm" disabled={saving}>
-        {saving ? t('common.saving') : t('common.actions.save')}
-      </button>
-    </form>
+    </div>
   )
 }
 
 function TermsForm({
+  employeeId,
   group,
   terms,
-  saving,
-  onSave,
+  writable,
+  onError,
+  onSaved,
 }: {
+  employeeId: string
   group: HrEmployeeRecordGroup
   terms: HrEmployeeRecordSurface['terms']
-  saving: boolean
-  onSave: (body: HrDriverTermsIn) => void
+  writable: boolean
+  onError: (message: string | null) => void
+  onSaved: () => void
 }) {
   const { t } = useI18n()
   const [position, setPosition] = useState(terms?.position || '')
@@ -694,51 +954,59 @@ function TermsForm({
   const [probation, setProbation] = useState(terms?.probation_status || 'none')
   const [probationEnd, setProbationEnd] = useState(terms?.probation_end || '')
   const [planned, setPlanned] = useState(terms?.intended_start_date || '')
+  const payload: HrDriverTermsIn = {
+    position,
+    contract_basis: contractBasis,
+    work_time_value: workTime,
+    work_time_unit: workTimeUnit,
+    work_system: workSystem,
+    workplace,
+    compensation_amount: amount,
+    compensation_currency: currency,
+    compensation_unit: period,
+    duration,
+    fixed_term_end: duration === 'fixed' ? fixedEnd || null : null,
+    probation_status: probation,
+    probation_end: probation === 'dated' ? probationEnd || null : null,
+    intended_start_date: planned,
+  }
+  const fingerprint = JSON.stringify(payload)
+  useAutosave(fingerprint, writable, async () => {
+    try {
+      const result = await confirmHrDriverTerms(employeeId, payload)
+      if (result.accepted === false) {
+        onError(result.reason || t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
+        return false
+      }
+      onError(null)
+      onSaved()
+      return true
+    } catch {
+      onError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
+      return false
+    }
+  })
   return (
-    <form
-      className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
-      onSubmit={(event) => {
-        event.preventDefault()
-        onSave({
-          position,
-          contract_basis: contractBasis,
-          work_time_value: workTime,
-          work_time_unit: workTimeUnit,
-          work_system: workSystem,
-          workplace,
-          compensation_amount: amount,
-          compensation_currency: currency,
-          compensation_unit: period,
-          duration,
-          fixed_term_end: duration === 'fixed' ? fixedEnd || null : null,
-          probation_status: probation,
-          probation_end: probation === 'dated' ? probationEnd || null : null,
-          intended_start_date: planned,
-        })
-      }}
-    >
-      <Input label={rowLabel(group, 'zatrudnienie.position', t('app.candidate_card.employment.placeholders.position'))} value={position} onChange={(event) => setPosition(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.contract_basis', t('app.candidate_card.employment.columns.position'))} value={contractBasis} onChange={(event) => setContractBasis(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={workTime} onChange={(event) => setWorkTime(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={workTimeUnit} onChange={(event) => setWorkTimeUnit(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.work_system', t('public.company_intake.fields.work_system'))} value={workSystem} onChange={(event) => setWorkSystem(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.workplace', t('app.candidate_card.fields.address.city'))} value={workplace} onChange={(event) => setWorkplace(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.compensation', t('app.hr.employee_detail.payroll_base_rate'))} value={amount} onChange={(event) => setAmount(event.target.value)} />
-      <Input label={t('app.hr.employee_detail.payroll_currency')} value={currency} onChange={(event) => setCurrency(event.target.value)} />
-      <Input label={t('app.hr.employee_detail.payroll_pay_type')} value={period} onChange={(event) => setPeriod(event.target.value)} />
-      <CatalogSelect label={rowLabel(group, 'zatrudnienie.duration', t('app.candidate_card.employment.columns.end'))} value={duration} options={['indefinite', 'fixed']} onChange={setDuration} t={t} />
+    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <Input label={rowLabel(group, 'zatrudnienie.position', t('app.candidate_card.employment.placeholders.position'))} value={position} readOnly={!writable} onChange={(event) => setPosition(event.target.value)} />
+      <Input label={rowLabel(group, 'zatrudnienie.contract_basis', t('app.candidate_card.employment.columns.position'))} value={contractBasis} readOnly={!writable} onChange={(event) => setContractBasis(event.target.value)} />
+      <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={workTime} readOnly={!writable} onChange={(event) => setWorkTime(event.target.value)} />
+      <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={workTimeUnit} readOnly={!writable} onChange={(event) => setWorkTimeUnit(event.target.value)} />
+      <Input label={rowLabel(group, 'zatrudnienie.work_system', t('public.company_intake.fields.work_system'))} value={workSystem} readOnly={!writable} onChange={(event) => setWorkSystem(event.target.value)} />
+      <Input label={rowLabel(group, 'zatrudnienie.workplace', t('app.candidate_card.fields.address.city'))} value={workplace} readOnly={!writable} onChange={(event) => setWorkplace(event.target.value)} />
+      <Input label={rowLabel(group, 'zatrudnienie.compensation', t('app.hr.employee_detail.payroll_base_rate'))} value={amount} readOnly={!writable} onChange={(event) => setAmount(event.target.value)} />
+      <Input label={t('app.hr.employee_detail.payroll_currency')} value={currency} readOnly={!writable} onChange={(event) => setCurrency(event.target.value)} />
+      <Input label={t('app.hr.employee_detail.payroll_pay_type')} value={period} readOnly={!writable} onChange={(event) => setPeriod(event.target.value)} />
+      <CatalogSelect label={rowLabel(group, 'zatrudnienie.duration', t('app.candidate_card.employment.columns.end'))} value={duration} options={['indefinite', 'fixed']} onChange={setDuration} disabled={!writable} t={t} />
       {duration === 'fixed' ? (
-        <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={fixedEnd} onChange={(event) => setFixedEnd(event.target.value)} />
+        <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={fixedEnd} readOnly={!writable} onChange={(event) => setFixedEnd(event.target.value)} />
       ) : null}
-      <CatalogSelect label={rowLabel(group, 'zatrudnienie.probation', t('app.hr.employee_detail.workforce_journey.contract'))} value={probation} options={['none', 'dated']} onChange={setProbation} t={t} />
+      <CatalogSelect label={rowLabel(group, 'zatrudnienie.probation', t('app.hr.employee_detail.workforce_journey.contract'))} value={probation} options={['none', 'dated']} onChange={setProbation} disabled={!writable} t={t} />
       {probation === 'dated' ? (
-        <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={probationEnd} onChange={(event) => setProbationEnd(event.target.value)} />
+        <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={probationEnd} readOnly={!writable} onChange={(event) => setProbationEnd(event.target.value)} />
       ) : null}
-      <Input label={rowLabel(group, 'zatrudnienie.planned_start', t('app.candidate_card.employment.columns.start'))} type="date" value={planned} onChange={(event) => setPlanned(event.target.value)} />
-      <button type="submit" className="btn-primary btn-sm" disabled={saving}>
-        {saving ? t('common.saving') : t('common.actions.save')}
-      </button>
-    </form>
+      <Input label={rowLabel(group, 'zatrudnienie.planned_start', t('app.candidate_card.employment.columns.start'))} type="date" value={planned} readOnly={!writable} onChange={(event) => setPlanned(event.target.value)} />
+    </div>
   )
 }
 
@@ -751,18 +1019,20 @@ function CatalogSelect({
   value,
   options,
   onChange,
+  disabled,
   t,
 }: {
   label: string
   value: string
   options: string[]
   onChange: (value: string) => void
+  disabled?: boolean
   t: Translate
 }) {
   return (
     <label className="block">
       <div className="label">{label}</div>
-      <select className="input" value={value} onChange={(event) => onChange(event.target.value)}>
+      <select className="input" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => (
           <option key={option} value={option}>
             {knownOptionLabel(t, option) || option}

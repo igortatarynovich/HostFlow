@@ -79,14 +79,7 @@ def apply_person(personal: dict[str, Any] | None, payload: dict[str, Any]) -> tu
     merged["birth_date"] = birth or None
     pesel = str(payload.get("pesel") or "").strip()
     merged["pesel"] = pesel or None
-    address = str(payload.get("address") or "").strip()
-    current_address = merged.get("address")
-    if isinstance(current_address, dict):
-        updated = dict(current_address)
-        updated["address"] = address or None
-        merged["address"] = updated
-    else:
-        merged["address"] = address or None
+    merged["address"] = _stored_address(payload.get("address"), merged.get("address"))
     languages = [
         part.strip()
         for part in str(payload.get("languages") or "").split(",")
@@ -260,8 +253,8 @@ def _person_rows(
         _row(
             "dane_osobowe.address",
             "Adres",
-            _text(personal.get("address")),
-            _presence(personal.get("address")),
+            _address_text(personal.get("address")),
+            _presence(_address_text(personal.get("address"))),
         ),
         _row("dane_osobowe.pesel", "PESEL", _text(personal.get("pesel")), _presence(personal.get("pesel"))),
         _row("dane_osobowe.languages", "Języki", language_text, _presence(language_text)),
@@ -560,12 +553,15 @@ async def build_hr_employee_record_surface(
         employee_status=employee.status,
         employment_state=driver.get("state"),
     )
+    header = dict(driver.get("header") or {})
+    if employment is not None:
+        header["ended_on"] = _iso(employment.ended_on)
     return {
         "employee_id": str(employee.id),
         "candidate_id": str(employee.candidate_id) if employee.candidate_id else None,
         "employment_id": driver.get("employment_id"),
         "state": driver.get("state"),
-        "header": driver.get("header") or {},
+        "header": header,
         "current_process": projected["current_process"],
         "groups": projected["groups"],
         "person": _person_editor(candidate, personal),
@@ -642,10 +638,48 @@ async def _document_summary(db: AsyncSession, *, tenant_id: str, candidate_id: s
     return {"total": len(views), "attention": attention}
 
 
+_ADDRESS_KEYS = ("country", "city", "street", "house", "apt", "zip")
+
+
+def _stored_address(incoming: Any, current: Any) -> dict[str, str] | None:
+    """Keep the candidate address object. A single string is not an address."""
+
+    base = dict(current) if isinstance(current, dict) else {}
+    base.pop("address", None)
+    source = incoming if isinstance(incoming, dict) else {}
+    if isinstance(incoming, str) and incoming.strip() and not any(str(source.get(key) or "").strip() for key in _ADDRESS_KEYS):
+        source = {"street": incoming.strip()}
+    for key in _ADDRESS_KEYS:
+        text = str(source.get(key) or "").strip()
+        if text:
+            base[key] = text
+        else:
+            base.pop(key, None)
+    cleaned = {key: value for key, value in base.items() if str(value or "").strip()}
+    return cleaned or None
+
+
+def _address_text(value: Any) -> str | None:
+    if isinstance(value, dict):
+        ordered = [str(value.get(key) or "").strip() for key in _ADDRESS_KEYS]
+        text = ", ".join(part for part in ordered if part)
+        return text or None
+    return _text(value)
+
+
+def _address_editor(value: Any) -> dict[str, str]:
+    parts = {key: "" for key in _ADDRESS_KEYS}
+    if isinstance(value, dict):
+        for key in _ADDRESS_KEYS:
+            parts[key] = str(value.get(key) or "").strip()
+        if not parts["street"]:
+            parts["street"] = str(value.get("address") or "").strip()
+    elif isinstance(value, str):
+        parts["street"] = value.strip()
+    return parts
+
+
 def _person_editor(candidate: Candidate | None, personal: dict[str, Any]) -> dict[str, Any]:
-    address = personal.get("address")
-    if isinstance(address, dict):
-        address = address.get("address")
     languages = candidate.languages if candidate is not None else None
     return {
         "first_name": candidate.first_name if candidate is not None else "",
@@ -654,7 +688,7 @@ def _person_editor(candidate: Candidate | None, personal: dict[str, Any]) -> dic
         "citizenship": _text(personal.get("citizenship")) or "",
         "phone": candidate.phone if candidate is not None and candidate.phone else "",
         "email": candidate.email if candidate is not None and candidate.email else "",
-        "address": _text(address) or "",
+        "address": _address_editor(personal.get("address")),
         "pesel": _text(personal.get("pesel")) or "",
         "languages": ", ".join(str(item).strip() for item in (languages or []) if str(item).strip()),
     }

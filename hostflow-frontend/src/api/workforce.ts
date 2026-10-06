@@ -1606,7 +1606,7 @@ export type HrEmployeeRecordSurface = {
   candidate_id: string | null
   employment_id: string | null
   state: string | null
-  header: HrDriverOperatorSurface['header']
+  header: HrDriverOperatorSurface['header'] & { ended_on?: string | null }
   current_process: {
     next_action: HrDriverOperatorSurface['next_action']
     target_row_id: string | null
@@ -1621,7 +1621,7 @@ export type HrEmployeeRecordSurface = {
     citizenship: string
     phone: string
     email: string
-    address: string
+    address: HrEmployeeRecordAddress
     pesel: string
     languages: string
   }
@@ -1635,6 +1635,15 @@ export type HrEmployeeRecordSurface = {
   documents?: { total: number; attention: number }
 }
 
+export type HrEmployeeRecordAddress = {
+  country: string
+  city: string
+  street: string
+  house: string
+  apt: string
+  zip: string
+}
+
 export type HrEmployeeRecordPersonIn = {
   first_name: string
   last_name: string
@@ -1642,7 +1651,7 @@ export type HrEmployeeRecordPersonIn = {
   citizenship: string
   phone: string
   email: string
-  address: string
+  address: HrEmployeeRecordAddress
   pesel: string
   languages: string
 }

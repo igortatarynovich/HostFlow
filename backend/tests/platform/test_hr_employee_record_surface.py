@@ -102,14 +102,29 @@ def test_person_write_stays_on_the_existing_owner() -> None:
             "citizenship": "UA",
             "phone": "+48",
             "email": "jan@example.com",
-            "address": "Warszawa",
+            "address": {
+                "country": "PL",
+                "city": "Warszawa",
+                "street": "Marszałkowska",
+                "house": "1",
+                "apt": "4",
+                "zip": "00-001",
+            },
             "pesel": "88041212345",
             "languages": "pl, uk",
         },
     )
     assert personal["citizenship"] == "UA"
     assert personal["operator_facts"]["stay_basis"] == "karta_pobytu"
-    assert personal["address"] == "Warszawa"
+    assert personal["address"] == {
+        "country": "PL",
+        "city": "Warszawa",
+        "street": "Marszałkowska",
+        "house": "1",
+        "apt": "4",
+        "zip": "00-001",
+    }
+    assert not isinstance(personal["address"], str)
     assert columns["first_name"] == "Jan"
     assert columns["languages"] == ["pl", "uk"]
     assert "extra" not in columns
