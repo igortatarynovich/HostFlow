@@ -307,8 +307,14 @@ async def _company_candidate_funnels(
     *,
     tenant_id: str,
     company_id: str,
+    allow_bootstrap: bool = True,
 ) -> list[Funnel]:
-    """Company recruitment funnels, plus assigned ones that are not another company's."""
+    """Recruitment funnels this company owns or assigns on a vacancy or profile.
+
+    A vacancy may point at another company's funnel (shared agency pipeline).
+    That funnel is the one the candidate card shows, so the transfer lane
+    belongs there too.
+    """
     from backend.app.services.recruitment_funnel_resolver import RECRUITMENT_MODULE_KEY
 
     ids: set[str] = set()
@@ -387,13 +393,10 @@ async def _company_candidate_funnels(
             continue
         if str(funnel.tenant_id or "") == "default":
             continue
-        owner = str(funnel.company_id or "").strip()
-        if owner and owner != company_id:
-            continue
         seen.add(funnel.id)
         funnels.append(funnel)
 
-    if funnels:
+    if funnels or not allow_bootstrap:
         return funnels
 
     from backend.app.models.company import Company
@@ -510,6 +513,32 @@ async def _candidates_on_handoff_lane(
     return int(count or 0)
 
 
+async def _funnel_ids_kept_by_other_handoff(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str,
+) -> set[str]:
+    """Funnels another handoff-on company still assigns. Do not strip those."""
+    links = await list_links_for_agency(db, tenant_id)
+    others: set[str] = set()
+    for link in links:
+        if not link.get_handoff_enabled():
+            continue
+        others.update(operating_company_ids_for_link(link))
+    others.discard(company_id)
+    kept: set[str] = set()
+    for other_id in others:
+        for funnel in await _company_candidate_funnels(
+            db,
+            tenant_id=tenant_id,
+            company_id=other_id,
+            allow_bootstrap=False,
+        ):
+            kept.add(funnel.id)
+    return kept
+
+
 async def apply_company_handoff_funnel_stages(
     db: AsyncSession,
     *,
@@ -531,7 +560,12 @@ async def apply_company_handoff_funnel_stages(
         occupied = await _candidates_on_handoff_lane(db, tenant_id=tid, company_id=cid)
         if occupied:
             raise HandoffFunnelGateError(_DISABLE_OCCUPIED_DETAIL)
+        kept = await _funnel_ids_kept_by_other_handoff(
+            db, tenant_id=tid, company_id=cid
+        )
         for funnel in funnels:
+            if funnel.id in kept:
+                continue
             rows = list(
                 (
                     await db.execute(

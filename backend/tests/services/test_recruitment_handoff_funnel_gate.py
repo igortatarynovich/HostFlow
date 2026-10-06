@@ -391,3 +391,82 @@ async def test_disable_handoff_blocked_while_candidate_sits_on_lane(gate_db) -> 
             company_id=company_id,
             enabled=False,
         )
+
+
+@pytest.mark.anyio
+async def test_enable_handoff_updates_vacancy_funnel_owned_by_another_company(gate_db) -> None:
+    tenant_id = await _seed_tenant(gate_db)
+    owner_id = await _seed_company(gate_db, tenant_id=tenant_id)
+    client_id = await _seed_company(gate_db, tenant_id=tenant_id)
+    funnel = await _seed_funnel(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=owner_id,
+        codes=["new", "docs_got", "employed"],
+        name="Rekrutacja",
+    )
+    await _seed_vacancy(gate_db, tenant_id=tenant_id, company_id=client_id, funnel_id=funnel.id)
+    await gate_db.flush()
+
+    await apply_company_handoff_funnel_stages(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=client_id,
+        enabled=True,
+        to_client=True,
+        to_hr=False,
+    )
+
+    assert await _stage_codes(gate_db, funnel.id) == [
+        "new",
+        "docs_got",
+        "ready_for_handoff",
+        "processing_by_client",
+        "handoff_returned",
+        "employed",
+    ]
+
+
+@pytest.mark.anyio
+async def test_disable_keeps_shared_funnel_while_another_company_handoff_is_on(gate_db) -> None:
+    tenant_id = await _seed_tenant(gate_db)
+    owner_id = await _seed_company(gate_db, tenant_id=tenant_id)
+    client_id = await _seed_company(gate_db, tenant_id=tenant_id)
+    funnel = await _seed_funnel(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=owner_id,
+        codes=["new", "employed"],
+        name="Rekrutacja",
+    )
+    await _seed_vacancy(gate_db, tenant_id=tenant_id, company_id=owner_id, funnel_id=funnel.id)
+    await _seed_vacancy(gate_db, tenant_id=tenant_id, company_id=client_id, funnel_id=funnel.id)
+    await _seed_link(gate_db, tenant_id=tenant_id, company_id=owner_id, enabled=True)
+    client_link = await _seed_link(gate_db, tenant_id=tenant_id, company_id=client_id, enabled=True)
+    await apply_company_handoff_funnel_stages(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=client_id,
+        enabled=True,
+        to_client=True,
+        to_hr=False,
+    )
+
+    await apply_company_handoff_funnel_stages(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=client_id,
+        enabled=False,
+    )
+
+    assert "ready_for_handoff" in await _stage_codes(gate_db, funnel.id)
+
+    client_link.features_json = {"handoff_enabled": False}
+    await gate_db.flush()
+    await apply_company_handoff_funnel_stages(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=owner_id,
+        enabled=False,
+    )
+    assert await _stage_codes(gate_db, funnel.id) == ["new", "employed"]
