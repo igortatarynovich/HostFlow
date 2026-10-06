@@ -1300,8 +1300,12 @@ class HrEmployeeRecordPersonIn(BaseModel):
     birth_date: str = ""
     citizenship: str = ""
     phone: str = ""
+    phone_country: str = ""
     email: str = ""
+    preferred_contact: str = ""
     address: HrEmployeeRecordAddressIn = Field(default_factory=HrEmployeeRecordAddressIn)
+    reg_address_diff: bool = False
+    reg_address: HrEmployeeRecordAddressIn = Field(default_factory=HrEmployeeRecordAddressIn)
     pesel: str = ""
     languages: str = ""
 

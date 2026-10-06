@@ -1619,9 +1619,14 @@ export type HrEmployeeRecordSurface = {
     last_name: string
     birth_date: string
     citizenship: string
+    short_id: string
     phone: string
+    phone_country: string
     email: string
+    preferred_contact: string
     address: HrEmployeeRecordAddress
+    reg_address_diff: boolean
+    reg_address: HrEmployeeRecordAddress
     pesel: string
     languages: string
   }
@@ -1650,8 +1655,12 @@ export type HrEmployeeRecordPersonIn = {
   birth_date: string
   citizenship: string
   phone: string
+  phone_country: string
   email: string
+  preferred_contact: string
   address: HrEmployeeRecordAddress
+  reg_address_diff: boolean
+  reg_address: HrEmployeeRecordAddress
   pesel: string
   languages: string
 }

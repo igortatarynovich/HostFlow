@@ -163,6 +163,8 @@ Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) �
 
 **Operational rule:** Existing canonical capability, system, or primitive MUST be reused. A feature must not create a local alternative, duplicate, fork, parallel policy, local SoT, design system, rule set, taxonomy, or equivalent implementation. If the existing canonical system cannot satisfy the requirement, STOP implementation and resolve the gap through the canonical owner / architecture process. Do not solve a canonical gap locally.
 
+Employee page may compose existing system primitives and widgets, but may not introduce local task, note, document, status, dictionary, form-control or styling systems.
+
 1. Перед выполнением изменений всегда формируйте план и список файлов для редактирования и ожидайте подтверждения.
 2. Не выполняйте shell-команды, коммиты или push без явного разрешения.
 3. При изменении схемы базы данных необходимо:

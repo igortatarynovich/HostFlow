@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { api, createActivity, listReminders } from '../../api/client'
+import { api, listReminders } from '../../api/client'
 import type { ReminderRecord } from '../../api/types'
 import {
   confirmHrDriverLegal,
@@ -19,9 +19,12 @@ import {
   type HrEmployeeRecordSurface,
 } from '../../api/workforce'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import { Input, CheckboxMultiSelect, SearchableSelect } from '../candidate/shared/FormComponents'
+import { Input, Checkbox, CheckboxMultiSelect, SearchableSelect } from '../candidate/shared/FormComponents'
 import { useI18n } from '../../i18n'
-import { usePlatformCountryOptions } from '../../hooks/usePlatformCatalogOptions'
+import { usePlatformCountryOptions, usePlatformDialCodeOptions } from '../../hooks/usePlatformCatalogOptions'
+import { PREFERRED_CONTACT_VALUES } from '../../data/preferredContactChannels'
+import CandidateDocuments from '../../modules/documents/CandidateDocuments'
+import { CandidateQuickTaskModal } from '../../modules/candidates/components/CandidateQuickTaskModal'
 import { NotesCapability } from '../../platform/capabilities/notes/NotesCapability'
 import { StatusBadge } from '../ui/StatusBadge'
 import { documentSeverityToSemantic, type StatusBadgeSemantic } from '../ui/statusBadgeSemantics'
@@ -149,6 +152,7 @@ export default function HrEmployeeRecordSurface({
   manage: boolean
 }) {
   const { t, locale } = useI18n()
+  const navigate = useNavigate()
   const [surface, setSurface] = useState<HrEmployeeRecordSurface | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -210,6 +214,9 @@ export default function HrEmployeeRecordSurface({
 
   const groups = surface.groups
   const action = surface.current_process.next_action
+  const returned =
+    surface.current_process.destination === 'recruitment' || action?.code === 'returned_to_recruitment'
+  const canEdit = manage && !returned
   const recruitmentHref = surface.candidate_id
     ? `${CRM_APP_PATHS.candidates}/${encodeURIComponent(surface.candidate_id)}`
     : null
@@ -225,6 +232,10 @@ export default function HrEmployeeRecordSurface({
         .then((result) => finishSave(result.accepted !== false, result.reason))
         .catch(() => setError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' })))
         .finally(() => setSaving(false))
+    } else if (action.code === 'register_zus') {
+      navigate(CRM_APP_PATHS.hrZusWorkspace)
+    } else if (surface.current_process.destination === 'recruitment' && recruitmentHref) {
+      navigate(recruitmentHref)
     } else if (action.code === 'start_employment') {
       setSaving(true)
       void startHrDriverEmployment(employeeId)
@@ -238,16 +249,18 @@ export default function HrEmployeeRecordSurface({
     <div className="card min-w-0 p-3">
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
         <div className="min-w-0 space-y-4 lg:pr-6">
-          <header className="space-y-2">
-            <h2>{surface.header.name}</h2>
-            <StatusBadge label={status.headline} semantic={status.semantic} />
-            {status.context.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-            {status.primary ? <p>{status.primary}</p> : null}
-            {status.secondary ? <p>{status.secondary}</p> : null}
-            {error ? <p className="alert-error">{error}</p> : null}
-          </header>
+          <EmployeeHero
+            surface={surface}
+            status={status}
+            groups={groups}
+            locale={locale}
+            onOpenGroup={(groupId) => {
+              const next = TAB_FOR_GROUP[groupId]
+              if (next) setTab(next)
+            }}
+            onOpenAction={runAction}
+          />
+          {error ? <p className="alert-error">{error}</p> : null}
 
           <div className="tabs flex-wrap gap-x-1 gap-y-0" role="tablist">
             {RECORD_TABS.map((id) => (
@@ -270,7 +283,7 @@ export default function HrEmployeeRecordSurface({
                 key={employeeId}
                 employeeId={employeeId}
                 person={surface.person}
-                writable={manage}
+                writable={canEdit}
                 onError={setError}
                 onSaved={() => {
                   void load()
@@ -283,7 +296,7 @@ export default function HrEmployeeRecordSurface({
                 employeeId={employeeId}
                 group={activeGroup('legalizacja')!}
                 legal={surface.legal}
-                writable={manage && surface.state === 'preparing'}
+                writable={canEdit && surface.state === 'preparing'}
                 onError={setError}
                 onSaved={() => {
                   void load()
@@ -292,21 +305,18 @@ export default function HrEmployeeRecordSurface({
             ) : null}
             {tab === 'kwalifikacje' ? (
               <div className="space-y-6">
-                {(['kwalifikacje', 'badania'] as const).map((id) => {
-                  const group = activeGroup(id)
-                  if (!group) return null
-                  return (
-                    <div key={id} id={`record-group-${id}`}>
-                      <h3>
-                        {group.label}
-                        {factCoverage(group)
-                          ? ` · ${factCoverage(group)} ${t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })}`
-                          : ''}
-                      </h3>
-                      <GroupBody group={group} locale={locale} />
-                    </div>
-                  )
-                })}
+                <FactSections group={activeGroup('kwalifikacje')} locale={locale} approvedLabel={t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })} />
+                {activeGroup('badania') ? (
+                  <div id="record-group-badania">
+                    <h3>
+                      {activeGroup('badania')!.label}
+                      {factCoverage(activeGroup('badania'))
+                        ? ` · ${factCoverage(activeGroup('badania'))} ${t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })}`
+                        : ''}
+                    </h3>
+                    <GroupBody group={activeGroup('badania')!} locale={locale} />
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {tab === 'zatrudnienie' && activeGroup('zatrudnienie') ? (
@@ -315,7 +325,7 @@ export default function HrEmployeeRecordSurface({
                 employeeId={employeeId}
                 group={activeGroup('zatrudnienie')!}
                 terms={surface.terms}
-                writable={manage && surface.state === 'preparing'}
+                writable={canEdit && surface.state === 'preparing'}
                 onError={setError}
                 onSaved={() => {
                   void load()
@@ -325,8 +335,8 @@ export default function HrEmployeeRecordSurface({
             {tab === 'formalnosci' && activeGroup('formalnosci') ? (
               <CompactGroup group={activeGroup('formalnosci')!} locale={locale} documents={surface.documents} />
             ) : null}
-            {tab === 'dokumenty' && activeGroup('dokumenty') ? (
-              <CompactGroup group={activeGroup('dokumenty')!} locale={locale} documents={surface.documents} />
+            {tab === 'dokumenty' && surface.candidate_id ? (
+              <CandidateDocuments candidateId={surface.candidate_id} hideHeader onDocumentsChanged={() => void load()} />
             ) : null}
           </section>
         </div>
@@ -338,17 +348,15 @@ export default function HrEmployeeRecordSurface({
         >
           <RecordTasks
             candidateId={surface.candidate_id}
-            action={action}
-            recruitmentHref={surface.current_process.destination === 'recruitment' ? recruitmentHref : null}
-            zus={action?.code === 'register_zus'}
-            saving={saving}
-            onOpen={runAction}
+            candidateLabel={surface.header.name}
+            locked={returned}
           />
           {surface.candidate_id ? (
             <section className="card w-full p-4">
               <NotesCapability
                 entity={{ resourceType: 'candidate', resourceId: surface.candidate_id }}
                 patching={false}
+                readOnly={returned}
                 onClose={() => undefined}
                 onRefresh={() => undefined}
               />
@@ -418,13 +426,24 @@ function statusSummary(
     const when = formatDay(actual || planned)
     context.push([`Od ${when}`, contract].filter(Boolean).join(' · '))
   }
-  if (lead) {
+  const urgent = lead && lead.kind !== 'soon' ? lead : null
+  const attention = urgent || (action ? null : lead)
+  if (attention) {
     return {
       headline: t('app.hr.employee_record.status.active', { defaultValue: 'Zatrudniony · Aktywny' }),
-      semantic: lead.kind === 'soon' ? 'warning' : 'bad',
+      semantic: attention.kind === 'soon' ? 'warning' : 'bad',
       context,
-      primary: [issueLine(t, lead), rest > 0 ? `+ ${rest}` : null].filter(Boolean).join(' · '),
+      primary: [issueLine(t, attention), rest > 0 ? `+ ${rest}` : null].filter(Boolean).join(' · '),
       secondary: action ? `${t('app.hr.employee_record.status.next_action', { defaultValue: 'Następne działanie' })}: ${action.title}` : null,
+    }
+  }
+  if (action) {
+    return {
+      headline: t('app.hr.employee_record.status.active', { defaultValue: 'Zatrudniony · Aktywny' }),
+      semantic: 'warning',
+      context,
+      primary: `${t('app.hr.employee_record.status.next_action', { defaultValue: 'Następne działanie' })}: ${action.title}`,
+      secondary: lead ? issueLine(t, lead) : null,
     }
   }
   return {
@@ -442,24 +461,33 @@ function statusSummary(
   }
 }
 
-function urgentIssues(groups: HrEmployeeRecordGroup[]): { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number }[] {
-  const byLabel = new Map<string, { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number }>()
+function urgentIssues(groups: HrEmployeeRecordGroup[]): { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number; group: string }[] {
+  const byLabel = new Map<string, { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number; group: string }>()
   for (const group of groups) {
     if (group.id === 'historia') continue
     for (const row of group.rows) {
       const until = row.details?.find((detail) => detail.label === 'Ważne do')?.value
       const days = until ? daysUntil(until) : null
-      let next: { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number } | null = null
-      if (days !== null && days < 0) next = { kind: 'expired', label: row.label, days }
-      else if (row.evidence === 'expired' || row.evidence === 'rejected' || row.status === 'blocking') {
-        next = { kind: row.status === 'blocking' && row.evidence !== 'expired' ? 'blocking' : 'expired', label: row.label, days: days ?? -1 }
-      } else if (days !== null && days <= 30) next = { kind: 'soon', label: row.label, days }
+      let next: { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number; group: string } | null = null
+      if (row.status === 'blocking') next = { kind: 'blocking', label: row.label, days: days ?? -1, group: group.id }
+      else if (days !== null && days < 0) next = { kind: 'expired', label: row.label, days, group: group.id }
+      else if (row.evidence === 'expired' || row.evidence === 'rejected') {
+        next = { kind: 'expired', label: row.label, days: days ?? -1, group: group.id }
+      } else if (days !== null && days <= 30) next = { kind: 'soon', label: row.label, days, group: group.id }
       if (!next) continue
       const current = byLabel.get(row.label)
-      if (!current || next.days < current.days) byLabel.set(row.label, next)
+      if (!current || rankIssue(next) < rankIssue(current) || (rankIssue(next) === rankIssue(current) && next.days < current.days)) {
+        byLabel.set(row.label, next)
+      }
     }
   }
-  return [...byLabel.values()].sort((left, right) => left.days - right.days)
+  return [...byLabel.values()].sort((left, right) => rankIssue(left) - rankIssue(right) || left.days - right.days)
+}
+
+function rankIssue(issue: { kind: 'blocking' | 'expired' | 'soon' }): number {
+  if (issue.kind === 'blocking') return 0
+  if (issue.kind === 'expired') return 1
+  return 2
 }
 
 function daysUntil(iso: string): number | null {
@@ -471,7 +499,7 @@ function daysUntil(iso: string): number | null {
   return Math.round((target.getTime() - today.getTime()) / 86400000)
 }
 
-function issueLine(t: Translate, issue: { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number }): string {
+function issueLine(t: Translate, issue: { kind: 'blocking' | 'expired' | 'soon'; label: string; days: number; group?: string }): string {
   if (issue.kind === 'soon') {
     const unit = issue.days === 1
       ? t('app.hr.employee_record.status.day', { defaultValue: 'dzień' })
@@ -482,25 +510,117 @@ function issueLine(t: Translate, issue: { kind: 'blocking' | 'expired' | 'soon';
   return issue.label
 }
 
+function EmployeeHero({
+  surface,
+  status,
+  groups,
+  locale,
+  onOpenGroup,
+  onOpenAction,
+}: {
+  surface: HrEmployeeRecordSurface
+  status: ReturnType<typeof statusSummary>
+  groups: HrEmployeeRecordGroup[]
+  locale: 'en' | 'ru' | 'pl'
+  onOpenGroup: (groupId: string) => void
+  onOpenAction: () => void
+}) {
+  const { t } = useI18n()
+  const lead = urgentIssues(groups)[0]
+  const action = surface.current_process.next_action
+  const showIssue = Boolean(lead && (lead.kind !== 'soon' || !action))
+  const citizenship = surface.person?.citizenship ? getRegionDisplayName(surface.person.citizenship, locale) : ''
+  const stayRow = rowById(groups, 'legalizacja.stay_basis')
+  const workRow = rowById(groups, 'legalizacja.work_basis')
+  const stay = stayRow ? displayValue(stayRow.value, stayRow.label, locale, t) : ''
+  const work = workRow ? displayValue(workRow.value, workRow.label, locale, t) : ''
+  const identity = [citizenship, stay, work].filter((part) => part && part !== '—').join(' · ')
+  const contractEnd = surface.terms?.duration === 'fixed' ? surface.terms.fixed_term_end : null
+  const role = [surface.header.position, surface.header.employer].filter(Boolean).join(' · ')
+  const until = lead
+    ? groups.find((group) => group.id === lead.group)?.rows.find((row) => row.label === lead.label)?.details?.find((detail) => detail.label === 'Ważne do')?.value
+    : null
+  const needsOpen = status.semantic === 'bad' || status.semantic === 'warning'
+  return (
+    <div className="min-w-0 rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-md">
+      <h2 className="text-white">{surface.header.name}</h2>
+      {role ? <p>{role}</p> : null}
+      <StatusBadge inverse label={status.headline} semantic={status.semantic} />
+      {identity ? <p>{identity}</p> : null}
+      {contractEnd ? (
+        <p>
+          {t('app.candidate_card.employment.columns.end', { defaultValue: 'Umowa do' })} {formatDay(contractEnd)}
+        </p>
+      ) : null}
+      {status.primary ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p>{status.primary}{until && showIssue ? ` · ${formatDay(until)}` : ''}</p>
+          {needsOpen ? (
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => (showIssue && lead ? onOpenGroup(lead.group) : onOpenAction())}
+            >
+              {t('common.actions.open', { defaultValue: 'Otwórz' })}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function FactSections({
+  group,
+  locale,
+  approvedLabel,
+}: {
+  group?: HrEmployeeRecordGroup
+  locale: 'en' | 'ru' | 'pl'
+  approvedLabel: string
+}) {
+  if (!group) return null
+  const buckets: { keys: string[] }[] = [
+    { keys: ['driving_licence', 'code_95'] },
+    { keys: ['tachograph_card'] },
+  ]
+  const used = new Set<string>()
+  const sections = buckets
+    .map((bucket) => {
+      const rows = group.rows.filter((row) => bucket.keys.some((key) => row.id.endsWith(`.${key}`)))
+      rows.forEach((row) => used.add(row.id))
+      return rows
+    })
+    .filter((rows) => rows.length > 0)
+  const rest = group.rows.filter((row) => !used.has(row.id))
+  if (rest.length) sections.push(rest)
+  if (!sections.length) return <p>{group.empty}</p>
+  return (
+    <div className="space-y-6" id={`record-group-${group.id}`}>
+      {sections.map((rows) => (
+        <div key={rows[0].id}>
+          <h3>
+            {rows[0].label}
+            {factCoverage({ ...group, rows }) ? ` · ${factCoverage({ ...group, rows })} ${approvedLabel}` : ''}
+          </h3>
+          <GroupBody group={{ ...group, rows }} locale={locale} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function RecordTasks({
   candidateId,
-  action,
-  recruitmentHref,
-  zus,
-  saving,
-  onOpen,
+  candidateLabel,
+  locked,
 }: {
   candidateId: string | null
-  action: HrEmployeeRecordSurface['current_process']['next_action']
-  recruitmentHref: string | null
-  zus: boolean
-  saving: boolean
-  onOpen: () => void
+  candidateLabel: string
+  locked: boolean
 }) {
   const { t } = useI18n()
   const [items, setItems] = useState<ReminderRecord[]>([])
-  const [title, setTitle] = useState('')
-  const [due, setDue] = useState('')
   const [adding, setAdding] = useState(false)
 
   const loadTasks = useCallback(async () => {
@@ -526,64 +646,41 @@ function RecordTasks({
     void loadTasks()
   }, [loadTasks])
 
-  const addTask = async () => {
-    if (!candidateId || !title.trim() || !due) return
-    setAdding(true)
-    try {
-      const dueAt = new Date(due)
-      await createActivity({
-        title: title.trim(),
-        description: '',
-        type: 'custom',
-        entity_type: 'candidate',
-        entity_id: candidateId,
-        due_at: dueAt.toISOString(),
-        remind_at: dueAt.toISOString(),
-        priority: 'normal',
-        source: 'manual',
-      })
-      setTitle('')
-      setDue('')
-      await loadTasks()
-    } finally {
-      setAdding(false)
-    }
-  }
+  const tasksHref = `${CRM_APP_PATHS.tasks}?tab=tasks&t_status=active&t_entity=candidate&t_q=${encodeURIComponent(
+    String(candidateLabel || candidateId || '').slice(0, 80),
+  )}`
 
   return (
     <section className="card w-full p-4">
-      <h3>{t('app.hr.employee_record.tasks', { defaultValue: 'Zadania' })}</h3>
-      {action ? (
-        <div className="mt-3">
-          <p>{action.title}</p>
-          {recruitmentHref ? (
-            <Link to={recruitmentHref} className="btn-secondary btn-sm">
-              {t('common.actions.open', { defaultValue: 'Otwórz' })}
-            </Link>
-          ) : zus ? (
-            <Link to={CRM_APP_PATHS.hrZusWorkspace} className="btn-secondary btn-sm">
-              {t('common.actions.open', { defaultValue: 'Otwórz' })}
-            </Link>
-          ) : (
-            <button type="button" className="btn-secondary btn-sm" disabled={saving} onClick={onOpen}>
-              {t('common.actions.open', { defaultValue: 'Otwórz' })}
-            </button>
-          )}
-        </div>
-      ) : null}
-      {items.map((item) => (
+      <h3>
+        {t('app.hr.employee_record.tasks', { defaultValue: 'Zadania' })} {items.length}
+      </h3>
+      {items.slice(0, 3).map((item) => (
         <p key={item.id}>
           {item.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Zadanie' })}
           {item.due_at ? ` · ${formatDay(item.due_at)}` : ''}
         </p>
       ))}
-      <div className="mt-3 space-y-2">
-        <Input label={t('app.hr.employee_record.add_task', { defaultValue: 'Dodaj zadanie' })} value={title} onChange={(event) => setTitle(event.target.value)} />
-        <Input label={t('app.candidate_card.reminders.due', { defaultValue: 'Termin' })} type="date" value={due} onChange={(event) => setDue(event.target.value)} />
-        <button type="button" className="btn-secondary btn-sm" disabled={adding || !title.trim() || !due} onClick={() => void addTask()}>
-          {t('app.hr.employee_record.add_task', { defaultValue: 'Dodaj zadanie' })}
+      {locked || !candidateId ? null : (
+        <button type="button" className="btn-secondary btn-sm" onClick={() => setAdding(true)}>
+          {t('app.hr.employee_record.add_task', { defaultValue: 'Dodaj' })}
         </button>
-      </div>
+      )}
+      <Link to={tasksHref} className="btn-secondary btn-sm">
+        {t('app.hr.employee_record.show_history', { defaultValue: 'Pokaż wszystkie' })}
+      </Link>
+      {candidateId ? (
+        <CandidateQuickTaskModal
+          open={adding}
+          onClose={() => {
+            setAdding(false)
+            void loadTasks()
+          }}
+          candidateId={candidateId}
+          candidateLabel={candidateLabel}
+          t={t}
+        />
+      ) : null}
     </section>
   )
 }
@@ -737,6 +834,7 @@ function PersonForm({
 }) {
   const { t, locale } = useI18n()
   const countries = usePlatformCountryOptions(locale)
+  const dialCodes = usePlatformDialCodeOptions()
   const languagesCatalog = useLanguageOptions(locale)
   const selectTexts = useMemo(
     () => ({
@@ -753,8 +851,12 @@ function PersonForm({
   const [birth, setBirth] = useState(person?.birth_date || '')
   const [citizenship, setCitizenship] = useState(person?.citizenship || '')
   const [phone, setPhone] = useState(person?.phone || '')
+  const [phoneCountry, setPhoneCountry] = useState(person?.phone_country || '')
   const [email, setEmail] = useState(person?.email || '')
+  const [preferredContact, setPreferredContact] = useState(person?.preferred_contact || '')
   const [address, setAddress] = useState<HrEmployeeRecordAddress>(() => addressDraft(person?.address))
+  const [regDiff, setRegDiff] = useState(Boolean(person?.reg_address_diff))
+  const [regAddress, setRegAddress] = useState<HrEmployeeRecordAddress>(() => addressDraft(person?.reg_address))
   const [pesel, setPesel] = useState(person?.pesel || '')
   const [languages, setLanguages] = useState(person?.languages || '')
   const languageValues = languages.split(',').map((part) => part.trim()).filter(Boolean)
@@ -764,8 +866,12 @@ function PersonForm({
     birth_date: birth,
     citizenship,
     phone,
+    phone_country: phoneCountry,
     email,
+    preferred_contact: preferredContact,
     address,
+    reg_address_diff: regDiff,
+    reg_address: regAddress,
     pesel,
     languages,
   }
@@ -788,59 +894,146 @@ function PersonForm({
   const setAddressPart = (key: keyof HrEmployeeRecordAddress, value: string) => {
     setAddress((current) => ({ ...current, [key]: value }))
   }
+  const setRegPart = (key: keyof HrEmployeeRecordAddress, value: string) => {
+    setRegAddress((current) => ({ ...current, [key]: value }))
+  }
   return (
-    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Input label={t('app.candidate_card.fields.first_name')} value={firstName} readOnly={!writable} onChange={(event) => setFirstName(event.target.value)} />
-      <Input label={t('app.candidate_card.fields.last_name')} value={lastName} readOnly={!writable} onChange={(event) => setLastName(event.target.value)} />
-      <Input label={t('app.candidate_card.fields.birth_date')} type="date" value={birth} readOnly={!writable} onChange={(event) => setBirth(event.target.value)} />
-      <label className="block">
-        <div className="label">{t('app.candidate_card.fields.citizenship')}</div>
-        <SearchableSelect
-          options={countries}
-          value={citizenship}
-          onChange={setCitizenship}
-          disabled={!writable}
-          placeholder={selectTexts.empty}
-          searchPlaceholder={selectTexts.search}
-          noResultsLabel={selectTexts.noResults}
+    <div className="space-y-6">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <h3 className="lg:col-span-2">{t('app.candidate_card.sections.basic.title')}</h3>
+        <Input label={t('app.candidate_card.fields.first_name')} value={firstName} readOnly={!writable} onChange={(event) => setFirstName(event.target.value)} />
+        <Input label={t('app.candidate_card.fields.last_name')} value={lastName} readOnly={!writable} onChange={(event) => setLastName(event.target.value)} />
+        <Input label={t('app.candidate_card.fields.birth_date')} type="date" value={birth} readOnly={!writable} onChange={(event) => setBirth(event.target.value)} />
+        <label className="block">
+          <div className="label">{t('app.candidate_card.fields.citizenship')}</div>
+          <SearchableSelect
+            options={countries}
+            value={citizenship}
+            onChange={setCitizenship}
+            disabled={!writable}
+            placeholder={selectTexts.empty}
+            searchPlaceholder={selectTexts.search}
+            noResultsLabel={selectTexts.noResults}
+          />
+        </label>
+        <Input label="PESEL" value={pesel} readOnly={!writable} onChange={(event) => setPesel(event.target.value)} />
+        <Input label={t('app.candidate_card.fields.short_id')} value={person?.short_id || ''} readOnly />
+        <div className="lg:col-span-2">
+          <div className="label">{t('app.candidate_card.fields.languages')}</div>
+          <CheckboxMultiSelect
+            options={languagesCatalog}
+            values={languageValues}
+            onChange={(values) => setLanguages(values.join(','))}
+            disabled={!writable}
+            placeholder={selectTexts.multiNone}
+            searchPlaceholder={selectTexts.search}
+            noResultsLabel={selectTexts.noResults}
+            multiSelectedLabel={selectTexts.multiSelected}
+          />
+        </div>
+      </section>
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <h3 className="lg:col-span-2">{t('app.candidate_card.intake.steps.contacts')}</h3>
+        <label className="block">
+          <div className="label">{t('app.candidate_card.fields.phone')}</div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <div className="sm:w-64">
+              <SearchableSelect
+                options={dialCodes}
+                value={phoneCountry}
+                onChange={setPhoneCountry}
+                disabled={!writable}
+                placeholder={selectTexts.empty}
+                searchPlaceholder={selectTexts.search}
+                noResultsLabel={selectTexts.noResults}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Input value={phone} readOnly={!writable} onChange={(event) => setPhone(event.target.value)} />
+            </div>
+          </div>
+        </label>
+        <Input label={t('app.candidate_card.fields.email')} value={email} readOnly={!writable} onChange={(event) => setEmail(event.target.value)} />
+        <label className="block">
+          <div className="label">{t('app.candidate_card.fields.preferred_contact')}</div>
+          <select className="input" value={preferredContact} disabled={!writable} onChange={(event) => setPreferredContact(event.target.value)}>
+            {PREFERRED_CONTACT_VALUES.map((value) => (
+              <option key={value || 'none'} value={value}>
+                {t(`app.candidate_card.contacts.options.${value || 'none'}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </section>
+      <AddressFields
+        title={t('app.candidate_card.sections.personal.address_current')}
+        address={address}
+        countries={countries}
+        writable={writable}
+        selectTexts={selectTexts}
+        onChange={setAddressPart}
+        t={t}
+      />
+      <Checkbox
+        label={t('app.candidate_card.fields.address.diff')}
+        checked={regDiff}
+        onChange={writable ? setRegDiff : undefined}
+      />
+      {regDiff ? (
+        <AddressFields
+          title={t('app.candidate_card.sections.personal.address_registered')}
+          address={regAddress}
+          countries={countries}
+          writable={writable}
+          selectTexts={selectTexts}
+          onChange={setRegPart}
+          t={t}
         />
-      </label>
-      <Input label={t('app.candidate_card.fields.phone')} value={phone} readOnly={!writable} onChange={(event) => setPhone(event.target.value)} />
-      <Input label={t('app.candidate_card.fields.email')} value={email} readOnly={!writable} onChange={(event) => setEmail(event.target.value)} />
-      <label className="block">
+      ) : null}
+    </div>
+  )
+}
+
+function AddressFields({
+  title,
+  address,
+  countries,
+  writable,
+  selectTexts,
+  onChange,
+  t,
+}: {
+  title: string
+  address: HrEmployeeRecordAddress
+  countries: { value: string; label: string }[]
+  writable: boolean
+  selectTexts: { empty: string; search: string; noResults: string }
+  onChange: (key: keyof HrEmployeeRecordAddress, value: string) => void
+  t: Translate
+}) {
+  return (
+    <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <h3 className="lg:col-span-2">{title}</h3>
+      <label className="block lg:col-span-2">
         <div className="label">{t('app.candidate_card.fields.address.country')}</div>
         <SearchableSelect
           options={countries}
           value={address.country}
-          onChange={(value) => setAddressPart('country', value)}
+          onChange={(value) => onChange('country', value)}
           disabled={!writable}
           placeholder={selectTexts.empty}
           searchPlaceholder={selectTexts.search}
           noResultsLabel={selectTexts.noResults}
         />
       </label>
-      <Input label={t('app.candidate_card.fields.address.city')} value={address.city} readOnly={!writable} onChange={(event) => setAddressPart('city', event.target.value)} />
-      <Input label={t('app.candidate_card.fields.address.zip')} value={address.zip} readOnly={!writable} onChange={(event) => setAddressPart('zip', event.target.value)} />
+      <Input label={t('app.candidate_card.fields.address.city')} value={address.city} readOnly={!writable} onChange={(event) => onChange('city', event.target.value)} />
+      <Input label={t('app.candidate_card.fields.address.zip')} value={address.zip} readOnly={!writable} onChange={(event) => onChange('zip', event.target.value)} />
       <div className="lg:col-span-2">
-        <Input label={t('app.candidate_card.fields.address.street')} value={address.street} readOnly={!writable} onChange={(event) => setAddressPart('street', event.target.value)} />
+        <Input label={t('app.candidate_card.fields.address.street')} value={address.street} readOnly={!writable} onChange={(event) => onChange('street', event.target.value)} />
       </div>
-      <Input label={t('app.candidate_card.fields.address.house')} value={address.house} readOnly={!writable} onChange={(event) => setAddressPart('house', event.target.value)} />
-      <Input label={t('app.candidate_card.fields.address.apt')} value={address.apt} readOnly={!writable} onChange={(event) => setAddressPart('apt', event.target.value)} />
-      <Input label="PESEL" value={pesel} readOnly={!writable} onChange={(event) => setPesel(event.target.value)} />
-      <div className="lg:col-span-2">
-        <div className="label">{t('app.candidate_card.fields.languages')}</div>
-        <CheckboxMultiSelect
-          options={languagesCatalog}
-          values={languageValues}
-          onChange={(values) => setLanguages(values.join(','))}
-          disabled={!writable}
-          placeholder={selectTexts.multiNone}
-          searchPlaceholder={selectTexts.search}
-          noResultsLabel={selectTexts.noResults}
-          multiSelectedLabel={selectTexts.multiSelected}
-        />
-      </div>
-    </div>
+      <Input label={t('app.candidate_card.fields.address.house')} value={address.house} readOnly={!writable} onChange={(event) => onChange('house', event.target.value)} />
+      <Input label={t('app.candidate_card.fields.address.apt')} value={address.apt} readOnly={!writable} onChange={(event) => onChange('apt', event.target.value)} />
+    </section>
   )
 }
 
@@ -859,7 +1052,7 @@ function LegalForm({
   onError: (message: string | null) => void
   onSaved: () => void
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [citizenshipClass, setCitizenshipClass] = useState(legal?.citizenship_class || 'third_country')
   const [stay, setStay] = useState(legal?.stay_basis && legal.stay_basis !== 'none' ? legal.stay_basis : 'none')
   const [basis, setBasis] = useState(legal?.work_authorization_basis || 'separate_required')
@@ -886,40 +1079,53 @@ function LegalForm({
       return false
     }
   })
+  const statusRows = group.rows.filter((row) => row.id === 'legalizacja.status')
   return (
-    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <CatalogSelect
-        label={t('app.candidate_card.fields.citizenship')}
-        value={citizenshipClass}
-        options={['pl', 'eu_eea_ch', 'third_country']}
-        onChange={setCitizenshipClass}
-        disabled={!writable}
-        t={t}
-      />
-      <CatalogSelect
-        label={rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}
-        value={stay}
-        options={['not_required', 'visa_d', 'visa_c', 'karta_pobytu', 'visa_free', 'waiting_for_trc', 'special_protection', 'other', 'none']}
-        onChange={setStay}
-        disabled={!writable}
-        t={t}
-      />
-      <CatalogSelect
-        label={rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}
-        value={basis}
-        options={['not_required', 'included_in_stay', 'separate_required']}
-        onChange={setBasis}
-        disabled={!writable}
-        t={t}
-      />
-      <CatalogSelect
-        label={rowLabel(group, 'legalizacja.valid_for_this_employment', t('common.labels.status'))}
-        value={valid}
-        options={['yes', 'no', 'operator_verification']}
-        onChange={setValid}
-        disabled={!writable}
-        t={t}
-      />
+    <div className="space-y-6">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <h3 className="lg:col-span-2">{rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}</h3>
+        <CatalogSelect
+          label={t('app.candidate_card.fields.citizenship')}
+          value={citizenshipClass}
+          options={['pl', 'eu_eea_ch', 'third_country']}
+          onChange={setCitizenshipClass}
+          disabled={!writable}
+          t={t}
+        />
+        <CatalogSelect
+          label={rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}
+          value={stay}
+          options={['not_required', 'visa_d', 'visa_c', 'karta_pobytu', 'visa_free', 'waiting_for_trc', 'special_protection', 'other', 'none']}
+          onChange={setStay}
+          disabled={!writable}
+          t={t}
+        />
+      </section>
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <h3 className="lg:col-span-2">{rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}</h3>
+        <CatalogSelect
+          label={rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}
+          value={basis}
+          options={['not_required', 'included_in_stay', 'separate_required']}
+          onChange={setBasis}
+          disabled={!writable}
+          t={t}
+        />
+      </section>
+      <section className="space-y-3">
+        <h3>{rowLabel(group, 'legalizacja.valid_for_this_employment', t('common.labels.status'))}</h3>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <CatalogSelect
+            label={rowLabel(group, 'legalizacja.valid_for_this_employment', t('common.labels.status'))}
+            value={valid}
+            options={['yes', 'no', 'operator_verification']}
+            onChange={setValid}
+            disabled={!writable}
+            t={t}
+          />
+        </div>
+        <GroupBody group={{ ...group, rows: statusRows }} locale={locale} />
+      </section>
     </div>
   )
 }
@@ -987,25 +1193,39 @@ function TermsForm({
     }
   })
   return (
-    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Input label={rowLabel(group, 'zatrudnienie.position', t('app.candidate_card.employment.placeholders.position'))} value={position} readOnly={!writable} onChange={(event) => setPosition(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.contract_basis', t('app.candidate_card.employment.columns.position'))} value={contractBasis} readOnly={!writable} onChange={(event) => setContractBasis(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={workTime} readOnly={!writable} onChange={(event) => setWorkTime(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={workTimeUnit} readOnly={!writable} onChange={(event) => setWorkTimeUnit(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.work_system', t('public.company_intake.fields.work_system'))} value={workSystem} readOnly={!writable} onChange={(event) => setWorkSystem(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.workplace', t('app.candidate_card.fields.address.city'))} value={workplace} readOnly={!writable} onChange={(event) => setWorkplace(event.target.value)} />
-      <Input label={rowLabel(group, 'zatrudnienie.compensation', t('app.hr.employee_detail.payroll_base_rate'))} value={amount} readOnly={!writable} onChange={(event) => setAmount(event.target.value)} />
-      <Input label={t('app.hr.employee_detail.payroll_currency')} value={currency} readOnly={!writable} onChange={(event) => setCurrency(event.target.value)} />
-      <Input label={t('app.hr.employee_detail.payroll_pay_type')} value={period} readOnly={!writable} onChange={(event) => setPeriod(event.target.value)} />
-      <CatalogSelect label={rowLabel(group, 'zatrudnienie.duration', t('app.candidate_card.employment.columns.end'))} value={duration} options={['indefinite', 'fixed']} onChange={setDuration} disabled={!writable} t={t} />
-      {duration === 'fixed' ? (
-        <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={fixedEnd} readOnly={!writable} onChange={(event) => setFixedEnd(event.target.value)} />
-      ) : null}
-      <CatalogSelect label={rowLabel(group, 'zatrudnienie.probation', t('app.hr.employee_detail.workforce_journey.contract'))} value={probation} options={['none', 'dated']} onChange={setProbation} disabled={!writable} t={t} />
-      {probation === 'dated' ? (
-        <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={probationEnd} readOnly={!writable} onChange={(event) => setProbationEnd(event.target.value)} />
-      ) : null}
-      <Input label={rowLabel(group, 'zatrudnienie.planned_start', t('app.candidate_card.employment.columns.start'))} type="date" value={planned} readOnly={!writable} onChange={(event) => setPlanned(event.target.value)} />
+    <div className="space-y-6">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <h3 className="lg:col-span-2">{rowLabel(group, 'zatrudnienie.position', t('app.candidate_card.employment.placeholders.position'))}</h3>
+        <Input label={rowLabel(group, 'zatrudnienie.employer', t('app.candidate_card.employment.columns.employer', { defaultValue: 'Pracodawca' }))} value={rowById([group], 'zatrudnienie.employer')?.value || ''} readOnly />
+        <Input label={rowLabel(group, 'zatrudnienie.position', t('app.candidate_card.employment.placeholders.position'))} value={position} readOnly={!writable} onChange={(event) => setPosition(event.target.value)} />
+        <Input label={rowLabel(group, 'zatrudnienie.contract_basis', t('app.candidate_card.employment.columns.position'))} value={contractBasis} readOnly={!writable} onChange={(event) => setContractBasis(event.target.value)} />
+        <Input label={rowLabel(group, 'zatrudnienie.workplace', t('app.candidate_card.fields.address.city'))} value={workplace} readOnly={!writable} onChange={(event) => setWorkplace(event.target.value)} />
+      </section>
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <h3 className="lg:col-span-2">{rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))}</h3>
+        <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={workTime} readOnly={!writable} onChange={(event) => setWorkTime(event.target.value)} />
+        <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={workTimeUnit} readOnly={!writable} onChange={(event) => setWorkTimeUnit(event.target.value)} />
+        <Input label={rowLabel(group, 'zatrudnienie.work_system', t('public.company_intake.fields.work_system'))} value={workSystem} readOnly={!writable} onChange={(event) => setWorkSystem(event.target.value)} />
+      </section>
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <h3 className="lg:col-span-2">{rowLabel(group, 'zatrudnienie.compensation', t('app.hr.employee_detail.payroll_base_rate'))}</h3>
+        <Input label={rowLabel(group, 'zatrudnienie.compensation', t('app.hr.employee_detail.payroll_base_rate'))} value={amount} readOnly={!writable} onChange={(event) => setAmount(event.target.value)} />
+        <Input label={t('app.hr.employee_detail.payroll_currency')} value={currency} readOnly={!writable} onChange={(event) => setCurrency(event.target.value)} />
+        <Input label={t('app.hr.employee_detail.payroll_pay_type')} value={period} readOnly={!writable} onChange={(event) => setPeriod(event.target.value)} />
+      </section>
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <h3 className="lg:col-span-2">{rowLabel(group, 'zatrudnienie.planned_start', t('app.candidate_card.employment.columns.start'))}</h3>
+        <CatalogSelect label={rowLabel(group, 'zatrudnienie.duration', t('app.candidate_card.employment.columns.end'))} value={duration} options={['indefinite', 'fixed']} onChange={setDuration} disabled={!writable} t={t} />
+        {duration === 'fixed' ? (
+          <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={fixedEnd} readOnly={!writable} onChange={(event) => setFixedEnd(event.target.value)} />
+        ) : null}
+        <CatalogSelect label={rowLabel(group, 'zatrudnienie.probation', t('app.hr.employee_detail.workforce_journey.contract'))} value={probation} options={['none', 'dated']} onChange={setProbation} disabled={!writable} t={t} />
+        {probation === 'dated' ? (
+          <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={probationEnd} readOnly={!writable} onChange={(event) => setProbationEnd(event.target.value)} />
+        ) : null}
+        <Input label={rowLabel(group, 'zatrudnienie.planned_start', t('app.candidate_card.employment.columns.start'))} type="date" value={planned} readOnly={!writable} onChange={(event) => setPlanned(event.target.value)} />
+        <Input label={rowLabel(group, 'zatrudnienie.actual_start', t('app.candidate_card.employment.columns.start'))} value={rowById([group], 'zatrudnienie.actual_start')?.value || ''} readOnly />
+      </section>
     </div>
   )
 }

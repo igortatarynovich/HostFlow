@@ -7,6 +7,7 @@ from pathlib import Path
 
 from datetime import date
 
+from backend.app.services.candidate_workforce_lock import recruitment_holds_returned_case
 from backend.app.services.hr_employee_record_surface import (
     GROUP_ORDER,
     apply_citizenship,
@@ -156,6 +157,10 @@ def test_returned_case_does_not_ask_hr_to_keep_verifying() -> None:
     assert projected["current_process"]["destination"] == "recruitment"
     assert projected["current_process"]["target_row_id"] is None
     assert "Verify" not in action["title"]
+    assert recruitment_holds_returned_case("returned_to_recruitment")
+    assert recruitment_holds_returned_case("returned")
+    assert not recruitment_holds_returned_case("onboarding")
+    assert not recruitment_holds_returned_case("terminated")
 
 
 def test_groups_follow_the_assigned_hierarchy() -> None:

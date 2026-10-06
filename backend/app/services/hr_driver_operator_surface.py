@@ -31,6 +31,7 @@ from backend.app.models.hr_employment_requirement import (
 from backend.app.models.hr_employment_terms import HrEmploymentTerms
 from backend.app.models.hr_legal_eligibility_gate import HrLegalEligibilityGateDecision
 from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.services.candidate_workforce_lock import recruitment_holds_returned_case
 from backend.app.models.workforce_zus_workspace_task import WorkforceZusWorkspaceTask
 from backend.app.services.employment_terms_runtime import (
     TERMS_COMPLETE,
@@ -604,6 +605,13 @@ def _legal_reading_from_decision(decision: HrLegalEligibilityGateDecision | None
     }
 
 
+async def _returned_to_recruitment(db: AsyncSession, tenant_id: str, employee_id: str) -> bool:
+    employee = await db.get(WorkforceEmployee, employee_id)
+    if employee is None or str(employee.tenant_id) != str(tenant_id):
+        return False
+    return recruitment_holds_returned_case(employee.status)
+
+
 async def confirm_surface_terms(
     db: AsyncSession,
     *,
@@ -611,6 +619,8 @@ async def confirm_surface_terms(
     employee_id: str,
     confirmation: EmploymentTermsConfirmation,
 ) -> dict[str, Any]:
+    if await _returned_to_recruitment(db, tenant_id, employee_id):
+        return {"accepted": False, "reason": "returned_to_recruitment"}
     employment = await _latest_employment(db, tenant_id, employee_id)
     if employment is None or employment.state != "preparing":
         return {"accepted": False, "reason": "not_preparing"}
@@ -639,6 +649,8 @@ async def confirm_surface_legal(
     reading: dict[str, Any],
     actor_user_id: str,
 ) -> dict[str, Any]:
+    if await _returned_to_recruitment(db, tenant_id, employee_id):
+        return {"accepted": False, "outcome": "returned_to_recruitment", "reason": "returned_to_recruitment"}
     employment = await _latest_employment(db, tenant_id, employee_id)
     if employment is None or employment.state != "preparing":
         return {"accepted": False, "outcome": "not_preparing", "reason": "not_preparing"}
@@ -667,6 +679,8 @@ async def start_surface_employment(
     employee_id: str,
     actor_user_id: str,
 ) -> dict[str, Any]:
+    if await _returned_to_recruitment(db, tenant_id, employee_id):
+        return {"activated": False, "reason": "returned_to_recruitment", "blocked_reasons": [], "state": None}
     employment = await _latest_employment(db, tenant_id, employee_id)
     if employment is None or employment.state != "preparing":
         return {"activated": False, "reason": "not_preparing", "blocked_reasons": [], "state": None}
@@ -719,6 +733,8 @@ async def record_surface_ready(
 ) -> dict[str, Any]:
     """Append a Ready to Start decision. Does not move Employment.state."""
 
+    if await _returned_to_recruitment(db, tenant_id, employee_id):
+        return {"accepted": False, "outcome": None, "reason": "returned_to_recruitment", "blocked_reasons": []}
     employment = await _latest_employment(db, tenant_id, employee_id)
     if employment is None or employment.state != "preparing":
         return {"accepted": False, "outcome": None, "reason": "not_preparing", "blocked_reasons": []}

@@ -19,6 +19,7 @@ from backend.app.models.enums import DocumentStatus
 from backend.app.models.hr_employment import Employment
 from backend.app.models.hr_employment_requirement import HrEmploymentRequirement
 from backend.app.models.workforce_employee import WorkforceEmployee
+from backend.app.services.candidate_workforce_lock import recruitment_holds_returned_case
 from backend.app.models.workforce_zus_workspace_task import WorkforceZusWorkspaceTask
 from backend.app.services.document_hub_delivery_contract import (
     E4_LINKED_ENTITY_TYPE,
@@ -79,7 +80,14 @@ def apply_person(personal: dict[str, Any] | None, payload: dict[str, Any]) -> tu
     merged["birth_date"] = birth or None
     pesel = str(payload.get("pesel") or "").strip()
     merged["pesel"] = pesel or None
+    merged["phone_country"] = str(payload.get("phone_country") or "").strip() or None
+    merged["preferred_contact"] = str(payload.get("preferred_contact") or "").strip() or None
     merged["address"] = _stored_address(payload.get("address"), merged.get("address"))
+    merged["reg_address_diff"] = bool(payload.get("reg_address_diff"))
+    if merged["reg_address_diff"]:
+        merged["reg_address"] = _stored_address(payload.get("reg_address"), merged.get("reg_address"))
+    else:
+        merged.pop("reg_address", None)
     languages = [
         part.strip()
         for part in str(payload.get("languages") or "").split(",")
@@ -686,9 +694,14 @@ def _person_editor(candidate: Candidate | None, personal: dict[str, Any]) -> dic
         "last_name": candidate.last_name if candidate is not None else "",
         "birth_date": _text(personal.get("birth_date")) or "",
         "citizenship": _text(personal.get("citizenship")) or "",
+        "short_id": candidate.short_id if candidate is not None and candidate.short_id else "",
         "phone": candidate.phone if candidate is not None and candidate.phone else "",
+        "phone_country": _text(personal.get("phone_country")) or "",
         "email": candidate.email if candidate is not None and candidate.email else "",
+        "preferred_contact": _text(personal.get("preferred_contact")) or "",
         "address": _address_editor(personal.get("address")),
+        "reg_address_diff": bool(personal.get("reg_address_diff")),
+        "reg_address": _address_editor(personal.get("reg_address")),
         "pesel": _text(personal.get("pesel")) or "",
         "languages": ", ".join(str(item).strip() for item in (languages or []) if str(item).strip()),
     }
@@ -704,6 +717,8 @@ async def update_record_person(
     employee = await db.get(WorkforceEmployee, employee_id)
     if employee is None or str(employee.tenant_id) != str(tenant_id):
         return {"accepted": False, "reason": "not_found"}
+    if recruitment_holds_returned_case(employee.status):
+        return {"accepted": False, "reason": "returned_to_recruitment"}
     if not employee.candidate_id:
         return {"accepted": False, "reason": "no_candidate"}
     candidate = await db.get(Candidate, str(employee.candidate_id))
@@ -738,6 +753,8 @@ async def update_record_citizenship(
     employee = await db.get(WorkforceEmployee, employee_id)
     if employee is None or str(employee.tenant_id) != str(tenant_id):
         return {"accepted": False, "reason": "not_found"}
+    if recruitment_holds_returned_case(employee.status):
+        return {"accepted": False, "reason": "returned_to_recruitment"}
     if not employee.candidate_id:
         return {"accepted": False, "reason": "no_candidate"}
     candidate = await db.get(Candidate, str(employee.candidate_id))

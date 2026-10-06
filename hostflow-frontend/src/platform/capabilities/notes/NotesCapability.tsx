@@ -82,7 +82,7 @@ export function NotesCapability(ctx: WorkspaceCapabilityRenderContext) {
             </article>
           ))
         : null}
-      {available ? (
+      {available && !ctx.readOnly ? (
         <div className="space-y-2">
           <textarea
             className="textarea"
