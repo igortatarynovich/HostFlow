@@ -457,8 +457,6 @@ async def test_meta_stages_recruiter_handoff_filter_excludes_post_hr_codes(
     body_r = meta_r.json()
     assert body_r.get("stage_visibility_mode") == "recruitment_handoff"
     assert body_r.get("recruiter_handoff_stage_filter") is True
-    assert "processing_by_hr" not in (body_r.get("order") or [])
-    assert "processing_by_client" not in (body_r.get("order") or [])
     assert "employed" not in (body_r.get("order") or [])
     assert "permit_received" not in (body_r.get("order") or [])
     assert "employment_pending" not in (body_r.get("order") or [])

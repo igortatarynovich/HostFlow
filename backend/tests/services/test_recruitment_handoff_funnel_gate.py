@@ -7,6 +7,9 @@ import uuid
 import pytest
 import pytest_asyncio
 
+from sqlalchemy import select
+
+from backend.app.models.candidate import Candidate
 from backend.app.models.company import Company
 from backend.app.models.funnel import Funnel, FunnelStage
 from backend.app.models.tenant import Tenant, TenantLink, TenantStatus, TenantType
@@ -15,6 +18,7 @@ from backend.app.services.recruitment_funnel_resolver import RECRUITMENT_MODULE_
 from backend.app.services.recruitment_handoff_funnel_gate import (
     HandoffFunnelGateError,
     READY_FOR_HANDOFF_STAGE_CODE,
+    apply_company_handoff_funnel_stages,
     ensure_can_drop_ready_for_handoff_from_funnel,
     ensure_can_enable_handoff_for_company,
     ensure_candidate_funnel_allows_company_handoff,
@@ -282,3 +286,108 @@ async def test_sibling_company_handoff_does_not_block_assignment(gate_db) -> Non
     await ensure_candidate_funnel_allows_company_handoff(
         gate_db, tenant_id=tenant_id, company_id=company_a, funnel_id=funnel_a.id
     )
+
+
+async def _stage_codes(db, funnel_id: str) -> list[str]:
+    rows = (
+        await db.execute(
+            select(FunnelStage.code)
+            .where(FunnelStage.funnel_id == funnel_id)
+            .order_by(FunnelStage.order, FunnelStage.code)
+        )
+    ).scalars().all()
+    return [str(code) for code in rows]
+
+
+@pytest.mark.anyio
+async def test_enable_handoff_inserts_transfer_lane(gate_db) -> None:
+    tenant_id = await _seed_tenant(gate_db)
+    company_id = await _seed_company(gate_db, tenant_id=tenant_id)
+    funnel = await _seed_funnel(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=company_id,
+        codes=["new", "employed"],
+        name="Rekrutacja",
+    )
+    await gate_db.flush()
+
+    await apply_company_handoff_funnel_stages(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=company_id,
+        enabled=True,
+        to_client=True,
+        to_hr=False,
+    )
+
+    codes = await _stage_codes(gate_db, funnel.id)
+    assert codes == [
+        "new",
+        "ready_for_handoff",
+        "processing_by_client",
+        "handoff_returned",
+        "employed",
+    ]
+    labels = {
+        row.code: row.label
+        for row in (
+            await gate_db.execute(select(FunnelStage).where(FunnelStage.funnel_id == funnel.id))
+        ).scalars().all()
+    }
+    assert labels["ready_for_handoff"] == "Готов к передаче"
+    assert labels["processing_by_client"] == "Передан"
+    assert labels["handoff_returned"] == "Возвращён"
+
+
+@pytest.mark.anyio
+async def test_disable_handoff_removes_transfer_lane(gate_db) -> None:
+    tenant_id = await _seed_tenant(gate_db)
+    company_id = await _seed_company(gate_db, tenant_id=tenant_id)
+    funnel = await _seed_funnel(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=company_id,
+        codes=["new", "ready_for_handoff", "processing_by_client", "handoff_returned", "employed"],
+    )
+    await gate_db.flush()
+
+    await apply_company_handoff_funnel_stages(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=company_id,
+        enabled=False,
+    )
+
+    assert await _stage_codes(gate_db, funnel.id) == ["new", "employed"]
+
+
+@pytest.mark.anyio
+async def test_disable_handoff_blocked_while_candidate_sits_on_lane(gate_db) -> None:
+    tenant_id = await _seed_tenant(gate_db)
+    company_id = await _seed_company(gate_db, tenant_id=tenant_id)
+    await _seed_funnel(
+        gate_db,
+        tenant_id=tenant_id,
+        company_id=company_id,
+        codes=["new", "ready_for_handoff"],
+    )
+    gate_db.add(
+        Candidate(
+            id=_uid(),
+            tenant_id=tenant_id,
+            company_id=company_id,
+            first_name="Jan",
+            last_name="Kowalski",
+            stage="ready_for_handoff",
+        )
+    )
+    await gate_db.flush()
+
+    with pytest.raises(HandoffFunnelGateError, match="Нельзя отключить передачу"):
+        await apply_company_handoff_funnel_stages(
+            gate_db,
+            tenant_id=tenant_id,
+            company_id=company_id,
+            enabled=False,
+        )

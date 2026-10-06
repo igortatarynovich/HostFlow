@@ -3636,7 +3636,7 @@ export default function CandidateCard(){
         const label = stageLabelIntl(code)
         const canonical = canonicalStageKey(code, label) || ''
 
-        if (canonical === 'handoff_returned' || canonical === 'rejected' || canonical === 'declined') {
+        if (canonical === 'rejected' || canonical === 'declined') {
           return
         }
         if (stripPostRecruitment && isPostRecruitmentStageCode(canonical)) return
