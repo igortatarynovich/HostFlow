@@ -1610,13 +1610,55 @@ export type HrEmployeeRecordSurface = {
     next_action: HrDriverOperatorSurface['next_action']
     target_row_id: string | null
     destination: 'recruitment' | null
+    missing?: string[]
   }
   groups: HrEmployeeRecordGroup[]
+  person?: {
+    first_name: string
+    last_name: string
+    birth_date: string
+    citizenship: string
+    phone: string
+    email: string
+    address: string
+    pesel: string
+    languages: string
+  }
+  legal?: {
+    citizenship_class: string | null
+    stay_basis: string | null
+    work_authorization_basis: string | null
+    valid_for_this_employment: string | null
+  }
+  terms?: HrDriverOperatorSurface['terms']
+}
+
+export type HrEmployeeRecordPersonIn = {
+  first_name: string
+  last_name: string
+  birth_date: string
+  citizenship: string
+  phone: string
+  email: string
+  address: string
+  pesel: string
+  languages: string
 }
 
 export async function getHrEmployeeRecordSurface(employeeId: string): Promise<HrEmployeeRecordSurface> {
   const { data } = await http.get<HrEmployeeRecordSurface>(
     `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record`,
+  )
+  return data
+}
+
+export async function updateHrEmployeeRecordPerson(
+  employeeId: string,
+  body: HrEmployeeRecordPersonIn,
+): Promise<HrDriverActionResult> {
+  const { data } = await http.post<HrDriverActionResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record/person`,
+    body,
   )
   return data
 }

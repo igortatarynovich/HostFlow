@@ -57,6 +57,40 @@ def apply_citizenship(personal: dict[str, Any] | None, value: str) -> dict[str, 
     return merged
 
 
+def apply_person(personal: dict[str, Any] | None, payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Write Dane osobowe onto the candidate columns and personal_data that already own them."""
+
+    merged = dict(personal or {})
+    citizenship = str(payload.get("citizenship") or "").strip()
+    if citizenship:
+        merged = apply_citizenship(merged, citizenship)
+    birth = str(payload.get("birth_date") or "").strip()
+    merged["birth_date"] = birth or None
+    pesel = str(payload.get("pesel") or "").strip()
+    merged["pesel"] = pesel or None
+    address = str(payload.get("address") or "").strip()
+    current_address = merged.get("address")
+    if isinstance(current_address, dict):
+        updated = dict(current_address)
+        updated["address"] = address or None
+        merged["address"] = updated
+    else:
+        merged["address"] = address or None
+    languages = [
+        part.strip()
+        for part in str(payload.get("languages") or "").split(",")
+        if part.strip()
+    ]
+    columns = {
+        "first_name": str(payload.get("first_name") or "").strip(),
+        "last_name": str(payload.get("last_name") or "").strip(),
+        "phone": str(payload.get("phone") or "").strip() or None,
+        "email": str(payload.get("email") or "").strip() or None,
+        "languages": languages,
+    }
+    return merged, columns
+
+
 _RETURNED = frozenset({"returned_to_recruitment", "returned"})
 
 
@@ -66,6 +100,7 @@ def project_employee_record(
     personal: dict[str, Any] | None,
     phone: str | None,
     email: str | None,
+    languages: list[Any] | None = None,
     legal_stay: dict[str, Any],
     work_eligibility: dict[str, Any],
     legal_pass: bool,
@@ -82,7 +117,7 @@ def project_employee_record(
 ) -> dict[str, Any]:
     person = personal or {}
     rows: list[dict[str, Any]] = []
-    rows.extend(_person_rows(identity, person, phone, email))
+    rows.extend(_person_rows(identity, person, phone, email, languages))
     rows.extend(_legal_rows(legal_stay, work_eligibility, legal_pass))
     rows.extend(_fact_rows(professional_facts, professional_defined))
     rows.extend(_employment_rows(terms, employer, client_name, actual_start))
@@ -102,14 +137,17 @@ def project_employee_record(
                 "empty": _empty_reason(group_id, group_rows, professional_defined, zus_status),
             }
         )
+    process = _current_process(
+        next_action,
+        by_id,
+        employee_status=employee_status,
+        employment_state=employment_state,
+    )
+    action = process.get("next_action") or {}
+    process["missing"] = _missing_terms(terms) if action.get("code") == "confirm_terms" else []
     return {
         "groups": groups,
-        "current_process": _current_process(
-            next_action,
-            by_id,
-            employee_status=employee_status,
-            employment_state=employment_state,
-        ),
+        "current_process": process,
     }
 
 
@@ -159,11 +197,29 @@ def _empty_reason(
     return None
 
 
+def _missing_terms(terms: dict[str, Any] | None) -> list[str]:
+    agreed = terms or {}
+    missing: list[str] = []
+    checks = (
+        ("position", "position"),
+        ("intended_start_date", "planned start"),
+        ("compensation_amount", "compensation"),
+        ("work_system", "work system"),
+        ("contract_basis", "contract basis"),
+        ("workplace", "workplace"),
+    )
+    for key, label in checks:
+        if not _text(agreed.get(key)):
+            missing.append(label)
+    return missing
+
+
 def _person_rows(
     identity: dict[str, Any],
     personal: dict[str, Any],
     phone: str | None,
     email: str | None,
+    languages: list[Any] | None,
 ) -> list[dict[str, Any]]:
     name = " ".join(
         part
@@ -173,6 +229,7 @@ def _person_rows(
     citizenship = personal.get("citizenship")
     if citizenship is None:
         citizenship = identity.get("citizenship")
+    language_text = ", ".join(str(item).strip() for item in (languages or []) if str(item).strip()) or None
     return [
         _row("dane_osobowe.name", "Imię i nazwisko", name or None, _presence(name)),
         _row(
@@ -186,7 +243,6 @@ def _person_rows(
             "Obywatelstwo",
             _text(citizenship),
             _presence(citizenship),
-            actions=["edit"],
         ),
         _row("dane_osobowe.phone", "Telefon", _text(phone), _presence(phone)),
         _row("dane_osobowe.email", "Email", _text(email), _presence(email)),
@@ -197,6 +253,7 @@ def _person_rows(
             _presence(personal.get("address")),
         ),
         _row("dane_osobowe.pesel", "PESEL", _text(personal.get("pesel")), _presence(personal.get("pesel"))),
+        _row("dane_osobowe.languages", "Języki", language_text, _presence(language_text)),
     ]
 
 
@@ -218,6 +275,12 @@ def _legal_rows(
         _row("legalizacja.stay_basis", "Podstawa pobytu", stay, _presence(stay)),
         _row("legalizacja.work_basis", "Prawo do pracy", basis, _presence(basis)),
         _row("legalizacja.valid_for_this_employment", "To Employment", valid, valid_status),
+        _row(
+            "legalizacja.status",
+            "Status",
+            "pass" if legal_pass else None,
+            "current" if legal_pass else "pending",
+        ),
     ]
 
 
@@ -408,6 +471,7 @@ async def build_hr_employee_record_surface(
         personal=personal,
         phone=candidate.phone if candidate is not None else None,
         email=candidate.email if candidate is not None else None,
+        languages=list(candidate.languages or []) if candidate is not None else None,
         legal_stay=driver.get("legal_stay") or {},
         work_eligibility=driver.get("work_eligibility") or {},
         legal_pass=legal_pass,
@@ -430,7 +494,64 @@ async def build_hr_employee_record_surface(
         "header": driver.get("header") or {},
         "current_process": projected["current_process"],
         "groups": projected["groups"],
+        "person": _person_editor(candidate, personal),
+        "legal": {
+            "citizenship_class": (driver.get("work_eligibility") or {}).get("citizenship_class"),
+            "stay_basis": (driver.get("legal_stay") or {}).get("basis"),
+            "work_authorization_basis": (driver.get("work_eligibility") or {}).get("basis"),
+            "valid_for_this_employment": (driver.get("work_eligibility") or {}).get("valid_for_this_employment"),
+        },
+        "terms": driver.get("terms"),
     }
+
+
+def _person_editor(candidate: Candidate | None, personal: dict[str, Any]) -> dict[str, Any]:
+    address = personal.get("address")
+    if isinstance(address, dict):
+        address = address.get("address")
+    languages = candidate.languages if candidate is not None else None
+    return {
+        "first_name": candidate.first_name if candidate is not None else "",
+        "last_name": candidate.last_name if candidate is not None else "",
+        "birth_date": _text(personal.get("birth_date")) or "",
+        "citizenship": _text(personal.get("citizenship")) or "",
+        "phone": candidate.phone if candidate is not None and candidate.phone else "",
+        "email": candidate.email if candidate is not None and candidate.email else "",
+        "address": _text(address) or "",
+        "pesel": _text(personal.get("pesel")) or "",
+        "languages": ", ".join(str(item).strip() for item in (languages or []) if str(item).strip()),
+    }
+
+
+async def update_record_person(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employee_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    employee = await db.get(WorkforceEmployee, employee_id)
+    if employee is None or str(employee.tenant_id) != str(tenant_id):
+        return {"accepted": False, "reason": "not_found"}
+    if not employee.candidate_id:
+        return {"accepted": False, "reason": "no_candidate"}
+    candidate = await db.get(Candidate, str(employee.candidate_id))
+    if candidate is None or str(candidate.tenant_id) != str(tenant_id):
+        return {"accepted": False, "reason": "no_candidate"}
+    personal, columns = apply_person(
+        candidate.personal_data if isinstance(candidate.personal_data, dict) else {},
+        payload,
+    )
+    if not columns["first_name"] or not columns["last_name"]:
+        return {"accepted": False, "reason": "name_required"}
+    candidate.personal_data = personal
+    flag_modified(candidate, "personal_data")
+    candidate.first_name = columns["first_name"]
+    candidate.last_name = columns["last_name"]
+    candidate.phone = columns["phone"]
+    candidate.email = columns["email"]
+    candidate.languages = columns["languages"]
+    return {"accepted": True}
 
 
 async def update_record_citizenship(

@@ -8,6 +8,7 @@ from pathlib import Path
 from backend.app.services.hr_employee_record_surface import (
     GROUP_ORDER,
     apply_citizenship,
+    apply_person,
     project_employee_record,
 )
 
@@ -74,6 +75,46 @@ def test_surface_e2e_is_not_pass() -> None:
     assert "A later fact does not open its own architecture." in current
 
 
+def test_person_write_stays_on_the_existing_owner() -> None:
+    personal, columns = apply_person(
+        {"citizenship": "BY", "operator_facts": {"stay_basis": "karta_pobytu"}},
+        {
+            "first_name": "Jan",
+            "last_name": "Kowalski",
+            "birth_date": "1988-04-12",
+            "citizenship": "UA",
+            "phone": "+48",
+            "email": "jan@example.com",
+            "address": "Warszawa",
+            "pesel": "88041212345",
+            "languages": "pl, uk",
+        },
+    )
+    assert personal["citizenship"] == "UA"
+    assert personal["operator_facts"]["stay_basis"] == "karta_pobytu"
+    assert personal["address"] == "Warszawa"
+    assert columns["first_name"] == "Jan"
+    assert columns["languages"] == ["pl", "uk"]
+    assert "extra" not in columns
+
+
+def test_terms_action_names_the_missing_fields() -> None:
+    projected = _projected(terms={"position": "Driver CE"}, next_action={
+        "code": "confirm_terms",
+        "focus": "terms",
+        "fact_key": "",
+        "title": "Confirm employment terms",
+        "reason": "The agreed terms of this Employment are not confirmed.",
+    })
+    assert projected["current_process"]["missing"] == [
+        "planned start",
+        "compensation",
+        "work system",
+        "contract basis",
+        "workplace",
+    ]
+
+
 def test_returned_case_does_not_ask_hr_to_keep_verifying() -> None:
     projected = _projected(employee_status="returned_to_recruitment", employment_state="ended")
     action = projected["current_process"]["next_action"]
@@ -94,7 +135,7 @@ def test_citizenship_is_the_person_value_and_legal_does_not_copy_it() -> None:
     projected = _projected()
     citizenship = _row(projected, "dane_osobowe.citizenship")
     assert citizenship["value"] == "BY"
-    assert citizenship["actions"] == ["edit"]
+    assert citizenship["actions"] == []
     legal_ids = [row["id"] for row in _group(projected, "legalizacja")["rows"]]
     assert "citizenship" not in " ".join(legal_ids)
     assert all(row["value"] != "BY" for row in _group(projected, "legalizacja")["rows"])

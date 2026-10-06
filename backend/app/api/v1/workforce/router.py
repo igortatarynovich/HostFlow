@@ -89,6 +89,7 @@ from backend.app.services.hr_driver_operator_surface import (
 from backend.app.services.hr_employee_record_surface import (
     build_hr_employee_record_surface,
     update_record_citizenship,
+    update_record_person,
 )
 from backend.app.services.workforce_work_eligibility_journey import build_work_eligibility_journey
 from backend.app.services.workforce_zus_task_autocreate import ensure_zus_registration_task
@@ -1278,6 +1279,21 @@ class HrEmployeeRecordOut(BaseModel):
     header: dict[str, Any]
     current_process: dict[str, Any]
     groups: list[dict[str, Any]]
+    person: dict[str, Any] = Field(default_factory=dict)
+    legal: dict[str, Any] = Field(default_factory=dict)
+    terms: Optional[dict[str, Any]] = None
+
+
+class HrEmployeeRecordPersonIn(BaseModel):
+    first_name: str = ""
+    last_name: str = ""
+    birth_date: str = ""
+    citizenship: str = ""
+    phone: str = ""
+    email: str = ""
+    address: str = ""
+    pesel: str = ""
+    languages: str = ""
 
 
 class HrEmployeeRecordCitizenshipIn(BaseModel):
@@ -1317,6 +1333,28 @@ async def update_hr_employee_record_citizenship(
         tenant_id=str(tid),
         employee_id=employee_id,
         citizenship=body.citizenship,
+    )
+    if result.get("accepted"):
+        await db.commit()
+    return HrDriverActionOut(accepted=bool(result.get("accepted")), reason=result.get("reason"))
+
+
+@router.post(
+    "/employees/{employee_id}/employee-record/person",
+    response_model=HrDriverActionOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def update_hr_employee_record_person(
+    employee_id: str,
+    body: HrEmployeeRecordPersonIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrDriverActionOut:
+    db, tid = db_tenant
+    result = await update_record_person(
+        db,
+        tenant_id=str(tid),
+        employee_id=employee_id,
+        payload=body.model_dump(),
     )
     if result.get("accepted"):
         await db.commit()
