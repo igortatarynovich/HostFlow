@@ -3373,3 +3373,7 @@ async def post_employee_hr_review_reject(
 from backend.app.api.v1.workforce import zus_workspace_router as _zus_ws_router  # noqa: E402
 
 router.include_router(_zus_ws_router.router, prefix="/zus-workspace", tags=["workforce-zus-workspace"])
+
+from backend.app.api.v1 import hr_employee_record as _hr_employee_record  # noqa: E402
+
+router.include_router(_hr_employee_record.router)
