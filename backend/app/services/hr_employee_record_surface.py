@@ -5,12 +5,11 @@ Current Process is the driver next action. Neither layer stores a fact.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
 
 from backend.app.models.candidate import Candidate
 from backend.app.models.company import Company
@@ -19,20 +18,20 @@ from backend.app.models.enums import DocumentStatus
 from backend.app.models.hr_employment import Employment
 from backend.app.models.hr_employment_requirement import HrEmploymentRequirement
 from backend.app.models.workforce_employee import WorkforceEmployee
-from backend.app.services.candidate_workforce_lock import recruitment_holds_returned_case
 from backend.app.models.workforce_zus_workspace_task import WorkforceZusWorkspaceTask
+from backend.app.services import workforce_employees as workforce_employee_service
+from backend.app.services.candidate_workforce_lock import recruitment_holds_returned_case
 from backend.app.services.document_hub_delivery_contract import (
     E4_LINKED_ENTITY_TYPE,
     E4_RELATION_TYPE,
     hub_status_needs_attention,
     list_entity_link_documents_via_contract,
 )
+from backend.app.services.employment_records import display_employment
 from backend.app.services.hr_driver_operator_surface import (
     build_hr_driver_operator_surface,
     canonical_fact_key,
 )
-from backend.app.services.employment_records import display_employment
-from backend.app.services import workforce_employees as workforce_employee_service
 from backend.app.services.hr_verification_plan import VERIFICATION_SLOT_DEFS
 from backend.app.services.requirement_document_data import fact_fields_from_document
 
@@ -73,7 +72,6 @@ async def end_record_employment(
     employee_id: str,
     ended_on: date,
     reason: str,
-    actor_user_id: str | None,
 ) -> dict[str, Any]:
     """End the displayed active Employment while preserving the Person/Employee context."""
 
@@ -95,28 +93,13 @@ async def end_record_employment(
     employment.state = "ended"
     employment.ended_on = ended_on
     employee.status = "terminated"
-    meta = dict(employee.meta) if isinstance(employee.meta, dict) else {}
-    lifecycle = dict(meta.get("employment_lifecycle") or {})
-    history = list(lifecycle.get("ended") or [])
-    history.append(
-        {
-            "employment_id": str(employment.id),
-            "ended_on": ended_on.isoformat(),
-            "reason": clean_reason,
-            "actor_user_id": str(actor_user_id or "").strip() or None,
-            "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        }
-    )
-    lifecycle["ended"] = history
-    meta["employment_lifecycle"] = lifecycle
-    employee.meta = meta
-    flag_modified(employee, "meta")
     await db.flush()
     return {
         "accepted": True,
         "state": "ended",
         "employment_id": str(employment.id),
         "ended_on": ended_on.isoformat(),
+        "candidate_id": str(employee.candidate_id) if employee.candidate_id else None,
     }
 
 

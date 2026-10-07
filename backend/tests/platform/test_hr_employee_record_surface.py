@@ -3,9 +3,8 @@
 The browser walk is not PASS. Citizenship is the reference pattern.
 """
 
-from pathlib import Path
-
 from datetime import date
+from pathlib import Path
 
 from backend.app.services.candidate_workforce_lock import recruitment_holds_returned_case
 from backend.app.services.hr_employee_record_surface import (
@@ -59,14 +58,12 @@ async def test_end_record_employment_ends_relationship_and_keeps_employee_contex
         employee_id="employee-1",
         ended_on=date(2026, 9, 30),
         reason="Koniec umowy",
-        actor_user_id="user-1",
     )
 
     assert result["accepted"] is True
     assert employment.state == "ended"
     assert employment.ended_on == date(2026, 9, 30)
     assert employee.status == "terminated"
-    assert employee.meta["employment_lifecycle"]["ended"][0]["reason"] == "Koniec umowy"
     assert session.flushed is True
 
 
@@ -99,7 +96,6 @@ async def test_end_record_employment_rejects_date_before_start(monkeypatch) -> N
         employee_id="employee-1",
         ended_on=date(2026, 8, 11),
         reason="Koniec umowy",
-        actor_user_id="user-1",
     )
 
     assert result == {"accepted": False, "reason": "END_DATE_BEFORE_START"}

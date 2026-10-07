@@ -1403,12 +1403,20 @@ async def end_hr_employee_record_employment(
         employee_id=employee_id,
         ended_on=body.ended_on,
         reason=body.reason,
-        actor_user_id=actor,
     )
     if not result.get("accepted"):
         return HrDriverActionOut(accepted=False, reason=str(result.get("reason") or "END_EMPLOYMENT_FAILED"))
 
     try:
+        if result.get("candidate_id"):
+            await we_svc.stamp_candidate_workforce_termination(
+                db,
+                tenant_id,
+                candidate_id=str(result["candidate_id"]),
+                termination_date=body.ended_on,
+                employee_status="terminated",
+                actor_user_id=actor or "system",
+            )
         await ledger_svc.create_event(
             db,
             tenant_id=tenant_id,
@@ -1434,7 +1442,7 @@ async def end_hr_employee_record_employment(
             actor_id=actor,
             target_type="hr_employment",
             target_id=str(result.get("employment_id") or ""),
-            payload={"employee_id": employee_id, "ended_on": body.ended_on.isoformat(), "reason": body.reason.strip()},
+            payload={"employee_id": employee_id, "ended_on": body.ended_on.isoformat()},
         )
         await db.commit()
     except Exception:
