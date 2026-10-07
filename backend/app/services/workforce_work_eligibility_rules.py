@@ -13,6 +13,7 @@ ZUS_REGISTRATION_BLOCKED_STATUSES = frozenset(
     }
 )
 # A permit that is still required or pending is not a ZUS block.
+# The applicable process may need ZUS before that permit can be ordered.
 ZUS_REGISTRATION_PERMIT_PENDING_STATUSES = frozenset(
     {
         "work_permit_required",

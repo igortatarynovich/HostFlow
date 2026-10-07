@@ -1,196 +1,123 @@
 # HR Employee Record Projection
 
-**Status:** **Opened** — information architecture of the ten groups. This file names each canonical address and the storage that holds it today. It adds no group and no fact. No change to `requirement_resolution.v1`, Legal Eligibility, requirements, evidence, or Ready to Start.  
+**Status:** **Accepted** (L2 contract — HR Employee Record Projection Contract Gate **PASS**).  
 **Date:** 2026-10-05  
-**Parents:** [Employee Record & Employment Lifecycle](employee-record-employment-lifecycle-contract.md) · [Employee Data ownership](employee-record-employment-lifecycle-contract.md#employee-data-ownership) · [Legal Eligibility](legal-eligibility-contract.md) (`legal_eligibility.v1`) · [Requirement Resolution](requirement-resolution-contract.md) (`requirement_resolution.v1`) · [Operator facts](operator-candidate-employment-facts.md)
+**Machine id:** `hr_employee_record_projection.v1` — named here. No runtime module in this slice.  
+**Parents:** [Canonical Fact Authority](canonical-fact-authority-contract.md) (`canonical_fact_authority.v1`) · [Employee Record & Employment Lifecycle](employee-record-employment-lifecycle-contract.md) · [HR Driver Operator Surface](../workflows/hr-driver-operator-flow.md) · [Legal Eligibility](legal-eligibility-contract.md) (`legal_eligibility.v1`)
 
-**L0 checklist:** No new P-rule. No Passport or Manifest shape change. No Architecture RFC. This projection does not rewrite L0 and does not author a required set.
+**L0 checklist:** No new P-rule. No Passport or Manifest shape change. No Architecture RFC. Applies **P-02** and **INV-01**: one live address for a value. Does not rewrite L0. Does not replace Canonical Fact Authority. Does not replace `legal_eligibility.v1`.
 
-> The HR employee record is a projection of owners that already exist. It is not a second person, not a questionnaire store, and not a wizard. Recruitment may ask citizenship, then stay, then work. HR shows those same values in the groups below.
-
-`#hr-verification` is not redesigned here. Ukraine and any stay basis outside the Belarus case already shipped are not added here.
-
-Feat stays locked. HostFlow v1 is not release-ready.
-
----
-
-## Hierarchy
-
-The operator surface is these groups, in this order. A Polish label is the group name. It is not a domain and not a fact key.
-
-1. Dane osobowe  
-2. Pobyt i prawo do pracy  
-3. Zatrudnienie  
-4. Kwalifikacje i uprawnienia  
-5. Doświadczenie  
-6. Dokumenty  
-7. Badania  
-8. Ubezpieczenia  
-9. ZUS  
-10. Historia  
-
-## Canonical address and current storage
-
-A canonical address names the fact or the record. Current storage is the place that holds the value today. The projection reads and writes the address. It does not read a Candidate bag as the owner.
-
-`candidates.personal_data.operator_facts` is the current storage of stay, of the work fact for one Employment, and of licence, Code 95, tachograph, ADR, and medical presence. It is not the address of those facts. A later move of that storage keeps the address. It does not copy the value into an HR store, and it does not synchronize Recruitment into HR.
-
-Edit writes the live owner of the address. Verify records a confirmation on `workforce_hr_verified_fields` and does not replace the owner. View does not write.
-
-Requirements `satisfied` and Legal Eligibility `pass` stay different readings. Approved evidence may satisfy `legal_stay_confirmation` and `labor_market_access` while the legal gate stays `blocked` on `operator_verification`, until the right to work is matched to this Employment.
+> One canonical fact may have different projections. Recruitment presents it as an element of a conditional decision flow. HR presents it as an element of a stable hierarchical employee record. Neither projection owns the fact. Neither projection determines policy.  
+> The information architecture below is where HR expects to find a fact. It does not depend on the stage the person is in.  
+> It is not the Legal Eligibility vertical. It does not implement legal evidence.  
+> `#hr-verification` is not rewritten.  
+> No schema is written. No runtime module is authorized.  
+> HostFlow v1 is not release-ready.
 
 ---
 
-## Dane osobowe
+## Three levels
 
-Person identity. Citizenship is shown here. It is not asked again as the first step of a stay wizard.
+A fact is read at three levels. They are not the same decision.
 
-| Order | What is shown | Canonical address | Current storage | Act |
-|---|---|---|---|---|
-| 1 | Legal name | `person.legal_name` | `candidates.first_name`, `candidates.last_name` | edit |
-| 2 | Latin name | `person.latin_name` | `candidates.first_name_latin`, `candidates.last_name_latin` | edit |
-| 3 | Birth date | `person.birth_date` | `candidates.personal_data.birth_date` | edit |
-| 4 | Citizenship | `person.citizenship` | `candidates.personal_data.citizenship` | edit |
-| 5 | Phone and country code | `person.phone` | `candidates.phone`, `candidates.phone_country_code` | edit |
-| 6 | Email | `person.email` | `candidates.email` | edit |
-| 7 | Address | `person.address` | `candidates.personal_data` `address`, `city`, `country_code`, `address_latin`, `city_latin` | edit |
-| 8 | PESEL | `person.pesel` | `candidates.personal_data.pesel` | edit |
-| 9 | Languages | `person.languages` | `candidates.languages` | edit |
+Canonical Fact Authority is where the fact lives. One `citizenship`, one address for driving categories, one address for Code 95. Recruitment and HR do not create their own copies. That contract is already **PASS**. This slice does not reopen it.
 
-`WorkforceEmployee.display_name` is the HR label, view. Handoff and Employment snapshots are view. An identity document's number and dates stay on the `documents` row and are not copied here. A confirmation is verify. No Employment record lives in this group.
+Process policy is why the process reads the fact.
+
+Projection is how the module shows the fact.
 
 ---
 
-## Pobyt i prawo do pracy
+## Process policy
 
-The legal chain for this Employment, in chain order. The same stay and work facts Recruitment recorded. No question sequence.
+Recruitment reads facts to decide, in order, who the candidate is, whether they can legally work, whether they have the required qualifications, whether they match the vacancy, what still must be obtained or checked, and whether they can move forward.
 
-| Order | What is shown | Canonical address | Current storage | Act |
-|---|---|---|---|---|
-| 1 | Stay basis | `stay.basis` | `candidates.personal_data.operator_facts.stay_basis` | edit |
-| 2 | Stay parameters and validity | `stay.visa_type`, `stay.visa_purpose`, `stay.valid_to` | the same bag, keys `visa_type`, `visa_purpose`, `stay_valid_to` | edit |
-| 3 | Work basis | `work.authorization_basis` | `operator_facts.employments[<employment_id>].work_authorization_basis` | edit |
-| 4 | Procedure | `work.procedure_type` | that same work object, `procedure_type` | edit |
-| 5 | Valid for this Employment | `legal.valid_for_this_employment` | the chain reading of those facts | view |
-| 6 | Legal Eligibility outcome | `legal.outcome` | `hr_legal_eligibility_gate_decisions` for this Employment | view |
-| 7 | Stay and work requirements | `requirement.legal_stay_confirmation`, `requirement.labor_market_access` | `hr_employment_requirements` | view |
+HR reads the same facts to keep the person and the Employment. That question sequence does not determine the HR screen.
 
-Evidence for those requirements is not edited here. It is shown under Dokumenty. Choosing `karta_pobytu` does not place documents in this group. `operator_verification` remains a blocked gate. It does not become `pass` because the requirement rows are `satisfied`.
+Process policy is not a projection, and it is not the address of the value. Applicability stays with the policy that already owns it. An HR group that can show Code 95 does not mean this Employment requires Code 95.
 
 ---
 
-## Zatrudnienie
+## Information architecture
 
-This Employment and the agreements that represent it.
+The HR employee record is a stable information architecture. It is not a workflow. It is not a wizard and it is not a list of questions.
 
-| Order | What is shown | Canonical address | Current storage | Act |
-|---|---|---|---|---|
-| 1 | State | `employment.state` | `hr_employments.state` | view |
-| 2 | Client | `employment.client` | `hr_employments.client_company_id` | edit |
-| 3 | Vacancy of this hire | `employment.vacancy` | `hr_employments.vacancy_id` | view |
-| 4 | Start and end | `employment.started_on`, `employment.ended_on` | `hr_employments.started_on`, `hr_employments.ended_on` | edit |
-| 5 | Agreed terms | `employment.terms` | current `hr_employment_terms` snapshot | edit |
-| 6 | Contract cards | `employment.contract_cards` | `workforce_employments` of this Employment | view |
-| 7 | Ready to Start | `employment.ready_to_start` | latest `hr_ready_to_start_decisions` | view |
+The hierarchy is assigned from the nature of the fact. It is not taken from Recruitment. It is not taken from `#hr-verification`.
 
-The card is not the Employment. Ready to Start is the stored decision. This group does not recompute it.
+The groups stay in place. A missing A1 does not become the question Czy ma A1. The group shows no applicable element, or it shows the status of that process.
 
----
+| Group | What HR looks for here |
+|---|---|
+| Dane osobowe | Legal name, birth date, citizenship, contacts, address, PESEL, and the other permanent person facts |
+| Legalizacja / Prawo do pracy | Stay basis, legal stay evidence, work basis, permit or exemption, the dates, and fit to this Employment |
+| Kwalifikacje i uprawnienia | Licence, categories, Code 95, tachograph, professional qualifications, and experience |
+| Badania i zdolność do pracy | Medical examinations, psychological tests, occupational medicine, and the other applicable requirements of that kind |
+| Zatrudnienie | Employer, position, planned start, actual start, contract, work time, work system, workplace, compensation, duration, and probation. These facts belong to one Employment |
+| Formalności | ZUS, A1, and the other formalization actions of the applicable process |
+| Dokumenty | One access to the evidence and document objects of the person and the Employment. Not a second source of facts |
+| Historia | Handoffs, Employment history, verification, invalidation, and the significant process events |
 
-## Kwalifikacje i uprawnienia
+The address of each fact stays the owner already named. Dane osobowe adds no column. Legalizacja / Prawo do pracy reads `legal_eligibility.v1` and its evidence. Zatrudnienie reads `employment_terms.v1` and the Employment row. Formalności does not turn ZUS or A1 into a person fact. Dokumenty does not copy a document.
 
-Professional facts already stored for the person. A fact does not create a requirement.
+```text
+Dane osobowe
+→ Legalizacja / Prawo do pracy
+→ Kwalifikacje i uprawnienia
+→ Badania i zdolność do pracy
+→ Zatrudnienie
+→ Formalności
+→ Dokumenty
+→ Historia
+```
 
-| Order | What is shown | Canonical address | Current storage | Act |
-|---|---|---|---|---|
-| 1 | Licence country, categories, validity | `qualification.licence_country`, `qualification.licence_categories`, `qualification.licence_valid_to` | `operator_facts` `licence_issuing_country`, `licence_categories`, `licence_valid_to` | edit |
-| 2 | Code 95 presence and validity | `qualification.code95_presence`, `qualification.code95_valid_to` | `operator_facts` `code95_presence`, `code95_valid_to` | edit |
-| 3 | Tachograph | `qualification.tachograph` | `operator_facts` `tachograph_presence`, `tachograph_issuing_country`, `tachograph_valid_to` | edit |
-| 4 | ADR | `qualification.adr` | `operator_facts` `adr_presence`, `adr_issuing_country`, `adr_valid_to` | edit |
-| 5 | CE and Code 95 requirements | `requirement.driver_entitlement`, `requirement.professional_qualification` | `hr_employment_requirements` | view |
+### Fact row
 
-The licence file and the qualification card are documents. They appear under Dokumenty when a requirement still needs them.
+Inside a group, one fact uses one row.
 
----
+```text
+Label → canonical value → status → evidence → permitted actions
+```
 
-## Doświadczenie
+Obywatelstwo | Białoruś | Verified | Paszport | Edytuj
 
-Prior jobs captured at intake. They are not this Employment.
+Kod 95 | ważny do 12.06.2028 | Verified | Prawo jazdy | Unieważnij
 
-| Order | What is shown | Canonical address | Current storage | Act |
-|---|---|---|---|---|
-| 1 | Prior employment rows | `experience.prior_jobs` | `candidate_employments` | view |
+A permitted action is shown because `canonical_fact_authority.v1` grants that capability to the current actor and process. The projection does not choose the button.
 
-This group does not copy a prior job onto `hr_employments`.
+In Recruitment, citizenship Belarus can be the question Obywatelstwo, answered Białoruś, followed by the question of the stay basis.
 
----
-
-## Dokumenty
-
-Files and the evidence that links them to a requirement. The group does not decide which file is required.
-
-| Order | What is shown | Canonical address | Current storage | Act |
-|---|---|---|---|---|
-| 1 | Document rows | `document.rows` | `documents` for this person | view |
-| 2 | Candidate Evidence | `evidence.rows` | `candidate_evidence` and its document links | verify |
-| 3 | What this Employment still needs | `requirement.required_set` | the HR required set already materialized for the open requirements | view |
-
-Verify is the existing evidence status. It is not a second satisfaction flag. A Belarus stay of `karta_pobytu` plus `employer_declaration` shows the card, the decision, and the declaration only because those requirements resolved to `needs_evidence` and `r5_required_set` materialized them.
+In HR, Dane osobowe shows Obywatelstwo: Białoruś. The residence card, its term, the decision, and verification sit in Legalizacja / Prawo do pracy and in Dokumenty. HR does not ask the stay basis again as a recruitment step.
 
 ---
 
-## Badania
+## Employee Record and Current Process
 
-Medical and psychological facts, then their documents when a policy has named them.
+Employee Record answers what is known about this person and this Employment.
 
-| Order | What is shown | Canonical address | Current storage | Act |
-|---|---|---|---|---|
-| 1 | Medical presence | `medical.presence` | `operator_facts.medical_presence` | edit |
-| 2 | Psychological presence | `psych.presence` | `operator_facts.psych_presence` | edit |
-| 3 | Certificates | `medical.certificates` | `documents` whose type is `medical_certificate` or `psychological_certificate` | view |
+The process surface answers what to do now.
 
-Presence does not add those certificates to the required set.
+They are two views of the same facts. They are not two data systems.
 
----
+Current action stays outside the groups. Verification is not placed inside Dane osobowe or Legalizacja / Prawo do pracy. The process surface may say `Next action: Verify legal stay → Open`, and that opens the fact in the group that holds it.
 
-## Ubezpieczenia
-
-The insurance process record. It is not a person fact and it is not re-homed.
-
-| Order | What is shown | Canonical address | Current storage | Act |
-|---|---|---|---|---|
-| 1 | Insurance profile | `insurance.profile` | `workforce_insurance_profiles` | view |
+`#hr-verification` is the current process and verification surface. It is not the final HR employee record. It does not grow by adding sections until the surface becomes that hierarchy. A later product rebuilds HR as Employee Record plus Current Process. That rebuild is not this gate.
 
 ---
 
-## ZUS
+## HR Employee Record Projection Contract Gate
 
-The ZUS process record. Registration stays a post-start obligation.
+**Outcome:** **PASS**.
 
-| Order | What is shown | Canonical address | Current storage | Act |
-|---|---|---|---|---|
-| 1 | ZUS profile | `zus.profile` | `workforce_zus_profiles` | view |
+The information architecture is assigned. The fact row is assigned. Employee Record and Current Process stay two views. None of these sentences writes a store, assigns a capability, or rebuilds the screen.
 
----
+One canonical fact may have different projections. Recruitment presents it as an element of a conditional decision flow. HR presents it as an element of a stable hierarchical employee record. Neither projection owns the fact. Neither projection determines policy.
 
-## Historia
+The false close is that the HR screen displays every Recruitment question.
 
-Append-only readings. Nothing in this group is edited.
-
-| Order | What is shown | Canonical address | Current storage | Act |
-|---|---|---|---|---|
-| 1 | Handoff | `history.handoff` | `hr_employments` handoff columns and `candidate_snapshot` | view |
-| 2 | Legal Eligibility decisions | `history.legal_decisions` | `hr_legal_eligibility_gate_decisions` | view |
-| 3 | Ready to Start decisions | `history.ready_to_start` | `hr_ready_to_start_decisions` | view |
-| 4 | Requirement rows of this Employment | `history.requirements` | `hr_employment_requirements` | view |
+No schema is written. No runtime module is authorized. This slice does not amend `legal_eligibility.v1`. This slice does not implement legal evidence. Canonical Fact Authority is not reopened. No capability is assigned. The reading of current RBAC is not opened. The HR Driver Operator Surface is not rewritten. Feat stays locked. HostFlow v1 is not release-ready.
 
 ---
 
 ## Out of this slice
 
-- A redesign of `#hr-verification`.  
-- A new fact, column, requirement, evidence variant, or stay basis.  
-- Ukraine, or any legal case beyond the Belarus vertical already shipped.  
-- A change to the authority of Employment lifecycle, Legal Eligibility, requirements, evidence, or Ready to Start. This projection reads them. It does not decide them.
-
-Feat stays locked. HostFlow v1 is not release-ready.
+Employment Terms are not rewritten. No Person table is authorized. No `canonical_facts` store is authorized.

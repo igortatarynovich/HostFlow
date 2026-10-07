@@ -32,8 +32,14 @@ import { translateStageLabel } from '../../utils/stageLabels'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { useToast } from '../Toast'
 import { StatusBadge } from '../ui/StatusBadge'
+import { ActionMenu, type ActionMenuItem } from '../ui/ActionMenu'
+import { Alert } from '../ui/Alert'
+import { Button } from '../ui/Button'
+import { Chip } from '../ui/Chip'
+import { ProgressStepper } from '../ui/ProgressStepper'
 import { documentSeverityToSemantic, type StatusBadgeSemantic } from '../ui/statusBadgeSemantics'
 import { getLanguageDisplayName, getRegionDisplayName } from '../../utils/catalogLocale'
+import { EndEmploymentModal, ReturnToRecruitmentModal } from './EmployeeLifecycleModals'
 
 const HIDDEN_STATUS = new Set(['recorded', 'missing', 'canonical', 'process'])
 
@@ -262,7 +268,14 @@ export default function HrEmployeeRecordSurface({
 
   return (
     <div className="min-w-0 space-y-4">
-      <EmployeeHero surface={surface} locale={locale} onOpen={openPath} />
+      <EmployeeHero
+        employeeId={employeeId}
+        surface={surface}
+        locale={locale}
+        manage={manage}
+        onOpen={openPath}
+        onReload={load}
+      />
       {error ? <p className="alert-error">{error}</p> : null}
       <div className="card min-w-0 p-3">
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
@@ -368,24 +381,24 @@ export default function HrEmployeeRecordSurface({
   )
 }
 
-const PATH_MARK: Record<string, string> = {
-  completed: '✓',
-  current: '●',
-  pending: '○',
-  blocked: '⚠',
-  not_applicable: '—',
-}
-
 function EmployeeHero({
+  employeeId,
   surface,
   locale,
+  manage,
   onOpen,
+  onReload,
 }: {
+  employeeId: string
   surface: HrEmployeeRecordSurface
   locale: 'en' | 'ru' | 'pl'
+  manage: boolean
   onOpen: (target: string | null) => void
+  onReload: () => Promise<HrEmployeeRecordSurface>
 }) {
   const { t } = useI18n()
+  const [returnOpen, setReturnOpen] = useState(false)
+  const [endOpen, setEndOpen] = useState(false)
   const overview = surface.overview
   const path = surface.path || []
   if (!overview) return null
@@ -402,85 +415,178 @@ function EmployeeHero({
               ? 'Zatrudnienie zakończone'
               : overview.phase,
   })
-  const semantic: StatusBadgeSemantic =
-    overview.notice === 'healthy' ? 'ok' : overview.notice === 'attention' ? 'warning' : overview.notice === 'returned' ? 'info' : 'neutral'
+  const semantic: StatusBadgeSemantic = overview.phase === 'active'
+    ? 'ok'
+    : overview.phase === 'preparing'
+      ? 'warning'
+      : overview.phase === 'returned'
+        ? 'info'
+        : 'neutral'
   const citizenship = overview.citizenship ? getRegionDisplayName(overview.citizenship, locale) : ''
-  const stayRow = rowById(groups, 'legalizacja.stay_basis')
-  const workRow = rowById(groups, 'legalizacja.work_basis')
   const contractRow = rowById(groups, 'zatrudnienie.contract_basis')
-  const startRow = rowById(groups, 'zatrudnienie.planned_start')
-  const stay = stayRow ? displayValue(overview.stay_basis, stayRow.label, locale, t) : displayValue(overview.stay_basis, '', locale, t)
-  const work = workRow ? displayValue(overview.work_basis, workRow.label, locale, t) : displayValue(overview.work_basis, '', locale, t)
   const contract = contractRow ? displayValue(overview.contract_basis, contractRow.label, locale, t) : displayValue(overview.contract_basis, '', locale, t)
   const role = [surface.header.position, surface.header.employer].filter(Boolean).join(' · ')
-  const notice =
-    overview.notice === 'healthy'
-      ? t('app.hr.employee_record.status.healthy', { defaultValue: 'Wszystko w porządku' })
-      : overview.notice === 'returned'
-        ? t('app.hr.employee_record.status.waiting_recruitment', { defaultValue: 'Oczekuje na aktualizację przez Recruitment' })
-        : overview.notice === 'ended'
-          ? null
-          : `${overview.attention_count} ${t('app.hr.employee_record.status.actions_required', { defaultValue: 'rzeczy wymagają działania' })}`
-  return (
-    <div className="min-w-0 rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-md">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-white">{surface.header.name}</h2>
-            <StatusBadge inverse label={phaseLabel} semantic={semantic} />
-          </div>
-          {role ? <p>{role}</p> : null}
-        </div>
-      </div>
-      <div className="mt-3 space-y-1 text-sm">
-        {citizenship ? <p>{citizenship}</p> : null}
-        <p>
-          {stayRow?.label || 'Pobyt'} {stay}
-          {overview.stay_until ? ` · ${formatDay(overview.stay_until)}` : ''}
-        </p>
-        <p>
-          {workRow?.label || 'Praca'} {work}
-          {overview.work_until ? ` · ${formatDay(overview.work_until)}` : ''}
-        </p>
-        <p>
-          {contractRow?.label || 'Umowa'} {contract}
-          {overview.contract_until ? ` · ${formatDay(overview.contract_until)}` : ''}
-        </p>
-        {overview.start_on ? (
-          <p>
-            {startRow?.label || 'Start'} {formatDay(overview.start_on)}
-          </p>
-        ) : null}
-      </div>
-      {notice ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <p>{notice}</p>
-          {overview.notice_target ? (
-            <button type="button" className="btn-secondary btn-sm" onClick={() => onOpen(overview.notice_target)}>
-              {t('common.actions.open', { defaultValue: 'Otwórz' })}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-      {overview.nearest_label && overview.nearest_on ? (
-        <button type="button" className="mt-1 text-left text-sm underline" onClick={() => onOpen(overview.nearest_target)}>
-          {overview.nearest_label} · {formatDay(overview.nearest_on)}
-        </button>
-      ) : null}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {path.map((step) => (
-          <button
-            key={step.id}
-            type="button"
-            className="inline-flex items-center rounded-lg border border-white/30 bg-white/20 px-2 py-0.5 text-[11px]"
-            onClick={() => onOpen(step.target)}
-          >
-            {PATH_MARK[step.mark] || '○'} {step.label}
-          </button>
-        ))}
-      </div>
-    </div>
+  const formalities = path.find((step) => step.id === 'formalities')
+  const medicalRows = groupById(groups, 'badania')?.rows || []
+  const medicalMark = medicalRows.length === 0
+    ? null
+    : medicalRows.every((row) => row.status === 'satisfied' || row.status === 'not_applicable')
+      ? '✓'
+      : medicalRows.some((row) => row.status === 'blocking' || row.status === 'pending')
+        ? '⚠'
+        : '—'
+  const action = surface.current_process.next_action
+  const actionTarget = overview.notice_target || surface.current_process.target_row_id
+  const actionLabel = actionTarget === 'legalizacja'
+    ? 'Otwórz legalizację'
+    : actionTarget === 'zatrudnienie'
+      ? 'Otwórz warunki'
+      : actionTarget === 'formalnosci'
+        ? 'Otwórz formalności'
+        : 'Otwórz'
+  const lifecycleItems: ActionMenuItem[] = []
+  if (manage && overview.phase === 'preparing') {
+    lifecycleItems.push(
+      { id: 'return', label: 'Wróć do rekrutacji', onSelect: () => setReturnOpen(true) },
+      { id: 'terms', label: 'Zmień warunki Employment', onSelect: () => onOpen('zatrudnienie') },
+    )
+  }
+  if (manage && overview.phase === 'active') {
+    lifecycleItems.push(
+      { id: 'terms', label: 'Otwórz warunki Employment', onSelect: () => onOpen('zatrudnienie') },
+      { id: 'end', label: 'Zakończ zatrudnienie', danger: true, onSelect: () => setEndOpen(true) },
+    )
+  }
+  if (overview.phase === 'returned' && surface.candidate_id) {
+    lifecycleItems.push({ id: 'recruitment', label: 'Otwórz sprawę w Recruitment', onSelect: () => onOpen('recruitment') })
+  }
+
+  const progressPosition = Math.min(
+    path.length,
+    path.filter((step) => step.mark === 'completed').length + (path.some((step) => step.mark === 'current' || step.mark === 'blocked') ? 1 : 0),
   )
+
+  const standardDomainChips = [
+    citizenship
+      ? `${countryFlag(overview.citizenship)} ${citizenship}`.trim()
+      : null,
+    `Pobyt ${overview.stay_basis && overview.stay_basis !== 'none' ? '✓' : '—'}${overview.stay_until ? ` ${formatDay(overview.stay_until)}` : ''}`,
+    `Prawo do pracy ${overview.work_status === 'eligible' ? '✓' : overview.work_status === 'pending' ? '⚠' : '—'}${overview.work_until ? ` ${formatDay(overview.work_until)}` : ''}`,
+    `Umowa ${contract !== '—' ? contract : '—'}`,
+    `ZUS ${formalities?.mark === 'completed' ? '✓' : formalities?.mark === 'current' || formalities?.mark === 'blocked' ? '⚠' : '—'}`,
+    medicalMark ? `Badania ${medicalMark}` : null,
+  ].filter((value): value is string => Boolean(value))
+  const domainChips = overview.phase === 'returned'
+    ? [
+        citizenship ? `${countryFlag(overview.citizenship)} ${citizenship}`.trim() : null,
+        `Pobyt ${overview.stay_basis && overview.stay_basis !== 'none' ? '✓' : '—'}${overview.stay_until ? ` ${formatDay(overview.stay_until)}` : ''}`,
+        'Prawo do pracy —',
+        'Employment zakończone',
+      ].filter((value): value is string => Boolean(value))
+    : standardDomainChips
+
+  return (
+    <>
+      <section className="card min-w-0 overflow-visible p-4 sm:p-5" aria-labelledby="employee-lifecycle-heading">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 id="employee-lifecycle-heading" className="truncate text-xl font-semibold text-slate-950">{surface.header.name}</h2>
+            {role ? <p className="mt-1 text-sm text-slate-600">{role}</p> : null}
+          </div>
+          <ActionMenu items={lifecycleItems} label="Działania lifecycle" />
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <StatusBadge label={phaseLabel.toLocaleUpperCase(locale)} semantic={semantic} />
+          {overview.phase === 'active' && contract !== '—' ? <StatusBadge label={contract} semantic="neutral" /> : null}
+          {overview.phase === 'active' && overview.start_on ? <StatusBadge label={`od ${formatDay(overview.start_on)}`} semantic="neutral" /> : null}
+        </div>
+
+        {overview.phase === 'returned' ? (
+          <div className="mt-3 text-sm text-slate-600">
+            <p className="font-medium text-slate-900">HR processing stopped</p>
+            <p>Waiting for Recruitment update</p>
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex flex-wrap gap-2" aria-label="Status domen pracownika">
+          {domainChips.map((label) => <Chip key={label} behavior="static" size="md" label={label} />)}
+        </div>
+
+        {overview.phase === 'returned' ? (
+          <Alert
+            className="mt-4"
+            semantic="info"
+            title="Proces HR zatrzymany"
+            action={surface.candidate_id ? <Button size="sm" onClick={() => onOpen('recruitment')}>Otwórz sprawę w Recruitment</Button> : null}
+          >
+            Oczekuje na ponowne przekazanie przez Recruitment.
+          </Alert>
+        ) : overview.notice === 'healthy' ? (
+          <Alert className="mt-4" semantic="success" title="Wszystko w porządku">
+            {overview.nearest_label && overview.nearest_on
+              ? `Najbliższy termin: ${overview.nearest_label} · ${formatDay(overview.nearest_on)}`
+              : 'Brak pilnych działań.'}
+          </Alert>
+        ) : overview.phase !== 'ended' ? (
+          <Alert
+            className="mt-4"
+            semantic="warning"
+            title="Wymaga uwagi"
+            action={actionTarget ? <Button size="sm" onClick={() => onOpen(actionTarget)}>{actionLabel}</Button> : null}
+          >
+            {action?.reason || action?.title || `${overview.attention_count} rzeczy wymagają działania.`}
+          </Alert>
+        ) : null}
+      </section>
+
+      {overview.phase === 'preparing' ? (
+        <section className="card min-w-0 p-4 sm:p-5" aria-labelledby="employment-preparation-heading">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 id="employment-preparation-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-700">
+              Przygotowanie do zatrudnienia
+            </h3>
+            <span className="text-sm font-semibold text-slate-700">{progressPosition} / {path.length}</span>
+          </div>
+          <ProgressStepper
+            label="Przygotowanie do zatrudnienia"
+            steps={path.map((step) => ({
+              id: step.id,
+              label: step.label,
+              state: step.mark,
+              detail: (step.mark === 'current' || step.mark === 'blocked') && action?.title ? action.title : null,
+              onOpen: step.target ? () => onOpen(step.target) : null,
+            }))}
+          />
+        </section>
+      ) : overview.phase === 'active' ? (
+        <p className="px-1 text-sm font-medium text-slate-700">Employment active{overview.start_on ? ` · od ${formatDay(overview.start_on)}` : ''}</p>
+      ) : overview.phase === 'ended' ? (
+        <p className="px-1 text-sm font-medium text-slate-700">Employment zakończone{surface.header.ended_on ? ` · ${formatDay(surface.header.ended_on)}` : ''}</p>
+      ) : (
+        <p className="px-1 text-sm font-medium text-slate-700">HR process zatrzymany · Returned to Recruitment</p>
+      )}
+
+      <ReturnToRecruitmentModal
+        employeeId={employeeId}
+        open={returnOpen}
+        onClose={() => setReturnOpen(false)}
+        onCompleted={onReload}
+      />
+      <EndEmploymentModal
+        employeeId={employeeId}
+        open={endOpen}
+        onClose={() => setEndOpen(false)}
+        onCompleted={onReload}
+      />
+    </>
+  )
+}
+
+function countryFlag(code: string | null): string {
+  const normalized = String(code || '').trim().toUpperCase()
+  if (!/^[A-Z]{2}$/.test(normalized)) return ''
+  return String.fromCodePoint(...normalized.split('').map((letter) => 127397 + letter.charCodeAt(0)))
 }
 
 function FactSections({

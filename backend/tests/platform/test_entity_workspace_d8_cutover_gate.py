@@ -249,6 +249,7 @@ def test_d8_shell_sections_not_collapsed() -> None:
     assert sections != consumer
     page = _PAGE.read_text(encoding="utf-8")
     assert "HrEmployeeRecordSurface" in page
+    assert "HrDriverOperatorSurface" not in page
     assert "EmployeeDossierView" not in page
     assert "PayrollSection" not in page
     assert "ZusSection" not in page

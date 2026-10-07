@@ -1439,6 +1439,309 @@ export async function getTrustedIdentityPrepStatus(employeeId: string): Promise<
   return data
 }
 
+export type HrDriverSurfaceFact = {
+  key: string
+  label: string
+  applicability: string
+  resolution: string | null
+  blocking_reason: string | null
+  evidence_linked: boolean
+  not_applicable: boolean
+}
+
+export type HrDriverOperatorSurface = {
+  employee_id: string
+  employment_id: string | null
+  state: string | null
+  header: {
+    name: string
+    position: string | null
+    employer: string | null
+    planned_start: string | null
+  }
+  identity: {
+    first_name: string | null
+    last_name: string | null
+    birth_date: string | null
+    citizenship: string | null
+    complete: boolean
+    status: string
+  }
+  legal_stay: { basis: string | null; status: string }
+  work_eligibility: {
+    basis: string | null
+    valid_for_this_employment: string | null
+    citizenship_class: string | null
+    checkpoint_context_complete: boolean
+    status: string
+  }
+  professional: {
+    defined: boolean
+    satisfied: number
+    applicable: number
+    facts: HrDriverSurfaceFact[]
+  }
+  terms: {
+    complete: boolean
+    position: string | null
+    contract_basis: string | null
+    work_time_value: string | null
+    work_time_unit: string | null
+    work_system: string | null
+    workplace: string | null
+    compensation_amount: string | null
+    compensation_currency: string | null
+    compensation_unit: string | null
+    duration: string | null
+    fixed_term_end: string | null
+    probation_status: string | null
+    probation_end: string | null
+    intended_start_date: string | null
+  } | null
+  next_action: {
+    code: string
+    focus: string
+    fact_key: string
+    title: string
+    reason: string
+  } | null
+  ready_to_start: {
+    status: string
+    reasons: string[]
+    can_start: boolean
+  }
+}
+
+export type HrDriverTermsIn = {
+  position: string
+  contract_basis: string
+  work_time_value: string
+  work_time_unit: string
+  work_system: string
+  workplace: string
+  compensation_amount: string
+  compensation_currency: string
+  compensation_unit: string
+  duration: string
+  fixed_term_end?: string | null
+  probation_status: string
+  probation_end?: string | null
+  intended_start_date: string
+}
+
+export type HrDriverLegalIn = {
+  citizenship_class: string
+  stay_basis: string
+  work_authorization_basis: string
+  valid_for_this_employment: string
+}
+
+export type HrDriverActionResult = {
+  accepted?: boolean
+  activated?: boolean
+  outcome?: string | null
+  reason?: string | null
+  blocked_reasons?: string[]
+  state?: string | null
+  checkpoint_context_complete?: boolean | null
+}
+
+export async function getHrDriverOperatorSurface(employeeId: string): Promise<HrDriverOperatorSurface> {
+  const { data } = await http.get<HrDriverOperatorSurface>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/driver-surface`,
+  )
+  return data
+}
+
+export async function confirmHrDriverTerms(
+  employeeId: string,
+  body: HrDriverTermsIn,
+): Promise<HrDriverActionResult> {
+  const { data } = await http.post<HrDriverActionResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/driver-surface/terms`,
+    body,
+  )
+  return data
+}
+
+export async function confirmHrDriverLegal(
+  employeeId: string,
+  body: HrDriverLegalIn,
+): Promise<HrDriverActionResult> {
+  const { data } = await http.post<HrDriverActionResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/driver-surface/legal`,
+    body,
+  )
+  return data
+}
+
+export async function recordHrDriverReady(employeeId: string): Promise<HrDriverActionResult> {
+  const { data } = await http.post<HrDriverActionResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/driver-surface/ready`,
+    {},
+  )
+  return data
+}
+
+export type HrEmployeeRecordRow = {
+  id: string
+  group: string
+  label: string
+  value: string | null
+  status: string
+  evidence: string | null
+  actions: string[]
+  details?: { label: string; value: string }[]
+}
+
+export type HrEmployeeRecordGroup = {
+  id: string
+  label: string
+  rows: HrEmployeeRecordRow[]
+  empty: string | null
+}
+
+export type HrEmployeeRecordSurface = {
+  employee_id: string
+  candidate_id: string | null
+  employment_id: string | null
+  state: string | null
+  header: HrDriverOperatorSurface['header'] & { ended_on?: string | null }
+  current_process: {
+    next_action: HrDriverOperatorSurface['next_action']
+    target_row_id: string | null
+    destination: 'recruitment' | null
+    missing?: string[]
+  }
+  groups: HrEmployeeRecordGroup[]
+  person?: {
+    first_name: string
+    last_name: string
+    birth_date: string
+    citizenship: string
+    short_id: string
+    phone: string
+    phone_country: string
+    email: string
+    preferred_contact: string
+    address: HrEmployeeRecordAddress
+    reg_address_diff: boolean
+    reg_address: HrEmployeeRecordAddress
+    pesel: string
+    languages: string
+  }
+  legal?: {
+    citizenship_class: string | null
+    stay_basis: string | null
+    work_authorization_basis: string | null
+    valid_for_this_employment: string | null
+  }
+  terms?: HrDriverOperatorSurface['terms']
+  documents?: { total: number; attention: number }
+  overview?: HrEmployeeRecordOverview
+  path?: HrEmployeeRecordPathStep[]
+}
+
+export type HrEmployeeRecordPathStep = {
+  id: string
+  mark: 'completed' | 'current' | 'pending' | 'blocked' | 'not_applicable'
+  target: string | null
+  label: string
+}
+
+export type HrEmployeeRecordOverview = {
+  phase: string
+  citizenship: string | null
+  stay_basis: string | null
+  stay_until: string | null
+  work_basis: string | null
+  work_until: string | null
+  work_status: string | null
+  contract_basis: string | null
+  contract_until: string | null
+  contract_duration: string | null
+  start_on: string | null
+  attention_count: number
+  notice: string
+  notice_target: string | null
+  nearest_label: string | null
+  nearest_on: string | null
+  nearest_target: string | null
+}
+
+export type HrEmployeeRecordAddress = {
+  country: string
+  city: string
+  street: string
+  house: string
+  apt: string
+  zip: string
+}
+
+export type HrEmployeeRecordPersonIn = {
+  first_name: string
+  last_name: string
+  birth_date: string
+  citizenship: string
+  phone: string
+  phone_country: string
+  email: string
+  preferred_contact: string
+  address: HrEmployeeRecordAddress
+  reg_address_diff: boolean
+  reg_address: HrEmployeeRecordAddress
+  pesel: string
+  languages: string
+}
+
+export async function getHrEmployeeRecordSurface(employeeId: string): Promise<HrEmployeeRecordSurface> {
+  const { data } = await http.get<HrEmployeeRecordSurface>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record`,
+  )
+  return data
+}
+
+export async function updateHrEmployeeRecordPerson(
+  employeeId: string,
+  body: HrEmployeeRecordPersonIn,
+): Promise<HrDriverActionResult> {
+  const { data } = await http.post<HrDriverActionResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record/person`,
+    body,
+  )
+  return data
+}
+
+export async function endHrEmployeeRecordEmployment(
+  employeeId: string,
+  body: { ended_on: string; reason: string },
+): Promise<HrDriverActionResult> {
+  const { data } = await http.post<HrDriverActionResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record/end-employment`,
+    body,
+  )
+  return data
+}
+
+export async function updateHrEmployeeRecordCitizenship(
+  employeeId: string,
+  citizenship: string,
+): Promise<HrDriverActionResult> {
+  const { data } = await http.post<HrDriverActionResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record/citizenship`,
+    { citizenship },
+  )
+  return data
+}
+
+export async function startHrDriverEmployment(employeeId: string): Promise<HrDriverActionResult> {
+  const { data } = await http.post<HrDriverActionResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/driver-surface/start`,
+    {},
+  )
+  return data
+}
+
 export async function postContractDraftPreview(
   employeeId: string,
   body: ContractDraftPreviewIn,

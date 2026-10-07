@@ -65,6 +65,8 @@ def _confirmation(**overrides) -> EmploymentTermsConfirmation:
         fixed_term_end=date(2027, 3, 1),
         probation_status=PROBATION_NONE,
         probation_end=None,
+        work_system="2/2",
+        intended_start_date=date(2026, 10, 20),
         default_vacancy_id="vacancy-1",
     )
     values.update(overrides)
@@ -182,4 +184,44 @@ def test_a_later_confirmation_keeps_the_previous_agreement() -> None:
     )
     assert blocked.accepted is False
     assert session.get(HrEmploymentTerms, second.terms.id).is_current is True
+    assert employment.state == "preparing"
+
+
+def test_intended_start_and_work_system_are_required_and_do_not_start_the_employment() -> None:
+    session = _session()
+    employment = _employment()
+    session.add(employment)
+    session.commit()
+
+    missing_plan = confirm_employment_terms(
+        session,
+        tenant_id="tenant-1",
+        employment=employment,
+        confirmation=_confirmation(intended_start_date=None),
+    )
+    assert missing_plan.accepted is False
+    assert missing_plan.reason == "intended_start_date"
+    assert session.scalars(select(HrEmploymentTerms)).all() == []
+
+    missing_system = confirm_employment_terms(
+        session,
+        tenant_id="tenant-1",
+        employment=employment,
+        confirmation=_confirmation(work_system=None),
+    )
+    assert missing_system.accepted is False
+    assert missing_system.reason == "unresolved"
+
+    confirmed = confirm_employment_terms(
+        session,
+        tenant_id="tenant-1",
+        employment=employment,
+        confirmation=_confirmation(),
+    )
+    session.commit()
+    assert confirmed.accepted is True
+    assert confirmed.terms is not None
+    assert confirmed.terms.intended_start_date == date(2026, 10, 20)
+    assert confirmed.terms.work_system == "2/2"
+    assert employment.started_on is None
     assert employment.state == "preparing"

@@ -93,6 +93,11 @@ def test_snapshot_belongs_to_one_employment_and_not_to_the_card() -> None:
     assert "position" not in employment_columns
     assert "duration" not in employment_columns
     assert "ended_on" in employment_columns
+    assert "started_on" in employment_columns
+    assert "intended_start_date" in HrEmploymentTerms.__table__.c
+    assert "work_system" in HrEmploymentTerms.__table__.c
+    assert "intended_start_date" not in employment_columns
+    assert "work_system" not in employment_columns
     checks = " ".join(str(c.sqltext) for c in HrEmploymentTerms.__table__.constraints if c.name)
     assert "full_time" not in checks
 

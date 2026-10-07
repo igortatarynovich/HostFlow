@@ -80,12 +80,15 @@ from backend.app.services import workforce_work_eligibility_payments as wel_pay_
 from backend.app.services import hr_lifecycle_ledger as ledger_svc
 from backend.app.services.employment_terms_runtime import EmploymentTermsConfirmation
 from backend.app.services.hr_driver_operator_surface import (
+    build_hr_driver_operator_surface,
     confirm_surface_legal,
     confirm_surface_terms,
     record_surface_ready,
     start_surface_employment,
 )
 from backend.app.services.hr_employee_record_surface import (
+    build_hr_employee_record_surface,
+    end_record_employment,
     update_record_citizenship,
     update_record_person,
 )
@@ -1081,6 +1084,363 @@ async def get_employee_operational_profile(
         workforce_eligibility=dict(raw.get("workforce_eligibility") or {}),
         hr_bundle=hb,
     )
+
+
+class HrDriverOperatorSurfaceOut(BaseModel):
+    employee_id: str
+    employment_id: Optional[str] = None
+    state: Optional[str] = None
+    header: dict[str, Any]
+    identity: dict[str, Any]
+    legal_stay: dict[str, Any]
+    work_eligibility: dict[str, Any]
+    professional: dict[str, Any]
+    terms: Optional[dict[str, Any]] = None
+    next_action: Optional[dict[str, Any]] = None
+    ready_to_start: dict[str, Any]
+
+
+class HrDriverTermsIn(BaseModel):
+    position: str
+    contract_basis: str
+    work_time_value: Decimal
+    work_time_unit: str
+    work_system: str
+    workplace: str
+    compensation_amount: Decimal
+    compensation_currency: str
+    compensation_unit: str
+    duration: str
+    fixed_term_end: Optional[date] = None
+    probation_status: str
+    probation_end: Optional[date] = None
+    intended_start_date: date
+
+
+class HrDriverLegalIn(BaseModel):
+    citizenship_class: str
+    stay_basis: str
+    work_authorization_basis: str
+    valid_for_this_employment: str
+
+
+class HrDriverActionOut(BaseModel):
+    accepted: bool = False
+    activated: bool = False
+    outcome: Optional[str] = None
+    reason: Optional[str] = None
+    blocked_reasons: list[str] = Field(default_factory=list)
+    state: Optional[str] = None
+    checkpoint_context_complete: Optional[bool] = None
+
+
+@router.get(
+    "/employees/{employee_id}/driver-surface",
+    response_model=HrDriverOperatorSurfaceOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def get_hr_driver_operator_surface(
+    employee_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrDriverOperatorSurfaceOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    employee = await we_svc.get_employee(db, tenant_id, employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    payload = await build_hr_driver_operator_surface(db, tenant_id=tenant_id, employee=employee)
+    return HrDriverOperatorSurfaceOut.model_validate(payload)
+
+
+@router.post(
+    "/employees/{employee_id}/driver-surface/terms",
+    response_model=HrDriverActionOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def confirm_hr_driver_terms(
+    employee_id: str,
+    body: HrDriverTermsIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrDriverActionOut:
+    db, tid = db_tenant
+    result = await confirm_surface_terms(
+        db,
+        tenant_id=str(tid),
+        employee_id=employee_id,
+        confirmation=EmploymentTermsConfirmation(
+            position=body.position,
+            contract_basis=body.contract_basis,
+            work_time_value=body.work_time_value,
+            work_time_unit=body.work_time_unit,
+            work_system=body.work_system,
+            workplace=body.workplace,
+            compensation_amount=body.compensation_amount,
+            compensation_currency=body.compensation_currency,
+            compensation_unit=body.compensation_unit,
+            duration=body.duration,
+            fixed_term_end=body.fixed_term_end,
+            probation_status=body.probation_status,
+            probation_end=body.probation_end,
+            intended_start_date=body.intended_start_date,
+        ),
+    )
+    if result.get("accepted"):
+        await db.commit()
+    return HrDriverActionOut(accepted=bool(result.get("accepted")), reason=result.get("reason"))
+
+
+@router.post(
+    "/employees/{employee_id}/driver-surface/legal",
+    response_model=HrDriverActionOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def confirm_hr_driver_legal(
+    employee_id: str,
+    body: HrDriverLegalIn,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrDriverActionOut:
+    db, tid = db_tenant
+    result = await confirm_surface_legal(
+        db,
+        tenant_id=str(tid),
+        employee_id=employee_id,
+        reading=body.model_dump(),
+        actor_user_id=ctx.sub,
+    )
+    if result.get("accepted"):
+        await db.commit()
+    return HrDriverActionOut(
+        accepted=bool(result.get("accepted")),
+        outcome=result.get("outcome"),
+        reason=result.get("reason"),
+        checkpoint_context_complete=result.get("checkpoint_context_complete"),
+    )
+
+
+@router.post(
+    "/employees/{employee_id}/driver-surface/ready",
+    response_model=HrDriverActionOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def record_hr_driver_ready(
+    employee_id: str,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrDriverActionOut:
+    db, tid = db_tenant
+    result = await record_surface_ready(
+        db,
+        tenant_id=str(tid),
+        employee_id=employee_id,
+        actor_user_id=ctx.sub,
+    )
+    if result.get("accepted"):
+        await db.commit()
+    return HrDriverActionOut(
+        accepted=bool(result.get("accepted")),
+        outcome=result.get("outcome"),
+        reason=result.get("reason"),
+        blocked_reasons=list(result.get("blocked_reasons") or []),
+    )
+
+
+@router.post(
+    "/employees/{employee_id}/driver-surface/start",
+    response_model=HrDriverActionOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def start_hr_driver_employment(
+    employee_id: str,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrDriverActionOut:
+    db, tid = db_tenant
+    result = await start_surface_employment(
+        db,
+        tenant_id=str(tid),
+        employee_id=employee_id,
+        actor_user_id=ctx.sub,
+    )
+    if result.get("activated"):
+        await db.commit()
+    return HrDriverActionOut(
+        activated=bool(result.get("activated")),
+        reason=result.get("reason"),
+        blocked_reasons=list(result.get("blocked_reasons") or []),
+        state=result.get("state"),
+    )
+
+
+class HrEmployeeRecordOut(BaseModel):
+    employee_id: str
+    candidate_id: Optional[str] = None
+    employment_id: Optional[str] = None
+    state: Optional[str] = None
+    header: dict[str, Any]
+    current_process: dict[str, Any]
+    groups: list[dict[str, Any]]
+    person: dict[str, Any] = Field(default_factory=dict)
+    legal: dict[str, Any] = Field(default_factory=dict)
+    terms: Optional[dict[str, Any]] = None
+    documents: dict[str, int] = Field(default_factory=dict)
+    overview: Optional[dict[str, Any]] = None
+    path: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class HrEmployeeRecordAddressIn(BaseModel):
+    country: str = ""
+    city: str = ""
+    street: str = ""
+    house: str = ""
+    apt: str = ""
+    zip: str = ""
+
+
+class HrEmployeeRecordPersonIn(BaseModel):
+    first_name: str = ""
+    last_name: str = ""
+    birth_date: str = ""
+    citizenship: str = ""
+    phone: str = ""
+    phone_country: str = ""
+    email: str = ""
+    preferred_contact: str = ""
+    address: HrEmployeeRecordAddressIn = Field(default_factory=HrEmployeeRecordAddressIn)
+    reg_address_diff: bool = False
+    reg_address: HrEmployeeRecordAddressIn = Field(default_factory=HrEmployeeRecordAddressIn)
+    pesel: str = ""
+    languages: str = ""
+
+
+class HrEmployeeRecordCitizenshipIn(BaseModel):
+    citizenship: str
+
+
+class HrEmployeeRecordEndEmploymentIn(BaseModel):
+    ended_on: date
+    reason: str = Field(..., min_length=3, max_length=1000)
+
+
+@router.get(
+    "/employees/{employee_id}/employee-record",
+    response_model=HrEmployeeRecordOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def get_hr_employee_record_surface(
+    employee_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrEmployeeRecordOut:
+    db, tid = db_tenant
+    employee = await we_svc.get_employee(db, str(tid), employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    payload = await build_hr_employee_record_surface(db, tenant_id=str(tid), employee=employee)
+    return HrEmployeeRecordOut.model_validate(payload)
+
+
+@router.post(
+    "/employees/{employee_id}/employee-record/citizenship",
+    response_model=HrDriverActionOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def update_hr_employee_record_citizenship(
+    employee_id: str,
+    body: HrEmployeeRecordCitizenshipIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrDriverActionOut:
+    db, tid = db_tenant
+    result = await update_record_citizenship(
+        db,
+        tenant_id=str(tid),
+        employee_id=employee_id,
+        citizenship=body.citizenship,
+    )
+    if result.get("accepted"):
+        await db.commit()
+    return HrDriverActionOut(accepted=bool(result.get("accepted")), reason=result.get("reason"))
+
+
+@router.post(
+    "/employees/{employee_id}/employee-record/person",
+    response_model=HrDriverActionOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def update_hr_employee_record_person(
+    employee_id: str,
+    body: HrEmployeeRecordPersonIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HrDriverActionOut:
+    db, tid = db_tenant
+    result = await update_record_person(
+        db,
+        tenant_id=str(tid),
+        employee_id=employee_id,
+        payload=body.model_dump(),
+    )
+    if result.get("accepted"):
+        await db.commit()
+    return HrDriverActionOut(accepted=bool(result.get("accepted")), reason=result.get("reason"))
+
+
+@router.post(
+    "/employees/{employee_id}/employee-record/end-employment",
+    response_model=HrDriverActionOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def end_hr_employee_record_employment(
+    employee_id: str,
+    body: HrEmployeeRecordEndEmploymentIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> HrDriverActionOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    actor = str(current_user.sub or "").strip() or None
+    result = await end_record_employment(
+        db,
+        tenant_id=tenant_id,
+        employee_id=employee_id,
+        ended_on=body.ended_on,
+        reason=body.reason,
+        actor_user_id=actor,
+    )
+    if not result.get("accepted"):
+        return HrDriverActionOut(accepted=False, reason=str(result.get("reason") or "END_EMPLOYMENT_FAILED"))
+
+    try:
+        await ledger_svc.create_event(
+            db,
+            tenant_id=tenant_id,
+            employee_id=employee_id,
+            event_code="employee_terminated",
+            category="employment",
+            title="Employee terminated",
+            description=body.reason.strip(),
+            effective_date=body.ended_on,
+            occurred_at=datetime.now(timezone.utc),
+            owner="HR",
+            created_by=actor,
+            status="done",
+            dedupe_key=f"employee_terminated:{result.get('employment_id')}:{body.ended_on.isoformat()}",
+            source_type="employee_record_lifecycle",
+            source_ref=str(result.get("employment_id") or employee_id),
+            references={"employee_id": employee_id, "employment_id": result.get("employment_id")},
+        )
+        await log_activity(
+            db,
+            tenant_id=tenant_id,
+            action="workforce.employee_record.end_employment",
+            actor_id=actor,
+            target_type="hr_employment",
+            target_id=str(result.get("employment_id") or ""),
+            payload={"employee_id": employee_id, "ended_on": body.ended_on.isoformat(), "reason": body.reason.strip()},
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+    return HrDriverActionOut(accepted=True, state="ended")
 
 
 @router.get(
@@ -3013,234 +3373,3 @@ async def post_employee_hr_review_reject(
 from backend.app.api.v1.workforce import zus_workspace_router as _zus_ws_router  # noqa: E402
 
 router.include_router(_zus_ws_router.router, prefix="/zus-workspace", tags=["workforce-zus-workspace"])
-
-class HrDriverTermsIn(BaseModel):
-    position: str
-    contract_basis: str
-    work_time_value: Decimal
-    work_time_unit: str
-    work_system: str
-    workplace: str
-    compensation_amount: Decimal
-    compensation_currency: str
-    compensation_unit: str
-    duration: str
-    fixed_term_end: Optional[date] = None
-    probation_status: str
-    probation_end: Optional[date] = None
-    intended_start_date: date
-
-
-class HrDriverLegalIn(BaseModel):
-    citizenship_class: str
-    stay_basis: str
-    work_authorization_basis: str
-    valid_for_this_employment: str
-
-
-class HrDriverActionOut(BaseModel):
-    accepted: bool = False
-    activated: bool = False
-    outcome: Optional[str] = None
-    reason: Optional[str] = None
-    blocked_reasons: list[str] = Field(default_factory=list)
-    state: Optional[str] = None
-    checkpoint_context_complete: Optional[bool] = None
-
-
-class HrEmployeeRecordAddressIn(BaseModel):
-    country: str = ""
-    city: str = ""
-    street: str = ""
-    house: str = ""
-    apt: str = ""
-    zip: str = ""
-
-
-class HrEmployeeRecordPersonIn(BaseModel):
-    first_name: str = ""
-    last_name: str = ""
-    birth_date: str = ""
-    citizenship: str = ""
-    phone: str = ""
-    phone_country: str = ""
-    email: str = ""
-    preferred_contact: str = ""
-    address: HrEmployeeRecordAddressIn = Field(default_factory=HrEmployeeRecordAddressIn)
-    reg_address_diff: bool = False
-    reg_address: HrEmployeeRecordAddressIn = Field(default_factory=HrEmployeeRecordAddressIn)
-    pesel: str = ""
-    languages: str = ""
-
-
-class HrEmployeeRecordCitizenshipIn(BaseModel):
-    citizenship: str
-
-
-@router.post(
-    "/employees/{employee_id}/driver-surface/terms",
-    response_model=HrDriverActionOut,
-    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
-)
-async def confirm_hr_driver_terms(
-    employee_id: str,
-    body: HrDriverTermsIn,
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-) -> HrDriverActionOut:
-    db, tid = db_tenant
-    result = await confirm_surface_terms(
-        db,
-        tenant_id=str(tid),
-        employee_id=employee_id,
-        confirmation=EmploymentTermsConfirmation(
-            position=body.position,
-            contract_basis=body.contract_basis,
-            work_time_value=body.work_time_value,
-            work_time_unit=body.work_time_unit,
-            work_system=body.work_system,
-            workplace=body.workplace,
-            compensation_amount=body.compensation_amount,
-            compensation_currency=body.compensation_currency,
-            compensation_unit=body.compensation_unit,
-            duration=body.duration,
-            fixed_term_end=body.fixed_term_end,
-            probation_status=body.probation_status,
-            probation_end=body.probation_end,
-            intended_start_date=body.intended_start_date,
-        ),
-    )
-    if result.get("accepted"):
-        await db.commit()
-    return HrDriverActionOut(accepted=bool(result.get("accepted")), reason=result.get("reason"))
-
-
-@router.post(
-    "/employees/{employee_id}/driver-surface/legal",
-    response_model=HrDriverActionOut,
-    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
-)
-async def confirm_hr_driver_legal(
-    employee_id: str,
-    body: HrDriverLegalIn,
-    ctx: UserCtx = Depends(get_current_user),
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-) -> HrDriverActionOut:
-    db, tid = db_tenant
-    result = await confirm_surface_legal(
-        db,
-        tenant_id=str(tid),
-        employee_id=employee_id,
-        reading=body.model_dump(),
-        actor_user_id=ctx.sub,
-    )
-    if result.get("accepted"):
-        await db.commit()
-    return HrDriverActionOut(
-        accepted=bool(result.get("accepted")),
-        outcome=result.get("outcome"),
-        reason=result.get("reason"),
-        checkpoint_context_complete=result.get("checkpoint_context_complete"),
-    )
-
-
-@router.post(
-    "/employees/{employee_id}/driver-surface/ready",
-    response_model=HrDriverActionOut,
-    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
-)
-async def record_hr_driver_ready(
-    employee_id: str,
-    ctx: UserCtx = Depends(get_current_user),
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-) -> HrDriverActionOut:
-    db, tid = db_tenant
-    result = await record_surface_ready(
-        db,
-        tenant_id=str(tid),
-        employee_id=employee_id,
-        actor_user_id=ctx.sub,
-    )
-    if result.get("accepted"):
-        await db.commit()
-    return HrDriverActionOut(
-        accepted=bool(result.get("accepted")),
-        outcome=result.get("outcome"),
-        reason=result.get("reason"),
-        blocked_reasons=list(result.get("blocked_reasons") or []),
-    )
-
-
-@router.post(
-    "/employees/{employee_id}/driver-surface/start",
-    response_model=HrDriverActionOut,
-    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
-)
-async def start_hr_driver_employment(
-    employee_id: str,
-    ctx: UserCtx = Depends(get_current_user),
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-) -> HrDriverActionOut:
-    db, tid = db_tenant
-    result = await start_surface_employment(
-        db,
-        tenant_id=str(tid),
-        employee_id=employee_id,
-        actor_user_id=ctx.sub,
-    )
-    if result.get("activated"):
-        await db.commit()
-    return HrDriverActionOut(
-        activated=bool(result.get("activated")),
-        reason=result.get("reason"),
-        blocked_reasons=list(result.get("blocked_reasons") or []),
-        state=result.get("state"),
-    )
-
-
-@router.post(
-    "/employees/{employee_id}/employee-record/person",
-    response_model=HrDriverActionOut,
-    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
-)
-async def update_hr_employee_record_person(
-    employee_id: str,
-    body: HrEmployeeRecordPersonIn,
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-) -> HrDriverActionOut:
-    db, tid = db_tenant
-    result = await update_record_person(
-        db,
-        tenant_id=str(tid),
-        employee_id=employee_id,
-        payload=body.model_dump(),
-    )
-    if result.get("accepted"):
-        await db.commit()
-    return HrDriverActionOut(accepted=bool(result.get("accepted")), reason=result.get("reason"))
-
-
-@router.post(
-    "/employees/{employee_id}/employee-record/citizenship",
-    response_model=HrDriverActionOut,
-    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
-)
-async def update_hr_employee_record_citizenship(
-    employee_id: str,
-    body: HrEmployeeRecordCitizenshipIn,
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-) -> HrDriverActionOut:
-    db, tid = db_tenant
-    result = await update_record_citizenship(
-        db,
-        tenant_id=str(tid),
-        employee_id=employee_id,
-        citizenship=body.citizenship,
-    )
-    if result.get("accepted"):
-        await db.commit()
-    return HrDriverActionOut(accepted=bool(result.get("accepted")), reason=result.get("reason"))
-
-
-from backend.app.api.v1 import hr_employee_record as _hr_employee_record  # noqa: E402
-
-router.include_router(_hr_employee_record.router)

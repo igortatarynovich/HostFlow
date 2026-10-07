@@ -127,8 +127,14 @@ function CandidatePersonalSection({
           ) : (
           <SearchableSelect
             options={countries}
-            value={(extra.citizenship as any) || ''}
-            onChange={(v) => onExtraChange({ citizenship: v })}
+            value={String(candidate.personal_data?.citizenship || extra.citizenship || '')}
+            onChange={(v) => {
+              onModelChange((current) => ({
+                ...current,
+                personal_data: { ...(current.personal_data || {}), citizenship: v || null },
+              }))
+              onExtraChange({ citizenship: v })
+            }}
             disabled={candidateDataReadOnly}
             placeholder={selectTexts.empty}
             searchPlaceholder={selectTexts.search}

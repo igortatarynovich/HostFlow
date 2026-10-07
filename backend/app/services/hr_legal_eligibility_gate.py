@@ -162,6 +162,14 @@ def evaluate_hr_legal_eligibility_gate(
     )
 
 
+def checkpoint_planned_start(employment: Employment, intended_start: date | None) -> date | None:
+    """The plan while preparing. ``started_on`` is the actual start and stays empty until then."""
+
+    if employment.started_on is not None:
+        return employment.started_on
+    return intended_start
+
+
 def decision_is_current(
     decision: HrLegalEligibilityGateDecision,
     *,

@@ -1337,6 +1337,12 @@ async def return_hr_review_to_recruitment(
     review.decided_by_user_id = actor_user_id
     review.decided_at = _now()
     emp.status = "returned_to_recruitment"
+    from backend.app.services.employment_records import display_employment
+
+    employment = await display_employment(db, tenant_id, employee_id)
+    if employment is not None and employment.state != "ended":
+        employment.state = "ended"
+        employment.ended_on = _now().date()
     await db.flush()
     return review
 

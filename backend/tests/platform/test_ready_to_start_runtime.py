@@ -126,7 +126,9 @@ def _terms(session: Session, employment: Employment) -> None:
             contract_basis="agreed-basis",
             work_time_value=Decimal("1"),
             work_time_unit="fte",
+            work_system="2/2",
             workplace="Warsaw yard",
+            intended_start_date=date(2026, 10, 20),
             compensation_amount=Decimal("30"),
             compensation_currency="PLN",
             compensation_unit="hour",
@@ -273,6 +275,28 @@ def test_current_pass_activates_in_the_same_session_and_keeps_history() -> None:
     assert earlier.outcome == "blocked"
     assert earlier.id != passed.decision.id
     assert employment.state == "preparing"
+
+    current_terms = session.scalars(
+        select(HrEmploymentTerms).where(
+            HrEmploymentTerms.employment_id == employment.id,
+            HrEmploymentTerms.is_current.is_(True),
+        )
+    ).one()
+    current_terms.work_system = "3/1"
+    session.flush()
+    moved_plan = activate_employment(
+        session,
+        tenant_id="tenant-1",
+        employment_id=employment.id,
+        legal_reading=_YES,
+        employee_facts=_FACTS,
+        employee_data_complete=True,
+    )
+    assert moved_plan.activated is False
+    assert moved_plan.reason == "stale"
+    assert employment.state == "preparing"
+    current_terms.work_system = "2/2"
+    session.flush()
 
     employment.client_company_id = "client-2"
     session.flush()
