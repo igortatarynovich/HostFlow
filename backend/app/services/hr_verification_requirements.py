@@ -79,9 +79,11 @@ async def resolve_position_category_for_review(
             meta_pc = _position_from_mapping(emp.meta if isinstance(emp.meta, dict) else None)
             if meta_pc:
                 return meta_pc
-            snap_pc = _position_from_mapping(
-                emp.candidate_snapshot if isinstance(emp.candidate_snapshot, dict) else None
-            )
+            snap_pc = None
+            from backend.app.services.employment_records import snapshot_for_employee
+
+            loaded = await snapshot_for_employee(db, tenant_id, eid)
+            snap_pc = _position_from_mapping(loaded if isinstance(loaded, dict) else None)
             if snap_pc:
                 return snap_pc
             if emp.candidate_id and not candidate_id:

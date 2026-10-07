@@ -69,7 +69,7 @@ def test_handoff_meta_from_snapshot_sets_recruitment_transfer() -> None:
     meta = _handoff_meta_from_snapshot(cand, snap, internal_hr_handoff_id="ho-1")  # type: ignore[arg-type]
     transfer = meta.get("recruitment_transfer") or {}
     assert meta["source"] == "recruitment_handoff"
-    assert meta["internal_hr_handoff_id"] == "ho-1"
+    assert "internal_hr_handoff_id" not in meta
     assert transfer.get("candidate_id") == "cand-1"
     assert transfer.get("citizenship") == "UA"
     assert transfer.get("work_country") == "PL"
@@ -98,7 +98,6 @@ async def test_seed_work_eligibility_from_candidate(db) -> None:
         id=f"emp-wel-{suffix}",
         tenant_id=tenant.id,
         candidate_id=None,
-        company_id=company.id,
         display_name="Jan Kowalski",
         status="onboarding",
     )

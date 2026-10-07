@@ -35,9 +35,13 @@ def test_he1_amendment_history_then_current() -> None:
     assert "**Active Product** | **[HE-1](hiring-workflow-e2e.md)**" in history or (
         "Active Product stays **[HE-1]" in history
     )
-    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
-    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "Active (Product):** **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in current
+    assert "Active (Product):** **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "no named successor" in current.lower()
@@ -67,7 +71,7 @@ def test_he1_amendment_history_then_current() -> None:
 def test_he1_leaves_hr_queued_and_intake_mapping_done() -> None:
     hr = _HR.read_text(encoding="utf-8")
     hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
-    assert "**QUEUED**" in hr_header
+    assert "**SUPERSEDED**" in hr_header
     assert "not scheduled" in hr_header.lower()
     intake = _INTAKE.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]

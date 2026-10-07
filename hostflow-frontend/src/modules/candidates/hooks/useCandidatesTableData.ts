@@ -202,6 +202,8 @@ export function useCandidatesTableData({
   const retriedEmptyItemsRef = useRef(false)
   const loadIdRef = useRef(0)
   const loadInProgressRef = useRef(false)
+  const pendingLoadRef = useRef(false)
+  const loadRef = useRef<(options?: { force?: boolean; allowCache?: boolean }) => Promise<void>>(async () => {})
   const lastSuccessfulListRef = useRef<{
     items: UICandidate[]
     total: number
@@ -278,11 +280,14 @@ export function useCandidatesTableData({
       }
 
       if (loadInProgressRef.current) {
-        // avoid parallel fetches
+        // A newer query arrived while the previous page is still loading.
+        // Remember it and run that latest load when the in-flight one finishes.
+        pendingLoadRef.current = true
         return
       }
 
       loadInProgressRef.current = true
+      pendingLoadRef.current = false
       loadIdRef.current += 1
       const myLoadId = loadIdRef.current
 
@@ -320,7 +325,7 @@ export function useCandidatesTableData({
         }
       }
 
-      const stillCurrent = () => myLoadId === loadIdRef.current
+      const stillCurrent = () => myLoadId === loadIdRef.current && !pendingLoadRef.current
 
       try {
         if (operationalQueue === 'no_next_action') {
@@ -554,8 +559,14 @@ export function useCandidatesTableData({
           }).catch(() => {})
         }
 
+        const followUp = pendingLoadRef.current
         loadInProgressRef.current = false
-        if (myLoadId === loadIdRef.current) setLoading(false)
+        if (followUp) {
+          pendingLoadRef.current = false
+          void loadRef.current()
+        } else if (myLoadId === loadIdRef.current) {
+          setLoading(false)
+        }
         if (willRefetch) restoredScrollRef.current = false
       }
     },
@@ -591,6 +602,7 @@ export function useCandidatesTableData({
       includeRisk,
     ],
   )
+  loadRef.current = load
 
   // After load: if state empty but last successful response had data — apply it.
   const prevLoadingRef = useRef(loading)

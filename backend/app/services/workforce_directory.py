@@ -48,11 +48,11 @@ def _severity_from_rank(r: int) -> str:
     return "none"
 
 
-def _full_name_from_employee(row: WorkforceEmployee) -> str:
+def _full_name_from_employee(row: WorkforceEmployee, snapshot: dict[str, Any] | None = None) -> str:
     dn = (row.display_name or "").strip()
     if dn:
         return dn
-    snap = row.candidate_snapshot if isinstance(row.candidate_snapshot, dict) else None
+    snap = snapshot if isinstance(snapshot, dict) else None
     if not snap:
         return "—"
     fn = str(snap.get("first_name") or "").strip()
@@ -85,13 +85,8 @@ def _position_from_employment(emp: WorkforceEmployment | None, vacancy_title: st
     return vacancy_title
 
 
-def _handoff_id_from_meta(meta: dict[str, Any] | None) -> str | None:
-    if not meta:
-        return None
-    hid = meta.get("internal_hr_handoff_id")
-    if hid is None:
-        return None
-    s = str(hid).strip()
+def _handoff_id_from_relationship(handoff_id: str | None) -> str | None:
+    s = str(handoff_id or "").strip()
     return s or None
 
 
@@ -158,6 +153,9 @@ async def list_employees_directory(
         return [], 0
 
     emp_ids = [str(e.id) for e in emp_rows]
+    from backend.app.services.employment_records import display_employments_by_employee
+
+    relationships = await display_employments_by_employee(db, tid, emp_ids)
 
     emps_all = (
         (
@@ -183,11 +181,16 @@ async def list_employees_directory(
             latest_emp[eid] = r
 
     own_ids = {str(e.own_company_id) for e in emp_rows if e.own_company_id}
-    company_ids = {str(e.company_id) for e in emp_rows if e.company_id}
+    company_ids = {
+        str(rel.client_company_id) for rel in relationships.values() if rel.client_company_id
+    }
     vacancy_ids: set[str] = set()
-    for e in latest_emp.values():
-        if e.vacancy_id:
-            vacancy_ids.add(str(e.vacancy_id))
+    for card in latest_emp.values():
+        if card.vacancy_id:
+            vacancy_ids.add(str(card.vacancy_id))
+    for rel in relationships.values():
+        if rel.vacancy_id:
+            vacancy_ids.add(str(rel.vacancy_id))
 
     own_names: dict[str, str] = {}
     if own_ids:
@@ -209,10 +212,12 @@ async def list_employees_directory(
 
     user_ids: set[str] = set()
     for e in emp_rows:
-        if e.recruiter_user_id:
-            user_ids.add(str(e.recruiter_user_id))
+        rel = relationships.get(str(e.id))
+        recruiter_id = str(rel.recruiter_user_id) if rel is not None and rel.recruiter_user_id else None
+        if recruiter_id:
+            user_ids.add(recruiter_id)
         m = e.meta if isinstance(e.meta, dict) else {}
-        aid = _assigned_hr_user_id(m, e.recruiter_user_id)
+        aid = _assigned_hr_user_id(m, recruiter_id)
         if aid:
             user_ids.add(aid)
 
@@ -316,17 +321,21 @@ async def list_employees_directory(
     for e in emp_rows:
         eid = str(e.id)
         meta = e.meta if isinstance(e.meta, dict) else {}
+        rel = relationships.get(eid)
         le = latest_emp.get(eid)
-        vac_title = vacancy_titles.get(str(le.vacancy_id)) if le and le.vacancy_id else None
+        card_vacancy = str(le.vacancy_id) if le and le.vacancy_id else None
+        rel_vacancy = str(rel.vacancy_id) if rel is not None and rel.vacancy_id else None
+        vac_title = vacancy_titles.get(card_vacancy or rel_vacancy or "")
         position = _position_from_employment(le, vac_title)
         start_date: date | None = None
         if le and le.start_date:
             start_date = le.start_date
-        elif e.hire_date:
-            start_date = e.hire_date
+        elif rel is not None and rel.started_on:
+            start_date = rel.started_on
 
         employer = own_names.get(str(e.own_company_id)) if e.own_company_id else None
-        client = client_names.get(str(e.company_id)) if e.company_id else None
+        client_id = str(rel.client_company_id) if rel is not None and rel.client_company_id else None
+        client = client_names.get(client_id) if client_id else None
 
         missing_n = int(missing_by_wf.get(eid, 0))
         expiring_n = int(expiring_by_wf.get(eid, 0))
@@ -338,7 +347,8 @@ async def list_employees_directory(
             worst_severity=worst,
         )
 
-        aid = _assigned_hr_user_id(meta, str(e.recruiter_user_id) if e.recruiter_user_id else None)
+        recruiter_id = str(rel.recruiter_user_id) if rel is not None and rel.recruiter_user_id else None
+        aid = _assigned_hr_user_id(meta, recruiter_id)
         assigned_label = user_labels.get(aid) if aid else None
 
         review = reviews_by_emp.get(eid)
@@ -351,7 +361,10 @@ async def list_employees_directory(
 
         row = {
             "employee_id": eid,
-            "full_name": _full_name_from_employee(e),
+            "full_name": _full_name_from_employee(
+                e,
+                rel.candidate_snapshot if rel is not None and isinstance(rel.candidate_snapshot, dict) else None,
+            ),
             "status": str(e.status or ""),
             "employer": employer,
             "client": client,
@@ -359,7 +372,7 @@ async def list_employees_directory(
             "start_date": start_date.isoformat() if start_date else None,
             "assigned_hr": assigned_label,
             "assigned_hr_user_id": aid,
-            "handoff_id": _handoff_id_from_meta(meta),
+            "handoff_id": _handoff_id_from_relationship(rel.handoff_id if rel is not None else None),
             "candidate_id": str(e.candidate_id) if e.candidate_id else None,
             "compliance_status": comp_st,
             "missing_documents_count": missing_n,

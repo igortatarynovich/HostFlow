@@ -22,9 +22,17 @@ export function pipelineColumnItemMatches(item: unknown, filters: PipelineColumn
   if (filters.search) {
     const normalizedQuery = normalizeSearchValue(filters.search);
     const name =
-      `${String(c.first_name || '')} ${String(c.last_name || '')}`.trim() ||
-      String(c.name || '') ||
-      String(row.candidate_name || '');
+      [
+        c.first_name,
+        c.last_name,
+        c.first_name_latin,
+        c.last_name_latin,
+        c.name,
+        row.candidate_name,
+      ]
+        .map((part) => String(part || '').trim())
+        .filter(Boolean)
+        .join(' ') || '';
     const email = String(c.email || row.candidate_email || '');
     const phone = String(c.phone || row.candidate_phone || '');
     const haystacks = [name, email, phone];

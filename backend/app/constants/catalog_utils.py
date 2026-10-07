@@ -52,11 +52,25 @@ def country_by_dial(dial: str) -> List[Tuple[str, str]]:
     return sorted(out, key=lambda x: x[1])
 
 
+# Countries the operator works with, ahead of the alphabetical remainder.
+# These are registry alpha-2 codes, not a second country catalog.
+_WORKING_COUNTRY_CODES = ("PL", "BY", "UA", "MD", "GE", "KZ", "UZ")
+
+
+def _country_sort_key(code: str, label: str) -> tuple[int, str]:
+    normalized = str(code or "").strip().upper()
+    try:
+        rank = _WORKING_COUNTRY_CODES.index(normalized)
+    except ValueError:
+        rank = len(_WORKING_COUNTRY_CODES)
+    return (rank, label.casefold())
+
+
 # ---------- генераторы «options» для фронта ----------
 def to_options_countries() -> List[Dict[str, Any]]:
     """
     [{ value: 'PL', label: '🇵🇱 Польша', meta: {code, name, dial_code} }, ...]
-    Отсортировано по label.
+    Working countries first, then the rest by label.
     """
     options: List[Dict[str, Any]] = []
     for iso, name in COUNTRIES.items():
@@ -71,7 +85,7 @@ def to_options_countries() -> List[Dict[str, Any]]:
                 },
             }
         )
-    options.sort(key=lambda x: x["label"])
+    options.sort(key=lambda x: _country_sort_key(str(x["value"]), str(x["label"])))
     return options
 
 
@@ -100,7 +114,7 @@ def to_options_dial_codes() -> List[Dict[str, Any]]:
                 "meta": {"country": iso, "name": name},
             }
         )
-    options.sort(key=lambda x: x["label"])
+    options.sort(key=lambda x: _country_sort_key(str((x.get("meta") or {}).get("country") or ""), str(x["label"])))
     return options
 
 
@@ -157,7 +171,7 @@ def as_code_name_list(d: Dict[str, str]) -> List[Dict[str, str]]:
     Удобно для старого API.
     """
     items = [{"code": k, "name": v} for k, v in d.items()]
-    items.sort(key=lambda x: x["name"])
+    items.sort(key=lambda x: _country_sort_key(x["code"], x["name"]))
     return items
 
 
@@ -166,7 +180,7 @@ def as_country_dial_list() -> List[Dict[str, str]]:
     [{country:'PL', dial_code:'+48'}, ...] — “сырой” формат, как в текущем API.
     """
     items = [{"country": iso, "dial_code": dial} for iso, dial in DIAL_CODES.items()]
-    items.sort(key=lambda x: country_name(x["country"]))
+    items.sort(key=lambda x: _country_sort_key(x["country"], country_name(x["country"])))
     return items
 
 

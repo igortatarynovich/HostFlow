@@ -97,6 +97,9 @@ Phase 0–1 slot code remains valid **bridge** until `candidate_evidence` table 
 - Document Hub: [ADR-009](ADR-009-document-hub-platform-layer.md)  
 - Recruitment / HR boundary: [ADR-002](ADR-002-modular-recruitment-hr-boundary.md)  
 - Hiring walk disposition: [`hiring-acceptance-contract.md`](hiring-acceptance-contract.md) (`candidate_evidence_binds_document_link`)
+- Requirement resolution: [`requirement-resolution-contract.md`](requirement-resolution-contract.md) (`requirement_resolution.v1`). Which Employment requirement applies, which fact is missing, which accepted evidence variant may satisfy it. Not a source of requirements. Not the author of the required set.
+- CE, Code 95, and the issuing country: [`ce-code95-issuing-country.md`](ce-code95-issuing-country.md). The issuing country selects the missing facts and shared or separate evidence. REQUIRED holds the Ready to Start entrance. PREFERRED does not. No country list. Not a Legal Eligibility input.
+- Operator facts: [`operator-candidate-employment-facts.md`](operator-candidate-employment-facts.md). The operator records facts already named. Labels project onto existing values. No new chain value. No document requirement. Not a source of the required set.
 
 ## AI Agent Notes
 

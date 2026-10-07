@@ -4,6 +4,7 @@ import type { CandidateExtra } from '../../api/types'
 import type { RefObject } from 'react'
 import type { CandidateProfile } from '../../api/candidate_profiles'
 import type { EffectiveCardLayout } from '../../api/fieldRegistry'
+import DateInput from '../controls/DateInput'
 import { useI18n } from '../../i18n'
 import { Input, CheckboxMultiSelect } from './shared/FormComponents'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
@@ -89,7 +90,7 @@ function CandidateExperienceSection({
     <section
       ref={experienceRef}
       id="section-experience"
-      className="group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl"
+      className={embedded ? 'scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4' : 'group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl'}
     >
       {!embedded ? (
         <button type="button" onClick={toggle} className="flex w-full items-center justify-between gap-3 text-left">
@@ -265,21 +266,17 @@ function CandidateExperienceSection({
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <input
-                        className="input"
-                        type="date"
+                      <DateInput
                         value={entry.start_date || ''}
                         disabled={candidateDataReadOnly}
-                        onChange={(e) => onUpdateEmploymentHistory(entry.localId, 'start_date', e.target.value)}
+                        onValueChange={(next) => onUpdateEmploymentHistory(entry.localId, 'start_date', next)}
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <input
-                        className="input"
-                        type="date"
+                      <DateInput
                         value={entry.end_date || ''}
                         disabled={candidateDataReadOnly}
-                        onChange={(e) => onUpdateEmploymentHistory(entry.localId, 'end_date', e.target.value)}
+                        onValueChange={(next) => onUpdateEmploymentHistory(entry.localId, 'end_date', next)}
                       />
                     </td>
                     <td className="px-3 py-2 text-right">

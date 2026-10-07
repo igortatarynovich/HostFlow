@@ -29,7 +29,7 @@ from backend.app.services.workforce_directory import (
     _assigned_hr_user_id,
     _compliance_and_risk,
     _full_name_from_employee,
-    _handoff_id_from_meta,
+    _handoff_id_from_relationship,
     _position_from_employment,
     _rank_from_severity,
 )
@@ -136,6 +136,8 @@ def _build_employee_dossier(
     documents_missing: list[dict[str, Any]],
     documents_expiring: list[dict[str, Any]],
     onboarding_overdue: int,
+    started_on: date | None = None,
+    ended_on: date | None = None,
 ) -> dict[str, Any]:
     """Structured employee file used by HR as the primary dossier surface."""
     personal = recruiter_summary.get("personal_data") if isinstance(recruiter_summary, dict) else {}
@@ -262,12 +264,8 @@ def _build_employee_dossier(
         },
         "employment": {
             "status": str(getattr(employee, "status", "") or ""),
-            "hire_date": getattr(employee, "hire_date", None).isoformat() if getattr(employee, "hire_date", None) else None,
-            "termination_date": (
-                getattr(employee, "termination_date", None).isoformat()
-                if getattr(employee, "termination_date", None)
-                else None
-            ),
+            "hire_date": started_on.isoformat() if started_on else None,
+            "termination_date": ended_on.isoformat() if ended_on else None,
             "contracts_total": len(bundle.get("employments") or []),
             "absences_total": len(bundle.get("absences") or []),
             "leave_requests_total": len(bundle.get("leave_requests") or []),
@@ -334,6 +332,22 @@ async def collect_operational_profile_raw(
     bundle = await we_svc.get_hr_bundle(db, tid, eid)
     employments = list(bundle.get("employments") or [])
     latest = employments[0] if employments else None
+    from backend.app.services.employment_records import display_employment
+
+    relationship = await display_employment(db, tid, eid)
+    client_company_id = (
+        str(relationship.client_company_id)
+        if relationship is not None and relationship.client_company_id
+        else None
+    )
+    relationship_vacancy_id = (
+        str(relationship.vacancy_id) if relationship is not None and relationship.vacancy_id else None
+    )
+    recruiter_user_id = (
+        str(relationship.recruiter_user_id)
+        if relationship is not None and relationship.recruiter_user_id
+        else None
+    )
 
     own_name: str | None = None
     if emp.own_company_id:
@@ -342,15 +356,15 @@ async def collect_operational_profile_raw(
             own_name = str(oc.name or "").strip() or str(oc.id)
 
     client_name: str | None = None
-    if emp.company_id:
-        c = (await db.execute(select(Company).where(Company.id == str(emp.company_id)))).scalar_one_or_none()
+    if client_company_id:
+        c = (await db.execute(select(Company).where(Company.id == client_company_id))).scalar_one_or_none()
         if c:
             client_name = str(c.name or "").strip() or str(c.id)
 
     vac_title: str | None = None
     vac_id = str(latest.vacancy_id) if latest and latest.vacancy_id else None
-    if not vac_id and emp.vacancy_id:
-        vac_id = str(emp.vacancy_id)
+    if not vac_id and relationship_vacancy_id:
+        vac_id = relationship_vacancy_id
     if vac_id:
         v = (await db.execute(select(Vacancy).where(Vacancy.id == vac_id))).scalar_one_or_none()
         if v:
@@ -360,11 +374,11 @@ async def collect_operational_profile_raw(
     start_d: date | None = None
     if latest and latest.start_date:
         start_d = latest.start_date
-    elif emp.hire_date:
-        start_d = emp.hire_date
+    elif relationship is not None and relationship.started_on:
+        start_d = relationship.started_on
 
     meta = emp.meta if isinstance(emp.meta, dict) else {}
-    aid = _assigned_hr_user_id(meta, str(emp.recruiter_user_id) if emp.recruiter_user_id else None)
+    aid = _assigned_hr_user_id(meta, recruiter_user_id)
     assigned_label: str | None = None
     if aid:
         u = (await db.execute(select(User).where(User.id == aid))).scalar_one_or_none()
@@ -448,13 +462,22 @@ async def collect_operational_profile_raw(
         worst_severity=worst,
     )
 
+    handoff_by_user_id = (
+        str(relationship.handoff_by_user_id)
+        if relationship is not None and relationship.handoff_by_user_id
+        else None
+    )
     handoff_by_name: str | None = None
-    if emp.handoff_by_user_id:
-        u = (await db.execute(select(User).where(User.id == str(emp.handoff_by_user_id)))).scalar_one_or_none()
+    if handoff_by_user_id:
+        u = (await db.execute(select(User).where(User.id == handoff_by_user_id))).scalar_one_or_none()
         if u:
             handoff_by_name = (u.full_name or "").strip() or (u.email or "").strip() or str(u.id)
 
-    snap = emp.candidate_snapshot if isinstance(emp.candidate_snapshot, dict) else None
+    snap = (
+        relationship.candidate_snapshot
+        if relationship is not None and isinstance(relationship.candidate_snapshot, dict)
+        else None
+    )
     snap = await _enrich_snapshot_from_candidate_if_needed(db, employee=emp, snapshot=snap)
 
     today = _utc_today()
@@ -507,15 +530,15 @@ async def collect_operational_profile_raw(
             "actor_id": None,
         }
     )
-    if emp.handoff_at:
+    if relationship is not None and relationship.handoff_at:
         timeline.append(
             {
                 "id": f"evt-handoff-{eid}",
-                "occurred_at": _iso(emp.handoff_at) or "",
+                "occurred_at": _iso(relationship.handoff_at) or "",
                 "kind": "handoff",
                 "title": "Handoff recorded on employee",
                 "detail": handoff_by_name,
-                "actor_id": str(emp.handoff_by_user_id) if emp.handoff_by_user_id else None,
+                "actor_id": handoff_by_user_id,
             }
         )
 
@@ -605,11 +628,11 @@ async def collect_operational_profile_raw(
     timeline.sort(key=lambda x: str(x.get("occurred_at") or ""), reverse=True)
     timeline = timeline[:100]
 
-    prob_iso = emp.probation_end.isoformat() if getattr(emp, "probation_end", None) else None
+    prob_iso = latest.probation_end.isoformat() if latest is not None and getattr(latest, "probation_end", None) else None
 
     operational_summary = {
         "employee_status": str(emp.status or ""),
-        "full_name": _full_name_from_employee(emp),
+        "full_name": _full_name_from_employee(emp, snap),
         "employer": own_name,
         "client": client_name,
         "position": position,
@@ -617,7 +640,9 @@ async def collect_operational_profile_raw(
         "probation_end": prob_iso,
         "assigned_hr": assigned_label,
         "assigned_hr_user_id": aid,
-        "handoff_id": _handoff_id_from_meta(meta),
+        "handoff_id": _handoff_id_from_relationship(
+            relationship.handoff_id if relationship is not None else None
+        ),
         "compliance_status": comp_st,
         "missing_documents_count": missing_n,
         "expiring_documents_count": expiring_n,
@@ -625,12 +650,14 @@ async def collect_operational_profile_raw(
     }
 
     transfer = {
-        "handoff_id": _handoff_id_from_meta(meta),
-        "handoff_at": _iso(emp.handoff_at),
-        "handoff_by_user_id": str(emp.handoff_by_user_id) if emp.handoff_by_user_id else None,
+        "handoff_id": _handoff_id_from_relationship(
+            relationship.handoff_id if relationship is not None else None
+        ),
+        "handoff_at": _iso(relationship.handoff_at) if relationship is not None else None,
+        "handoff_by_user_id": handoff_by_user_id,
         "handoff_by_name": handoff_by_name,
         "candidate_id": str(emp.candidate_id) if emp.candidate_id else None,
-        "vacancy_id": str(emp.vacancy_id) if emp.vacancy_id else None,
+        "vacancy_id": relationship_vacancy_id,
     }
 
     employment_ops: list[dict[str, Any]] = []
@@ -681,7 +708,7 @@ async def collect_operational_profile_raw(
             citizenship=citizenship,
             position_category=position_category,
             stage="hr",
-            client_id=str(emp.company_id) if emp.company_id else None,
+            client_id=client_company_id,
             vacancy_id=vac_id,
         ),
     )
@@ -734,7 +761,7 @@ async def collect_operational_profile_raw(
             ) if wel is not None else (str((snap or {}).get("position_category") or "").strip() or None),
             employment_type=str(getattr(latest, "contract_type", "") or "").strip() or None,
             stage="hr",
-            client_id=str(emp.company_id) if emp.company_id else None,
+            client_id=client_company_id,
             vacancy_id=vac_id,
         ),
     )
@@ -765,6 +792,8 @@ async def collect_operational_profile_raw(
             documents_missing=missing_items,
             documents_expiring=expiring_items,
             onboarding_overdue=overdue,
+            started_on=relationship.started_on if relationship is not None else None,
+            ended_on=relationship.ended_on if relationship is not None else None,
         ),
         "employee": emp,
         "bundle": bundle,

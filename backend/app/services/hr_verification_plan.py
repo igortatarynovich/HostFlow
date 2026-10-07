@@ -220,8 +220,12 @@ async def _build_ruleset_context(
         extra = candidate._get_extra()
         personal = candidate._get_personal_data()
     snap = {}
-    if employee and isinstance(employee.candidate_snapshot, dict):
-        snap = employee.candidate_snapshot
+    if employee is not None:
+        from backend.app.services.employment_records import snapshot_for_employee
+
+        loaded = await snapshot_for_employee(db, tenant_id, str(employee.id))
+        if isinstance(loaded, dict):
+            snap = loaded
     citizenship = (
         extra.get("citizenship")
         or personal.get("citizenship")

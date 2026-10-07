@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
+from backend.app.models.hr_employment import Employment
 from backend.app.models.workforce_employee import WorkforceEmployee
 from backend.app.models.workforce_hr_review import (
     HR_REVIEW_STATUS_APPROVED,
@@ -265,7 +266,7 @@ async def _workforce_employee_id_by_handoff(
     tenant_id: str,
     handoffs: Sequence[CandidateHandoff],
 ) -> dict[str, str]:
-    """Map handoff id -> workforce_employee.id using meta.internal_hr_handoff_id."""
+    """Map handoff id -> workforce_employee.id using Employment.handoff_id."""
     if not handoffs:
         return {}
     cand_ids = {str(h.candidate_id) for h in handoffs if h.candidate_id}
@@ -277,11 +278,22 @@ async def _workforce_employee_id_by_handoff(
             WorkforceEmployee.candidate_id.in_(list(cand_ids)),
         )
     )
+    employees = list(rows.scalars().all())
+    if not employees:
+        return {}
+    emp_ids = [str(emp.id) for emp in employees]
+    rel_rows = await db.execute(
+        select(Employment).where(
+            Employment.tenant_id == str(tenant_id),
+            Employment.employee_id.in_(emp_ids),
+            Employment.handoff_id.isnot(None),
+        )
+    )
     out: dict[str, str] = {}
-    for emp in rows.scalars().all():
-        hid = (emp.meta or {}).get("internal_hr_handoff_id")
+    for rel in rel_rows.scalars().all():
+        hid = str(rel.handoff_id or "").strip()
         if hid:
-            out[str(hid)] = str(emp.id)
+            out[hid] = str(rel.employee_id)
     return out
 
 

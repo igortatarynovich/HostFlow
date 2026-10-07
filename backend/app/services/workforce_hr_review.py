@@ -148,10 +148,25 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _handoff_id_from_employee(employee: WorkforceEmployee) -> Optional[str]:
-    meta = employee.meta if isinstance(employee.meta, dict) else {}
-    hid = str(meta.get("internal_hr_handoff_id") or "").strip()
-    return hid or None
+async def _handoff_id_from_employee(
+    db: AsyncSession,
+    tenant_id: str,
+    employee: WorkforceEmployee,
+) -> Optional[str]:
+    from backend.app.services.employment_records import handoff_id_for_employee
+
+    return await handoff_id_for_employee(db, tenant_id, str(employee.id))
+
+
+async def _snapshot_from_employee(
+    db: AsyncSession,
+    tenant_id: str,
+    employee: WorkforceEmployee,
+) -> dict[str, Any]:
+    from backend.app.services.employment_records import snapshot_for_employee
+
+    snap = await snapshot_for_employee(db, tenant_id, str(employee.id))
+    return snap if isinstance(snap, dict) else {}
 
 
 def _journey_step_by_code(journey: dict[str, Any], code: str) -> Optional[dict[str, Any]]:
@@ -226,7 +241,7 @@ async def ensure_hr_review_for_employee(
         if orphan is not None:
             row = orphan
             row.employee_id = eid
-            hid = _handoff_id_from_employee(employee)
+            hid = await _handoff_id_from_employee(db, tid, employee)
             if hid and not row.handoff_id:
                 row.handoff_id = hid
             await db.flush()
@@ -235,7 +250,7 @@ async def ensure_hr_review_for_employee(
                 tenant_id=tid,
                 employee_id=eid,
                 candidate_id=cid,
-                handoff_id=_handoff_id_from_employee(employee),
+                handoff_id=await _handoff_id_from_employee(db, tid, employee),
                 status=HR_REVIEW_STATUS_IN_PROGRESS,
                 checklist_json={"items": []},
                 blockers_json=[],
@@ -244,7 +259,7 @@ async def ensure_hr_review_for_employee(
             db.add(row)
             await db.flush()
     elif not row.handoff_id:
-        hid = _handoff_id_from_employee(employee)
+        hid = await _handoff_id_from_employee(db, tid, employee)
         if hid:
             row.handoff_id = hid
             await db.flush()
@@ -253,7 +268,7 @@ async def ensure_hr_review_for_employee(
     from backend.app.services import hr_verified_fields as vf_svc
 
     await vf_svc.ensure_critical_field_placeholders(db, tenant_id=tid, review=row, employee_id=eid)
-    snap = employee.candidate_snapshot if isinstance(employee.candidate_snapshot, dict) else None
+    snap = await _snapshot_from_employee(db, tid, employee) or None
     await vf_svc.seed_profile_values_from_candidate_snapshot(db, tenant_id=tid, review=row, snapshot=snap)
     return row
 
@@ -436,7 +451,7 @@ async def _sync_review_from_sources(
     rp_recv = _journey_step_by_code(journey, "red_paper_received")
     zus = _journey_step_by_code(journey, "zus_registration")
 
-    snap = employee.candidate_snapshot if isinstance(employee.candidate_snapshot, dict) else {}
+    snap = await _snapshot_from_employee(db, tenant_id, employee)
     identity_ok = bool(
         (employee.display_name or "").strip()
         and (
@@ -632,8 +647,8 @@ async def build_hr_decision_basis(
 
     return {
         "generated_at": _now().isoformat(),
-        "handoff_id": _handoff_id_from_employee(employee),
-        "candidate_snapshot": employee.candidate_snapshot,
+        "handoff_id": await _handoff_id_from_employee(db, tenant_id, employee),
+        "candidate_snapshot": await _snapshot_from_employee(db, tenant_id, employee) or None,
         "eligibility_steps": steps_out,
         "compliance_reasons": compliance_reasons[:20],
         "recommended_next_action": journey.get("recommended_next_action"),
@@ -771,7 +786,7 @@ async def build_hr_review_panel(
     else:
         next_action = journey.get("recommended_next_action")
 
-    hid = review.handoff_id or _handoff_id_from_employee(emp)
+    hid = review.handoff_id or await _handoff_id_from_employee(db, tenant_id, emp)
     legacy_rows = _documents_for_approval(bundle, journey)
     legacy_rows = await merge_candidate_documents_into_approval_rows(
         db, tenant_id, str(emp.candidate_id or ""), legacy_rows
@@ -1052,7 +1067,7 @@ async def approve_hr_review(
     if not emp:
         raise ValueError("EMPLOYEE_NOT_FOUND")
     review = await ensure_hr_review_for_employee(db, tenant_id, emp)
-    hid = (review.handoff_id or _handoff_id_from_employee(emp) or "").strip()
+    hid = (review.handoff_id or await _handoff_id_from_employee(db, tenant_id, emp) or "").strip()
     if hid:
         from backend.app.services.hr_acceptance_orchestrator import approve_employment_for_handoff
 
@@ -1305,7 +1320,7 @@ async def return_hr_review_to_recruitment(
     if review.status in HR_REVIEW_TERMINAL_STATUSES:
         raise ValueError("HR_REVIEW_TERMINAL")
 
-    hid = review.handoff_id or _handoff_id_from_employee(emp)
+    hid = review.handoff_id or await _handoff_id_from_employee(db, tenant_id, emp)
     if hid:
         handoff, err = await return_handoff(
             db,

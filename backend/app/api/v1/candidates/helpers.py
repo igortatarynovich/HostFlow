@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from fastapi import HTTPException
 from sqlalchemy import and_, func, or_
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,16 +72,50 @@ def _validate_stage_transition(
     *,
     allow_revert: bool = True,
     max_skip: int = 1,
+    funnel_occupancy: bool = False,
 ) -> None:
     """Hiring-path transition-order rule (HE-2).
 
     Existence = LI-1 ``is_stage_registered``. Occupancy = ``Candidate.stage``.
-    Leftover static list / tenant dictionary / funnel_stages do not grant
-    existence. Jumps onto leftover-only codes are rejected.
-    Forward registered moves remain subject to leftover pipeline guards.
+    A published candidate-funnel stage is writable occupancy and is not a
+    jump, even when it is not an LI-1 key. Order applies only to registered
+    targets. Forward registered moves remain subject to leftover pipeline guards.
     """
     _ = allow_revert, max_skip
+    if funnel_occupancy:
+        if not str(target or "").strip():
+            raise HTTPException(status_code=422, detail="Stage must not be empty")
+        return
     assert_hiring_stage_transition(current, target)
+
+
+async def _published_candidate_funnel_stage_code(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    raw: str,
+) -> Optional[str]:
+    """Return the stored funnel stage code when this tenant published it.
+
+    Occupancy only. Does not register the code as a hiring stage.
+    """
+    code = str(raw or "").strip()
+    if not code or not str(tenant_id or "").strip():
+        return None
+    from backend.app.models.funnel import Funnel, FunnelStage
+
+    stmt = (
+        select(FunnelStage.code)
+        .join(Funnel, Funnel.id == FunnelStage.funnel_id)
+        .where(
+            Funnel.tenant_id == str(tenant_id),
+            Funnel.type == "candidate",
+            func.lower(FunnelStage.code) == code.lower(),
+        )
+        .limit(1)
+    )
+    found = (await db.execute(stmt)).scalar_one_or_none()
+    return str(found) if found else None
 
 
 async def resolve_writable_stage_code(
@@ -89,14 +124,26 @@ async def resolve_writable_stage_code(
     tenant_id: str,
     raw: str,
 ) -> str:
-    """Accept a LI-1 registered hiring stage only.
+    """Accept a LI-1 hiring stage, or a stage published on a candidate funnel.
 
-    Funnel-local codes and leftover dictionaries do not answer existence
-    on the hiring path (HE-2). ``db`` / ``tenant_id`` stay on the signature
-    so callers do not change; they are not existence inputs.
+    Funnel-local codes do not answer hiring-stage existence. They are
+    occupancy when the tenant already published that code on a candidate funnel.
     """
-    _ = db, tenant_id
-    return resolve_hiring_stage_key(raw)
+    text = str(raw or "").strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Stage must not be empty")
+    try:
+        return resolve_hiring_stage_key(text)
+    except HTTPException as exc:
+        if exc.status_code != 422:
+            raise
+        published = await _published_candidate_funnel_stage_code(
+            db, tenant_id=tenant_id, raw=text
+        )
+        if published:
+            return published
+        raise
+
 
 def _parse_dt(s: Optional[str]) -> Optional[datetime]:
     if not s:

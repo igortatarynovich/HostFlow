@@ -40,10 +40,17 @@ async def test_merge_context_blocked_without_fallback() -> None:
     session = AsyncMock()
     session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: None))
 
-    with patch(
-        "backend.app.services.document_merge.context.evaluate_contract_merge_identity",
-        new_callable=AsyncMock,
-        return_value=blocked,
+    with (
+        patch(
+            "backend.app.services.employment_records.display_employment",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "backend.app.services.document_merge.context.evaluate_contract_merge_identity",
+            new_callable=AsyncMock,
+            return_value=blocked,
+        ),
     ):
         ctx = await build_merge_context(session, "t1", employee=employee, candidate=None)
 
@@ -80,10 +87,17 @@ async def test_merge_context_complete_adds_bindings() -> None:
     session = AsyncMock()
     session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: None))
 
-    with patch(
-        "backend.app.services.document_merge.context.evaluate_contract_merge_identity",
-        new_callable=AsyncMock,
-        return_value=ready,
+    with (
+        patch(
+            "backend.app.services.employment_records.display_employment",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "backend.app.services.document_merge.context.evaluate_contract_merge_identity",
+            new_callable=AsyncMock,
+            return_value=ready,
+        ),
     ):
         ctx = await build_merge_context(session, "t1", employee=employee, candidate=None)
 

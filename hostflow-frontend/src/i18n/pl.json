@@ -44,7 +44,8 @@
       "hide": "Ukryj",
       "load_more": "Wczytaj więcej",
       "select": "Wybierz…",
-      "show": "Pokaż"
+      "show": "Pokaż",
+      "calendar": "Kalendarz"
     },
     "errors": {
       "unknown": "Nieznany błąd",
@@ -5768,6 +5769,59 @@
       }
     },
     "candidate_card": {
+      "operator_facts": {
+        "driver_block": "Dane i uprawnienia kierowcy",
+        "citizenship": "Obywatelstwo",
+        "stay_question": "Na jakiej podstawie przebywa w Polsce?",
+        "valid_to": "Ważna do",
+        "card_valid_to": "Karta ważna do",
+        "work_block": "Prawo do pracy",
+        "work_not_required": "Pobyt i zezwolenie na pracę nie są wymagane.",
+        "work_question": "Na jakiej podstawie może pracować?",
+        "authorization_from": "Ważne od",
+        "authorization_to": "Ważne do",
+        "authorization_conditions": "Warunki",
+        "qualifications": "Uprawnienia kierowcy",
+        "licence_title": "Prawo jazdy",
+        "licence_country": "Prawo jazdy — kraj wydania",
+        "licence_categories": "Kategorie",
+        "licence_valid_to": "Ważne do",
+        "code95": "Code 95",
+        "code95_valid_to": "Ważny do",
+        "tachograph": "Karta kierowcy",
+        "tachograph_country": "Kraj",
+        "tachograph_valid_to": "Ważna do",
+        "adr": "ADR",
+        "adr_country": "Kraj",
+        "adr_valid_to": "Ważne do",
+        "medical": "Badania lekarskie",
+        "psych": "Testy psychologiczne",
+        "pesel": "PESEL",
+        "pesel_number": "Numer PESEL",
+        "additional": "Dodatkowy dokument",
+        "unknown": "Nie wiadomo",
+        "yes": "Tak",
+        "no": "Nie",
+        "load_failed": "Nie udało się wczytać danych",
+        "save_failed": "Nie udało się zapisać danych",
+        "stay_option": {
+          "visa_d": "Wiza D",
+          "visa_c": "Wiza C",
+          "karta_pobytu": "Karta pobytu",
+          "visa_free": "Ruch bezwizowy",
+          "waiting_for_trc": "Oczekuje na kartę pobytu",
+          "special_protection": "Ochrona",
+          "other": "Inna",
+          "none": "Brak"
+        },
+        "work_option": {
+          "work_permit": "Zezwolenie na pracę",
+          "oswiadczenie": "Oświadczenie",
+          "included_in_stay": "Prawo do pracy wynika z pobytu",
+          "not_required": "Nie wymaga zezwolenia",
+          "no_right": "Brak prawa do pracy"
+        }
+      },
       "actions": {
         "delete_request": "Zgłoś usunięcie",
         "delete_request_loading": "Wysyłamy zgłoszenie…",
@@ -6360,6 +6414,7 @@
       },
       "docs_panel": {
         "kpi": "KPI",
+        "open": "Otwórz",
         "open_full": "Otwórz pełny widok",
         "tabs": {
           "blockers": "Blokery",
@@ -6406,7 +6461,7 @@
         "checklist_not_yet_required": "Jeszcze nie przesłano (nie wymagane na tym etapie)",
         "checklist_panel_title": "Lista kontrolna dokumentów",
         "compact_hint": "Szczegóły dokumentów są zwinięte, aby ograniczyć szum.",
-        "early_stage_hint": "Na tym etapie dokumenty nie są wymagane (np. New). Prześlij / Otwórz pełny widok — opcjonalnie.",
+        "early_stage_hint": "Na tym etapie dokumenty nie są wymagane (np. New). Otwórz — opcjonalnie.",
         "in_progress_label": "W toku / recenzja",
         "in_progress_not_blocking": "Przesyłanie w toku — nie blokuje na tym etapie.",
         "next_step_not_blocking": "Na tym etapie pipeline nie jest blokowany — najpierw skontaktuj się i zakwalifikuj.",
@@ -15805,6 +15860,7 @@
         "decision": "Decyzja",
         "medical_certificate": "Orzeczenie lekarskie",
         "psych_tests": "Badania psychologiczne",
+        "psychological_certificate": "Badania psychologiczne",
         "adr": "ADR",
         "work_permit": "Zezwolenie na pracę",
         "driver_certificate": "Świadectwo kierowcy",

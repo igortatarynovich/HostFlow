@@ -17,7 +17,6 @@ from backend.app.reference.employment_start_allowed import (
     apply_employment_start_allowed_v1,
     evaluate_employment_start_allowed_v1,
 )
-from backend.app.services.employment_formalize_employee_ensure import employee_linked_handoff_id
 from backend.app.services.employment_start_allowed_evidence import (
     project_bhp_evidence_view,
     project_contract_evidence_view,
@@ -78,6 +77,7 @@ def employment_context_from_employee(
     employee: WorkforceEmployee,
     *,
     override: Mapping[str, Any] | None = None,
+    relationship: Any | None = None,
 ) -> dict[str, Any]:
     """Compose PEM-1-oriented context from employee meta + optional host override."""
     meta = _record(getattr(employee, "meta", None))
@@ -93,7 +93,7 @@ def employment_context_from_employee(
         "employer_id": _text(
             meta.get("employer_id")
             or rt.get("employer_id")
-            or getattr(employee, "company_id", None)
+            or getattr(relationship, "client_company_id", None)
             or getattr(employee, "own_company_id", None)
         )
         or None,
@@ -105,7 +105,7 @@ def employment_context_from_employee(
         or None,
         "planned_start_date": None,
     }
-    hire = getattr(employee, "hire_date", None)
+    hire = getattr(relationship, "started_on", None)
     if hire is not None:
         ctx["planned_start_date"] = hire.isoformat() if hasattr(hire, "isoformat") else str(hire)
     if isinstance(override, Mapping) and override:
@@ -121,7 +121,9 @@ async def resolve_employee_for_handoff(
     tenant_id: str,
     handoff: CandidateHandoff,
 ) -> WorkforceEmployee | None:
-    """Prefer meta.internal_hr_handoff_id linkage; fall back to candidate Employee."""
+    """Prefer Employment.handoff_id linkage; fall back to candidate Employee."""
+    from backend.app.services.employment_records import handoff_id_for_employee
+
     tid = str(tenant_id).strip()
     hid = str(handoff.id)
     cand_id = _text(getattr(handoff, "candidate_id", None))
@@ -130,7 +132,7 @@ async def resolve_employee_for_handoff(
     existing = await we_svc.find_employee_by_candidate(db, tid, cand_id)
     if existing is None:
         return None
-    linked = employee_linked_handoff_id(existing)
+    linked = await handoff_id_for_employee(db, tid, str(existing.id))
     if linked and linked != hid:
         # Same candidate, different handoff linkage — still the candidate-scoped Employee.
         # Host must evaluate the linked row after Formalize ensure stamps this handoff.
@@ -203,8 +205,15 @@ async def evaluate_start_allowed_for_handoff(
             },
         }
 
-    linked = employee_linked_handoff_id(employee)
-    ctx = employment_context_from_employee(employee, override=employment_context)
+    from backend.app.services.employment_records import display_employment, handoff_id_for_employee
+
+    relationship = await display_employment(db, str(tenant_id), str(employee.id))
+    linked = await handoff_id_for_employee(db, str(tenant_id), str(employee.id))
+    ctx = employment_context_from_employee(
+        employee,
+        override=employment_context,
+        relationship=relationship,
+    )
     cand_id = _text(getattr(employee, "candidate_id", None))
     contract_view, medical_view, bhp_view = await _load_evidence_views(
         db, tenant_id=tenant_id, candidate_id=cand_id

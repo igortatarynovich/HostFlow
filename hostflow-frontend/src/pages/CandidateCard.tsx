@@ -25,6 +25,7 @@ import { createDeleteRequest } from '../api/deletionRequests'
 import { sendRodo } from '../api/legalDocuments'
 import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
+import OperatorFactsSurface from '../modules/candidates/OperatorFactsSurface'
 import { exportCandidateBundle } from '../api/documents'
 import { createCandidateUploadLink, recreateCandidateFromApplication, type CandidateUploadLinkResponse } from '../api/candidates'
 import { useCandidateNextAction } from '../components/candidate/useCandidateNextAction'
@@ -86,6 +87,7 @@ import {
 import { useHiringPipelineGates } from '../contexts/HiringPipelineGatesContext'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
+import { compareCountryOptions } from '../data/countries'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { parseCandidateMissingError, type CandidateMissingState } from '../utils/candidateMissing'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
@@ -108,7 +110,7 @@ import CandidateCustomFieldsSection from '../components/candidate/CandidateCusto
 import CandidateRodoSection from '../components/candidate/CandidateRodoSection'
 import CandidateContactAttemptsSection from '../components/candidate/CandidateContactAttemptsSection'
 import CandidateTimelinePanel from '../components/candidate/CandidateTimelinePanel'
-import CandidateStageDecisionPanel from '../components/candidate/CandidateStageDecisionPanel'
+import CandidateStageDecisionPanel, { CandidatePipelineStatus } from '../components/candidate/CandidateStageDecisionPanel'
 import { Input, SearchableSelect } from '../components/candidate/shared/FormComponents'
 // CandidateCard layout: Info (top) / Control (right) / Content (main)
 // Documents are rendered as a single compact panel inside the rail.
@@ -1048,6 +1050,7 @@ export default function CandidateCard(){
   })
   const [requirementBlockersLoading, setRequirementBlockersLoading] = useState(false)
   const [docsSummaryRefreshTrigger, setDocsSummaryRefreshTrigger] = useState(0)
+  const [operatorFactsRevision, setOperatorFactsRevision] = useState(0)
   const [docsSummarySnapshot, setDocsSummarySnapshot] = useState<Record<string, unknown> | null>(null)
   const [pipelineOverrides, setPipelineOverrides] = useState<CandidatePipelineOverride[]>([])
   const [pipelineOverrideBusy, setPipelineOverrideBusy] = useState(false)
@@ -1425,7 +1428,7 @@ export default function CandidateCard(){
             return { value: code, label: getRegionDisplayName(code, locale) || code }
           })
           .filter((o: Option) => o.value && o.label)
-          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, locale))
+          .sort((a: Option, b: Option) => compareCountryOptions(a, b, locale))
         setCountries(countriesArr)
         const langsArr: Option[] = toArray(l.data)
           .map((x: any) => {
@@ -1461,7 +1464,7 @@ export default function CandidateCard(){
             } as Option
           })
           .filter((o: Option) => !!o.extra?.prefix)
-          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, locale))
+          .sort((a: Option, b: Option) => compareCountryOptions(a, b, locale))
         setDialCodes(dcList)
 
         // managers
@@ -2408,7 +2411,8 @@ export default function CandidateCard(){
       }
 
       // Валидация poland_stay_basis при current_location = in_poland
-      if (extra.current_location === 'in_poland' && !extra.poland_stay_basis) {
+      const factsEditedOnSurface = !isNew && !isMasked && Boolean(model.id)
+      if (extra.current_location === 'in_poland' && !extra.poland_stay_basis && !factsEditedOnSurface) {
         notify({
           title: t('app.candidate_card.validation.poland_basis_required'),
           variant: 'error',
@@ -2417,7 +2421,10 @@ export default function CandidateCard(){
         return
       }
       // Валидация обязательных полей из профиля
-      const missingFields = validateRequiredFields(candidateProfile, model, extra)
+      const ownedByFactsSurface = new Set(['citizenship', 'poland_stay_basis', 'has_adr', 'license_categories'])
+      const missingFields = validateRequiredFields(candidateProfile, model, extra).filter(
+        (field) => !factsEditedOnSurface || !ownedByFactsSurface.has(field.fieldKey),
+      )
       if (missingFields.length > 0) {
         const fieldLabels = missingFields
           .map((f) => translateCandidateFieldKey(t, f.fieldKey, f.label))
@@ -3164,7 +3171,44 @@ export default function CandidateCard(){
     primaryHandoffDestination,
   ])
 
+  const showTransferToHr = useMemo(() => {
+    if (isNew || model?.masked === true || isClientTenant) return false
+    if (!can('candidates.manage')) return false
+    const stage = String(model?.stage || '').trim().toLowerCase()
+    if (stage !== 'ready_for_handoff' && stage !== 'ready_for_hr') return false
+    if (!String(model?.company_id || '').trim()) return false
+    const pendingDest = String(handoffStatus?.pending?.destination || '')
+    const acceptedDest = String(handoffStatus?.accepted?.destination || '')
+    return pendingDest !== 'internal_hr' && acceptedDest !== 'internal_hr'
+  }, [can, handoffStatus?.accepted?.destination, handoffStatus?.pending?.destination, isClientTenant, isNew, model?.company_id, model?.masked, model?.stage])
+
   const handoffActiveBlock = Boolean(handoffStatus?.pending || handoffStatus?.accepted)
+
+  const handleTransferToHr = useCallback(async () => {
+    const cid = String(model?.company_id || '').trim()
+    if (!model?.id || !cid) return
+    try {
+      setHandoffSubmitting(true)
+      await createHandoff(model.id as UUID, { client_company_id: cid, destination: 'internal_hr' })
+      await refreshHandoffMeta()
+      await handleAttemptCreated()
+      notify({
+        title: t('app.candidate_card.handoff.created_internal', { defaultValue: 'Передано в HR' }),
+        variant: 'success',
+      })
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail
+      const title =
+        typeof detail === 'string'
+          ? detail
+          : typeof detail === 'object' && detail && typeof detail.message === 'string'
+            ? detail.message
+            : e?.message || t('app.common.messages.unexpected')
+      notify({ title, variant: 'error' })
+    } finally {
+      setHandoffSubmitting(false)
+    }
+  }, [handleAttemptCreated, model?.company_id, model?.id, notify, refreshHandoffMeta, t])
 
   const handleHandoffCreate = useCallback(async () => {
     if (!model?.id || !primaryHandoffDestination) return
@@ -3592,7 +3636,7 @@ export default function CandidateCard(){
         const label = stageLabelIntl(code)
         const canonical = canonicalStageKey(code, label) || ''
 
-        if (canonical === 'handoff_returned' || canonical === 'rejected' || canonical === 'declined') {
+        if (canonical === 'rejected' || canonical === 'declined') {
           return
         }
         if (stripPostRecruitment && isPostRecruitmentStageCode(canonical)) return
@@ -4543,6 +4587,34 @@ export default function CandidateCard(){
     )
   }
 
+  const pipelineStatus = !isNew && model?.id ? (
+    <CandidatePipelineStatus
+      locale={locale}
+      stageSinceAt={stageSinceAt}
+      stageJourneyStages={stageJourneyStagesPipeline}
+      journeyPanelStages={stageJourneyStagesDisplay}
+      stageOutcomeStages={stageOutcomeStages}
+      stageJourneyDisplayStage={stageJourneyDisplayStage}
+      stageJourneyOutcomeStage={stageJourneyOutcomeStage}
+      stageJourneySignals={stageJourneySignals}
+      completedStageCodes={completedStageCodes}
+      currentStageCode={model.stage}
+      candidateRowStatus={model.row_status}
+      candidateStatus={model.status}
+      stageLabelIntl={stageLabelIntl}
+      docsBlockers={effectiveDocsBlockersForPipeline}
+      blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
+      docsPipelineBlocking={docsPipelineBlockingValue}
+      docsPipelineSoftWarn={docsPipelineSoftWarnValue}
+      vacancyPipelineBlocking={vacancyPipelineBlockingValue}
+      contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
+      canEdit={model.can_edit !== false}
+      canCloseRecruitment={canCloseRecruitment}
+      onMoveStage={handleStageJourneyChange}
+      onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
+    />
+  ) : null
+
   return (
     <PageShell>
       <PageShellHeader>
@@ -4572,8 +4644,9 @@ export default function CandidateCard(){
             ? () => setHandoffModalOpen(true)
             : undefined
         }
+        onOpenHrTransfer={showTransferToHr ? () => void handleTransferToHr() : undefined}
         handoffReadonlyText={showAgencyHandoffHeader ? handoffReadonlySummary : null}
-        handoffDisabled={handoffLoading}
+        handoffDisabled={handoffLoading || handoffSubmitting}
         handoffDisabledTitle={handoffLoading ? t('common.loading') : null}
         handoffLabel={handoffPrimaryActionLabel}
         onDeleteRequest={handleDeleteRequest}
@@ -4598,6 +4671,7 @@ export default function CandidateCard(){
         focusContent={!isNew && model?.id ? (
           <div className="grid gap-2">
             <CandidateStageDecisionPanel
+              layout="journey"
               locale={locale}
               stageSinceAt={stageSinceAt}
               stageJourneyStages={stageJourneyStagesPipeline}
@@ -4640,6 +4714,23 @@ export default function CandidateCard(){
         <div className="min-w-0 space-y-4">
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-4 lg:pr-6">
+                  {!isMasked && model?.id ? (
+                    <OperatorFactsSurface
+                      candidateId={String(model.id)}
+                      countries={countries}
+                      onSaved={(saved) => {
+                        setOperatorFactsRevision((value) => value + 1)
+                        setDocsSummaryRefreshTrigger((value) => value + 1)
+                        const citizenship = saved.steps.find((step) => step.key === 'citizenship')?.stored
+                        const adr = saved.steps.find((step) => step.key === 'adr')
+                        setExtra((prev) => ({
+                          ...prev,
+                          citizenship: citizenship || '',
+                          has_adr: typeof adr?.presence === 'boolean' ? adr.presence : null,
+                        }))
+                      }}
+                    />
+                  ) : null}
                   {registrySectionsBeforeStatus.map((sectionCode) => {
                     if (!registrySectionVisible(sectionCode)) return null
                     if (sectionCode === 'basic') {
@@ -4693,38 +4784,13 @@ export default function CandidateCard(){
                           candidateProfile={candidateProfile}
                           effectiveLayout={effectiveLayout}
                           candidateDataReadOnly={candidateDataReadOnly}
+                          citizenshipReadOnly={!isMasked && Boolean(model?.id)}
                           embedded
                         />
                       )
                     }
                     return null
                   })}
-
-                  {/* Статус и соответствие требованиям (на всю ширину) */}
-                  <div className="space-y-4">
-                    <CandidateStatusSection
-                      extra={extra}
-                      statusRef={statusRef}
-                      polandBasisOptions={polandBasisOptions}
-                      selectTexts={selectTexts}
-                      onExtraChange={setExtra}
-                      candidateProfile={candidateProfile}
-                      effectiveLayout={effectiveLayout}
-                      candidateDataReadOnly={candidateDataReadOnly}
-                      embedded
-                    />
-
-                    <CandidateWorkforceTerminationSection extra={extra} />
-
-                    <CandidateCustomFieldsSection
-                      extra={extra}
-                      customFieldsRef={customFieldsRef}
-                      candidateProfile={candidateProfile}
-                      effectiveLayout={effectiveLayout}
-                      selectTexts={selectTexts}
-                      onExtraChange={setExtra}
-                    />
-                  </div>
 
                   {registrySectionsAfterStatus.map((sectionCode) => {
                     if (!registrySectionVisible(sectionCode)) return null
@@ -4830,6 +4896,33 @@ export default function CandidateCard(){
                       </div>
                     </section>
                   )}
+
+                  {/* Статус и соответствие требованиям (на всю ширину) */}
+                  <div className="space-y-4">
+                    <CandidateStatusSection
+                      extra={extra}
+                      statusRef={statusRef}
+                      polandBasisOptions={polandBasisOptions}
+                      selectTexts={selectTexts}
+                      onExtraChange={setExtra}
+                      candidateProfile={candidateProfile}
+                      effectiveLayout={effectiveLayout}
+                      candidateDataReadOnly={candidateDataReadOnly}
+                      factsReadOnly={!isMasked && Boolean(model?.id)}
+                      embedded
+                    />
+
+                    <CandidateWorkforceTerminationSection extra={extra} />
+
+                    <CandidateCustomFieldsSection
+                      extra={extra}
+                      customFieldsRef={customFieldsRef}
+                      candidateProfile={candidateProfile}
+                      effectiveLayout={effectiveLayout}
+                      selectTexts={selectTexts}
+                      onExtraChange={setExtra}
+                    />
+                  </div>
 
                   {!isNew && model?.id && !isMasked ? (
                     <CandidateApplicationsSection
@@ -4941,7 +5034,11 @@ export default function CandidateCard(){
                     setRequirementBlockers(blockers)
                     setRequirementBlockersLoading(loading)
                   }}
-                />
+                >
+                  {pipelineStatus}
+                </RequirementsWorkspaceSummaryCard>
+              ) : pipelineStatus ? (
+                <section className="rounded-2xl border border-slate-200 bg-white p-3">{pipelineStatus}</section>
               ) : null}
 
               {showFullRequirementsChecklist ? (
@@ -4964,7 +5061,6 @@ export default function CandidateCard(){
                 candidateId={String(model.id)}
                 ownerContext={docsOwnerContext}
                 uploadBusy={false}
-                onUpload={() => openDocsDrawer(undefined)}
                 onOpenDocs={() => openDocsDrawer(undefined)}
                 onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic, inProgress: b.inProgress })}
                 onLoadingChange={setDocsBlockersLoading}
@@ -5244,10 +5340,10 @@ export default function CandidateCard(){
       {!isMasked && docsDrawerOpen && model?.id ? (
         <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={closeDocsDrawer}>
           <div
-            className="fixed right-0 top-0 h-dvh max-h-dvh w-full max-w-6xl overflow-hidden bg-white shadow-xl sm:rounded-l-2xl"
+            className="fixed bottom-0 right-0 top-0 flex w-full max-w-6xl flex-col overflow-hidden bg-white shadow-xl sm:rounded-l-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="border-b border-slate-200 p-3">
+            <div className="shrink-0 border-b border-slate-200 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 text-sm font-semibold text-slate-900 truncate">
                   {t('app.candidate_card.docs_panel.title')}
@@ -5303,9 +5399,9 @@ export default function CandidateCard(){
                 </div>
               ) : null}
             </div>
-            <div className="h-full overflow-auto p-3">
+            <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-8">
               <CandidateDocuments
-                key={`${model.id}:${docsDrawerType || 'default'}`}
+                key={`${model.id}:${docsDrawerType || 'default'}:${operatorFactsRevision}`}
                 candidateId={String(model.id)}
                 hideHeader
                 candidateProfile={candidateProfile}

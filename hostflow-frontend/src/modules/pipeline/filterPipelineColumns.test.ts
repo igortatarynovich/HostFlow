@@ -24,6 +24,15 @@ describe('pipelineColumnItemMatches', () => {
     expect(pipelineColumnItemMatches(item, { ...emptyFilters, search: 'zzz' })).toBe(false);
   });
 
+  it('matches a first name without Polish diacritics and a phone pasted with a country code', () => {
+    const item = {
+      candidate: { first_name: 'Paweł', last_name: 'Nowak', phone: '666357455' },
+    };
+    expect(pipelineColumnItemMatches(item, { ...emptyFilters, search: 'pawel' })).toBe(true);
+    expect(pipelineColumnItemMatches(item, { ...emptyFilters, search: 'Nowak' })).toBe(true);
+    expect(pipelineColumnItemMatches(item, { ...emptyFilters, search: '+48 666 357 455' })).toBe(true);
+  });
+
   it('matches manager filter on recruiter_id', () => {
     const item = { candidate: { recruiter_id: 'u1' } };
     expect(pipelineColumnItemMatches(item, { ...emptyFilters, manager: 'u1' })).toBe(true);

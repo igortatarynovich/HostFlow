@@ -36,8 +36,7 @@ async def test_handoff_hr_bundle_seeds_employment_payroll_zus_onboarding(
     assert res.status_code == 200, res.text
     b = res.json()
 
-    assert len(b["employments"]) >= 1
-    assert b["employments"][0].get("contract_type") == "unknown"
+    assert b["employments"] == []
 
     assert b["payroll_profile"] is not None
     assert b["payroll_profile"].get("payroll_status") == "missing_data"
@@ -109,6 +108,6 @@ async def test_handoff_idempotent_same_employee_and_bundle_stable(
     )
     assert bundle.status_code == 200, bundle.text
     b = bundle.json()
-    assert len(b["employments"]) >= 1
+    assert b["employments"] == []
     assert b["payroll_profile"] is not None
     assert b["zus_profile"] is not None

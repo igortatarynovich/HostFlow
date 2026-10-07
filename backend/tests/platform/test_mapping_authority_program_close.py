@@ -51,7 +51,9 @@ def test_mapping_close_product_done_no_named_successor() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "Mapping program close recorded" in current or "Mapping program close" in current
-    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "Product **DONE** with no named successor until amendment" in history
@@ -77,7 +79,7 @@ def test_mapping_close_leaves_intake_hiring_hr_queued() -> None:
     assert "Hiring E2E program close recorded" in hiring_header
     assert "HE-1" in hiring_header
     assert "**QUEUED**" not in hiring_header
-    assert "**QUEUED**" in hr_header
+    assert "**SUPERSEDED**" in hr_header
     assert "not scheduled" in hr_header.lower()
     intake = _INTAKE.read_text(encoding="utf-8")
     intake_current = intake.split("## History", 1)[0]

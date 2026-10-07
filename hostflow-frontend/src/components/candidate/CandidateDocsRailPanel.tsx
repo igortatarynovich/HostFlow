@@ -600,12 +600,6 @@ export default function CandidateDocsRailPanel({
             </div>
           ) : null}
         </div>
-
-        {onUpload ? (
-          <button type="button" className="btn-primary btn-sm" onClick={onUpload} disabled={uploadBusy}>
-            {uploadBusy ? t('common.saving', { defaultValue: 'Working...' }) : t('app.candidate_card.documents.upload_btn', { defaultValue: 'Upload' })}
-          </button>
-        ) : null}
       </div>
 
       {waiverSectionVisible ? (
@@ -843,10 +837,17 @@ export default function CandidateDocsRailPanel({
         </div>
       ) : null}
 
-      {onOpenDocs ? (
+      {onOpenDocs || onUpload ? (
         <div className="mt-2">
-          <button type="button" className="btn-secondary btn-sm w-full" onClick={onOpenDocs}>
-            {t('app.candidate_card.docs_panel.open_full', { defaultValue: 'Open full' })}
+          <button
+            type="button"
+            className="btn-secondary btn-sm w-full"
+            disabled={uploadBusy}
+            onClick={onOpenDocs ?? onUpload}
+          >
+            {uploadBusy
+              ? t('common.saving', { defaultValue: 'Working...' })
+              : t('app.candidate_card.docs_panel.open', { defaultValue: 'Open' })}
           </button>
         </div>
       ) : null}

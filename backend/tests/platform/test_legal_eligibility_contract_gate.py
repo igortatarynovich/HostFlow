@@ -74,7 +74,7 @@ def test_legal_eligibility_contract_gate_pass_is_current_canon() -> None:
         assert "Legal Eligibility Contract Gate **PASS**" in body
     hr = _HR.read_text(encoding="utf-8")
     hr_header = hr.split("## History", 1)[0] if "## History" in hr else hr
-    assert "**QUEUED**" in hr_header
+    assert "**SUPERSEDED**" in hr_header
     assert "not scheduled" in hr_header.lower()
     assert "feat locked" in hr_header.lower()
     ci = _CI.read_text(encoding="utf-8")

@@ -54,10 +54,10 @@ import {
   CREATION_STATUS_OPTIONS,
   CORE_METADATA_FIELDS,
   METADATA_LABEL_NS,
-  DRIVER_DEFAULT_ENRICHMENT_CODES,
   MAX_FILE_MB,
 } from "./constants";
 import { getDocumentFieldsConfig } from "./documentFieldsConfig";
+import { COMBINED_LICENSE_SATISFIES } from "../../data/documentTypeAliases";
 import {
   toArray,
   isTooLarge,
@@ -72,6 +72,8 @@ import {
   isProbablyHtmlBlob,
   computeTodayIso,
   normalizeDocTypeCode,
+  documentTypeMatchesRequiredSet,
+  isSyntheticDocumentId,
   coverageKeysForStoredDocType,
   prefersCombinedLicenseUpload,
   isPlainLicenseWithoutCode95,
@@ -566,17 +568,6 @@ export default function CandidateDocuments({
           });
         }
 
-        // Citronex broken default profile: enrich reduced legacy config to full driver set.
-        if (candidateProfile?.code === "driver_ce_default" && filteredTypes.length > 0 && filteredTypes.length <= 6) {
-          const merged = new Map(filteredTypes.map((type) => [type.code, type] as const));
-          DRIVER_DEFAULT_ENRICHMENT_CODES.forEach((code) => {
-            const normalizedCode = normalizeDocTypeCode(code);
-            const type = typeByCodeLocal.get(normalizedCode) || typeByCodeLocal.get(code);
-            if (type) merged.set(type.code, type);
-          });
-          filteredTypes = Array.from(merged.values());
-        }
-
         // Safety net: never show an empty page due to broken profile references.
         if (filteredTypes.length === 0 && allTypes.length > 0) {
           console.warn("[CandidateDocuments] Profile document refs resolved to 0 types; falling back to all document types");
@@ -611,6 +602,30 @@ export default function CandidateDocuments({
         displayTypes = Array.from(merged.values());
       }
 
+      const checklistPayload = summaryResp?.checklist ?? summaryResp?.summary?.checklist ?? null;
+      const projectedRequired = Array.isArray(checklistPayload?.requiredTypes)
+        ? checklistPayload.requiredTypes.map((item: unknown) => String(item))
+        : null;
+      if (projectedRequired) {
+        const byNorm = new Map<string, DocType>();
+        allTypes.forEach((type) => {
+          const keys = [type.code, ...(type.aliases ?? [])];
+          keys.forEach((key) => {
+            const normalized = normalizeDocTypeCode(key);
+            if (normalized && !byNorm.has(normalized)) byNorm.set(normalized, type);
+          });
+        });
+        const nextTypes: DocType[] = [];
+        const seen = new Set<string>();
+        projectedRequired.forEach((code) => {
+          const hit = byNorm.get(normalizeDocTypeCode(code));
+          if (!hit || seen.has(hit.code)) return;
+          seen.add(hit.code);
+          nextTypes.push(hit);
+        });
+        displayTypes = nextTypes;
+      }
+
       setDocTypes(displayTypes);
       setSummaryResponse(summaryResp);
       const summaryDocsRaw = Array.isArray(summaryResp?.documents)
@@ -618,12 +633,17 @@ export default function CandidateDocuments({
         : [];
       const docsListRaw = Array.isArray(docsResp) ? docsResp : [];
       const displayTypeCodes = new Set(displayTypes.map((type) => normalizeDocTypeCode(type.code)));
-      const summaryDocs = profileFilterActive
-        ? summaryDocsRaw.filter((doc) => displayTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type)))
-        : summaryDocsRaw;
-      const docsList = profileFilterActive
-        ? docsListRaw.filter((doc) => displayTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type)))
-        : docsListRaw;
+      const keepListedDocument = (doc: Document) => {
+        if (projectedRequired) {
+          if (isSyntheticDocumentId(doc.id)) {
+            return documentTypeMatchesRequiredSet(doc.type_code || doc.doc_type, projectedRequired);
+          }
+          return true;
+        }
+        return !profileFilterActive || displayTypeCodes.has(normalizeDocTypeCode(doc.type_code || doc.doc_type));
+      };
+      const summaryDocs = summaryDocsRaw.filter(keepListedDocument);
+      const docsList = docsListRaw.filter(keepListedDocument);
       
       // Объединяем реальные документы и синтетические из summary
       // summaryDocs содержит все документы включая синтетические (missing) с fillMissing: true
@@ -633,10 +653,28 @@ export default function CandidateDocuments({
       const existingTypeCodes = new Set<string>();
       
       // Сначала добавляем реальные документы
+      const rememberType = (code: string | null | undefined) => {
+        const pending = [normalizeDocTypeCode(code || "")];
+        const seen = new Set<string>();
+        while (pending.length) {
+          const norm = pending.pop() || "";
+          if (!norm || seen.has(norm)) continue;
+          seen.add(norm);
+          existingTypeCodes.add(norm);
+          for (const group of EQUIVALENT_TYPE_GROUPS) {
+            if (group.some((item) => normalizeDocTypeCode(item) === norm)) {
+              for (const item of group) pending.push(normalizeDocTypeCode(item));
+            }
+          }
+          for (const covered of COMBINED_LICENSE_SATISFIES[norm] || []) {
+            pending.push(normalizeDocTypeCode(covered));
+          }
+        }
+      };
       docsList.forEach((doc) => {
         allDocsMap.set(doc.id, doc);
         if (doc.type_code || doc.doc_type) {
-          existingTypeCodes.add(normalizeDocTypeCode(doc.type_code || doc.doc_type));
+          rememberType(doc.type_code || doc.doc_type);
         }
       });
       
@@ -907,6 +945,12 @@ useEffect(() => {
       groups[kind].sort((a, b) => {
         const statusA = primaryStatus(a);
         const statusB = primaryStatus(b);
+        const missingA = statusA === "missing" ? 0 : 1;
+        const missingB = statusB === "missing" ? 0 : 1;
+        if (missingA !== missingB) return missingA - missingB;
+        const licenseA = coverageKeysForStoredDocType(a.type_code || a.doc_type).includes("driver_license") ? 0 : 1;
+        const licenseB = coverageKeysForStoredDocType(b.type_code || b.doc_type).includes("driver_license") ? 0 : 1;
+        if (licenseA !== licenseB) return licenseA - licenseB;
         const rankA =
           DOCUMENT_STATUS_META[statusA]?.order ?? (typeof a.status_rank === "number" ? a.status_rank : 0);
         const rankB =

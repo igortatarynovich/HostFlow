@@ -1,6 +1,7 @@
-import type { InputHTMLAttributes } from 'react'
+import type { ChangeEvent, InputHTMLAttributes } from 'react'
 import clsx from 'clsx'
 
+import DateInput from '../../controls/DateInput'
 import { Combobox, type ComboboxProps } from '../../ui/Combobox'
 import { MultiCombobox, type MultiComboboxProps } from '../../ui/MultiCombobox'
 
@@ -13,6 +14,28 @@ export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 export const Input = (props: InputProps) => {
   const { label, hint, className, containerClassName, ...rest } = props
   const isReadOnly = rest.readOnly || rest.disabled
+  if (rest.type === 'date') {
+    const raw = rest.value
+    const iso = typeof raw === 'string' ? raw.slice(0, 10) : ''
+    return (
+      <label className={clsx('block', containerClassName)}>
+        {label && <div className="label">{label}</div>}
+        <DateInput
+          value={iso}
+          disabled={Boolean(isReadOnly)}
+          required={rest.required}
+          className={className}
+          onValueChange={(next) => {
+            rest.onChange?.({
+              target: { value: next },
+              currentTarget: { value: next },
+            } as ChangeEvent<HTMLInputElement>)
+          }}
+        />
+        {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      </label>
+    )
+  }
   return (
     <label className={clsx('block', containerClassName)}>
       {label && <div className="label">{label}</div>}

@@ -430,7 +430,11 @@ async def create_candidate_full(
             detail=f"Stage '{stage_code}' is not allowed for client tenant",
         )
 
-    _validate_stage_transition(None, stage_code)
+    _validate_stage_transition(
+        None,
+        stage_code,
+        funnel_occupancy=_normalize_stage_to_code(stage_code) is None,
+    )
     await _enforce_rodo_before_contact_stage(
         db,
         candidate_id=cand_id,
@@ -1139,7 +1143,11 @@ async def update_candidate_full(
                     detail=f"Stage '{new_stage_code}' is not allowed for client tenant",
                 )
 
-            _validate_stage_transition(getattr(c, "stage", None), new_stage_code)
+            _validate_stage_transition(
+                getattr(c, "stage", None),
+                new_stage_code,
+                funnel_occupancy=_normalize_stage_to_code(new_stage_code) is None,
+            )
             await _enforce_rodo_before_contact_stage(
                 db,
                 candidate_id=candidate_id,
@@ -1847,7 +1855,11 @@ async def bulk_update_stage(
                 )
                 continue
 
-            _validate_stage_transition(getattr(c, "stage", None), normalized)
+            _validate_stage_transition(
+                getattr(c, "stage", None),
+                normalized,
+                funnel_occupancy=_normalize_stage_to_code(normalized) is None,
+            )
             await _enforce_rodo_before_contact_stage(
                 db,
                 candidate_id=cid,

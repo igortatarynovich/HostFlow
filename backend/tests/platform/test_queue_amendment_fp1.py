@@ -31,7 +31,9 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert "Queue amendment names FP-1 Active Product" in history
-    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "feat/forms-publish-fp2-publish-action" in queue
@@ -43,7 +45,9 @@ def test_fp1_amendment_history_then_contract_gate() -> None:
     assert "Operator Publish Gate **PASS**" in current
     assert "External Intake Acceptance Gate **PASS**" in current
     assert "Forms Publish Contract Gate **PASS**" in current or "Forms Publish Contract Gate = PASS" in current
-    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "Active (Product):** **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in current
+    assert "Active (Product):** **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
+    assert "Active (Product):** **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "Active (Product):** **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "**Active Product** | External Intake program close" not in current
     assert "This stamp does not ship runtime" not in current
@@ -85,7 +89,7 @@ def test_fp1_leaves_hiring_hr_queued_and_mapping_done() -> None:
     assert "**ACTIVE**" not in hiring_header
     assert "Hiring E2E program close recorded" in hiring_header
     assert "HE-1" in hiring_header
-    assert "**QUEUED**" in hr_header
+    assert "**SUPERSEDED**" in hr_header
     assert "not scheduled" in hr_header.lower()
     mapping = _MAPPING.read_text(encoding="utf-8")
     mapping_current = mapping.split("## History", 1)[0]

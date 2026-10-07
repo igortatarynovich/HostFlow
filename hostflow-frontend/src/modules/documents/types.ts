@@ -7,6 +7,7 @@ import type { DocumentKind, DocumentStatus, DocumentRequestedFrom, DocumentProce
 export type DocType = {
   id?: string;
   code: string;
+  aliases?: string[] | null;
   name?: string;
   required?: boolean;
   meta_schema?: any;

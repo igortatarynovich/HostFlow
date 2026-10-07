@@ -44,7 +44,8 @@
       "hide": "Hide",
       "load_more": "Load more",
       "select": "Select…",
-      "show": "Show"
+      "show": "Show",
+      "calendar": "Calendar"
     },
     "errors": {
       "unknown": "Unknown error",
@@ -6389,6 +6390,59 @@
       }
     },
     "candidate_card": {
+      "operator_facts": {
+        "driver_block": "Driver details and entitlements",
+        "citizenship": "Citizenship",
+        "stay_question": "On what basis is the person staying in Poland?",
+        "valid_to": "Valid until",
+        "card_valid_to": "Card valid until",
+        "work_block": "Right to work",
+        "work_not_required": "Stay and a work permit are not required.",
+        "work_question": "On what basis can the person work?",
+        "authorization_from": "Valid from",
+        "authorization_to": "Valid until",
+        "authorization_conditions": "Conditions",
+        "qualifications": "Driver entitlements",
+        "licence_title": "Driving licence",
+        "licence_country": "Driving licence — issuing country",
+        "licence_categories": "Categories",
+        "licence_valid_to": "Valid until",
+        "code95": "Code 95",
+        "code95_valid_to": "Valid until",
+        "tachograph": "Driver card",
+        "tachograph_country": "Country",
+        "tachograph_valid_to": "Valid until",
+        "adr": "ADR",
+        "adr_country": "Country",
+        "adr_valid_to": "Valid until",
+        "medical": "Medical examination",
+        "psych": "Psychological tests",
+        "pesel": "PESEL",
+        "pesel_number": "PESEL number",
+        "additional": "Additional document",
+        "unknown": "Unknown",
+        "yes": "Yes",
+        "no": "No",
+        "load_failed": "Could not load facts",
+        "save_failed": "Could not save facts",
+        "stay_option": {
+          "visa_d": "Visa D",
+          "visa_c": "Visa C",
+          "karta_pobytu": "Residence card",
+          "visa_free": "Visa-free stay",
+          "waiting_for_trc": "Waiting for a residence card",
+          "special_protection": "Protection",
+          "other": "Other",
+          "none": "None"
+        },
+        "work_option": {
+          "work_permit": "Work permit",
+          "oswiadczenie": "Declaration",
+          "included_in_stay": "The right to work follows from the stay",
+          "not_required": "No permit required",
+          "no_right": "No right to work"
+        }
+      },
       "actions": {
         "delete_request": "Request deletion",
         "delete_request_loading": "Sending request…",
@@ -6981,6 +7035,7 @@
       },
       "docs_panel": {
         "kpi": "KPI",
+        "open": "Open",
         "open_full": "Open full",
         "runtime_kpi": "{ready}/{total} satisfied · {problem} blockers · {percent}%",
         "tabs": {
@@ -7027,7 +7082,7 @@
         "checklist_not_yet_required": "Not uploaded yet (not required at this stage)",
         "checklist_panel_title": "Document checklist",
         "compact_hint": "Document details are collapsed to reduce noise.",
-        "early_stage_hint": "Documents are not required at this stage (e.g. New). Upload / Open full — optional.",
+        "early_stage_hint": "Documents are not required at this stage (e.g. New). Open — optional.",
         "in_progress_label": "In progress / review",
         "in_progress_not_blocking": "Uploads in progress — not blocking this stage.",
         "next_step_not_blocking": "Not blocking pipeline at this stage — contact & qualify first.",
@@ -15810,6 +15865,7 @@
         "decision": "Decision",
         "medical_certificate": "Medical certificate",
         "psych_tests": "Psychological tests",
+        "psychological_certificate": "Psychological tests",
         "adr": "ADR",
         "work_permit": "Work permit",
         "driver_certificate": "Driver certificate",

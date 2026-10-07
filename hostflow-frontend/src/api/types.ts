@@ -646,6 +646,7 @@ export interface CandidateExtra {
   phone_country?: string | null;     // код страны (PL/UA/…)
   phone_prefix?: string | null;      // префикс “+48” (опционально, для UI)
   preferred_contact?: string | null; // предпочтительный канал связи (viber/whatsapp/telegram/phone)
+  phone_additional?: string | null;
   first_contact_at?: string | null;  // ISO8601 дата/время первого контакта
   /** Citizenship country code mirrored from the candidate model for forms that
    *  edit `extra` (CandidatePersonalSection auto-fill from phone). */
@@ -706,6 +707,8 @@ export interface Candidate {
   id: UUID;
   first_name: string;
   last_name: string;
+  first_name_latin?: string | null;
+  last_name_latin?: string | null;
   email?: string | null;
   phone?: string | null;                 // уже может приходить с префиксом
   phone_country_code?: string | null;

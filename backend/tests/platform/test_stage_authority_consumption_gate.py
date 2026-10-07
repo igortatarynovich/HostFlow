@@ -151,7 +151,9 @@ def test_he2_queue_names_he2_active_he3_locked() -> None:
     history = text.split("## 8. History", 1)[1]
     assert "Stage Authority Consumption Gate **PASS**" in current
     assert "Stage Authority Consumption Gate PASS" in history
-    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in current
+    assert "**Active Product** | **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**" in current
+    assert "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**" in history
+    assert "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**" in history
     assert "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**" in history
     assert "Hiring E2E program close recorded" in current
     assert "Hiring Acceptance Contract Gate **PASS**" in current
@@ -169,7 +171,7 @@ def test_he2_queue_names_he2_active_he3_locked() -> None:
 def test_he2_leaves_hr_queued() -> None:
     text = _HR.read_text(encoding="utf-8")
     header = text.split("## History", 1)[0] if "## History" in text else text
-    assert "**QUEUED**" in header
+    assert "**SUPERSEDED**" in header
     assert "not scheduled" in header.lower()
     assert "hiring-workflow-e2e.md" in header
 

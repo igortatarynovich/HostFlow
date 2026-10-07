@@ -77,13 +77,21 @@ def test_work_authorization_procedure_does_not_extend_legal_eligibility() -> Non
     assert "Legal Eligibility Matrix Gate **PASS**" not in live
 
 
-def test_work_authorization_procedure_is_the_active_product() -> None:
+def test_work_authorization_procedure_contract_stays_passed() -> None:
     queue = _QUEUE.read_text(encoding="utf-8")
     current = queue.split("## 8. History", 1)[0]
     history = queue.split("## 8. History", 1)[1]
     assert (
-        "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**"
+        "**Active Product** | **[Employee Record & Employment Lifecycle](employee-record-employment-lifecycle.md)**"
         in current
+    )
+    assert (
+        "**Active Product** | **[Poland Work Authorization Presets](poland-work-authorization-presets.md)**"
+        in history
+    )
+    assert (
+        "**Active Product** | **[Work Authorization Procedure](work-authorization-procedure.md)**"
+        in history
     )
     assert (
         "**Active Product** | **[Legal Eligibility](legal-eligibility-requirement-policy.md)**"

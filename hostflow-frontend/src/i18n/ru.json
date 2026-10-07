@@ -44,7 +44,8 @@
       "hide": "Скрыть",
       "load_more": "Загрузить ещё",
       "select": "Выберите…",
-      "show": "Показать"
+      "show": "Показать",
+      "calendar": "Календарь"
     },
     "errors": {
       "unknown": "Неизвестная ошибка",
@@ -5579,12 +5580,12 @@
         "hiring": "Найм",
         "interview": "Контакт установлен",
         "ready_for_handoff": "Готов к передаче",
-        "processing_by_client": "Обработка заказчиком",
+        "processing_by_client": "Передан",
         "docs_submitted_permit": "Документы поданы на разрешение",
         "handoff_returned": "Возвращён",
         "employment_pending": "На трудоустройстве",
         "ready_for_hr": "Готов к передаче в HR",
-        "processing_by_hr": "В обработке у HR",
+        "processing_by_hr": "Передан",
         "hired": "Принят HR"
       },
       "reason_codes": {
@@ -6316,6 +6317,59 @@
       }
     },
     "candidate_card": {
+      "operator_facts": {
+        "driver_block": "Данные и права водителя",
+        "citizenship": "Гражданство",
+        "stay_question": "На каком основании пребывает в Польше?",
+        "valid_to": "Действительна до",
+        "card_valid_to": "Карта действительна до",
+        "work_block": "Право на работу",
+        "work_not_required": "Пребывание и разрешение на работу не требуются.",
+        "work_question": "На каком основании может работать?",
+        "authorization_from": "Действительно с",
+        "authorization_to": "Действительно до",
+        "authorization_conditions": "Условия",
+        "qualifications": "Права водителя",
+        "licence_title": "Водительское удостоверение",
+        "licence_country": "Водительское удостоверение — страна выдачи",
+        "licence_categories": "Категории",
+        "licence_valid_to": "Действительно до",
+        "code95": "Code 95",
+        "code95_valid_to": "Действителен до",
+        "tachograph": "Карта водителя",
+        "tachograph_country": "Страна",
+        "tachograph_valid_to": "Действительна до",
+        "adr": "ADR",
+        "adr_country": "Страна",
+        "adr_valid_to": "Действительно до",
+        "medical": "Медосмотр",
+        "psych": "Психотесты",
+        "pesel": "PESEL",
+        "pesel_number": "Номер PESEL",
+        "additional": "Дополнительный документ",
+        "unknown": "Неизвестно",
+        "yes": "Да",
+        "no": "Нет",
+        "load_failed": "Не удалось загрузить данные",
+        "save_failed": "Не удалось сохранить данные",
+        "stay_option": {
+          "visa_d": "Виза D",
+          "visa_c": "Виза C",
+          "karta_pobytu": "Карта побыту",
+          "visa_free": "Безвизовый режим",
+          "waiting_for_trc": "Ожидает карту побыту",
+          "special_protection": "Защита",
+          "other": "Другое",
+          "none": "Нет"
+        },
+        "work_option": {
+          "work_permit": "Разрешение на работу",
+          "oswiadczenie": "Заявление",
+          "included_in_stay": "Право на работу следует из пребывания",
+          "not_required": "Разрешение не требуется",
+          "no_right": "Нет права на работу"
+        }
+      },
       "actions": {
         "delete_request": "Запросить удаление",
         "delete_request_loading": "Отправляем запрос…",
@@ -6908,6 +6962,7 @@
       },
       "docs_panel": {
         "kpi": "КПЭ",
+        "open": "Открыть",
         "open_full": "Открыть полностью",
         "tabs": {
           "blockers": "Блокаторы",
@@ -6954,7 +7009,7 @@
         "checklist_not_yet_required": "Ещё не загружено (на этом этапе не требуется)",
         "checklist_panel_title": "Чеклист документов",
         "compact_hint": "Подробности по документам свёрнуты, чтобы меньше шуметь.",
-        "early_stage_hint": "На этом этапе документы не обязательны (например, New). Загрузить / Открыть полностью — по желанию.",
+        "early_stage_hint": "На этом этапе документы не обязательны (например, New). Открыть — по желанию.",
         "in_progress_label": "В работе / на проверке",
         "in_progress_not_blocking": "Загрузки в процессе — на этом этапе не блокируют.",
         "next_step_not_blocking": "На этом этапе пайплайн не блокируется — сначала свяжитесь и квалифицируйте.",
@@ -7947,13 +8002,13 @@
         "hiring": "Найм",
         "interview": "Контакт установлен",
         "ready_for_handoff": "Готов к передаче",
-        "processing_by_client": "Обработка заказчиком",
+        "processing_by_client": "Передан",
         "docs_submitted_permit": "Документы поданы на разрешение",
         "handoff_returned": "Возвращён",
         "pending": "В ожидании",
         "employment_pending": "На трудоустройстве",
         "ready_for_hr": "Готов к передаче в HR",
-        "processing_by_hr": "В обработке у HR",
+        "processing_by_hr": "Передан",
         "hired": "Принят HR",
         "to_call": "Ждёт звонка",
         "to_contact": "Ждёт контакта"

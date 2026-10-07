@@ -672,14 +672,20 @@ async def resolve_required_requirement_codes(
     tenant_id: str,
     candidate: Candidate,
 ) -> list[str]:
-    """Applicable required set for this candidate: the RPM result.
+    """Applicable required set for this candidate.
 
-    Same ``r5_required_set(owner_context, tenant_delta)`` the stage refusal
-    consumes. Slot rules are not a second required set.
+    Starts from ``r5_required_set``. A CE or Code 95 code the operator-facts
+    resolution is not asking for does not stay on as a blocker. Slot rules are
+    not a second required set.
     """
     from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
     from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
     from backend.app.services.candidate_doc_pipeline_guard import _owner_context_for_docs
+    from backend.app.services.operator_facts_surface import (
+        facts_from_personal_data,
+        load_candidate_resolution_evidence,
+        requirement_codes_for_operator,
+    )
 
     extra = candidate._get_extra() if hasattr(candidate, "_get_extra") else {}
     personal = candidate._get_personal_data() if hasattr(candidate, "_get_personal_data") else {}
@@ -689,7 +695,14 @@ async def resolve_required_requirement_codes(
         personal=personal if isinstance(personal, dict) else {},
     )
     tenant_delta = await load_persisted_tenant_delta(db, str(tenant_id))
-    return sorted(r5_required_set(owner_ctx, tenant_delta))
+    policy_codes = sorted(r5_required_set(owner_ctx, tenant_delta))
+    facts = facts_from_personal_data(personal if isinstance(personal, dict) else {})
+    evidence = await load_candidate_resolution_evidence(
+        db,
+        tenant_id=str(tenant_id),
+        candidate_id=str(candidate.id),
+    )
+    return requirement_codes_for_operator(policy_codes, facts, evidence=evidence)
 
 
 def map_requirements_checklist_to_pipeline_blockers(
@@ -753,6 +766,13 @@ async def build_requirements_checklist(
     citizenship = payload.get("citizenship") or payload.get("platform.identity.citizenship")
     position_category = payload.get("position_category")
 
+    from backend.app.requirement_rules.readiness_bridge import load_candidate_documents_snapshot
+
+    uploaded_documents = await load_candidate_documents_snapshot(
+        db,
+        tenant_id=str(tenant_id),
+        candidate_id=str(candidate.id),
+    )
     items: list[dict[str, Any]] = []
     for req_code in requirement_codes:
         slot = satisfaction_slot(req_code) or {}
@@ -764,11 +784,7 @@ async def build_requirements_checklist(
         )
         evidence_snapshot = None
         if evidence_row:
-            snapshots = await load_candidate_documents_snapshot(
-                db,
-                tenant_id=str(tenant_id),
-                candidate_id=str(candidate.id),
-            )
+            snapshots = uploaded_documents
             linked_ids = {str(j.document_id) for j in evidence_row.documents or []}
             linked_snapshots = [
                 row for row in snapshots if str(row.get("document_id") or row.get("id")) in linked_ids
@@ -778,6 +794,7 @@ async def build_requirements_checklist(
 
         evaluation = evaluate_document_slot(
             req_code,
+            documents=uploaded_documents,
             candidate_evidence=evidence_snapshot,
             citizenship=str(citizenship).strip() if citizenship else None,
             position_category=str(position_category).strip() if position_category else None,

@@ -84,7 +84,7 @@ from backend.app.services.ruleset_versioning import (
 from backend.app.services.document_workflow import STATUS_ORDER, default_workflow, document_has_stored_file
 from backend.app.services.document_runtime_delivery_contract import enrich_snapshot_via_contract
 from .ocr_pipeline import OcrPipeline
-from .owner_summary import compute_owner_summary
+from .owner_summary import EQUIVALENT_SATISFACTION, compute_owner_summary
 from .rules_engine import compute_candidate_checklist
 from .storage_mock import presign_upload
 from .storage import (
@@ -404,6 +404,85 @@ def _fill_checklist_defaults(checklist: Dict[str, Any], ruleset: Dict[str, Any])
     return checklist
 
 
+def _project_operator_facts_ask(
+    summary: Dict[str, Any],
+    checklist: Dict[str, Any],
+    candidate: Any,
+    evidence: list[Dict[str, Any]] | None = None,
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Apply recruitment resolution to the checklist r5 already materialized."""
+
+    from backend.app.services.operator_facts_surface import (
+        facts_from_personal_data,
+        project_document_summary,
+    )
+
+    personal = getattr(candidate, "personal_data", None)
+    facts = facts_from_personal_data(personal if isinstance(personal, dict) else {})
+    payload = dict(summary)
+    payload["checklist"] = dict(checklist)
+    projected = project_document_summary(payload, facts, evidence=evidence)
+    next_checklist = dict(projected.get("checklist") or {})
+    return projected, next_checklist
+
+
+def _paint_recorded_facts(doc: DocumentOut, facts: Dict[str, Any]) -> DocumentOut:
+    """Show a recorded operator fact on the document when that field is empty."""
+
+    from backend.app.services.operator_facts_surface import recorded_document_fields
+
+    fields = recorded_document_fields(doc.doc_type or doc.type_code, facts)
+    updates: Dict[str, Any] = {}
+    raw_date = fields.get("expire_date")
+    if raw_date and doc.expire_date is None and doc.expires_at is None:
+        parsed = date.fromisoformat(str(raw_date)[:10])
+        updates["expire_date"] = parsed
+        updates["expires_at"] = parsed
+    meta = dict(doc.meta or {})
+    if fields.get("categories") and not meta.get("categories"):
+        meta["categories"] = fields["categories"]
+        updates["meta"] = meta
+    if fields.get("issuing_country") and not meta.get("issuing_country"):
+        meta = dict(updates.get("meta") or meta)
+        meta["issuing_country"] = fields["issuing_country"]
+        updates["meta"] = meta
+    if not updates:
+        return doc
+    return doc.model_copy(update=updates)
+
+
+def _paint_recorded_fact_dict(payload: Dict[str, Any], facts: Dict[str, Any]) -> Dict[str, Any]:
+    from backend.app.services.operator_facts_surface import recorded_document_fields
+
+    fields = recorded_document_fields(
+        str(payload.get("doc_type") or payload.get("type_code") or ""),
+        facts,
+    )
+    if not fields:
+        return payload
+    out = dict(payload)
+    raw_date = fields.get("expire_date")
+    if raw_date and not out.get("expire_date") and not out.get("expires_at"):
+        out["expire_date"] = str(raw_date)[:10]
+        out["expires_at"] = str(raw_date)[:10]
+    meta = dict(out.get("meta") or {})
+    if fields.get("categories") and not meta.get("categories"):
+        meta["categories"] = fields["categories"]
+    if fields.get("issuing_country") and not meta.get("issuing_country"):
+        meta["issuing_country"] = fields["issuing_country"]
+    out["meta"] = meta
+    return out
+
+
+async def _operator_facts_for_candidate(session: AsyncSession, candidate_id: UUID | str) -> Dict[str, Any]:
+    from backend.app.models.candidate import Candidate
+    from backend.app.services.operator_facts_surface import facts_from_personal_data
+
+    candidate = await session.get(Candidate, str(candidate_id))
+    personal = candidate.personal_data if candidate is not None and isinstance(candidate.personal_data, dict) else {}
+    return facts_from_personal_data(personal)
+
+
 def _build_synthetic_documents(
     tenant_id: str,
     candidate_id: UUID,
@@ -411,10 +490,16 @@ def _build_synthetic_documents(
     existing_docs: Sequence[Dict[str, Any]],
 ) -> List[DocumentOut]:
     required_types = checklist.get("requiredTypes") or []
-    existing_types = {
-        normalize_doc_type(doc.get("type_code") or doc.get("doc_type") or "")
-        for doc in existing_docs
-    }
+    existing_types: set[str] = set()
+    for doc in existing_docs:
+        code = normalize_doc_type(doc.get("type_code") or doc.get("doc_type") or "")
+        if not code:
+            continue
+        existing_types.add(code)
+        for covered in EQUIVALENT_SATISFACTION.get(code) or []:
+            covered_code = normalize_doc_type(covered) or covered
+            if covered_code:
+                existing_types.add(covered_code)
     now_ts = datetime.now(timezone.utc)
     synthetic_docs: List[DocumentOut] = []
     for raw_type in required_types:
@@ -1145,6 +1230,23 @@ async def _list_documents_for_candidate(
         ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
         checklist = compute_candidate_checklist(ctx, ruleset_payload)
         checklist["requiredTypes"] = sorted(r5_required_set(ctx, ctx.get("tenant_delta")))
+        candidate_row = await session.get(Candidate, str(candidate_id))
+        if candidate_row is not None:
+            from backend.app.services.operator_facts_surface import (
+                load_candidate_resolution_evidence,
+            )
+
+            evidence = await load_candidate_resolution_evidence(
+                session,
+                tenant_id=doc_tenant_id,
+                candidate_id=str(candidate_id),
+            )
+            _, checklist = _project_operator_facts_ask(
+                {"checklist": checklist, "required": {}},
+                checklist,
+                candidate_row,
+                evidence,
+            )
         auto_docs = await list_candidate_documents(
             session,
             doc_tenant_id,
@@ -1209,6 +1311,8 @@ async def _list_documents_for_candidate(
             for d in synthetic_docs
             if document_visible_to_viewer(d.doc_type, viewer_channel)
         )
+    recorded = await _operator_facts_for_candidate(session, candidate_id)
+    result = [_paint_recorded_facts(doc, recorded) for doc in result]
     synth_returned = sum(
         1 for r in result if str(getattr(r, "id", "")).startswith("synthetic::")
     )
@@ -2161,6 +2265,16 @@ async def fetch_candidate_documents_summary_response(
         ctx,
         ctx.get("tenant_delta") if isinstance(ctx.get("tenant_delta"), dict) else None,
     )
+    from backend.app.services.operator_facts_surface import load_candidate_resolution_evidence
+
+    resolution_evidence = await load_candidate_resolution_evidence(
+        session,
+        tenant_id=cand_ctx.owner_tenant_id,
+        candidate_id=str(candidate_id),
+    )
+    summary, checklist = _project_operator_facts_ask(
+        summary, checklist, cand_ctx.candidate, resolution_evidence
+    )
     summary["checklist"] = checklist
     auto_created = await _ensure_auto_ordered_documents(
         session,
@@ -2206,6 +2320,9 @@ async def fetch_candidate_documents_summary_response(
             ctx,
             ctx.get("tenant_delta") if isinstance(ctx.get("tenant_delta"), dict) else None,
         )
+        summary, checklist = _project_operator_facts_ask(
+            summary, checklist, cand_ctx.candidate, resolution_evidence
+        )
         summary["checklist"] = checklist
     synthetic_models = _build_synthetic_documents(
         cand_ctx.owner_tenant_id, candidate_id, checklist, serialized_docs_full
@@ -2215,6 +2332,11 @@ async def fetch_candidate_documents_summary_response(
         for doc in synthetic_models
         if document_visible_to_viewer(doc.doc_type, viewer_channel)
     ]
+    from backend.app.services.operator_facts_surface import facts_from_personal_data
+
+    personal = getattr(cand_ctx.candidate, "personal_data", None)
+    recorded = facts_from_personal_data(personal if isinstance(personal, dict) else {})
+    serialized_visible = [_paint_recorded_fact_dict(item, recorded) for item in serialized_visible]
     physical_total = len(docs)
     physical_visible = len(serialized_visible)
     synth_built = len(synthetic_models)

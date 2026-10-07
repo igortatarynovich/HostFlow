@@ -473,9 +473,6 @@ async def run_recruitment_team_flow_scenario(
             id=wf_id,
             tenant_id=tid,
             candidate_id=CANDIDATE_IDS["hr_readonly"],
-            company_id=COMPANY_ID,
-            vacancy_id=VACANCY_ID,
-            recruiter_user_id=rec_a.id,
             display_name="Scenario HR Readonly Hiree",
             status="onboarding",
             notes="recruit_flow_scenario: workforce stub for e2e readonly",
@@ -484,9 +481,6 @@ async def run_recruitment_team_flow_scenario(
     else:
         wf.tenant_id = tid
         wf.candidate_id = CANDIDATE_IDS["hr_readonly"]
-        wf.company_id = COMPANY_ID
-        wf.vacancy_id = VACANCY_ID
-        wf.recruiter_user_id = rec_a.id
         wf.display_name = "Scenario HR Readonly Hiree"
         wf.status = "onboarding"
         wf.notes = "recruit_flow_scenario: workforce stub for e2e readonly"

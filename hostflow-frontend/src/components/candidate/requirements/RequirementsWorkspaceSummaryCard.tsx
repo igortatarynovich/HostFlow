@@ -1,7 +1,5 @@
 import clsx from 'clsx'
-import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
+import { useEffect, type ReactNode } from 'react'
 import type { RequirementsWorkspaceResponse } from '../../../api/candidateRequirements'
 import { useRequirementsWorkspace } from '../../../hooks/useRequirementsWorkspace'
 import { useI18n } from '../../../i18n'
@@ -19,6 +17,8 @@ type Props = {
   workspaceLoading?: boolean
   workspaceReload?: () => Promise<RequirementsWorkspaceResponse | null>
   onPipelineBlockersChange?: (blockers: DocBlockersPayload, loading: boolean) => void
+  /** Next step and blockers. Replaces the retired workspace link. */
+  children?: ReactNode
 }
 
 export default function RequirementsWorkspaceSummaryCard({
@@ -31,6 +31,7 @@ export default function RequirementsWorkspaceSummaryCard({
   workspaceLoading: workspaceLoadingProp,
   workspaceReload,
   onPipelineBlockersChange,
+  children,
 }: Props) {
   const { t } = useI18n()
   const shouldFetch = workspaceProp === undefined
@@ -54,7 +55,6 @@ export default function RequirementsWorkspaceSummaryCard({
     onPipelineBlockersChange(mapRequirementPipelineBlockers(workspace.pipeline_blockers), loading)
   }, [workspace, loading, onPipelineBlockersChange])
 
-  const workspacePath = `${CRM_APP_PATHS.candidates}/${encodeURIComponent(candidateId)}/requirements`
   const primary = Boolean(primaryStepHighlight)
 
   return (
@@ -67,30 +67,9 @@ export default function RequirementsWorkspaceSummaryCard({
       )}
       data-rail-primary-step={primary ? 'true' : undefined}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="text-xs font-semibold text-slate-800">
-              {t('app.candidate_requirements.workspace.card_title', { defaultValue: 'Requirements' })}
-            </div>
-            {primary ? (
-              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
-                {t('app.candidate_card.rail.primary_step_badge', { defaultValue: 'Next step' })}
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-1 text-[11px] text-slate-600">
-            {t('app.candidate_requirements.workspace.card_subtitle', {
-              defaultValue: 'Close data fields and document evidence in the requirements workspace.',
-            })}
-          </p>
-        </div>
-        <Link to={workspacePath} className="btn-primary btn-sm shrink-0">
-          {t('app.candidate_requirements.workspace.open_workspace', { defaultValue: 'Open workspace' })}
-        </Link>
-      </div>
+      {children}
 
-      {loading && !workspace ? (
+      {loading && !workspace && !children ? (
         <div className="mt-3 text-xs text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</div>
       ) : null}
 
@@ -107,7 +86,7 @@ export default function RequirementsWorkspaceSummaryCard({
         </div>
       ) : null}
 
-      {workspace ? (
+      {workspace && !children ? (
         <div className="mt-3">
           <RequirementsWorkspaceSummaryBar
             summary={workspace.summary}

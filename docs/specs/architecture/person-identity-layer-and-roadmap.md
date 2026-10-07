@@ -10,6 +10,8 @@
 
 **Person identity layer is intentionally deferred.** The current MVP uses **Candidate** as the operational identity anchor. **Person** may be introduced later after **Applications**, **Rehire flows**, and the **ownership model** are stable.
 
+The [Employee Record contract](employee-record-employment-lifecycle-contract.md) names Person as the identity a handoff must not create and must not copy. That sentence authorizes no Person table and opens no Person domain. `WorkforceEmployee` remains the current runtime of the HR context.
+
 ---
 
 ## What Person is (conceptually)

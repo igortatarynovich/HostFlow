@@ -1272,6 +1272,8 @@ async def list_candidates(
             "short_id": getattr(c, "short_id", None),
             "first_name": getattr(c, "first_name", None),
             "last_name": getattr(c, "last_name", None),
+            "first_name_latin": getattr(c, "first_name_latin", None),
+            "last_name_latin": getattr(c, "last_name_latin", None),
             "phone": getattr(c, "phone", None),
             "phone_country_code": getattr(c, "phone_country_code", None),
             "email": getattr(c, "email", None),
@@ -3094,6 +3096,8 @@ async def delete_candidate(
 
 from backend.app.api.v1.candidates import pipeline_overrides_api as _pipeline_overrides_api  # noqa: E402
 from backend.app.api.v1.candidates import next_action_api as _next_action_api  # noqa: E402
+from backend.app.api.v1.candidates import operator_facts_api as _operator_facts_api  # noqa: E402
 
 router.include_router(_pipeline_overrides_api.router)
 router.include_router(_next_action_api.router)
+router.include_router(_operator_facts_api.router)

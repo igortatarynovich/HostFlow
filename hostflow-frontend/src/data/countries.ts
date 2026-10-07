@@ -34,13 +34,30 @@ function createDisplayNames(locale?: string): Intl.DisplayNames | null {
   }
 }
 
+/** Registry countries the operator works with, in the order they should appear. */
+export const WORKING_COUNTRY_CODES = ['PL', 'BY', 'UA', 'MD', 'GE', 'KZ', 'UZ'] as const
+
+export function compareCountryOptions(
+  a: { value: string; label: string },
+  b: { value: string; label: string },
+  locale?: string,
+): number {
+  const rank = (code: string) => {
+    const index = WORKING_COUNTRY_CODES.indexOf(code.toUpperCase() as (typeof WORKING_COUNTRY_CODES)[number])
+    return index === -1 ? WORKING_COUNTRY_CODES.length : index
+  }
+  const byRank = rank(a.value) - rank(b.value)
+  if (byRank !== 0) return byRank
+  return a.label.localeCompare(b.label, locale)
+}
+
 export function buildCountryOptions(locale?: string): Option[] {
   const display = createDisplayNames(locale)
   const options = COUNTRY_CODES.map((code) => {
     const label = display?.of(code) || code
     return { value: code, label: `${label} (${code})` }
   })
-  return options.sort((a, b) => a.label.localeCompare(b.label))
+  return options.sort((a, b) => compareCountryOptions(a, b, locale))
 }
 
 export { COUNTRY_CODES }
