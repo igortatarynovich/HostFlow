@@ -703,31 +703,6 @@ async def create_handoff(
 
     # internal_hr: PR-4 — do not materialize workforce / HR checklist until accept_handoff.
     # Candidate stays at recruitment stage (e.g. ready_for_handoff) until HR accepts.
-    manifest: dict[str, Any] | None = None
-    # Vacancy-bound internal transfer emits the boundary manifest. A handoff
-    # with no vacancy stays the legacy transport (no package to validate).
-    if dest == "internal_hr" and str(getattr(cand, "vacancy_id", None) or "").strip():
-        from backend.app.services.ready_for_employment_emit import (
-            build_ready_for_employment_manifest,
-        )
-
-        manifest, manifest_err = await build_ready_for_employment_manifest(
-            db,
-            handoff=handoff,
-            candidate=cand,
-            actor_id=requested_by_user_id,
-        )
-        if manifest_err:
-            return None, manifest_err
-        await db.flush()
-
-    audit_payload: dict[str, Any] = {
-        "candidate_id": candidate_id,
-        "client_company_id": client_company_id,
-        "destination": dest,
-    }
-    if manifest is not None:
-        audit_payload["contract_id"] = manifest.get("contract_id")
     await log_audit_event(
         db,
         tenant_id=agency_tenant_id,
@@ -735,7 +710,11 @@ async def create_handoff(
         entity_type=AuditEntityType.handoff,
         entity_id=handoff.id,
         actor_id=requested_by_user_id,
-        payload=audit_payload,
+        payload={
+            "candidate_id": candidate_id,
+            "client_company_id": client_company_id,
+            "destination": dest,
+        },
     )
     # Notify HR (internal lane) or client processors (portal).
     if dest == "internal_hr":
@@ -786,12 +765,20 @@ async def create_handoff(
             assigned_to_user_id=handoff.assigned_to_user_id,
             created_by_user_id=requested_by_user_id,
         )
-        await persist_handoff_create_snapshot(
-            db,
-            handoff=handoff,
-            candidate=cand,
-            ready_for_employment=manifest,
-        )
+        try:
+            await persist_handoff_create_snapshot(db, handoff=handoff, candidate=cand)
+        except Exception as exc:
+            from backend.app.services.ready_for_employment_emit import HandoffManifestValidationError
+
+            if isinstance(exc, HandoffManifestValidationError):
+                await db.delete(handoff)
+                await db.flush()
+                return None, {
+                    "code": "ready_for_employment_invalid",
+                    "message": "ready_for_employment.v1 validation failed",
+                    "errors": list(exc.errors),
+                }
+            raise
         return handoff, None
 
     if handoff.assigned_to_user_id:

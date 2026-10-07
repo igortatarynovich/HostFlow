@@ -81,6 +81,33 @@ export async function acceptHandoff(handoffId: UUID): Promise<HandoffOut> {
   return data
 }
 
+export type EmploymentAcceptPolicyResult = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: string
+  ritual_accept_forbidden?: boolean | null
+  blockers: Array<{ code?: string; message?: string }>
+  employment_missing: Array<Record<string, unknown>>
+  reuse_violations: string[]
+  package_valid?: boolean | null
+  accepted: boolean
+  employment_started: boolean
+  employee_id?: string | null
+  message?: string | null
+}
+
+/** ESO-1 / RSO-2C: Employment-owned accept policy apply (auto-init when gates pass). */
+export async function applyEmploymentAcceptPolicy(
+  handoffId: UUID,
+  payload?: { package?: Record<string, unknown>; employment_missing?: Array<Record<string, unknown>> },
+): Promise<EmploymentAcceptPolicyResult> {
+  const { data } = await api.post<EmploymentAcceptPolicyResult>(
+    `/handoffs/${encodeURIComponent(handoffId)}/employment-accept-policy`,
+    payload ?? {},
+  )
+  return data
+}
+
 export async function rejectHandoff(handoffId: UUID, rejectionReason: string): Promise<HandoffOut> {
   const { data } = await api.post<HandoffOut>(`/handoffs/${handoffId}/reject`, {
     rejection_reason: rejectionReason,

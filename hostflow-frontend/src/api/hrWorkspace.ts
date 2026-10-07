@@ -22,6 +22,29 @@ export type HrOperationalQueue =
   | 'returned_to_recruitment'
   | 'rejected_by_hr'
 
+export type HrWhyReady = {
+  contract_id?: string
+  fits_decision?: Record<string, unknown> | null
+  requirement_verdicts_as_of?: Array<Record<string, unknown>>
+  evidence_refs?: Array<Record<string, unknown>>
+  target_work_as_of?: {
+    vacancy_id?: string | null
+    employer_id?: string | null
+    vacancy_title_as_of?: string | null
+  }
+  context_refs?: {
+    application_id?: string | null
+    handoff_id?: string | null
+    recruiter_id?: string | null
+    emitted_at?: string | null
+  }
+  as_of?: {
+    identity?: Record<string, unknown>
+    contacts?: Record<string, unknown>
+    candidate_stage?: unknown
+  }
+}
+
 export type HrHandoffInboxItem = {
   handoff: HandoffOut
   snapshot?: Record<string, unknown> | null
@@ -34,6 +57,14 @@ export type HrHandoffInboxItem = {
   can_approve_for_employment?: boolean
   awaiting_employment_approval?: boolean
   transfer_summary?: Record<string, unknown> | null
+  /** Backend Why Ready read model (manifest-derived). FE displays only — do not re-aggregate from snapshot. */
+  why_ready?: HrWhyReady | null
+  live_target_work?: {
+    vacancy_id?: string
+    vacancy_title?: string
+    employer_id?: string
+    employer_name?: string
+  } | null
   documents_verified_count?: number | null
   documents_total_count?: number | null
 }

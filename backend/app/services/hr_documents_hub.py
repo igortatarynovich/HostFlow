@@ -9,7 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
 from backend.app.models.document import Document
 from backend.app.models.enums import DocumentStatus
 from backend.app.models.workforce_compliance_state import WorkforceComplianceState
@@ -23,8 +22,8 @@ from backend.app.services.hr_documents_queue import (
     HR_HIGH_RISK_DOC_TYPES,
     _expiring_recommended,
     _missing_recommended,
-    _snapshot_summary,
 )
+from backend.app.services.hr_handoff_read_model import live_candidate_summary
 
 MAX_SCAN = 5000
 
@@ -180,14 +179,6 @@ async def list_hr_documents_hub(
         for h in ho_rows.scalars().all():
             handoff_by_id[str(h.id)] = h
 
-    snap_by_hid: dict[str, CandidateHandoffSnapshot] = {}
-    if hid_list:
-        sn_rows = await db.execute(
-            select(CandidateHandoffSnapshot).where(CandidateHandoffSnapshot.handoff_id.in_(hid_list))
-        )
-        for s in sn_rows.scalars().all():
-            snap_by_hid[str(s.handoff_id)] = s
-
     doc_ids = [str(d.id) for _c, _e, d, _cs in pairs]
     pay_by_doc: dict[str, list[str]] = {}
     if doc_ids:
@@ -231,8 +222,19 @@ async def list_hr_documents_hub(
         )
         missing = st == DocumentStatus.missing.value
 
-        snap = snap_by_hid.get(hid) if hid else None
-        payload = dict(snap.payload) if snap is not None and isinstance(snap.payload, dict) else None
+        # RSO-2D: summary from live employee/person, not shim projection.
+        summary: dict[str, Any] = {
+            "candidate_id": str(emp.candidate_id) if getattr(emp, "candidate_id", None) else None,
+            "display_name": str(emp.display_name or "").strip() or None,
+            "first_name": None,
+            "last_name": None,
+        }
+        if getattr(emp, "candidate_id", None):
+            from backend.app.models.candidate import Candidate
+
+            cand = await db.get(Candidate, str(emp.candidate_id))
+            if cand:
+                summary = live_candidate_summary(cand)
 
         expires_iso = _expires_at_iso(ctx_expires_at=ctx.expires_at, doc_expire_date=doc.expire_date)
         vs_disp = _verification_status_display(ctx=ctx)
@@ -261,7 +263,7 @@ async def list_hr_documents_hub(
                 ),
                 "compliance_status": compliance.status if compliance else None,
                 "compliance_cannot_work": bool(compliance.cannot_work) if compliance else None,
-                "handoff_snapshot_summary": _snapshot_summary(payload),
+                "handoff_snapshot_summary": summary,
                 "assignee_user_id": assignee,
                 "work_eligibility_payment_requirement_ids": pay_by_doc.get(str(doc.id), []),
             }

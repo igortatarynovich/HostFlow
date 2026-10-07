@@ -58,9 +58,25 @@ async def resolve_ready_for_employment_package(
     handoff: CandidateHandoff,
     package: Mapping[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    """Prefer explicit package; else RSO prep on application/lead if present."""
+    """Prefer explicit package; else persisted Transfer manifest; else RSO prep on lead."""
     if isinstance(package, Mapping) and package:
         return dict(package)
+
+    # RSO-2B: CandidateHandoffSnapshot.payload is the boundary manifest when contract_id matches.
+    from sqlalchemy import select
+
+    from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapshot
+    from backend.app.reference.ready_for_employment import is_ready_for_employment_manifest
+
+    snap = (
+        await db.execute(
+            select(CandidateHandoffSnapshot).where(
+                CandidateHandoffSnapshot.handoff_id == str(handoff.id)
+            )
+        )
+    ).scalar_one_or_none()
+    if snap is not None and isinstance(snap.payload, dict) and is_ready_for_employment_manifest(snap.payload):
+        return dict(snap.payload)
 
     app_id = _text(getattr(handoff, "application_id", None))
     cand_id = _text(getattr(handoff, "candidate_id", None))
@@ -68,9 +84,6 @@ async def resolve_ready_for_employment_package(
     if app_id:
         lead = await db.get(Lead, app_id)
     if lead is None and cand_id:
-        # Best-effort: lead linked by candidate_id
-        from sqlalchemy import select
-
         res = await db.execute(
             select(Lead)
             .where(
@@ -88,6 +101,31 @@ async def resolve_ready_for_employment_package(
     if isinstance(stored, Mapping) and is_valid_ready_for_employment_package_v1(stored):
         return dict(stored)
     return dict(stored) if isinstance(stored, Mapping) else None
+
+
+async def apply_employment_accept_after_transfer(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    handoff_id: str,
+    actor_id: str | None,
+    destination: str | None = None,
+) -> dict[str, Any] | None:
+    """RSO-2C: Employment-owned post-Transfer auto-init.
+
+    Call **after** successful ``create_handoff`` for ``internal_hr`` — never from
+    inside Recruitment ``create_handoff``. Returns ``None`` when destination is
+    not internal_hr (no Employment accept step).
+    """
+    dest = _text(destination).lower() or "internal_hr"
+    if dest != "internal_hr":
+        return None
+    return await apply_employment_accept_policy(
+        db,
+        tenant_id=tenant_id,
+        handoff_id=handoff_id,
+        actor_id=actor_id,
+    )
 
 
 async def apply_employment_accept_policy(
@@ -198,5 +236,6 @@ async def apply_employment_accept_policy(
 __all__ = [
     "EmploymentAcceptError",
     "resolve_ready_for_employment_package",
+    "apply_employment_accept_after_transfer",
     "apply_employment_accept_policy",
 ]
