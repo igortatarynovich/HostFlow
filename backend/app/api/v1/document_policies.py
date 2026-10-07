@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import List, Optional
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from pydantic import BaseModel, Field
@@ -16,6 +16,9 @@ from backend.app.auth.deps import get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.document_policy import DocumentPolicy, DocumentPolicyScope, RequirementLevel
 from backend.app.models.user import Role
+from backend.app.reference.requirement_policy_parallel_authority_retirement import (
+    raise_document_policies_writes_retired,
+)
 
 router = APIRouter(prefix="/document-policies", tags=["document-policies"])
 
@@ -124,49 +127,9 @@ async def create_document_policy(
     _: None = Depends(require_trust_write()),
     active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> DocumentPolicyOut:
-    """Create a new document policy."""
-    db, tenant_id = db_tenant
-
-    if payload.scope == DocumentPolicyScope.TENANT:
-        if payload.scope_id is not None:
-            raise HTTPException(
-                status_code=422, detail="scope_id must be null for TENANT scope"
-            )
-    elif payload.scope in (DocumentPolicyScope.CLIENT, DocumentPolicyScope.VACANCY):
-        if not payload.scope_id:
-            raise HTTPException(
-                status_code=422, detail=f"scope_id is required for {payload.scope.value} scope"
-            )
-
-    stmt = (
-        select(DocumentPolicy)
-        .where(DocumentPolicy.tenant_id == str(tenant_id))
-        .where(DocumentPolicy.scope == payload.scope)
-        .where(DocumentPolicy.scope_id == payload.scope_id)
-        .where(DocumentPolicy.document_type_id == payload.document_type_id)
-        .where(DocumentPolicy.own_company_id == active_own_company_id)
-    )
-    existing = (await db.execute(stmt)).scalar_one_or_none()
-    if existing:
-        raise HTTPException(status_code=409, detail="Document policy already exists")
-
-    policy = DocumentPolicy(
-        id=str(uuid4()),
-        tenant_id=str(tenant_id),
-        own_company_id=active_own_company_id,
-        scope=payload.scope,
-        scope_id=payload.scope_id,
-        document_type_id=payload.document_type_id,
-        enabled=payload.enabled,
-        required_level=_level_from_required(payload.required),
-        alert_days_before_expiry=payload.alert_days_before_expiry,
-        owner_user_id=payload.owner_user_id,
-        notes=payload.notes,
-    )
-    db.add(policy)
-    await db.commit()
-    await db.refresh(policy)
-    return DocumentPolicyOut.from_model(policy)
+    """Create retired — use Settings → Requirement Policy (R5)."""
+    _ = (payload, db_tenant, current_user, active_own_company_id)
+    raise_document_policies_writes_retired()
 
 
 @router.patch("/{policy_id}", response_model=DocumentPolicyOut)
@@ -178,35 +141,17 @@ async def update_document_policy(
     _: None = Depends(require_trust_write()),
     active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> DocumentPolicyOut:
-    """Update an existing document policy."""
-    db, tenant_id = db_tenant
-
-    stmt = (
-        select(DocumentPolicy)
-        .where(DocumentPolicy.id == policy_id)
-        .where(DocumentPolicy.tenant_id == str(tenant_id))
-        .where(_policy_scope_filter(active_own_company_id))
-    )
-    policy = (await db.execute(stmt)).scalar_one_or_none()
-    if not policy:
-        raise HTTPException(status_code=404, detail="Document policy not found")
-
-    policy.scope = payload.scope
-    policy.scope_id = payload.scope_id
-    policy.document_type_id = payload.document_type_id
-    policy.enabled = payload.enabled
-    policy.required_level = _level_from_required(payload.required)
-    policy.alert_days_before_expiry = payload.alert_days_before_expiry
-    policy.owner_user_id = payload.owner_user_id
-    policy.notes = payload.notes
-    policy.own_company_id = active_own_company_id
-
-    await db.commit()
-    await db.refresh(policy)
-    return DocumentPolicyOut.from_model(policy)
+    """Update retired — use Settings → Requirement Policy (R5)."""
+    _ = (policy_id, payload, db_tenant, current_user, active_own_company_id)
+    raise_document_policies_writes_retired()
 
 
-@router.delete("/{policy_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
+@router.delete(
+    "/{policy_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
+)
 async def delete_document_policy(
     policy_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -214,18 +159,6 @@ async def delete_document_policy(
     _: None = Depends(require_trust_write()),
     active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> None:
-    """Delete a document policy."""
-    db, tenant_id = db_tenant
-
-    stmt = (
-        select(DocumentPolicy)
-        .where(DocumentPolicy.id == policy_id)
-        .where(DocumentPolicy.tenant_id == str(tenant_id))
-        .where(_policy_scope_filter(active_own_company_id))
-    )
-    policy = (await db.execute(stmt)).scalar_one_or_none()
-    if not policy:
-        raise HTTPException(status_code=404, detail="Document policy not found")
-
-    await db.delete(policy)
-    await db.commit()
+    """Delete retired — use Settings → Requirement Policy (R5)."""
+    _ = (policy_id, db_tenant, current_user, active_own_company_id)
+    raise_document_policies_writes_retired()

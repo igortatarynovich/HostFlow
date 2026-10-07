@@ -3530,7 +3530,21 @@ export default function Companies(){
           {policiesLoading ? (
             <div className="text-sm text-slate-500">{t('common.loading')}</div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4" data-rpm3a-document-policies-retired="true">
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                {t('app.companies.detail.sections.document_policies.retired', {
+                  defaultValue:
+                    'Document policy edits are retired as requirement authority. Manage required document types in Settings → Requirement Policy.',
+                })}{' '}
+                <Link
+                  to={CRM_APP_PATHS.settingsRequirementPolicy}
+                  className="font-medium text-brand-700 underline"
+                >
+                  {t('app.companies.detail.sections.document_policies.open_requirement_policy', {
+                    defaultValue: 'Open Requirement Policy',
+                  })}
+                </Link>
+              </div>
               <div className="flex items-center justify-between">
                 <p className="text-sm text-slate-600">
                   {t('app.companies.detail.sections.document_policies.count', {
@@ -3538,139 +3552,27 @@ export default function Companies(){
                     defaultValue: `${documentPolicies.length} policy(ies) configured`,
                   })}
                 </p>
-                <button
-                  className="btn-primary text-sm"
-                  type="button"
-                  onClick={() => {
-                    setNewPolicyMode(true)
-                    setEditingPolicy(null)
-                  }}
-                >
-                  {t('app.companies.detail.actions.add_policy', { defaultValue: 'Add Policy' })}
-                </button>
               </div>
-              {newPolicyMode && (
-                <PolicyForm
-                  documentTypes={documentTypes}
-                  onSave={async (payload) => {
-                    if (!current?.id) return
-                    try {
-                      setPoliciesError(null)
-                      await createDocumentPolicy({
-                        ...payload,
-                        scope: 'CLIENT',
-                        scope_id: current.id,
-                      })
-                      await loadDocumentPolicies(current.id)
-                      setNewPolicyMode(false)
-                    } catch (err: any) {
-                      const fb = t('app.companies.errors.policy_create_failed', { defaultValue: 'Failed to create policy' })
-                      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
-                        setPoliciesError(getFriendlyErrorInfo(err, fb, t))
-                      }
-                    }
-                  }}
-                  onCancel={() => setNewPolicyMode(false)}
-                  t={t}
-                />
-              )}
-              {editingPolicy && (
-                <PolicyForm
-                  documentTypes={documentTypes}
-                  policy={editingPolicy}
-                  onSave={async (payload) => {
-                    if (!current?.id) return
-                    try {
-                      setPoliciesError(null)
-                      await updateDocumentPolicy(editingPolicy.id, {
-                        ...payload,
-                        scope: editingPolicy.scope,
-                        scope_id: editingPolicy.scope_id,
-                      })
-                      await loadDocumentPolicies(current.id)
-                      setEditingPolicy(null)
-                    } catch (err: any) {
-                      const fb = t('app.companies.errors.policy_update_failed', { defaultValue: 'Failed to update policy' })
-                      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
-                        setPoliciesError(getFriendlyErrorInfo(err, fb, t))
-                      }
-                    }
-                  }}
-                  onCancel={() => setEditingPolicy(null)}
-                  t={t}
-                />
-              )}
-              {!newPolicyMode && !editingPolicy && documentPolicies.length === 0 ? (
+              {documentPolicies.length === 0 ? (
                 <p className="text-sm text-slate-500">
-                  {t('app.companies.detail.sections.document_policies.empty', { defaultValue: 'No document policies configured. Click "Add Policy" to create one.' })}
-                </p>
-              ) : null}
-              {!newPolicyMode && !editingPolicy && documentPolicies.length > 0 && (
-                <div className="space-y-3">
-                  {documentPolicies.map((policy) => {
-                    const docType = documentTypes.find((dt) => (dt.id || dt.code) === policy.document_type_id)
-                    const docTypeName = docType?.name || docType?.code || policy.document_type_id
-                    return (
-                      <div key={policy.id} className="rounded-lg border border-slate-200 bg-white p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-slate-900">{docTypeName}</span>
-                              {policy.required && (
-                                <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                                  {t('app.companies.detail.sections.document_policies.required', { defaultValue: 'Required' })}
-                                </span>
-                              )}
-                              {!policy.enabled && (
-                                <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                  {t('app.companies.detail.sections.document_policies.disabled', { defaultValue: 'Disabled' })}
-                                </span>
-                              )}
-                            </div>
-                            {policy.alert_days_before_expiry && (
-                              <p className="text-xs text-slate-500">
-                                {t('app.companies.detail.sections.document_policies.alert_days', {
-                                  values: { days: policy.alert_days_before_expiry },
-                                  defaultValue: `Alert ${policy.alert_days_before_expiry} days before expiry`,
-                                })}
-                              </p>
-                            )}
-                            {policy.notes && (
-                              <p className="text-xs text-slate-500">{policy.notes}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              className="btn-secondary text-sm"
-                              type="button"
-                              onClick={() => setEditingPolicy(policy)}
-                            >
-                              {t('common.actions.edit')}
-                            </button>
-                            <button
-                              className="btn-danger btn-sm"
-                              type="button"
-                              onClick={async () => {
-                                if (!current?.id || !confirm(t('app.companies.detail.actions.delete_confirm', { defaultValue: 'Delete this policy?' }))) return
-                                try {
-                                  setPoliciesError(null)
-                                  await deleteDocumentPolicy(policy.id)
-                                  await loadDocumentPolicies(current.id)
-                                } catch (err: any) {
-                                  const fb = t('app.companies.errors.policy_delete_failed', { defaultValue: 'Failed to delete policy' })
-                                  if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
-                                    setPoliciesError(getFriendlyErrorInfo(err, fb, t))
-                                  }
-                                }
-                              }}
-                            >
-                              {t('common.actions.delete')}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )
+                  {t('app.companies.detail.sections.document_policies.empty_retired', {
+                    defaultValue: 'No legacy document policies on this client. Use Requirement Policy for required types.',
                   })}
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {documentPolicies.map((policy) => (
+                    <div
+                      key={policy.id}
+                      className="rounded border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                    >
+                      <div className="font-medium">{policy.document_type_id}</div>
+                      <div className="text-slate-500">
+                        {policy.enabled ? 'enabled' : 'disabled'}
+                        {policy.required ? ' · required' : ' · optional'}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

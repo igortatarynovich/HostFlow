@@ -49,6 +49,9 @@ from backend.app.security.event_taxonomy import (
 )
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.reference.requirement_policy_parallel_authority_retirement import (
+    raise_ruleset_writes_retired,
+)
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
@@ -2920,6 +2923,7 @@ async def api_create_ruleset_version(
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
+    raise_ruleset_writes_retired()
     session, tenant_id = db_dep
     ruleset_data = payload.get("ruleset") or payload.get("json_data")
     if not isinstance(ruleset_data, dict):
@@ -2951,6 +2955,7 @@ async def api_activate_ruleset_version(
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
+    raise_ruleset_writes_retired()
     session, tenant_id = db_dep
     pre = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
     if not pre or not ruleset_version_visible_for_scope(pre, own_company_id):
@@ -2974,6 +2979,7 @@ async def api_rollback_ruleset_version(
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
+    raise_ruleset_writes_retired()
     session, tenant_id = db_dep
     target = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
     if not target or not ruleset_version_visible_for_scope(target, own_company_id):
@@ -3148,6 +3154,7 @@ async def api_update_ruleset(
     db_dep=Depends(get_db_with_tenant),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
+    raise_ruleset_writes_retired()
     session, tenant_id = db_dep
     ruleset_data = payload.get("ruleset") or payload.get("json_data")
     if not isinstance(ruleset_data, dict):

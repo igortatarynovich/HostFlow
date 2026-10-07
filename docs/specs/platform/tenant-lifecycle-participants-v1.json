@@ -1,0 +1,15 @@
+{
+  "schema": "hostflow.tenant_lifecycle_participants",
+  "schema_version": 1,
+  "note": "ADR-039 claiming participants. Runtime export/erase is OL-6; this registry is the machine-readable claim so new tenant-owned SoT is not invisible to lifecycle coverage.",
+  "participants": [
+    {
+      "code": "requirement_policy_tenant_overlay",
+      "owner": "platform_reference.requirement_policy_overlay",
+      "tables": ["document_policy_tenant_overlays"],
+      "export": ["delta", "reason", "revision"],
+      "erase": "delete_overlay_row",
+      "notes": "R5 tenant_delta store (RPM-2). UserAuditLog remains the audit participant for mutations."
+    }
+  ]
+}

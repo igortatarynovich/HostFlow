@@ -31,6 +31,7 @@ const SETTINGS_PATH_PREFIX_TAB: { prefix: string; tab: SettingsChromeTabKey }[] 
   { prefix: CRM_APP_PATHS.settingsRiskIntel, tab: 'recruitment_setup' },
   { prefix: CRM_APP_PATHS.settingsHiringPipelineGates, tab: 'recruitment_setup' },
   { prefix: CRM_APP_PATHS.settingsTransferPolicy, tab: 'recruitment_setup' },
+  { prefix: CRM_APP_PATHS.settingsRequirementPolicy, tab: 'recruitment_setup' },
   { prefix: CRM_APP_PATHS.settingsFunnels, tab: 'recruitment_setup' },
   { prefix: CRM_APP_PATHS.settingsMessageTemplates, tab: 'sales_setup' },
   { prefix: CRM_APP_PATHS.settingsLeadForms, tab: 'sales_setup' },

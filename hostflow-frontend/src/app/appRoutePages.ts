@@ -160,6 +160,9 @@ export const HiringPipelineGatesSettingsPage = lazy(() =>
 export const TransferPolicySettingsPage = lazy(() =>
   loadAdmin().then((m) => ({ default: m.TransferPolicySettingsPage })),
 )
+export const RequirementPolicyOperatorPage = lazy(() =>
+  loadAdmin().then((m) => ({ default: m.RequirementPolicyOperatorPage })),
+)
 export const RiskIntelSettingsPage = lazy(() =>
   loadAdmin().then((m) => ({ default: m.RiskIntelSettingsPage })),
 )

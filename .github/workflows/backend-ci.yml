@@ -101,6 +101,8 @@ jobs:
       dr1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1 == 'true' }}
       dr1_runtime: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1_runtime == 'true' }}
       rpm1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm1 == 'true' }}
+      rpm2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm2 == 'true' }}
+      rpm3a: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rpm3a == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -272,6 +274,33 @@ jobs:
               - 'scripts/architecture/requirement_policy_authority_boundary_*'
               - 'docs/specs/tasks/requirement-policy-management.md'
               - 'docs/specs/architecture/requirement-policy-authority.md'
+            rpm2:
+              - 'backend/app/reference/requirement_policy_operator.py'
+              - 'backend/app/reference/document_policy_tenant_overlay_repository.py'
+              - 'backend/app/reference/tenant_lifecycle_participants.py'
+              - 'backend/app/models/document_policy_tenant_overlay.py'
+              - 'backend/app/api/v1/platform/requirement_policy_operator.py'
+              - 'backend/app/api/v1/platform/documents_public.py'
+              - 'backend/tests/platform/test_requirement_policy_operator_gate.py'
+              - 'backend/alembic/versions/202609020002_document_policy_tenant_overlays_rpm2.py'
+              - 'docs/specs/platform/tenant-lifecycle-participants-v1.json'
+              - 'docs/specs/tasks/requirement-policy-management.md'
+              - 'hostflow-frontend/src/pages/admin/RequirementPolicyOperatorPage.tsx'
+              - 'hostflow-frontend/src/api/requirementPolicyOperator.ts'
+              - 'shared/crm_app_paths.json'
+            rpm3a:
+              - 'backend/app/reference/requirement_policy_parallel_authority_retirement.py'
+              - 'backend/app/api/v1/document_policies.py'
+              - 'backend/app/services/document_requirements.py'
+              - 'backend/app/services/requirement_checker.py'
+              - 'backend/app/services/hr_expected_documents_resolver.py'
+              - 'backend/app/modules/documents/router.py'
+              - 'backend/app/api/v1/platform/tenant_requirement_overrides.py'
+              - 'backend/app/requirement_rules/tenant_override_source.py'
+              - 'backend/tests/platform/test_requirement_policy_parallel_authority_retirement_gate.py'
+              - 'docs/specs/tasks/requirement-policy-management.md'
+              - 'hostflow-frontend/src/pages/Companies.tsx'
+              - 'hostflow-frontend/src/pages/admin/RulesetVersionsPage.tsx'
 
   guards:
     name: guards
@@ -699,6 +728,36 @@ jobs:
         with:
           tests: tests/platform/test_requirement_policy_authority_gate.py
 
+  rpm2-operator-gate:
+    name: Requirement Policy Operator Gate
+    needs: changes
+    if: needs.changes.outputs.rpm2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RPM-2 Operator gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_requirement_policy_operator_gate.py') == ''
+        run: echo "RPM-2 Operator gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_requirement_policy_operator_gate.py') != ''
+        with:
+          tests: tests/platform/test_requirement_policy_operator_gate.py
+
+  rpm3a-parallel-authority-retirement-gate:
+    name: Requirement Policy Parallel Authority Retirement Gate
+    needs: changes
+    if: needs.changes.outputs.rpm3a == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when RPM-3A gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_requirement_policy_parallel_authority_retirement_gate.py') == ''
+        run: echo "RPM-3A Parallel Authority Retirement gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_requirement_policy_parallel_authority_retirement_gate.py') != ''
+        with:
+          tests: tests/platform/test_requirement_policy_parallel_authority_retirement_gate.py
+
   dr1-runtime-gate:
     name: DR1 Runtime Gate
     needs: changes
@@ -740,6 +799,8 @@ jobs:
       - cl7-engine-eval-gate
       - overlay-contract-gate
       - rpm1-authority-gate
+      - rpm2-operator-gate
+      - rpm3a-parallel-authority-retirement-gate
       - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:

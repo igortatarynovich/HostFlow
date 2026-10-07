@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   activateRulesetVersion,
   createRulesetVersion,
@@ -134,98 +135,6 @@ export default function RulesetVersionsPage() {
     }
   }
 
-  const handleActivate = async (version: RulesetVersion) => {
-    if (!window.confirm(t('app.admin.ruleset.actions.confirm_activate', { values: { version: version.version } }))) return
-    try {
-      await activateRulesetVersion(version.id)
-      setDiffState(INITIAL_DIFF)
-      setPrefilled(false)
-      await refreshVersions()
-    } catch (err) {
-      setError(summarizeError(err))
-    }
-  }
-
-  const handleRollback = async (version: RulesetVersion) => {
-    const comment = window.prompt(
-      t('app.admin.ruleset.actions.rollback_prompt', { values: { version: version.version } }),
-      t('app.admin.ruleset.actions.rollback_default_comment'),
-    )
-    if (!comment || comment.trim().length < 3) {
-      if (comment !== null) {
-        setError(t('app.admin.ruleset.errors.comment_short'))
-      }
-      return
-    }
-    try {
-      await rollbackRulesetVersion(version.id, { comment: comment.trim() })
-      setDiffState(INITIAL_DIFF)
-      setPrefilled(false)
-      await refreshVersions()
-      await refreshUsage()
-    } catch (err) {
-      setError(summarizeError(err))
-    }
-  }
-
-  const handleShowDiff = async (version: RulesetVersion) => {
-    setDiffState({ versionId: version.id, payload: null, loading: true, error: null })
-    try {
-      const payload = await getRulesetDiff(version.id)
-      setDiffState({ versionId: version.id, payload, loading: false, error: null })
-    } catch (err) {
-      setDiffState({ versionId: version.id, payload: null, loading: false, error: summarizeError(err) })
-    }
-  }
-
-  const handleUseAsDraft = (version: RulesetVersion) => {
-    setDraftJson(toPrettyJson(version.ruleset))
-    setDraftComment(version.comment ?? '')
-    setDraftActivate(false)
-  }
-
-  const diffSummary = useMemo(() => {
-    const summary = diffState.payload?.diff?.summary
-    if (!summary) return null
-    return {
-      added: summary.added ?? 0,
-      removed: summary.removed ?? 0,
-      changed: summary.changed ?? 0,
-    }
-  }, [diffState])
-
-  const rulesetLoadErrorBanner = useMemo<FriendlyErrorInfo | null>(
-    () =>
-      error
-        ? {
-            title: error,
-            hint: t('app.common.retry_hint'),
-          }
-        : null,
-    [error, t],
-  )
-  const rulesetUsageErrorBanner = useMemo<FriendlyErrorInfo | null>(
-    () =>
-      usageError
-        ? {
-            title: usageError,
-            hint: t('app.common.retry_hint'),
-          }
-        : null,
-    [usageError, t],
-  )
-
-  return (
-    <SettingsSubpageHeader
-      backLabel={t('admin.settings.subpage.back_all')}
-      kicker={t('app.admin.ruleset.header.kicker')}
-      title={t('app.admin.ruleset.header.title')}
-      subtitle={t('app.admin.ruleset.header.subtitle')}
-      actions={
-        <div className="flex gap-2">
-          <button type="button" className="btn-secondary" onClick={refreshVersions} disabled={loading}>
-            {loading ? t('app.admin.ruleset.header.refresh.loading') : t('app.admin.ruleset.header.refresh.action')}
-          </button>
           <button type="button" className="btn-secondary" onClick={refreshUsage} disabled={usageLoading}>
             {usageLoading
               ? t('app.admin.ruleset.header.usage_refresh.loading')
@@ -249,68 +158,25 @@ export default function RulesetVersionsPage() {
         />
       )}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-medium text-slate-900">{t('app.admin.ruleset.create.title')}</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {t('app.admin.ruleset.create.description')}
+      <section
+        className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm"
+        data-rpm3a-ruleset-writes-retired="true"
+      >
+        <h2 className="text-lg font-medium text-amber-950">{t('app.admin.ruleset.create.title')}</h2>
+        <p className="mt-2 text-sm text-amber-950">
+          {t('app.admin.ruleset.retired_as_authority', {
+            defaultValue:
+              'Ruleset create/activate/rollback is retired as requirement authority. History below stays read-only. Manage required document types in Settings → Requirement Policy.',
+          })}{' '}
+          <Link
+            to={CRM_APP_PATHS.settingsRequirementPolicy}
+            className="font-medium text-brand-700 underline"
+          >
+            {t('app.admin.ruleset.open_requirement_policy', {
+              defaultValue: 'Open Requirement Policy',
+            })}
+          </Link>
         </p>
-
-        <div className="mt-4 space-y-4">
-          <div>
-            <label htmlFor="ruleset-json" className="mb-1 block text-sm font-medium text-slate-700">
-              {t('app.admin.ruleset.create.json_label')}
-            </label>
-            <textarea
-              id="ruleset-json"
-              className="textarea font-mono"
-              rows={12}
-              value={draftJson}
-              onChange={(event) => setDraftJson(event.target.value)}
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
-            <div>
-              <label htmlFor="ruleset-comment" className="mb-1 block text-sm font-medium text-slate-700">
-                {t('app.admin.ruleset.create.comment_label')}
-              </label>
-              <input
-                id="ruleset-comment"
-                className="input"
-                placeholder={t('app.admin.ruleset.create.comment_placeholder')}
-                value={draftComment}
-                onChange={(event) => setDraftComment(event.target.value)}
-              />
-            </div>
-            <label className="mt-6 flex items-start gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={draftActivate}
-                onChange={(event) => setDraftActivate(event.target.checked)}
-              />
-              <span>{t('app.admin.ruleset.create.activate_toggle')}</span>
-            </label>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={handleCreateDraft}
-            >
-              {t('app.admin.ruleset.create.save')}
-            </button>
-            {active && (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => handleUseAsDraft(active)}
-              >
-                {t('app.admin.ruleset.create.copy_active')}
-              </button>
-            )}
-          </div>
-        </div>
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -371,21 +237,7 @@ export default function RulesetVersionsPage() {
                         {t('app.admin.ruleset.history.actions.diff')}
                       </button>
                       {!version.is_active && (
-                        <button
-                          type="button"
-                          className="btn-secondary btn-xs"
-                          onClick={() => handleActivate(version)}
-                        >
-                          {t('app.admin.ruleset.history.actions.activate')}
-                        </button>
                       )}
-                      <button
-                        type="button"
-                        className="btn-danger btn-xs"
-                        onClick={() => handleRollback(version)}
-                      >
-                        {t('app.admin.ruleset.history.actions.rollback')}
-                      </button>
                     </div>
                   </td>
                 </tr>

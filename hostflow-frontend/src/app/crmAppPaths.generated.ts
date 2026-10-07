@@ -146,6 +146,7 @@ export const CRM_APP_PATHS = {
   settingsHiringPipelineGates: "/app/settings/hiring-pipeline-gates",
   settingsTransferPolicy: "/app/settings/transfer-policy",
   settingsRuleset: "/app/settings/ruleset",
+  settingsRequirementPolicy: "/app/settings/requirement-policy",
   settingsDocs: "/app/settings/docs",
   settingsMergeTemplates: "/app/settings/document-merge-templates",
   settingsTenants: "/app/settings/tenants",

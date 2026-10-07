@@ -160,33 +160,8 @@ async def expected_docs_for_employee(
             if aa and aa not in aliases_by_doc[did]:
                 aliases_by_doc[did].append(aa)
 
-    # Policy layer (tenant/client/vacancy required-ness).
-    pol_rows = (
-        await db.execute(
-            select(DocumentPolicy).where(
-                DocumentPolicy.tenant_id == tid,
-                DocumentPolicy.enabled.is_(True),
-                DocumentPolicy.ref_document_type_id.is_not(None),
-                DocumentPolicy.required_level != RequirementLevel.DISABLED,
-                or_(
-                    and_(DocumentPolicy.scope == "tenant", DocumentPolicy.scope_id.is_(None)),
-                    and_(DocumentPolicy.scope == "client", DocumentPolicy.scope_id == (company_id or "")),
-                    and_(DocumentPolicy.scope == "vacancy", DocumentPolicy.scope_id == (vacancy_id or "")),
-                ),
-            )
-        )
-    ).scalars().all()
-
+    # RPM-3A: DocumentPolicy layer retired as required-X authority.
     policy_level_by_doc: dict[str, str] = {}
-    scope_rank = {"tenant": 1, "client": 2, "vacancy": 3}
-    for p in pol_rows:
-        did = str(p.ref_document_type_id or "").strip()
-        if not did:
-            continue
-        cur = policy_level_by_doc.get(did)
-        incoming = f"{scope_rank.get(str(p.scope), 0)}:{str(p.required_level)}"
-        if cur is None or incoming > cur:
-            policy_level_by_doc[did] = incoming
 
     out: list[dict[str, Any]] = []
     for did, dt in dt_by_id.items():

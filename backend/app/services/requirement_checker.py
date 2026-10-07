@@ -235,101 +235,19 @@ async def check_gate_requirements(
     candidate_is_eu: bool = False,
     own_company_id: Optional[str] = None,
 ) -> GateCheckResult:
-    """Проверяет, пройден ли gate для кандидата.
+    """Gate required-doc checks no longer use DocumentPolicy (RPM-3A).
 
-    Args:
-        db: Database session
-        tenant_id: Tenant ID
-        candidate_id: Candidate ID
-        gate_code: Код gate для проверки
-        client_id: Client ID (для применения client-level policies)
-        vacancy_id: Vacancy ID (для применения vacancy-level policies)
-        candidate_is_eu: Является ли кандидат гражданином EU
-
-    Returns:
-        GateCheckResult с информацией о прохождении gate
+    Signature kept for callers. Required-set authority is R5; hiring which-docs
+    cutover completes in RPM-3B.
     """
-    # Загружаем все политики для этого gate
-    stmt_policies = (
-        select(DocumentPolicy)
-        .where(DocumentPolicy.tenant_id == tenant_id)
-        .where(DocumentPolicy.enabled == True)
-    )
-    pol_scope = document_policies_own_company_clause(own_company_id)
-    if pol_scope is not None:
-        stmt_policies = stmt_policies.where(pol_scope)
-
-    # Фильтруем по gates (JSONB массив содержит gate_code)
-    # В PostgreSQL: WHERE gate_code = ANY(gates)
-    # В SQLite: используем JSON функции
-    policies = (await db.execute(stmt_policies)).scalars().all()
-
-    # Фильтруем политики, которые применяются к этому gate
-    gate_policies: List[DocumentPolicy] = []
-    gate_code_str = gate_code.value
-
-    for policy in policies:
-        gates = policy.gates or []
-        if gate_code_str in gates:
-            # Проверяем scope
-            if policy.scope.value == "tenant" and policy.scope_id is None:
-                gate_policies.append(policy)
-            elif policy.scope.value == "client" and client_id and policy.scope_id == client_id:
-                gate_policies.append(policy)
-            elif policy.scope.value == "vacancy" and vacancy_id and policy.scope_id == vacancy_id:
-                gate_policies.append(policy)
-
-    # Применяем приоритет: VACANCY > CLIENT > TENANT
-    # Группируем по requirement_code или document_type_id
-    final_policies: Dict[str, DocumentPolicy] = {}
-    for policy in gate_policies:
-        key = policy.requirement_code.value if policy.requirement_code else policy.document_type_id
-        if key:
-            # Если уже есть политика с более высоким приоритетом, пропускаем
-            if key in final_policies:
-                existing = final_policies[key]
-                priority_map = {"vacancy": 3, "client": 2, "tenant": 1}
-                if priority_map.get(policy.scope.value, 0) > priority_map.get(existing.scope.value, 0):
-                    final_policies[key] = policy
-            else:
-                final_policies[key] = policy
-
-    # Проверяем каждое требование
-    blocking_requirements: List[RequirementCheckResult] = []
-    optional_requirements: List[RequirementCheckResult] = []
-
-    for policy in final_policies.values():
-        if policy.required_level == RequirementLevel.DISABLED:
-            continue
-
-        check_result = await check_requirement_satisfaction(
-            db,
-            tenant_id=tenant_id,
-            candidate_id=candidate_id,
-            requirement_code=policy.requirement_code,
-            document_type_id=policy.document_type_id,
-            candidate_is_eu=candidate_is_eu,
-        )
-
-        # Устанавливаем blocking в зависимости от required_level
-        check_result.blocking = (
-            policy.required_level in (RequirementLevel.REQUIRED, RequirementLevel.BLOCKING)
-            and not check_result.satisfied
-        )
-
-        if check_result.blocking:
-            blocking_requirements.append(check_result)
-        else:
-            optional_requirements.append(check_result)
-
-    passed = len(blocking_requirements) == 0
-
+    _ = (db, tenant_id, candidate_id, client_id, vacancy_id, candidate_is_eu, own_company_id)
     return GateCheckResult(
         gate_code=gate_code,
-        passed=passed,
-        blocking_requirements=blocking_requirements,
-        optional_requirements=optional_requirements,
+        passed=True,
+        blocking_requirements=[],
+        optional_requirements=[],
     )
+
 
 
 __all__ = [

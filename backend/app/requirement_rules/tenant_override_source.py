@@ -17,6 +17,9 @@ from backend.app.requirement_rules.constants import (
     SOURCE_TENANT_OVERRIDE,
 )
 from backend.app.services.pipeline_override_policy import NON_OVERRIDABLE_DOC_TYPES
+from backend.app.reference.requirement_policy_parallel_authority_retirement import (
+    filter_out_document_required_overrides,
+)
 
 
 def _rule_dedup_key(rule: dict[str, Any]) -> tuple[str, str]:
@@ -163,6 +166,8 @@ def apply_tenant_overrides(
     context: str,
 ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     """Apply tenant relax/add/severity after platform rule merge."""
+    # RPM-3A: document_required must not answer “need X?”; field_required stays.
+    tenant_overrides = filter_out_document_required_overrides(list(tenant_overrides or []))
     rules_by_key = {_rule_dedup_key(rule): dict(rule) for rule in base_rules}
     order = [_rule_dedup_key(rule) for rule in base_rules]
 

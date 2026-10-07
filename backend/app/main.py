@@ -161,6 +161,7 @@ try:
     from backend.app.api.v1.platform import documents_public as platform_documents_public_router
     from backend.app.api.v1.platform import requirement_rules as platform_requirement_rules_router
     from backend.app.api.v1.platform import tenant_requirement_overrides as platform_tenant_requirement_overrides_router
+    from backend.app.api.v1.platform import requirement_policy_operator as platform_requirement_policy_operator_router
     from backend.app.api.v1.platform import notification_events as platform_notification_events_router
     from backend.app.api.v1.platform import module_registry as platform_module_registry_router
     from backend.app.api.v1.platform import campaigns as platform_campaigns_router
@@ -923,6 +924,11 @@ app.include_router(platform_forms_builder_router.router, prefix="/api/v1", tags=
 app.include_router(platform_documents_public_router.router, prefix="/api/v1", tags=["documents-platform"])
 app.include_router(platform_requirement_rules_router.router, prefix="/api/v1", tags=["requirement-rules"])
 app.include_router(platform_tenant_requirement_overrides_router.router, prefix="/api/v1", tags=["requirement-overrides"])
+app.include_router(
+    platform_requirement_policy_operator_router.router,
+    prefix="/api/v1",
+    tags=["requirement-policy-operator"],
+)
 app.include_router(platform_notification_events_router.router, prefix="/api/v1", tags=["notification-events"])
 app.include_router(platform_module_registry_router.router, prefix="/api/v1", tags=["module-registry"])
 app.include_router(platform_campaigns_router.router, prefix="/api/v1", tags=["campaigns"])

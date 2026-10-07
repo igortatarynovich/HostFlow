@@ -18,12 +18,16 @@ from backend.app.models.tenant_requirement_override import TenantRequirementOver
 from backend.app.requirement_rules.constants import (
     OVERRIDE_STATUS_ACTIVE,
     OVERRIDE_STATUS_REVOKED,
+    RULE_TYPE_DOCUMENT_REQUIRED,
     VALID_CONTEXTS,
 )
 from backend.app.requirement_rules.registry import build_field_required_rules
 from backend.app.requirement_rules.tenant_override_source import (
     TenantOverridePolicyError,
     validate_tenant_override_policy,
+)
+from backend.app.reference.requirement_policy_parallel_authority_retirement import (
+    raise_p3b_document_required_retired,
 )
 
 from backend.app.auth.trust_role_deps import TRUST_ADMIN_ROLES
@@ -116,6 +120,8 @@ async def create_tenant_requirement_override(
     db_tenant: tuple = Depends(get_db_with_tenant),
 ) -> TenantRequirementOverrideOut:
     db, tenant_id = db_tenant
+    if body.rule_type == RULE_TYPE_DOCUMENT_REQUIRED or body.rule_type == "document_required":
+        raise_p3b_document_required_retired()
     payload = body.model_dump()
     try:
         validate_tenant_override_policy(

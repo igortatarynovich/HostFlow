@@ -257,6 +257,19 @@ export default function SettingsLandingPage() {
         requiresModules: ['documents'],
       },
       {
+        key: 'requirement_policy',
+        label: t('admin.settings.cards.requirement_policy.label', {
+          defaultValue: 'Requirement Policy',
+        }),
+        description: t('admin.settings.cards.requirement_policy.description', {
+          defaultValue: 'Base, override, reason, and result for required documents (R5 merge).',
+        }),
+        target: CRM_APP_PATHS.settingsRequirementPolicy,
+        requireAny: ['documents.manage', 'settings.view', 'admin.ruleset'],
+        section: 'crm_setup',
+        requiresModules: ['documents'],
+      },
+      {
         key: 'merge_templates',
         label: t('admin.settings.cards.merge_templates.label'),
         description: t('admin.settings.cards.merge_templates.description'),
