@@ -1061,10 +1061,17 @@ async def perform_acquisition_activity_action(
     return {"activity": target, "snapshot": snapshot}
 
 
-async def get_vacancy_or_raise(db: AsyncSession, tenant_id: str, vacancy_id: str) -> Vacancy:
-    row = (
-        await db.execute(select(Vacancy).where(Vacancy.tenant_id == tenant_id, Vacancy.id == vacancy_id))
-    ).scalar_one_or_none()
+async def get_vacancy_or_raise(
+    db: AsyncSession,
+    tenant_id: str,
+    vacancy_id: str,
+    *,
+    unrestricted: bool = False,
+) -> Vacancy:
+    stmt = select(Vacancy).where(Vacancy.id == vacancy_id)
+    if not unrestricted:
+        stmt = stmt.where(Vacancy.tenant_id == tenant_id)
+    row = (await db.execute(stmt)).scalar_one_or_none()
     if not row:
         raise LookupError("vacancy_not_found")
     return row
