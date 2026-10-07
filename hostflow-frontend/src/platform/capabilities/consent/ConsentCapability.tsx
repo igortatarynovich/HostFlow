@@ -11,6 +11,7 @@ import {
   sendConsentNotice,
   type ConsentView,
 } from './consentOwner'
+import { applicationEmploymentSpinePhase } from '../../application-workspace/resolveRecruitmentApplicationDecision'
 
 /**
  * Shared Consent widget. Owner = Compliance. Host only places.
@@ -22,6 +23,7 @@ export function ConsentCapability(ctx: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()
   const { notify } = useToast()
   const { onRefresh } = ctx
+  const phase = applicationEmploymentSpinePhase(ctx.application)
   const subjectKey = consentSubjectKey(ctx)
   const [view, setView] = useState<ConsentView | null>(null)
   const [loading, setLoading] = useState(Boolean(subjectKey))
@@ -94,6 +96,8 @@ export function ConsentCapability(ctx: WorkspaceCapabilityRenderContext) {
   const satisfied = Boolean(view?.satisfied)
   const status = view?.status
   const policyBlocked = Boolean(view?.policyBlocked)
+
+  if (phase !== 'recruitment') return null
 
   return (
     <section className="space-y-3" data-capability-id="consent" data-widget-class="consent">

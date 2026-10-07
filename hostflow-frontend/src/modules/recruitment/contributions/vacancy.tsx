@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/Button'
 import { useToast } from '../../../components/Toast'
 import { useI18n } from '../../../i18n'
 import { getFriendlyErrorInfo } from '../../../utils/friendlyError'
+import { applicationEmploymentSpinePhase } from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
 import type { WorkspaceCapabilityRenderContext } from '../../../platform/workspace-capability/renderContext'
 
 export function RecruitmentVacancyContribution({
@@ -14,11 +15,14 @@ export function RecruitmentVacancyContribution({
 }: WorkspaceCapabilityRenderContext) {
   const { notify } = useToast()
   const { t } = useI18n()
+  const vacancyId = String(application?.extensions?.vacancy_id || '').trim()
+  const phase = applicationEmploymentSpinePhase(application)
   const [vacancies, setVacancies] = useState<Array<{ id: string; title: string }>>([])
-  const [selectedVacancyId, setSelectedVacancyId] = useState(String(application?.extensions?.vacancy_id || ''))
+  const [selectedVacancyId, setSelectedVacancyId] = useState(vacancyId)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
+    if (vacancyId) return
     let cancelled = false
     void listVacancies({ limit: 30 }).then((res) => {
       if (cancelled) return
@@ -28,7 +32,7 @@ export function RecruitmentVacancyContribution({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [vacancyId])
 
   const bind = useCallback(async () => {
     if (!application || !selectedVacancyId || busy || patching) return
@@ -45,22 +49,37 @@ export function RecruitmentVacancyContribution({
     }
   }, [application, busy, notify, onRefresh, patching, selectedVacancyId, t])
 
+  if (phase !== 'recruitment' && !vacancyId) return null
+
+  if (!vacancyId) {
+    return (
+      <section className="space-y-2" data-capability-id="recruitment.vacancy">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {t('app.recruitment.contributions.search')}
+        </p>
+        <select value={selectedVacancyId} onChange={(event) => setSelectedVacancyId(event.target.value)} className="input">
+          <option value="">{t('app.recruitment.contributions.pick_search')}</option>
+          {vacancies.map((vacancy) => (
+            <option key={vacancy.id} value={vacancy.id}>
+              {vacancy.title}
+            </option>
+          ))}
+        </select>
+        <Button variant="secondary" size="sm" disabled={!selectedVacancyId || patching || busy} onClick={() => void bind()}>
+          {t('app.recruitment.contributions.bind_search')}
+        </Button>
+      </section>
+    )
+  }
+
   return (
-    <section className="space-y-2" data-capability-id="recruitment.vacancy">
+    <section className="space-y-1" data-capability-id="recruitment.vacancy">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {t('app.recruitment.contributions.search')}
       </p>
-      <select value={selectedVacancyId} onChange={(event) => setSelectedVacancyId(event.target.value)} className="input">
-        <option value="">{t('app.recruitment.contributions.pick_search')}</option>
-        {vacancies.map((vacancy) => (
-          <option key={vacancy.id} value={vacancy.id}>
-            {vacancy.title}
-          </option>
-        ))}
-      </select>
-      <Button variant="secondary" size="sm" disabled={!selectedVacancyId || patching || busy} onClick={() => void bind()}>
-        {t('app.recruitment.contributions.bind_search')}
-      </Button>
+      <p className="text-sm text-slate-800">
+        {String(application?.extensions?.vacancy_title || vacancyId)}
+      </p>
     </section>
   )
 }

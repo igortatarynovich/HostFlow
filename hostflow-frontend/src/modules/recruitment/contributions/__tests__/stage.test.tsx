@@ -1,23 +1,18 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../../../i18n'
 import type { Application } from '../../../../api/types/application'
 import { ToastProvider } from '../../../../components/Toast'
 import { RecruitmentStageContribution } from '../stage'
 
-const { updateRecruitmentApplicationStage } = vi.hoisted(() => ({
-  updateRecruitmentApplicationStage: vi.fn(() =>
-    Promise.resolve({ id: 'app-1', status: 'in_progress', extensions: { stage: 'qualified' } }),
-  ),
-}))
-
 vi.mock('../../../../api/applications', () => ({
-  updateRecruitmentApplicationStage,
+  updateRecruitmentApplicationStage: vi.fn(),
   processRecruitmentApplication: vi.fn(),
   submitRecruitmentApplicationIntakeDecision: vi.fn(),
   createRecruitmentApplicationFollowUp: vi.fn(),
+  recruitmentApplicationFits: vi.fn(),
+  recruitmentApplicationTransferToEmployment: vi.fn(),
 }))
 
 const application: Application = {
@@ -27,7 +22,7 @@ const application: Application = {
   title: 'Ada',
   status: 'new',
   tab_bucket: 'new',
-  extensions: { stage: 'new' },
+  extensions: { stage: 'new', vacancy_id: 'vac-1' },
 }
 
 function renderStage() {
@@ -49,18 +44,9 @@ function renderStage() {
 }
 
 describe('RecruitmentStageContribution', () => {
-  beforeEach(() => {
-    updateRecruitmentApplicationStage.mockClear()
-  })
-
-  it('persists a CRM stage change from New', async () => {
-    const user = userEvent.setup()
+  it('does not show a stage dropdown on the happy path', () => {
     renderStage()
-    const select = screen.getByLabelText('Stage')
-    expect(select).toHaveValue('new')
-    await user.selectOptions(select, 'qualified')
-    await waitFor(() => {
-      expect(updateRecruitmentApplicationStage).toHaveBeenCalledWith('app-1', { stage: 'qualified' })
-    })
+    expect(screen.queryByLabelText('Stage')).toBeNull()
+    expect(screen.getByRole('link', { name: /call/i })).toBeTruthy()
   })
 })
