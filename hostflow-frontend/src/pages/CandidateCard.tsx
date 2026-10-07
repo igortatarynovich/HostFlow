@@ -1142,15 +1142,24 @@ export default function CandidateCard(){
     return detail.includes('rodo must be sent') || detail.includes('contact/screening stage')
   }, [])
 
-  const parseHandoffDocsIncomplete = useCallback((err: any): { missingTypes: string[] } | null => {
+  const parseHandoffDocsIncomplete = useCallback((err: any): { missingTypes: string[]; message?: string } | null => {
     const detailRaw = err?.response?.data?.detail
     const toMissing = (val: any): string[] =>
       Array.isArray(val) ? val.map((x) => String(x || '').trim()).filter(Boolean) : []
+    const toResult = (detail: any) => {
+      const blockers = Array.isArray(detail?.blocking_reasons) ? detail.blocking_reasons : []
+      const firstBlocker = blockers.find((row: any) => row && typeof row === 'object')
+      const message = String(detail?.message || detail?.refusal_reason || firstBlocker?.message || '').trim()
+      return {
+        missingTypes: toMissing(detail?.missing_types),
+        message: message || undefined,
+      }
+    }
 
     if (detailRaw && typeof detailRaw === 'object') {
       const code = String((detailRaw as any).code || '').trim()
       if (code === 'handoff_docs_incomplete') {
-        return { missingTypes: toMissing((detailRaw as any).missing_types) }
+        return toResult(detailRaw)
       }
     }
 
@@ -1160,7 +1169,7 @@ export default function CandidateCard(){
         try {
           const parsed = JSON.parse(trimmed)
           if (parsed && typeof parsed === 'object' && String((parsed as any).code || '') === 'handoff_docs_incomplete') {
-            return { missingTypes: toMissing((parsed as any).missing_types) }
+            return toResult(parsed)
           }
         } catch {
           return { missingTypes: [] }
@@ -2280,7 +2289,7 @@ export default function CandidateCard(){
             : ''
           notify({
             title: t('app.candidate_card.messages.handoff_docs_incomplete'),
-            description: missingLabels || undefined,
+            description: handoffDocs.message || missingLabels || undefined,
             variant: 'error',
           })
           await revertStageOptimistic()
@@ -2552,7 +2561,7 @@ export default function CandidateCard(){
               : ''
             notify({
               title: t('app.candidate_card.messages.handoff_docs_incomplete'),
-              description: missingLabels || undefined,
+              description: handoffDocs.message || missingLabels || undefined,
               variant: 'error',
             })
             setSaving(false)
@@ -2591,7 +2600,7 @@ export default function CandidateCard(){
           : ''
         notify({
           title: t('app.candidate_card.messages.handoff_docs_incomplete'),
-          description: missingLabels || undefined,
+          description: handoffDocs.message || missingLabels || undefined,
           variant: 'error',
         })
       } else {
@@ -3253,6 +3262,7 @@ export default function CandidateCard(){
         if (handoffDocs) {
           notify({
             title: t('app.candidate_card.messages.handoff_docs_incomplete'),
+            description: handoffDocs.message,
             variant: 'warning',
           })
         } else {

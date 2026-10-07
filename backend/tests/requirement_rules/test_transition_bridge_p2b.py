@@ -94,7 +94,7 @@ def test_p2b_map_evaluation_to_transition_gate_blockers() -> None:
     assert gate["document_runtime"]["evaluation_version"] == "document_runtime_v1"
 
 
-def test_p2b_merge_blocks_transition_when_unsatisfied() -> None:
+def test_p2b_merge_keeps_legacy_gate_diagnostic_when_unsatisfied() -> None:
     report = {
         "transfer_allowed": True,
         "handoff_create_allowed": True,
@@ -124,15 +124,14 @@ def test_p2b_merge_blocks_transition_when_unsatisfied() -> None:
         "requirement_engine": {"applied": True, "satisfied": False},
     }
     merged = merge_transition_requirement_gate(report, gate)
-    assert merged["transfer_allowed"] is False
-    assert merged["handoff_create_allowed"] is False
+    assert merged["transfer_allowed"] is True
+    assert merged["handoff_create_allowed"] is True
     assert "requirement_engine" in merged["source_layers"]
     assert "document_runtime" in merged["source_layers"]
-    assert any(
-        row.get("source_layer") == "requirement_engine" and row.get("document_type_code") == "code95"
-        for row in merged["blocking_reasons"]
-    )
+    assert merged["blocking_reasons"] == []
+    assert merged["missing_documents"] == []
     assert merged.get("requirement_gate", {}).get("applied") is True
+    assert merged["requirement_gate"]["authority_role"] == "diagnostic_only"
 
 
 def test_p2b_merge_preserves_allowed_when_satisfied() -> None:
@@ -198,7 +197,9 @@ async def test_p2b_evaluator_legacy_fallback_without_profile(monkeypatch: pytest
 
 
 @pytest.mark.anyio
-async def test_p2b_evaluator_blocks_missing_documents(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_p2b_evaluator_does_not_let_legacy_profile_block_transfer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async def _resolve(db, *, tenant_id, candidate_id, target_stage=None, require_destination=False):
         return {
             "transfer_allowed": True,
@@ -261,10 +262,10 @@ async def test_p2b_evaluator_blocks_missing_documents(monkeypatch: pytest.Monkey
         entity_id="cand-blocked",
         target_system_stage=READY_FOR_HANDOFF_STAGE,
     )
-    assert report["transfer_allowed"] is False
+    assert report["transfer_allowed"] is True
     assert "requirement_engine" in report["source_layers"]
-    assert "passport" in report["missing_documents"]
-    assert any(row.get("source_layer") == "requirement_engine" for row in report["blocking_reasons"])
+    assert report["missing_documents"] == []
+    assert report["blocking_reasons"] == []
 
     err = await TransitionEvaluatorAdapter.assert_transition_allowed(
         db=None,  # type: ignore[arg-type]
@@ -274,8 +275,7 @@ async def test_p2b_evaluator_blocks_missing_documents(monkeypatch: pytest.Monkey
         entity_id="cand-blocked",
         target_system_stage=READY_FOR_HANDOFF_STAGE,
     )
-    assert err.get("code") == "transfer_blocked"
-    assert any(row.get("source_layer") == "requirement_engine" for row in err.get("blocking_reasons") or [])
+    assert err == {}
 
 
 @pytest.mark.anyio

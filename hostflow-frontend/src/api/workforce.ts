@@ -853,7 +853,6 @@ export async function getWorkforceEmployeeOperationalProfile(
   )
   return data
 }
-
 export async function getWorkforceEmployee(id: string): Promise<WorkforceEmployee> {
   const { data } = await http.get<WorkforceEmployee>(`/workforce/employees/${encodeURIComponent(id)}`)
   return data
@@ -1797,38 +1796,3 @@ export async function patchHrEmployeeRecord(
   )
   return data
 }
-
-export type HrDriverActionResult = {
-  accepted?: boolean
-  activated?: boolean
-  outcome?: string | null
-  reason?: string | null
-  blocked_reasons?: string[]
-  state?: string | null
-  checkpoint_context_complete?: boolean | null
-}
-
-export type HrDriverLegalIn = {
-  citizenship_class: string
-  stay_basis: string
-  work_authorization_basis: string
-  valid_for_this_employment: string
-}
-
-export type HrDriverTermsIn = {
-  position: string
-  contract_basis: string
-  work_time_value: string
-  work_time_unit: string
-  work_system: string
-  workplace: string
-  compensation_amount: string
-  compensation_currency: string
-  compensation_unit: string
-  duration: string
-  fixed_term_end?: string | null
-  probation_status: string
-  probation_end?: string | null
-  intended_start_date: string
-}
-

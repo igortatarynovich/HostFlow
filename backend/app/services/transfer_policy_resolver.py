@@ -151,6 +151,47 @@ def _pending_confirmations(
     return pending
 
 
+def _canonical_requirement_state(
+    checklist: dict[str, Any],
+    approved_overrides: set[str],
+) -> tuple[set[str], set[str], list[dict[str, Any]]]:
+    rows = [row for row in checklist.get("requirements") or [] if isinstance(row, dict)]
+    required = {
+        str(row.get("requirement_code") or "").strip().lower()
+        for row in rows
+        if str(row.get("requirement_code") or "").strip()
+    }
+    blockers = checklist.get("pipeline_blockers") or {}
+    unmet = {
+        str(code or "").strip().lower()
+        for key in (
+            "missing_requirements",
+            "problematic_requirements",
+            "pending_review_requirements",
+        )
+        for code in blockers.get(key) or []
+        if str(code or "").strip()
+    }
+    unmet -= approved_overrides
+    reasons: list[dict[str, Any]] = []
+    for row in blockers.get("unfulfilled_requirements") or []:
+        if not isinstance(row, dict):
+            continue
+        requirement_code = str(row.get("requirement_code") or "").strip().lower()
+        if not requirement_code or requirement_code not in unmet:
+            continue
+        reasons.append(
+            _blocking_reason(
+                code="unmet_required_requirement",
+                message=f"Required requirement is not fulfilled: {requirement_code}",
+                source_layer="requirement_fulfillment",
+                requirement_code=requirement_code,
+                status=str(row.get("evaluation_status") or row.get("evidence_status") or "missing"),
+            )
+        )
+    return required, unmet, reasons
+
+
 class TransferPolicyResolver:
     """Canonical transfer readiness resolver — single decision contract."""
 
@@ -202,7 +243,10 @@ class TransferPolicyResolver:
         blocking_reasons: list[dict[str, Any]] = []
         warnings: list[dict[str, Any]] = []
 
-        from backend.app.api.v1.candidates.pipeline_overrides_service import approved_handoff_relaxed_types
+        from backend.app.api.v1.candidates.pipeline_overrides_service import (
+            approved_handoff_relaxed_types,
+            approved_pipeline_relaxed_requirements,
+        )
 
         approved_overrides = sorted(
             await approved_handoff_relaxed_types(
@@ -212,6 +256,17 @@ class TransferPolicyResolver:
             )
         )
         if approved_overrides:
+            source_layers.add("pipeline_override")
+        approved_requirement_overrides = {
+            str(code or "").strip().lower()
+            for code in await approved_pipeline_relaxed_requirements(
+                db,
+                tenant_id=tenant_id,
+                candidate_id=str(candidate_id),
+            )
+            if str(code or "").strip()
+        }
+        if approved_requirement_overrides:
             source_layers.add("pipeline_override")
 
         eligibility = await resolve_workforce_eligibility_via_contract(
@@ -256,6 +311,20 @@ class TransferPolicyResolver:
         }
         r5_required = r5_required_set(owner_ctx, tenant_delta)
         required_documents = sorted(r5_required)
+        from backend.app.services.candidate_evidence_service import build_requirements_checklist
+
+        requirements_checklist = await build_requirements_checklist(
+            db,
+            tenant_id=str(tenant_id),
+            candidate=cand,
+        )
+        (
+            canonical_required_requirements,
+            canonical_unmet_requirements,
+            canonical_requirement_reasons,
+        ) = _canonical_requirement_state(requirements_checklist, approved_requirement_overrides)
+        source_layers.add("requirement_fulfillment")
+        blocking_reasons.extend(canonical_requirement_reasons)
         pack_claimed_required = {
             str(row.get("document_code") or "").strip()
             for row in expected_docs
@@ -373,33 +442,6 @@ class TransferPolicyResolver:
                 )
             )
 
-        req_engine = pkg.get("requirement_engine") or {}
-        if req_engine.get("applied"):
-            source_layers.add("requirement_engine")
-            from backend.app.requirement_rules.readiness_bridge import (
-                map_requirement_evaluation_to_package_fragments,
-            )
-
-            req_fragments = map_requirement_evaluation_to_package_fragments(req_engine)
-            for reason in req_fragments.get("blocking_reasons") or []:
-                blocking_reasons.append(reason)
-            for warning in req_fragments.get("warnings") or []:
-                warnings.append(warning)
-            for doc_code in req_fragments.get("missing_documents") or []:
-                norm = str(doc_code or "").strip()
-                if not norm or norm in approved_overrides:
-                    continue
-                if norm not in missing_documents:
-                    missing_documents.append(norm)
-            missing_documents = sorted(set(missing_documents))
-            if req_fragments.get("missing_data_fields"):
-                seen_field_codes = {str(f.get("field_code") or "") for f in missing_data_fields}
-                for field in req_fragments["missing_data_fields"]:
-                    fc = str(field.get("field_code") or "")
-                    if fc and fc not in seen_field_codes:
-                        missing_data_fields.append(field)
-                        seen_field_codes.add(fc)
-
         from backend.app.requirement_rules.readiness_bridge import resolve_entity_profile_code_for_candidate
         from backend.app.services.operational_requirements_service import (
             evaluate_operational_requirements_for_candidate,
@@ -504,15 +546,8 @@ class TransferPolicyResolver:
         )
         from backend.app.reference.requirement_policy_consumer_parity import canonical_rpm_unmet
 
-        rpm_required = {str(code).strip().lower() for code in required_documents if str(code).strip()}
-        rpm_unmet = canonical_rpm_unmet(
-            (
-                str(code).strip().lower()
-                for code in (*missing_documents, *pending_verification)
-                if str(code).strip()
-            ),
-            rpm_required,
-        )
+        rpm_required = canonical_required_requirements
+        rpm_unmet = canonical_rpm_unmet(canonical_unmet_requirements, rpm_required)
         conjuncts = neutral_conjuncts()
         if not (handoff_allowed and readiness_ok):
             conjuncts["workforce_packs"] = (False, "Workforce eligibility blocks transfer")
@@ -577,6 +612,8 @@ class TransferPolicyResolver:
             "missing_data_fields": missing_data_fields,
             "required_confirmations": required_confirmations,
             "approved_overrides": approved_overrides,
+            "approved_requirement_overrides": sorted(approved_requirement_overrides),
+            "unmet_requirements": sorted(canonical_unmet_requirements),
             "source_layers": sorted(source_layers),
             "eligibility_status": eligibility.get("eligibility_status"),
             "handoff_allowed": handoff_allowed,
@@ -642,6 +679,7 @@ class TransferPolicyResolver:
                     [
                         *(report.get("missing_documents") or []),
                         *(report.get("pending_verification_documents") or []),
+                        *(report.get("unmet_requirements") or []),
                     ]
                 )
             ),
