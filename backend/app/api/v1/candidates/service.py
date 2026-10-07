@@ -219,7 +219,9 @@ async def _enforce_docs_ready_for_handoff_stage(
         status_code=409,
         detail={
             "code": "handoff_docs_incomplete",
-            "message": "Required documents checklist is incomplete for ready_for_handoff stage",
+            "message": err.get("message")
+            or err.get("refusal_reason")
+            or "Transfer is blocked by the active handoff policy",
             "missing_types": err.get("missing_types") or [],
             "missing_data_fields": err.get("missing_data_fields") or [],
             "blocking_blocks": err.get("blocking_blocks") or [],

@@ -8,13 +8,18 @@ describe('parseStageTransitionError', () => {
     const e = {
       response: {
         data: {
-          detail: { code: 'handoff_docs_incomplete', missing_types: ['passport', 'id'] },
+          detail: {
+            code: 'handoff_docs_incomplete',
+            message: 'Active transfer policy is blocked',
+            missing_types: ['passport', 'id'],
+          },
         },
       },
     };
     expect(parseStageTransitionError(e)).toEqual({
       kind: 'handoff_docs',
       missingTypes: ['passport', 'id'],
+      message: 'Active transfer policy is blocked',
     });
   });
 

@@ -565,11 +565,12 @@ export default function Pipeline(){
         })
       } else if (parsed.kind === 'handoff_docs') {
         specificErrorSet = true
+        const missing = formatMissingDocTypes(parsed.missingTypes)
         setError({
-          title:
-            t('app.candidate_card.messages.handoff_docs_incomplete', {
-              defaultValue: "Cannot move to 'Ready for handoff': required documents checklist is incomplete.",
-            }) + ` ${formatMissingDocTypes(parsed.missingTypes)}`,
+          title: parsed.message || t('app.candidate_card.messages.handoff_docs_incomplete', {
+            defaultValue: "Cannot move to 'Ready for handoff': required documents checklist is incomplete.",
+          }),
+          detail: parsed.missingTypes.length ? missing : undefined,
           hint: dndRetryHint,
         })
       }
