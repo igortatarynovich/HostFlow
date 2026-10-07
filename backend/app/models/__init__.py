@@ -152,6 +152,8 @@ FrCardLayoutField = fr_module.FrCardLayoutField  # type: ignore[attr-defined]
 ep_module = _load_model_module("entity_profile")
 EpEntityProfile = ep_module.EpEntityProfile  # type: ignore[attr-defined]
 EpEntityProfileVersion = ep_module.EpEntityProfileVersion  # type: ignore[attr-defined]
+EpEntityProfileVersionField = ep_module.EpEntityProfileVersionField  # type: ignore[attr-defined]
+EpEntityProfileVersionDocument = ep_module.EpEntityProfileVersionDocument  # type: ignore[attr-defined]
 EpEntityProfileField = ep_module.EpEntityProfileField  # type: ignore[attr-defined]
 EpIntakePresentation = ep_module.EpIntakePresentation  # type: ignore[attr-defined]
 module_registry_module = _load_model_module("module_registry")
@@ -446,6 +448,8 @@ __all__ = [
     "FrCardLayoutField",
     "EpEntityProfile",
     "EpEntityProfileVersion",
+    "EpEntityProfileVersionField",
+    "EpEntityProfileVersionDocument",
     "EpEntityProfileField",
     "EpIntakePresentation",
     "MergeDocumentTemplate",

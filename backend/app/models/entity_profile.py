@@ -133,6 +133,73 @@ class EpEntityProfileVersion(Base):
     )
 
 
+class EpEntityProfileVersionField(Base):
+    """Immutable field requirement binding owned by a published Profile Version."""
+
+    __tablename__ = "ep_entity_profile_version_fields"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_profile_version_id",
+            "canonical_field_id",
+            name="uq_ep_profile_version_fields_version_field",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
+    entity_profile_version_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ep_entity_profile_versions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    canonical_field_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("fr_canonical_fields.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    qualified_code: Mapped[str] = mapped_column(String(191), nullable=False)
+    requirement_level: Mapped[str] = mapped_column(String(16), nullable=False)
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+
+
+class EpEntityProfileVersionDocument(Base):
+    """Immutable document requirement binding owned by a published Profile Version."""
+
+    __tablename__ = "ep_entity_profile_version_documents"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_profile_version_id",
+            "document_type_version_id",
+            name="uq_ep_profile_version_documents_version_doc",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
+    entity_profile_version_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ep_entity_profile_versions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    document_type_version_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ref_document_type_versions.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    requirement_level: Mapped[str] = mapped_column(String(16), nullable=False)
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+
+
 class EpEntityProfileField(Base, TimestampMixin):
     __tablename__ = "ep_entity_profile_fields"
     __table_args__ = (
@@ -223,6 +290,8 @@ __all__ = [
     "PLATFORM_TENANT_SCOPE",
     "EpEntityProfile",
     "EpEntityProfileVersion",
+    "EpEntityProfileVersionField",
+    "EpEntityProfileVersionDocument",
     "EpEntityProfileField",
     "EpIntakePresentation",
 ]
