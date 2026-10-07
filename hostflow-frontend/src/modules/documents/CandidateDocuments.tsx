@@ -57,6 +57,7 @@ import {
   MAX_FILE_MB,
 } from "./constants";
 import { getDocumentFieldsConfig } from "./documentFieldsConfig";
+import { COMBINED_LICENSE_SATISFIES } from "../../data/documentTypeAliases";
 import {
   toArray,
   isTooLarge,
@@ -652,10 +653,28 @@ export default function CandidateDocuments({
       const existingTypeCodes = new Set<string>();
       
       // Сначала добавляем реальные документы
+      const rememberType = (code: string | null | undefined) => {
+        const pending = [normalizeDocTypeCode(code || "")];
+        const seen = new Set<string>();
+        while (pending.length) {
+          const norm = pending.pop() || "";
+          if (!norm || seen.has(norm)) continue;
+          seen.add(norm);
+          existingTypeCodes.add(norm);
+          for (const group of EQUIVALENT_TYPE_GROUPS) {
+            if (group.some((item) => normalizeDocTypeCode(item) === norm)) {
+              for (const item of group) pending.push(normalizeDocTypeCode(item));
+            }
+          }
+          for (const covered of COMBINED_LICENSE_SATISFIES[norm] || []) {
+            pending.push(normalizeDocTypeCode(covered));
+          }
+        }
+      };
       docsList.forEach((doc) => {
         allDocsMap.set(doc.id, doc);
         if (doc.type_code || doc.doc_type) {
-          existingTypeCodes.add(normalizeDocTypeCode(doc.type_code || doc.doc_type));
+          rememberType(doc.type_code || doc.doc_type);
         }
       });
       
@@ -926,6 +945,12 @@ useEffect(() => {
       groups[kind].sort((a, b) => {
         const statusA = primaryStatus(a);
         const statusB = primaryStatus(b);
+        const missingA = statusA === "missing" ? 0 : 1;
+        const missingB = statusB === "missing" ? 0 : 1;
+        if (missingA !== missingB) return missingA - missingB;
+        const licenseA = coverageKeysForStoredDocType(a.type_code || a.doc_type).includes("driver_license") ? 0 : 1;
+        const licenseB = coverageKeysForStoredDocType(b.type_code || b.doc_type).includes("driver_license") ? 0 : 1;
+        if (licenseA !== licenseB) return licenseA - licenseB;
         const rankA =
           DOCUMENT_STATUS_META[statusA]?.order ?? (typeof a.status_rank === "number" ? a.status_rank : 0);
         const rankB =

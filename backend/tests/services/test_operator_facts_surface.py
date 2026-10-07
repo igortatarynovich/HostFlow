@@ -11,6 +11,8 @@ from backend.app.services.operator_facts_surface import (
     drop_withheld_document_codes,
     empty_facts,
     project_required_document_types,
+    recorded_document_fields,
+    recorded_professional_fields,
     requirement_codes_for_operator,
 )
 
@@ -308,6 +310,67 @@ def test_shared_licence_drops_the_old_qualification_card_blocker() -> None:
     assert "driver_qualification_card" in separate_codes
     assert "driver_license" in separate_codes
     assert "passport" in separate_codes
+
+
+def test_stage_guard_filter_reads_the_full_named_set() -> None:
+    shared = apply_operator_facts_patch(
+        empty_facts(),
+        {
+            "citizenship": "UA",
+            "licence_issuing_country": "PL",
+            "licence_categories": ["C", "CE"],
+        },
+        employment_id="emp-1",
+    )
+    named = ["passport", "driver_license", "driver_qualification_card"]
+    missing = drop_withheld_document_codes(
+        ["driver_qualification_card"],
+        shared,
+        include_replacement=False,
+        required_types=named,
+    )
+    assert missing == []
+    kept = drop_withheld_document_codes(
+        ["passport"],
+        shared,
+        include_replacement=False,
+        required_types=named,
+    )
+    assert kept == ["passport"]
+
+    separate = apply_operator_facts_patch(
+        empty_facts(),
+        {"citizenship": "UA", "licence_issuing_country": "BY"},
+        employment_id="emp-1",
+    )
+    separate_missing = drop_withheld_document_codes(
+        ["driver_qualification_card"],
+        separate,
+        include_replacement=False,
+        required_types=["driver_license", "driver_qualification_card"],
+    )
+    assert separate_missing == ["driver_qualification_card"]
+
+
+def test_recorded_licence_fact_shows_on_the_document_and_the_employee_row() -> None:
+    facts = apply_operator_facts_patch(
+        empty_facts(),
+        {
+            "licence_issuing_country": "PL",
+            "licence_categories": ["B", "C", "CE"],
+            "licence_valid_to": "2039-04-25",
+        },
+        employment_id="emp-1",
+    )
+    on_document = recorded_document_fields("driver_license_code95", facts)
+    assert on_document["expire_date"] == "2039-04-25"
+    assert on_document["categories"] == ["B", "C", "CE"]
+    assert on_document["issuing_country"] == "PL"
+    on_row = recorded_professional_fields("driving_licence", facts)
+    assert on_row["valid_until"] == "2039-04-25"
+    assert on_row["categories"] == ["B", "C", "CE"]
+    assert on_row["issuing_country"] == "PL"
+    assert recorded_document_fields("passport", facts) == {}
 
 
 def test_answered_card_medical_and_psych_ask_for_those_files() -> None:

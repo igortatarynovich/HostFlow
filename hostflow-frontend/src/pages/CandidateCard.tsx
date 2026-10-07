@@ -5340,10 +5340,10 @@ export default function CandidateCard(){
       {!isMasked && docsDrawerOpen && model?.id ? (
         <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={closeDocsDrawer}>
           <div
-            className="fixed right-0 top-0 h-dvh max-h-dvh w-full max-w-6xl overflow-hidden bg-white shadow-xl sm:rounded-l-2xl"
+            className="fixed bottom-0 right-0 top-0 flex w-full max-w-6xl flex-col overflow-hidden bg-white shadow-xl sm:rounded-l-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="border-b border-slate-200 p-3">
+            <div className="shrink-0 border-b border-slate-200 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 text-sm font-semibold text-slate-900 truncate">
                   {t('app.candidate_card.docs_panel.title')}
@@ -5399,7 +5399,7 @@ export default function CandidateCard(){
                 </div>
               ) : null}
             </div>
-            <div className="h-full overflow-auto p-3">
+            <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-8">
               <CandidateDocuments
                 key={`${model.id}:${docsDrawerType || 'default'}:${operatorFactsRevision}`}
                 candidateId={String(model.id)}

@@ -114,6 +114,11 @@ export const DocumentCard = memo(function DocumentCard({
   const hasLastCheck = Boolean(doc.last_check);
   const showFollowUps = docReminders.length > 0 || hasLastCheck;
   const expanded = !isCompact && Boolean(expandedDocs[doc.id]);
+  const recordedMeta = (doc.meta && typeof doc.meta === "object" ? doc.meta : {}) as Record<string, unknown>;
+  const recordedCategories = Array.isArray(recordedMeta.categories)
+    ? recordedMeta.categories.map((item) => String(item)).filter(Boolean).join(", ")
+    : "";
+  const recordedCountry = recordedMeta.issuing_country ? String(recordedMeta.issuing_country) : "";
   const showMetaRow =
     !expanded &&
     Boolean(
@@ -123,6 +128,8 @@ export const DocumentCard = memo(function DocumentCard({
         doc.expire_date ||
         doc.expires_at ||
         doc.ordered_at ||
+        recordedCategories ||
+        recordedCountry ||
         hasFiles,
     );
 
@@ -228,6 +235,18 @@ export const DocumentCard = memo(function DocumentCard({
                     {t("admin.documents.labels.expire_date")} {formatDate(doc.expire_date || doc.expires_at)}
                   </span>
                 )}
+                {recordedCategories ? (
+                  <span>
+                    {t("app.candidate_card.operator_facts.licence_categories", { defaultValue: "Categories" })}{" "}
+                    {recordedCategories}
+                  </span>
+                ) : null}
+                {recordedCountry ? (
+                  <span>
+                    {t("app.candidate_card.operator_facts.licence_country", { defaultValue: "Issuing country" })}{" "}
+                    {recordedCountry}
+                  </span>
+                ) : null}
                 {doc.ordered_at && (
                   <span>
                     {t("admin.documents.labels.ordered_at", { defaultValue: "Ordered" })} {formatDate(doc.ordered_at)}

@@ -503,6 +503,32 @@ def evidence_coverage(
     return DocumentStatus.in_progress.value
 
 
+def _with_recorded_professional_facts(
+    facts: list[dict[str, Any]],
+    personal: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Show the operator fact on the qualification row when the document field is empty."""
+
+    from backend.app.services.operator_facts_surface import (
+        facts_from_personal_data,
+        recorded_professional_fields,
+    )
+
+    recorded = facts_from_personal_data(personal if isinstance(personal, dict) else {})
+    painted: list[dict[str, Any]] = []
+    for fact in facts:
+        reading = dict(fact)
+        extra = recorded_professional_fields(str(reading.get("key") or ""), recorded)
+        if extra.get("valid_until") and not reading.get("valid_until"):
+            reading["valid_until"] = extra["valid_until"]
+        if extra.get("categories") and not reading.get("categories"):
+            reading["categories"] = extra["categories"]
+        if extra.get("issuing_country") and not reading.get("issuing_country"):
+            reading["issuing_country"] = extra["issuing_country"]
+        painted.append(reading)
+    return painted
+
+
 def _fact_rows(facts: list[dict[str, Any]], defined: bool) -> list[dict[str, Any]]:
     if not defined:
         return []
@@ -517,6 +543,9 @@ def _fact_rows(facts: list[dict[str, Any]], defined: bool) -> list[dict[str, Any
         categories = _categories_text(fact.get("categories"))
         valid_until = _as_date(fact.get("valid_until"))
         details = []
+        country = _text(fact.get("issuing_country"))
+        if country:
+            details.append({"label": "Kraj wydania", "value": country})
         if categories:
             details.append({"label": "Kategorie", "value": categories})
         if valid_until is not None:
@@ -713,11 +742,14 @@ async def build_hr_employee_record_surface(
         driver.get("work_eligibility", {}).get("status") == "eligible"
     )
     professional = driver.get("professional") or {}
-    facts = await _facts_with_evidence(
-        db,
-        tenant_id=str(tenant_id),
-        employment_id=str(driver.get("employment_id") or ""),
-        facts=list(professional.get("facts") or []),
+    facts = _with_recorded_professional_facts(
+        await _facts_with_evidence(
+            db,
+            tenant_id=str(tenant_id),
+            employment_id=str(driver.get("employment_id") or ""),
+            facts=list(professional.get("facts") or []),
+        ),
+        personal,
     )
     document_views = await _linked_documents(db, tenant_id=str(tenant_id), candidate_id=str(employee.candidate_id or ""))
     documents = {
