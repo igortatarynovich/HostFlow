@@ -13,11 +13,97 @@ from backend.app.services.hr_employee_record_surface import (
     apply_citizenship,
     apply_person,
     evidence_coverage,
+    end_record_employment,
     project_employee_record,
     project_employment_path,
     project_record_overview,
 )
 from backend.app.services.requirement_document_data import fact_fields_from_document
+
+
+class _FlushOnlySession:
+    def __init__(self):
+        self.flushed = False
+
+    async def flush(self) -> None:
+        self.flushed = True
+
+
+async def test_end_record_employment_ends_relationship_and_keeps_employee_context(monkeypatch) -> None:
+    from backend.app.models.hr_employment import Employment
+    from backend.app.models.workforce_employee import WorkforceEmployee
+    from backend.app.services import hr_employee_record_surface as service
+
+    employee = WorkforceEmployee(id="employee-1", tenant_id="tenant-1", display_name="Jan", status="active", meta={})
+    employment = Employment(
+        id="employment-1",
+        tenant_id="tenant-1",
+        employee_id="employee-1",
+        state="active",
+        started_on=date(2026, 8, 12),
+    )
+    session = _FlushOnlySession()
+
+    async def get_employee(*_args, **_kwargs):
+        return employee
+
+    async def get_employment(*_args, **_kwargs):
+        return employment
+
+    monkeypatch.setattr(service.workforce_employee_service, "get_employee", get_employee)
+    monkeypatch.setattr(service, "display_employment", get_employment)
+
+    result = await end_record_employment(
+        session,  # type: ignore[arg-type]
+        tenant_id="tenant-1",
+        employee_id="employee-1",
+        ended_on=date(2026, 9, 30),
+        reason="Koniec umowy",
+        actor_user_id="user-1",
+    )
+
+    assert result["accepted"] is True
+    assert employment.state == "ended"
+    assert employment.ended_on == date(2026, 9, 30)
+    assert employee.status == "terminated"
+    assert employee.meta["employment_lifecycle"]["ended"][0]["reason"] == "Koniec umowy"
+    assert session.flushed is True
+
+
+async def test_end_record_employment_rejects_date_before_start(monkeypatch) -> None:
+    from backend.app.models.hr_employment import Employment
+    from backend.app.models.workforce_employee import WorkforceEmployee
+    from backend.app.services import hr_employee_record_surface as service
+
+    employee = WorkforceEmployee(id="employee-1", tenant_id="tenant-1", display_name="Jan", status="active")
+    employment = Employment(
+        id="employment-1",
+        tenant_id="tenant-1",
+        employee_id="employee-1",
+        state="active",
+        started_on=date(2026, 8, 12),
+    )
+
+    async def get_employee(*_args, **_kwargs):
+        return employee
+
+    async def get_employment(*_args, **_kwargs):
+        return employment
+
+    monkeypatch.setattr(service.workforce_employee_service, "get_employee", get_employee)
+    monkeypatch.setattr(service, "display_employment", get_employment)
+
+    result = await end_record_employment(
+        _FlushOnlySession(),  # type: ignore[arg-type]
+        tenant_id="tenant-1",
+        employee_id="employee-1",
+        ended_on=date(2026, 8, 11),
+        reason="Koniec umowy",
+        actor_user_id="user-1",
+    )
+
+    assert result == {"accepted": False, "reason": "END_DATE_BEFORE_START"}
+    assert employment.state == "active"
 
 
 def _projected(**overrides):

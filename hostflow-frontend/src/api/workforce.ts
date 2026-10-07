@@ -1712,6 +1712,17 @@ export async function updateHrEmployeeRecordPerson(
   return data
 }
 
+export async function endHrEmployeeRecordEmployment(
+  employeeId: string,
+  body: { ended_on: string; reason: string },
+): Promise<HrDriverActionResult> {
+  const { data } = await http.post<HrDriverActionResult>(
+    `/workforce/employees/${encodeURIComponent(employeeId)}/employee-record/end-employment`,
+    body,
+  )
+  return data
+}
+
 export async function updateHrEmployeeRecordCitizenship(
   employeeId: string,
   citizenship: string,

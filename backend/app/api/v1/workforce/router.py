@@ -88,6 +88,7 @@ from backend.app.services.hr_driver_operator_surface import (
 )
 from backend.app.services.hr_employee_record_surface import (
     build_hr_employee_record_surface,
+    end_record_employment,
     update_record_citizenship,
     update_record_person,
 )
@@ -1283,6 +1284,8 @@ class HrEmployeeRecordOut(BaseModel):
     legal: dict[str, Any] = Field(default_factory=dict)
     terms: Optional[dict[str, Any]] = None
     documents: dict[str, int] = Field(default_factory=dict)
+    overview: Optional[dict[str, Any]] = None
+    path: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class HrEmployeeRecordAddressIn(BaseModel):
@@ -1312,6 +1315,11 @@ class HrEmployeeRecordPersonIn(BaseModel):
 
 class HrEmployeeRecordCitizenshipIn(BaseModel):
     citizenship: str
+
+
+class HrEmployeeRecordEndEmploymentIn(BaseModel):
+    ended_on: date
+    reason: str = Field(..., min_length=3, max_length=1000)
 
 
 @router.get(
@@ -1373,6 +1381,66 @@ async def update_hr_employee_record_person(
     if result.get("accepted"):
         await db.commit()
     return HrDriverActionOut(accepted=bool(result.get("accepted")), reason=result.get("reason"))
+
+
+@router.post(
+    "/employees/{employee_id}/employee-record/end-employment",
+    response_model=HrDriverActionOut,
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
+)
+async def end_hr_employee_record_employment(
+    employee_id: str,
+    body: HrEmployeeRecordEndEmploymentIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> HrDriverActionOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    actor = str(current_user.sub or "").strip() or None
+    result = await end_record_employment(
+        db,
+        tenant_id=tenant_id,
+        employee_id=employee_id,
+        ended_on=body.ended_on,
+        reason=body.reason,
+        actor_user_id=actor,
+    )
+    if not result.get("accepted"):
+        return HrDriverActionOut(accepted=False, reason=str(result.get("reason") or "END_EMPLOYMENT_FAILED"))
+
+    try:
+        await ledger_svc.create_event(
+            db,
+            tenant_id=tenant_id,
+            employee_id=employee_id,
+            event_code="employee_terminated",
+            category="employment",
+            title="Employee terminated",
+            description=body.reason.strip(),
+            effective_date=body.ended_on,
+            occurred_at=datetime.now(timezone.utc),
+            owner="HR",
+            created_by=actor,
+            status="done",
+            dedupe_key=f"employee_terminated:{result.get('employment_id')}:{body.ended_on.isoformat()}",
+            source_type="employee_record_lifecycle",
+            source_ref=str(result.get("employment_id") or employee_id),
+            references={"employee_id": employee_id, "employment_id": result.get("employment_id")},
+        )
+        await log_activity(
+            db,
+            tenant_id=tenant_id,
+            action="workforce.employee_record.end_employment",
+            actor_id=actor,
+            target_type="hr_employment",
+            target_id=str(result.get("employment_id") or ""),
+            payload={"employee_id": employee_id, "ended_on": body.ended_on.isoformat(), "reason": body.reason.strip()},
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+    return HrDriverActionOut(accepted=True, state="ended")
 
 
 @router.get(

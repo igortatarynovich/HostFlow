@@ -5,7 +5,7 @@ Current Process is the driver next action. Neither layer stores a fact.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -31,6 +31,8 @@ from backend.app.services.hr_driver_operator_surface import (
     build_hr_driver_operator_surface,
     canonical_fact_key,
 )
+from backend.app.services.employment_records import display_employment
+from backend.app.services import workforce_employees as workforce_employee_service
 from backend.app.services.hr_verification_plan import VERIFICATION_SLOT_DEFS
 from backend.app.services.requirement_document_data import fact_fields_from_document
 
@@ -62,6 +64,60 @@ _DOCUMENT_KEYS = frozenset({"passport"})
 _CONFIRMED_DOCUMENT = frozenset({DocumentStatus.approved.value, DocumentStatus.verified.value})
 _ZUS_DONE = frozenset({"done", "completed"})
 _ZUS_CLOSED = frozenset({"done", "completed", "cancelled", "canceled"})
+
+
+async def end_record_employment(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    employee_id: str,
+    ended_on: date,
+    reason: str,
+    actor_user_id: str | None,
+) -> dict[str, Any]:
+    """End the displayed active Employment while preserving the Person/Employee context."""
+
+    employee = await workforce_employee_service.get_employee(db, tenant_id, employee_id)
+    if employee is None:
+        return {"accepted": False, "reason": "EMPLOYEE_NOT_FOUND"}
+    employment = await display_employment(db, tenant_id, employee_id)
+    if employment is None:
+        return {"accepted": False, "reason": "EMPLOYMENT_NOT_FOUND"}
+    if employment.state != "active":
+        return {"accepted": False, "reason": "EMPLOYMENT_NOT_ACTIVE"}
+    if employment.started_on is not None and ended_on < employment.started_on:
+        return {"accepted": False, "reason": "END_DATE_BEFORE_START"}
+
+    clean_reason = str(reason or "").strip()
+    if not clean_reason:
+        return {"accepted": False, "reason": "END_REASON_REQUIRED"}
+
+    employment.state = "ended"
+    employment.ended_on = ended_on
+    employee.status = "terminated"
+    meta = dict(employee.meta) if isinstance(employee.meta, dict) else {}
+    lifecycle = dict(meta.get("employment_lifecycle") or {})
+    history = list(lifecycle.get("ended") or [])
+    history.append(
+        {
+            "employment_id": str(employment.id),
+            "ended_on": ended_on.isoformat(),
+            "reason": clean_reason,
+            "actor_user_id": str(actor_user_id or "").strip() or None,
+            "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+    )
+    lifecycle["ended"] = history
+    meta["employment_lifecycle"] = lifecycle
+    employee.meta = meta
+    flag_modified(employee, "meta")
+    await db.flush()
+    return {
+        "accepted": True,
+        "state": "ended",
+        "employment_id": str(employment.id),
+        "ended_on": ended_on.isoformat(),
+    }
 
 
 def _slot_types(document_key: str) -> frozenset[str]:
