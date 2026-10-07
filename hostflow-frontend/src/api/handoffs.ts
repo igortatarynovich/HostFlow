@@ -233,23 +233,6 @@ export async function getHandoffsWithCandidates(params: {
   return data
 }
 
-export type EmploymentAcceptPolicyOut = {
-  policy_id: string
-  handoff_id?: string | null
-  decision: string
-  accepted: boolean
-  employment_started?: boolean
-  blockers?: Array<{ code?: string; message?: string }>
-  message?: string | null
-}
-
-export async function applyEmploymentAcceptPolicy(handoffId: string): Promise<EmploymentAcceptPolicyOut> {
-  const { data } = await api.post<EmploymentAcceptPolicyOut>(
-    `/handoffs/${encodeURIComponent(handoffId)}/employment-accept-policy`,
-  )
-  return data
-}
-
 export type EmploymentFormalizeOut = {
   policy_id: string
   handoff_id?: string | null
