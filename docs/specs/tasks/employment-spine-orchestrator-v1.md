@@ -91,4 +91,5 @@ ADR-017 post-hire ZUS journeys remain satellites — they do not replace step 2�
 ## Next
 
 1. **ESO-5 in progress** — physical start SoT + apply (`POST /handoffs/{id}/employment-started`); Employee created ≠ Started; closes spine Employee → Started.  
-2. RSO-2 Transfer remains Recruitment-owned (Candidate, after Ready for employment) and must **not** call Employment accept / employability / resolution / formalize / started. After Transfer the operator continues in HR ([`ADR-042`](../architecture/ADR-042-operator-host-boundary.md)). Do not pursue [#359](https://github.com/igortatarynovich/HostFlow/pull/359) one-card PASS.
+2. RSO-2 Transfer remains Recruitment-owned (Candidate, after Ready for employment) and must **not** call Employment accept / employability / resolution / formalize / started. After Transfer the operator continues in HR ([`ADR-042`](../architecture/ADR-042-operator-host-boundary.md)). Do not pursue [#359](https://github.com/igortatarynovich/HostFlow/pull/359) one-card PASS.  
+3. **Canonical Facts Completeness** — [`canonical-facts-completeness.md`](canonical-facts-completeness.md): Employment consumers (ESO-1…2 identity/citizenship) stay on one Person/package projection read path; no Employment-local copy of Recruitment facts.

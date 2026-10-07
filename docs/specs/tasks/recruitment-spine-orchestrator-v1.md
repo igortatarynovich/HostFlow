@@ -220,6 +220,8 @@ FAIL if Recruitment UI creates Employee, asks for zezwolenie type, or hosts Empl
 1. **RSO-1 PASS** — package contract + three acceptance gates frozen.  
 2. **RSO-2** runtime: re-host per [`ADR-042`](../architecture/ADR-042-operator-host-boundary.md) — Application Fits enters Candidate; emit `ready_for_employment.v1` + **Передать** only after Recruitment on that Candidate is complete. Do not pursue [#359](https://github.com/igortatarynovich/HostFlow/pull/359) one-card PASS.  
 3. **Intake Readiness Gate** — [`intake-readiness-gate.md`](../gates/intake-readiness-gate.md) (`intake_readiness.v1`): Meta-like `POST /leads/meta` must become an actionable Application (`next_action = fits`) without hand-written canonical facts. Not Transfer / Formalize / Started.  
-4. ESO-1 accept policy on [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — must enforce gate 2 (no re-ask).
+4. **Vacancy Recruitment Requirements SoT** — [vacancy-recruitment-requirements-sot.md](vacancy-recruitment-requirements-sot.md). System result fit / missing / not_fit chooses one next action; **Подходит** stays the human boundary into Candidates. Runtime not started. Unlock ≠ sequential-queue Active Product.  
+5. **Canonical Facts Completeness** — [canonical-facts-completeness.md](canonical-facts-completeness.md). Occupancy cutover before Vacancy Requirements evaluator.  
+6. ESO-1 accept policy on [Employment Spine Orchestrator v1](employment-spine-orchestrator-v1.md) — must enforce gate 2 (no re-ask).
 
 Canvas: `meta-to-started-target-journey` (visual; not L2 canon).

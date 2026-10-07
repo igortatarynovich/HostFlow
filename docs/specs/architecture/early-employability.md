@@ -3,7 +3,7 @@
 **Status:** **Accepted** (L2 contract — Early Employability Gate / ESO-2)  
 **Date:** 2026-09-09  
 **Trusted base:** `feat/eso1-employment-accept-policy` @ `38511932` (stacks on ESO-1; integration line remains RSO-1 tip until #353/#354 merge)  
-**Related:** [`employment-accept-policy.md`](employment-accept-policy.md) (`employment_accept_policy.v1`) · [`ready-for-employment-contract.md`](ready-for-employment-contract.md) · [`../tasks/employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md)
+**Related:** [`employment-accept-policy.md`](employment-accept-policy.md) (`employment_accept_policy.v1`) · [`ready-for-employment-contract.md`](ready-for-employment-contract.md) · [`../tasks/employment-spine-orchestrator-v1.md`](../tasks/employment-spine-orchestrator-v1.md) · [`../tasks/canonical-facts-completeness.md`](../tasks/canonical-facts-completeness.md) · [ADR-017](../../adr/ADR-017-work-eligibility-gates-zus.md)
 
 **L0 checklist:** No new P-rule; no Passport/Manifest **shape** change; no Architecture RFC. Applies **P-02** (Employment owns employability). Does not rewrite L0. Does not mint Employee.
 
