@@ -64,6 +64,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
   const callHref = contactPhone ? `tel:${contactPhone.replace(/\s/g, '')}` : null
   const prep = applicationReadyForEmploymentPrep(application)
   const nextAction = String(prep?.next_action || '').trim()
+  const intakeNextAction = String(application.next_action || '').trim()
   const handedOff = Boolean(prep?.handoff_id) || nextAction === 'handed_off'
 
   if (handedOff) {
@@ -174,10 +175,41 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
     }
   }
 
-  // After Fits interest without prep yet — prefer Fits intent over Create candidate.
+  // Intake Readiness: inbound Application with Fits as the one next action.
   const call = asRecord(application.extensions?.call_result_v1)
   const interested = String(call?.result || '').trim() === 'interested'
   const vacancyKnown = Boolean(String(application.extensions?.vacancy_id || '').trim())
+  if (intakeNextAction === 'fits' && onRunFits && !prep) {
+    return {
+      stateId: 'recruitment.fits_from_intake',
+      currentState: t('app.recruitment_inquiry.rso.fits_pending_title', {
+        defaultValue: 'Подходит — подготовка',
+      }),
+      why: t('app.recruitment_inquiry.rso.fits_from_intake_body', {
+        defaultValue: 'Отклик готов. Следующий шаг — Подходит.',
+      }),
+      primaryAction: {
+        id: 'run_fits',
+        label: t('app.recruitment_inquiry.rso.run_fits', { defaultValue: 'Подходит' }),
+        onClick: onRunFits,
+        disabled,
+      },
+      secondaryActions: [
+        { id: 'follow_up', label: t('app.recruitment_inquiry.follow_up'), onClick: onFollowUp, disabled },
+        {
+          id: 'reject',
+          label: t('app.recruitment_inquiry.reject'),
+          onClick: onReject,
+          variant: 'danger',
+          disabled,
+        },
+      ],
+      requiredContext: vacancyKnown ? [] : ['vacancy'],
+      variant: 'default',
+    }
+  }
+
+  // After Fits interest without prep yet — prefer Fits intent over Create candidate.
   if (interested && onRunFits && !prep) {
     return {
       stateId: 'recruitment.fits_pending',

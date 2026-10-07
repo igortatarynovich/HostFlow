@@ -48,6 +48,21 @@ describe('resolveRecruitmentApplicationDecision', () => {
     expect(decision.requiredContext).toEqual([])
   })
 
+  it('makes Fits the primary action when intake next_action is fits', () => {
+    const onRunFits = vi.fn()
+    const decision = resolveRecruitmentApplicationDecision({
+      ...handlers,
+      onRunFits,
+      application: app({
+        next_action: 'fits',
+        extensions: { vacancy_id: 'vac-1' },
+      }),
+    })
+    expect(decision.stateId).toBe('recruitment.fits_from_intake')
+    expect(decision.primaryAction?.id).toBe('run_fits')
+    expect(decision.secondaryActions?.map((row) => row.id)).toEqual(['follow_up', 'reject'])
+  })
+
   it('does not offer convert when the application is already a candidate', () => {
     const decision = resolveRecruitmentApplicationDecision({
       ...handlers,

@@ -25,7 +25,6 @@ from backend.app.reference.employment_accept_policy import (
 )
 from backend.app.reference.ready_for_employment import (
     CONTRACT_ID as RFE_CONTRACT_ID,
-    is_valid_ready_for_employment_package_v1,
 )
 from backend.app.services.audit import log_audit_event
 from backend.app.services import handoff as handoff_service
@@ -87,9 +86,13 @@ async def resolve_ready_for_employment_package(
         return None
     prep = _record(_record(lead.normalized).get(PREP_KEY))
     stored = prep.get("package")
-    if isinstance(stored, Mapping) and is_valid_ready_for_employment_package_v1(stored):
-        return dict(stored)
-    return dict(stored) if isinstance(stored, Mapping) else None
+    if not isinstance(stored, Mapping):
+        return None
+    from backend.app.modules.recruitment.services.ready_for_employment_orchestrator import (
+        hydrate_package_identity_from_lead,
+    )
+
+    return hydrate_package_identity_from_lead(stored, lead)
 
 
 def read_employment_spine(handoff: CandidateHandoff) -> dict[str, Any]:

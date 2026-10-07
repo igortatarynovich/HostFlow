@@ -182,11 +182,44 @@ def _identity_overlay_from_lead(lead: Lead | None) -> dict[str, Any]:
             break
     first = _text(norm.get("first_name") or getattr(lead, "first_name", None))
     last = _text(norm.get("last_name") or getattr(lead, "last_name", None))
+    if not first and not last:
+        full = _text(norm.get("full_name"))
+        parts = full.split(None, 1) if full else []
+        if parts:
+            first = parts[0]
+            last = parts[1] if len(parts) > 1 else last
     if first:
         out.setdefault("first_name", first)
     if last:
         out.setdefault("last_name", last)
     return out
+
+
+def hydrate_package_identity_from_lead(
+    package: Mapping[str, Any] | None,
+    lead: Lead | None,
+) -> dict[str, Any]:
+    """Reuse already-ingested lead identity on a stored Fits package.
+
+    Citizenship can live on ``lead.normalized`` after Intake Readiness even when
+    the candidate row / first package snapshot omitted it. Employment must not
+    treat that as a missing fact.
+    """
+    pkg = dict(package or {})
+    overlay = _identity_overlay_from_lead(lead)
+    if not overlay:
+        return pkg
+    person = dict(pkg.get("person") or {})
+    identity = dict(person.get("identity_facts") or {})
+    for key, val in overlay.items():
+        if key == "citizenship":
+            if not _alpha2(identity.get(key)):
+                identity[key] = val
+        elif not _text(identity.get(key)):
+            identity[key] = val
+    person["identity_facts"] = identity
+    pkg["person"] = person
+    return pkg
 
 
 def _employment_country_from_vacancy(vacancy: Vacancy | None) -> str:
@@ -266,7 +299,7 @@ def build_ready_for_employment_package_v1(
         },
         "context_refs": context_refs,
     }
-    return package
+    return hydrate_package_identity_from_lead(package, lead)
 
 
 def evaluate_package_recruitment_missing(
@@ -799,6 +832,7 @@ __all__ = [
     "FORBIDDEN_RECRUITMENT_MISSING_CODES",
     "package_fingerprint_v1",
     "build_ready_for_employment_package_v1",
+    "hydrate_package_identity_from_lead",
     "evaluate_package_recruitment_missing",
     "assert_recruitment_missing_is_rso_safe",
     "run_fits_prep",

@@ -95,6 +95,7 @@ export function RecruitmentStageContribution({
     if (!application) return
     void run(async () => {
       const result = await recruitmentApplicationFits(application.id)
+      onRefresh()
       if (result.next_action === 'offer_handoff') {
         notify({
           title: result.ready_label || t('app.recruitment_inquiry.rso.ready_label', {
@@ -105,7 +106,6 @@ export function RecruitmentStageContribution({
       } else if (result.message) {
         notify({ title: result.message, variant: 'info' })
       }
-      onRefresh()
     })
   }, [application, notify, onRefresh, run, t])
 
