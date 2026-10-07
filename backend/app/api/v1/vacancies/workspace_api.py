@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.app.api.v1.vacancies.repo import vacancy_read_unrestricted
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
@@ -35,7 +36,12 @@ async def get_search_workspace(
 ):
     db, tenant_id = db_tenant
     try:
-        pulse = await get_search_workspace_pulse(db, str(tenant_id), str(vacancy_id))
+        pulse = await get_search_workspace_pulse(
+            db,
+            str(tenant_id),
+            str(vacancy_id),
+            unrestricted=vacancy_read_unrestricted(getattr(_user, "role", None)),
+        )
     except LookupError:
         raise HTTPException(status_code=404, detail="Vacancy not found")
     return SearchWorkspacePulseOut.model_validate(pulse)

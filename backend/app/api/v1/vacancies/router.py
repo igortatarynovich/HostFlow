@@ -21,7 +21,7 @@ from backend.app.api.v1.candidate_documents import apply_template_to_candidate_i
 from .schemas import VacancyIn, VacancyOut, VacancyPatch
 from .mappers import vacancy_to_out
 from backend.app.models.company import Company
-from .repo import VacancyRepo
+from .repo import VacancyRepo, vacancy_read_unrestricted
 from .service import VacancyService
 from backend.app.services import billing_restrictions
 from backend.app.services.tenant_visibility import get_tenant_visibility
@@ -77,6 +77,7 @@ def _svc(
     *,
     own_company_id: str | None = None,
     is_client_tenant: bool = False,
+    unrestricted: bool = False,
 ) -> VacancyService:
     db, tenant_id = db_tenant
     visibility = get_tenant_visibility(db, str(tenant_id))
@@ -87,6 +88,7 @@ def _svc(
             own_company_id=own_company_id,
             visibility=visibility,
             is_client_tenant=is_client_tenant,
+            unrestricted=unrestricted,
         )
     )
 
@@ -262,9 +264,16 @@ async def get_vacancy(
     # (same policy as list_vacancies with company_id unset). Otherwise recruiters see
     # the candidate but GET /vacancies/{id} returns 404 when the vacancy belongs to
     # another legal entity under the same tenant. ACL below still enforces access.
+    # Superadmin list is platform-wide; GET must resolve the same rows (not 404
+    # because Vacancy.tenant_id != current X-Tenant-Id).
     db, tenant_id = db_tenant
     is_client = await is_client_tenant_for_list(db, str(tenant_id))
-    svc = _svc(db_tenant, own_company_id=None, is_client_tenant=is_client)
+    svc = _svc(
+        db_tenant,
+        own_company_id=None,
+        is_client_tenant=is_client,
+        unrestricted=vacancy_read_unrestricted(getattr(current_user, "role", None)),
+    )
     try:
         vacancy = await svc.get(str(vacancy_id))
     except LookupError:
@@ -402,17 +411,20 @@ async def get_vacancy_pipeline(
     db, tenant_id = db_tenant
     tid = str(tenant_id)
     is_client = await is_client_tenant_for_list(db, tid)
+    unrestricted = vacancy_read_unrestricted(getattr(current_user, "role", None))
     vrepo = VacancyRepo(
         db,
         tid,
         own_company_id=None,
         visibility=get_tenant_visibility(db, tid),
         is_client_tenant=is_client,
+        unrestricted=unrestricted,
     )
     vrow = await vrepo.get(str(vacancy_id))
     if vrow is None:
         raise HTTPException(status_code=404, detail="Vacancy not found")
     vacancy = vrow[0]
+    vacancy_tenant_id = str(getattr(vacancy, "tenant_id", "") or tid)
 
     acl = await resolve_restricted_acl(db, tid, current_user)
     if not is_client and not _vacancy_allowed(str(vacancy.id), getattr(vacancy, "company_id", None), acl):
@@ -420,7 +432,7 @@ async def get_vacancy_pipeline(
 
     candidates = await db.execute(
         select(Candidate).where(
-            Candidate.tenant_id == str(tenant_id),
+            Candidate.tenant_id == vacancy_tenant_id,
             Candidate.vacancy_id == str(vacancy_id),
             Candidate.deleted_at.is_(None),
         )
@@ -437,7 +449,7 @@ async def get_vacancy_pipeline(
         profile_row = await db.execute(
             select(CandidateProfile).where(
                 CandidateProfile.id == vacancy.candidate_profile_id,
-                CandidateProfile.tenant_id == str(tenant_id),
+                CandidateProfile.tenant_id == vacancy_tenant_id,
             )
         )
         profile = profile_row.scalar_one_or_none()
@@ -449,7 +461,7 @@ async def get_vacancy_pipeline(
                 funnel_row = await db.execute(
                     select(Funnel).where(
                         Funnel.id == funnel_id,
-                        Funnel.tenant_id.in_([str(tenant_id), "default"]),
+                        Funnel.tenant_id.in_([vacancy_tenant_id, "default"]),
                     )
                 )
                 funnel = funnel_row.scalar_one_or_none()

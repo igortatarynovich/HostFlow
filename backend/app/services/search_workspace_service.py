@@ -625,6 +625,11 @@ async def get_search_workspace_pulse(
     db: AsyncSession,
     tenant_id: str,
     vacancy_id: str,
+    *,
+    unrestricted: bool = False,
 ) -> dict[str, Any]:
-    vacancy = await get_vacancy_or_raise(db, tenant_id, vacancy_id)
-    return await build_search_workspace_pulse(db, tenant_id, vacancy)
+    vacancy = await get_vacancy_or_raise(
+        db, tenant_id, vacancy_id, unrestricted=unrestricted
+    )
+    pulse_tenant = str(getattr(vacancy, "tenant_id", "") or tenant_id)
+    return await build_search_workspace_pulse(db, pulse_tenant, vacancy)
