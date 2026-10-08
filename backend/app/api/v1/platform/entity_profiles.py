@@ -1,17 +1,23 @@
-"""Read-only Entity Profile Definition Registry API (P1–P2)."""
+"""Entity Profile Definition Registry API (P1–P2, ADR-043 authoring)."""
 
 from __future__ import annotations
 
-from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
-
-from typing import Any, List, Optional
+from datetime import datetime
+from typing import Any, List, Literal, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from backend.app.auth.deps import get_current_user
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_PROFILE_READ_ROLES
+from backend.app.auth.trust_role_deps import (
+    require_trust_admin,
+    require_trust_read,
+    require_trust_write,
+)
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.entity_profile.exceptions import EntityProfileNotFoundError
 from backend.app.entity_profile.facade import (
@@ -23,7 +29,20 @@ from backend.app.entity_profile.presentation_runtime import (
     resolve_form_presentation,
     resolve_form_presentation_for_intake_source,
 )
+from backend.app.entity_profile.recruitment_policy import (
+    RecruitmentProfilePolicy,
+    load_recruitment_profile_policy,
+)
+from backend.app.entity_profile.recruitment_profile_authoring import (
+    RecruitmentProfileAlreadyExistsError,
+    RecruitmentProfileAuthoringError,
+    RecruitmentProfileTemplateError,
+    RecruitmentProfileVersionConflictError,
+    create_recruitment_profile,
+    publish_recruitment_profile_revision,
+)
 from backend.app.entity_profile.resolver import resolve_effective_entity_profile
+from backend.app.models.entity_profile import EpEntityProfileVersion
 
 router = APIRouter(
     prefix="/platform/entity-profiles",
@@ -118,6 +137,176 @@ class EffectiveEntityProfileOut(BaseModel):
     intake_source_profile_id: Optional[str] = None
     intake_source_profile_code: Optional[str] = None
 
+
+class RecruitmentProfileFieldBindingIn(BaseModel):
+    canonical_field_id: str
+    qualified_code: str
+    requirement_level: Literal["hidden", "optional", "required"]
+    sort_order: int = 0
+
+
+class RecruitmentProfileDocumentBindingIn(BaseModel):
+    document_type_version_id: str
+    requirement_level: Literal["hidden", "preferred", "required"]
+    sort_order: int = 0
+
+
+class RecruitmentProfileCreateIn(BaseModel):
+    profile_code: str = Field(min_length=1)
+    name: Optional[str] = None
+    description: Optional[str] = None
+    default_layout_code: Optional[str] = None
+    config: Optional[dict[str, Any]] = None
+    template_profile_code: Optional[str] = None
+    fields: list[RecruitmentProfileFieldBindingIn] = Field(default_factory=list)
+    documents: list[RecruitmentProfileDocumentBindingIn] = Field(default_factory=list)
+
+
+class RecruitmentProfileRevisionIn(BaseModel):
+    expected_published_version: int = Field(ge=1)
+    fields: list[RecruitmentProfileFieldBindingIn] = Field(default_factory=list)
+    documents: list[RecruitmentProfileDocumentBindingIn] = Field(default_factory=list)
+
+
+class RecruitmentProfileFieldPolicyOut(BaseModel):
+    canonical_field_id: str
+    qualified_code: str
+    requirement_level: str
+    sort_order: int
+
+
+class RecruitmentProfileDocumentPolicyOut(BaseModel):
+    document_type_id: str
+    document_type_code: str
+    document_type_version_id: str
+    document_type_version_code: str
+    requirement_level: str
+    sort_order: int
+
+
+class RecruitmentProfilePublicationOut(BaseModel):
+    entity_profile_id: str
+    profile_version_id: str
+    profile_code: str
+    version: int
+    tenant_id: str
+    module_owner: str
+    entity_type: str
+    name: str
+    description: Optional[str] = None
+    default_layout_code: Optional[str] = None
+    config: dict[str, Any] = Field(default_factory=dict)
+    published_at: datetime
+    fields: list[RecruitmentProfileFieldPolicyOut] = Field(default_factory=list)
+    documents: list[RecruitmentProfileDocumentPolicyOut] = Field(default_factory=list)
+
+
+def _binding_payloads(items: list[BaseModel]) -> list[dict[str, Any]]:
+    return [item.model_dump() for item in items]
+
+
+async def _load_recruitment_publication_out(
+    db,
+    *,
+    tenant_id: str,
+    profile_version_id: str,
+) -> RecruitmentProfilePublicationOut:
+    policy = await load_recruitment_profile_policy(
+        db,
+        tenant_id=tenant_id,
+        profile_version_id=profile_version_id,
+    )
+    version = await db.scalar(
+        select(EpEntityProfileVersion).where(
+            EpEntityProfileVersion.id == profile_version_id,
+            EpEntityProfileVersion.tenant_id == tenant_id,
+        )
+    )
+    if version is None:
+        raise EntityProfileNotFoundError(profile_version_id)
+    return _recruitment_publication_out(version=version, policy=policy)
+
+
+def _recruitment_publication_out(
+    *,
+    version: EpEntityProfileVersion,
+    policy: RecruitmentProfilePolicy,
+) -> RecruitmentProfilePublicationOut:
+    return RecruitmentProfilePublicationOut(
+        entity_profile_id=policy.entity_profile_id,
+        profile_version_id=policy.profile_version_id,
+        profile_code=policy.profile_code,
+        version=policy.profile_version,
+        tenant_id=policy.tenant_id,
+        module_owner=policy.module_owner,
+        entity_type=policy.entity_type,
+        name=str(version.name),
+        description=version.description,
+        default_layout_code=version.default_layout_code,
+        config=dict(version.config or {}),
+        published_at=version.published_at,
+        fields=[
+            RecruitmentProfileFieldPolicyOut(
+                canonical_field_id=item.canonical_field_id,
+                qualified_code=item.qualified_code,
+                requirement_level=item.requirement_level,
+                sort_order=item.sort_order,
+            )
+            for item in policy.fields
+        ],
+        documents=[
+            RecruitmentProfileDocumentPolicyOut(
+                document_type_id=item.document_type_id,
+                document_type_code=item.document_type_code,
+                document_type_version_id=item.document_type_version_id,
+                document_type_version_code=item.document_type_version_code,
+                requirement_level=item.requirement_level,
+                sort_order=item.sort_order,
+            )
+            for item in policy.documents
+        ],
+    )
+
+
+async def _raise_recruitment_authoring_http(db, exc: Exception) -> None:
+    await db.rollback()
+    if isinstance(exc, RecruitmentProfileVersionConflictError):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "recruitment_profile_version_conflict",
+                "message": str(exc),
+                "expected_version": exc.expected_version,
+                "current_version": exc.current_version,
+            },
+        ) from exc
+    if isinstance(exc, RecruitmentProfileAlreadyExistsError):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "recruitment_profile_already_exists",
+                "message": str(exc),
+            },
+        ) from exc
+    if isinstance(exc, IntegrityError):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "recruitment_profile_conflict",
+                "message": "Recruitment Profile authoring conflict",
+            },
+        ) from exc
+    if isinstance(exc, EntityProfileNotFoundError):
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if isinstance(exc, RecruitmentProfileTemplateError):
+        code = "recruitment_profile_template_invalid"
+    else:
+        code = "recruitment_profile_authoring_invalid"
+    raise HTTPException(
+        status_code=422,
+        detail={"code": code, "message": str(exc)},
+    ) from exc
+
 @router.get("/resolve", response_model=EffectiveEntityProfileOut)
 async def resolve_entity_profile(
     entity_profile_code: Optional[str] = Query(None, description="Explicit Entity Profile registry code"),
@@ -192,6 +381,83 @@ async def resolve_form_presentation_endpoint(
     except FormPresentationNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return FormPresentationRuntimeOut.model_validate(payload)
+
+
+@router.post("/recruitment",
+    response_model=RecruitmentProfilePublicationOut,
+    status_code=201,
+)
+async def create_recruitment_profile_endpoint(
+    body: RecruitmentProfileCreateIn,
+    db_tenant: tuple = Depends(get_db_with_tenant),
+    _role: str = Depends(require_trust_write()),
+) -> RecruitmentProfilePublicationOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    try:
+        published = await create_recruitment_profile(
+            db,
+            tenant_id=tenant_id,
+            profile_code=body.profile_code,
+            name=body.name,
+            description=body.description,
+            default_layout_code=body.default_layout_code,
+            config=body.config,
+            template_profile_code=body.template_profile_code,
+            field_bindings=_binding_payloads(body.fields),
+            document_bindings=_binding_payloads(body.documents),
+        )
+        profile_version_id = str(published.id)
+        await db.commit()
+    except (
+        RecruitmentProfileAuthoringError,
+        EntityProfileNotFoundError,
+        IntegrityError,
+        ValueError,
+    ) as exc:
+        await _raise_recruitment_authoring_http(db, exc)
+    return await _load_recruitment_publication_out(
+        db,
+        tenant_id=tenant_id,
+        profile_version_id=profile_version_id,
+    )
+
+
+@router.post("/recruitment/{entity_profile_id}/versions",
+    response_model=RecruitmentProfilePublicationOut,
+    status_code=201,
+)
+async def publish_recruitment_profile_revision_endpoint(
+    entity_profile_id: str,
+    body: RecruitmentProfileRevisionIn,
+    db_tenant: tuple = Depends(get_db_with_tenant),
+    _role: str = Depends(require_trust_write()),
+) -> RecruitmentProfilePublicationOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    try:
+        published = await publish_recruitment_profile_revision(
+            db,
+            tenant_id=tenant_id,
+            entity_profile_id=entity_profile_id,
+            expected_published_version=body.expected_published_version,
+            field_bindings=_binding_payloads(body.fields),
+            document_bindings=_binding_payloads(body.documents),
+        )
+        profile_version_id = str(published.id)
+        await db.commit()
+    except (
+        RecruitmentProfileAuthoringError,
+        EntityProfileNotFoundError,
+        IntegrityError,
+        ValueError,
+    ) as exc:
+        await _raise_recruitment_authoring_http(db, exc)
+    return await _load_recruitment_publication_out(
+        db,
+        tenant_id=tenant_id,
+        profile_version_id=profile_version_id,
+    )
 
 @router.get("/{profile_code}/presentations/{presentation_code}", response_model=FormPresentationRuntimeOut)
 async def get_form_presentation(
