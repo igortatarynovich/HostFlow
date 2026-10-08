@@ -54,6 +54,14 @@ export type SalesOrder = {
   invoice_right_policy?: string | null
   billing_notes?: string | null
   commercial_snapshot?: Record<string, unknown> | null
+  commercial_version?: number
+  commercial_versions?: Array<{
+    version: number
+    recorded_at?: string
+    actor_user_id?: string | null
+    reason?: string | null
+    commercial?: Record<string, unknown>
+  }> | null
   lines: SalesOrderLine[]
 }
 
@@ -121,6 +129,27 @@ export async function updateSalesOrder(
   }>,
 ) {
   const { data } = await api.patch<SalesOrder>(`/sales-orders/${encodeURIComponent(orderId)}`, payload)
+  return data
+}
+
+export async function amendSalesOrder(
+  orderId: string,
+  payload: Partial<{
+    currency: string
+    payment_term_days: number
+    payment_model: string
+    vat_rate: number
+    guarantee_days: number
+    invoice_right_policy: string
+    payer_company_id: string
+    billing_notes: string
+    reason: string
+  }>,
+) {
+  const { data } = await api.post<SalesOrder>(
+    `/sales-orders/${encodeURIComponent(orderId)}/amend`,
+    payload,
+  )
   return data
 }
 
