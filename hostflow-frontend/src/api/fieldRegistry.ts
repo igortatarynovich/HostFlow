@@ -1,6 +1,6 @@
 import { api } from './client'
 
-export interface EffectiveCardLayoutField {
+export interface CanonicalField {
   id: string
   qualified_code: string
   module: string
@@ -15,6 +15,9 @@ export interface EffectiveCardLayoutField {
   legacy_aliases?: string[]
   registry_version: string
   status: string
+}
+
+export interface EffectiveCardLayoutField extends CanonicalField {
   section_code: string
   sort_order: number
   visible: boolean
@@ -78,8 +81,8 @@ export async function getEffectiveCardLayout(
 export async function listCanonicalFields(params?: {
   entity_type?: string
   module?: string
-}): Promise<{ items: EffectiveCardLayoutField[]; count: number }> {
-  const { data } = await api.get<{ items: EffectiveCardLayoutField[]; count: number }>(
+}): Promise<{ items: CanonicalField[]; count: number }> {
+  const { data } = await api.get<{ items: CanonicalField[]; count: number }>(
     '/platform/field-registry/fields',
     { params },
   )

@@ -31,6 +31,22 @@ export interface CandidateProfileCreate {
 
 export type CandidateProfileUpdate = CandidateProfileCreate;
 
+export function withoutLegacyRequirementConfig(
+  config: Record<string, any> | null | undefined,
+): Record<string, any> {
+  const sanitized = { ...(config || {}) };
+  delete sanitized.field_configs;
+  delete sanitized.document_configs;
+  return sanitized;
+}
+
+function sanitizeCandidateProfilePayload<T extends CandidateProfileCreate>(payload: T): T {
+  return {
+    ...payload,
+    config: withoutLegacyRequirementConfig(payload.config),
+  };
+}
+
 export interface ListCandidateProfilesOptions {
   client_id?: string;
   is_active?: boolean;
@@ -55,7 +71,10 @@ export async function getCandidateProfile(profileId: string): Promise<CandidateP
 export async function createCandidateProfile(
   payload: CandidateProfileCreate
 ): Promise<CandidateProfile> {
-  const { data } = await api.post<CandidateProfile>("/candidate-profiles", payload);
+  const { data } = await api.post<CandidateProfile>(
+    "/candidate-profiles",
+    sanitizeCandidateProfilePayload(payload),
+  );
   return data;
 }
 
@@ -63,7 +82,10 @@ export async function updateCandidateProfile(
   profileId: string,
   payload: CandidateProfileUpdate
 ): Promise<CandidateProfile> {
-  const { data } = await api.patch<CandidateProfile>(`/candidate-profiles/${profileId}`, payload);
+  const { data } = await api.patch<CandidateProfile>(
+    `/candidate-profiles/${profileId}`,
+    sanitizeCandidateProfilePayload(payload),
+  );
   return data;
 }
 

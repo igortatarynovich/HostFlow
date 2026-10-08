@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,6 +55,26 @@ def _profile_code(profile_code: str) -> str:
     return value
 
 
+async def _new_profile_code(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+) -> str:
+    for _attempt in range(5):
+        code = f"recruitment.profile.{uuid4().hex}"
+        existing_id = await db.scalar(
+            select(EpEntityProfile.id).where(
+                EpEntityProfile.tenant_id == tenant_id,
+                EpEntityProfile.profile_code == code,
+            )
+        )
+        if existing_id is None:
+            return code
+    raise RecruitmentProfileAuthoringError(
+        "Could not allocate a unique Recruitment Profile code"
+    )
+
+
 def _explicit_config(config: dict[str, Any]) -> dict[str, Any]:
     copied = dict(config)
     forbidden_keys = sorted(DEPRECATED_CONFIG_KEYS.intersection(copied))
@@ -71,6 +92,34 @@ def _template_config(template: EpEntityProfile) -> dict[str, Any]:
         for key, value in dict(template.config or {}).items()
         if key not in DEPRECATED_CONFIG_KEYS
     }
+
+
+async def _ensure_legacy_candidate_profile_relationship_available(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    config: dict[str, Any],
+) -> None:
+    legacy_code = str(config.get("legacy_candidate_profile_code") or "").strip()
+    if not legacy_code:
+        return
+    rows = await db.execute(
+        select(EpEntityProfile.id, EpEntityProfile.config).where(
+            EpEntityProfile.tenant_id == tenant_id,
+            EpEntityProfile.module_owner == "recruitment",
+            EpEntityProfile.entity_type == "candidate",
+        )
+    )
+    for profile_id, existing_config in rows.all():
+        existing = existing_config if isinstance(existing_config, dict) else {}
+        if (
+            str(existing.get("legacy_candidate_profile_code") or "").strip()
+            == legacy_code
+        ):
+            raise RecruitmentProfileAlreadyExistsError(
+                "Recruitment Profile already exists for legacy CandidateProfile "
+                f"code: {legacy_code} ({profile_id})"
+            )
 
 
 async def _load_platform_template(
@@ -101,7 +150,7 @@ async def create_recruitment_profile(
     db: AsyncSession,
     *,
     tenant_id: str,
-    profile_code: str,
+    profile_code: str | None = None,
     name: str | None = None,
     description: str | None = None,
     default_layout_code: str | None = None,
@@ -113,7 +162,11 @@ async def create_recruitment_profile(
     """Create a tenant Recruitment Profile head and publish immutable v1."""
 
     tenant_key = _tenant_key(tenant_id)
-    code = _profile_code(profile_code)
+    code = (
+        _profile_code(profile_code)
+        if profile_code is not None
+        else await _new_profile_code(db, tenant_id=tenant_key)
+    )
 
     existing_id = await db.scalar(
         select(EpEntityProfile.id).where(
@@ -153,6 +206,12 @@ async def create_recruitment_profile(
         else _template_config(template)
         if template is not None
         else {}
+    )
+
+    await _ensure_legacy_candidate_profile_relationship_available(
+        db,
+        tenant_id=tenant_key,
+        config=resolved_config,
     )
 
     async with db.begin_nested():

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 import inspect
+import re
 import uuid
 
 from httpx import AsyncClient
@@ -14,6 +15,9 @@ from backend.app.api.v1.platform import entity_profiles as entity_profiles_api
 from backend.app.entity_profile.publication_versions import publish_entity_profile
 from backend.app.entity_profile.recruitment_policy import (
     load_recruitment_profile_policy,
+)
+from backend.app.entity_profile.reverse_map import (
+    find_entity_profile_code_by_legacy_candidate_code,
 )
 from backend.app.models.entity_profile import EpEntityProfile
 from backend.app.models.field_registry import FrCanonicalField
@@ -210,6 +214,40 @@ async def test_create_returns_persisted_v1_with_canonical_bindings(
     assert head is not None
     assert head.is_system is False
     assert head.published_version == 1
+
+
+@pytest.mark.anyio
+async def test_create_without_profile_code_allocates_valid_opaque_code(
+    client: AsyncClient,
+    manager_headers: dict[str, str],
+) -> None:
+    payload = _create_payload()
+    payload.pop("profile_code")
+
+    response = await client.post(CREATE_URL, headers=manager_headers, json=payload)
+
+    assert response.status_code == 201, response.text
+    generated_code = response.json()["profile_code"]
+    assert re.fullmatch(r"recruitment\.profile\.[0-9a-f]{32}", generated_code)
+    assert len(generated_code) <= 128
+
+
+@pytest.mark.anyio
+async def test_omitted_profile_codes_are_distinct(
+    client: AsyncClient,
+    manager_headers: dict[str, str],
+) -> None:
+    first_payload = _create_payload()
+    second_payload = _create_payload()
+    first_payload.pop("profile_code")
+    second_payload.pop("profile_code")
+
+    first = await client.post(CREATE_URL, headers=manager_headers, json=first_payload)
+    second = await client.post(CREATE_URL, headers=manager_headers, json=second_payload)
+
+    assert first.status_code == 201, first.text
+    assert second.status_code == 201, second.text
+    assert first.json()["profile_code"] != second.json()["profile_code"]
 
 
 @pytest.mark.anyio
@@ -533,6 +571,76 @@ async def test_success_is_committed_and_existing_get_still_resolves(
 
 
 @pytest.mark.anyio
+async def test_read_by_legacy_candidate_code_returns_current_immutable_publication(
+    client: AsyncClient,
+    db,
+    tenant_id: str,
+    manager_headers: dict[str, str],
+) -> None:
+    payload = _create_payload()
+    payload.pop("profile_code")
+    payload["config"] = {"legacy_candidate_profile_code": "step7c_driver"}
+    created = await client.post(CREATE_URL, headers=manager_headers, json=payload)
+    assert created.status_code == 201, created.text
+
+    response = await client.get(
+        f"{CREATE_URL}/by-legacy-candidate-profile/step7c_driver",
+        headers=manager_headers,
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json() == created.json()
+    assert response.json()["is_system"] is False
+    assert response.json()["profile_code"] != "recruitment.candidate.legacy.step7c_driver"
+
+    mapped = await find_entity_profile_code_by_legacy_candidate_code(
+        db,
+        tenant_id=tenant_id,
+        legacy_candidate_profile_code="step7c_driver",
+    )
+    assert mapped == response.json()["profile_code"]
+
+
+@pytest.mark.anyio
+async def test_legacy_candidate_relationship_is_unique_per_tenant(
+    client: AsyncClient,
+    manager_headers: dict[str, str],
+) -> None:
+    first = _create_payload()
+    first["config"] = {"legacy_candidate_profile_code": "unique_legacy_driver"}
+    second = _create_payload()
+    second["config"] = {"legacy_candidate_profile_code": "unique_legacy_driver"}
+
+    first_response = await client.post(CREATE_URL, headers=manager_headers, json=first)
+    assert first_response.status_code == 201
+    response = await client.post(CREATE_URL, headers=manager_headers, json=second)
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "recruitment_profile_already_exists"
+
+
+@pytest.mark.anyio
+async def test_tenant_legacy_relationship_shadows_static_platform_fallback(
+    client: AsyncClient,
+    db,
+    tenant_id: str,
+    manager_headers: dict[str, str],
+) -> None:
+    payload = _create_payload(profile_code=f"tenant.driver.{uuid.uuid4().hex[:8]}")
+    payload["config"] = {"legacy_candidate_profile_code": "driver_ce_default"}
+    response = await client.post(CREATE_URL, headers=manager_headers, json=payload)
+    assert response.status_code == 201, response.text
+
+    mapped = await find_entity_profile_code_by_legacy_candidate_code(
+        db,
+        tenant_id=tenant_id,
+        legacy_candidate_profile_code="driver_ce_default",
+    )
+
+    assert mapped == payload["profile_code"]
+
+
+@pytest.mark.anyio
 async def test_routes_precede_catch_all_and_require_write_permission(
     client: AsyncClient,
     viewer_headers: dict[str, str],
@@ -543,6 +651,9 @@ async def test_routes_precede_catch_all_and_require_write_permission(
     )
     assert paths.index(
         "/platform/entity-profiles/recruitment/{entity_profile_id}/versions"
+    ) < paths.index("/platform/entity-profiles/{profile_code}")
+    assert paths.index(
+        "/platform/entity-profiles/recruitment/by-legacy-candidate-profile/{candidate_profile_code}"
     ) < paths.index("/platform/entity-profiles/{profile_code}")
     assert "Depends(require_trust_write())" in inspect.getsource(
         entity_profiles_api.create_recruitment_profile_endpoint

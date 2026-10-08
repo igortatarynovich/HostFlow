@@ -31,10 +31,6 @@ async def find_entity_profile_code_by_legacy_candidate_code(
     if not legacy_code:
         return None
 
-    static = STATIC_LEGACY_CANDIDATE_PROFILE_TO_ENTITY.get(legacy_code)
-    if static:
-        return static
-
     tenant_scope = str(tenant_id).strip()
 
     profiles = (
@@ -51,6 +47,13 @@ async def find_entity_profile_code_by_legacy_candidate_code(
             continue
         if scope == tenant_scope:
             return str(profile_code).strip() or None
+
+    # A tenant-authored profile must shadow the transitional static platform
+    # fallback once it establishes the supported legacy relationship.
+    static = STATIC_LEGACY_CANDIDATE_PROFILE_TO_ENTITY.get(legacy_code)
+    if static:
+        return static
+
     for profile_code, config, scope in profiles:
         cfg = config if isinstance(config, dict) else {}
         if scope == PLATFORM_TENANT_SCOPE and str(cfg.get("legacy_candidate_profile_code") or "").strip() == legacy_code:

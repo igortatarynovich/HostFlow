@@ -1,23 +1,24 @@
 import { memo, useMemo, useState, useEffect } from 'react'
 import type { CandidateProfile } from '../../api/candidate_profiles'
-import type { FieldConfig } from './ProfileFieldConstructor'
+import type { RecruitmentProfilePublication } from '../../api/recruitmentProfiles'
 import { getFunnel, type FunnelStage } from '../../api/funnels'
 import { Modal } from '../Modal'
 import { useI18n } from '../../i18n'
 
 interface ProfilePreviewModalProps {
   profile: CandidateProfile
+  publication: RecruitmentProfilePublication | null
   onClose: () => void
   onDuplicate?: () => void
   onExport?: () => void
 }
 
-function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: ProfilePreviewModalProps) {
+function ProfilePreviewModal({ profile, publication, onClose, onDuplicate, onExport }: ProfilePreviewModalProps) {
   const { t } = useI18n()
-  const fieldConfigs = useMemo<FieldConfig[]>(() => {
-    if (!profile.config?.field_configs) return []
-    return profile.config.field_configs as FieldConfig[]
-  }, [profile.config])
+  const fieldConfigs = useMemo(
+    () => publication?.fields || [],
+    [publication],
+  )
 
   const [funnelStages, setFunnelStages] = useState<FunnelStage[]>([])
   useEffect(() => {
@@ -44,24 +45,14 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
         active?: boolean
       }>) || [])
 
-  const documentConfigs = useMemo(() => {
-    if (!profile.config?.document_configs) return []
-    return profile.config.document_configs as Array<{
-      document_type_id: string
-      document_type_code: string
-      required: boolean
-      enabled: boolean
-      alert_days_before_expiry: number | null
-      order: number
-    }>
-  }, [profile.config])
+  const documentConfigs = useMemo(() => publication?.documents || [], [publication])
 
   const visibleFields = useMemo(() => {
-    return fieldConfigs.filter((f) => f.visible !== false)
+    return fieldConfigs.filter((field) => field.requirement_level !== 'hidden')
   }, [fieldConfigs])
 
   const requiredFields = useMemo(() => {
-    return fieldConfigs.filter((f) => f.required === true)
+    return fieldConfigs.filter((field) => field.requirement_level === 'required')
   }, [fieldConfigs])
 
   const activeStages = useMemo(() => {
@@ -69,7 +60,7 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
   }, [stageConfigs])
 
   const enabledDocuments = useMemo(() => {
-    return documentConfigs.filter((d) => d.enabled !== false)
+    return documentConfigs.filter((document) => document.requirement_level !== 'hidden')
   }, [documentConfigs])
 
   return (
@@ -170,21 +161,20 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
             <div className="max-h-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-3">
               {visibleFields.map((field, index) => (
                 <div
-                  key={field.field_key || index}
+                  key={field.canonical_field_id || index}
                   className="flex items-center justify-between rounded bg-slate-50 p-2 text-sm"
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-slate-900">
-                      {field.label || field.field_key}
+                      {field.qualified_code}
                     </span>
-                    <span className="text-xs text-slate-500">({field.field_type})</span>
-                    {field.required && (
+                    {field.requirement_level === 'required' && (
                       <span className="rounded-md bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800">
                         {t('admin.candidate_profiles_page.preview.field_required')}
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-slate-400">#{field.order || index + 1}</span>
+                  <span className="text-xs text-slate-400">#{field.sort_order || index + 1}</span>
                 </div>
               ))}
             </div>
@@ -234,30 +224,23 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
             </h3>
             <div className="max-h-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-3">
               {enabledDocuments
-                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
                 .map((doc, index) => (
                   <div
-                    key={doc.document_type_id || index}
+                    key={doc.document_type_version_id || index}
                     className="flex items-center justify-between rounded bg-slate-50 p-2 text-sm"
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-slate-900">
                         {doc.document_type_code}
                       </span>
-                      {doc.required && (
+                      {doc.requirement_level === 'required' && (
                         <span className="rounded-md bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800">
                           {t('admin.candidate_profiles_page.preview.doc_required')}
                         </span>
                       )}
-                      {doc.alert_days_before_expiry && (
-                        <span className="text-xs text-slate-500">
-                          {t('admin.candidate_profiles_page.preview.remind_days', {
-                            values: { days: doc.alert_days_before_expiry },
-                          })}
-                        </span>
-                      )}
                     </div>
-                    <span className="text-xs text-slate-400">#{doc.order || index + 1}</span>
+                    <span className="text-xs text-slate-400">#{doc.sort_order || index + 1}</span>
                   </div>
                 ))}
             </div>

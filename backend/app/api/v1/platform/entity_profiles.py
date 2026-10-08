@@ -29,6 +29,7 @@ from backend.app.entity_profile.presentation_runtime import (
     resolve_form_presentation,
     resolve_form_presentation_for_intake_source,
 )
+from backend.app.entity_profile.publication_versions import get_publication_version
 from backend.app.entity_profile.recruitment_policy import (
     RecruitmentProfilePolicy,
     load_recruitment_profile_policy,
@@ -42,7 +43,14 @@ from backend.app.entity_profile.recruitment_profile_authoring import (
     publish_recruitment_profile_revision,
 )
 from backend.app.entity_profile.resolver import resolve_effective_entity_profile
-from backend.app.models.entity_profile import EpEntityProfileVersion
+from backend.app.entity_profile.reverse_map import (
+    STATIC_LEGACY_CANDIDATE_PROFILE_TO_ENTITY,
+)
+from backend.app.models.entity_profile import (
+    PLATFORM_TENANT_SCOPE,
+    EpEntityProfile,
+    EpEntityProfileVersion,
+)
 
 router = APIRouter(
     prefix="/platform/entity-profiles",
@@ -152,7 +160,7 @@ class RecruitmentProfileDocumentBindingIn(BaseModel):
 
 
 class RecruitmentProfileCreateIn(BaseModel):
-    profile_code: str = Field(min_length=1)
+    profile_code: Optional[str] = Field(default=None, min_length=1)
     name: Optional[str] = None
     description: Optional[str] = None
     default_layout_code: Optional[str] = None
@@ -196,6 +204,7 @@ class RecruitmentProfilePublicationOut(BaseModel):
     tenant_id: str
     module_owner: str
     entity_type: str
+    is_system: bool
     name: str
     description: Optional[str] = None
     default_layout_code: Optional[str] = None
@@ -244,6 +253,7 @@ def _recruitment_publication_out(
         tenant_id=policy.tenant_id,
         module_owner=policy.module_owner,
         entity_type=policy.entity_type,
+        is_system=bool(version.is_system),
         name=str(version.name),
         description=version.description,
         default_layout_code=version.default_layout_code,
@@ -270,6 +280,73 @@ def _recruitment_publication_out(
             for item in policy.documents
         ],
     )
+
+
+async def _profile_for_legacy_candidate_code(
+    db,
+    *,
+    tenant_id: str,
+    legacy_candidate_profile_code: str,
+) -> EpEntityProfile | None:
+    legacy_code = str(legacy_candidate_profile_code or "").strip()
+    if not legacy_code:
+        return None
+
+    tenant_rows = list(
+        (
+            await db.scalars(
+                select(EpEntityProfile).where(
+                    EpEntityProfile.tenant_id == tenant_id,
+                    EpEntityProfile.module_owner == "recruitment",
+                    EpEntityProfile.entity_type == "candidate",
+                    EpEntityProfile.status == "active",
+                    EpEntityProfile.is_system.is_(False),
+                )
+            )
+        ).all()
+    )
+    tenant_matches = [
+        profile
+        for profile in tenant_rows
+        if str((profile.config or {}).get("legacy_candidate_profile_code") or "").strip()
+        == legacy_code
+    ]
+    if len(tenant_matches) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "recruitment_profile_legacy_mapping_ambiguous",
+                "message": (
+                    "More than one tenant Recruitment Profile maps to legacy "
+                    f"CandidateProfile code: {legacy_code}"
+                ),
+            },
+        )
+    if tenant_matches:
+        return tenant_matches[0]
+
+    static_code = STATIC_LEGACY_CANDIDATE_PROFILE_TO_ENTITY.get(legacy_code)
+    platform_rows = list(
+        (
+            await db.scalars(
+                select(EpEntityProfile).where(
+                    EpEntityProfile.tenant_id == PLATFORM_TENANT_SCOPE,
+                    EpEntityProfile.module_owner == "recruitment",
+                    EpEntityProfile.entity_type == "candidate",
+                    EpEntityProfile.status == "active",
+                )
+            )
+        ).all()
+    )
+    for profile in platform_rows:
+        config_code = str(
+            (profile.config or {}).get("legacy_candidate_profile_code") or ""
+        ).strip()
+        if config_code == legacy_code or (
+            static_code and profile.profile_code == static_code
+        ):
+            return profile
+    return None
 
 
 async def _raise_recruitment_authoring_http(db, exc: Exception) -> None:
@@ -424,6 +501,43 @@ async def create_recruitment_profile_endpoint(
         db,
         tenant_id=tenant_id,
         profile_version_id=profile_version_id,
+    )
+
+
+@router.get(
+    "/recruitment/by-legacy-candidate-profile/{candidate_profile_code}",
+    response_model=RecruitmentProfilePublicationOut,
+)
+async def get_recruitment_profile_for_legacy_candidate_profile(
+    candidate_profile_code: str,
+    db_tenant: tuple = Depends(get_db_with_tenant),
+    _: None = Depends(require_trust_read()),
+    __user=Depends(get_current_user),
+) -> RecruitmentProfilePublicationOut:
+    """Read the mapped current immutable Recruitment Profile publication."""
+    db, tenant_uuid = db_tenant
+    profile = await _profile_for_legacy_candidate_code(
+        db,
+        tenant_id=str(tenant_uuid),
+        legacy_candidate_profile_code=candidate_profile_code,
+    )
+    if profile is None or int(profile.published_version or 0) < 1:
+        raise HTTPException(status_code=404, detail="Recruitment Profile not found")
+    version = await get_publication_version(
+        db,
+        tenant_id=str(profile.tenant_id),
+        entity_profile_id=str(profile.id),
+        version=int(profile.published_version),
+    )
+    if version is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Published Recruitment Profile not found",
+        )
+    return await _load_recruitment_publication_out(
+        db,
+        tenant_id=str(profile.tenant_id),
+        profile_version_id=str(version.id),
     )
 
 

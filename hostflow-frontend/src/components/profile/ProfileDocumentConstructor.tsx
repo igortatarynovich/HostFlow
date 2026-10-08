@@ -1,230 +1,83 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getDocumentTypes, type DocType } from '../../api/documents'
+import { useMemo } from 'react'
+import type {
+  CurrentDocumentTypeVersion,
+  DocumentRequirementLevel,
+  RecruitmentProfileDocumentBinding,
+} from '../../api/recruitmentProfiles'
 import { useI18n } from '../../i18n'
 
-export interface DocumentConfig {
-  document_type_id: string
-  document_type_code: string
-  required: boolean
-  enabled: boolean
-  alert_days_before_expiry: number | null
-  order: number
-}
+export type DocumentConfig = RecruitmentProfileDocumentBinding
 
 interface ProfileDocumentConstructorProps {
-  value: DocumentConfig[]
-  onChange: (configs: DocumentConfig[]) => void
+  catalog: CurrentDocumentTypeVersion[]
+  value: RecruitmentProfileDocumentBinding[]
+  onChange: (configs: RecruitmentProfileDocumentBinding[]) => void
   disabled?: boolean
 }
 
+const LEVELS: DocumentRequirementLevel[] = ['hidden', 'preferred', 'required']
+
+export function completeDocumentBindings(
+  catalog: CurrentDocumentTypeVersion[],
+  bindings: RecruitmentProfileDocumentBinding[],
+): RecruitmentProfileDocumentBinding[] {
+  const byVersionId = new Map(bindings.map((binding) => [binding.document_type_version_id, binding]))
+  return catalog.map((documentType, index) => {
+    const existing = byVersionId.get(documentType.document_type_version_id)
+    return {
+      document_type_version_id: documentType.document_type_version_id,
+      requirement_level: existing?.requirement_level ?? 'hidden',
+      sort_order: existing?.sort_order ?? (index + 1) * 10,
+    }
+  }).sort((a, b) => a.sort_order - b.sort_order)
+}
+
 export default function ProfileDocumentConstructor({
+  catalog,
   value,
   onChange,
   disabled = false,
 }: ProfileDocumentConstructorProps) {
   const { t } = useI18n()
-  const [documentTypes, setDocumentTypes] = useState<DocType[]>([])
-  const [loading, setLoading] = useState(true)
+  const rows = useMemo(() => completeDocumentBindings(catalog, value), [catalog, value])
 
-  useEffect(() => {
-    const loadDocumentTypes = async () => {
-      try {
-        const types = await getDocumentTypes()
-        setDocumentTypes(types)
-      } catch (err) {
-        console.error('Failed to load document types', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    void loadDocumentTypes()
-  }, [])
+  const updateLevel = (documentTypeVersionId: string, requirementLevel: DocumentRequirementLevel) => {
+    onChange(rows.map((row) =>
+      row.document_type_version_id === documentTypeVersionId
+        ? { ...row, requirement_level: requirementLevel }
+        : row,
+    ))
+  }
 
-  const availableDocumentTypes = useMemo(() => {
-    const usedIds = new Set(value.map((d) => d.document_type_id))
-    return documentTypes.filter((dt) => {
-      const id = dt.id || dt.code
-      return id && !usedIds.has(id)
-    })
-  }, [documentTypes, value])
-
-  const handleAddDocument = useCallback(
-    (docType: DocType) => {
-      const id = docType.id || docType.code
-      if (!id) return
-
-      const newConfig: DocumentConfig = {
-        document_type_id: id,
-        document_type_code: docType.code,
-        required: false,
-        enabled: true,
-        alert_days_before_expiry: null,
-        order: value.length + 1,
-      }
-      onChange([...value, newConfig])
-    },
-    [value, onChange]
-  )
-
-  const handleRemoveDocument = useCallback(
-    (index: number) => {
-      const newConfigs = value.filter((_, i) => i !== index)
-      // Reorder
-      const reordered = newConfigs.map((config, idx) => ({
-        ...config,
-        order: idx + 1,
-      }))
-      onChange(reordered)
-    },
-    [value, onChange]
-  )
-
-  const handleUpdateDocument = useCallback(
-    (index: number, patch: Partial<DocumentConfig>) => {
-      const newConfigs = [...value]
-      newConfigs[index] = { ...newConfigs[index], ...patch }
-      onChange(newConfigs)
-    },
-    [value, onChange]
-  )
-
-  if (loading) {
-    return <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.docs.loading')}</div>
+  if (catalog.length === 0) {
+    return <p className="text-sm text-slate-500">{t('admin.candidate_profiles_page.docs.empty')}</p>
   }
 
   return (
-    <div className="space-y-4">
-      {/* Available documents */}
-      <div>
-        <h4 className="mb-2 text-sm font-medium text-slate-700">
-          {t('admin.candidate_profiles_page.docs.available')}
-        </h4>
-        {availableDocumentTypes.length === 0 ? (
-          <p className="text-sm text-slate-500">{t('admin.candidate_profiles_page.docs.all_added')}</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-            {availableDocumentTypes.map((docType) => (
-              <button
-                key={docType.id || docType.code}
-                type="button"
-                onClick={() => handleAddDocument(docType)}
-                disabled={disabled}
-                className="rounded-lg border border-slate-200 bg-white p-2 text-left text-sm transition-colors hover:border-blue-300 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="font-medium text-slate-900">{docType.name || docType.code}</div>
-                {docType.description && (
-                  <div className="text-xs text-slate-500">{docType.description}</div>
-                )}
-              </button>
-            ))}
+    <div className="space-y-2">
+      {rows.map((binding) => {
+        const documentType = catalog.find((item) => item.document_type_version_id === binding.document_type_version_id)
+        if (!documentType) return null
+        return (
+          <div key={binding.document_type_version_id} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-slate-900">{documentType.public_name}</div>
+              <div className="truncate font-mono text-xs text-slate-500">
+                {documentType.document_type_code} · {documentType.version_code}
+              </div>
+            </div>
+            <select
+              className="input min-w-36"
+              value={binding.requirement_level}
+              disabled={disabled}
+              onChange={(event) => updateLevel(binding.document_type_version_id, event.target.value as DocumentRequirementLevel)}
+              aria-label={`${documentType.public_name} requirement level`}
+            >
+              {LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
+            </select>
           </div>
-        )}
-      </div>
-
-      {/* Configured documents */}
-      <div>
-        <h4 className="mb-2 text-sm font-medium text-slate-700">
-          {t('admin.candidate_profiles_page.docs.in_profile')}
-        </h4>
-        {value.length === 0 ? (
-          <p className="text-sm text-slate-500">{t('admin.candidate_profiles_page.docs.empty')}</p>
-        ) : (
-          <div className="space-y-2">
-            {value.map((config, index) => {
-              const docType = documentTypes.find(
-                (dt) => (dt.id || dt.code) === config.document_type_id
-              )
-              const docTypeName = docType?.name || docType?.code || config.document_type_code
-
-              return (
-                <div
-                  key={`${config.document_type_id}-${index}`}
-                  className="rounded-lg border border-slate-200 bg-white p-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-900">{docTypeName}</span>
-                        {config.required && (
-                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                            {t('admin.candidate_profiles_page.docs.required')}
-                          </span>
-                        )}
-                        {!config.enabled && (
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                            {t('admin.candidate_profiles_page.docs.disabled')}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            checked={config.enabled}
-                            onChange={(e) =>
-                              handleUpdateDocument(index, { enabled: e.target.checked })
-                            }
-                            disabled={disabled}
-                            className="rounded border-slate-300"
-                          />
-                          <span className="text-xs text-slate-600">
-                            {t('admin.candidate_profiles_page.docs.enabled')}
-                          </span>
-                        </label>
-                        <label className="flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            checked={config.required}
-                            onChange={(e) =>
-                              handleUpdateDocument(index, { required: e.target.checked })
-                            }
-                            disabled={disabled}
-                            className="rounded border-slate-300"
-                          />
-                          <span className="text-xs text-slate-600">
-                            {t('admin.candidate_profiles_page.docs.required')}
-                          </span>
-                        </label>
-                        <label className="flex items-center gap-1">
-                          <span className="text-xs text-slate-600">
-                            {t('admin.candidate_profiles_page.docs.alert_before')}
-                          </span>
-                          <input
-                            type="number"
-                            min="1"
-                            max="365"
-                            value={config.alert_days_before_expiry || ''}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              handleUpdateDocument(index, {
-                                alert_days_before_expiry: val ? parseInt(val, 10) : null,
-                              })
-                            }}
-                            disabled={disabled}
-                            className="w-16 rounded border-slate-300 px-2 py-1 text-xs"
-                            placeholder={t('admin.candidate_profiles_page.docs.days')}
-                          />
-                          <span className="text-xs text-slate-600">
-                            {t('admin.candidate_profiles_page.docs.days')}
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveDocument(index)}
-                      disabled={disabled}
-                      className="btn-danger btn-xs disabled:opacity-50"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+        )
+      })}
     </div>
   )
 }

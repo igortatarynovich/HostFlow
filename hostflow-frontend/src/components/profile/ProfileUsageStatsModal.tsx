@@ -3,16 +3,17 @@ import { Link } from 'react-router-dom'
 import { Modal } from '../Modal'
 import { listVacancies, type Vacancy } from '../../api/vacancies'
 import type { CandidateProfile } from '../../api/candidate_profiles'
-import type { FieldConfig } from './ProfileFieldConstructor'
+import type { RecruitmentProfilePublication } from '../../api/recruitmentProfiles'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 
 interface ProfileUsageStatsModalProps {
   profile: CandidateProfile
+  publication: RecruitmentProfilePublication | null
   onClose: () => void
 }
 
-function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProps) {
+function ProfileUsageStatsModal({ profile, publication, onClose }: ProfileUsageStatsModalProps) {
   const { t } = useI18n()
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,20 +40,20 @@ function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProp
   }
 
   const stats = useMemo(() => {
-    const fieldConfigs = (profile.config?.field_configs as FieldConfig[]) || []
     const stageConfigs = (profile.config?.stage_configs as any[]) || []
-    const documentConfigs = (profile.config?.document_configs as any[]) || []
+    const fields = publication?.fields || []
+    const documents = publication?.documents || []
 
     return {
-      fieldsCount: fieldConfigs.filter((f: any) => f.visible !== false).length,
-      requiredFieldsCount: fieldConfigs.filter((f: any) => f.required === true).length,
+      fieldsCount: fields.filter((field) => field.requirement_level !== 'hidden').length,
+      requiredFieldsCount: fields.filter((field) => field.requirement_level === 'required').length,
       stagesCount: profile.funnel_id ? 1 : stageConfigs.filter((s: any) => s.active !== false).length,
-      documentsCount: documentConfigs.filter((d: any) => d.enabled !== false).length,
+      documentsCount: documents.filter((document) => document.requirement_level !== 'hidden').length,
       vacanciesCount: vacancies.length,
       activeVacanciesCount: vacancies.filter((v) => v.is_active).length,
       totalCandidates: vacancies.reduce((sum, v) => sum + (v.candidate_count || 0), 0),
     }
-  }, [profile.config, vacancies])
+  }, [profile.config, publication, vacancies])
 
   return (
     <Modal
