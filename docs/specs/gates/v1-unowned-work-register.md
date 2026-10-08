@@ -67,6 +67,7 @@ Anything else in the canon that implies future work is **unowned** and must appe
 | Three stage registries; ten eligibility answerers; arbitrary stage jumps | [Hiring workflow E2E](../tasks/hiring-workflow-e2e.md) |
 | Delayed-workforce flag; conditional document reuse; PE HR inbound placeholder | [min HR handoff](../tasks/recruitment-hr-minimal-handoff.md) |
 | Nine requirement-policy answerers | [RPM-1…RPM-3](../tasks/requirement-policy-management.md) |
+| DR1 Runtime Gate red on trusted base — alias-backed evidence (`code95` / `tacho_card`) does not satisfy canonical required types | [DR1 alias-satisfaction defect](../tasks/dr1-runtime-alias-satisfaction-defect.md) — **not** Launch-ops |
 | ~~Sales / Forms / Acquisition have runtime code and no ownership card~~ | **CLOSED** 2026-08-28 — MOC-1…MOC-3 delivered ([coverage record](module-ownership-coverage.md) §4) |
 | ~~`backend/app/modules/leads` claimed by Recruitment, Integrations and the catalog simultaneously~~ | **CLOSED** 2026-08-28 — adjudicated per concern in the [Acquisition card](../../modules/acquisition/module_ownership_card.md) § Lead adjudication |
 | Recruitment card’s «lead intake processing» is overbroad vs the ADR-021 transport demotion | [Acquisition card](../../modules/acquisition/module_ownership_card.md) — narrow when the Recruitment card is next revised (no slice; not v1-blocking) |
