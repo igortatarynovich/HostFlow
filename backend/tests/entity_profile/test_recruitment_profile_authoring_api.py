@@ -130,6 +130,18 @@ def _create_payload(*, profile_code: str | None = None) -> dict:
     }
 
 
+def _revision_payload(*, expected_published_version: int = 1) -> dict:
+    return {
+        "expected_published_version": expected_published_version,
+        "name": "Tenant API profile revised",
+        "description": "Revised through Step 7B.1",
+        "default_layout_code": "tenant.api.layout.revised",
+        "config": {"theme": "expanded"},
+        "fields": [],
+        "documents": [],
+    }
+
+
 @pytest.mark.anyio
 async def test_create_returns_persisted_v1_with_canonical_bindings(
     client: AsyncClient,
@@ -360,7 +372,7 @@ async def test_revision_returns_v2_and_preserves_v1(
         f"{CREATE_URL}/{v1['entity_profile_id']}/versions",
         headers=manager_headers,
         json={
-            "expected_published_version": 1,
+            **_revision_payload(),
             "fields": [
                 {
                     "canonical_field_id": second_field.id,
@@ -375,6 +387,10 @@ async def test_revision_returns_v2_and_preserves_v1(
     assert revised.status_code == 201, revised.text
     v2 = revised.json()
     assert v2["version"] == 2
+    assert v2["name"] == "Tenant API profile revised"
+    assert v2["description"] == "Revised through Step 7B.1"
+    assert v2["default_layout_code"] == "tenant.api.layout.revised"
+    assert v2["config"] == {"theme": "expanded"}
     assert v2["fields"][0]["canonical_field_id"] == second_field.id
     policy_v1 = await load_recruitment_profile_policy(
         db,
@@ -384,6 +400,13 @@ async def test_revision_returns_v2_and_preserves_v1(
     assert policy_v1.profile_version == 1
     assert policy_v1.fields[0].canonical_field_id == first_field.id
     assert policy_v1.fields[0].requirement_level == "optional"
+    db.expire_all()
+    head = await db.get(EpEntityProfile, v1["entity_profile_id"])
+    assert head is not None
+    assert head.name == v2["name"]
+    assert head.description == v2["description"]
+    assert head.default_layout_code == v2["default_layout_code"]
+    assert head.config == v2["config"]
 
 
 @pytest.mark.anyio
@@ -399,7 +422,7 @@ async def test_stale_revision_is_structured_409(
     response = await client.post(
         f"{CREATE_URL}/{entity_profile_id}/versions",
         headers=manager_headers,
-        json={"expected_published_version": 2},
+        json=_revision_payload(expected_published_version=2),
     )
 
     assert response.status_code == 409
@@ -410,6 +433,31 @@ async def test_stale_revision_is_structured_409(
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("deprecated_key", ("field_configs", "document_configs"))
+async def test_revision_deprecated_config_is_422(
+    client: AsyncClient,
+    manager_headers: dict[str, str],
+    deprecated_key: str,
+) -> None:
+    created = await client.post(
+        CREATE_URL, headers=manager_headers, json=_create_payload()
+    )
+    payload = _revision_payload()
+    payload["config"] = {deprecated_key: {"legacy": True}}
+
+    response = await client.post(
+        f"{CREATE_URL}/{created.json()['entity_profile_id']}/versions",
+        headers=manager_headers,
+        json=payload,
+    )
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["code"] == "recruitment_profile_authoring_invalid"
+    assert deprecated_key in detail["message"]
+
+
+@pytest.mark.anyio
 async def test_revision_missing_profile_is_404(
     client: AsyncClient,
     manager_headers: dict[str, str],
@@ -417,7 +465,7 @@ async def test_revision_missing_profile_is_404(
     response = await client.post(
         f"{CREATE_URL}/{uuid.uuid4()}/versions",
         headers=manager_headers,
-        json={"expected_published_version": 1},
+        json=_revision_payload(),
     )
     assert response.status_code == 404
 
@@ -455,7 +503,7 @@ async def test_invalid_profile_identity_cannot_be_revised(
     response = await client.post(
         f"{CREATE_URL}/{profile.id}/versions",
         headers=manager_headers,
-        json={"expected_published_version": published.version},
+        json=_revision_payload(expected_published_version=published.version),
     )
     assert response.status_code == 404
 

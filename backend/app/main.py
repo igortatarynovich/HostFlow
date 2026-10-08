@@ -918,8 +918,17 @@ app.include_router(automation_rules_router.router, prefix="/api/v1", tags=["auto
 
 app.include_router(stages_router, prefix="/api/v1", tags=["stages"])
 app.include_router(tenants_router, prefix="/api/v1", tags=["tenants"])
+from backend.app.api.v1.platform import (  # noqa: E402
+    document_type_versions as platform_document_type_versions_router,
+)
+
 app.include_router(platform_tenants_router.router, prefix="/api/v1", tags=["platform-tenants"])
 app.include_router(platform_field_registry_router.router, prefix="/api/v1", tags=["field-registry"])
+app.include_router(
+    platform_document_type_versions_router.router,
+    prefix="/api/v1",
+    tags=["document-type-versions"],
+)
 app.include_router(platform_entity_profiles_router.router, prefix="/api/v1", tags=["entity-profiles"])
 app.include_router(platform_forms_publications_router.router, prefix="/api/v1", tags=["forms-platform"])
 app.include_router(platform_forms_builder_router.router, prefix="/api/v1", tags=["forms-builder"])

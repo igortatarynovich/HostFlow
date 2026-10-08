@@ -164,6 +164,10 @@ class RecruitmentProfileCreateIn(BaseModel):
 
 class RecruitmentProfileRevisionIn(BaseModel):
     expected_published_version: int = Field(ge=1)
+    name: str = Field(min_length=1)
+    description: Optional[str]
+    default_layout_code: Optional[str]
+    config: dict[str, Any]
     fields: list[RecruitmentProfileFieldBindingIn] = Field(default_factory=list)
     documents: list[RecruitmentProfileDocumentBindingIn] = Field(default_factory=list)
 
@@ -441,6 +445,10 @@ async def publish_recruitment_profile_revision_endpoint(
             tenant_id=tenant_id,
             entity_profile_id=entity_profile_id,
             expected_published_version=body.expected_published_version,
+            name=body.name,
+            description=body.description,
+            default_layout_code=body.default_layout_code,
+            config=body.config,
             field_bindings=_binding_payloads(body.fields),
             document_bindings=_binding_payloads(body.documents),
         )

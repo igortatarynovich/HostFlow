@@ -19,7 +19,7 @@ def _version(*, vid: str, valid_from: date, valid_to: date | None = None, schema
     ver.version_code = "v1"
     ver.valid_from = valid_from
     ver.valid_to = valid_to
-    ver.schema_json = schema or {"type": "object", "properties": {}}
+    ver.schema_json = {} if schema is None else schema
     return ver
 
 
@@ -107,3 +107,32 @@ async def test_single_compatible_version_resolved() -> None:
     result = await DocumentTypeVersionAssignmentResolver.resolve_for_document(db, doc)
     assert result.status == VersionAssignmentStatus.resolved
     assert result.document_type_version_id == "v1"
+
+
+@pytest.mark.anyio
+async def test_current_catalog_selection_skips_future_and_uses_latest_applicable() -> None:
+    db = AsyncMock()
+    doc_type = _doc_type()
+    future = _version(vid="future", valid_from=date(2027, 1, 1))
+    current = _version(vid="current", valid_from=date(2025, 6, 1))
+    older = _version(vid="older", valid_from=date(2020, 1, 1))
+    result = MagicMock()
+    result.all = MagicMock(
+        return_value=[
+            (doc_type, future),
+            (doc_type, current),
+            (doc_type, older),
+        ]
+    )
+    db.execute = AsyncMock(return_value=result)
+
+    selected = (
+        await DocumentTypeVersionAssignmentResolver.list_current_applicable_versions(
+            db,
+            as_of=date(2026, 10, 8),
+        )
+    )
+
+    assert len(selected) == 1
+    assert selected[0].document_type is doc_type
+    assert selected[0].version is current

@@ -7,12 +7,10 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any, Optional
 
-from jsonschema import Draft202012Validator
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.document_types.registry import is_canonical_code, normalize_input_doc_type
-from backend.app.document_types.schema_registry import normalize_raw_to_document_data
 from backend.app.models.document import Document
 from backend.app.models.ref_document_type import RefDocumentType, RefDocumentTypeVersion
 
@@ -38,6 +36,12 @@ class VersionAssignmentResult:
     @property
     def is_assignable(self) -> bool:
         return self.status in {VersionAssignmentStatus.existing, VersionAssignmentStatus.resolved}
+
+
+@dataclass(frozen=True)
+class CurrentDocumentTypeVersion:
+    document_type: RefDocumentType
+    version: RefDocumentTypeVersion
 
 
 def _norm(value: Any) -> str:
@@ -69,6 +73,8 @@ def _schema_valid_for_version(version: RefDocumentTypeVersion, document_data: di
     schema = version.schema_json if isinstance(version.schema_json, dict) else {}
     if not schema:
         return True
+    from jsonschema import Draft202012Validator
+
     validator = Draft202012Validator(schema)
     return validator.is_valid(document_data or {})
 
@@ -83,6 +89,51 @@ def _version_active_on(ref_date: date, version: RefDocumentTypeVersion) -> bool:
 
 class DocumentTypeVersionAssignmentResolver:
     """Assign ref document type version deterministically — never pick latest without compatibility."""
+
+    @classmethod
+    async def list_current_applicable_versions(
+        cls,
+        db: AsyncSession,
+        *,
+        as_of: date | None = None,
+    ) -> tuple[CurrentDocumentTypeVersion, ...]:
+        """Return one current version for each active authoring-selectable type."""
+
+        reference_date = as_of or date.today()
+        rows = (
+            await db.execute(
+                select(RefDocumentType, RefDocumentTypeVersion)
+                .join(
+                    RefDocumentTypeVersion,
+                    RefDocumentTypeVersion.document_type_id == RefDocumentType.id,
+                )
+                .where(RefDocumentType.status == "active")
+                .order_by(
+                    RefDocumentType.code.asc(),
+                    RefDocumentType.id.asc(),
+                    RefDocumentTypeVersion.valid_from.desc(),
+                    RefDocumentTypeVersion.created_at.desc(),
+                    RefDocumentTypeVersion.id.asc(),
+                )
+            )
+        ).all()
+
+        selected: list[CurrentDocumentTypeVersion] = []
+        selected_type_ids: set[str] = set()
+        for document_type, version in rows:
+            document_type_id = str(document_type.id)
+            if document_type_id in selected_type_ids:
+                continue
+            if not _version_active_on(reference_date, version):
+                continue
+            selected_type_ids.add(document_type_id)
+            selected.append(
+                CurrentDocumentTypeVersion(
+                    document_type=document_type,
+                    version=version,
+                )
+            )
+        return tuple(selected)
 
     @classmethod
     async def resolve_for_document(
@@ -116,8 +167,6 @@ class DocumentTypeVersionAssignmentResolver:
             )
 
         ref_date = _reference_date(document)
-        document_data = normalize_raw_to_document_data(canonical, _merge_meta(document))
-
         doc_type = (
             await db.execute(
                 select(RefDocumentType).where(
@@ -164,7 +213,25 @@ class DocumentTypeVersionAssignmentResolver:
                 compatible_version_ids=tuple(str(v.id) for v in versions),
             )
 
-        schema_compatible = [v for v in date_compatible if _schema_valid_for_version(v, document_data)]
+        document_data: dict[str, Any] = {}
+        if any(
+            isinstance(version.schema_json, dict) and version.schema_json
+            for version in date_compatible
+        ):
+            from backend.app.document_types.schema_registry import (
+                normalize_raw_to_document_data,
+            )
+
+            document_data = normalize_raw_to_document_data(
+                canonical,
+                _merge_meta(document),
+            )
+
+        schema_compatible = [
+            version
+            for version in date_compatible
+            if _schema_valid_for_version(version, document_data)
+        ]
         pool = schema_compatible or date_compatible
 
         if len(pool) == 1:
@@ -226,6 +293,7 @@ class DocumentTypeVersionAssignmentResolver:
 
 
 __all__ = [
+    "CurrentDocumentTypeVersion",
     "DocumentTypeVersionAssignmentResolver",
     "VersionAssignmentResult",
     "VersionAssignmentStatus",

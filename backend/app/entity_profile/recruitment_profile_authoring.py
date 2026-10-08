@@ -193,6 +193,10 @@ async def publish_recruitment_profile_revision(
     tenant_id: str,
     entity_profile_id: str,
     expected_published_version: int,
+    name: str,
+    description: str | None,
+    default_layout_code: str | None,
+    config: dict[str, Any],
     field_bindings: Sequence[dict[str, Any]] = (),
     document_bindings: Sequence[dict[str, Any]] = (),
 ) -> EpEntityProfileVersion:
@@ -227,13 +231,26 @@ async def publish_recruitment_profile_revision(
             current_version=current_version,
         )
 
-    return await publish_entity_profile(
-        db,
-        tenant_id=tenant_key,
-        entity_profile_id=profile_id,
-        field_bindings=field_bindings,
-        document_bindings=document_bindings,
-    )
+    resolved_name = str(name or "").strip()
+    if not resolved_name:
+        raise RecruitmentProfileAuthoringError("name must be non-empty")
+    resolved_config = _explicit_config(config)
+
+    async with db.begin_nested():
+        profile.name = resolved_name
+        profile.description = description
+        profile.default_layout_code = default_layout_code
+        profile.config = resolved_config
+
+        published = await publish_entity_profile(
+            db,
+            tenant_id=tenant_key,
+            entity_profile_id=profile_id,
+            field_bindings=field_bindings,
+            document_bindings=document_bindings,
+        )
+
+    return published
 
 
 __all__ = [

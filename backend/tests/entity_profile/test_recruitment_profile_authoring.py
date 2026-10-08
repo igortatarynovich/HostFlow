@@ -22,7 +22,11 @@ from backend.app.entity_profile.recruitment_profile_authoring import (
     create_recruitment_profile,
     publish_recruitment_profile_revision,
 )
-from backend.app.models.entity_profile import EpEntityProfile, EpEntityProfileField
+from backend.app.models.entity_profile import (
+    EpEntityProfile,
+    EpEntityProfileField,
+    EpEntityProfileVersion,
+)
 from backend.app.models.field_registry import FrCanonicalField
 from backend.app.models.ref_document_type import (
     RefDocumentType,
@@ -558,6 +562,10 @@ async def test_revision_publishes_v2_and_preserves_v1(
         tenant_id=tenant_id,
         entity_profile_id=v1.entity_profile_id,
         expected_published_version=1,
+        name="Revision profile v2",
+        description="Second immutable revision",
+        default_layout_code="recruitment.revision.v2",
+        config={"theme": "expanded", "required_documents": ["business-value"]},
         field_bindings=[
             {
                 "canonical_field_id": second_field.id,
@@ -581,6 +589,23 @@ async def test_revision_publishes_v2_and_preserves_v1(
 
     assert v1.version == 1
     assert v2.version == 2
+    assert v1.name == "Revision profile"
+    assert v1.description is None
+    assert v1.default_layout_code is None
+    assert v1.config == {}
+    assert v2.name == "Revision profile v2"
+    assert v2.description == "Second immutable revision"
+    assert v2.default_layout_code == "recruitment.revision.v2"
+    assert v2.config == {
+        "theme": "expanded",
+        "required_documents": ["business-value"],
+    }
+    head = await db.get(EpEntityProfile, v1.entity_profile_id)
+    assert head is not None
+    assert head.name == v2.name
+    assert head.description == v2.description
+    assert head.default_layout_code == v2.default_layout_code
+    assert head.config == v2.config
     assert policy_v1.fields[0].canonical_field_id == first_field.id
     assert policy_v1.fields[0].requirement_level == "optional"
     assert policy_v1.documents[0].document_type_version_id == first_document.id
@@ -606,10 +631,20 @@ async def test_stale_expected_version_is_rejected(db, tenant_id: str) -> None:
             tenant_id=tenant_id,
             entity_profile_id=v1.entity_profile_id,
             expected_published_version=0,
+            name="Must not apply",
+            description="Must not apply",
+            default_layout_code="must.not.apply",
+            config={"must": "not apply"},
         )
 
     assert exc_info.value.expected_version == 0
     assert exc_info.value.current_version == 1
+    head = await db.get(EpEntityProfile, v1.entity_profile_id)
+    assert head is not None
+    assert head.name == "Stale profile"
+    assert head.description is None
+    assert head.default_layout_code is None
+    assert head.config == {}
 
 
 @pytest.mark.anyio
@@ -627,6 +662,10 @@ async def test_revision_tenant_mismatch_is_rejected(db, tenant_id: str) -> None:
             tenant_id=str(uuid.uuid4()),
             entity_profile_id=v1.entity_profile_id,
             expected_published_version=1,
+            name="Rejected",
+            description=None,
+            default_layout_code=None,
+            config={},
         )
 
 
@@ -665,6 +704,10 @@ async def test_invalid_profile_identity_cannot_be_revised(
             tenant_id=tenant_id,
             entity_profile_id=profile.id,
             expected_published_version=published.version,
+            name="Rejected",
+            description=None,
+            default_layout_code=None,
+            config={},
         )
 
 
@@ -688,6 +731,97 @@ async def test_empty_requirement_sets_do_not_fall_back(db, tenant_id: str) -> No
     )
     assert policy.fields == ()
     assert policy.documents == ()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("deprecated_key", ("field_configs", "document_configs"))
+async def test_revision_rejects_deprecated_config_without_mutating_head(
+    db,
+    tenant_id: str,
+    deprecated_key: str,
+) -> None:
+    v1 = await create_recruitment_profile(
+        db,
+        tenant_id=tenant_id,
+        profile_code=f"tenant.deprecated.{uuid.uuid4().hex[:8]}",
+        name="Original name",
+        description="Original description",
+        default_layout_code="original.layout",
+        config={"theme": "original"},
+    )
+
+    with pytest.raises(RecruitmentProfileAuthoringError, match=deprecated_key):
+        await publish_recruitment_profile_revision(
+            db,
+            tenant_id=tenant_id,
+            entity_profile_id=v1.entity_profile_id,
+            expected_published_version=1,
+            name="Rejected name",
+            description="Rejected description",
+            default_layout_code="rejected.layout",
+            config={deprecated_key: {"legacy": True}},
+        )
+
+    head = await db.get(EpEntityProfile, v1.entity_profile_id)
+    assert head is not None
+    assert head.name == "Original name"
+    assert head.description == "Original description"
+    assert head.default_layout_code == "original.layout"
+    assert head.config == {"theme": "original"}
+    versions = list(
+        (
+            await db.scalars(
+                select(EpEntityProfileVersion).where(
+                    EpEntityProfileVersion.entity_profile_id == v1.entity_profile_id
+                )
+            )
+        ).all()
+    )
+    assert [version.version for version in versions] == [1]
+
+
+@pytest.mark.anyio
+async def test_failed_revision_binding_validation_rolls_back_metadata(
+    db,
+    tenant_id: str,
+) -> None:
+    v1 = await create_recruitment_profile(
+        db,
+        tenant_id=tenant_id,
+        profile_code=f"tenant.rollback.{uuid.uuid4().hex[:8]}",
+        name="Original name",
+        description="Original description",
+        default_layout_code="original.layout",
+        config={"theme": "original"},
+    )
+
+    with pytest.raises(ValueError, match="Canonical field not found"):
+        await publish_recruitment_profile_revision(
+            db,
+            tenant_id=tenant_id,
+            entity_profile_id=v1.entity_profile_id,
+            expected_published_version=1,
+            name="Rejected name",
+            description="Rejected description",
+            default_layout_code="rejected.layout",
+            config={"theme": "rejected"},
+            field_bindings=[
+                {
+                    "canonical_field_id": str(uuid.uuid4()),
+                    "qualified_code": "recruitment.candidate.missing",
+                    "requirement_level": "required",
+                }
+            ],
+        )
+
+    head = await db.get(EpEntityProfile, v1.entity_profile_id)
+    assert head is not None
+    await db.refresh(head)
+    assert head.published_version == 1
+    assert head.name == "Original name"
+    assert head.description == "Original description"
+    assert head.default_layout_code == "original.layout"
+    assert head.config == {"theme": "original"}
 
 
 @pytest.mark.anyio
@@ -741,6 +875,10 @@ async def test_authoring_service_never_commits(
         tenant_id=tenant_id,
         entity_profile_id=v1.entity_profile_id,
         expected_published_version=1,
+        name="Transaction profile v2",
+        description=None,
+        default_layout_code=None,
+        config={},
     )
 
     commit.assert_not_awaited()
