@@ -22,6 +22,13 @@ from backend.app.services.candidate_evidence_service import (
     select_evidence_variant,
     serialize_candidate_evidence,
 )
+from backend.app.services.recruitment_candidate_document_declarations import (
+    CandidateDocumentDeclarationNotFound,
+    CandidateDocumentDeclarationView,
+    InvalidCandidateDocumentDeclarationState,
+    get_candidate_document_declaration,
+    set_candidate_document_declaration,
+)
 from backend.app.services.outstanding_requirement_requests import (
     NotOutstandingRequirement,
     create_required_document_request,
@@ -62,6 +69,25 @@ class LinkDocumentRequest(BaseModel):
 
 class RejectEvidenceRequest(BaseModel):
     reason: Optional[str] = None
+
+
+class CandidateDocumentDeclarationRequest(BaseModel):
+    state: str = Field(..., min_length=1)
+
+
+def _serialize_document_declaration(
+    value: CandidateDocumentDeclarationView,
+) -> dict[str, Any]:
+    return {
+        "candidate_id": value.candidate_id,
+        "entity_profile_version_id": value.entity_profile_version_id,
+        "document_type_version_id": value.document_type_version_id,
+        "state": value.state,
+        "upload_document_id": value.upload_document_id,
+        "updated_by": value.updated_by,
+        "created_at": value.created_at,
+        "updated_at": value.updated_at,
+    }
 
 
 class CompleteOperationalActivityRequest(BaseModel):
@@ -106,6 +132,94 @@ async def _ensure_candidate_write(
             detail=f"Recruitment locked ({lock_reason or 'handoff'}): requirement evidence cannot be changed",
         )
     return candidate
+
+
+@router.get(
+    "/{candidate_id}/requirements/profile-versions/{entity_profile_version_id}/documents/{document_type_version_id}/declaration",
+    dependencies=[Depends(require_trust_read())],
+)
+async def get_document_declaration(
+    candidate_id: uuid.UUID,
+    entity_profile_version_id: uuid.UUID,
+    document_type_version_id: uuid.UUID,
+    db_tenant: Tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> dict[str, Any]:
+    db, tenant_id = db_tenant
+    tenant_str = str(tenant_id)
+
+    if current_user.role in RESTRICTED_ROLES:
+        await ensure_candidate_access(
+            db,
+            tenant_str,
+            str(candidate_id),
+            current_user,
+        )
+
+    try:
+        value = await get_candidate_document_declaration(
+            db,
+            tenant_id=tenant_str,
+            candidate_id=str(candidate_id),
+            entity_profile_version_id=str(entity_profile_version_id),
+            document_type_version_id=str(document_type_version_id),
+        )
+    except CandidateDocumentDeclarationNotFound as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    return _serialize_document_declaration(value)
+
+
+@router.put(
+    "/{candidate_id}/requirements/profile-versions/{entity_profile_version_id}/documents/{document_type_version_id}/declaration",
+    dependencies=[Depends(require_trust_write())],
+)
+async def put_document_declaration(
+    candidate_id: uuid.UUID,
+    entity_profile_version_id: uuid.UUID,
+    document_type_version_id: uuid.UUID,
+    payload: CandidateDocumentDeclarationRequest,
+    db_tenant: Tuple[AsyncSession, uuid.UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> dict[str, Any]:
+    db, tenant_id = db_tenant
+    tenant_str = str(tenant_id)
+
+    await _ensure_candidate_write(
+        db,
+        tenant_str,
+        str(candidate_id),
+        current_user,
+    )
+
+    try:
+        value = await set_candidate_document_declaration(
+            db,
+            tenant_id=tenant_str,
+            candidate_id=str(candidate_id),
+            entity_profile_version_id=str(entity_profile_version_id),
+            document_type_version_id=str(document_type_version_id),
+            state=payload.state,
+            actor_id=str(current_user.sub),
+        )
+    except InvalidCandidateDocumentDeclarationState as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except CandidateDocumentDeclarationNotFound as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    await db.commit()
+    return _serialize_document_declaration(value)
 
 
 @router.get(

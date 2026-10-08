@@ -154,6 +154,10 @@ EpEntityProfile = ep_module.EpEntityProfile  # type: ignore[attr-defined]
 EpEntityProfileVersion = ep_module.EpEntityProfileVersion  # type: ignore[attr-defined]
 EpEntityProfileVersionField = ep_module.EpEntityProfileVersionField  # type: ignore[attr-defined]
 EpEntityProfileVersionDocument = ep_module.EpEntityProfileVersionDocument  # type: ignore[attr-defined]
+
+from .recruitment_candidate_document_declaration import (
+    RecruitmentCandidateDocumentDeclaration,
+)
 EpEntityProfileField = ep_module.EpEntityProfileField  # type: ignore[attr-defined]
 EpIntakePresentation = ep_module.EpIntakePresentation  # type: ignore[attr-defined]
 module_registry_module = _load_model_module("module_registry")
@@ -450,6 +454,7 @@ __all__ = [
     "EpEntityProfileVersion",
     "EpEntityProfileVersionField",
     "EpEntityProfileVersionDocument",
+    "RecruitmentCandidateDocumentDeclaration",
     "EpEntityProfileField",
     "EpIntakePresentation",
     "MergeDocumentTemplate",
