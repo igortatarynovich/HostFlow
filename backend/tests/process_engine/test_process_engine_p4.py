@@ -16,6 +16,7 @@ from backend.app.process_engine.pipeline_mapping import (
     resolve_qualified_system_stage,
 )
 from backend.app.process_engine import pipeline_mapping as mapping_module
+from backend.tests.test_support.repo_paths import read_repo_text
 
 
 def test_p4_legacy_docs_wait_maps_to_waiting_documents() -> None:
@@ -153,9 +154,7 @@ def test_p4_funnel_stage_model_has_pe_mapping_columns() -> None:
 
 
 def test_p4_funnels_api_enforces_pe_mapping_helper() -> None:
-    from pathlib import Path
-
-    source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
+    source = read_repo_text("backend/app/api/v1/funnels.py")
     assert "_require_candidate_funnel_pe_mapping" in source
 
 

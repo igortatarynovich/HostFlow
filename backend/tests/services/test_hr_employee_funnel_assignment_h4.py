@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
@@ -32,6 +31,7 @@ from backend.app.services.hr_employee_funnel_bootstrap import (
     bootstrap_hr_employee_funnel_for_company,
 )
 from backend.app.services.workforce_employees import create_employee, handoff_from_candidate
+from backend.tests.test_support.repo_paths import read_repo_text
 
 
 def _uid(prefix: str = "h4") -> str:
@@ -104,13 +104,13 @@ async def _seed_hr_funnel_with_stages(
 
 
 def test_workforce_create_wires_hr_assignment_not_recruitment_resolver() -> None:
-    source = Path("backend/app/services/workforce_employees.py").read_text(encoding="utf-8")
+    source = read_repo_text("backend/app/services/workforce_employees.py")
     assert "assign_hr_employee_pipeline_on_create" in source
     assert "resolve_recruitment_funnel" not in source
 
 
 def test_meta_stages_supports_employee_pipeline_type() -> None:
-    source = Path("backend/app/api/v1/meta.py").read_text(encoding="utf-8")
+    source = read_repo_text("backend/app/api/v1/meta.py")
     assert "pipeline_type == \"employee\"" in source
     assert "resolve_hr_employee_funnel" in source
     assert "^(candidate|lead|employee)$" in source
@@ -288,7 +288,7 @@ async def test_create_employee_default_stage_when_pipeline_stage_omitted(db) -> 
 
 
 def test_workforce_handoff_from_candidate_wires_recruitment_pipeline_assignment() -> None:
-    source = Path("backend/app/services/workforce_employees.py").read_text(encoding="utf-8")
+    source = read_repo_text("backend/app/services/workforce_employees.py")
     assert "merge_recruitment_handoff_pipeline_meta" in source
     assert "resolve_recruitment_funnel" not in source
 
