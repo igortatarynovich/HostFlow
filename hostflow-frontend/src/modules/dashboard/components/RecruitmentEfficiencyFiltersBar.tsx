@@ -29,8 +29,6 @@ export interface RecruitmentEfficiencyFiltersBarProps {
   vacancyOptions: FilterOption[]
   onVacancyChange: (value: string) => void
   loading: boolean
-  periodTotal: number
-  formatNumber: (value?: number) => string
 }
 
 export function RecruitmentEfficiencyFiltersBar({
@@ -50,8 +48,6 @@ export function RecruitmentEfficiencyFiltersBar({
   vacancyOptions,
   onVacancyChange,
   loading,
-  periodTotal,
-  formatNumber,
 }: RecruitmentEfficiencyFiltersBarProps) {
   return (
     <div className="card space-y-3 p-4">
@@ -138,7 +134,7 @@ export function RecruitmentEfficiencyFiltersBar({
 
       <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs text-slate-500">
         <span>
-          {t('app.dashboard.filters.sample', { values: { count: formatNumber(periodTotal) } })}
+          {t('app.dashboard.efficiency.filters.period_note')}
           {dateFrom && dateTo ? (
             <span className="ml-2">
               • {dateFrom} — {dateTo}

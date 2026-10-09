@@ -6100,7 +6100,61 @@
         "insight": "{closedPct} of candidates are already closed (rejected / declined). Early stages — {early}, documents — {docs}.",
         "filters": {
           "client": "Client",
-          "all_clients": "All clients"
+          "all_clients": "All clients",
+          "period_note": "One calendar range. Leads, candidates, and recruitment are each counted on their own date."
+        },
+        "overview": {
+          "acquisition": {
+            "title": "Leads",
+            "hint": "Inbound leads by the date they were received.",
+            "leads": "Leads",
+            "unique": "Unique candidates",
+            "new": "Leads from new candidates",
+            "returning": "Returning leads",
+            "with_application": "Application created",
+            "duplicate_review": "Duplicate review",
+            "duplicated": "Duplicates",
+            "sources": "Lead sources",
+            "vacancies": "Lead vacancies",
+            "empty": "No leads in the selected period.",
+            "col_leads": "Leads",
+            "col_unique": "Unique",
+            "col_with_application": "With application"
+          },
+          "people": {
+            "title": "Candidates",
+            "hint": "New candidate records by the date they were created.",
+            "new": "New candidates",
+            "empty": "No new candidates in the selected period."
+          },
+          "recruitment": {
+            "title": "Recruitment",
+            "hint": "Recruitment participation by the date the application started.",
+            "started": "Applications in recruitment",
+            "empty": "No applications in recruitment for the selected period.",
+            "status_title": "Current status of applications in recruitment",
+            "status_hint": "Statuses show the current state of applications started in the selected period.",
+            "by_vacancy": "By vacancy",
+            "by_recruiter": "By recruiter",
+            "no_vacancy": "No vacancy",
+            "no_recruiter": "Unassigned",
+            "col_applications": "Applications",
+            "statuses": {
+              "applied": "Applied",
+              "in_review": "In review",
+              "shortlisted": "Shortlisted",
+              "rejected": "Rejected",
+              "withdrawn": "Withdrawn",
+              "hired": "Hired",
+              "archived": "Archived",
+              "reopened": "Reopened",
+              "ready_for_handoff": "Ready for handoff",
+              "handed_off": "Handed off",
+              "returned_for_revision": "Returned for revision"
+            }
+          },
+          "gap": "Historical leads without a participation record: {count}",
+          "gap_hint": "Linked recruitment leads in this period that have no participation row. This does not reconstruct missing applications."
         },
         "stats": {
           "total": "Total candidates",

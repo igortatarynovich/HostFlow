@@ -383,6 +383,87 @@ export async function getHandoffStats(params?: {
   return data
 }
 
+export type RecruitmentOverviewSourceRow = {
+  source: string
+  leads: number
+  unique_candidates_linked: number
+  leads_with_application: number
+}
+
+export type RecruitmentOverviewVacancyRow = {
+  vacancy_id: string | null
+  vacancy_name: string | null
+  leads: number
+  unique_candidates_linked: number
+  leads_with_application: number
+}
+
+export type RecruitmentOverviewStatusRow = {
+  status: string
+  count: number
+}
+
+export type RecruitmentOverviewApplicationVacancyRow = {
+  vacancy_id: string | null
+  vacancy_name: string | null
+  applications: number
+}
+
+export type RecruitmentOverviewRecruiterRow = {
+  recruiter_id: string | null
+  recruiter_name: string | null
+  applications: number
+}
+
+export type RecruitmentOverviewResponse = {
+  period: { from: string | null; to: string | null }
+  acquisition: {
+    time_basis: string
+    new_returning_rule: string
+    leads_received: number
+    unique_candidates_linked: number
+    new_candidates: number
+    returning_candidates: number
+    leads_with_application: number
+    leads_duplicated: number
+    leads_in_duplicate_review: number
+    by_source: RecruitmentOverviewSourceRow[]
+    by_vacancy: RecruitmentOverviewVacancyRow[]
+  }
+  recruitment: {
+    time_basis: string
+    applications_started: number
+    by_current_status: RecruitmentOverviewStatusRow[]
+    by_vacancy: RecruitmentOverviewApplicationVacancyRow[]
+    by_recruiter: RecruitmentOverviewRecruiterRow[]
+  }
+  people: {
+    time_basis: string
+    new_candidates: number
+  }
+  historical_gap: {
+    linked_recruitment_leads_without_application: number
+  }
+  limitations: string[]
+}
+
+export async function getRecruitmentOverview(params?: {
+  from?: string
+  to?: string
+  companyId?: string
+  vacancyId?: string
+}): Promise<RecruitmentOverviewResponse> {
+  const q: Record<string, string> = {}
+  if (params?.from) q.from = params.from
+  if (params?.to) q.to = params.to
+  if (params?.companyId) q.company_id = params.companyId
+  if (params?.vacancyId) q.vacancy_id = params.vacancyId
+  const { data } = await api.get<RecruitmentOverviewResponse>('/analytics/recruitment-overview', {
+    params: Object.keys(q).length ? q : undefined,
+  })
+  return data
+}
+
 export async function getContactAttemptStats(params?: {
   from?: string
   to?: string

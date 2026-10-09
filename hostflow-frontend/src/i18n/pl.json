@@ -5479,7 +5479,61 @@
         "insight": "{closedPct} kandydatów jest już zamkniętych (odrzucony / zrezygnował). We wczesnych etapach — {early}, w dokumentach — {docs}.",
         "filters": {
           "client": "Klient",
-          "all_clients": "Wszyscy klienci"
+          "all_clients": "Wszyscy klienci",
+          "period_note": "Jeden zakres kalendarzowy. Zgłoszenia, kandydaci i rekrutacja liczone są każde według własnej daty."
+        },
+        "overview": {
+          "acquisition": {
+            "title": "Zgłoszenia",
+            "hint": "Przychodzące zgłoszenia według daty otrzymania.",
+            "leads": "Zgłoszenia",
+            "unique": "Unikalni kandydaci",
+            "new": "Zgłoszenia nowych kandydatów",
+            "returning": "Ponowne zgłoszenia",
+            "with_application": "Utworzono wniosek",
+            "duplicate_review": "W weryfikacji duplikatu",
+            "duplicated": "Duplikaty",
+            "sources": "Źródła zgłoszeń",
+            "vacancies": "Wakaty zgłoszeń",
+            "empty": "Brak zgłoszeń w wybranym okresie.",
+            "col_leads": "Zgłoszenia",
+            "col_unique": "Unikalni",
+            "col_with_application": "Z wnioskiem"
+          },
+          "people": {
+            "title": "Kandydaci",
+            "hint": "Nowe rekordy kandydata według daty utworzenia.",
+            "new": "Nowi kandydaci",
+            "empty": "Brak nowych kandydatów w wybranym okresie."
+          },
+          "recruitment": {
+            "title": "Rekrutacja",
+            "hint": "Udział w rekrutacji według daty rozpoczęcia wniosku.",
+            "started": "Wnioski w rekrutacji",
+            "empty": "Brak wniosków w rekrutacji w wybranym okresie.",
+            "status_title": "Bieżący status wniosków w rekrutacji",
+            "status_hint": "Statusy pokazują bieżący stan wniosków rozpoczętych w wybranym okresie.",
+            "by_vacancy": "Według wakatu",
+            "by_recruiter": "Według rekrutera",
+            "no_vacancy": "Bez wakatu",
+            "no_recruiter": "Nieprzypisany",
+            "col_applications": "Wnioski",
+            "statuses": {
+              "applied": "Złożony",
+              "in_review": "W weryfikacji",
+              "shortlisted": "Na shortliście",
+              "rejected": "Odrzucony",
+              "withdrawn": "Wycofany",
+              "hired": "Zatrudniony",
+              "archived": "W archiwum",
+              "reopened": "Otwarty ponownie",
+              "ready_for_handoff": "Gotowy do przekazania",
+              "handed_off": "Przekazany",
+              "returned_for_revision": "Zwrócony do poprawy"
+            }
+          },
+          "gap": "Historyczne zgłoszenia bez zapisu udziału: {count}",
+          "gap_hint": "Powiązane zgłoszenia z tego okresu bez wiersza udziału. To nie są odtworzone wnioski."
         },
         "stats": {
           "total": "Wszyscy kandydaci",

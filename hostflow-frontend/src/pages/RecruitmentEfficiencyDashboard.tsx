@@ -1,30 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import api, { withTenant } from '../api/client'
-import {
-  getContactAttemptStats,
-  getDocumentStats,
-  type ContactAttemptStatsResponse,
-  type DocumentStatsResponse,
-} from '../api/analytics'
+import api from '../api/client'
+import { getRecruitmentOverview, type RecruitmentOverviewResponse } from '../api/analytics'
 import { useI18n } from '../i18n'
-import { useAuth } from '../store/useAuth'
-import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
 import { formatAnalyticsLoadError } from '../modules/dashboard/analyticsLoad'
 import { QUICK_RANGE_OPTIONS } from '../modules/dashboard/constants'
-import type { CandidateSlicesResponse, QuickRange } from '../modules/dashboard/types'
+import type { QuickRange } from '../modules/dashboard/types'
 import { calcRange } from '../modules/dashboard/utils'
 import { RecruitmentEfficiencyFiltersBar } from '../modules/dashboard/components/RecruitmentEfficiencyFiltersBar'
-import { RecruitmentEfficiencyPanel } from '../modules/dashboard/components/RecruitmentEfficiencyPanel'
+import { RecruitmentOverviewPanel } from '../modules/dashboard/components/RecruitmentOverviewPanel'
 
 type ListResp<T> = { items: T[]; total?: number } | T[]
 
 export default function RecruitmentEfficiencyDashboard() {
   const { t, locale } = useI18n()
-  const { me } = useAuth()
-  const currentTenantId = useCurrentTenantId()
-  const scopeTid = currentTenantId ?? (me as { tenant_id?: string })?.tenant_id
   const loadSeq = useRef(0)
 
   const initialRange = calcRange('all')
@@ -41,10 +31,7 @@ export default function RecruitmentEfficiencyDashboard() {
 
   const [loading, setLoading] = useState(true)
   const [errText, setErrText] = useState<string | null>(null)
-  const [slices, setSlices] = useState<CandidateSlicesResponse | null>(null)
-  const [documentStats, setDocumentStats] = useState<DocumentStatsResponse | null>(null)
-  const [contactStats, setContactStats] = useState<ContactAttemptStatsResponse | null>(null)
-  const [periodTotal, setPeriodTotal] = useState(0)
+  const [overview, setOverview] = useState<RecruitmentOverviewResponse | null>(null)
 
   const numberFormatter = useMemo(
     () =>
@@ -88,42 +75,24 @@ export default function RecruitmentEfficiencyDashboard() {
       setLoading(true)
       setErrText(null)
       try {
-        const params: Record<string, string | number> = { limit: 100, by: 'created' }
-        if (from) params.from = from
-        if (to) params.to = to
-        if (companyId) params.company_id = companyId
-        if (vacancyId) params.vacancy_id = vacancyId
-        if (scopeTid) params.scope_tenant_id = scopeTid
-
-        const candidatesClient = scopeTid ? withTenant(scopeTid) : api
-        const filterParams = {
+        const overviewData = await getRecruitmentOverview({
           from: from || undefined,
           to: to || undefined,
           companyId: companyId || undefined,
           vacancyId: vacancyId || undefined,
-        }
-        const [sliceResp, docResp, contactResp] = await Promise.all([
-          candidatesClient.get<CandidateSlicesResponse>('/analytics/candidate-slices', { params }),
-          getDocumentStats(filterParams).catch(() => null),
-          getContactAttemptStats(filterParams).catch(() => null),
-        ])
+        })
 
         if (seq !== loadSeq.current) return
-
-        const slicesData = sliceResp.data
-        setSlices(slicesData)
-        setPeriodTotal(slicesData?.total ?? 0)
-        setDocumentStats(docResp)
-        setContactStats(contactResp)
+        setOverview(overviewData)
       } catch (e: unknown) {
         if (seq !== loadSeq.current) return
-        // Keep previous slices/docs so charts stay mounted and layout does not collapse to -1.
+        // Keep the last successful overview so the three sections stay mounted.
         setErrText(formatAnalyticsLoadError(e, t))
       } finally {
         if (seq === loadSeq.current) setLoading(false)
       }
     },
-    [dateFrom, dateTo, companyFilter, vacancyFilter, scopeTid, t],
+    [dateFrom, dateTo, companyFilter, vacancyFilter, t],
   )
 
   useEffect(() => {
@@ -249,8 +218,6 @@ export default function RecruitmentEfficiencyDashboard() {
           vacancyOptions={vacancyOptions}
           onVacancyChange={setVacancyFilter}
           loading={loading}
-          periodTotal={periodTotal}
-          formatNumber={formatNumber}
         />
 
         {errText ? (
@@ -259,12 +226,10 @@ export default function RecruitmentEfficiencyDashboard() {
           </div>
         ) : null}
 
-        <RecruitmentEfficiencyPanel
+        <RecruitmentOverviewPanel
           t={t}
           formatNumber={formatNumber}
-          slices={slices}
-          documentStats={documentStats}
-          contactStats={contactStats}
+          overview={overview}
           loading={loading}
         />
       </div>
