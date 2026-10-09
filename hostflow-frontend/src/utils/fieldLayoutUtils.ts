@@ -127,7 +127,15 @@ export function layoutFieldLabel(
 ): string {
   const layoutField = resolveLayoutField(effectiveLayout, fieldKey)
   const override = layoutField?.label_override?.trim()
-  if (override) return override
+  if (override) {
+    // Legacy candidate profiles contain Russian labels. Do not let those
+    // server-side values replace an already-localized UI label in EN/PL.
+    const hasCyrillic = (value: string) => /[А-Яа-яЁё]/.test(value)
+    if (!hasCyrillic(override) || hasCyrillic(defaultLabel)) return override
+  }
+  // Registry `name` is canonical metadata (currently English), not UI copy.
+  // Callers provide the translated label for the active locale.
+  if (defaultLabel.trim()) return defaultLabel
   if (layoutField?.name?.trim()) return layoutField.name.trim()
   return profileFallback(profile, fieldKey, defaultLabel)
 }

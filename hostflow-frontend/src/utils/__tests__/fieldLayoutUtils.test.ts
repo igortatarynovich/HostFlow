@@ -153,6 +153,37 @@ describe('fieldLayoutUtils', () => {
     ).toBe('Registry first name')
   })
 
+  it('keeps translated labels when a legacy layout override is Cyrillic', () => {
+    const legacyLayout = structuredClone(mockLayout)
+    const experienceField = legacyLayout.fields.find(
+      (field) => field.qualified_code === 'recruitment.candidate.experience.years_ce',
+    )
+    expect(experienceField).toBeDefined()
+    experienceField!.label_override = 'Опыт в ЕС (лет)'
+
+    expect(
+      layoutFieldLabel(
+        profileWithHiddenEmail,
+        'experience_eu_years',
+        'Doświadczenie w UE (lata)',
+        legacyLayout,
+        () => 'Profile label',
+      ),
+    ).toBe('Doświadczenie w UE (lata)')
+  })
+
+  it('uses the localized default instead of the registry metadata name', () => {
+    expect(
+      layoutFieldLabel(
+        profileWithHiddenEmail,
+        'birth_date',
+        'Data urodzenia',
+        mockLayout,
+        () => 'Profile label',
+      ),
+    ).toBe('Data urodzenia')
+  })
+
   it('falls back to profileUtils when layout is missing', () => {
     expect(isFieldVisible(profileWithHiddenEmail, 'email', null)).toBe(true)
     expect(isFieldRequired(profileWithHiddenEmail, 'email', null)).toBe(true)

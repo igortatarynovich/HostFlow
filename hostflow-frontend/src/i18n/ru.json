@@ -6751,7 +6751,7 @@
           "intl_experience": "Международный опыт",
           "residency_status": "Статус проживания",
           "trailer_types": "Типы прицепов",
-          "route_types": "Маршруты",
+          "route_types": "Типы маршрутов",
           "years_ce": "Стаж (лет)"
         },
         "trailers": {
