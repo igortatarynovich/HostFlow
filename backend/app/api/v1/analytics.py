@@ -2240,6 +2240,42 @@ async def analytics_export(
     )
 
 
+def _analytics_range_bound(value: Optional[str], *, end_of_day: bool) -> Optional[datetime]:
+    """Same ``from``/``to`` parse as other analytics routes, stored as UTC for timestamptz."""
+    parsed = _parse_dt(value, end_of_day=end_of_day)
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+# ------- /analytics/recruitment-overview -------
+@router.get("/analytics/recruitment-overview")
+async def recruitment_overview(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    date_from: Optional[str] = Query(None, alias="from"),
+    date_to: Optional[str] = Query(None, alias="to"),
+    company_id: Optional[str] = Query(None, max_length=36),
+    vacancy_id: Optional[str] = Query(None, max_length=36),
+):
+    """Lead, Candidate, and RecruitmentApplication counts, each on its own time basis."""
+    from backend.app.services.recruitment_overview_analytics import build_recruitment_overview
+
+    db, tenant_id = db_tenant
+    result = await build_recruitment_overview(
+        db,
+        tenant_id=str(tenant_id),
+        period_from=date_from,
+        period_to=date_to,
+        date_from=_analytics_range_bound(date_from, end_of_day=False),
+        date_to=_analytics_range_bound(date_to, end_of_day=True),
+        company_id=company_id,
+        vacancy_id=vacancy_id,
+    )
+    return result.model_dump(by_alias=True, mode="json")
+
+
 # ------- /analytics/candidate-slices -------
 @router.get("/analytics/candidate-slices")
 async def candidate_slices(
