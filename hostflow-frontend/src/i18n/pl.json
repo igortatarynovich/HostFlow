@@ -5480,7 +5480,7 @@
         "filters": {
           "client": "Klient",
           "all_clients": "Wszyscy klienci",
-          "period_note": "Jeden zakres kalendarzowy. Zgłoszenia, kandydaci i rekrutacja liczone są każde według własnej daty."
+          "period_note": "Jeden zakres kalendarzowy. Zgłoszenia, kandydaci, rekrutacja, przejścia i kontakty liczone są każde według własnej daty. Bieżące etapy i powody to migawka; zakres ich nie filtruje."
         },
         "overview": {
           "acquisition": {
@@ -5530,6 +5530,52 @@
               "ready_for_handoff": "Gotowy do przekazania",
               "handed_off": "Przekazany",
               "returned_for_revision": "Zwrócony do poprawy"
+            }
+          },
+          "operations": {
+            "stages_title": "Etapy",
+            "stages_hint": "Bieżący etap kandydata i przejścia zapisane w historii etapów.",
+            "current_stages": "Bieżące etapy",
+            "current_stages_hint": "Migawka bieżącego etapu. Wybrany okres nie filtruje tego bloku.",
+            "current_total": "Kandydaci teraz",
+            "no_stage": "Bez etapu",
+            "transitions": "Przejścia etapów w okresie",
+            "transitions_hint": "Ile przejść do etapu nastąpiło w wybranym okresie. Klient i wakat to bieżące przypisanie kandydata, nie wakat w chwili przejścia.",
+            "transitions_total": "Przejścia",
+            "entered": "Wejście w etap",
+            "transition_empty": "Brak przejść w wybranym okresie.",
+            "from_to": "{from} → {to}",
+            "contacts_title": "Kontakt",
+            "contacts_hint": "Próby kontaktu według daty próby. Klient i wakat to bieżące przypisanie kandydata.",
+            "attempts": "Próby kontaktu",
+            "candidates_contacted": "Kandydaci z próbą kontaktu",
+            "successful": "Udane kontakty",
+            "successful_hint": "Próby z wynikiem answered.",
+            "results": "Wyniki kontaktu",
+            "channels": "Kanały",
+            "by_actor": "Kto wykonywał kontakt",
+            "contacts_empty": "Brak prób kontaktu w wybranym okresie.",
+            "reasons_title": "Powody",
+            "reasons_hint": "Bieżące powody odmowy. Okres nie oznacza, że decyzja zapadła w tym okresie.",
+            "company_reasons": "Bieżące powody odmowy firmy",
+            "candidate_reasons": "Bieżące powody rezygnacji kandydata",
+            "without_reason": "Bez podanego powodu",
+            "reason_candidates": "Kandydaci",
+            "reason_occurrences": "Wystąpienia",
+            "multiple_reasons": "Kandydat może mieć kilka powodów. Suma wierszy może przekroczyć liczbę kandydatów.",
+            "reasons_empty": "Brak kandydatów z taką decyzją.",
+            "channel_labels": {
+              "call": "Telefon",
+              "sms": "SMS",
+              "email": "Email",
+              "whatsapp": "WhatsApp",
+              "messenger": "Komunikator"
+            },
+            "result_labels": {
+              "answered": "Odebrano",
+              "no_answer": "Brak odpowiedzi",
+              "wrong_number": "Błędny numer",
+              "unavailable": "Niedostępny"
             }
           },
           "gap": "Historyczne zgłoszenia bez zapisu udziału: {count}",

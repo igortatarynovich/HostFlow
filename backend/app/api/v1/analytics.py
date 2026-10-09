@@ -2259,7 +2259,7 @@ async def recruitment_overview(
     company_id: Optional[str] = Query(None, max_length=36),
     vacancy_id: Optional[str] = Query(None, max_length=36),
 ):
-    """Lead, Candidate, and RecruitmentApplication counts, each on its own time basis."""
+    """Lead, Candidate, Application, stage, contact, and reason counts on their own time bases."""
     from backend.app.services.recruitment_overview_analytics import build_recruitment_overview
 
     db, tenant_id = db_tenant

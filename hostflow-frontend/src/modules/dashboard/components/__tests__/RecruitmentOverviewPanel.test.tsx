@@ -5,6 +5,47 @@ import type { RecruitmentOverviewResponse } from '../../../../api/analytics'
 import { I18nProvider, useI18n } from '../../../../i18n'
 import { RecruitmentOverviewPanel } from '../RecruitmentOverviewPanel'
 
+const emptyOperations = {
+  stages: {
+    current: {
+      semantics: 'current_candidate_stage_snapshot',
+      date_range_applied: false,
+      company_basis: 'candidate.company_id',
+      vacancy_basis: 'candidate.vacancy_id',
+      total_candidates: 0,
+      by_stage: [],
+    },
+    transitions: {
+      time_basis: 'candidate_stage_history.at',
+      company_attribution: 'not_requested',
+      vacancy_attribution: 'not_requested',
+      total: 0,
+      entered_by_stage: [],
+      by_transition: [],
+    },
+  },
+  contacts: {
+    time_basis: 'contact_attempt.attempted_at',
+    successful_contact_rule: 'result_equals_answered',
+    company_attribution: 'not_requested',
+    vacancy_attribution: 'not_requested',
+    attempts_total: 0,
+    candidates_contacted: 0,
+    successful_attempts: 0,
+    by_result: [],
+    by_channel: [],
+    by_recruiter: [],
+  },
+  reasons: {
+    semantics: 'current_candidate_status_reason_snapshot',
+    date_range_applied: false,
+    company_basis: 'candidate.company_id',
+    vacancy_basis: 'candidate.vacancy_id',
+    rejected: { stage: 'rejected', candidates: 0, candidates_without_reason: 0, by_reason: [] },
+    declined: { stage: 'declined', candidates: 0, candidates_without_reason: 0, by_reason: [] },
+  },
+} satisfies Pick<RecruitmentOverviewResponse, 'stages' | 'contacts' | 'reasons'>
+
 function overview(partial: Partial<RecruitmentOverviewResponse> = {}): RecruitmentOverviewResponse {
   const base: RecruitmentOverviewResponse = {
     period: { from: '2026-10-01', to: '2026-10-31' },
@@ -29,6 +70,7 @@ function overview(partial: Partial<RecruitmentOverviewResponse> = {}): Recruitme
       by_recruiter: [],
     },
     people: { time_basis: 'candidate.created_at', new_candidates: 0 },
+    ...emptyOperations,
     historical_gap: { linked_recruitment_leads_without_application: 0 },
     limitations: ['application_status_is_current_snapshot_of_started_cohort'],
   }
@@ -38,6 +80,9 @@ function overview(partial: Partial<RecruitmentOverviewResponse> = {}): Recruitme
     acquisition: { ...base.acquisition, ...partial.acquisition },
     recruitment: { ...base.recruitment, ...partial.recruitment },
     people: { ...base.people, ...partial.people },
+    stages: { ...base.stages, ...partial.stages },
+    contacts: { ...base.contacts, ...partial.contacts },
+    reasons: { ...base.reasons, ...partial.reasons },
     historical_gap: { ...base.historical_gap, ...partial.historical_gap },
   }
 }
@@ -158,5 +203,82 @@ describe('Recruitment overview grains', () => {
     expect(screen.getByTestId('overview-acquisition')).toHaveTextContent('Нет откликов за выбранный период.')
     expect(screen.getByTestId('overview-people')).toHaveTextContent('3')
     expect(screen.getByTestId('overview-recruitment')).toHaveTextContent('2')
+  })
+
+  it('labels current stages, period transitions, contacts, and current reasons', () => {
+    renderPanel(
+      overview({
+        stages: {
+          current: {
+            semantics: 'current_candidate_stage_snapshot',
+            date_range_applied: false,
+            company_basis: 'candidate.company_id',
+            vacancy_basis: 'candidate.vacancy_id',
+            total_candidates: 1,
+            by_stage: [{ stage: 'contacted', candidates: 1 }],
+          },
+          transitions: {
+            time_basis: 'candidate_stage_history.at',
+            company_attribution: 'current_candidate_projection',
+            vacancy_attribution: 'current_candidate_projection',
+            total: 1,
+            entered_by_stage: [{ stage: 'contacted', count: 1 }],
+            by_transition: [{ from_stage: 'new', to_stage: 'contacted', count: 1 }],
+          },
+        },
+        contacts: {
+          time_basis: 'contact_attempt.attempted_at',
+          successful_contact_rule: 'result_equals_answered',
+          company_attribution: 'current_candidate_projection',
+          vacancy_attribution: 'current_candidate_projection',
+          attempts_total: 2,
+          candidates_contacted: 1,
+          successful_attempts: 1,
+          by_result: [
+            { result: 'answered', attempts: 1 },
+            { result: 'no_answer', attempts: 1 },
+          ],
+          by_channel: [
+            { channel: 'call', attempts: 1 },
+            { channel: 'whatsapp', attempts: 1 },
+          ],
+          by_recruiter: [],
+        },
+        reasons: {
+          semantics: 'current_candidate_status_reason_snapshot',
+          date_range_applied: false,
+          company_basis: 'candidate.company_id',
+          vacancy_basis: 'candidate.vacancy_id',
+          rejected: {
+            stage: 'rejected',
+            candidates: 1,
+            candidates_without_reason: 0,
+            by_reason: [
+              { reason: 'salary', candidates: 1, occurrences: 1 },
+              { reason: 'location', candidates: 1, occurrences: 1 },
+            ],
+          },
+          declined: { stage: 'declined', candidates: 0, candidates_without_reason: 0, by_reason: [] },
+        },
+      }),
+    )
+
+    expect(screen.getByTestId('current-stages')).toHaveTextContent('Текущие этапы')
+    expect(screen.getByTestId('current-stages')).toHaveTextContent('Выбранный период на этот блок не влияет')
+    expect(screen.getByTestId('current-stages')).toHaveTextContent('Контакт установлен')
+    expect(screen.getByTestId('stage-transitions')).toHaveTextContent('Переходы по этапам за период')
+    expect(screen.getByTestId('stage-transitions')).toHaveTextContent('текущая привязка кандидата')
+    expect(screen.getByTestId('kpi-contact-attempts')).toHaveTextContent('Попытки контакта')
+    expect(screen.getByTestId('kpi-contact-attempts')).toHaveTextContent('2')
+    expect(screen.getByTestId('kpi-candidates-contacted')).toHaveTextContent('1')
+    expect(screen.getByTestId('contact-results')).toHaveTextContent('Ответили')
+    expect(screen.getByTestId('contact-channels')).toHaveTextContent('WhatsApp')
+    expect(screen.getByTestId('company-reasons')).toHaveTextContent('Текущие причины отказа компании')
+    expect(screen.getByTestId('company-reasons')).toHaveTextContent('Не устраивает зарплата')
+    expect(screen.getByTestId('overview-reasons')).toHaveTextContent('Период не означает, что отказ случился в этом периоде')
+    expect(screen.queryByText('Этапы за период')).not.toBeInTheDocument()
+    expect(screen.queryByText('Причины отказов за период')).not.toBeInTheDocument()
+    expect(screen.queryByText('Статус документов')).not.toBeInTheDocument()
+    expect(screen.queryByText('Получено')).not.toBeInTheDocument()
   })
 })

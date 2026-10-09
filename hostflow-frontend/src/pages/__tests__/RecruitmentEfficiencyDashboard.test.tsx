@@ -57,6 +57,44 @@ const emptyOverview: RecruitmentOverviewResponse = {
     by_recruiter: [],
   },
   people: { time_basis: 'candidate.created_at', new_candidates: 1 },
+  stages: {
+    current: {
+      semantics: 'current_candidate_stage_snapshot',
+      date_range_applied: false,
+      company_basis: 'candidate.company_id',
+      vacancy_basis: 'candidate.vacancy_id',
+      total_candidates: 0,
+      by_stage: [],
+    },
+    transitions: {
+      time_basis: 'candidate_stage_history.at',
+      company_attribution: 'not_requested',
+      vacancy_attribution: 'not_requested',
+      total: 0,
+      entered_by_stage: [],
+      by_transition: [],
+    },
+  },
+  contacts: {
+    time_basis: 'contact_attempt.attempted_at',
+    successful_contact_rule: 'result_equals_answered',
+    company_attribution: 'not_requested',
+    vacancy_attribution: 'not_requested',
+    attempts_total: 0,
+    candidates_contacted: 0,
+    successful_attempts: 0,
+    by_result: [],
+    by_channel: [],
+    by_recruiter: [],
+  },
+  reasons: {
+    semantics: 'current_candidate_status_reason_snapshot',
+    date_range_applied: false,
+    company_basis: 'candidate.company_id',
+    vacancy_basis: 'candidate.vacancy_id',
+    rejected: { stage: 'rejected', candidates: 0, candidates_without_reason: 0, by_reason: [] },
+    declined: { stage: 'declined', candidates: 0, candidates_without_reason: 0, by_reason: [] },
+  },
   historical_gap: { linked_recruitment_leads_without_application: 0 },
   limitations: [],
 }
@@ -93,5 +131,8 @@ describe('Recruitment overview data source', () => {
     expect(await screen.findByTestId('kpi-leads-received')).toHaveTextContent('2')
     expect(screen.getByTestId('kpi-people-new')).toHaveTextContent('1')
     expect(screen.getByTestId('kpi-applications-started')).toHaveTextContent('2')
+    expect(screen.getByText('Текущие этапы')).toBeInTheDocument()
+    expect(screen.getByText('Попытки контакта')).toBeInTheDocument()
+    expect(screen.queryByText('Статус документов')).not.toBeInTheDocument()
   })
 })

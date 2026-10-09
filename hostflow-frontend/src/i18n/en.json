@@ -6101,7 +6101,7 @@
         "filters": {
           "client": "Client",
           "all_clients": "All clients",
-          "period_note": "One calendar range. Leads, candidates, and recruitment are each counted on their own date."
+          "period_note": "One calendar range. Leads, candidates, recruitment, stage transitions, and contacts are each counted on their own date. Current stages and reasons are a snapshot; the range does not filter them."
         },
         "overview": {
           "acquisition": {
@@ -6151,6 +6151,52 @@
               "ready_for_handoff": "Ready for handoff",
               "handed_off": "Handed off",
               "returned_for_revision": "Returned for revision"
+            }
+          },
+          "operations": {
+            "stages_title": "Stages",
+            "stages_hint": "The candidate's current stage and transitions recorded in stage history.",
+            "current_stages": "Current stages",
+            "current_stages_hint": "Snapshot of the current stage. The selected period does not filter this block.",
+            "current_total": "Candidates now",
+            "no_stage": "No stage",
+            "transitions": "Stage transitions in the period",
+            "transitions_hint": "How many transitions into a stage happened in the selected period. Client and vacancy here are the candidate's current assignment, not the vacancy at the time of the transition.",
+            "transitions_total": "Transitions",
+            "entered": "Entered stage",
+            "transition_empty": "No transitions in the selected period.",
+            "from_to": "{from} → {to}",
+            "contacts_title": "Contact",
+            "contacts_hint": "Contact attempts by the attempt date. Client and vacancy are the candidate's current assignment.",
+            "attempts": "Contact attempts",
+            "candidates_contacted": "Candidates with a contact attempt",
+            "successful": "Successful contacts",
+            "successful_hint": "Attempts whose result is answered.",
+            "results": "Contact results",
+            "channels": "Channels",
+            "by_actor": "Who made the contact",
+            "contacts_empty": "No contact attempts in the selected period.",
+            "reasons_title": "Reasons",
+            "reasons_hint": "Current rejection and decline reasons. The period does not mean the decision happened in that period.",
+            "company_reasons": "Current company rejection reasons",
+            "candidate_reasons": "Current candidate decline reasons",
+            "without_reason": "No reason recorded",
+            "reason_candidates": "Candidates",
+            "reason_occurrences": "Occurrences",
+            "multiple_reasons": "A candidate can have several reasons. The sum of rows can exceed the candidate count.",
+            "reasons_empty": "No candidates with this decision.",
+            "channel_labels": {
+              "call": "Call",
+              "sms": "SMS",
+              "email": "Email",
+              "whatsapp": "WhatsApp",
+              "messenger": "Messenger"
+            },
+            "result_labels": {
+              "answered": "Answered",
+              "no_answer": "No answer",
+              "wrong_number": "Wrong number",
+              "unavailable": "Unavailable"
             }
           },
           "gap": "Historical leads without a participation record: {count}",

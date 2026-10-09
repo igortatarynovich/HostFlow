@@ -409,6 +409,13 @@ export type RecruitmentOverviewApplicationVacancyRow = {
   applications: number
 }
 
+export type RecruitmentOverviewReasonCategory = {
+  stage: string
+  candidates: number
+  candidates_without_reason: number
+  by_reason: { reason: string; candidates: number; occurrences: number }[]
+}
+
 export type RecruitmentOverviewRecruiterRow = {
   recruiter_id: string | null
   recruiter_name: string | null
@@ -440,6 +447,44 @@ export type RecruitmentOverviewResponse = {
   people: {
     time_basis: string
     new_candidates: number
+  }
+  stages: {
+    current: {
+      semantics: string
+      date_range_applied: boolean
+      company_basis: string
+      vacancy_basis: string
+      total_candidates: number
+      by_stage: { stage: string; candidates: number }[]
+    }
+    transitions: {
+      time_basis: string
+      company_attribution: string
+      vacancy_attribution: string
+      total: number
+      entered_by_stage: { stage: string; count: number }[]
+      by_transition: { from_stage: string | null; to_stage: string; count: number }[]
+    }
+  }
+  contacts: {
+    time_basis: string
+    successful_contact_rule: string
+    company_attribution: string
+    vacancy_attribution: string
+    attempts_total: number
+    candidates_contacted: number
+    successful_attempts: number
+    by_result: { result: string; attempts: number }[]
+    by_channel: { channel: string; attempts: number }[]
+    by_recruiter: { recruiter_id: string | null; recruiter_name: string | null; attempts: number }[]
+  }
+  reasons: {
+    semantics: string
+    date_range_applied: boolean
+    company_basis: string
+    vacancy_basis: string
+    rejected: RecruitmentOverviewReasonCategory
+    declined: RecruitmentOverviewReasonCategory
   }
   historical_gap: {
     linked_recruitment_leads_without_application: number
