@@ -164,6 +164,7 @@ class RecruitmentProfileCreateIn(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     default_layout_code: Optional[str] = None
+    funnel_id: Optional[str] = None
     config: Optional[dict[str, Any]] = None
     template_profile_code: Optional[str] = None
     fields: list[RecruitmentProfileFieldBindingIn] = Field(default_factory=list)
@@ -175,6 +176,7 @@ class RecruitmentProfileRevisionIn(BaseModel):
     name: str = Field(min_length=1)
     description: Optional[str]
     default_layout_code: Optional[str]
+    funnel_id: Optional[str] = None
     config: dict[str, Any]
     fields: list[RecruitmentProfileFieldBindingIn] = Field(default_factory=list)
     documents: list[RecruitmentProfileDocumentBindingIn] = Field(default_factory=list)
@@ -208,6 +210,7 @@ class RecruitmentProfilePublicationOut(BaseModel):
     name: str
     description: Optional[str] = None
     default_layout_code: Optional[str] = None
+    funnel_id: Optional[str] = None
     config: dict[str, Any] = Field(default_factory=dict)
     published_at: datetime
     fields: list[RecruitmentProfileFieldPolicyOut] = Field(default_factory=list)
@@ -257,6 +260,7 @@ def _recruitment_publication_out(
         name=str(version.name),
         description=version.description,
         default_layout_code=version.default_layout_code,
+        funnel_id=policy.funnel_id,
         config=dict(version.config or {}),
         published_at=version.published_at,
         fields=[
@@ -483,6 +487,7 @@ async def create_recruitment_profile_endpoint(
             name=body.name,
             description=body.description,
             default_layout_code=body.default_layout_code,
+            funnel_id=body.funnel_id,
             config=body.config,
             template_profile_code=body.template_profile_code,
             field_bindings=_binding_payloads(body.fields),
@@ -562,6 +567,7 @@ async def publish_recruitment_profile_revision_endpoint(
             name=body.name,
             description=body.description,
             default_layout_code=body.default_layout_code,
+            funnel_id=body.funnel_id,
             config=body.config,
             field_bindings=_binding_payloads(body.fields),
             document_bindings=_binding_payloads(body.documents),

@@ -9,10 +9,12 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.constants.funnel_types import RECRUITMENT_MODULE_KEY
 from backend.app.entity_profile.config_deprecation import DEPRECATED_CONFIG_KEYS
 from backend.app.entity_profile.exceptions import EntityProfileNotFoundError
 from backend.app.entity_profile.publication_versions import publish_entity_profile
 from backend.app.models.entity_profile import EpEntityProfile, EpEntityProfileVersion
+from backend.app.models.funnel import Funnel
 
 
 class RecruitmentProfileAuthoringError(ValueError):
@@ -146,6 +148,31 @@ async def _load_platform_template(
     return template
 
 
+async def _validated_funnel_id(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    funnel_id: str | None,
+) -> str | None:
+    if funnel_id is None:
+        return None
+    funnel_key = str(funnel_id).strip()
+    if not funnel_key:
+        raise RecruitmentProfileAuthoringError("funnel_id must be non-empty or null")
+    funnel = await db.scalar(select(Funnel).where(Funnel.id == funnel_key))
+    if (
+        funnel is None
+        or str(funnel.tenant_id) != tenant_id
+        or str(funnel.module_key or "").strip() != RECRUITMENT_MODULE_KEY
+        or str(funnel.type or "").strip() != "candidate"
+    ):
+        raise RecruitmentProfileAuthoringError(
+            "Recruitment Profile funnel must be an existing tenant-owned "
+            "recruitment candidate Funnel"
+        )
+    return funnel_key
+
+
 async def create_recruitment_profile(
     db: AsyncSession,
     *,
@@ -154,6 +181,7 @@ async def create_recruitment_profile(
     name: str | None = None,
     description: str | None = None,
     default_layout_code: str | None = None,
+    funnel_id: str | None = None,
     config: dict[str, Any] | None = None,
     field_bindings: Sequence[dict[str, Any]] = (),
     document_bindings: Sequence[dict[str, Any]] = (),
@@ -200,6 +228,11 @@ async def create_recruitment_profile(
         if default_layout_code is not None
         else (template.default_layout_code if template else None)
     )
+    resolved_funnel_id = await _validated_funnel_id(
+        db,
+        tenant_id=tenant_key,
+        funnel_id=funnel_id,
+    )
     resolved_config = (
         _explicit_config(config)
         if config is not None
@@ -226,6 +259,7 @@ async def create_recruitment_profile(
             entity_type="candidate",
             module_owner="recruitment",
             default_layout_code=resolved_layout,
+            funnel_id=resolved_funnel_id,
             document_pack_code=None,
             process_profile_code=None,
             version=1,
@@ -256,6 +290,7 @@ async def publish_recruitment_profile_revision(
     description: str | None,
     default_layout_code: str | None,
     config: dict[str, Any],
+    funnel_id: str | None = None,
     field_bindings: Sequence[dict[str, Any]] = (),
     document_bindings: Sequence[dict[str, Any]] = (),
 ) -> EpEntityProfileVersion:
@@ -294,11 +329,17 @@ async def publish_recruitment_profile_revision(
     if not resolved_name:
         raise RecruitmentProfileAuthoringError("name must be non-empty")
     resolved_config = _explicit_config(config)
+    resolved_funnel_id = await _validated_funnel_id(
+        db,
+        tenant_id=tenant_key,
+        funnel_id=funnel_id,
+    )
 
     async with db.begin_nested():
         profile.name = resolved_name
         profile.description = description
         profile.default_layout_code = default_layout_code
+        profile.funnel_id = resolved_funnel_id
         profile.config = resolved_config
 
         published = await publish_entity_profile(

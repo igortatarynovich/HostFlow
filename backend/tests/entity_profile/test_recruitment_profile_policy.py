@@ -398,6 +398,7 @@ def test_contract_has_only_profile_owned_policy_shape() -> None:
         "tenant_id",
         "module_owner",
         "entity_type",
+        "funnel_id",
         "fields",
         "documents",
     ]

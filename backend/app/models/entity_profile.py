@@ -67,6 +67,12 @@ class EpEntityProfile(Base, TimestampMixin, EntityProfileMixin):
     entity_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     module_owner: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     default_layout_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    funnel_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("funnels.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     document_pack_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     process_profile_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default=text("1"))
@@ -121,6 +127,12 @@ class EpEntityProfileVersion(Base):
     entity_type: Mapped[str] = mapped_column(String(64), nullable=False)
     module_owner: Mapped[str] = mapped_column(String(32), nullable=False)
     default_layout_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    funnel_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("funnels.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     process_profile_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     config: Mapped[dict[str, Any]] = mapped_column(
         JSONAnyType, nullable=False, default=dict

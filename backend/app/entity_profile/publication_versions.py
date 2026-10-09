@@ -212,6 +212,7 @@ async def publish_entity_profile(
         entity_type=str(profile.entity_type),
         module_owner=str(profile.module_owner),
         default_layout_code=profile.default_layout_code,
+        funnel_id=profile.funnel_id,
         process_profile_code=profile.process_profile_code,
         config=dict(profile.config or {}),
         published_at=published_at,
