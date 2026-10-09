@@ -759,6 +759,10 @@ async def list_candidates(
         default=False,
         description="Include aggregate counters (total, new, docs readiness buckets) for the current filter set, computed in one SQL query.",
     ),
+    insights_only: bool = Query(
+        default=False,
+        description="Return aggregate counters without the candidate page. Does not run the list projection.",
+    ),
     scope_tenant_id: UUID | None = Query(
         default=None,
         description="If set, scope the list to this tenant (e.g. from getCurrentTenant). Overrides X-Tenant-Id for scope only.",
@@ -1007,6 +1011,8 @@ async def list_candidates(
     if created_to:
         filters["dt_to"] = datetime.combine(created_to, datetime.max.time(), tzinfo=timezone.utc)
     insights_payload: dict[str, int] | None = None
+    if insights_only:
+        include_insights = True
     if include_insights:
         try:
             insights_payload = await cand_repo.count_candidates_insights(
@@ -1080,9 +1086,33 @@ async def list_candidates(
     response.headers["X-Is-Client-Tenant"] = "1" if client_tenant else "0"
     response.headers["X-List-Total"] = str(total)
 
+    if insights_only:
+        out: dict[str, Any] = {
+            "total": total,
+            "items": [],
+            "insights": insights_payload if insights_payload is not None else {"total": total},
+        }
+        _emit_candidates_list_access(row_count=int(total or 0), filter_scope="insights_only=1")
+        return out
+
+    if compact:
+        rows = await cand_repo.fetch_compact_candidate_list(
+            db,
+            tenant_id=scope_tenant,
+            filters=filters,
+            limit=limit,
+            offset=offset,
+            order_by=order_by,
+            desc=desc,
+            visibility=visibility,
+            include_labels=not client_tenant,
+            include_docs=not client_tenant,
+        )
+        response.headers["X-List-Rows"] = str(len(rows))
+        response.headers["X-List-Source"] = "compact"
     # Client tenant: use list_candidates only (same scope as count), avoid fetch_candidates_with_labels
     # which can return 0 rows due to JOINs/RLS on users/companies/vacancies.
-    if client_tenant:
+    elif client_tenant:
         try:
             await db.execute(
                 text("SELECT set_config('app.tenant_id', :tid, true)"),

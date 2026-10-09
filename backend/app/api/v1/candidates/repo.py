@@ -27,7 +27,9 @@ from sqlalchemy import (
     literal_column,
     cast,
     bindparam,
+    tuple_,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -58,6 +60,8 @@ __all__ = [
     "count_candidates",
     "count_candidates_insights",
     "fetch_candidates_with_labels",
+    "fetch_compact_candidate_list",
+    "build_compact_candidate_list_stmt",
     "get_candidate_with_labels",
     "count_by_stage",
     "count_by_manager",
@@ -137,6 +141,209 @@ def _candidate_document_scalar(expr, *extra_conditions):
         .scalar_subquery()
     )
 
+
+def _document_flag_columns() -> dict[str, Any]:
+    """One pass over a candidate's primary documents.
+
+    State priority matches the previous EXISTS cascade:
+    problem > ready > awaiting_review > in_progress > ordered > pending.
+    Rank priority is different and must stay that way:
+    problem > awaiting_review > in_progress > ordered > ready > 0.
+    """
+    files_condition = or_(
+        Document.files.isnot(None),
+        func.length(func.coalesce(Document.filename, literal(""))) > 0,
+        func.length(func.coalesce(Document.path, literal(""))) > 0,
+    )
+    return {
+        "has_problem": func.bool_or(Document.status.in_(PROBLEM_STATUSES)),
+        "has_ready": func.bool_or(Document.status.in_(READY_STATUSES)),
+        "has_awaiting": func.bool_or(Document.status.in_(AWAITING_REVIEW_STATUSES)),
+        "has_in_progress": func.bool_or(Document.status.in_(IN_PROGRESS_STATUSES)),
+        "has_ordered": func.bool_or(
+            or_(
+                Document.ordered_at.isnot(None),
+                Document.status.in_(ORDERED_STATUSES),
+            )
+        ),
+        "last_ordered": func.max(Document.ordered_at),
+        "next_valid": func.min(Document.valid_from),
+        "has_files": func.bool_or(files_condition),
+    }
+
+
+def candidate_document_flags_subquery():
+    """Primary-document flags grouped once per candidate. Not an ORM relationship."""
+    cols = _document_flag_columns()
+    return (
+        select(
+            DocumentEntityLink.linked_entity_id.label("candidate_id"),
+            DocumentEntityLink.tenant_id.label("doc_tenant_id"),
+            cols["has_problem"].label("has_problem"),
+            cols["has_ready"].label("has_ready"),
+            cols["has_awaiting"].label("has_awaiting"),
+            cols["has_in_progress"].label("has_in_progress"),
+            cols["has_ordered"].label("has_ordered"),
+            cols["last_ordered"].label("last_ordered"),
+            cols["next_valid"].label("next_valid"),
+            cols["has_files"].label("has_files"),
+        )
+        .select_from(DocumentEntityLink)
+        .join(
+            Document,
+            and_(
+                Document.id == DocumentEntityLink.document_id,
+                Document.tenant_id == DocumentEntityLink.tenant_id,
+            ),
+        )
+        .where(
+            *_PRIMARY_CANDIDATE_LINK,
+            Document.deleted_at.is_(None),
+        )
+        .group_by(DocumentEntityLink.linked_entity_id, DocumentEntityLink.tenant_id)
+        .subquery("candidate_doc_flags")
+    )
+
+
+def _flag(column: Any) -> Any:
+    return func.coalesce(column, False)
+
+
+def _readiness_state(flags) -> Any:
+    return case(
+        (_flag(flags.c.has_problem), literal("problem")),
+        (_flag(flags.c.has_ready), literal("ready")),
+        (_flag(flags.c.has_awaiting), literal("awaiting_review")),
+        (_flag(flags.c.has_in_progress), literal("in_progress")),
+        (_flag(flags.c.has_ordered), literal("ordered")),
+        else_=literal("pending"),
+    )
+
+
+def _readiness_rank(flags) -> Any:
+    return case(
+        (_flag(flags.c.has_problem), literal(5)),
+        (_flag(flags.c.has_awaiting), literal(4)),
+        (_flag(flags.c.has_in_progress), literal(3)),
+        (_flag(flags.c.has_ordered), literal(2)),
+        (_flag(flags.c.has_ready), literal(1)),
+        else_=literal(0),
+    )
+
+
+def _json_text(node: Any, *path: str) -> Any:
+    for key in path:
+        node = node[key]
+    return node.as_string()
+
+
+class CandidateListProjection:
+    """Compact list row. Attribute access matches the router; this is not a mapped Candidate."""
+
+    def __init__(self, **fields: Any) -> None:
+        self.__dict__.update(fields)
+
+
+def _json_or_raw(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    if not stripped:
+        return None
+    try:
+        return json.loads(stripped)
+    except Exception:
+        return value
+
+
+def _as_storage_bool(value: Any) -> Any:
+    if isinstance(value, bool) or value is None:
+        return value
+    text = str(value).strip().lower()
+    if text in {"true", "yes", "1"}:
+        return True
+    if text in {"false", "no", "0"}:
+        return False
+    return value
+
+
+def _projection_from_mapping(record: Any) -> CandidateListProjection:
+    extra: dict[str, Any] = {}
+    citizenship = record.get("citizenship")
+    if citizenship:
+        extra["citizenship"] = citizenship
+    preferred = record.get("preferred_contact")
+    if preferred:
+        extra["preferred_contact"] = preferred
+    messenger = record.get("nested_messenger")
+    if messenger:
+        extra["contacts"] = {"preferred_messenger": messenger}
+    first_contact = record.get("first_contact_at")
+    if first_contact:
+        extra["first_contact_at"] = first_contact
+    in_poland = _as_storage_bool(record.get("in_poland"))
+    if in_poland is not None:
+        extra["in_poland"] = in_poland
+    poland_basis = record.get("poland_stay_basis")
+    if poland_basis:
+        extra["poland_stay_basis"] = poland_basis
+    poland_basis_raw = record.get("poland_stay_basis_raw")
+    if poland_basis_raw:
+        extra["poland_stay_basis_raw"] = poland_basis_raw
+    extra_personal = record.get("extra_personal_residency")
+    if extra_personal:
+        extra["personal_data"] = {"residency_status": extra_personal}
+    extra_profile = record.get("extra_profile_residency")
+    if extra_profile:
+        personal = extra.get("personal") if isinstance(extra.get("personal"), dict) else {}
+        personal = dict(personal)
+        personal["residency_status"] = extra_profile
+        extra["personal"] = personal
+    trailer = _json_or_raw(record.get("trailer_types"))
+    if trailer is not None:
+        extra["trailer_types"] = trailer
+
+    personal_data = None
+    column_residency = record.get("column_residency")
+    if column_residency:
+        personal_data = {"residency_status": column_residency}
+    contacts = None
+    column_messenger = record.get("column_messenger")
+    if column_messenger:
+        contacts = {"preferred_messenger": column_messenger}
+    intake_state = None
+    application_kind = record.get("application_kind")
+    if application_kind is not None:
+        intake_state = {"application_kind": application_kind}
+
+    return CandidateListProjection(
+        id=record.get("id"),
+        tenant_id=record.get("tenant_id"),
+        short_id=record.get("short_id"),
+        first_name=record.get("first_name"),
+        last_name=record.get("last_name"),
+        first_name_latin=record.get("first_name_latin"),
+        last_name_latin=record.get("last_name_latin"),
+        phone=record.get("phone"),
+        phone_country_code=record.get("phone_country_code"),
+        email=record.get("email"),
+        stage=record.get("stage"),
+        status=record.get("status"),
+        status_reason=record.get("status_reason"),
+        tags=record.get("tags"),
+        is_favorite=record.get("is_favorite"),
+        created_at=record.get("created_at"),
+        updated_at=record.get("updated_at"),
+        vacancy_id=record.get("vacancy_id"),
+        manager=record.get("manager"),
+        recruiter_id=record.get("recruiter_id"),
+        extra=json.dumps(extra),
+        personal_data=personal_data,
+        contacts=contacts,
+        intake_state=intake_state,
+    )
+
+
 # --- helpers to pack/unpack profile fields into extra ------------------------
 
 def unattached_compliance_shell_clause():
@@ -157,10 +364,10 @@ def unattached_compliance_shell_clause():
         extra.like('%"compliance_candidate_shell_v1":true%'),
     )
     attached = extra.like('%"compliance_shell_attached_at_process"%')
-    linked_from_lead = exists().where(
-        Lead.candidate_id == Candidate.id,
-        Lead.tenant_id == Candidate.tenant_id,
-        Lead.candidate_id.isnot(None),
+    # Uncorrelated pair match. A per-row EXISTS made the planner cost a full
+    # leads scan for every candidate and pushed the statement over JIT threshold.
+    linked_from_lead = tuple_(Candidate.id, Candidate.tenant_id).in_(
+        select(Lead.candidate_id, Lead.tenant_id).where(Lead.candidate_id.isnot(None))
     )
     return and_(is_shell, ~attached, ~linked_from_lead)
 
@@ -884,25 +1091,9 @@ async def count_candidates_insights(
     """
     conds = _build_conditions(tenant_id, filters, visibility)
 
-    ready_exists = _candidate_document_exists(Document.status.in_(READY_STATUSES))
-    problem_exists = _candidate_document_exists(Document.status.in_(PROBLEM_STATUSES))
-    awaiting_exists = _candidate_document_exists(Document.status.in_(AWAITING_REVIEW_STATUSES))
-    in_progress_exists = _candidate_document_exists(Document.status.in_(IN_PROGRESS_STATUSES))
-    ordered_exists = _candidate_document_exists(
-        or_(
-            Document.ordered_at.isnot(None),
-            Document.status.in_(ORDERED_STATUSES),
-        )
-    )
-
-    readiness_expr = case(
-        (problem_exists, literal("problem")),
-        (ready_exists, literal("ready")),
-        (awaiting_exists, literal("awaiting_review")),
-        (in_progress_exists, literal("in_progress")),
-        (ordered_exists, literal("ordered")),
-        else_=literal("pending"),
-    )
+    flags = candidate_document_flags_subquery()
+    readiness_expr = _readiness_state(flags)
+    ordered_flag = _flag(flags.c.has_ordered)
 
     stage_lower = func.lower(func.coalesce(Candidate.stage, ""))
     status_lower = func.lower(func.coalesce(Candidate.status, ""))
@@ -927,7 +1118,7 @@ async def count_candidates_insights(
         ),
         else_=0,
     )
-    docs_ordered = case((ordered_exists, 1), else_=0)
+    docs_ordered = case((ordered_flag, 1), else_=0)
     # Same scope as list quick view `docs_incomplete`: any row whose docs readiness is not `ready`.
     docs_incomplete = case((readiness_expr != literal("ready"), 1), else_=0)
     # `extra` is JSON text; match common serializations of candidate_ops.mode = in_work.
@@ -1023,6 +1214,13 @@ async def count_candidates_insights(
             func.coalesce(func.sum(unassigned_recruiter), 0).label("unassigned_recruiter"),
         )
         .select_from(Candidate)
+        .outerjoin(
+            flags,
+            and_(
+                flags.c.candidate_id == Candidate.id,
+                flags.c.doc_tenant_id == Candidate.tenant_id,
+            ),
+        )
         .where(and_(*conds))
     )
     row = await db.execute(stmt)
@@ -1068,6 +1266,237 @@ async def count_candidates_insights(
     if oldest_lead_days is not None:
         out["oldest_lead_days"] = oldest_lead_days
     return out
+
+
+def build_compact_candidate_list_stmt(
+    tenant_id: str,
+    filters: Dict[str, Any],
+    order_by: str,
+    desc: bool,
+    limit: int,
+    offset: int,
+    visibility: TenantVisibility | None = None,
+    *,
+    include_labels: bool = True,
+    include_docs: bool = True,
+):
+    """Table-page SELECT: list columns only, no mapped Candidate and no relationship joins."""
+    conds = _build_conditions(tenant_id, filters, visibility)
+    if not hasattr(Candidate, order_by):
+        order_by = "created_at"
+    col = getattr(Candidate, order_by)
+    if desc:
+        col = col.desc()
+
+    manager_alias = aliased(User)
+    recruiter_alias = aliased(User)
+    flags = candidate_document_flags_subquery()
+    vacancy_title_expr = func.coalesce(
+        func.nullif(Vacancy.title, ""),
+        func.nullif(getattr(Vacancy, "position", literal("")), ""),
+        func.nullif(getattr(Vacancy, "name", literal("")), ""),
+    )
+
+    # Filter, order and limit first. JSON parsing and label joins then run
+    # only for the page, not for every ACL-visible candidate.
+    page = (
+        select(
+            Candidate.id.label("id"),
+            Candidate.tenant_id.label("tenant_id"),
+            Candidate.short_id.label("short_id"),
+            Candidate.first_name.label("first_name"),
+            Candidate.last_name.label("last_name"),
+            Candidate.first_name_latin.label("first_name_latin"),
+            Candidate.last_name_latin.label("last_name_latin"),
+            Candidate.phone.label("phone"),
+            Candidate.phone_country_code.label("phone_country_code"),
+            Candidate.email.label("email"),
+            Candidate.stage.label("stage"),
+            Candidate.status.label("status"),
+            Candidate.status_reason.label("status_reason"),
+            Candidate.tags.label("tags"),
+            Candidate.is_favorite.label("is_favorite"),
+            Candidate.created_at.label("created_at"),
+            Candidate.updated_at.label("updated_at"),
+            Candidate.vacancy_id.label("vacancy_id"),
+            Candidate.company_id.label("company_id"),
+            Candidate.manager.label("manager"),
+            Candidate.recruiter_id.label("recruiter_id"),
+            Candidate.extra.label("extra"),
+            Candidate.personal_data["residency_status"].as_string().label("column_residency"),
+            Candidate.contacts["preferred_messenger"].as_string().label("column_messenger"),
+            Candidate.intake_state["application_kind"].as_string().label("application_kind"),
+        )
+        .where(and_(*conds))
+        .order_by(col)
+        .limit(limit)
+        .offset(offset)
+        .subquery("cand_page")
+    )
+    parsed = (
+        select(
+            *[col for col in page.c if col.key != "extra"],
+            case(
+                (
+                    func.pg_input_is_valid(func.coalesce(page.c.extra, ""), "jsonb"),
+                    cast(page.c.extra, JSONB),
+                ),
+                else_=cast(literal(None), JSONB),
+            ).label("extra_json"),
+        )
+        .select_from(page)
+        .subquery("parsed_page")
+    )
+    extra_json = parsed.c.extra_json
+    columns: list[Any] = [
+        parsed.c.id,
+        parsed.c.tenant_id,
+        parsed.c.short_id,
+        parsed.c.first_name,
+        parsed.c.last_name,
+        parsed.c.first_name_latin,
+        parsed.c.last_name_latin,
+        parsed.c.phone,
+        parsed.c.phone_country_code,
+        parsed.c.email,
+        parsed.c.stage,
+        parsed.c.status,
+        parsed.c.status_reason,
+        parsed.c.tags,
+        parsed.c.is_favorite,
+        parsed.c.created_at,
+        parsed.c.updated_at,
+        parsed.c.vacancy_id,
+        parsed.c.manager,
+        parsed.c.recruiter_id,
+        _json_text(extra_json, "citizenship").label("citizenship"),
+        _json_text(extra_json, "preferred_contact").label("preferred_contact"),
+        _json_text(extra_json, "contacts", "preferred_messenger").label("nested_messenger"),
+        _json_text(extra_json, "first_contact_at").label("first_contact_at"),
+        _json_text(extra_json, "in_poland").label("in_poland"),
+        _json_text(extra_json, "poland_stay_basis").label("poland_stay_basis"),
+        _json_text(extra_json, "poland_stay_basis_raw").label("poland_stay_basis_raw"),
+        _json_text(extra_json, "personal_data", "residency_status").label("extra_personal_residency"),
+        _json_text(extra_json, "personal", "residency_status").label("extra_profile_residency"),
+        _json_text(extra_json, "trailer_types").label("trailer_types"),
+        parsed.c.column_residency,
+        parsed.c.column_messenger,
+        parsed.c.application_kind,
+    ]
+    if include_labels:
+        columns.extend(
+            [
+                Company.name.label("company_name"),
+                func.coalesce(
+                    func.nullif(manager_alias.full_name, ""),
+                    func.nullif(manager_alias.email, ""),
+                    func.nullif(parsed.c.manager, ""),
+                ).label("manager_name"),
+                vacancy_title_expr.label("vacancy_title"),
+                func.coalesce(
+                    func.nullif(recruiter_alias.full_name, ""),
+                    func.nullif(recruiter_alias.email, ""),
+                    func.nullif(parsed.c.recruiter_id, ""),
+                ).label("recruiter_name"),
+                recruiter_alias.short_id.label("recruiter_short"),
+            ]
+        )
+    else:
+        columns.extend(
+            [
+                literal(None).label("company_name"),
+                parsed.c.manager.label("manager_name"),
+                literal(None).label("vacancy_title"),
+                literal(None).label("recruiter_name"),
+                literal(None).label("recruiter_short"),
+            ]
+        )
+    if include_docs:
+        columns.extend(
+            [
+                _readiness_state(flags).label("docs_readiness_state"),
+                _readiness_rank(flags).label("docs_readiness_rank"),
+                flags.c.last_ordered.label("docs_last_ordered_at"),
+                flags.c.next_valid.label("docs_next_valid_from"),
+                _flag(flags.c.has_files).label("docs_has_files"),
+            ]
+        )
+    else:
+        columns.extend(
+            [
+                literal(None).label("docs_readiness_state"),
+                literal(None).label("docs_readiness_rank"),
+                literal(None).label("docs_last_ordered_at"),
+                literal(None).label("docs_next_valid_from"),
+                literal(None).label("docs_has_files"),
+            ]
+        )
+
+    stmt = select(*columns).select_from(parsed)
+    if include_labels:
+        stmt = (
+            stmt.join(manager_alias, manager_alias.id == parsed.c.manager, isouter=True)
+            .join(Company, Company.id == parsed.c.company_id, isouter=True)
+            .join(Vacancy, Vacancy.id == parsed.c.vacancy_id, isouter=True)
+            .join(recruiter_alias, recruiter_alias.id == parsed.c.recruiter_id, isouter=True)
+        )
+    if include_docs:
+        stmt = stmt.outerjoin(
+            flags,
+            and_(
+                flags.c.candidate_id == parsed.c.id,
+                flags.c.doc_tenant_id == parsed.c.tenant_id,
+            ),
+        )
+    return stmt
+
+
+async def fetch_compact_candidate_list(
+    db: AsyncSession,
+    tenant_id: str,
+    filters: Dict[str, Any],
+    order_by: str,
+    desc: bool,
+    limit: int,
+    offset: int,
+    visibility: TenantVisibility | None = None,
+    *,
+    include_labels: bool = True,
+    include_docs: bool = True,
+) -> list[tuple]:
+    stmt = build_compact_candidate_list_stmt(
+        tenant_id,
+        filters,
+        order_by,
+        desc,
+        limit,
+        offset,
+        visibility,
+        include_labels=include_labels,
+        include_docs=include_docs,
+    )
+    rows = (await db.execute(stmt)).mappings().all()
+    packed: list[tuple] = []
+    for record in rows:
+        projection = _projection_from_mapping(record)
+        packed.append(
+            (
+                projection,
+                record.get("company_name"),
+                record.get("manager"),
+                record.get("manager_name"),
+                record.get("vacancy_title"),
+                record.get("recruiter_id"),
+                record.get("recruiter_name"),
+                record.get("recruiter_short"),
+                record.get("docs_readiness_state"),
+                record.get("docs_readiness_rank"),
+                record.get("docs_last_ordered_at"),
+                record.get("docs_next_valid_from"),
+                record.get("docs_has_files"),
+            )
+        )
+    return packed
 
 
 async def fetch_candidates_with_labels(

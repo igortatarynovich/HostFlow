@@ -453,9 +453,17 @@ export default function Candidates(){
     operationalQueue,
     recruiterUnassignedOnly,
   ])
+  const [page, setPage] = useState(0)
+  const [pageScope, setPageScope] = useState<string | null>(null)
+  if (pageScope !== filterSignature) {
+    setPageScope(filterSignature)
+    if (page !== 0) setPage(0)
+  }
+  const effectivePage = pageScope === filterSignature ? page : 0
+  const offset = effectivePage * limit
   const cacheKey = useMemo(
-    () => `candidates:list:${tenantScopeKey}:${filterSignature}`,
-    [tenantScopeKey, filterSignature]
+    () => `candidates:list:${tenantScopeKey}:${filterSignature}:p${effectivePage}`,
+    [tenantScopeKey, filterSignature, effectivePage]
   )
   const scrollKey = useMemo(() => `${SCROLL_STATE_KEY}:${tenantScopeKey}:${viewMode}`, [tenantScopeKey, viewMode])
 
@@ -1004,12 +1012,14 @@ export default function Candidates(){
     errorText,
     setErrorText,
     load,
+    loadInsights,
   } = useCandidatesTableData({
     candidateListCache,
     cacheKey,
     listStorageKey,
     filtersHydrated,
     limit,
+    offset,
     t,
     q,
     stageFilter,
@@ -1917,12 +1927,20 @@ export default function Candidates(){
       clearTimeout(loadDebounceRef.current)
     }
     loadDebounceRef.current = window.setTimeout(() => {
-      load()
-    }, 250)
+      load({ force: false })
+    }, 500)
     return () => {
       if (loadDebounceRef.current) clearTimeout(loadDebounceRef.current)
     }
   }, [filtersHydrated, load])
+
+  useEffect(() => {
+    if (!filtersHydrated) return
+    const id = window.setTimeout(() => {
+      void loadInsights()
+    }, 500)
+    return () => clearTimeout(id)
+  }, [filtersHydrated, loadInsights])
 
   useEffect(() => {
     const el = document.querySelector(APP_SCROLL_SELECTOR) as HTMLElement | null
@@ -2854,13 +2872,38 @@ export default function Candidates(){
             )}
           </div>
         )}
-          <div className="text-sm leading-relaxed text-slate-600 px-4 pt-3 pb-4 border-t border-slate-200/80">
-            {showsFilteredCount
-              ? t('app.candidates.table.total_filtered', {
-                  values: { shown: visibleCandidatesCount, total },
-                  defaultValue: `Показано: ${visibleCandidatesCount} из ${total}`,
-                })
-              : t('app.candidates.table.total', { values: { count: visibleCandidatesCount } })}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm leading-relaxed text-slate-600 px-4 pt-3 pb-4 border-t border-slate-200/80">
+            <span>
+              {showsFilteredCount
+                ? t('app.candidates.table.total_filtered', {
+                    values: { shown: visibleCandidatesCount, total },
+                    defaultValue: `Показано: ${visibleCandidatesCount} из ${total}`,
+                  })
+                : t('app.candidates.table.total', { values: { count: visibleCandidatesCount } })}
+            </span>
+            {total > limit ? (
+              <span className="inline-flex items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 disabled:opacity-40"
+                  disabled={effectivePage <= 0 || loading}
+                  onClick={() => setPage((current) => Math.max(0, current - 1))}
+                >
+                  {t('common.pagination.prev', { defaultValue: 'Previous' })}
+                </button>
+                <span className="text-xs text-slate-500">
+                  {effectivePage + 1} / {Math.max(1, Math.ceil(total / limit))}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 disabled:opacity-40"
+                  disabled={loading || (effectivePage + 1) * limit >= total}
+                  onClick={() => setPage((current) => current + 1)}
+                >
+                  {t('common.pagination.next', { defaultValue: 'Next' })}
+                </button>
+              </span>
+            ) : null}
           </div>
           </div>
         </div>

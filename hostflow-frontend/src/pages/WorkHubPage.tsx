@@ -38,7 +38,7 @@ const HREF_TASKS_UNLINKED = `${CRM_APP_PATHS.tasks}?tab=tasks&t_layout=by_candid
 async function fetchCandidatesInsightsWorkHub(): Promise<CandidatesListInsights | null> {
   try {
     const { data } = await api.get('/candidates', {
-      params: { limit: 1, offset: 0, compact: true, include_insights: true },
+      params: { limit: 1, offset: 0, compact: true, include_insights: true, insights_only: true },
     })
     const raw = (data as { insights?: unknown })?.insights
     if (!raw || typeof raw !== 'object') return null
