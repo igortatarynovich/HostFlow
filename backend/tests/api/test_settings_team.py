@@ -94,11 +94,23 @@ async def test_hiring_pipeline_gates_get_and_patch(client: AsyncClient) -> None:
     assert resp.status_code == 200, resp.text
     updated = resp.json()
     assert "docs_got" in updated.get("stages_doc_block_soft_only", [])
+    assert isinstance(updated.get("policy_revision"), int)
+
+    stale_patch = {
+        "expected_policy_revision": updated["policy_revision"] - 1,
+        "stages_doc_block_soft_only": ["ready_for_handoff"],
+    }
+    stale = await client.patch(
+        f"{TEAM_BASE}/hiring-pipeline-gates", headers=headers, json=stale_patch
+    )
+    assert stale.status_code == 409, stale.text
 
     resp = await client.get(f"{TEAM_BASE}/hiring-pipeline-gates", headers=headers)
     assert resp.status_code == 200
     again = resp.json()
     assert "docs_got" in again.get("stages_doc_block_soft_only", [])
+    assert "ready_for_handoff" not in again.get("stages_doc_block_soft_only", [])
+    assert again.get("policy_revision") == updated["policy_revision"]
 
     # Alias under /tenants/me (same payload as settings/team)
     me_alias = await client.get("/api/v1/tenants/me/hiring-pipeline-gates", headers=headers)

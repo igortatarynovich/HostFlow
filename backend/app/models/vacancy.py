@@ -207,7 +207,7 @@ class Vacancy(Base, TimestampMixin):
     )
     pe_process_profile_id: Mapped[Optional[str]] = mapped_column(
         String(36),
-        ForeignKey("pe_process_profiles.id", ondelete="SET NULL"),
+        ForeignKey("pe_process_profiles.id", ondelete="RESTRICT"),
         nullable=True,
         index=True,
         comment="Process Engine profile — canonical process source for this vacancy (P3)",

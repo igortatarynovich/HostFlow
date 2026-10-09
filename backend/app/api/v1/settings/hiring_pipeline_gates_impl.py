@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx
@@ -35,9 +36,11 @@ class HiringPipelineGatesPublicOut(BaseModel):
     stages_doc_block_soft_only: List[str]
     non_overridable_doc_types_extra: List[str]
     effective_non_overridable_doc_types: List[str]
+    policy_revision: Optional[int] = None
 
 
 class HiringPipelineGatesPatch(BaseModel):
+    expected_policy_revision: Optional[int] = None
     stages_without_doc_pipeline_block: Optional[List[str]] = None
     stages_verify_uploads_block_forward: Optional[List[str]] = None
     stages_require_vacancy_for_forward: Optional[List[str]] = None
@@ -88,7 +91,20 @@ async def get_hiring_pipeline_gates_core(
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
     gates = hiring_gates_from_tenant_settings(tenant.settings if isinstance(tenant.settings, dict) else None)
-    return HiringPipelineGatesPublicOut.model_validate(serialize_gates_public(gates))
+    from backend.app.models.process_engine import PeProcessProfile
+    from backend.app.process_engine.constants import RECRUITMENT_MODULE
+    from backend.app.process_engine.manifests.recruitment import DEFAULT_PROFILE_CODE
+
+    revision = await db.scalar(
+        select(PeProcessProfile.policy_revision).where(
+            PeProcessProfile.tenant_id == tenant_id,
+            PeProcessProfile.module == RECRUITMENT_MODULE,
+            PeProcessProfile.code == DEFAULT_PROFILE_CODE,
+        )
+    )
+    return HiringPipelineGatesPublicOut.model_validate(
+        {**serialize_gates_public(gates), "policy_revision": revision}
+    )
 
 
 async def patch_hiring_pipeline_gates_core(
@@ -102,21 +118,87 @@ async def patch_hiring_pipeline_gates_core(
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    patch_raw = payload.model_dump(exclude_unset=True)
+    patch_raw = payload.model_dump(exclude_unset=True, exclude={"expected_policy_revision"})
     sanitized = sanitize_hiring_gates_patch(patch_raw)
     if not sanitized:
         gates = hiring_gates_from_tenant_settings(tenant.settings if isinstance(tenant.settings, dict) else None)
         return HiringPipelineGatesPublicOut.model_validate(serialize_gates_public(gates))
     settings_payload = dict(tenant.settings or {})
     new_settings = patch_hiring_gates_settings_dict(settings_payload, sanitized)
-    tenant = await tenant_service.update_tenant(db, tenant, {"settings": new_settings})
-    gates = hiring_gates_from_tenant_settings(tenant.settings if isinstance(tenant.settings, dict) else None)
-    from backend.app.process_engine.transition_rules_adapter import (
-        sync_hiring_gates_to_default_profile_from_tenant_settings,
+    from backend.app.models.mixins import now_utc
+    from backend.app.models.process_engine import PeProcessProfile
+    from backend.app.process_engine.constants import RECRUITMENT_MODULE
+    from backend.app.process_engine.manifests.recruitment import (
+        DEFAULT_PROFILE_CODE,
+        RECRUITMENT_PIPELINE_GATES_RULE_CODE,
+    )
+    from backend.app.process_engine.policy_safety import (
+        ProcessPolicyRevisionConflictError,
+        ProcessPolicySafetyError,
+        correct_hiring_pipeline_gates_policy,
     )
 
-    await sync_hiring_gates_to_default_profile_from_tenant_settings(
-        db, tenant_id=tenant_id, gates=gates
+    profile = await db.scalar(
+        select(PeProcessProfile).where(
+            PeProcessProfile.tenant_id == tenant_id,
+            PeProcessProfile.module == RECRUITMENT_MODULE,
+            PeProcessProfile.code == DEFAULT_PROFILE_CODE,
+        )
     )
-    await db.commit()
-    return HiringPipelineGatesPublicOut.model_validate(serialize_gates_public(gates))
+    if profile is None:
+        # Compatibility for tenants created before Process Engine bootstrap. The
+        # bootstrap participates in this request transaction and does not commit.
+        from backend.app.process_engine.seed import ensure_recruitment_process_engine_defaults
+
+        await ensure_recruitment_process_engine_defaults(db, tenant_id)
+        profile = await db.scalar(
+            select(PeProcessProfile).where(
+                PeProcessProfile.tenant_id == tenant_id,
+                PeProcessProfile.module == RECRUITMENT_MODULE,
+                PeProcessProfile.code == DEFAULT_PROFILE_CODE,
+            )
+        )
+    if profile is None:
+        raise HTTPException(status_code=409, detail="Default Process Profile is not initialized")
+
+    # Backward-compatible transition: old clients may omit the token. We capture the
+    # current revision before taking the service lock, so a concurrent correction still
+    # produces a stale-revision conflict. GET exposes the revision for explicit clients.
+    expected_revision = (
+        int(payload.expected_policy_revision)
+        if payload.expected_policy_revision is not None
+        else int(profile.policy_revision or 1)
+    )
+    tenant.settings = new_settings
+    tenant.updated_at = now_utc()
+    gates = hiring_gates_from_tenant_settings(new_settings)
+    actor_id = str(ctx.sub or "").strip()
+    try:
+        await correct_hiring_pipeline_gates_policy(
+            db,
+            tenant_id=tenant_id,
+            process_profile_id=str(profile.id),
+            expected_policy_revision=expected_revision,
+            gates=gates,
+            reason="Hiring Pipeline Gates updated through tenant settings",
+            actor_id=actor_id,
+            source="settings.hiring_pipeline_gates",
+            rule_code=RECRUITMENT_PIPELINE_GATES_RULE_CODE,
+        )
+        await db.commit()
+    except ProcessPolicyRevisionConflictError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": str(exc),
+                "expected_policy_revision": exc.expected_revision,
+                "current_policy_revision": exc.current_revision,
+            },
+        ) from exc
+    except ProcessPolicySafetyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return HiringPipelineGatesPublicOut.model_validate(
+        {**serialize_gates_public(gates), "policy_revision": int(profile.policy_revision)}
+    )

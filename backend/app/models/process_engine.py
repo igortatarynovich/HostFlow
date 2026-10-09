@@ -104,6 +104,13 @@ class PeProcessProfile(Base, TimestampMixin, ProcessEngineRegistryMixin):
     is_default: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("0")
     )
+    policy_revision: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+        server_default=text("1"),
+        comment="Optimistic concurrency revision for controlled live policy corrections",
+    )
     pipeline_template_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("pe_pipeline_templates.id", ondelete="SET NULL"),

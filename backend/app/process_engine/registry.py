@@ -21,6 +21,10 @@ from backend.app.models.process_engine import (
     PeSystemStage,
     PeTransitionRule,
 )
+from backend.app.process_engine.policy_safety import (
+    ProcessPolicyRegistryDriftError,
+    classify_process_profile_references,
+)
 
 
 class ProcessEngineRegistry:
@@ -277,15 +281,46 @@ class ProcessEngineRegistry:
                     code=code,
                 )
                 db.add(entity)
-            entity.registry_version = registry_version
-            entity.status = REGISTRY_STATUS_ACTIVE
-            entity.name = str(row.get("name") or code)
-            entity.config = dict(row.get("config") or {})
-            entity.is_default = bool(row.get("is_default"))
-            entity.pipeline_template_id = pipeline_id
-            entity.is_system = True
+                protected = False
+            else:
+                usage = await classify_process_profile_references(
+                    db,
+                    tenant_id=tenant_id,
+                    process_profile_id=str(entity.id),
+                )
+                protected = usage.operationally_protected
 
-            if link_legacy:
+            intended_config = dict(row.get("config") or {})
+            intended_default = bool(row.get("is_default"))
+            if protected:
+                drift: list[str] = []
+                if str(entity.status or "") != REGISTRY_STATUS_ACTIVE:
+                    drift.append("status")
+                if dict(entity.config or {}) != intended_config:
+                    drift.append("config")
+                if bool(entity.is_default) != intended_default:
+                    drift.append("is_default")
+                if entity.pipeline_template_id != pipeline_id:
+                    drift.append("pipeline_template_id")
+                if drift:
+                    raise ProcessPolicyRegistryDriftError(
+                        f"Referenced Process Profile {entity.id} differs from manifest in: "
+                        f"{', '.join(drift)}"
+                    )
+                # For referenced identities registry sync is metadata-only.
+                entity.name = str(row.get("name") or code)
+                entity.description = row.get("description")
+            else:
+                entity.registry_version = registry_version
+                entity.status = REGISTRY_STATUS_ACTIVE
+                entity.name = str(row.get("name") or code)
+                entity.description = row.get("description")
+                entity.config = intended_config
+                entity.is_default = intended_default
+                entity.pipeline_template_id = pipeline_id
+                entity.is_system = True
+
+            if link_legacy and not protected:
                 from backend.app.process_engine.legacy_mapping import link_process_profile_to_candidate_profile
 
                 await link_process_profile_to_candidate_profile(db, entity=entity, tenant_id=tenant_id)
@@ -323,16 +358,52 @@ class ProcessEngineRegistry:
                     code=code,
                 )
                 db.add(entity)
-            entity.registry_version = registry_version
-            entity.status = REGISTRY_STATUS_ACTIVE
-            entity.name = str(row.get("name") or code)
-            entity.config = dict(row.get("config") or {})
-            entity.priority = int(row.get("priority") or 100)
-            entity.process_profile_id = profile_ids.get(
+                protected = False
+            intended_profile_id = profile_ids.get(
                 str(row.get("process_profile_code") or "").strip(),
                 default_profile_id,
             )
-            entity.is_system = True
+            protected = False
+            for profile_id in {entity.process_profile_id, intended_profile_id}:
+                if not profile_id:
+                    continue
+                usage = await classify_process_profile_references(
+                    db,
+                    tenant_id=tenant_id,
+                    process_profile_id=str(profile_id),
+                )
+                if usage.operationally_protected:
+                    protected = True
+                    break
+
+            intended_config = dict(row.get("config") or {})
+            intended_priority = int(row.get("priority") or 100)
+            if protected:
+                drift: list[str] = []
+                if str(entity.status or "") != REGISTRY_STATUS_ACTIVE:
+                    drift.append("status")
+                if dict(entity.config or {}) != intended_config:
+                    drift.append("config")
+                if int(entity.priority) != intended_priority:
+                    drift.append("priority")
+                if entity.process_profile_id != intended_profile_id:
+                    drift.append("process_profile_id")
+                if drift:
+                    raise ProcessPolicyRegistryDriftError(
+                        f"Transition Rule {entity.id} on referenced Process Profile differs "
+                        f"from manifest in: {', '.join(drift)}"
+                    )
+                entity.name = str(row.get("name") or code)
+                entity.description = row.get("description")
+            else:
+                entity.registry_version = registry_version
+                entity.status = REGISTRY_STATUS_ACTIVE
+                entity.name = str(row.get("name") or code)
+                entity.description = row.get("description")
+                entity.config = intended_config
+                entity.priority = intended_priority
+                entity.process_profile_id = intended_profile_id
+                entity.is_system = True
 
     @staticmethod
     async def _upsert_handoff_rules(

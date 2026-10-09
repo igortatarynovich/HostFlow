@@ -153,7 +153,7 @@ async def resolve_hiring_pipeline_gates_for_candidate(
     }
 
 
-async def upsert_hiring_pipeline_gates_transition_rule(
+async def _upsert_hiring_pipeline_gates_transition_rule_for_bootstrap(
     db: AsyncSession,
     *,
     tenant_id: str,
@@ -220,36 +220,39 @@ async def sync_tenant_hiring_gates_to_default_profile_rule(
     else:
         gates = default_hiring_pipeline_gates()
 
-    await upsert_hiring_pipeline_gates_transition_rule(
+    intended_config = hiring_pipeline_gates_config_from_gates(gates)
+    existing_rule = await load_hiring_pipeline_gates_rule(
+        db,
+        tenant_id=str(tenant_id),
+        process_profile_id=str(profile.id),
+    )
+    from backend.app.process_engine.policy_safety import (
+        ProcessPolicyRegistryDriftError,
+        classify_process_profile_references,
+    )
+
+    usage = await classify_process_profile_references(
+        db,
+        tenant_id=str(tenant_id),
+        process_profile_id=str(profile.id),
+    )
+    if usage.operationally_protected:
+        if existing_rule is None:
+            raise ProcessPolicyRegistryDriftError(
+                "Referenced Process Profile has no Hiring Pipeline Gates rule; "
+                "startup synchronization cannot create live policy"
+            )
+        if dict(existing_rule.config or {}) != intended_config:
+            raise ProcessPolicyRegistryDriftError(
+                "Tenant Settings and referenced Process Profile policy differ; "
+                "startup synchronization cannot rewrite live policy"
+            )
+        return True
+
+    await _upsert_hiring_pipeline_gates_transition_rule_for_bootstrap(
         db,
         tenant_id=str(tenant_id),
         process_profile_id=str(profile.id),
         gates=gates,
     )
     return True
-
-
-async def sync_hiring_gates_to_default_profile_from_tenant_settings(
-    db: AsyncSession,
-    *,
-    tenant_id: str,
-    gates: HiringPipelineGates,
-) -> None:
-    """Dual-write helper: legacy Settings editor → default profile transition rule."""
-    profile = (
-        await db.execute(
-            select(PeProcessProfile).where(
-                PeProcessProfile.tenant_id == str(tenant_id),
-                PeProcessProfile.module == RECRUITMENT_MODULE,
-                PeProcessProfile.code == DEFAULT_PROFILE_CODE,
-            ).limit(1)
-        )
-    ).scalar_one_or_none()
-    if profile is None:
-        return
-    await upsert_hiring_pipeline_gates_transition_rule(
-        db,
-        tenant_id=str(tenant_id),
-        process_profile_id=str(profile.id),
-        gates=gates,
-    )

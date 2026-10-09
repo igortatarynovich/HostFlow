@@ -418,3 +418,43 @@ Removal of obsolete June `ready_for_handoff` address, unconditional medical and 
 That change removes legacy blockers.
 
 It does not implement Profile-owned requirements and must remain independently testable/releasable from this architecture migration.
+
+## 22. Step 9A.3a — live Process Profile policy containment
+
+`PeProcessProfile` is a stable, deliberately-live operational identity. A published
+Recruitment Profile Version pins that identity; it does not snapshot Process Engine
+rule JSON. The live-policy exception is contained as follows:
+
+- `policy_revision` is the optimistic-concurrency token for semantic corrections;
+- ordinary metadata correction is limited to `name` and `description` and does not
+  increment `policy_revision`;
+- operational use is classified centrally from immutable Recruitment Profile
+  Versions, Vacancy runtime bindings, and the legacy CandidateProfile bridge;
+- normal registry/startup synchronization may create unreferenced bootstrap state,
+  but it must reject semantic drift instead of rewriting referenced policy;
+- the only operator-originated semantic correction admitted in Step 9A.3a is the
+  typed Hiring Pipeline Gates update;
+- that update locks the profile and owned rules, checks the expected revision,
+  records actor/reason/source and before/after state in `ActivityLog`, and commits
+  tenant compatibility settings plus Process Engine policy atomically;
+- Vacancy and CandidateProfile bindings use delete restriction so deletion cannot
+  silently convert an explicit/legacy binding into resolver fallback;
+- Process Engine policy may decide when unresolved Recruitment requirements block a
+  transition, but this correction surface cannot author a new independent list of
+  required Recruitment fields or documents.
+
+Legacy CandidateProfile references are conservatively treated as operationally
+protected while that fallback path remains available. Mutable Recruitment Profile
+heads are reported separately and affect deletion safety, but a head alone does not
+classify policy as running.
+
+The API transition is backward compatible: `GET` returns `policy_revision`, and
+`PATCH` accepts `expected_policy_revision`. Older clients may omit it; the server
+captures the current revision before the correction service takes its row lock, so a
+concurrent correction still produces a conflict. New clients should round-trip the
+explicit token.
+
+Step 9A.3a does not claim universal Funnel compatibility. It validates only the typed
+Hiring Pipeline Gates contract and tenant/profile/rule ownership invariants supported
+by current canonical data. Profile cloning and transition-rule uniqueness changes are
+reserved for Step 9A.3b.

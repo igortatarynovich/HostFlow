@@ -110,7 +110,7 @@ class CandidateProfile(Base, TimestampMixin):
 
     pe_process_profile_id: Mapped[Optional[str]] = mapped_column(
         String(36),
-        ForeignKey("pe_process_profiles.id", ondelete="SET NULL"),
+        ForeignKey("pe_process_profiles.id", ondelete="RESTRICT"),
         nullable=True,
         index=True,
         comment="Process Engine profile (P1 compat mapping)",
@@ -118,4 +118,3 @@ class CandidateProfile(Base, TimestampMixin):
 
 
 __all__ = ["CandidateProfile"]
-
