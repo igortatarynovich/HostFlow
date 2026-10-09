@@ -342,11 +342,16 @@ class ProcessEngineRegistry:
             code = str(row.get("code") or "").strip()
             if not code:
                 continue
+            intended_profile_id = profile_ids.get(
+                str(row.get("process_profile_code") or "").strip(),
+                default_profile_id,
+            )
             existing = await db.execute(
                 select(PeTransitionRule).where(
                     PeTransitionRule.module == module,
                     PeTransitionRule.tenant_id == tenant_id,
                     PeTransitionRule.code == code,
+                    PeTransitionRule.process_profile_id == intended_profile_id,
                 )
             )
             entity = existing.scalar_one_or_none()
@@ -359,10 +364,6 @@ class ProcessEngineRegistry:
                 )
                 db.add(entity)
                 protected = False
-            intended_profile_id = profile_ids.get(
-                str(row.get("process_profile_code") or "").strip(),
-                default_profile_id,
-            )
             protected = False
             for profile_id in {entity.process_profile_id, intended_profile_id}:
                 if not profile_id:

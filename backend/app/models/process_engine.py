@@ -143,7 +143,25 @@ class PePipelineTemplate(Base, TimestampMixin, ProcessEngineRegistryMixin):
 class PeTransitionRule(Base, TimestampMixin, ProcessEngineRegistryMixin):
     __tablename__ = "pe_transition_rules"
     __table_args__ = (
-        UniqueConstraint("tenant_id", "module", "code", name="uq_pe_transition_rules_scope_code"),
+        sa.Index(
+            "uq_pe_transition_rules_owned_scope_code",
+            "tenant_id",
+            "module",
+            "process_profile_id",
+            "code",
+            unique=True,
+            postgresql_where=sa.text("process_profile_id IS NOT NULL"),
+            sqlite_where=sa.text("process_profile_id IS NOT NULL"),
+        ),
+        sa.Index(
+            "uq_pe_transition_rules_unowned_scope_code",
+            "tenant_id",
+            "module",
+            "code",
+            unique=True,
+            postgresql_where=sa.text("process_profile_id IS NULL"),
+            sqlite_where=sa.text("process_profile_id IS NULL"),
+        ),
     )
 
     process_profile_id: Mapped[Optional[str]] = mapped_column(
