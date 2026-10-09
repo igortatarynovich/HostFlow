@@ -46,8 +46,13 @@ def _effective_vacancy_id(
     vacancy_id: Optional[str],
     candidate: Optional[Candidate],
     lead: Optional[Lead],
+    *,
+    include_candidate: bool = True,
 ) -> Optional[str]:
-    for v in (vacancy_id, getattr(candidate, "vacancy_id", None) if candidate else None):
+    ordered: list[Any] = [vacancy_id]
+    if include_candidate and candidate is not None:
+        ordered.append(getattr(candidate, "vacancy_id", None))
+    for v in ordered:
         nv = _norm_vacancy_id(v)
         if nv:
             return nv
@@ -73,8 +78,11 @@ def _should_create_application_row(
     vacancy_id: Optional[str],
     candidate: Optional[Candidate],
     lead: Optional[Lead],
+    include_candidate: bool = True,
 ) -> bool:
-    if _effective_vacancy_id(vacancy_id, candidate, lead):
+    if _effective_vacancy_id(
+        vacancy_id, candidate, lead, include_candidate=include_candidate
+    ):
         return True
     return _explicit_pool_intent(lead)
 
@@ -106,6 +114,30 @@ def _append_pool_to_vacancy_audit(
     return m
 
 
+async def _lead_intent_rows_for_lead(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    lead_id: str,
+) -> list[RecruitmentApplication]:
+    """Rows for one lead intent, oldest first.
+
+    Vacancy switch copies ``lead_id`` onto the new row, so more than one row is valid.
+    Lookup must not raise ``MultipleResultsFound`` and must not insert another row.
+    """
+    res = await db.execute(
+        select(RecruitmentApplication)
+        .where(
+            RecruitmentApplication.tenant_id == tenant_id,
+            RecruitmentApplication.candidate_id == candidate_id,
+            RecruitmentApplication.lead_id == lead_id,
+        )
+        .order_by(RecruitmentApplication.created_at.asc(), RecruitmentApplication.id.asc())
+    )
+    return list(res.scalars().all())
+
+
 async def ensure_recruitment_application_for_lead_intent(
     db: AsyncSession,
     *,
@@ -118,6 +150,7 @@ async def ensure_recruitment_application_for_lead_intent(
     recruiter_id: Optional[str] = None,
     applied_at: Optional[datetime] = None,
     meta: Optional[Dict[str, Any]] = None,
+    sync_candidate_vacancy: bool = True,
 ) -> Optional[RecruitmentApplication]:
     """
     Idempotent intent row for lead-driven conversion.
@@ -127,10 +160,16 @@ async def ensure_recruitment_application_for_lead_intent(
       ``normalized["recruitment_pool_intent_v1"] is True`` (explicit pool intent).
     * Idempotency: ``(tenant_id, candidate_id, lead_id)`` when ``lead_id`` is set;
       else ``(tenant_id, candidate_id, vacancy_id, source)`` when there is no lead.
+    * If vacancy switch already stored the same ``lead_id`` on more than one row,
+      return the oldest row and do not insert or rewrite those rows.
 
     New rows always use ``status=applied`` (recruitment-application-lifecycle.md §3).
 
-    Dual-write: when an effective vacancy is known, sets ``Candidate.vacancy_id`` if empty/different.
+    Dual-write: when ``sync_candidate_vacancy`` is true (default) and an effective
+    vacancy is known, sets ``Candidate.vacancy_id`` if empty or different.
+    ``sync_candidate_vacancy=False`` is the auto exact-duplicate path: vacancy comes
+    only from the explicit ``vacancy_id`` argument (inbound lead intent), never from
+    ``Candidate.vacancy_id``, and ``Candidate.vacancy_id`` is left unchanged.
     """
     tid = str(tenant_id).strip()
     cid = str(candidate_id).strip()
@@ -153,22 +192,26 @@ async def ensure_recruitment_application_for_lead_intent(
     if cand is None or str(cand.tenant_id) != tid or cand.deleted_at is not None:
         return None
 
-    if not _should_create_application_row(vacancy_id=vacancy_id, candidate=cand, lead=lead_row):
-        return None
-
-    eff_vac = _effective_vacancy_id(vacancy_id, cand, lead_row)
+    if sync_candidate_vacancy:
+        if not _should_create_application_row(
+            vacancy_id=vacancy_id, candidate=cand, lead=lead_row, include_candidate=True
+        ):
+            return None
+        eff_vac = _effective_vacancy_id(vacancy_id, cand, lead_row, include_candidate=True)
+    else:
+        # Inbound argument only. Do not inherit Candidate.vacancy_id or a lead
+        # column that exact-duplicate fallback may already have projected.
+        eff_vac = _norm_vacancy_id(vacancy_id)
+        if not eff_vac and not _explicit_pool_intent(lead_row):
+            return None
     src = str(source or "meta").strip() or "meta"
 
     existing: Optional[RecruitmentApplication] = None
     if lid:
-        res = await db.execute(
-            select(RecruitmentApplication).where(
-                RecruitmentApplication.tenant_id == tid,
-                RecruitmentApplication.candidate_id == cid,
-                RecruitmentApplication.lead_id == lid,
-            )
-        )
-        existing = res.scalar_one_or_none()
+        rows = await _lead_intent_rows_for_lead(db, tenant_id=tid, candidate_id=cid, lead_id=lid)
+        if len(rows) > 1:
+            return rows[0]
+        existing = rows[0] if rows else None
     elif eff_vac:
         res = await db.execute(
             select(RecruitmentApplication).where(
@@ -200,16 +243,23 @@ async def ensure_recruitment_application_for_lead_intent(
                     to_vacancy_id=eff_vac,
                 )
             changed = True
-        if eff_vac and (not cand.vacancy_id or str(cand.vacancy_id) != eff_vac):
+        if (
+            sync_candidate_vacancy
+            and eff_vac
+            and (not cand.vacancy_id or str(cand.vacancy_id) != eff_vac)
+        ):
             cand.vacancy_id = eff_vac
             changed = True
         if changed:
             await db.flush()
         return existing
 
-    if eff_vac:
-        if not cand.vacancy_id or str(cand.vacancy_id) != eff_vac:
-            cand.vacancy_id = eff_vac
+    if (
+        sync_candidate_vacancy
+        and eff_vac
+        and (not cand.vacancy_id or str(cand.vacancy_id) != eff_vac)
+    ):
+        cand.vacancy_id = eff_vac
 
     when = applied_at if applied_at is not None else datetime.now(timezone.utc)
     app = RecruitmentApplication(

@@ -20,6 +20,7 @@ from backend.app.modules.leads.duplicate_resolution import (
 from backend.app.modules.leads.lead_candidate_conversion import (
     apply_conversion_payload_to_existing_candidate,
     create_candidate_from_lead_conversion,
+    ensure_recruitment_application_for_converted_lead,
 )
 from backend.app.modules.leads.lead_client_conversion import create_client_from_lead_conversion
 from backend.app.modules.leads.lead_service_order_conversion import create_service_order_from_lead_conversion
@@ -44,10 +45,21 @@ async def apply_blocked_duplicate_outcome(
     decision: DecisionResult,
     resolved_company_id: Optional[str],
 ) -> str:
-    """Attach lead to existing candidate — no new Candidate INSERT."""
+    """Attach lead to existing candidate — no new Candidate INSERT.
+
+    Application continuity uses the same lead-intent ensure as conversion.
+    The application vacancy is the inbound ``lead.vacancy_id`` captured before
+    any candidate projection. A null inbound vacancy is stored as null and is
+    not replaced with ``Candidate.vacancy_id``. This path does not write
+    ``Candidate.vacancy_id`` or ``Candidate.stage``.
+    """
     duplicate = decision.duplicate_match.candidate
     if duplicate is None:
         raise ValueError("blocked_duplicate requires duplicate candidate")
+    inbound_vacancy_id = getattr(lead, "vacancy_id", None)
+    inbound_vacancy = str(inbound_vacancy_id).strip() if inbound_vacancy_id else None
+    if inbound_vacancy == "":
+        inbound_vacancy = None
     mapped_payload = conversion_payload_from_normalized(normalized)
     if mapped_payload:
         apply_conversion_payload_to_existing_candidate(duplicate, mapped_payload)
@@ -57,9 +69,19 @@ async def apply_blocked_duplicate_outcome(
         lead,
         status="duplicated",
         candidate_id=str(duplicate.id),
-        vacancy_id=lead.vacancy_id or duplicate.vacancy_id,
+        vacancy_id=inbound_vacancy,
         normalized=normalized,
         error=None,
+    )
+    await ensure_recruitment_application_for_converted_lead(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        candidate=duplicate,
+        vacancy_id=inbound_vacancy,
+        recruiter_id=getattr(duplicate, "recruiter_id", None),
+        source=str(getattr(lead, "source", None) or "meta"),
+        sync_candidate_vacancy=False,
     )
     await record_exact_duplicate_lead_intake(
         db,

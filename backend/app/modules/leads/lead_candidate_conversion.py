@@ -35,6 +35,7 @@ async def ensure_recruitment_application_for_converted_lead(
     vacancy_id: Optional[str] = None,
     recruiter_id: Optional[str] = None,
     source: Optional[str] = None,
+    sync_candidate_vacancy: bool = True,
 ) -> Optional[RecruitmentApplication]:
     """Record vacancy/pool intent after conversion; see ``recruitment_application_service``."""
     src = (source or "").strip() or str(getattr(lead, "source", None) or "meta").strip() or "meta"
@@ -46,6 +47,7 @@ async def ensure_recruitment_application_for_converted_lead(
         vacancy_id=vacancy_id,
         source=src,
         recruiter_id=recruiter_id,
+        sync_candidate_vacancy=sync_candidate_vacancy,
     )
 
 
