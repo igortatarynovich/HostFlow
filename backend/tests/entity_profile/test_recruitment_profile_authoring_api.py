@@ -21,6 +21,7 @@ from backend.app.entity_profile.reverse_map import (
 )
 from backend.app.models.entity_profile import EpEntityProfile
 from backend.app.models.field_registry import FrCanonicalField
+from backend.app.models.process_engine import PeProcessProfile
 from backend.app.models.ref_document_type import (
     RefDocumentType,
     RefDocumentTypeVersion,
@@ -122,6 +123,24 @@ async def _make_profile(
     return profile
 
 
+async def _make_process_profile(db, *, tenant_id: str) -> PeProcessProfile:
+    profile = PeProcessProfile(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        module="recruitment",
+        code=f"api_process_{uuid.uuid4().hex[:8]}",
+        registry_version="process_engine_v1",
+        status="active",
+        name="API Process Profile",
+        config={},
+        is_system=False,
+        is_default=False,
+    )
+    db.add(profile)
+    await db.flush()
+    return profile
+
+
 def _create_payload(*, profile_code: str | None = None) -> dict:
     return {
         "profile_code": profile_code or f"tenant.api.{uuid.uuid4().hex[:8]}",
@@ -144,6 +163,31 @@ def _revision_payload(*, expected_published_version: int = 1) -> dict:
         "fields": [],
         "documents": [],
     }
+
+
+@pytest.mark.anyio
+async def test_create_accepts_process_profile_id_and_returns_pinned_identity(
+    client: AsyncClient,
+    db,
+    tenant_id: str,
+    manager_headers: dict[str, str],
+) -> None:
+    process_profile = await _make_process_profile(db, tenant_id=tenant_id)
+    await db.commit()
+    payload = _create_payload()
+    payload["process_profile_id"] = process_profile.id
+
+    response = await client.post(CREATE_URL, json=payload, headers=manager_headers)
+
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["process_profile_id"] == process_profile.id
+    policy = await load_recruitment_profile_policy(
+        db,
+        tenant_id=tenant_id,
+        profile_version_id=body["profile_version_id"],
+    )
+    assert policy.process_profile_id == process_profile.id
 
 
 @pytest.mark.anyio
@@ -393,8 +437,11 @@ async def test_revision_returns_v2_and_preserves_v1(
 ) -> None:
     first_field = await _make_field(db, tenant_id=tenant_id, suffix="revision_v1")
     second_field = await _make_field(db, tenant_id=tenant_id, suffix="revision_v2")
+    process_a = await _make_process_profile(db, tenant_id=tenant_id)
+    process_b = await _make_process_profile(db, tenant_id=tenant_id)
     await db.commit()
     create_payload = _create_payload()
+    create_payload["process_profile_id"] = process_a.id
     create_payload["fields"] = [
         {
             "canonical_field_id": first_field.id,
@@ -411,6 +458,7 @@ async def test_revision_returns_v2_and_preserves_v1(
         headers=manager_headers,
         json={
             **_revision_payload(),
+            "process_profile_id": process_b.id,
             "fields": [
                 {
                     "canonical_field_id": second_field.id,
@@ -429,12 +477,15 @@ async def test_revision_returns_v2_and_preserves_v1(
     assert v2["description"] == "Revised through Step 7B.1"
     assert v2["default_layout_code"] == "tenant.api.layout.revised"
     assert v2["config"] == {"theme": "expanded"}
+    assert v1["process_profile_id"] == process_a.id
+    assert v2["process_profile_id"] == process_b.id
     assert v2["fields"][0]["canonical_field_id"] == second_field.id
     policy_v1 = await load_recruitment_profile_policy(
         db,
         tenant_id=tenant_id,
         profile_version_id=v1["profile_version_id"],
     )
+    assert policy_v1.process_profile_id == process_a.id
     assert policy_v1.profile_version == 1
     assert policy_v1.fields[0].canonical_field_id == first_field.id
     assert policy_v1.fields[0].requirement_level == "optional"

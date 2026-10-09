@@ -399,13 +399,13 @@ def test_contract_has_only_profile_owned_policy_shape() -> None:
         "module_owner",
         "entity_type",
         "funnel_id",
+        "process_profile_id",
         "fields",
         "documents",
     ]
     forbidden_fragments = (
         "policy_ref",
         "document_pack",
-        "process",
         "vacancy",
         "r5",
         "requirement_source",

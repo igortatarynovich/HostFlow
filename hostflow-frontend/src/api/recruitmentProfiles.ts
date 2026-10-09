@@ -35,6 +35,7 @@ export interface RecruitmentProfilePublication {
   name: string
   description: string | null
   default_layout_code: string | null
+  process_profile_id: string | null
   config: Record<string, unknown>
   published_at: string
   fields: RecruitmentProfileFieldBinding[]
@@ -62,6 +63,7 @@ export interface RecruitmentProfileCreateInput {
   name: string
   description: string | null
   default_layout_code: string | null
+  process_profile_id?: string | null
   config: Record<string, unknown>
   fields: RecruitmentProfileFieldBinding[]
   documents: RecruitmentProfileDocumentBinding[]
@@ -72,6 +74,7 @@ export interface RecruitmentProfileRevisionInput {
   name: string
   description: string | null
   default_layout_code: string | null
+  process_profile_id?: string | null
   config: Record<string, unknown>
   fields: RecruitmentProfileFieldBinding[]
   documents: RecruitmentProfileDocumentBinding[]

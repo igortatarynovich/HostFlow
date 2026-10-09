@@ -74,6 +74,12 @@ class EpEntityProfile(Base, TimestampMixin, EntityProfileMixin):
         index=True,
     )
     document_pack_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    process_profile_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("pe_process_profiles.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     process_profile_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default=text("1"))
     published_version: Mapped[int] = mapped_column(
@@ -130,6 +136,12 @@ class EpEntityProfileVersion(Base):
     funnel_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("funnels.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    process_profile_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("pe_process_profiles.id", ondelete="RESTRICT"),
         nullable=True,
         index=True,
     )

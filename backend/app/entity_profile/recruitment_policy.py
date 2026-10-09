@@ -60,6 +60,7 @@ class RecruitmentProfilePolicy:
     module_owner: str
     entity_type: str
     funnel_id: str | None
+    process_profile_id: str | None
     fields: tuple[RecruitmentProfileFieldPolicy, ...]
     documents: tuple[RecruitmentProfileDocumentPolicy, ...]
 
@@ -93,6 +94,7 @@ async def load_recruitment_profile_policy(
                 EpEntityProfileVersion.module_owner,
                 EpEntityProfileVersion.entity_type,
                 EpEntityProfileVersion.funnel_id,
+                EpEntityProfileVersion.process_profile_id,
             )
             .select_from(EpEntityProfileVersion)
             .join(
@@ -215,6 +217,11 @@ async def load_recruitment_profile_policy(
         entity_type=str(profile_row.entity_type),
         funnel_id=(
             str(profile_row.funnel_id) if profile_row.funnel_id is not None else None
+        ),
+        process_profile_id=(
+            str(profile_row.process_profile_id)
+            if profile_row.process_profile_id is not None
+            else None
         ),
         fields=tuple(fields),
         documents=tuple(documents),

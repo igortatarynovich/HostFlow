@@ -15,6 +15,7 @@ from backend.app.entity_profile.exceptions import EntityProfileNotFoundError
 from backend.app.entity_profile.publication_versions import publish_entity_profile
 from backend.app.models.entity_profile import EpEntityProfile, EpEntityProfileVersion
 from backend.app.models.funnel import Funnel
+from backend.app.models.process_engine import PeProcessProfile
 
 
 class RecruitmentProfileAuthoringError(ValueError):
@@ -173,6 +174,35 @@ async def _validated_funnel_id(
     return funnel_key
 
 
+async def _validated_process_profile(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    process_profile_id: str | None,
+) -> PeProcessProfile | None:
+    if process_profile_id is None:
+        return None
+    profile_key = str(process_profile_id).strip()
+    if not profile_key:
+        raise RecruitmentProfileAuthoringError(
+            "process_profile_id must be non-empty or null"
+        )
+    process_profile = await db.scalar(
+        select(PeProcessProfile).where(PeProcessProfile.id == profile_key)
+    )
+    if (
+        process_profile is None
+        or str(process_profile.tenant_id) != tenant_id
+        or str(process_profile.module or "").strip() != "recruitment"
+        or str(process_profile.status or "").strip() != "active"
+    ):
+        raise RecruitmentProfileAuthoringError(
+            "Recruitment Profile Process Profile must be an existing active "
+            "tenant-owned recruitment Process Profile"
+        )
+    return process_profile
+
+
 async def create_recruitment_profile(
     db: AsyncSession,
     *,
@@ -182,6 +212,7 @@ async def create_recruitment_profile(
     description: str | None = None,
     default_layout_code: str | None = None,
     funnel_id: str | None = None,
+    process_profile_id: str | None = None,
     config: dict[str, Any] | None = None,
     field_bindings: Sequence[dict[str, Any]] = (),
     document_bindings: Sequence[dict[str, Any]] = (),
@@ -233,6 +264,11 @@ async def create_recruitment_profile(
         tenant_id=tenant_key,
         funnel_id=funnel_id,
     )
+    resolved_process_profile = await _validated_process_profile(
+        db,
+        tenant_id=tenant_key,
+        process_profile_id=process_profile_id,
+    )
     resolved_config = (
         _explicit_config(config)
         if config is not None
@@ -261,7 +297,16 @@ async def create_recruitment_profile(
             default_layout_code=resolved_layout,
             funnel_id=resolved_funnel_id,
             document_pack_code=None,
-            process_profile_code=None,
+            process_profile_id=(
+                str(resolved_process_profile.id)
+                if resolved_process_profile is not None
+                else None
+            ),
+            process_profile_code=(
+                str(resolved_process_profile.code)
+                if resolved_process_profile is not None
+                else None
+            ),
             version=1,
             published_version=0,
             config=resolved_config,
@@ -291,6 +336,7 @@ async def publish_recruitment_profile_revision(
     default_layout_code: str | None,
     config: dict[str, Any],
     funnel_id: str | None = None,
+    process_profile_id: str | None = None,
     field_bindings: Sequence[dict[str, Any]] = (),
     document_bindings: Sequence[dict[str, Any]] = (),
 ) -> EpEntityProfileVersion:
@@ -334,12 +380,27 @@ async def publish_recruitment_profile_revision(
         tenant_id=tenant_key,
         funnel_id=funnel_id,
     )
+    resolved_process_profile = await _validated_process_profile(
+        db,
+        tenant_id=tenant_key,
+        process_profile_id=process_profile_id,
+    )
 
     async with db.begin_nested():
         profile.name = resolved_name
         profile.description = description
         profile.default_layout_code = default_layout_code
         profile.funnel_id = resolved_funnel_id
+        profile.process_profile_id = (
+            str(resolved_process_profile.id)
+            if resolved_process_profile is not None
+            else None
+        )
+        profile.process_profile_code = (
+            str(resolved_process_profile.code)
+            if resolved_process_profile is not None
+            else None
+        )
         profile.config = resolved_config
 
         published = await publish_entity_profile(
