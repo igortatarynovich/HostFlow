@@ -1,6 +1,6 @@
 # HostFlow — Security Scorecard
 
-**Generated:** 2026-09-30T07:40:00Z (UTC)  
+**Generated:** 2026-10-11T13:02:53Z (UTC)  
 **Generator:** `scripts/security/generate_security_scorecard.py`  
 **Canon:** [`runtime-roadmap.md`](./runtime-roadmap.md) Phase 8 · [`security-ssot.md`](./security-ssot.md)
 
@@ -13,7 +13,7 @@ Living **repo-derived** scorecard for leadership / retros. Does not replace SSOT
 | CI gates | Jobs in `.github/workflows/security-gates.yml` | 16 | ≥ 8 | `green` | Inventory only — green workflow on default branch is reviewed in monthly cycle. |
 | Threat models | Files under `docs/security/threat-models/` | 25 | ≥ 10 | `green` | threat-model gate enforces updates when surface code changes. |
 | Detection | Phase 7 `DetectionRule` entries | 3 | ≥ 3 | `green` | Each rule requires owner + runbook (CI `detection-rules`). |
-| RLS | Models with `tenant_id` covered by RLS enable migrations (static) | 47/183 (26%) | ≥ 70% static hint; 100% live DB audit | `yellow` | Approximation from SQLAlchemy models ∩ Alembic RLS table lists / ALTER TABLE. tenant models=183, rls catalog=57. Prefer live pg_policies audit for leadership reporting. |
+| RLS | Models with `tenant_id` covered by RLS enable migrations (static) | 47/189 (25%) | ≥ 70% static hint; 100% live DB audit | `yellow` | Approximation from SQLAlchemy models ∩ Alembic RLS table lists / ALTER TABLE. tenant models=189, rls catalog=57. Prefer live pg_policies audit for leadership reporting. |
 | RLS | Runtime `TenantEnforcingAsyncSession` guard | present | present | `green` | Python fail-closed execute before bind (Phase 1). |
 | MFA | Adoption superadmin + tenant owners | not measured in repo | > 90% (SSOT) | `n/a` | Product/IdP metric — fill during monthly review; not inferred from git. |
 | Vulns | Critical/high in sensitive deps | CI (`security-gates`) | 0 critical / policy on high | `n/a` | Tracked by pip-audit / npm audit / Trivy jobs — paste latest green run link in review log. |
