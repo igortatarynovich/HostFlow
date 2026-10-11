@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import clsx from "clsx";
 import {
   getDocumentTypes,
@@ -323,6 +323,10 @@ type Props = {
   excludeTypes?: string[];
   countries?: Array<{ value: string; label: string }>;
   onFactsSaved?: () => void;
+  /** Legalization projections. The same Hub rows, grouped by stay and work. */
+  stayTypes?: string[];
+  workTypes?: string[];
+  renderFrame?: (sections: { stay: ReactNode; work: ReactNode }) => ReactNode;
 };
 
 export default function CandidateDocuments({
@@ -341,6 +345,9 @@ export default function CandidateDocuments({
   excludeTypes,
   countries,
   onFactsSaved,
+  stayTypes,
+  workTypes,
+  renderFrame,
 }: Props) {
   const { can } = usePermissions();
   const { t, locale } = useI18n();
@@ -1724,6 +1731,7 @@ useEffect(() => {
     saveCoreFields,
     deleteDocumentFile,
     createDocumentFromChecklist,
+    recordProcedure,
   } = useDocumentActions({
     candidateId,
     canManageDocuments,
@@ -1928,12 +1936,13 @@ useEffect(() => {
 
   if (operatorRows) {
     const operatorError = error && /evidence variant/i.test(String(error)) ? null : error;
+    const framed = Boolean(renderFrame);
     return (
-      <div className="space-y-3">
+      <div className={framed ? 'contents' : 'space-y-3'}>
         {operatorError ? (
-          <div className="rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-sm text-rose-700">{operatorError}</div>
+          <div className="rounded border border-rose-200 bg-rose-50 px-2 py-2 text-sm text-rose-700">{operatorError}</div>
         ) : null}
-        {loading && docs.length === 0 ? (
+        {loading && docs.length === 0 && !framed ? (
           <div className="text-sm text-slate-500">{t("common.loading")}</div>
         ) : (
           <OperatorDocumentRows
@@ -1941,46 +1950,31 @@ useEffect(() => {
             docs={docs}
             docTypes={docTypes}
             typeLevel={typeLevel}
-            onlyTypes={onlyTypes}
-            excludeTypes={excludeTypes}
+            onlyTypes={framed ? undefined : onlyTypes}
+            excludeTypes={framed ? undefined : excludeTypes}
+            groups={framed ? [
+              { key: 'stay', types: stayTypes || [] },
+              { key: 'work', types: workTypes || [] },
+            ] : undefined}
+            renderGroups={renderFrame
+              ? (nodes) => renderFrame({ stay: nodes.stay ?? null, work: nodes.work ?? null })
+              : undefined}
             canManage={canManageDocuments}
             countries={countries}
             getLabel={getDocTypeLabel}
             onUpload={handleReplaceUploadHook}
             uploading={replaceUploading}
             onFactsSaved={onFactsSaved}
-            renderOpen={(doc) => (
-              <DocumentCard
-                doc={doc}
-                variant="compact"
-                typeByCode={typeByCode}
-                metadataFieldMap={metadataFieldMap}
-                coreEdits={coreEdits}
-                metadataEdits={metadataEdits}
-                statusUpdating={statusUpdating}
-                coreSaving={coreSaving}
-                replaceFile={replaceFile}
-                replacePct={replacePct}
-                replaceUploading={replaceUploading}
-                expandedDocs={{ ...expandedDocs, [doc.id]: true }}
-                canManageDocuments={canManageDocuments}
-                coreFromDocument={coreFromDocument}
-                translateStatus={translateStatus}
-                getFieldValue={getFieldValue}
-                updateFieldValue={updateFieldValue}
-                updateStatus={updateStatus}
-                approveDocument={approveDocument}
-                rejectDocument={rejectDocument}
-                saveCoreFields={saveCoreFields}
-                deleteDocumentFile={deleteDocumentFile}
-                deleteDocument={doDelete}
-                openDoc={openDoc}
-                handleReplaceUpload={handleReplaceUploadHook}
-                setReplaceFile={setReplaceFile}
-                setExpandedDocs={setExpandedDocs}
-                setError={setError}
-              />
-            )}
+            metadataEdits={metadataEdits}
+            getFieldValue={getFieldValue}
+            updateFieldValue={updateFieldValue}
+            saveCoreFields={saveCoreFields}
+            approveDocument={approveDocument}
+            rejectDocument={rejectDocument}
+            deleteDocumentFile={deleteDocumentFile}
+            openDoc={openDoc}
+            recordProcedure={recordProcedure}
+            coreSaving={coreSaving}
           />
         )}
       </div>

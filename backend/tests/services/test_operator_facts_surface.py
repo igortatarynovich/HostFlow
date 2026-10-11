@@ -440,3 +440,29 @@ def test_approved_candidate_evidence_removes_the_resolved_file() -> None:
     assert "driver_license" not in asked
     assert "driver_qualification_card" not in asked
     assert "visa" in asked
+
+
+def test_document_presence_persists_unknown_absent_and_present():
+    recorded = apply_operator_facts_patch(
+        empty_facts(),
+        {"document_presence": {"passport": False, "driver_license": True}},
+    )
+    assert recorded["document_presence"] == {"passport": False, "driver_license": True}
+    view = build_operator_facts_view(recorded)
+    assert view["document_presence"]["passport"] is False
+    assert view["document_presence"]["driver_license"] is True
+    cleared = apply_operator_facts_patch(recorded, {"document_presence": {"passport": "unknown"}})
+    assert "passport" not in cleared["document_presence"]
+    assert cleared["document_presence"]["driver_license"] is True
+
+
+def test_document_presence_reuses_named_fact():
+    facts = apply_operator_facts_patch(
+        empty_facts(),
+        {"document_presence": {"tachograph_card": False}},
+    )
+    assert facts["tachograph_presence"] is False
+    assert "tachograph_card" not in facts["document_presence"]
+    view = build_operator_facts_view(facts)
+    tachograph = next(step for step in view["steps"] if step["key"] == "tachograph")
+    assert tachograph["presence"] is False

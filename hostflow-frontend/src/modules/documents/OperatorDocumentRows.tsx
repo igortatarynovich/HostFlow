@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
-import type { Document } from '../../api/types'
+import type { Document, DocumentStatus } from '../../api/types'
+import { Button } from '../../components/ui/Button'
+import { DocumentDetails } from '../../components/ui/documentRequirement/DocumentDetails'
+import { DocumentFile } from '../../components/ui/documentRequirement/DocumentFile'
+import { DocumentRequirementList } from '../../components/ui/documentRequirement/DocumentRequirementList'
+import { DocumentRequirementRow } from '../../components/ui/documentRequirement/DocumentRequirementRow'
+import { DocumentStatus as DocumentStatusBadge, type DocumentStatusKind } from '../../components/ui/documentRequirement/DocumentStatus'
+import { PresenceToggle } from '../../components/ui/documentRequirement/PresenceToggle'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { WorkspaceSection } from '../../components/ui/WorkspaceSection'
+import DateInput from '../../components/controls/DateInput'
 import { useI18n } from '../../i18n'
+import { runtimeBadgeFromDocument } from '../../utils/runtimeBadgePresentation'
 import type { OperatorFactsView } from '../candidates/OperatorFactsSurface'
-import { documentHasFiles, isSyntheticDocumentId, normalizeDocTypeCode } from './documentUtils'
+import { DocumentMetadataForm } from './components/DocumentMetadataForm'
+import { getDocumentFieldsConfig, isProcedureDocument } from './documentFieldsConfig'
+import { computeTodayIso, documentHasFiles, formatDate, isSyntheticDocumentId, normalizeDocTypeCode } from './documentUtils'
+import type { MetadataState } from './types'
 
 type TypeLevel = 'required' | 'preferred'
 
@@ -22,6 +34,8 @@ const PRESENCE_STEP: Record<string, string> = {
   psych: 'psych',
   psych_tests: 'psych',
   psychological_certificate: 'psych',
+  additional: 'additional',
+  additional_document: 'additional',
 }
 
 const PRESENCE_PATCH: Record<string, string> = {
@@ -30,14 +44,27 @@ const PRESENCE_PATCH: Record<string, string> = {
   adr: 'adr_presence',
   medical: 'medical_presence',
   psych: 'psych_presence',
+  additional: 'additional_presence',
 }
 
 const LICENCE_TYPES = new Set(['driver_license', 'driver_license_code95', 'driver_licence'])
+const CODE95_TYPES = new Set(['code95', 'driver_qualification_card', 'qualification_code95'])
+
+export type DocumentRowGroup = { key: string; types: string[] }
 
 function preferredDoc(list: Document[]): Document | undefined {
   const real = list.filter((doc) => !isSyntheticDocumentId(doc.id))
   const pool = real.length ? real : list
   return pool.find((doc) => documentHasFiles(doc)) || pool[0]
+}
+
+function statusKind(doc: Document, hasFile: boolean): DocumentStatusKind {
+  if (!hasFile) return 'missing'
+  const badge = runtimeBadgeFromDocument(doc).badge
+  if (badge === 'approved') return 'approved'
+  if (badge === 'rejected') return 'rejected'
+  if (badge === 'pending' || badge === 'expiring_soon' || badge === 'expired') return 'review'
+  return 'uploaded'
 }
 
 export function OperatorDocumentRows({
@@ -47,13 +74,24 @@ export function OperatorDocumentRows({
   typeLevel,
   onlyTypes,
   excludeTypes,
+  groups,
+  renderGroups,
   canManage,
   countries,
   getLabel,
   onUpload,
   uploading,
   onFactsSaved,
-  renderOpen,
+  metadataEdits,
+  getFieldValue,
+  updateFieldValue,
+  saveCoreFields,
+  approveDocument,
+  rejectDocument,
+  deleteDocumentFile,
+  openDoc,
+  recordProcedure,
+  coreSaving,
 }: {
   candidateId: string
   docs: Document[]
@@ -61,18 +99,29 @@ export function OperatorDocumentRows({
   typeLevel: Record<string, TypeLevel>
   onlyTypes?: string[]
   excludeTypes?: string[]
+  groups?: DocumentRowGroup[]
+  renderGroups?: (nodes: Record<string, ReactNode>) => ReactNode
   canManage: boolean
   countries?: Array<{ value: string; label: string }>
   getLabel: (code: string, name?: string | null) => string
   onUpload: (doc: Document, file: File) => Promise<void>
   uploading: Record<string, boolean>
   onFactsSaved?: () => void
-  renderOpen: (doc: Document) => ReactNode
+  metadataEdits: Record<string, MetadataState>
+  getFieldValue: (doc: Document, fieldKey: string, metadataValues: MetadataState) => unknown
+  updateFieldValue: (doc: Document, fieldKey: string, value: unknown) => void
+  saveCoreFields: (doc: Document) => void
+  approveDocument: (doc: Document) => void
+  rejectDocument: (doc: Document) => void
+  deleteDocumentFile: (doc: Document) => void
+  openDoc: (doc: Document) => void
+  recordProcedure: (doc: Document, patch: { ordered_at?: string | null; status?: DocumentStatus; meta?: Record<string, unknown> }) => Promise<void>
+  coreSaving: Record<string, boolean>
 }) {
   const { t } = useI18n()
   const [facts, setFacts] = useState<OperatorFactsView | null>(null)
-  const [localPresence, setLocalPresence] = useState<Record<string, boolean | null>>({})
   const [openCode, setOpenCode] = useState<string | null>(null)
+  const [permitType, setPermitType] = useState<Record<string, string>>({})
   const yes = t('app.candidate_card.ia.doc_present', { defaultValue: 'Present' })
   const no = t('app.candidate_card.ia.doc_absent', { defaultValue: 'Absent' })
 
@@ -90,10 +139,12 @@ export function OperatorDocumentRows({
 
   const only = useMemo(() => (onlyTypes ? new Set(onlyTypes.map(normalizeDocTypeCode)) : null), [onlyTypes])
   const exclude = useMemo(() => new Set((excludeTypes || []).map(normalizeDocTypeCode)), [excludeTypes])
+  const sharedCode95 = facts?.ce_code95?.evidence_shape === 'shared'
 
   const rows = useMemo(() => {
     return docTypes.flatMap((type) => {
       const norm = normalizeDocTypeCode(type.code)
+      if (sharedCode95 && CODE95_TYPES.has(norm)) return []
       if (only && !only.has(norm)) return []
       if (!only && exclude.has(norm)) return []
       const matches = docs.filter((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || '') === norm)
@@ -101,7 +152,7 @@ export function OperatorDocumentRows({
       if (!doc) return []
       return [{ type, norm, doc }]
     })
-  }, [docTypes, docs, exclude, only])
+  }, [docTypes, docs, exclude, only, sharedCode95])
 
   const step = (key: string) => facts?.steps?.find((item) => item.key === key)
   const patchFacts = async (patch: Record<string, unknown>) => {
@@ -109,148 +160,301 @@ export function OperatorDocumentRows({
     setFacts(response.data)
     onFactsSaved?.()
   }
+  const readPresence = (norm: string): boolean | null => {
+    const stepKey = PRESENCE_STEP[norm]
+    if (stepKey) {
+      const value = step(stepKey)?.presence
+      return value === true || value === false ? value : null
+    }
+    const map = facts?.document_presence || {}
+    const keys = LICENCE_TYPES.has(norm) ? ['driver_license', norm] : [norm]
+    for (const key of keys) {
+      const value = map[key]
+      if (value === true || value === false) return value
+    }
+    return null
+  }
+  const persistPresence = async (norm: string, next: boolean) => {
+    const stepKey = PRESENCE_STEP[norm]
+    const patchKey = stepKey ? PRESENCE_PATCH[stepKey] : undefined
+    if (patchKey) {
+      await patchFacts({ [patchKey]: next })
+      return
+    }
+    const code = LICENCE_TYPES.has(norm) ? 'driver_license' : norm
+    await patchFacts({ document_presence: { [code]: next } })
+  }
 
-  if (!rows.length) return null
-
-  const required = rows.filter((row) => (typeLevel[row.type.code] || 'required') === 'required')
-  const preferred = rows.filter((row) => typeLevel[row.type.code] === 'preferred')
+  const statusLabel = (kind: DocumentStatusKind, doc?: Document) => {
+    if (kind === 'approved') return t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })
+    if (kind === 'rejected') return t('admin.documents.status_labels.rejected', { defaultValue: 'Rejected' })
+    if (kind === 'review') return t('app.candidate_card.ia.doc_in_review', { defaultValue: 'In review' })
+    if (kind === 'uploaded') return t('app.candidate_card.ia.doc_uploaded', { defaultValue: 'Uploaded' })
+    if (kind === 'ordered') {
+      return t('app.candidate_card.ia.ordered_on', {
+        defaultValue: 'Ordered {date}',
+        values: { date: formatDate(doc?.ordered_at) },
+      })
+    }
+    if (kind === 'received') return t('app.candidate_card.ia.doc_received', { defaultValue: 'Received' })
+    if (kind === 'absent') return t('app.candidate_card.ia.doc_no_document', { defaultValue: 'No document' })
+    return t('app.candidate_card.ia.doc_not_uploaded', { defaultValue: 'Not uploaded' })
+  }
 
   const renderRow = (row: (typeof rows)[number]) => {
-    const presenceStep = PRESENCE_STEP[row.norm]
-    const storedPresence = presenceStep ? step(presenceStep)?.presence : undefined
-    const hasOwner = presenceStep != null
     const hasFile = documentHasFiles(row.doc)
-    const presence = hasOwner
-      ? (storedPresence === true ? true : storedPresence === false ? false : null)
-      : (localPresence[row.norm] ?? (hasFile ? true : null))
+    const procedure = isProcedureDocument(row.norm)
+    const storedPresence = readPresence(row.norm)
+    const presence = storedPresence === true || storedPresence === false
+      ? storedPresence
+      : (hasFile ? true : null)
     const fileName = row.doc.files?.[0]?.name || ''
-    const status = presence === false
-      ? no
-      : hasFile
-        ? [fileName, row.doc.status === 'approved'
-          ? t('app.candidate_card.ia.doc_checked', { defaultValue: 'Checked' })
-          : t('app.candidate_card.ia.doc_check', { defaultValue: 'Review' })].filter(Boolean).join(' · ')
-        : t('app.candidate_card.ia.doc_not_uploaded', { defaultValue: 'Not uploaded' })
     const licence = LICENCE_TYPES.has(row.norm)
     const country = licence ? step('driving_licence')?.issuing_country || '' : ''
-    const sharedCode95 = licence && facts?.ce_code95?.evidence_shape === 'shared'
+    const showSharedCode95 = licence && sharedCode95 && presence === true
+    const phase: DocumentStatusKind | null = procedure
+      ? (hasFile ? null : row.doc.status === 'in_progress' ? 'received' : row.doc.ordered_at ? 'ordered' : 'absent')
+      : null
+    const kind = phase || statusKind(row.doc, hasFile)
+    const expanded = procedure || (presence === true && openCode === row.norm && (hasFile || licence))
+    const meta = (row.doc.meta_json || row.doc.meta || {}) as Record<string, unknown>
+    const storedPermit = typeof meta.work_permit_type === 'string' ? meta.work_permit_type : ''
+    const selectedPermit = permitType[row.norm] ?? storedPermit
     const setPresence = (next: boolean) => {
       if (!canManage) return
-      if (hasOwner && presenceStep) {
-        const patchKey = PRESENCE_PATCH[presenceStep]
-        if (patchKey) void patchFacts({ [patchKey]: next })
-        return
-      }
-      setLocalPresence((prev) => ({ ...prev, [row.norm]: next }))
+      if (next) setOpenCode(row.norm)
+      else setOpenCode((current) => (current === row.norm ? null : current))
+      void persistPresence(row.norm, next)
     }
-    return (
-      <div key={row.norm} className="border-b border-slate-100 py-2 last:border-b-0">
-        <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,1.3fr)_auto_minmax(0,1fr)_auto]">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-slate-900">{getLabel(row.type.code, row.type.name)}</span>
-            <StatusBadge
-              size="sm"
-              shape="pill"
-              semantic={(typeLevel[row.type.code] || 'required') === 'required' ? 'warning' : 'neutral'}
-              label={(typeLevel[row.type.code] || 'required') === 'required'
-                ? t('app.candidate_card.ia.required_mark', { defaultValue: 'Required' })
-                : t('app.candidate_card.ia.preferred_mark', { defaultValue: 'Preferred' })}
-            />
+    const uploadControl = (
+      <label className="btn btn-secondary btn-compact cursor-pointer">
+        {uploading[row.doc.id]
+          ? t('common.saving')
+          : hasFile
+            ? t('admin.documents.actions.replace', { defaultValue: 'Replace' })
+            : t('app.candidate_card.documents.upload_btn', { defaultValue: 'Upload' })}
+        <input
+          type="file"
+          className="sr-only"
+          disabled={!canManage || uploading[row.doc.id]}
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            event.target.value = ''
+            if (file) {
+              setOpenCode(row.norm)
+              void onUpload(row.doc, file).then(() => {
+                if (readPresence(row.norm) !== true) void persistPresence(row.norm, true)
+              })
+            }
+          }}
+        />
+      </label>
+    )
+    const requirement = (
+      <StatusBadge
+        size="sm"
+        shape="pill"
+        semantic={(typeLevel[row.type.code] || 'required') === 'required' ? 'warning' : 'neutral'}
+        label={(typeLevel[row.type.code] || 'required') === 'required'
+          ? t('app.candidate_card.ia.required_mark', { defaultValue: 'Required' })
+          : t('app.candidate_card.ia.preferred_mark', { defaultValue: 'Preferred' })}
+      />
+    )
+    const fileKind = hasFile ? statusKind(row.doc, true) : 'missing'
+    const fileStatus = (
+      <>
+        {hasFile ? <DocumentFile name={fileName} /> : null}
+        {!procedure && presence !== false ? (
+          <DocumentStatusBadge kind={fileKind} label={statusLabel(fileKind, row.doc)} />
+        ) : null}
+        {procedure && hasFile ? (
+          <DocumentStatusBadge kind={fileKind} label={statusLabel(fileKind, row.doc)} />
+        ) : null}
+      </>
+    )
+    let action: ReactNode = null
+    if (procedure && !hasFile && phase === 'absent') {
+      action = (
+        <Button
+          type="button"
+          variant="secondary"
+          size="compact"
+          disabled={!canManage || !selectedPermit || coreSaving[row.doc.id]}
+          onClick={() => void recordProcedure(row.doc, {
+            ordered_at: computeTodayIso(),
+            meta: { work_permit_type: selectedPermit },
+          })}
+        >
+          {t('app.candidate_card.ia.doc_order', { defaultValue: 'Order' })}
+        </Button>
+      )
+    } else if (procedure && !hasFile && phase === 'ordered') {
+      action = (
+        <Button
+          type="button"
+          variant="secondary"
+          size="compact"
+          disabled={!canManage || coreSaving[row.doc.id]}
+          onClick={() => void recordProcedure(row.doc, { status: 'in_progress' })}
+        >
+          {t('app.candidate_card.ia.doc_mark_received', { defaultValue: 'Document received' })}
+        </Button>
+      )
+    } else if ((procedure && phase === 'received' && !hasFile) || (!procedure && presence === true && !hasFile)) {
+      action = uploadControl
+    }
+
+    const details = expanded ? (
+      <DocumentDetails
+        file={(
+          <div className="space-y-2">
+            {hasFile ? <DocumentFile name={fileName} /> : null}
+            <DocumentStatusBadge kind={hasFile ? statusKind(row.doc, true) : kind} label={statusLabel(hasFile ? statusKind(row.doc, true) : kind, row.doc)} />
+            <div className="flex flex-wrap gap-2">
+              {procedure && phase === 'absent' ? (
+                <DocumentMetadataForm
+                  doc={row.doc}
+                  metadataValues={metadataEdits[row.doc.id] ?? {}}
+                  disabled={!canManage}
+                  onlyKeys={['work_permit_type']}
+                  getFieldValue={() => selectedPermit}
+                  onChange={(_doc, _key, value) => setPermitType((prev) => ({ ...prev, [row.norm]: String(value || '') }))}
+                />
+              ) : null}
+              {procedure && (phase === 'ordered' || phase === 'received' || hasFile) && storedPermit ? (
+                <p className="text-sm text-slate-700">
+                  {t('admin.documents.forms.fields.work_permit_type', { defaultValue: 'Permit type' })}
+                  {': '}
+                  {(() => {
+                    const option = getDocumentFieldsConfig(row.norm).find((field) => field.key === 'work_permit_type')?.options?.find((item) => item.value === storedPermit)
+                    if (!option) return storedPermit
+                    return option.labelKey ? t(option.labelKey, { defaultValue: option.label }) : option.label
+                  })()}
+                </p>
+              ) : null}
+              {hasFile ? uploadControl : null}
+              {hasFile ? (
+                <Button type="button" variant="secondary" size="compact" onClick={() => openDoc(row.doc)}>
+                  {t('admin.documents.actions.open', { defaultValue: 'Open' })}
+                </Button>
+              ) : null}
+              {hasFile && canManage ? (
+                <Button type="button" variant="danger" size="compact" onClick={() => deleteDocumentFile(row.doc)}>
+                  {t('app.candidate_card.ia.doc_remove', { defaultValue: 'Remove' })}
+                </Button>
+              ) : null}
+              {hasFile && statusKind(row.doc, true) !== 'approved' ? (
+                <Button type="button" variant="primary" size="compact" disabled={!canManage} onClick={() => approveDocument(row.doc)}>
+                  {t('admin.documents.actions.approve', { defaultValue: 'Approve' })}
+                </Button>
+              ) : null}
+              {hasFile && statusKind(row.doc, true) !== 'rejected' ? (
+                <Button type="button" variant="danger" size="compact" disabled={!canManage} onClick={() => rejectDocument(row.doc)}>
+                  {t('admin.documents.actions.reject', { defaultValue: 'Reject' })}
+                </Button>
+              ) : null}
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className={presence === true ? 'btn-primary btn-compact' : 'btn-secondary btn-compact'}
-              disabled={!canManage}
-              onClick={() => setPresence(true)}
-            >
-              {yes}
-            </button>
-            <button
-              type="button"
-              className={presence === false ? 'btn-primary btn-compact' : 'btn-secondary btn-compact'}
-              disabled={!canManage}
-              onClick={() => {
-                setPresence(false)
-                setOpenCode(null)
-              }}
-            >
-              {no}
-            </button>
-          </div>
-          <div className="min-w-0 truncate text-xs text-slate-600">{status}</div>
-          <div>
-            {presence === true && !hasFile ? (
-              <label className="btn-secondary btn-compact cursor-pointer">
-                {uploading[row.doc.id]
-                  ? t('common.saving')
-                  : t('app.candidate_card.documents.upload_btn', { defaultValue: 'Upload' })}
-                <input
-                  type="file"
-                  className="sr-only"
-                  disabled={!canManage || uploading[row.doc.id]}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0]
-                    event.target.value = ''
-                    if (file) void onUpload(row.doc, file)
-                  }}
+        )}
+        metadata={(
+          <div className="space-y-3">
+            {licence && presence === true ? (
+              <label className="block text-xs text-slate-500">
+                {t('app.candidate_card.ia.issuing_country', { defaultValue: 'Issuing country' })}
+                <select
+                  className="input mt-1 text-sm"
+                  disabled={!canManage}
+                  value={country || 'unknown'}
+                  onChange={(event) => void patchFacts({ licence_issuing_country: event.target.value })}
+                >
+                  <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
+                  {(countries || []).map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {showSharedCode95 ? (
+              <label className="block text-xs text-slate-500">
+                {t('app.candidate_card.ia.code95_valid_to', { defaultValue: 'Code 95 valid to' })}
+                <DateInput
+                  className="mt-1"
+                  disabled={!canManage}
+                  value={step('code95')?.valid_to || ''}
+                  onValueChange={(next) => void patchFacts({ code95_valid_to: next || 'unknown' })}
                 />
               </label>
             ) : null}
-            {presence === true && hasFile ? (
-              <button type="button" className="btn-secondary btn-compact" onClick={() => setOpenCode(openCode === row.norm ? null : row.norm)}>
-                {openCode === row.norm
-                  ? t('app.candidate_card.ia.done', { defaultValue: 'Done' })
-                  : t('app.candidate_card.ia.open_row', { defaultValue: 'Open' })}
-              </button>
+            {hasFile ? (
+              <>
+                <DocumentMetadataForm
+                  doc={row.doc}
+                  metadataValues={metadataEdits[row.doc.id] ?? {}}
+                  disabled={!canManage}
+                  omitKeys={licence ? ['country'] : undefined}
+                  getFieldValue={getFieldValue}
+                  onChange={updateFieldValue}
+                />
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="compact"
+                  disabled={!canManage || coreSaving[row.doc.id]}
+                  onClick={() => saveCoreFields(row.doc)}
+                >
+                  {coreSaving[row.doc.id] ? t('common.saving') : t('common.actions.save', { defaultValue: 'Save' })}
+                </Button>
+              </>
             ) : null}
           </div>
-        </div>
-        {presence === true && licence ? (
-          <label className="mt-2 block max-w-sm text-xs text-slate-500">
-            {t('app.candidate_card.ia.issuing_country', { defaultValue: 'Issuing country' })}
-            <select
-              className="input mt-1 text-sm"
-              disabled={!canManage}
-              value={country || 'unknown'}
-              onChange={(event) => void patchFacts({ licence_issuing_country: event.target.value })}
-            >
-              <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
-              {(countries || []).map((item) => (
-                <option key={item.value} value={item.value}>{item.label}</option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        {presence === true && sharedCode95 ? (
-          <label className="mt-2 block max-w-sm text-xs text-slate-500">
-            {t('app.candidate_card.ia.code95_valid_to', { defaultValue: 'Code 95 valid to' })}
-            <input
-              type="date"
-              className="input mt-1 text-sm"
-              disabled={!canManage}
-              value={step('code95')?.valid_to || ''}
-              onChange={(event) => void patchFacts({ code95_valid_to: event.target.value || 'unknown' })}
-            />
-          </label>
-        ) : null}
-        {openCode === row.norm && presence === true && hasFile ? (
-          <div className="mt-2">{renderOpen(row.doc)}</div>
-        ) : null}
-      </div>
+        )}
+      />
+    ) : null
+
+    return (
+      <DocumentRequirementRow
+        key={row.norm}
+        title={getLabel(row.type.code, row.type.name)}
+        requirement={requirement}
+        presence={procedure && !hasFile ? (
+          <span className="text-sm text-slate-700">{statusLabel(phase || 'absent', row.doc)}</span>
+        ) : procedure ? (
+          <span className="text-sm text-slate-500">—</span>
+        ) : (
+          <PresenceToggle value={presence} yesLabel={yes} noLabel={no} disabled={!canManage} onChange={setPresence} />
+        )}
+        fileStatus={fileStatus}
+        action={action}
+        expanded={expanded}
+        onToggle={!procedure && presence === true ? () => setOpenCode((current) => (current === row.norm ? null : row.norm)) : undefined}
+        details={details}
+      />
     )
   }
 
+  if (groups && renderGroups) {
+    const nodes: Record<string, ReactNode> = {}
+    for (const group of groups) {
+      const wanted = new Set(group.types.map(normalizeDocTypeCode))
+      const grouped = rows.filter((row) => wanted.has(row.norm))
+      nodes[group.key] = grouped.length ? <DocumentRequirementList>{grouped.map(renderRow)}</DocumentRequirementList> : null
+    }
+    return <>{renderGroups(nodes)}</>
+  }
+
+  if (!rows.length) return null
+  const required = rows.filter((row) => (typeLevel[row.type.code] || 'required') === 'required')
+  const preferred = rows.filter((row) => typeLevel[row.type.code] === 'preferred')
   return (
     <div className="space-y-3">
       {required.length ? (
         <WorkspaceSection title={t('app.candidate_card.ia.mandatory_group', { defaultValue: 'Required' })}>
-          <div>{required.map(renderRow)}</div>
+          <DocumentRequirementList>{required.map(renderRow)}</DocumentRequirementList>
         </WorkspaceSection>
       ) : null}
       {preferred.length ? (
         <WorkspaceSection title={t('app.candidate_card.ia.preferred_group', { defaultValue: 'Preferred' })}>
-          <div>{preferred.map(renderRow)}</div>
+          <DocumentRequirementList>{preferred.map(renderRow)}</DocumentRequirementList>
         </WorkspaceSection>
       ) : null}
     </div>

@@ -1074,8 +1074,16 @@ export default function CandidateCard(){
   const [docsFocusType, setDocsFocusType] = useState<string | undefined>(undefined)
   const [legalDocsFocus, setLegalDocsFocus] = useState<string | undefined>(undefined)
   const [legalDocTypes, setLegalDocTypes] = useState<string[]>([])
+  const [legalGroups, setLegalGroups] = useState<{ stay: string[]; work: string[] }>({ stay: [], work: [] })
   const rememberLegalDocTypes = useCallback((codes: string[]) => {
     setLegalDocTypes((prev) => (prev.join('|') === codes.join('|') ? prev : codes))
+  }, [])
+  const rememberLegalGroups = useCallback((groups: { stay: string[]; work: string[] }) => {
+    setLegalGroups((prev) => (
+      prev.stay.join('|') === groups.stay.join('|') && prev.work.join('|') === groups.work.join('|')
+        ? prev
+        : groups
+    ))
   }, [])
   const [documentReadiness, setDocumentReadiness] = useState<{ ready: number; total: number } | null>(null)
   const docsVerifyTaskSignatureRef = useRef<string | null>(null)
@@ -5563,27 +5571,8 @@ export default function CandidateCard(){
         </div>
 
         <div className={cardTab === 'legalization' ? 'min-w-0 space-y-3 lg:col-start-1' : 'hidden'}>
-          {cardTab === 'legalization' && !isMasked && model?.id ? (
+          {!isMasked && model?.id ? (
             <>
-              <OperatorFactsSurface
-                candidateId={String(model.id)}
-                countries={countries}
-                region="legalization"
-                contextLabel={model.company_name || null}
-                requestedSlice={factsEditSlice}
-                editToken={factsEditToken}
-                onSaved={(saved) => {
-                  setOperatorFactsRevision((value) => value + 1)
-                  setDocsSummaryRefreshTrigger((value) => value + 1)
-                  const citizenship = saved.steps.find((step) => step.key === 'citizenship')?.stored
-                  const adr = saved.steps.find((step) => step.key === 'adr')
-                  setExtra((prev) => ({
-                    ...prev,
-                    citizenship: citizenship || prev.citizenship,
-                    has_adr: typeof adr?.presence === 'boolean' ? adr.presence : prev.has_adr,
-                  }))
-                }}
-              />
               <CandidateRequirementsChecklist
                 headless
                 candidateId={String(model.id)}
@@ -5591,43 +5580,54 @@ export default function CandidateCard(){
                 canEdit={model.can_edit !== false}
                 purposeMode="legalization"
                 onPlacementTypes={rememberLegalDocTypes}
+                onPlacementGroups={rememberLegalGroups}
                 onChanged={handleDocumentsChanged}
               />
-              {legalDocTypes.length ? (
-                <CandidateDocuments
-                  key={`${model.id}:legal-rows:${operatorFactsRevision}`}
-                  candidateId={String(model.id)}
-                  hideHeader
-                  inlineWorkspace
-                  requirementLed
-                  operatorRows
-                  onlyTypes={legalDocTypes}
-                  countries={countries}
-                  candidateProfile={candidateProfile}
-                  onDocumentsChanged={handleDocumentsChanged}
-                  onFactsSaved={() => {
-                    setOperatorFactsRevision((value) => value + 1)
-                    setDocsSummaryRefreshTrigger((value) => value + 1)
-                  }}
-                  {...({
-                    ownerContext: docsOwnerContext,
-                    onFieldsApplied: (doc: any, fields: Record<string, any>) =>
-                      applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
-                  } as any)}
-                />
-              ) : null}
-              {can('services.view')
-                && operatorFactsView
-                && operatorFactsView.citizenship_class !== 'pl'
-                && operatorFactsView.citizenship_class !== 'eu_eea_ch'
-                && operatorFactsView.steps.some((step) => step.key === 'work' && step.visible) ? (
-                <>
-                  <button type="button" className="btn-secondary btn-compact" onClick={() => setCardTab('services')}>
-                    {t('app.candidate_card.ia.order_service')}
-                  </button>
-                  <p className="text-xs leading-relaxed text-slate-500">{t('app.candidate_card.ia.legalization_gap')}</p>
-                </>
-              ) : null}
+              <CandidateDocuments
+                key={`${model.id}:legal-rows:${operatorFactsRevision}`}
+                candidateId={String(model.id)}
+                hideHeader
+                inlineWorkspace
+                requirementLed
+                operatorRows
+                stayTypes={legalGroups.stay}
+                workTypes={legalGroups.work}
+                countries={countries}
+                candidateProfile={candidateProfile}
+                onDocumentsChanged={handleDocumentsChanged}
+                onFactsSaved={() => {
+                  setOperatorFactsRevision((value) => value + 1)
+                  setDocsSummaryRefreshTrigger((value) => value + 1)
+                }}
+                renderFrame={(sections) => (
+                  <OperatorFactsSurface
+                    candidateId={String(model.id)}
+                    countries={countries}
+                    region="legalization"
+                    contextLabel={model.company_name || null}
+                    requestedSlice={factsEditSlice}
+                    editToken={factsEditToken}
+                    stayDocuments={sections.stay}
+                    workDocuments={sections.work}
+                    onSaved={(saved) => {
+                      setOperatorFactsRevision((value) => value + 1)
+                      setDocsSummaryRefreshTrigger((value) => value + 1)
+                      const citizenship = saved.steps.find((step) => step.key === 'citizenship')?.stored
+                      const adr = saved.steps.find((step) => step.key === 'adr')
+                      setExtra((prev) => ({
+                        ...prev,
+                        citizenship: citizenship || prev.citizenship,
+                        has_adr: typeof adr?.presence === 'boolean' ? adr.presence : prev.has_adr,
+                      }))
+                    }}
+                  />
+                )}
+                {...({
+                  ownerContext: docsOwnerContext,
+                  onFieldsApplied: (doc: any, fields: Record<string, any>) =>
+                    applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
+                } as any)}
+              />
             </>
           ) : null}
         </div>

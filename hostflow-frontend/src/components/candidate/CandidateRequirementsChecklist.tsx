@@ -45,9 +45,13 @@ type Props = {
   headless?: boolean
   /** Document type codes this purpose's requirements can use. Placement only. */
   onPlacementTypes?: (codes: string[]) => void
+  /** Stay versus work placement. Legalization only. */
+  onPlacementGroups?: (groups: { stay: string[]; work: string[] }) => void
 }
 
 const LEGAL_PURPOSES = new Set(['legal_stay', 'right_to_work', 'work_permit_process', 'residence_permit_process'])
+const STAY_PURPOSES = new Set(['legal_stay', 'residence_permit_process'])
+const WORK_PURPOSES = new Set(['right_to_work', 'work_permit_process'])
 
 function requirementLevel(item: RequirementChecklistItem): 'required' | 'preferred' {
   const level = String(item.level || 'blocking').toLowerCase()
@@ -567,6 +571,7 @@ export default function CandidateRequirementsChecklist({
   onReadiness,
   headless = false,
   onPlacementTypes,
+  onPlacementGroups,
 }: Props) {
   const { t } = useI18n()
   const { notify } = useToast()
@@ -642,18 +647,28 @@ export default function CandidateRequirementsChecklist({
     })
   }, [applicableRequirements, onReadiness])
   useEffect(() => {
-    if (!onPlacementTypes) return
+    if (!onPlacementTypes && !onPlacementGroups) return
     const source = purposeMode === 'legalization'
       ? (checklist?.requirements || []).filter((item) => LEGAL_PURPOSES.has(String(item.business_purpose || '')))
       : applicableRequirements
     const codes = new Set<string>()
+    const stay = new Set<string>()
+    const work = new Set<string>()
     for (const item of source) {
+      const purpose = String(item.business_purpose || '')
+      const bucket = STAY_PURPOSES.has(purpose) ? stay : WORK_PURPOSES.has(purpose) ? work : null
       for (const variant of item.accepted_evidence_variants || []) {
-        for (const code of variantDocumentTypeCodes(variant)) codes.add(code)
+        for (const code of variantDocumentTypeCodes(variant)) {
+          codes.add(code)
+          bucket?.add(code)
+        }
       }
     }
-    onPlacementTypes(Array.from(codes))
-  }, [applicableRequirements, checklist, onPlacementTypes, purposeMode])
+    onPlacementTypes?.(Array.from(codes))
+    if (purposeMode === 'legalization') {
+      onPlacementGroups?.({ stay: Array.from(stay), work: Array.from(work) })
+    }
+  }, [applicableRequirements, checklist, onPlacementGroups, onPlacementTypes, purposeMode])
   const fulfilledCount = useMemo(
     () => (checklist?.requirements || []).filter((item) => item.fulfilled).length,
     [checklist],

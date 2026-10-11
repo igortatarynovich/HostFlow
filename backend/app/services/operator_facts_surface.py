@@ -13,6 +13,7 @@ and this slice adds none.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Any, Mapping
 
@@ -129,6 +130,7 @@ def empty_facts() -> dict[str, Any]:
         "additional_presence": None,
         "pesel_presence": None,
         "pesel": None,
+        "document_presence": {},
         "ce_level": "NOT_REQUIRED",
         "code95_level": "NOT_REQUIRED",
     }
@@ -180,6 +182,7 @@ def facts_from_personal_data(personal_data: Mapping[str, Any] | None) -> dict[st
     facts["additional_presence"] = _bool_or_none(raw.get("additional_presence"))
     facts["pesel_presence"] = _bool_or_none(raw.get("pesel_presence"))
     facts["pesel"] = _text(raw.get("pesel"))
+    facts["document_presence"] = _document_presence(raw.get("document_presence"))
     facts["ce_level"] = _level(raw.get("ce_level"))
     facts["code95_level"] = _level(raw.get("code95_level"))
     return facts
@@ -232,6 +235,67 @@ def _date_text(value: Any) -> str | None:
         return date.fromisoformat(raw).isoformat()
     except ValueError:
         return None
+
+
+# Types whose availability is already a named operator fact. The generic map
+# must not become a second copy of those facts.
+_DEDICATED_PRESENCE = {
+    "code95": "code95_presence",
+    "driver_qualification_card": "code95_presence",
+    "qualification_code95": "code95_presence",
+    "tachograph_card": "tachograph_presence",
+    "tacho_card": "tachograph_presence",
+    "karta_tachografu": "tachograph_presence",
+    "tachograph": "tachograph_presence",
+    "adr": "adr_presence",
+    "adr_certificate": "adr_presence",
+    "medical": "medical_presence",
+    "medical_certificate": "medical_presence",
+    "psych": "psych_presence",
+    "psych_tests": "psych_presence",
+    "psychological_certificate": "psych_presence",
+    "additional": "additional_presence",
+    "additional_document": "additional_presence",
+}
+
+
+def _presence_code(value: Any) -> str | None:
+    raw = str(value or "").strip().lower().replace("-", "_")
+    if not raw or re.fullmatch(r"[a-z0-9_]{1,80}", raw) is None:
+        return None
+    mapped = canonical_document_code(raw)
+    return mapped or raw
+
+
+def _document_presence(value: Any) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    for key, raw in _as_dict(value).items():
+        code = _presence_code(key)
+        if code is None or code in _DEDICATED_PRESENCE:
+            continue
+        parsed = _bool_or_none(raw)
+        if parsed is None:
+            continue
+        out[code] = parsed
+    return out
+
+
+def _apply_document_presence(facts: dict[str, Any], value: Any) -> None:
+    current = dict(facts.get("document_presence") or {})
+    for key, raw in _as_dict(value).items():
+        code = _presence_code(key)
+        if code is None:
+            continue
+        parsed = None if _is_unknown(raw) else _bool_or_none(raw)
+        dedicated = _DEDICATED_PRESENCE.get(code)
+        if dedicated:
+            facts[dedicated] = parsed
+            continue
+        if parsed is None:
+            current.pop(code, None)
+        else:
+            current[code] = parsed
+    facts["document_presence"] = current
 
 
 def _bool_or_none(value: Any) -> bool | None:
@@ -374,6 +438,8 @@ def apply_operator_facts_patch(
         nxt["ce_level"] = _level(patch.get("ce_level"))
     if "code95_level" in patch:
         nxt["code95_level"] = _level(patch.get("code95_level"))
+    if "document_presence" in patch:
+        _apply_document_presence(nxt, patch.get("document_presence"))
     return nxt
 
 
@@ -691,6 +757,7 @@ def build_operator_facts_view(
         "stay_choices": list(_STAY),
         "work_choices": list(OPERATOR_WORK_CHOICES),
         "employment_id": employment_id,
+        "document_presence": dict(facts.get("document_presence") or {}),
     }
 
 
@@ -1060,6 +1127,7 @@ def personal_data_with_facts(
         "additional_presence": facts.get("additional_presence"),
         "pesel_presence": facts.get("pesel_presence"),
         "pesel": facts.get("pesel"),
+        "document_presence": dict(facts.get("document_presence") or {}),
         "ce_level": facts.get("ce_level") or "NOT_REQUIRED",
         "code95_level": facts.get("code95_level") or "NOT_REQUIRED",
     }

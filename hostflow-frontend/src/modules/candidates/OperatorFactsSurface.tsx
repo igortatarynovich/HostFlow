@@ -34,6 +34,7 @@ export type OperatorFactsView = {
   citizenship_class?: string | null
   chain?: Record<string, string | null>
   steps: Step[]
+  document_presence?: Record<string, boolean>
   ce_code95?: {
     progress?: string | null
     evidence_shape?: string | null
@@ -763,12 +764,16 @@ function LegalizationFactsSheet({
   contextLabel,
   disabled,
   onPatch,
+  stayDocuments,
+  workDocuments,
 }: {
   view: OperatorFactsView
   contextLabel?: string | null
   onOpenDocuments?: () => void
   disabled?: boolean
   onPatch?: (patch: Patch) => void
+  stayDocuments?: ReactNode
+  workDocuments?: ReactNode
 }) {
   const { t, locale } = useI18n()
   const [openField, setOpenField] = useState<'stay' | 'stay_until' | 'work' | null>(null)
@@ -814,8 +819,9 @@ function LegalizationFactsSheet({
       ))}
     </select>
   )
+  const withDocuments = Boolean(stayDocuments || workDocuments)
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2" data-testid="legalization-facts-sheet">
+    <div className={withDocuments ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 gap-3 lg:grid-cols-2'} data-testid="legalization-facts-sheet">
       <WorkspaceSection
         title={t('app.candidate_card.ia.legalization_stay', { defaultValue: 'Stay in the country' })}
         description={stayRequired ? t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' }) : null}
@@ -859,6 +865,7 @@ function LegalizationFactsSheet({
             </InlineFieldRow>
           </>
         ) : null}
+        {stayDocuments}
       </WorkspaceSection>
       <WorkspaceSection
         title={t('app.candidate_card.ia.legalization_work', { defaultValue: 'Right to work' })}
@@ -898,6 +905,7 @@ function LegalizationFactsSheet({
             {null}
           </InlineFieldRow>
         ) : null}
+        {workDocuments}
       </WorkspaceSection>
     </div>
   )
@@ -1014,6 +1022,8 @@ export default function OperatorFactsSurface({
   contextLabel,
   onOpenDocuments,
   flow = false,
+  stayDocuments,
+  workDocuments,
 }: {
   candidateId: string
   countries: CountryOption[]
@@ -1026,6 +1036,8 @@ export default function OperatorFactsSurface({
   contextLabel?: string | null
   onOpenDocuments?: () => void
   flow?: boolean
+  stayDocuments?: ReactNode
+  workDocuments?: ReactNode
 }) {
   const { t } = useI18n()
   const [view, setView] = useState<OperatorFactsView | null>(null)
@@ -1088,6 +1100,8 @@ export default function OperatorFactsSurface({
           contextLabel={contextLabel}
           disabled={busy}
           onPatch={(patch) => void onPatch(patch)}
+          stayDocuments={stayDocuments}
+          workDocuments={workDocuments}
         />
       ) : null}
       {view && region === 'person' ? (
