@@ -46,6 +46,8 @@ interface CandidateExperienceSectionProps {
   effectiveLayout?: EffectiveCardLayout | null
   candidateDataReadOnly?: boolean
   embedded?: boolean
+  part?: 'skills' | 'history'
+  plain?: boolean
 }
 
 function CandidateExperienceSection({
@@ -67,6 +69,8 @@ function CandidateExperienceSection({
   effectiveLayout,
   candidateDataReadOnly = false,
   embedded = false,
+  part,
+  plain = false,
 }: CandidateExperienceSectionProps) {
   const { t } = useI18n()
   const layoutVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
@@ -74,7 +78,7 @@ function CandidateExperienceSection({
   const layoutLabel = (fieldKey: string, defaultLabel: string) =>
     getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
   const [collapsed, setCollapsed] = useState(() => {
-    if (embedded) return false
+    if (plain || embedded) return false
     try { const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}'); return !!s.experience } catch { return false }
   })
   const toggle = useCallback(() => {
@@ -89,10 +93,16 @@ function CandidateExperienceSection({
   return (
     <section
       ref={experienceRef}
-      id="section-experience"
-      className={embedded ? 'scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4' : 'group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl'}
+      id={part === 'history' ? undefined : 'section-experience'}
+      className={
+        plain
+          ? 'scroll-mt-24'
+          : embedded
+            ? 'scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4'
+            : 'group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl'
+      }
     >
-      {!embedded ? (
+      {plain ? null : !embedded ? (
         <button type="button" onClick={toggle} className="flex w-full items-center justify-between gap-3 text-left">
           <div className="flex items-center gap-3">
             <IconBriefcase2 size={20} className="text-slate-600" />
@@ -109,7 +119,7 @@ function CandidateExperienceSection({
         </div>
       )}
 
-      {(embedded || !collapsed) && (!candidateProfile || layoutVisible('experience_eu_years') || layoutVisible('experience_non_eu_years')) && (
+      {part !== 'history' && (embedded || !collapsed) && (!candidateProfile || layoutVisible('experience_eu_years') || layoutVisible('experience_non_eu_years')) && (
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           {(!candidateProfile || layoutVisible('experience_eu_years')) && (
             <Input
@@ -149,7 +159,7 @@ function CandidateExperienceSection({
         </div>
       )}
 
-      {(embedded || !collapsed) && (!candidateProfile || layoutVisible('trailer_types') || layoutVisible('route_types')) && (
+      {part !== 'history' && (embedded || !collapsed) && (!candidateProfile || layoutVisible('trailer_types') || layoutVisible('route_types')) && (
         <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
           {(!candidateProfile || layoutVisible('trailer_types')) && (
             <div>
@@ -190,7 +200,7 @@ function CandidateExperienceSection({
         </div>
       )}
 
-      {(embedded || !collapsed) && (!candidateProfile || layoutVisible('employment_history')) && (
+      {part !== 'skills' && (embedded || !collapsed) && (!candidateProfile || layoutVisible('employment_history')) && (
         <div className="mt-6 space-y-3">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-slate-800">
