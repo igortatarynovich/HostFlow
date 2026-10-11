@@ -41,6 +41,10 @@ type Props = {
   /** Documents keep professional requirements. Legalization keeps stay and work. */
   purposeMode?: 'documents' | 'legalization'
   onReadiness?: (counts: { ready: number; total: number }) => void
+  /** Keep blocker and readiness effects without rendering the evidence UI. */
+  headless?: boolean
+  /** Document type codes this purpose's requirements can use. Placement only. */
+  onPlacementTypes?: (codes: string[]) => void
 }
 
 const LEGAL_PURPOSES = new Set(['legal_stay', 'right_to_work', 'work_permit_process', 'residence_permit_process'])
@@ -561,6 +565,8 @@ export default function CandidateRequirementsChecklist({
   presentation = 'list',
   purposeMode,
   onReadiness,
+  headless = false,
+  onPlacementTypes,
 }: Props) {
   const { t } = useI18n()
   const { notify } = useToast()
@@ -635,6 +641,19 @@ export default function CandidateRequirementsChecklist({
       total: applicableRequirements.length,
     })
   }, [applicableRequirements, onReadiness])
+  useEffect(() => {
+    if (!onPlacementTypes) return
+    const source = purposeMode === 'legalization'
+      ? (checklist?.requirements || []).filter((item) => LEGAL_PURPOSES.has(String(item.business_purpose || '')))
+      : applicableRequirements
+    const codes = new Set<string>()
+    for (const item of source) {
+      for (const variant of item.accepted_evidence_variants || []) {
+        for (const code of variantDocumentTypeCodes(variant)) codes.add(code)
+      }
+    }
+    onPlacementTypes(Array.from(codes))
+  }, [applicableRequirements, checklist, onPlacementTypes, purposeMode])
   const fulfilledCount = useMemo(
     () => (checklist?.requirements || []).filter((item) => item.fulfilled).length,
     [checklist],
@@ -716,6 +735,8 @@ export default function CandidateRequirementsChecklist({
       onUpload={onUpload}
     />
   )
+
+  if (headless) return null
 
   if (presentation === 'workspace') {
     const mandatory = applicableRequirements.filter((item) => requirementLevel(item) === 'required')

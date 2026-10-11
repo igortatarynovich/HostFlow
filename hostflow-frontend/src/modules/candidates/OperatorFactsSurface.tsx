@@ -304,7 +304,7 @@ export function OperatorFactsForm({
         </div>
         )}
         {showQualifications && presentation === 'skill' ? (
-          <div className="space-y-1" data-testid="operator-facts-skill-rows">
+          <div className="grid grid-cols-1 md:grid-cols-2" data-testid="operator-facts-skill-rows">
             <InlineFieldRow
               label={t('app.candidate_card.operator_facts.licence_categories', { defaultValue: 'Categories' })}
               value={(licence?.categories ?? []).join(' · ')}
@@ -312,6 +312,8 @@ export function OperatorFactsForm({
               canEdit={!disabled}
               onEdit={() => setSkillField('categories')}
               onDone={() => setSkillField(null)}
+              column={1}
+              row={1}
             >
               <div className="flex flex-wrap gap-3" data-testid="operator-facts-licence-details">
                 {(view.licence_category_codes ?? []).map((code) => {
@@ -346,6 +348,8 @@ export function OperatorFactsForm({
               canEdit={!disabled}
               onEdit={() => setSkillField('adr')}
               onDone={() => setSkillField(null)}
+              column={2}
+              row={1}
             >
               {presenceSelect(adr?.presence, (next) => onPatch({ adr_presence: next }))}
             </InlineFieldRow>
@@ -363,6 +367,8 @@ export function OperatorFactsForm({
                 canEdit={false}
                 onEdit={() => undefined}
                 onDone={() => undefined}
+                column={1}
+                row={2}
               >
                 {null}
               </InlineFieldRow>
@@ -809,7 +815,7 @@ function LegalizationFactsSheet({
     </select>
   )
   return (
-    <div className="space-y-3" data-testid="legalization-facts-sheet">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2" data-testid="legalization-facts-sheet">
       <WorkspaceSection
         title={t('app.candidate_card.ia.legalization_stay', { defaultValue: 'Stay in the country' })}
         description={stayRequired ? t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' }) : null}

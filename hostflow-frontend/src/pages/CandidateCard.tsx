@@ -1073,6 +1073,10 @@ export default function CandidateCard(){
   const [pipelineOverrideBusy, setPipelineOverrideBusy] = useState(false)
   const [docsFocusType, setDocsFocusType] = useState<string | undefined>(undefined)
   const [legalDocsFocus, setLegalDocsFocus] = useState<string | undefined>(undefined)
+  const [legalDocTypes, setLegalDocTypes] = useState<string[]>([])
+  const rememberLegalDocTypes = useCallback((codes: string[]) => {
+    setLegalDocTypes((prev) => (prev.join('|') === codes.join('|') ? prev : codes))
+  }, [])
   const [documentReadiness, setDocumentReadiness] = useState<{ ready: number; total: number } | null>(null)
   const docsVerifyTaskSignatureRef = useRef<string | null>(null)
 
@@ -5470,12 +5474,10 @@ export default function CandidateCard(){
                     </div>
                   ) : null}
                   <CandidateRequirementsChecklist
+                    headless
                     candidateId={String(model.id)}
                     refreshTrigger={docsSummaryRefreshTrigger}
                     canEdit={model.can_edit !== false}
-                    onOpenDocs={(typeCode) => focusDocument(typeCode)}
-                    onUpload={() => focusDocument(docsFocusType)}
-                    presentation="workspace"
                     purposeMode="documents"
                     onReadiness={setDocumentReadiness}
                     onChanged={handleDocumentsChanged}
@@ -5484,24 +5486,27 @@ export default function CandidateCard(){
                       setRequirementBlockersLoading(loading)
                     }}
                   />
-                  {docsFocusType ? (
-                    <CandidateDocuments
-                      key={`${model.id}:inline:${operatorFactsRevision}:${docsFocusType}`}
-                      candidateId={String(model.id)}
-                      hideHeader
-                      inlineWorkspace
-                      requirementLed
-                      compactType
-                      candidateProfile={candidateProfile}
-                      initialType={docsFocusType}
-                      onDocumentsChanged={handleDocumentsChanged}
-                      {...({
-                        ownerContext: docsOwnerContext,
-                        onFieldsApplied: (doc: any, fields: Record<string, any>) =>
-                          applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
-                      } as any)}
-                    />
-                  ) : null}
+                  <CandidateDocuments
+                    key={`${model.id}:rows:${operatorFactsRevision}`}
+                    candidateId={String(model.id)}
+                    hideHeader
+                    inlineWorkspace
+                    requirementLed
+                    operatorRows
+                    excludeTypes={legalDocTypes}
+                    countries={countries}
+                    candidateProfile={candidateProfile}
+                    onDocumentsChanged={handleDocumentsChanged}
+                    onFactsSaved={() => {
+                      setOperatorFactsRevision((value) => value + 1)
+                      setDocsSummaryRefreshTrigger((value) => value + 1)
+                    }}
+                    {...({
+                      ownerContext: docsOwnerContext,
+                      onFieldsApplied: (doc: any, fields: Record<string, any>) =>
+                        applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
+                    } as any)}
+                  />
                 </div>
               ) : null}
               {!isMasked && showRecruitmentDossierChecklist ? (
@@ -5580,26 +5585,30 @@ export default function CandidateCard(){
                 }}
               />
               <CandidateRequirementsChecklist
+                headless
                 candidateId={String(model.id)}
                 refreshTrigger={docsSummaryRefreshTrigger}
                 canEdit={model.can_edit !== false}
-                onOpenDocs={(typeCode) => setLegalDocsFocus(typeCode)}
-                onUpload={() => setLegalDocsFocus(legalDocsFocus)}
-                presentation="workspace"
                 purposeMode="legalization"
+                onPlacementTypes={rememberLegalDocTypes}
                 onChanged={handleDocumentsChanged}
               />
-              {legalDocsFocus ? (
+              {legalDocTypes.length ? (
                 <CandidateDocuments
-                  key={`${model.id}:legal:${legalDocsFocus}`}
+                  key={`${model.id}:legal-rows:${operatorFactsRevision}`}
                   candidateId={String(model.id)}
                   hideHeader
                   inlineWorkspace
                   requirementLed
-                  compactType
+                  operatorRows
+                  onlyTypes={legalDocTypes}
+                  countries={countries}
                   candidateProfile={candidateProfile}
-                  initialType={legalDocsFocus}
                   onDocumentsChanged={handleDocumentsChanged}
+                  onFactsSaved={() => {
+                    setOperatorFactsRevision((value) => value + 1)
+                    setDocsSummaryRefreshTrigger((value) => value + 1)
+                  }}
                   {...({
                     ownerContext: docsOwnerContext,
                     onFieldsApplied: (doc: any, fields: Record<string, any>) =>

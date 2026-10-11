@@ -57,6 +57,7 @@ import {
   MAX_FILE_MB,
 } from "./constants";
 import { getDocumentFieldsConfig } from "./documentFieldsConfig";
+import { OperatorDocumentRows } from "./OperatorDocumentRows";
 import { COMBINED_LICENSE_SATISFIES } from "../../data/documentTypeAliases";
 import {
   toArray,
@@ -316,6 +317,12 @@ type Props = {
   inlineWorkspace?: boolean;
   /** The resolved requirement list owns creation. Hide the generic type picker. */
   requirementLed?: boolean;
+  /** Profile list as operator rows: presence, file, existing metadata. */
+  operatorRows?: boolean;
+  onlyTypes?: string[];
+  excludeTypes?: string[];
+  countries?: Array<{ value: string; label: string }>;
+  onFactsSaved?: () => void;
 };
 
 export default function CandidateDocuments({
@@ -329,6 +336,11 @@ export default function CandidateDocuments({
   compactType = false,
   inlineWorkspace = false,
   requirementLed = false,
+  operatorRows = false,
+  onlyTypes,
+  excludeTypes,
+  countries,
+  onFactsSaved,
 }: Props) {
   const { can } = usePermissions();
   const { t, locale } = useI18n();
@@ -374,6 +386,7 @@ export default function CandidateDocuments({
   }), []);
 
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
+  const [typeLevel, setTypeLevel] = useState<Record<string, 'required' | 'preferred'>>({});
   const [docs, setDocs] = useState<Document[]>([]);
   const [summaryResponse, setSummaryResponse] = useState<CandidateDocumentsSummaryResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -632,6 +645,48 @@ export default function CandidateDocuments({
         displayTypes = nextTypes;
       }
 
+      if (operatorRows) {
+        const projectedNorms = projectedRequired
+          ? new Set(projectedRequired.map((code) => normalizeDocTypeCode(String(code))))
+          : null;
+        const ceFamily = new Set([
+          "code95",
+          "driver_qualification_card",
+          "driver_license",
+          "driver_license_code95",
+          "driver_licence",
+        ]);
+        const catalog = new Map(allTypes.map((type) => [normalizeDocTypeCode(type.code), type] as const));
+        const merged = new Map<string, DocType>();
+        const base = profileFilterActive ? filteredTypes : [];
+        for (const type of base) {
+          const norm = normalizeDocTypeCode(type.code);
+          if (projectedNorms && ceFamily.has(norm) && !projectedNorms.has(norm)) continue;
+          merged.set(type.code, type);
+        }
+        if (projectedNorms) {
+          for (const code of projectedRequired || []) {
+            const hit = catalog.get(normalizeDocTypeCode(String(code)));
+            if (!hit) continue;
+            const already = Array.from(merged.keys()).some((key) => normalizeDocTypeCode(key) === normalizeDocTypeCode(hit.code));
+            if (!already) merged.set(hit.code, hit);
+          }
+        }
+        displayTypes = Array.from(merged.values());
+        const optionalNorms = new Set(
+          (Array.isArray(checklistPayload?.optionalTypes) ? checklistPayload.optionalTypes : []).map((code: unknown) =>
+            normalizeDocTypeCode(String(code)),
+          ),
+        );
+        const levels: Record<string, "required" | "preferred"> = {};
+        for (const type of displayTypes) {
+          const cfg = profileConfigByTypeCode.get(type.code);
+          const norm = normalizeDocTypeCode(type.code);
+          levels[type.code] = optionalNorms.has(norm) || cfg?.required === false ? "preferred" : "required";
+        }
+        setTypeLevel(levels);
+      }
+
       setDocTypes(displayTypes);
       setSummaryResponse(summaryResp);
       const summaryDocsRaw = Array.isArray(summaryResp?.documents)
@@ -826,7 +881,7 @@ export default function CandidateDocuments({
     } finally {
       setLoading(false);
     }
-  }, [candidateId, ownerContext, coreFromDocument, candidateProfile, planLimitModal, t]);
+  }, [candidateId, ownerContext, coreFromDocument, candidateProfile, planLimitModal, t, operatorRows]);
 
   useEffect(() => {
     loadAll();
@@ -1870,6 +1925,67 @@ useEffect(() => {
       setApplyingTemplate(false);
     }
   };
+
+  if (operatorRows) {
+    const operatorError = error && /evidence variant/i.test(String(error)) ? null : error;
+    return (
+      <div className="space-y-3">
+        {operatorError ? (
+          <div className="rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-sm text-rose-700">{operatorError}</div>
+        ) : null}
+        {loading && docs.length === 0 ? (
+          <div className="text-sm text-slate-500">{t("common.loading")}</div>
+        ) : (
+          <OperatorDocumentRows
+            candidateId={candidateId}
+            docs={docs}
+            docTypes={docTypes}
+            typeLevel={typeLevel}
+            onlyTypes={onlyTypes}
+            excludeTypes={excludeTypes}
+            canManage={canManageDocuments}
+            countries={countries}
+            getLabel={getDocTypeLabel}
+            onUpload={handleReplaceUploadHook}
+            uploading={replaceUploading}
+            onFactsSaved={onFactsSaved}
+            renderOpen={(doc) => (
+              <DocumentCard
+                doc={doc}
+                variant="compact"
+                typeByCode={typeByCode}
+                metadataFieldMap={metadataFieldMap}
+                coreEdits={coreEdits}
+                metadataEdits={metadataEdits}
+                statusUpdating={statusUpdating}
+                coreSaving={coreSaving}
+                replaceFile={replaceFile}
+                replacePct={replacePct}
+                replaceUploading={replaceUploading}
+                expandedDocs={{ ...expandedDocs, [doc.id]: true }}
+                canManageDocuments={canManageDocuments}
+                coreFromDocument={coreFromDocument}
+                translateStatus={translateStatus}
+                getFieldValue={getFieldValue}
+                updateFieldValue={updateFieldValue}
+                updateStatus={updateStatus}
+                approveDocument={approveDocument}
+                rejectDocument={rejectDocument}
+                saveCoreFields={saveCoreFields}
+                deleteDocumentFile={deleteDocumentFile}
+                deleteDocument={doDelete}
+                openDoc={openDoc}
+                handleReplaceUpload={handleReplaceUploadHook}
+                setReplaceFile={setReplaceFile}
+                setExpandedDocs={setExpandedDocs}
+                setError={setError}
+              />
+            )}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

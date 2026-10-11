@@ -106,7 +106,7 @@ function CandidateExperienceSection({
     const labels = (keys: string[] | undefined, options: Option[]) =>
       (keys || []).map((key) => options.find((item) => item.value === key)?.label || key).join(', ')
     return (
-      <div className="space-y-1">
+      <div className="grid grid-cols-1 md:grid-cols-2">
         {showExperience && (!candidateProfile || layoutVisible('experience_eu_years')) ? (
           <InlineFieldRow
             label={layoutLabel('experience_eu_years', t('app.candidate_card.fields.experience_eu'))}
@@ -115,6 +115,8 @@ function CandidateExperienceSection({
             canEdit={!candidateDataReadOnly}
             onEdit={() => setOpenField('experience_eu_years')}
             onDone={() => setOpenField(null)}
+            column={1}
+            row={1}
           >
             <Input
               label={layoutLabel('experience_eu_years', t('app.candidate_card.fields.experience_eu'))}
@@ -133,6 +135,8 @@ function CandidateExperienceSection({
             canEdit={!candidateDataReadOnly}
             onEdit={() => setOpenField('experience_non_eu_years')}
             onDone={() => setOpenField(null)}
+            column={2}
+            row={1}
           >
             <Input
               label={layoutLabel('experience_non_eu_years', t('app.candidate_card.fields.experience_non_eu'))}
@@ -151,6 +155,8 @@ function CandidateExperienceSection({
             canEdit={!candidateDataReadOnly}
             onEdit={() => setOpenField('trailer_types')}
             onDone={() => setOpenField(null)}
+            column={1}
+            row={1}
           >
             <CheckboxMultiSelect
               options={trailerTypeOptions}
@@ -172,6 +178,8 @@ function CandidateExperienceSection({
             canEdit={!candidateDataReadOnly}
             onEdit={() => setOpenField('route_types')}
             onDone={() => setOpenField(null)}
+            column={2}
+            row={1}
           >
             <CheckboxMultiSelect
               options={routeTypeOptions}
