@@ -81,6 +81,33 @@ export async function acceptHandoff(handoffId: UUID): Promise<HandoffOut> {
   return data
 }
 
+export type EmploymentAcceptPolicyResult = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: string
+  ritual_accept_forbidden?: boolean | null
+  blockers: Array<{ code?: string; message?: string }>
+  employment_missing: Array<Record<string, unknown>>
+  reuse_violations: string[]
+  package_valid?: boolean | null
+  accepted: boolean
+  employment_started: boolean
+  employee_id?: string | null
+  message?: string | null
+}
+
+/** ESO-1 / RSO-2C: Employment-owned accept policy apply (auto-init when gates pass). */
+export async function applyEmploymentAcceptPolicy(
+  handoffId: UUID,
+  payload?: { package?: Record<string, unknown>; employment_missing?: Array<Record<string, unknown>> },
+): Promise<EmploymentAcceptPolicyResult> {
+  const { data } = await api.post<EmploymentAcceptPolicyResult>(
+    `/handoffs/${encodeURIComponent(handoffId)}/employment-accept-policy`,
+    payload ?? {},
+  )
+  return data
+}
+
 export async function rejectHandoff(handoffId: UUID, rejectionReason: string): Promise<HandoffOut> {
   const { data } = await api.post<HandoffOut>(`/handoffs/${handoffId}/reject`, {
     rejection_reason: rejectionReason,
@@ -203,5 +230,61 @@ export async function getHandoffsWithCandidates(params: {
   const { data } = await api.get<HandoffsWithCandidatesResponse>('/handoffs/with-candidates', {
     params: query,
   })
+  return data
+}
+
+export type EmploymentFormalizeOut = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: string
+  ready_to_formalize?: boolean | null
+  ready_to_create_employee: boolean
+  primary_item?: { code?: string; message?: string } | null
+  blockers?: Array<{ code?: string; message?: string }>
+  confirmed_actions?: string[]
+  next_action?: string | null
+}
+
+export async function applyEmploymentFormalize(
+  handoffId: string,
+  payload?: {
+    confirmed_actions?: string[]
+    formalize_patch?: Record<string, unknown>
+  },
+): Promise<EmploymentFormalizeOut> {
+  const { data } = await api.post<EmploymentFormalizeOut>(
+    `/handoffs/${encodeURIComponent(handoffId)}/employment-formalize`,
+    payload ?? {},
+  )
+  return data
+}
+
+export type EmploymentStartedOut = {
+  policy_id: string
+  handoff_id?: string | null
+  decision: string
+  started: boolean
+  ready_to_create_employee?: boolean
+  start_date?: string | null
+  employment_context?: Record<string, unknown> | null
+  employee_created?: boolean
+  employee_id?: string | null
+  primary_item?: { code?: string; message?: string } | null
+  active_missing?: Array<{ code?: string; message?: string }>
+}
+
+export async function confirmEmploymentStarted(
+  handoffId: string,
+  payload?: {
+    start_confirmation?: { confirmed?: boolean; start_date?: string }
+    known_start_date?: string
+    ensure_employee?: boolean
+    require_confirm_when_not_started?: boolean
+  },
+): Promise<EmploymentStartedOut> {
+  const { data } = await api.post<EmploymentStartedOut>(
+    `/handoffs/${encodeURIComponent(handoffId)}/employment-started`,
+    payload ?? {},
+  )
   return data
 }

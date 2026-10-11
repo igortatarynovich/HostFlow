@@ -19,6 +19,8 @@ export type WorkspaceCapabilityRenderContext = {
   application?: Application
   entity?: WorkspaceEntityRef
   patching: boolean
+  /** Host already decided this contribution cannot write. */
+  readOnly?: boolean
   onClose: () => void
   onRefresh: () => void
   onStage?: (stage: RecruitmentApplicationStage) => void | Promise<void>

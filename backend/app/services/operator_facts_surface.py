@@ -743,6 +743,126 @@ def withheld_document_norms(
     return frozenset(CE_DOCUMENT_CODES - pending)
 
 
+def requirement_codes_for_operator(
+    policy_codes: list[Any] | None,
+    facts: Mapping[str, Any],
+    *,
+    today: date | None = None,
+    evidence: list[Mapping[str, Any]] | None = None,
+) -> list[str]:
+    """Policy codes that still block this candidate.
+
+    ``r5_required_set`` still names the policy set. A CE or Code 95 code the
+    current resolution is not asking for is the old unconditional qualification
+    card. It leaves the blocker list. Every other policy code stays.
+    """
+
+    withheld = withheld_document_norms(
+        facts,
+        today=today,
+        required_types=list(policy_codes or []),
+        evidence=evidence,
+    )
+    out: list[str] = []
+    for raw in policy_codes or []:
+        code = str(raw or "").strip().lower()
+        if not code or code in out:
+            continue
+        canon = canonical_document_code(code)
+        if code in withheld or canon in withheld:
+            continue
+        out.append(code)
+    return out
+
+
+_RECORDED_ON_DOCUMENT: dict[str, tuple[str | None, str | None, str | None]] = {
+    "driver_license": ("licence_valid_to", "licence_categories", "licence_issuing_country"),
+    "driver_license_code95": ("licence_valid_to", "licence_categories", "licence_issuing_country"),
+    "code95": ("code95_valid_to", None, None),
+    "driver_qualification_card": ("code95_valid_to", None, None),
+    "tacho_card": ("tachograph_valid_to", None, "tachograph_issuing_country"),
+    "tachograph_card": ("tachograph_valid_to", None, "tachograph_issuing_country"),
+    "residence_permit": ("stay_valid_to", None, None),
+    "residence_card": ("stay_valid_to", None, None),
+    "adr": ("adr_valid_to", None, "adr_issuing_country"),
+    "adr_certificate": ("adr_valid_to", None, "adr_issuing_country"),
+}
+
+_RECORDED_ON_PROFESSIONAL: dict[str, tuple[str | None, str | None, str | None]] = {
+    "driving_licence": ("licence_valid_to", "licence_categories", "licence_issuing_country"),
+    "code_95": ("code95_valid_to", None, None),
+    "tachograph_card": ("tachograph_valid_to", None, "tachograph_issuing_country"),
+}
+
+_PROFESSIONAL_KEY_ALIASES = {
+    "driver_license": "driving_licence",
+    "driver_license_code95": "driving_licence",
+    "driver_licence": "driving_licence",
+    "code95": "code_95",
+    "driver_qualification_card": "code_95",
+    "tachograph": "tachograph_card",
+    "tacho_card": "tachograph_card",
+}
+
+
+def _recorded_triple(
+    spec: tuple[str | None, str | None, str | None] | None,
+    facts: Mapping[str, Any],
+) -> dict[str, Any]:
+    if spec is None:
+        return {}
+    valid_key, categories_key, country_key = spec
+    out: dict[str, Any] = {}
+    if valid_key and facts.get(valid_key):
+        out["expire_date"] = str(facts[valid_key])
+    if categories_key:
+        categories = [str(item) for item in (facts.get(categories_key) or []) if str(item).strip()]
+        if categories:
+            out["categories"] = categories
+    if country_key and facts.get(country_key):
+        out["issuing_country"] = facts[country_key]
+    return out
+
+
+def recorded_document_fields(doc_type: str, facts: Mapping[str, Any]) -> dict[str, Any]:
+    """Operator fact values a document shows when its own field is still empty.
+
+    The fact stays on the candidate. This does not write the document.
+    """
+
+    code = str(doc_type or "").strip().lower()
+    return _recorded_triple(_RECORDED_ON_DOCUMENT.get(code), facts)
+
+
+def recorded_professional_fields(fact_key: str, facts: Mapping[str, Any]) -> dict[str, Any]:
+    """The same fact, read on the employee qualification row."""
+
+    raw = str(fact_key or "").strip().lower()
+    key = _PROFESSIONAL_KEY_ALIASES.get(raw, raw)
+    fields = _recorded_triple(_RECORDED_ON_PROFESSIONAL.get(key), facts)
+    if "expire_date" in fields:
+        fields["valid_until"] = fields.pop("expire_date")
+    return fields
+
+
+def evidence_asks_from_facts(facts: Mapping[str, Any]) -> list[str]:
+    """Files the checklist asks for because the operator already recorded the fact.
+
+    ``r5_required_set`` still writes the policy set. These codes are the evidence
+    of an answered fact: a residence card and its decision, a medical certificate,
+    and psychological tests. An unknown or negative answer asks for nothing.
+    """
+
+    asks: list[str] = []
+    if facts.get("stay_basis") == "karta_pobytu":
+        asks.extend(["residence_card", "decision"])
+    if facts.get("medical_presence") is True:
+        asks.append("medical_certificate")
+    if facts.get("psych_presence") is True:
+        asks.append("psychological_certificate")
+    return asks
+
+
 def project_required_document_types(
     required_types: list[Any] | None,
     facts: Mapping[str, Any],
@@ -761,6 +881,9 @@ def project_required_document_types(
         surfaced = registry_document_code(code)
         if surfaced and surfaced not in out:
             out.append(surfaced)
+    for code in evidence_asks_from_facts(facts):
+        if code not in out:
+            out.append(code)
     return out
 
 
@@ -772,11 +895,22 @@ def drop_withheld_document_codes(
     today: date | None = None,
     include_replacement: bool = True,
     evidence: list[Mapping[str, Any]] | None = None,
+    required_types: list[Any] | None = None,
 ) -> list[str]:
+    """Drop CE-family codes the current resolution is not asking for.
+
+    ``codes`` is the slice being filtered. ``required_types`` is the full named
+    set the resolution reads when that slice is only part of it. The stage
+    guard passes the set so a qualification card in one list is judged against
+    the licence named beside it.
+    """
+
     del employment_id
     if include_replacement:
         return project_required_document_types(codes, facts, today=today, evidence=evidence)
     canonical, resolutions = _resolve_named(facts, codes, today=today, evidence=evidence)
+    if required_types is not None:
+        _named, resolutions = _resolve_named(facts, required_types, today=today, evidence=evidence)
     pending = {str(code) for row in resolutions for code in row.get("document_codes") or []}
     out: list[str] = []
     for code in canonical:
@@ -837,6 +971,30 @@ def project_document_summary(
         today=today,
         evidence=evidence,
     )
+    asked_now = [str(code) for code in checklist["requiredTypes"]]
+    optional = [
+        item
+        for item in (checklist.get("optionalTypes") or [])
+        if canonical_document_code(str(item)) not in set(asked_now)
+        and str(item) not in set(asked_now)
+    ]
+    if checklist.get("optionalTypes") is not None:
+        checklist["optionalTypes"] = optional
+    classified = {
+        canonical_document_code(str(item))
+        for key in ("missing", "problematic", "ready_types", "in_progress_types")
+        for item in (required.get(key) or [])
+    }
+    classified.update(
+        str(item)
+        for key in ("missing", "problematic", "ready_types", "in_progress_types")
+        for item in (required.get(key) or [])
+    )
+    for code in asked_now:
+        if code in classified or canonical_document_code(code) in classified:
+            continue
+        required.setdefault("missing", []).append(code)
+        classified.add(code)
     if replaced_driver:
         seen = {canonical_document_code(str(item)) for item in required["missing"]}
         for code in checklist["requiredTypes"]:

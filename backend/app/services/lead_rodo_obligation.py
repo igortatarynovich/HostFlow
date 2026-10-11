@@ -229,6 +229,23 @@ def notice_provided_at_source(normalized: Optional[Mapping[str, Any]]) -> bool:
             return True
         if isinstance(rodo, str) and rodo.strip().lower() in ("true", "1", "yes", "accepted"):
             return True
+    answers = normalized.get("field_answers")
+    if isinstance(answers, list):
+        affirmative = {"true", "1", "yes", "on", "da", "tak", "accepted", "agree", "agreed"}
+        tokens = ("rodo", "gdpr", "privacy", "notice_at_source", "personal_data", "zgoda")
+        for item in answers:
+            if not isinstance(item, Mapping):
+                continue
+            name = str(item.get("name") or "").strip().lower().replace(" ", "_")
+            if not name or not any(token in name for token in tokens):
+                continue
+            values = item.get("values")
+            if isinstance(values, (list, tuple)):
+                raw = values[0] if values else ""
+            else:
+                raw = values
+            if str(raw or "").strip().lower() in affirmative or raw is True:
+                return True
     return False
 
 

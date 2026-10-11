@@ -36,8 +36,8 @@ export const SIDEBAR_AGENCY_RECRUITMENT_ORDER = [
   'vacancies',
 ] as const
 
-/** HR / Workforce — hidden until production-ready. */
-export const SIDEBAR_AGENCY_HR_ORDER = [] as const
+/** HR / Workforce. */
+export const SIDEBAR_AGENCY_HR_ORDER = ['hr-workspace'] as const
 
 /**
  * Marketing / Growth — Campaign hub + Sources (MA-3 Mapping entry).

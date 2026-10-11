@@ -58,6 +58,12 @@ type ToastContextValue = {
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
+function toastId(): string {
+  const c = globalThis.crypto
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID()
+  return `toast-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 function defaultTtlFor(variant: ToastVariant | undefined): number {
   return variant === 'error' ? TOAST_ERROR_TTL_MS : TOAST_DEFAULT_TTL_MS
 }
@@ -77,7 +83,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const notify = useCallback(
     (message: ToastInput) => {
-      const id = crypto.randomUUID()
+      const id = toastId()
       const variant = message.variant ?? 'info'
       const ttl = message.ttlMs ?? defaultTtlFor(variant)
       setToasts((prev) => [...prev, { ...message, id, variant }])

@@ -33,6 +33,7 @@ from backend.app.models.document import Document
 from backend.app.models.document_entity_link import DocumentEntityLink
 from backend.app.modules.documents.crud import ensure_ruleset_seed, list_candidate_documents
 from backend.app.modules.documents.crud import list_document_types as list_document_types_crud
+from backend.app.modules.documents.owner_summary import READY_STATUSES
 from backend.app.modules.documents.owner_summary import compute_owner_summary
 from backend.app.modules.documents.owner_summary import EQUIVALENT_SATISFACTION
 from backend.app.modules.documents.pack_projection import project_document_packs_from_expected
@@ -265,6 +266,12 @@ def project_required_doc_applicability_via_contract(
     if not isinstance(rows, list):
         return []
     return [row for row in rows if isinstance(row, dict)]
+
+
+def hub_status_needs_attention(status: str | None) -> bool:
+    """True when the Hub status is outside the existing ready set."""
+
+    return str(status or "") not in READY_STATUSES
 
 
 def _hub_document_view(doc: Document, link: DocumentEntityLink) -> dict[str, Any]:

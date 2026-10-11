@@ -1,11 +1,18 @@
 from typing import Optional, Dict, Any
 from sqlalchemy import select, delete, update, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from backend.app.auth.deps import Role
 from backend.app.models import Candidate, Vacancy
 from backend.app.models.company import Company, CandidateVacancy
 from backend.app.models.candidate_profile import CandidateProfile
 from backend.app.models.tenant import TenantLink
 from backend.app.services.tenant_visibility import TenantVisibility
+
+
+def vacancy_read_unrestricted(role: str | None) -> bool:
+    """Superadmin vacancy list is platform-wide; matching reads must not 404."""
+    return (role or "").strip().lower() == Role.superadmin.value
+
 
 class VacancyRepo:
     def __init__(
@@ -16,12 +23,14 @@ class VacancyRepo:
         own_company_id: str | None = None,
         visibility: TenantVisibility | None = None,
         is_client_tenant: bool = False,
+        unrestricted: bool = False,
     ) -> None:
         self.db = db
         self.tenant_id = tenant_id
         self.own_company_id = own_company_id
         self.visibility = visibility or TenantVisibility(tenant_id=tenant_id)
         self.is_client_tenant = is_client_tenant
+        self.unrestricted = unrestricted
 
     def _scope_clause(self):
         # Client (company) tenant: vacancies live on the agency DB row but are visible when
@@ -49,7 +58,7 @@ class VacancyRepo:
             Candidate.vacancy_id == vacancy_id,
             Candidate.deleted_at.is_(None),
         ]
-        if not self.is_client_tenant:
+        if not self.is_client_tenant and not self.unrestricted:
             count_filters.append(Candidate.tenant_id == self.tenant_id)
 
         candidate_count_sq = (
@@ -67,10 +76,7 @@ class VacancyRepo:
                 candidate_count_sq.label("candidate_count"),
                 last_candidate_activity_sq.label("last_candidate_activity_at"),
             )
-            .where(
-                Vacancy.id == vacancy_id,
-                self._scope_clause(),
-            )
+            .where(Vacancy.id == vacancy_id)
             .join(Company, Company.id == Vacancy.company_id, isouter=True)
             .join(
                 CandidateProfile,
@@ -78,7 +84,9 @@ class VacancyRepo:
                 isouter=True,
             )
         )
-        if self.own_company_id:
+        if not self.unrestricted:
+            stmt = stmt.where(self._scope_clause())
+        if self.own_company_id and not self.unrestricted:
             stmt = stmt.where(Vacancy.own_company_id == self.own_company_id)
         res = await self.db.execute(stmt)
         row = res.first()

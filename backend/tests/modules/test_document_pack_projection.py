@@ -147,6 +147,31 @@ def test_owner_summary_legacy_code95_satisfies_qualification_card() -> None:
     assert "driver_qualification_card" in ready or "code95" in ready
 
 
+def test_owner_summary_adr_certificate_is_not_phantom_other() -> None:
+    """has_adr must require adr_certificate, and a stored ``adr`` row must close it.
+
+    The module type defaulted to canonical ``other``, so the forward gate 409'd
+    on ``other`` even when an approved ADR certificate was already on the candidate.
+    """
+    ctx = {
+        "citizenship": "UA",
+        "work_country": "PL",
+        "position_category": "driver",
+        "has_adr": True,
+    }
+    out = compute_owner_summary(
+        ctx,
+        RULESET,
+        [{"type": "adr", "status": "approved"}],
+    )
+    missing = set(out["required"]["missing"] or [])
+    ready = set(out["required"]["ready_types"] or [])
+    assert "other" not in missing
+    assert "adr" not in missing
+    assert "adr_certificate" not in missing
+    assert "adr_certificate" in ready or "adr" in ready
+
+
 def test_owner_summary_combined_license_satisfies_qualification_card() -> None:
     ctx = {
         "citizenship": "PL",

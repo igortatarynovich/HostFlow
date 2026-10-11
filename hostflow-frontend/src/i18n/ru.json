@@ -5580,12 +5580,12 @@
         "hiring": "Найм",
         "interview": "Контакт установлен",
         "ready_for_handoff": "Готов к передаче",
-        "processing_by_client": "Обработка заказчиком",
+        "processing_by_client": "Передан",
         "docs_submitted_permit": "Документы поданы на разрешение",
         "handoff_returned": "Возвращён",
         "employment_pending": "На трудоустройстве",
         "ready_for_hr": "Готов к передаче в HR",
-        "processing_by_hr": "В обработке у HR",
+        "processing_by_hr": "Передан",
         "hired": "Принят HR"
       },
       "reason_codes": {
@@ -7007,6 +7007,7 @@
       },
       "docs_panel": {
         "kpi": "КПЭ",
+        "open": "Открыть",
         "open_full": "Открыть полностью",
         "tabs": {
           "blockers": "Блокаторы",
@@ -7053,7 +7054,7 @@
         "checklist_not_yet_required": "Ещё не загружено (на этом этапе не требуется)",
         "checklist_panel_title": "Чеклист документов",
         "compact_hint": "Подробности по документам свёрнуты, чтобы меньше шуметь.",
-        "early_stage_hint": "На этом этапе документы не обязательны (например, New). Загрузить / Открыть полностью — по желанию.",
+        "early_stage_hint": "На этом этапе документы не обязательны (например, New). Открыть — по желанию.",
         "in_progress_label": "В работе / на проверке",
         "in_progress_not_blocking": "Загрузки в процессе — на этом этапе не блокируют.",
         "next_step_not_blocking": "На этом этапе пайплайн не блокируется — сначала свяжитесь и квалифицируйте.",
@@ -8046,13 +8047,13 @@
         "hiring": "Найм",
         "interview": "Контакт установлен",
         "ready_for_handoff": "Готов к передаче",
-        "processing_by_client": "Обработка заказчиком",
+        "processing_by_client": "Передан",
         "docs_submitted_permit": "Документы поданы на разрешение",
         "handoff_returned": "Возвращён",
         "pending": "В ожидании",
         "employment_pending": "На трудоустройстве",
         "ready_for_hr": "Готов к передаче в HR",
-        "processing_by_hr": "В обработке у HR",
+        "processing_by_hr": "Передан",
         "hired": "Принят HR",
         "to_call": "Ждёт звонка",
         "to_contact": "Ждёт контакта"

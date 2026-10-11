@@ -160,7 +160,7 @@ def test_p3_expiring_soon_warning_not_blocker() -> None:
     assert any(isinstance(row.get("document_runtime"), dict) for row in gate["warnings"])
 
 
-def test_p3_merge_includes_document_runtime_on_report() -> None:
+def test_p3_merge_includes_document_runtime_as_diagnostics() -> None:
     gate = _gate([{"type": "passport", "status": "uploaded", "has_files": True}])
     merged = merge_transition_requirement_gate(
         {
@@ -172,11 +172,12 @@ def test_p3_merge_includes_document_runtime_on_report() -> None:
         },
         gate,
     )
-    assert merged["transfer_allowed"] is False
+    assert merged["transfer_allowed"] is True
     assert "document_runtime" in merged["source_layers"]
     assert merged["document_runtime"]["evaluation_version"] == DOCUMENT_RUNTIME_V1
     assert merged["requirement_gate"]["document_runtime"]["evaluation_version"] == DOCUMENT_RUNTIME_V1
-    assert any(row.get("source_layer") == SOURCE_LAYER for row in merged["blocking_reasons"])
+    assert merged["blocking_reasons"] == []
+    assert merged["requirement_gate"]["authority_role"] == "diagnostic_only"
 
 
 def test_p3_build_transition_gate_preserves_field_blockers() -> None:

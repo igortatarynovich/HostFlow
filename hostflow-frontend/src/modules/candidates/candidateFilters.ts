@@ -47,8 +47,10 @@ export function filterCandidates(
 
   return source.filter((item) => {
     if (normalizedQuery) {
+      const latinFirst = (item as { first_name_latin?: string | null }).first_name_latin ?? ''
+      const latinLast = (item as { last_name_latin?: string | null }).last_name_latin ?? ''
       const haystacks = [
-        `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim(),
+        `${item.first_name ?? ''} ${item.last_name ?? ''} ${latinFirst} ${latinLast}`.trim(),
         item.email ?? '',
         item.phone ?? '',
         item.short_id ?? '',
@@ -57,9 +59,14 @@ export function filterCandidates(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (item as any)?.vacancy?.title ?? (item as any)?.vacancy_title ?? '',
       ]
-      const queryMatch = haystacks.some((value, idx) =>
-        idx === 2 ? phoneTextMatches(value, normalizedQuery) : textMatches(value, normalizedQuery),
-      )
+      const words = normalizedQuery.split(/\s+/).filter((word) => word.length >= 2)
+      const nameBlob = haystacks[0] ?? ''
+      const everyWordInName = words.length > 1 && words.every((word) => textMatches(nameBlob, word))
+      const queryMatch =
+        everyWordInName ||
+        haystacks.some((value, idx) =>
+          idx === 2 ? phoneTextMatches(value, normalizedQuery) : textMatches(value, normalizedQuery),
+        )
       if (!queryMatch) return false
     }
 

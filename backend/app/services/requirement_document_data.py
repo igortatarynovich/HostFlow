@@ -24,6 +24,16 @@ def _canonical_doc_type(raw: str) -> str:
     return DOCUMENT_TYPE_ALIASES.get(normalized, normalized)
 
 
+def fact_fields_from_document(*, meta: dict[str, Any] | None, expire_date: Any) -> dict[str, Any]:
+    """Categories and term already stored on the document. Not a second fact."""
+
+    sources = _merged_field_sources({"meta": meta or {}, "expire_date": expire_date})
+    categories = sources.get("categories")
+    if categories is None:
+        categories = sources.get("license_categories")
+    return {"categories": categories, "valid_until": sources.get("expires_at")}
+
+
 def _merged_field_sources(snapshot: dict[str, Any]) -> dict[str, Any]:
     meta = snapshot.get("meta") if isinstance(snapshot.get("meta"), dict) else {}
     extracted = snapshot.get("extracted_fields")

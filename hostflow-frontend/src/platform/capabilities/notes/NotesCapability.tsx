@@ -4,6 +4,7 @@ import { useToast } from '../../../components/Toast'
 import { useI18n } from '../../../i18n'
 import type { WorkspaceCapabilityRenderContext } from '../../workspace-capability/renderContext'
 import { addNote, listNotes, notesSubjectKey, type NotesListItem } from './notesOwner'
+import { applicationEmploymentSpinePhase } from '../../application-workspace/resolveRecruitmentApplicationDecision'
 
 /**
  * Shared Notes widget. Owner = Notes. Host only places this contribution.
@@ -13,6 +14,7 @@ export function NotesCapability(ctx: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()
   const { notify } = useToast()
   const { onRefresh } = ctx
+  const phase = applicationEmploymentSpinePhase(ctx.application)
   const subjectKey = notesSubjectKey(ctx)
   const [notes, setNotes] = useState<NotesListItem[]>([])
   const [available, setAvailable] = useState(Boolean(subjectKey))
@@ -65,6 +67,8 @@ export function NotesCapability(ctx: WorkspaceCapabilityRenderContext) {
     }
   }
 
+  if (phase !== 'recruitment') return null
+
   return (
     <section className="space-y-3" data-capability-id="notes" data-widget-class="notes">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -82,7 +86,7 @@ export function NotesCapability(ctx: WorkspaceCapabilityRenderContext) {
             </article>
           ))
         : null}
-      {available ? (
+      {available && !ctx.readOnly ? (
         <div className="space-y-2">
           <textarea
             className="textarea"

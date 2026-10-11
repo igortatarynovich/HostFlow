@@ -200,6 +200,7 @@ try:
     from backend.app.api.v1 import handoffs as handoffs_router
     from backend.app.api.v1 import hr_dashboard as hr_dashboard_router
     from backend.app.api.v1 import hr_inbox as hr_inbox_router
+    from backend.app.api.v1 import hr_employment_path as hr_employment_path_router
     from backend.app.api.v1.document_merge import router as document_merge_router
     from backend.app.api.v1.workforce.router import router as workforce_router
     from backend.app.api.v1 import global_search as global_search_router
@@ -295,6 +296,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import handoffs as handoffs_router  # type: ignore[no-redef]
     from .api.v1 import hr_dashboard as hr_dashboard_router  # type: ignore[no-redef]
     from .api.v1 import hr_inbox as hr_inbox_router  # type: ignore[no-redef]
+    from .api.v1 import hr_employment_path as hr_employment_path_router  # type: ignore[no-redef]
     from .api.v1.document_merge import router as document_merge_router  # type: ignore[no-redef]
     from .api.v1.workforce.router import router as workforce_router  # type: ignore[no-redef]
     from .api.v1 import global_search as global_search_router  # type: ignore[no-redef]
@@ -992,6 +994,7 @@ app.include_router(legal_documents_router.router, prefix="/api/v1", tags=["legal
 app.include_router(contact_attempts_router.router, prefix="/api/v1", tags=["contact-attempts"])
 app.include_router(handoffs_router.router, prefix="/api/v1", tags=["handoffs"])
 app.include_router(hr_inbox_router.router, prefix="/api/v1", tags=["hr-inbox"])
+app.include_router(hr_employment_path_router.router, prefix="/api/v1", tags=["hr-employment-path"])
 app.include_router(hr_dashboard_router.router, prefix="/api/v1", tags=["hr-dashboard"])
 app.include_router(document_merge_router, prefix="/api/v1", tags=["document-merge"])
 app.include_router(workforce_router, prefix="/api/v1", tags=["workforce"])

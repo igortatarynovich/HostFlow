@@ -13,6 +13,8 @@
 >
 > **U-2:** [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) is **Accepted** (Purpose + Policy unchanged). Publish definition SoT: [forms-publish-contract.md](../architecture/forms-publish-contract.md) (`forms_publish.v1`).
 > Mapping program is **DONE**. External Intake program is **DONE**. Queue amendment names [HE-1](hiring-workflow-e2e.md) Active Product (brief; feat locked). Unlock ≠ schedule of leftover-store deletion / min HR / RS-3. FP-5 PASS is not Release Acceptance PASS.
+>
+> Операторский продукт шире FP-1…FP-5 (бренд, embed, Responses, consent UI, откат версии). Его контракт и замер — [Forms Operator Product Contract](../architecture/forms-operator-product-contract.md) и [Forms Operator Product Acceptance](../gates/forms-operator-product-acceptance.md) (**OPEN**). Они не планируют этот brief и не подменяют `commit_publish`.
 
 ---
 

@@ -9,6 +9,7 @@ import pytest
 from backend.app.services.lead_rodo import (
     ComplianceTransitionError,
     _stamp_lead_rodo_sent,
+    lead_rodo_required_block_code,
     lead_rodo_satisfied_from_normalized,
     mark_lead_rodo_source_provided,
 )
@@ -40,6 +41,26 @@ def test_meta_without_notice_proof_requires_delivery() -> None:
     assert d.state == "delivery_required"
     assert d.article == "13"
     assert d.reason_code == "direct_collection_notice_unproven"
+
+
+def test_meta_gdpr_consent_in_field_answers_is_notice_not_smtp_block() -> None:
+    d = evaluate_lead_rodo_obligation(
+        source="meta",
+        normalized={
+            "email": "a@example.com",
+            "field_answers": [{"name": "gdpr_consent", "values": ["yes"]}],
+        },
+    )
+    assert d.action == "no_delivery_source_provided"
+    lead = SimpleNamespace(
+        candidate_id=None,
+        normalized={
+            "rodo_notice_at_source": True,
+            "field_answers": [{"name": "gdpr_consent", "values": ["yes"]}],
+            "rodo": {"status": "failed", "compliance_state": "delivery_failed"},
+        },
+    )
+    assert lead_rodo_required_block_code(lead, "process") is None
 
 
 def test_csv_import_requires_art_14_delivery() -> None:

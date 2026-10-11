@@ -12,11 +12,10 @@ from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.auth.module_gate import require_hr_workforce_module_access
 from backend.app.auth.trust_role_deps import require_trust_write
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.services import workforce_employees as we_svc
 from backend.app.services.hr_employee_record_projection import RecordWriteRejected
-from backend.app.services.hr_employee_record_runtime import (
-    load_hr_employee_record,
-    write_hr_employee_record,
-)
+from backend.app.services.hr_employee_record_runtime import write_hr_employee_record
+from backend.app.services.hr_employee_record_surface import build_hr_employee_record_surface
 
 router = APIRouter(
     prefix="/employees/{employee_id}/employee-record",
@@ -37,15 +36,10 @@ async def get_hr_employee_record(
     db_tenant: tuple[AsyncSession, Any] = Depends(get_db_with_tenant),
 ) -> dict[str, Any]:
     db, tenant_id = db_tenant
-    record = await load_hr_employee_record(
-        db,
-        tenant_id=str(tenant_id),
-        employee_id=employee_id,
-        employment_id=employment_id,
-    )
-    if record is None:
-        raise HTTPException(status_code=404, detail="employee_record_not_found")
-    return record
+    employee = await we_svc.get_employee(db, str(tenant_id), employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return await build_hr_employee_record_surface(db, tenant_id=str(tenant_id), employee=employee)
 
 
 @router.patch("")

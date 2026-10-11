@@ -5,11 +5,12 @@ Composition layer between Field Registry and Intake / Process runtime.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Optional
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.ext.mutable import MutableDict
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import text
 
 from backend.app.db.base import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixin, now_utc
 
 JSONType = MutableDict.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql"))
 JSONAnyType = SQLiteJSON().with_variant(JSONB, "postgresql")
@@ -69,11 +70,133 @@ class EpEntityProfile(Base, TimestampMixin, EntityProfileMixin):
     document_pack_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     process_profile_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default=text("1"))
+    published_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    published_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     config: Mapped[dict[str, Any]] = mapped_column(
         JSONType,
         nullable=False,
         default=dict,
         server_default=text("'{}'"),
+    )
+
+
+class EpEntityProfileVersion(Base):
+    """Append-only immutable publication revision for an Entity Profile."""
+
+    __tablename__ = "ep_entity_profile_versions"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "entity_profile_id",
+            "version",
+            name="uq_ep_entity_profile_versions_scope_profile_ver",
+        ),
+        Index(
+            "ix_ep_entity_profile_versions_scope_profile",
+            "tenant_id",
+            "entity_profile_id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    entity_profile_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ep_entity_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    registry_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_system: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    module_owner: Mapped[str] = mapped_column(String(32), nullable=False)
+    default_layout_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    process_profile_code: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    config: Mapped[dict[str, Any]] = mapped_column(
+        JSONAnyType, nullable=False, default=dict
+    )
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=now_utc
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=now_utc
+    )
+
+
+class EpEntityProfileVersionField(Base):
+    """Immutable field requirement binding owned by a published Profile Version."""
+
+    __tablename__ = "ep_entity_profile_version_fields"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_profile_version_id",
+            "canonical_field_id",
+            name="uq_ep_profile_version_fields_version_field",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
+    entity_profile_version_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ep_entity_profile_versions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    canonical_field_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("fr_canonical_fields.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    qualified_code: Mapped[str] = mapped_column(String(191), nullable=False)
+    requirement_level: Mapped[str] = mapped_column(String(16), nullable=False)
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+
+
+class EpEntityProfileVersionDocument(Base):
+    """Immutable document requirement binding owned by a published Profile Version."""
+
+    __tablename__ = "ep_entity_profile_version_documents"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_profile_version_id",
+            "document_type_version_id",
+            name="uq_ep_profile_version_documents_version_doc",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
+    entity_profile_version_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ep_entity_profile_versions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    document_type_version_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ref_document_type_versions.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    requirement_level: Mapped[str] = mapped_column(String(16), nullable=False)
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
     )
 
 
@@ -166,6 +289,9 @@ class EpIntakePresentation(Base, TimestampMixin):
 __all__ = [
     "PLATFORM_TENANT_SCOPE",
     "EpEntityProfile",
+    "EpEntityProfileVersion",
+    "EpEntityProfileVersionField",
+    "EpEntityProfileVersionDocument",
     "EpEntityProfileField",
     "EpIntakePresentation",
 ]

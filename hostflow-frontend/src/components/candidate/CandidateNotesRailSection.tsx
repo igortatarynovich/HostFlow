@@ -19,6 +19,7 @@ export default memo(function CandidateNotesRailSection({
   onNewNoteChange,
   onAddNote,
   onRefreshNotes,
+  readOnly = false,
 }: {
   notes: CandidateNote[]
   notesLoading: boolean
@@ -27,6 +28,7 @@ export default memo(function CandidateNotesRailSection({
   onNewNoteChange: (value: string) => void
   onAddNote: () => void
   onRefreshNotes: () => void
+  readOnly?: boolean
 }) {
   const { t } = useI18n()
 
@@ -56,6 +58,7 @@ export default memo(function CandidateNotesRailSection({
         </button>
       </div>
 
+      {readOnly ? null : (
       <div className="mt-3 space-y-2">
         <textarea
           className="input min-h-[64px] w-full"
@@ -72,6 +75,7 @@ export default memo(function CandidateNotesRailSection({
           {noteSending ? t('app.candidate_card.actions.saving_note') : t('common.actions.add')}
         </button>
       </div>
+      )}
 
       <div className="mt-3 max-h-[240px] overflow-y-auto divide-y rounded-lg border border-slate-200 bg-white">
         {ordered.length === 0 ? (

@@ -210,3 +210,49 @@ class ApplicationProcessResult(BaseModel):
     application: ApplicationOut
     candidate_id: Optional[str] = None
     message: Optional[str] = None
+
+
+class ApplicationFitsResult(BaseModel):
+    """RSO-2 Fits prep — never creates handoff / Employee."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    application: ApplicationOut
+    next_action: Literal[
+        "offer_handoff",
+        "ask_recruitment_missing",
+        "confirm_probable_duplicate",
+        "ask_vacancy",
+        "not_fits",
+    ]
+    package_valid: bool = False
+    package: Optional[Dict[str, Any]] = None
+    package_fingerprint: Optional[str] = None
+    recruitment_missing: List[Dict[str, str]] = Field(default_factory=list)
+    probable_duplicate: Optional[Dict[str, Any]] = None
+    vacancy_prompt: Optional[str] = None
+    ready_label: Optional[str] = None
+    transfer_action: Optional[str] = None
+    candidate_id: Optional[str] = None
+    message: Optional[str] = None
+
+
+class ApplicationTransferIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    destination: Literal["internal_hr", "client_portal"] = "internal_hr"
+    client_company_id: Optional[str] = None
+    client_tenant_id: Optional[str] = None
+
+
+class ApplicationTransferResult(BaseModel):
+    """RSO-2 Transfer — boundary only after successful create_handoff."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    application: ApplicationOut
+    handoff_id: str
+    package: Dict[str, Any]
+    package_fingerprint: str
+    created: bool
+    message: Optional[str] = None

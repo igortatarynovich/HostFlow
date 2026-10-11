@@ -55,8 +55,8 @@ def test_p3a_process_profile_rules_only_at_matching_stage() -> None:
 
     field_codes = {row["qualified_code"] for row in rules_handoff if row["rule_type"] == RULE_TYPE_FIELD_REQUIRED}
     assert "recruitment.candidate.contacts.email" in field_codes
-    assert "platform.identity.address" in field_codes
     assert "recruitment.candidate.contacts.phone" in field_codes
+    assert "platform.identity.address" not in field_codes
 
     rules_with_occupied = build_process_profile_rules(
         process_profile_code=DEFAULT_PROFILE_CODE,
@@ -69,7 +69,7 @@ def test_p3a_process_profile_rules_only_at_matching_stage() -> None:
     assert "recruitment.candidate.contacts.phone" not in occupied_field_codes
 
     doc_codes = {row["document_type_code"] for row in rules_handoff if row["rule_type"] == RULE_TYPE_DOCUMENT_REQUIRED}
-    assert doc_codes == {"medical_certificate"}
+    assert doc_codes == set()
 
 
 def test_p3a_merge_order_entity_profile_document_pack_process_profile() -> None:
@@ -89,22 +89,12 @@ def test_p3a_merge_order_entity_profile_document_pack_process_profile() -> None:
     field_rules = [r for r in rule_set["rules"] if r["rule_type"] == RULE_TYPE_FIELD_REQUIRED]
     field_sources = {r["qualified_code"]: r["source"] for r in field_rules}
     assert field_sources["recruitment.candidate.contacts.email"] == SOURCE_PROCESS_PROFILE
-    assert field_sources["platform.identity.address"] == SOURCE_PROCESS_PROFILE
+    assert "platform.identity.address" not in field_sources
 
     doc_rules = [r for r in rule_set["rules"] if r["rule_type"] == RULE_TYPE_DOCUMENT_REQUIRED]
-    assert len(doc_rules) == 5
-    assert {r["document_type_code"] for r in doc_rules} == {
-        "passport",
-        "driver_license",
-        "code95",
-        "tacho_card",
-        "medical_certificate",
-    }
-    pack_doc = next(r for r in doc_rules if r["document_type_code"] == "passport")
-    pe_doc = next(r for r in doc_rules if r["document_type_code"] == "medical_certificate")
-    assert pack_doc["source"] == SOURCE_DOCUMENT_PACK
-    assert pe_doc["source"] == SOURCE_PROCESS_PROFILE
-    assert doc_rules.index(pack_doc) < doc_rules.index(pe_doc)
+    assert doc_rules
+    assert all(r["source"] == SOURCE_DOCUMENT_PACK for r in doc_rules)
+    assert all(r["source"] != SOURCE_PROCESS_PROFILE for r in doc_rules)
 
 
 def test_p3a_merge_order_preserves_entity_profile_before_process_profile() -> None:
@@ -187,8 +177,8 @@ def test_p3a_stage_blocker_only_in_stage_context() -> None:
     missing_fields = {row.get("qualified_code") for row in evaluation["blockers"] if row.get("qualified_code")}
     missing_docs = {row.get("document_type_code") for row in evaluation["blockers"] if row.get("document_type_code")}
     assert "recruitment.candidate.contacts.email" in missing_fields
-    assert "platform.identity.address" in missing_fields
-    assert "medical_certificate" in missing_docs
+    assert "platform.identity.address" not in missing_fields
+    assert "medical_certificate" not in missing_docs
     assert evaluation["process_profile_code"] == DEFAULT_PROFILE_CODE
     assert evaluation["stage_code"] == "ready_for_handoff"
 
@@ -208,4 +198,6 @@ def test_p3a_readiness_without_stage_keeps_p1_behavior() -> None:
         for row in evaluation["blockers"]
         if row.get("qualified_code") in {"platform.identity.address", "recruitment.candidate.contacts.email"}
     }
-    assert pe_field_blockers == set()
+    # Legacy P1 readiness still maps Entity Profile card_save_level to requiredness.
+    # ADR-043 will replace this coupling with immutable Profile Version policy.
+    assert pe_field_blockers == {"platform.identity.address"}

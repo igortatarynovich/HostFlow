@@ -112,7 +112,7 @@ import CandidateCustomFieldsSection from '../components/candidate/CandidateCusto
 import CandidateRodoSection from '../components/candidate/CandidateRodoSection'
 import CandidateContactAttemptsSection from '../components/candidate/CandidateContactAttemptsSection'
 import CandidateTimelinePanel from '../components/candidate/CandidateTimelinePanel'
-import CandidateStageDecisionPanel from '../components/candidate/CandidateStageDecisionPanel'
+import CandidateStageDecisionPanel, { CandidatePipelineStatus } from '../components/candidate/CandidateStageDecisionPanel'
 import { Input, SearchableSelect } from '../components/candidate/shared/FormComponents'
 // CandidateCard layout: Info (top) / Control (right) / Content (main)
 // Documents are rendered as a single compact panel inside the rail.
@@ -1134,15 +1134,24 @@ export default function CandidateCard(){
     return detail.includes('rodo must be sent') || detail.includes('contact/screening stage')
   }, [])
 
-  const parseHandoffDocsIncomplete = useCallback((err: any): { missingTypes: string[] } | null => {
+  const parseHandoffDocsIncomplete = useCallback((err: any): { missingTypes: string[]; message?: string } | null => {
     const detailRaw = err?.response?.data?.detail
     const toMissing = (val: any): string[] =>
       Array.isArray(val) ? val.map((x) => String(x || '').trim()).filter(Boolean) : []
+    const toResult = (detail: any) => {
+      const blockers = Array.isArray(detail?.blocking_reasons) ? detail.blocking_reasons : []
+      const firstBlocker = blockers.find((row: any) => row && typeof row === 'object')
+      const message = String(detail?.message || detail?.refusal_reason || firstBlocker?.message || '').trim()
+      return {
+        missingTypes: toMissing(detail?.missing_types),
+        message: message || undefined,
+      }
+    }
 
     if (detailRaw && typeof detailRaw === 'object') {
       const code = String((detailRaw as any).code || '').trim()
       if (code === 'handoff_docs_incomplete') {
-        return { missingTypes: toMissing((detailRaw as any).missing_types) }
+        return toResult(detailRaw)
       }
     }
 
@@ -1152,7 +1161,7 @@ export default function CandidateCard(){
         try {
           const parsed = JSON.parse(trimmed)
           if (parsed && typeof parsed === 'object' && String((parsed as any).code || '') === 'handoff_docs_incomplete') {
-            return { missingTypes: toMissing((parsed as any).missing_types) }
+            return toResult(parsed)
           }
         } catch {
           return { missingTypes: [] }
@@ -2274,7 +2283,7 @@ export default function CandidateCard(){
             : ''
           notify({
             title: t('app.candidate_card.messages.handoff_docs_incomplete'),
-            description: missingLabels || undefined,
+            description: handoffDocs.message || missingLabels || undefined,
             variant: 'error',
           })
           await revertStageOptimistic()
@@ -2329,8 +2338,10 @@ export default function CandidateCard(){
     [model?.extra]
   )
   const docsOwnerContext = useMemo(
-    () => ({ citizenship: String(extra?.citizenship || '') }),
-    [extra?.citizenship],
+    () => ({
+      citizenship: String(model?.personal_data?.citizenship || extra?.citizenship || ''),
+    }),
+    [model?.personal_data?.citizenship, extra?.citizenship],
   )
   const setExtra = (patch: Partial<CandidateExtra>) =>
     setModel(m => {
@@ -2544,7 +2555,7 @@ export default function CandidateCard(){
               : ''
             notify({
               title: t('app.candidate_card.messages.handoff_docs_incomplete'),
-              description: missingLabels || undefined,
+              description: handoffDocs.message || missingLabels || undefined,
               variant: 'error',
             })
             setSaving(false)
@@ -2583,7 +2594,7 @@ export default function CandidateCard(){
           : ''
         notify({
           title: t('app.candidate_card.messages.handoff_docs_incomplete'),
-          description: missingLabels || undefined,
+          description: handoffDocs.message || missingLabels || undefined,
           variant: 'error',
         })
       } else {
@@ -3167,8 +3178,6 @@ export default function CandidateCard(){
     primaryHandoffDestination,
   ])
 
-  const handoffActiveBlock = Boolean(handoffStatus?.pending || handoffStatus?.accepted)
-
   const showTransferToHr = useMemo(() => {
     if (isNew || model?.masked === true || isClientTenant) return false
     if (!can('candidates.manage')) return false
@@ -3179,6 +3188,8 @@ export default function CandidateCard(){
     const acceptedDest = String(handoffStatus?.accepted?.destination || '')
     return pendingDest !== 'internal_hr' && acceptedDest !== 'internal_hr'
   }, [can, handoffStatus?.accepted?.destination, handoffStatus?.pending?.destination, isClientTenant, isNew, model?.company_id, model?.masked, model?.stage])
+
+  const handoffActiveBlock = Boolean(handoffStatus?.pending || handoffStatus?.accepted)
 
   const handleTransferToHr = useCallback(async () => {
     const cid = String(model?.company_id || '').trim()
@@ -3247,6 +3258,7 @@ export default function CandidateCard(){
         if (handoffDocs) {
           notify({
             title: t('app.candidate_card.messages.handoff_docs_incomplete'),
+            description: handoffDocs.message,
             variant: 'warning',
           })
         } else {
@@ -3631,7 +3643,7 @@ export default function CandidateCard(){
         const label = stageLabelIntl(code)
         const canonical = canonicalStageKey(code, label) || ''
 
-        if (canonical === 'handoff_returned' || canonical === 'rejected' || canonical === 'declined') {
+        if (canonical === 'rejected' || canonical === 'declined') {
           return
         }
         if (stripPostRecruitment && isPostRecruitmentStageCode(canonical)) return
@@ -4583,6 +4595,34 @@ export default function CandidateCard(){
     )
   }
 
+  const pipelineStatus = !isNew && model?.id ? (
+    <CandidatePipelineStatus
+      locale={locale}
+      stageSinceAt={stageSinceAt}
+      stageJourneyStages={stageJourneyStagesPipeline}
+      journeyPanelStages={stageJourneyStagesDisplay}
+      stageOutcomeStages={stageOutcomeStages}
+      stageJourneyDisplayStage={stageJourneyDisplayStage}
+      stageJourneyOutcomeStage={stageJourneyOutcomeStage}
+      stageJourneySignals={stageJourneySignals}
+      completedStageCodes={completedStageCodes}
+      currentStageCode={model.stage}
+      candidateRowStatus={model.row_status}
+      candidateStatus={model.status}
+      stageLabelIntl={stageLabelIntl}
+      docsBlockers={effectiveDocsBlockersForPipeline}
+      blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
+      docsPipelineBlocking={docsPipelineBlockingValue}
+      docsPipelineSoftWarn={docsPipelineSoftWarnValue}
+      vacancyPipelineBlocking={vacancyPipelineBlockingValue}
+      contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
+      canEdit={model.can_edit !== false}
+      canCloseRecruitment={canCloseRecruitment}
+      onMoveStage={handleStageJourneyChange}
+      onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
+    />
+  ) : null
+
   return (
     <PageShell>
       <PageShellHeader>
@@ -5214,9 +5254,19 @@ export default function CandidateCard(){
                   </div>
                   {(uploadLink?.documents_url || uploadLink?.apply_url) ? (
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                      <div className="break-all">
+                      <div className="font-medium text-slate-800">
+                        {t('app.candidate_card.docs.upload_link_label')}
+                      </div>
+                      <div className="mt-1 break-all">
                         {new URL(uploadLink.documents_url || uploadLink.apply_url, window.location.origin).toString()}
                       </div>
+                      {uploadLink.expires_at ? (
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          {t('app.candidate_card.docs.upload_link_expires', {
+                            values: { date: formatDateSafe(uploadLink.expires_at, locale) || uploadLink.expires_at },
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                   <CandidateDocuments
@@ -5265,7 +5315,11 @@ export default function CandidateCard(){
                     setRequirementBlockers(blockers)
                     setRequirementBlockersLoading(loading)
                   }}
-                />
+                >
+                  {pipelineStatus}
+                </RequirementsWorkspaceSummaryCard>
+              ) : pipelineStatus ? (
+                <section className="rounded-2xl border border-slate-200 bg-white p-3">{pipelineStatus}</section>
               ) : null}
               {showFullRequirementsChecklist ? (
                 <CandidateRequirementsChecklist

@@ -11,7 +11,6 @@ from backend.app.models.candidate_handoff_snapshot import CandidateHandoffSnapsh
 from backend.app.services.hr_profile_address import coerce_address_dict, promote_address_fields
 from backend.app.services.hr_recruitment_transfer import (
     flatten_recruitment_candidate_fields,
-    merge_flat_into_handoff_candidate,
 )
 
 _DOC_TYPE_ALIASES: dict[str, str] = {
@@ -27,14 +26,22 @@ _DOC_TYPE_ALIASES: dict[str, str] = {
 
 
 def build_handoff_profile_namespace(payload: dict[str, Any] | None) -> dict[str, Any]:
-    """Flatten handoff snapshot v1 into paths used by ``_dig(..., 'handoff.*')``."""
+    """Build residual legacy snapshot namespace (legacy shape only — no RFE coerce).
+
+    RSO-2D operational RFE path does not use this for current identity.
+    """
     if not isinstance(payload, dict):
         return {}
+    from backend.app.reference.ready_for_employment import is_ready_for_employment_manifest
+
+    # RFE manifests are handled by live Person + why_ready; do not project currents from payload.
+    if is_ready_for_employment_manifest(payload):
+        return {"candidate": {}, "application": None, "documents": []}
     cand = payload.get("candidate") if isinstance(payload.get("candidate"), dict) else {}
     name = cand.get("name") if isinstance(cand.get("name"), dict) else {}
     contacts = cand.get("contacts") if isinstance(cand.get("contacts"), dict) else {}
-    first = str(name.get("first_name") or "").strip()
-    last = str(name.get("last_name") or "").strip()
+    first = str(name.get("first_name") or cand.get("first_name") or "").strip()
+    last = str(name.get("last_name") or cand.get("last_name") or "").strip()
     full = f"{first} {last}".strip() or None
     citizenship = cand.get("citizenship")
     if citizenship is not None:
@@ -48,8 +55,8 @@ def build_handoff_profile_namespace(payload: dict[str, Any] | None) -> dict[str,
         "last_name": last or None,
         "citizenship": citizenship,
         "birth_date": birth_date,
-        "email": contacts.get("email"),
-        "phone": contacts.get("phone"),
+        "email": contacts.get("email") or cand.get("email"),
+        "phone": contacts.get("phone") or cand.get("phone"),
         "phone_country_code": contacts.get("phone_country_code") or cand.get("phone_country_code"),
     }
     addr_raw = cand.get("address")
@@ -210,8 +217,18 @@ async def load_handoff_profile_namespace(
     *,
     candidate_id: Optional[str] = None,
 ) -> dict[str, Any]:
+    """RSO-2E: current identity from live Person; Why Ready / as-of from manifest."""
+    from backend.app.models.candidate_handoff import CandidateHandoff
+    from backend.app.services.hr_handoff_read_model import (
+        apply_live_person_to_profile_namespace,
+        build_why_ready_from_manifest,
+        load_live_target_work,
+        profile_application_from_manifest_and_live,
+    )
+
     hid = str(handoff_id or "").strip()
     payload: dict[str, Any] | None = None
+    handoff: CandidateHandoff | None = None
     if hid:
         row = (
             await db.execute(
@@ -222,13 +239,40 @@ async def load_handoff_profile_namespace(
             )
         ).scalar_one_or_none()
         payload = row.payload if row and isinstance(row.payload, dict) else None
-    ns = build_handoff_profile_namespace(payload)
+        handoff = await db.get(CandidateHandoff, hid)
 
     extra, personal, flat = await _load_live_candidate_fields(db, candidate_id)
-    ns = merge_flat_into_handoff_candidate(ns, flat)
+    why_ready = build_why_ready_from_manifest(payload)
+    live_target = await load_live_target_work(
+        db,
+        candidate=None,
+        handoff=handoff,
+        manifest=payload,
+    )
+    # Prefer vacancy/employer from live candidate when available.
+    if candidate_id:
+        from backend.app.models.candidate import Candidate
+
+        cand_row = await db.get(Candidate, str(candidate_id).strip())
+        if cand_row:
+            live_target = await load_live_target_work(
+                db, candidate=cand_row, handoff=handoff, manifest=payload
+            )
+
+    as_of = why_ready.get("as_of") if why_ready else None
+    ns: dict[str, Any] = {
+        "candidate": {},
+        "application": profile_application_from_manifest_and_live(
+            live_target=live_target, why_ready=why_ready
+        ),
+        "documents": [],
+        "why_ready": why_ready,
+        "live_target_work": live_target or None,
+    }
+    ns = apply_live_person_to_profile_namespace(ns, flat, as_of=as_of)
     return merge_recruiter_transport_fields(
         ns,
-        snapshot_payload=payload,
+        snapshot_payload=None,
         candidate_extra=extra,
         candidate_personal=personal,
     )
@@ -247,8 +291,10 @@ async def load_recruiter_profile_namespace(
             db, tenant_id, handoff_id, candidate_id=candidate_id
         )
     extra, personal, flat = await _load_live_candidate_fields(db, candidate_id)
+    from backend.app.services.hr_handoff_read_model import apply_live_person_to_profile_namespace
+
     ns: dict[str, Any] = {"candidate": {}}
-    ns = merge_flat_into_handoff_candidate(ns, flat)
+    ns = apply_live_person_to_profile_namespace(ns, flat)
     return merge_recruiter_transport_fields(
         ns,
         snapshot_payload=None,

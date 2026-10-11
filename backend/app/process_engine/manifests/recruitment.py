@@ -148,11 +148,6 @@ def recruitment_module_manifest() -> dict[str, Any]:
                         "level": "required",
                         "scope": "transition",
                     },
-                    {
-                        "qualified_code": "platform.identity.address",
-                        "level": "required",
-                        "scope": "transition",
-                    },
                 ],
             },
         },
@@ -166,24 +161,6 @@ def recruitment_module_manifest() -> dict[str, Any]:
             "config": {
                 "resolver": "document_hub.workforce_eligibility",
                 "relaxed_by_override": True,
-            },
-        },
-        {
-            "code": "recruitment_handoff_medical",
-            "name": "Medical certificate required at handoff transition",
-            "entity_type": "candidate",
-            "config": {
-                "requirement_kind": "document_types",
-                "context": "transition",
-                "system_stage": "ready_for_handoff",
-                "required_documents": [
-                    {
-                        "document_type_code": "medical_certificate",
-                        "level": "blocking",
-                        "verification": "optional",
-                        "reason_code": "process_profile_handoff_medical",
-                    }
-                ],
             },
         },
     ]
@@ -212,7 +189,6 @@ def recruitment_module_manifest() -> dict[str, Any]:
                     "ready_for_handoff": {
                         "handoff_mode": "both",
                         "destination_required": True,
-                        "recruiter_confirmation_required": True,
                     },
                 },
                 "legacy_candidate_profile_code": "driver_ce_default",

@@ -21,11 +21,14 @@ from backend.app.modules.applications.schemas import (
     ApplicationAssignIn,
     ApplicationCallResultIn,
     ApplicationCommentIn,
+    ApplicationFitsResult,
     ApplicationFollowUpIn,
     ApplicationIntakeDecisionIn,
     ApplicationOut,
     ApplicationProcessResult,
     ApplicationStagePatch,
+    ApplicationTransferIn,
+    ApplicationTransferResult,
     ApplicationVacancyConfirmIn,
 )
 from backend.app.modules.leads import crud, service
@@ -627,6 +630,97 @@ async def recruitment_log_call_result(
     flag_modified(lead, "normalized")
     await db.commit()
     return await _reload_recruitment(db, tenant_id, application_id)
+
+
+async def recruitment_fits_prep(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str,
+    application_id: str,
+    current_user: UserCtx,
+) -> ApplicationFitsResult:
+    """RSO-2 Fits: auto recruitment prep. Does not create handoff / Employee."""
+    from backend.app.modules.recruitment.services.ready_for_employment_orchestrator import (
+        READY_LABEL,
+        RsoOrchestratorError,
+        run_fits_prep,
+    )
+    from backend.app.reference.ready_for_employment import TRANSFER_OPERATOR_ACTION
+
+    actor_id = str(current_user.sub or "").strip() or tenant_id
+    try:
+        result = await run_fits_prep(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id or None,
+            application_id=application_id,
+            actor_id=actor_id,
+            current_user=current_user,
+        )
+    except RsoOrchestratorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    await db.commit()
+    app = await _reload_recruitment(db, tenant_id, application_id)
+    return ApplicationFitsResult(
+        application=app,
+        next_action=result.next_action,  # type: ignore[arg-type]
+        package_valid=result.package_valid,
+        package=result.package,
+        package_fingerprint=result.package_fingerprint,
+        recruitment_missing=result.recruitment_missing,
+        probable_duplicate=result.probable_duplicate,
+        vacancy_prompt=result.vacancy_prompt,
+        ready_label=READY_LABEL if result.next_action == "offer_handoff" else None,
+        transfer_action=TRANSFER_OPERATOR_ACTION if result.next_action == "offer_handoff" else None,
+        candidate_id=result.candidate_id,
+        message=result.message,
+    )
+
+
+async def recruitment_transfer_to_employment(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    application_id: str,
+    payload: ApplicationTransferIn,
+    current_user: UserCtx,
+) -> ApplicationTransferResult:
+    """RSO-2 Transfer: boundary only. Revalidates package; create_handoff + audit."""
+    from backend.app.modules.recruitment.services.ready_for_employment_orchestrator import (
+        RsoOrchestratorError,
+        run_transfer_to_employment,
+    )
+
+    actor_id = str(current_user.sub or "").strip() or tenant_id
+    try:
+        result = await run_transfer_to_employment(
+            db,
+            tenant_id=tenant_id,
+            application_id=application_id,
+            actor_id=actor_id,
+            destination=payload.destination,
+            client_company_id=payload.client_company_id,
+            client_tenant_id=payload.client_tenant_id,
+        )
+    except RsoOrchestratorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+        ) from exc
+    await db.commit()
+    app = await _reload_recruitment(db, tenant_id, application_id)
+    return ApplicationTransferResult(
+        application=app,
+        handoff_id=result.handoff_id,
+        package=result.package,
+        package_fingerprint=result.package_fingerprint,
+        created=result.created,
+        message=result.message,
+    )
 
 
 async def recruitment_add_comment(

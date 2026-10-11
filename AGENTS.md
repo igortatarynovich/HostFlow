@@ -151,6 +151,20 @@ Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) �
 
 ## Notes for AI Agents (Codex/ChatGPT)
 
+### Reuse before invention
+
+Это не новое архитектурное правило и не отдельный governance-документ. Это проверка до кода: существующий канон уже запрещает локальный аналог. L0 меняется только через Architecture RFC.
+
+- **INV-01** — один SoT. **INV-07** — новая функциональность по умолчанию есть композиция существующих capabilities, не вторая реализация (нарушение = merge blocker). **INV-16** — локальное удобство не выше L0. SoT: [`architecture-invariants.md`](docs/specs/architecture/architecture-invariants.md), порядок проверки: [`decision-priority-rule.md`](docs/specs/architecture/decision-priority-rule.md).
+- **P-02** — одна capability, один owner, вторая реализация запрещена: [`ADR-026`](docs/specs/architecture/ADR-026-capability-ownership.md).
+- **P-03** — сначала композиция. Новая capability допустима только если существующая не покрывает ответственность, и только путём ADR → Catalog → Owner → Contracts → code: [`ADR-027`](docs/specs/architecture/ADR-027-capability-composition.md). Это решение не принимается внутри feature implementation.
+- **Reference Program** — локальный dict, taxonomy или policy fork не являются authoritative definition: [`platform-reference-identity-sot.md`](docs/specs/tasks/platform-reference-identity-sot.md).
+- **ADR-011** — нет второй UI-системы (spacing, fonts, radius, buttons, inputs, list shells, semantic colors): [`ADR-011`](docs/specs/architecture/ADR-011-hostflow-ui-platform-standard.md). Проверка: `npm run ui:adr011:check`.
+
+**Operational rule:** Existing canonical capability, system, or primitive MUST be reused. A feature must not create a local alternative, duplicate, fork, parallel policy, local SoT, design system, rule set, taxonomy, or equivalent implementation. If the existing canonical system cannot satisfy the requirement, STOP implementation and resolve the gap through the canonical owner / architecture process. Do not solve a canonical gap locally.
+
+Employee page may compose existing system primitives and widgets, but may not introduce local task, note, document, status, dictionary, form-control or styling systems.
+
 1. Перед выполнением изменений всегда формируйте план и список файлов для редактирования и ожидайте подтверждения.
 2. Не выполняйте shell-команды, коммиты или push без явного разрешения.
 3. При изменении схемы базы данных необходимо:

@@ -61,12 +61,9 @@ Person
 → HR process ownership opened for that Person
 → Employee context activated
 → create a new Employment in preparing
-→ HR Legal Eligibility Gate
-→ when blocked: continue the existing Legal Eligibility / Work Authorization process
-→ Legal Eligibility PASS for this Employment
-→ employee data completion
-→ Employment terms
-→ pre-employment requirements
+→ preparation, while the state stays preparing, each layer in the order its own prerequisites allow
+→ Employee Data, Legal Eligibility, Employment Terms, applicable professional requirements, formality actions
+→ when Legal Eligibility is blocked: the Work Authorization process continues
 → Ready to Start Gate
 → Employment active
 → post-start obligations
@@ -153,7 +150,7 @@ A material change to the Employment terms can require this gate again, because t
 
 ### Employee data
 
-After Legal Eligibility PASS, HR completes the employee data the later formalities need. Facts HostFlow already holds are not entered again. Missing facts are requested or filled.
+While the Employment is preparing, HR completes the employee data the later formalities need. This layer does not wait for Legal Eligibility PASS. Facts HostFlow already holds are not entered again. Missing facts are requested or filled.
 
 `kwestionariusz osobowy` is a representation of that canonical employee data. It is not a second copy of the person. This contract names the representation and does not design the form. The HR surface that places those owners into groups is [HR Employee Record Projection](hr-employee-record-projection.md). That projection adds no fact.
 
@@ -161,13 +158,13 @@ Who already owns each person fact is [Employee Data ownership](#employee-data-ow
 
 ### Employment terms
 
-The facts of this relationship include the employer, the position or profession, the employment basis or type, the workplace, the start date, the working time, and the remuneration, plus any further term the relationship needs. This opening names those facts and adds no column.
+The facts of this relationship include the employer, the position or profession, the employment basis or type, the workplace, the intended start date, the working time, the work system, and the remuneration, plus any further term the relationship needs. The intended start date is the date the parties plan to start. `hr_employments.started_on` is the date the Employment actually starts. A later reconfirmation of the plan does not write `started_on`. This opening names those facts and adds no column.
 
 Where each of those facts already lives is [Employment Terms discovery](#employment-terms-discovery). The agreed-terms model is [Employment Terms Contract Gate](#employment-terms-contract-gate). Neither section adds a column.
 
 ### Pre-employment requirements
 
-Once the data and the terms the policy needs are present, policy forms the requirements for this Employment. Each requirement is `satisfied`, `waived`, or `blocking`. A requirement may depend on another requirement. Independent requirements may proceed together.
+While the Employment is preparing, policy may form the requirements for this Employment. Legal Eligibility PASS is not the permission to begin. Applicability and the requirement's own prerequisites determine when it can be evaluated. Each requirement is `satisfied`, `waived`, or `blocking`. A requirement may depend on another requirement. Independent requirements may proceed together. Ready to Start is what requires the final applicable set to be ready.
 
 A later company policy may express a Polish sequence such as a medical examination, BHP, occupational-risk acknowledgements, an agreement, declarations, and company requirements. This contract does not canonize a Polish pre-employment document list. A draft agreement need not wait for a medical examination; that is an example of a dependency, not a required order.
 
@@ -185,7 +182,7 @@ A blocked input holds the Employment at `preparing`. It does not add an Employme
 
 Obligations that begin once the relationship is in force attach to the `active` Employment. Their own progress, such as due, submitted, or confirmed, is process state. It does not sit between `preparing` and `active`.
 
-ZUS registration is a post-start obligation. It is not a universal precondition of Active. Payroll, attendance, leave, renewals, and expirations are the same kind of later process.
+ZUS registration is a formality action. Its timing and its prerequisites come from the applicable Employment or work-authorization process. It is not universally pre-start and it is not universally post-start. One process may require it before Legal Eligibility can PASS. Another may run it after the Employment is active. Payroll, attendance, leave, renewals, and expirations stay later processes unless that same process names them as prerequisites.
 
 When the relationship finishes, `active → ended`. Termination requirements, such as a reason, a work certificate, or a ZUS deregistration, may follow. They do not delete the Employment, the Employee context, the Person, the Candidate, or the evidence.
 
@@ -356,7 +353,7 @@ The number, issue date, and expiry of an identity document belong to that `docum
 | `WorkforceEmployee` | the HR context: `candidate_id`, `own_company_id`, `display_name`, `status`, `notes`. `status` stays the other plane |
 | `candidate_profiles`, `ep_entity_profiles` | which fields a card or an intake shows. They store no person value |
 | `candidate_employments` | prior jobs captured at intake. A view may read them. This layer does not copy them, and they are not this Employment |
-| `workforce_tax_profiles`, `workforce_insurance_profiles`, `workforce_zus_profiles`, `workforce_payroll_profiles`, `workforce_work_eligibility_profiles` | tax, insurance, ZUS, payroll, and work-eligibility process. This layer does not re-home them and does not read them as the person. Pay and the bank account wait with terms or payroll. ZUS registration stays a post-start obligation |
+| `workforce_tax_profiles`, `workforce_insurance_profiles`, `workforce_zus_profiles`, `workforce_payroll_profiles`, `workforce_work_eligibility_profiles` | tax, insurance, ZUS, payroll, and work-eligibility process. This layer does not re-home them and does not read them as the person. Pay and the bank account wait with terms or payroll. ZUS registration is a formality action of the applicable process. It is not universally post-start |
 | Candidate stage, source, recruiter, vacancy, agreements, experience | Recruitment participation of that person |
 
 Parents' names, place of birth, and a maiden name are not stored as canonical fields. This section does not take them from a Polish form and does not add a key for them. A later completeness rule that needs a missing person fact writes it once on `candidates.personal_data`.
@@ -367,7 +364,7 @@ The only question of this layer is: is the person-fact set sufficient to continu
 
 The reading uses the owners above. HR fills only a fact that is missing or that must be brought up to date, and writes it on its owner. An insufficient set leaves the Employment `preparing`. A sufficient set leaves the Employment `preparing`. It does not move the Employment to `active`. It is not the Ready to Start Gate. Employment terms, pre-employment requirements, and Ready to Start wait.
 
-The order around `preparing` stays: HR Legal Eligibility PASS, then Employee Data sufficient, then Employment terms, then pre-employment requirements, then the Ready to Start Gate, then `active`.
+While the Employment is `preparing`, Employee Data, Legal Eligibility, Employment Terms, applicable professional requirements, and formality actions proceed in the order their own prerequisites allow. None of them moves the Employment to `active`. Ready to Start, then `active`, stays the only exit from `preparing`.
 
 A later kwestionariusz osobowy document may be generated from these owners. The PDF, a template, and Polish document policy are not the source of truth.
 
@@ -440,11 +437,13 @@ The agreed terms belong to one Employment. They are the snapshot of what was agr
 | Position | The position agreed for this Employment | `vacancies.title` may be copied once as the default. After the snapshot exists, the vacancy title is not the position |
 | Contract basis | The canonical type of this relationship. The vocabulary is not `vacancies.employment_type` | `full_time`, `part_time`, and `b2b` stay the offer shape. `workforce_employments.contract_type`, `workforce_work_eligibility_profiles.contract_type`, and `workforce_zus_profiles.employment_basis` are other strings. This contract does not list `umowa` types |
 | Work time | A structured magnitude and unit | `workforce_employments.schedule` is an unstructured blob. It is not this pair. This contract does not close the unit vocabulary and does not parse the blob |
+| Work system | The agreed schedule or system of work | The schedule blob is not this value. This contract does not parse the blob |
 | Workplace | The place of work agreed for this Employment | `vacancies.location` may be copied once as the default |
 | Compensation | Amount, currency, and unit or period | `vacancies.salary_from`, `salary_to`, and `currency` are an offer range. `workforce_employments.rate_model` has no amount, currency, or period keys. `workforce_payroll_profiles.base_rate` is payroll. `sales_order_lines.unit_rate` is the client rate |
 | Duration | `fixed` or `indefinite` | No flag exists today. An empty `hr_employments.ended_on` does not mean `indefinite`. An empty card `end_date` does not mean `indefinite` |
 | Fixed-term end | The agreed end date of a fixed term. Present when duration is `fixed`. Absent when duration is `indefinite` | `hr_employments.ended_on` is the end of the relationship. `workforce_employments.end_date` and `expiry_date` are dates of the card |
 | Probation | A term of this Employment. An agreed end date, or an explicit none | `workforce_employments.probation_end` may show that date on a card. The card date is not the source of truth |
+| Intended start date | The date the parties plan to start this Employment | `hr_employments.started_on` is the actual start. A change of the plan does not write it. `workforce_employments.start_date` is a date of the card |
 
 ### Snapshot
 
@@ -458,7 +457,7 @@ A contract card may be filled from the snapshot when the document is created. A 
 
 Employment Terms complete means this Employment holds a sufficient structured set of agreed terms, independent of the current vacancy and independent of the contract document.
 
-The set is sufficient when position, contract basis, work time, workplace, compensation, and duration are present, probation is an agreed end date or an explicit none, and the fixed-term end is present only when duration is `fixed`.
+The set is sufficient when position, contract basis, work time, work system, workplace, compensation, duration, and the intended start date are present, probation is an agreed end date or an explicit none, and the fixed-term end is present only when duration is `fixed`.
 
 An incomplete set leaves `hr_employments.state` at `preparing`. A complete set leaves `hr_employments.state` at `preparing`. Completeness is the permission to continue to pre-employment requirements. It does not open that layer. It does not move the Employment to `active`. It is not the Ready to Start Gate.
 
@@ -474,7 +473,7 @@ This section writes no schema and authorizes no runtime module. `backend/app/ref
 
 The store is `hr_employment_terms`. One row is one `employment_terms.v1` snapshot and it belongs to one `hr_employments` row. `hr_employments` keeps the identity and the lifecycle of the relationship. At most one row for an Employment has `is_current`. A later row may record an earlier snapshot with `is_current` false. This section writes that table. It does not authorize a runtime module.
 
-The row holds position, contract basis, work-time value and unit, workplace, compensation amount, currency, and unit or period, duration, the conditional fixed-term end, and probation. Duration is `fixed` or `indefinite`. A fixed-term end is stored when duration is `fixed` and is absent when duration is `indefinite`. That absence is the duration value. It is not read from `hr_employments.ended_on`.
+The row holds position, contract basis, work-time value and unit, work system, workplace, compensation amount, currency, and unit or period, duration, the conditional fixed-term end, probation, and the intended start date. Duration is `fixed` or `indefinite`. A fixed-term end is stored when duration is `fixed` and is absent when duration is `indefinite`. That absence is the duration value. It is not read from `hr_employments.ended_on`.
 
 Probation status is `dated` with an end date, `none` with no end date, or `undetermined` with no end date. `none` is an agreed absence. `undetermined` is not yet decided. An Employment with no `hr_employment_terms` row is Terms incomplete. This migration copies nothing from a vacancy and nothing from a contract card.
 
@@ -494,9 +493,9 @@ Feat stays locked. HostFlow v1 is not release-ready. Pre-employment requirements
 
 `propose_employment_terms_defaults` reads `vacancies.title` into position and `vacancies.location` into workplace, once. `default_vacancy_id` records that vacancy as provenance. `salary_from` and `salary_to` stay off the proposal. `employment_type` stays off the proposal. The proposal is not a live binding.
 
-`confirm_employment_terms` writes a new current row only when the confirmation resolves position, contract basis, work time, workplace, compensation, duration, the fixed-term end, and probation as `none` or `dated`. `probation_status = undetermined` is refused. A refusal writes nothing. When a current row already exists, that row becomes `is_current` false and keeps its values. The new row is current.
+`confirm_employment_terms` writes a new current row only when the confirmation resolves position, contract basis, work time, work system, workplace, compensation, duration, the fixed-term end, probation as `none` or `dated`, and the intended start date. `probation_status = undetermined` is refused. A missing intended start date or a missing work system is refused. A refusal writes nothing. Confirmation does not write `hr_employments.started_on`. When a current row already exists, that row becomes `is_current` false and keeps its values. The new row is current.
 
-`evaluate_employment_terms` reads that current row. No current row is incomplete. A row that is not current is incomplete. `undetermined` probation is incomplete. Vacancy, the contract card, and payroll are not inputs. The result does not write `hr_employments.state`.
+`evaluate_employment_terms` reads that current row. No current row is incomplete. A row that is not current is incomplete. `undetermined` probation is incomplete. A current row without a work system or without an intended start date is incomplete. Vacancy, the contract card, payroll, and `hr_employments.started_on` are not inputs. The result does not write `hr_employments.state`.
 
 Confirmation does not move `hr_employments.state`. It does not insert `workforce_employments`. It does not open pre-employment requirements or Ready to Start.
 
@@ -544,7 +543,7 @@ This section writes no schema and authorizes no runtime module. `backend/app/ref
 **Machine id:** `pre_employment_requirements.v1` — named here. No runtime module.  
 **Outcome:** **PASS**. The model below is the pre-employment requirements of one Employment. This section adds no table, no column, and no boolean. It does not fix a physical enum. It does not choose a store. It does not close a schema gate and it does not close a runtime gate. It does not open a Polish pre-employment sequence.
 
-HR Legal Eligibility PASS, Employee Data complete, and Employment Terms complete stay upstream gates. They are the permission to begin this layer. They are not three requirements inside it.
+HR Legal Eligibility PASS, Employee Data complete, and Employment Terms complete are not the permission to begin this layer. Applicable requirements may be materialized and resolved while the Employment is preparing. Their own applicability and prerequisites determine when they can be evaluated. Ready to Start requires the final applicable set to be ready. They are not three requirements inside it.
 
 ### Three readings
 
@@ -641,7 +640,7 @@ This gate aggregates. It does not re-decide legal eligibility, person facts, agr
 | Employment Terms | The current `employment_terms.v1` row exists and `evaluate_employment_terms` on it is complete | That current row only. Not the vacancy, and not the contract card | No current row, or the current row is incomplete |
 | Pre-employment Requirements | The set is materialized and `evaluate_pre_employment_requirements` is true | That boolean. Not a new resolution of any row | The set is not defined, or an applicable row is `unresolved` or `blocking` |
 
-`not_applicable` stays outside the requirements reading, as that evaluator already defines. HR Legal Eligibility PASS, Employee Data complete, and Employment Terms complete are not rows of the requirements set. This gate still reads them as their own inputs.
+`not_applicable` stays outside the requirements reading, as that evaluator already defines. HR Legal Eligibility PASS, Employee Data complete, and Employment Terms complete are not rows of the requirements set. This gate still reads them as their own inputs. Work Authorization is not a fifth input. It reaches this gate through the legal decision. A formality action, including ZUS or A1, is not a further input. When that action is a precondition of starting, it is read through the requirements set or through the process result that owns it.
 
 ### Outcome
 
@@ -688,3 +687,19 @@ The row stores `employment_id`, the outcome `pass` or `blocked`, the actor, the 
 `activate_employment` is the only writer of `preparing → active`. It locks the Employment, reads the latest decision, calls the four readings again, and updates the state only when that decision is a current `pass`. The check and the update are one transaction: this function does not commit between them. A missing decision, a `blocked` decision, and a stale `pass` leave the state at `preparing`. Activation does not record a replacement decision and does not fill a legal decision, a person fact, a terms snapshot, or a requirement. It does not insert `workforce_employments` or `workforce_onboarding_tasks`.
 
 An Employment that is not `preparing` is not recorded and is not activated. Feat stays locked. HostFlow v1 is not release-ready. The manual path from handoff to `active` is the next integration, not this slice.
+
+---
+
+## Employment Preparation Dependency Amendment
+
+Legal Eligibility PASS is not the entrance to preparing the Employment. It can be a result of that preparation. While `hr_employments.state` is `preparing`, Employee Data, Legal Eligibility, Employment Terms, applicable professional requirements, and formality actions proceed in the order their own prerequisites allow. None of them moves the Employment to `active`.
+
+There is one lifecycle. A person who already holds a matching authorization can reach Legal Eligibility PASS before the other layers finish. A person who does not can confirm terms, run a formality the procedure requires, and only then reach that PASS. Both stay `preparing` until Ready to Start.
+
+`ready_to_start.v1` keeps its four inputs. Work Authorization is read through the legal decision. A formality action is read through the requirement or the process result that owns it.
+
+ZUS registration follows the applicable process. A missing or pending work permit does not by itself block that registration. `missing_legal_stay` and an explicit `blocked` eligibility status still block it. Unpaid fee rows that the process seeded still block it.
+
+`employment_terms.v1` includes the work system and the intended start date. `hr_employment_terms` stores them as nullable columns. Existing rows are not backfilled. A current row that lacks either value is incomplete. A new confirmation that lacks either value writes nothing and does not change `hr_employments.started_on`.
+
+This amendment does not change `#hr-verification`. It does not add a preset. It does not add an input to Ready to Start. HostFlow v1 is not release-ready.

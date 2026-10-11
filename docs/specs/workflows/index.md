@@ -35,6 +35,7 @@
 | [recruitment-document-collection-handoff.md](recruitment-document-collection-handoff.md) | Requirements → Accepted Evidence → Candidate Evidence → handoff `requirement_fulfillments[]` | Candidate, Requirement, CandidateEvidence, Document | ADR-016 |
 | [requirement-evidence-model-p0.md](../platform/requirement-evidence-model-p0.md) | Platform canon: 4 entities |
 | [first-operational-flow-recruitment-documents-hr.md](first-operational-flow-recruitment-documents-hr.md) | Первый operational контур Tenant → Recruitment → Document Hub → HR (ownership, без копирования файлов) | Candidate, WorkforceEmployee, DocumentEntityLink | Stage handoff, document links |
+| [hr-driver-operator-flow.md](hr-driver-operator-flow.md) | Operator reading for one driver on one Employment: identity, legal stay, work eligibility, professional facts, terms, formality actions, Ready to Start. Documents are evidence. Gates are not amended | Employment, `legal_eligibility.v1`, `employment_terms.v1`, requirement instance | None. No screen. No runtime |
 
 **Канон Application (один контур):** семантика статусов и переходов — [recruitment-application-lifecycle.md](recruitment-application-lifecycle.md); границы сущности — [applications-operating-model.md](../architecture/applications-operating-model.md) (раздел про статус **не** дублирует enum); сверка с кодом, resolved/open конфликты и gaps (C1–C4, C2b, I1 и т.д.) — [recruitment-application-lifecycle-sync-note.md](recruitment-application-lifecycle-sync-note.md).
 

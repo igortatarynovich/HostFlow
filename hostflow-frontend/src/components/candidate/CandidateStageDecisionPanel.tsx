@@ -60,6 +60,8 @@ type Props = {
   showJourney?: boolean
   /** Drop the card frame when a parent already groups stage, manager and tags. */
   embedded?: boolean
+  /** `journey` is the candidate-card line only. `status` is next step and blockers. */
+  layout?: 'full' | 'journey' | 'status'
 }
 
 export default function CandidateStageDecisionPanel({
@@ -88,6 +90,7 @@ export default function CandidateStageDecisionPanel({
   onOpenContactAttempts,
   showJourney = true,
   embedded = false,
+  layout = 'full',
 }: Props) {
   const { t } = useI18n()
 
@@ -238,6 +241,169 @@ export default function CandidateStageDecisionPanel({
     !pipelineCompleted &&
     (docsPipelineBlocking || docsSoftAdvisory || vacancyPipelineBlocking || contactAttemptPipelineBlocking)
 
+  const statusBody = (
+    <div className="min-w-0">
+      {!hasAnyPipelineBarrier ? (
+        <div className="text-xs font-medium text-emerald-700">
+          {t('app.candidate_card.stage_decision.no_blockers', { defaultValue: 'No blockers' })}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {docsSoftAdvisory && requiredCodes.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
+                {t('app.candidate_card.stage_decision.advisory', { defaultValue: 'Advisory' })}
+              </span>
+              {requiredCodes.slice(0, 4).map((code) => (
+                <span
+                  key={`soft-${code}`}
+                  className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900"
+                >
+                  {labelForBlocker(code)}
+                </span>
+              ))}
+              {requiredCodes.length > 4 ? (
+                <span className="text-[11px] text-slate-500">{t('common.and_more', { defaultValue: 'and more…' })}</span>
+              ) : null}
+            </div>
+          ) : null}
+          {docsSoftAdvisory && !requiredCodes.length ? (
+            <div className="text-xs font-medium text-sky-900">
+              {t('app.candidate_card.stage_decision.docs_soft_policy', {
+                defaultValue:
+                  'Documents are recommended before advancing — tenant policy treats this stage as soft-only.',
+              })}
+            </div>
+          ) : null}
+          {docsPipelineBlocking && requiredCodes.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                {t('app.candidate_card.stage_decision.required', { defaultValue: 'Required' })}
+              </span>
+              {requiredCodes.slice(0, 4).map((code) => (
+                <span
+                  key={code}
+                  className={clsx(
+                    'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold',
+                    docsBlockers.missing.includes(code)
+                      ? 'border-rose-200 bg-rose-50 text-rose-800'
+                      : 'border-amber-200 bg-amber-50 text-amber-800',
+                  )}
+                >
+                  {labelForBlocker(code)}
+                </span>
+              ))}
+              {requiredCodes.length > 4 ? (
+                <span className="text-[11px] text-slate-500">{t('common.and_more', { defaultValue: 'and more…' })}</span>
+              ) : null}
+            </div>
+          ) : docsPipelineBlocking ? (
+            <div className="text-xs font-medium text-amber-800">
+              {t('app.candidate_card.stage_decision.docs_blocking_generic', {
+                defaultValue: 'Documents block moving forward — see checklist',
+              })}
+            </div>
+          ) : null}
+          {contactAttemptPipelineBlocking ? (
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
+                {t('app.candidate_card.stage_decision.required', { defaultValue: 'Required' })}
+              </span>
+              <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
+                {t('app.candidate_card.stage_decision.contact_attempt_required_chip', {
+                  defaultValue: 'Contact attempt logged',
+                })}
+              </span>
+            </div>
+          ) : null}
+          {vacancyPipelineBlocking ? (
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                {t('app.candidate_card.stage_decision.required', { defaultValue: 'Required' })}
+              </span>
+              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                {t('app.candidate_card.stage_decision.vacancy_required_chip', { defaultValue: 'Vacancy / client' })}
+              </span>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {docsPipelineBlocking ? (
+        <div className="mt-2 text-xs font-medium text-amber-800">
+          {t('app.candidate_card.stage_decision.next_step_docs', { defaultValue: 'Next step: → Request documents' })}
+        </div>
+      ) : docsSoftAdvisory ? (
+        <div className="mt-2 text-xs font-medium text-sky-900">
+          {t('app.candidate_card.stage_decision.next_step_docs_soft', {
+            defaultValue: 'Consider completing documents before moving forward (not required by policy).',
+          })}
+        </div>
+      ) : contactAttemptPipelineBlocking ? (
+        onOpenContactAttempts ? (
+          <button
+            type="button"
+            className="mt-2 block w-full max-w-full text-left text-xs font-medium text-teal-800 underline decoration-teal-600/50 underline-offset-2 hover:text-teal-950 hover:decoration-teal-700"
+            onClick={onOpenContactAttempts}
+            title={t('app.candidate_card.stage_decision.open_contact_attempts_title', {
+              defaultValue: 'Open contact attempts — record channel and result',
+            })}
+          >
+            {contactAttemptNextStepLabel}
+          </button>
+        ) : (
+          <div className="mt-2 text-xs font-medium text-amber-800">{contactAttemptNextStepLabel}</div>
+        )
+      ) : vacancyPipelineBlocking ? (
+        <div className="mt-2 text-xs font-medium text-amber-800">
+          {t('app.candidate_card.stage_decision.next_step_assign_vacancy', {
+            defaultValue: 'Next step: → Assign vacancy / client',
+          })}
+        </div>
+      ) : earlyStageNextStepLabel ? (
+        contactNextStepOpensAttemptsModal ? (
+          <button
+            type="button"
+            className="mt-2 block w-full max-w-full text-left text-xs font-medium text-teal-800 underline decoration-teal-600/50 underline-offset-2 hover:text-teal-950 hover:decoration-teal-700"
+            onClick={onOpenContactAttempts}
+            title={t('app.candidate_card.stage_decision.open_contact_attempts_title', {
+              defaultValue: 'Open contact attempts — record channel and result',
+            })}
+          >
+            {earlyStageNextStepLabel}
+          </button>
+        ) : (
+          <div className="mt-2 text-xs font-medium text-slate-700">{earlyStageNextStepLabel}</div>
+        )
+      ) : null}
+    </div>
+  )
+
+  if (layout === 'status') {
+    return statusBody
+  }
+
+  if (layout === 'journey') {
+    return (
+      <CandidateStageJourneyPanel
+        locale={locale}
+        variant="horizontal"
+        tone="default"
+        compact
+        heading={false}
+        stages={stripStages}
+        outcomeStages={[]}
+        currentStage={stageJourneyDisplayStage}
+        currentOutcomeStage={stageJourneyOutcomeStage}
+        signals={stageJourneySignals}
+        stageSinceAt={stageSinceAt}
+        completedStageCodes={completedStageCodes}
+        canEdit={false}
+        blocked={pipelineForwardBlocked}
+      />
+    )
+  }
+
   return (
     <section className={embedded ? 'min-w-0 p-3' : 'min-w-0 rounded-2xl border border-slate-200 bg-white p-3'}>
       <div className="flex items-start justify-between gap-3">
@@ -248,139 +414,7 @@ export default function CandidateStageDecisionPanel({
           <div className="mt-1 text-sm font-semibold text-slate-900 truncate">
             {currentCode ? stageLabelIntl(currentCode) : t('common.labels.not_available')}
           </div>
-          {!hasAnyPipelineBarrier ? (
-            <div className="mt-2 text-xs font-medium text-emerald-700">
-              {t('app.candidate_card.stage_decision.no_blockers', { defaultValue: 'No blockers' })}
-            </div>
-          ) : (
-            <div className="mt-2 space-y-2">
-              {docsSoftAdvisory && requiredCodes.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
-                    {t('app.candidate_card.stage_decision.advisory', { defaultValue: 'Advisory' })}
-                  </span>
-                  {requiredCodes.slice(0, 4).map((code) => (
-                    <span
-                      key={`soft-${code}`}
-                      className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900"
-                    >
-                      {labelForBlocker(code)}
-                    </span>
-                  ))}
-                  {requiredCodes.length > 4 ? (
-                    <span className="text-[11px] text-slate-500">{t('common.and_more', { defaultValue: 'and more…' })}</span>
-                  ) : null}
-                </div>
-              ) : null}
-              {docsSoftAdvisory && !requiredCodes.length ? (
-                <div className="text-xs font-medium text-sky-900">
-                  {t('app.candidate_card.stage_decision.docs_soft_policy', {
-                    defaultValue:
-                      'Documents are recommended before advancing — tenant policy treats this stage as soft-only.',
-                  })}
-                </div>
-              ) : null}
-              {docsPipelineBlocking && requiredCodes.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
-                    {t('app.candidate_card.stage_decision.required', { defaultValue: 'Required' })}
-                  </span>
-                  {requiredCodes.slice(0, 4).map((code) => (
-                    <span
-                      key={code}
-                      className={clsx(
-                        'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold',
-                        docsBlockers.missing.includes(code)
-                          ? 'border-rose-200 bg-rose-50 text-rose-800'
-                          : 'border-amber-200 bg-amber-50 text-amber-800',
-                      )}
-                    >
-                      {labelForBlocker(code)}
-                    </span>
-                  ))}
-                  {requiredCodes.length > 4 ? (
-                    <span className="text-[11px] text-slate-500">{t('common.and_more', { defaultValue: 'and more…' })}</span>
-                  ) : null}
-                </div>
-              ) : docsPipelineBlocking ? (
-                <div className="text-xs font-medium text-amber-800">
-                  {t('app.candidate_card.stage_decision.docs_blocking_generic', {
-                    defaultValue: 'Documents block moving forward — see checklist',
-                  })}
-                </div>
-              ) : null}
-              {contactAttemptPipelineBlocking ? (
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
-                    {t('app.candidate_card.stage_decision.required', { defaultValue: 'Required' })}
-                  </span>
-                  <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
-                    {t('app.candidate_card.stage_decision.contact_attempt_required_chip', {
-                      defaultValue: 'Contact attempt logged',
-                    })}
-                  </span>
-                </div>
-              ) : null}
-              {vacancyPipelineBlocking ? (
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
-                    {t('app.candidate_card.stage_decision.required', { defaultValue: 'Required' })}
-                  </span>
-                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
-                    {t('app.candidate_card.stage_decision.vacancy_required_chip', { defaultValue: 'Vacancy / client' })}
-                  </span>
-                </div>
-              ) : null}
-            </div>
-          )}
-
-          {docsPipelineBlocking ? (
-            <div className="mt-2 text-xs font-medium text-amber-800">
-              {t('app.candidate_card.stage_decision.next_step_docs', { defaultValue: 'Next step: → Request documents' })}
-            </div>
-          ) : docsSoftAdvisory ? (
-            <div className="mt-2 text-xs font-medium text-sky-900">
-              {t('app.candidate_card.stage_decision.next_step_docs_soft', {
-                defaultValue: 'Consider completing documents before moving forward (not required by policy).',
-              })}
-            </div>
-          ) : contactAttemptPipelineBlocking ? (
-            onOpenContactAttempts ? (
-              <button
-                type="button"
-                className="mt-2 block w-full max-w-full text-left text-xs font-medium text-teal-800 underline decoration-teal-600/50 underline-offset-2 hover:text-teal-950 hover:decoration-teal-700"
-                onClick={onOpenContactAttempts}
-                title={t('app.candidate_card.stage_decision.open_contact_attempts_title', {
-                  defaultValue: 'Open contact attempts — record channel and result',
-                })}
-              >
-                {contactAttemptNextStepLabel}
-              </button>
-            ) : (
-              <div className="mt-2 text-xs font-medium text-amber-800">{contactAttemptNextStepLabel}</div>
-            )
-          ) : vacancyPipelineBlocking ? (
-            <div className="mt-2 text-xs font-medium text-amber-800">
-              {t('app.candidate_card.stage_decision.next_step_assign_vacancy', {
-                defaultValue: 'Next step: → Assign vacancy / client',
-              })}
-            </div>
-          ) : earlyStageNextStepLabel ? (
-            contactNextStepOpensAttemptsModal ? (
-              <button
-                type="button"
-                className="mt-2 block w-full max-w-full text-left text-xs font-medium text-teal-800 underline decoration-teal-600/50 underline-offset-2 hover:text-teal-950 hover:decoration-teal-700"
-                onClick={onOpenContactAttempts}
-                title={t('app.candidate_card.stage_decision.open_contact_attempts_title', {
-                  defaultValue: 'Open contact attempts — record channel and result',
-                })}
-              >
-                {earlyStageNextStepLabel}
-              </button>
-            ) : (
-              <div className="mt-2 text-xs font-medium text-slate-700">{earlyStageNextStepLabel}</div>
-            )
-          ) : null}
+          <div className="mt-2">{statusBody}</div>
         </div>
 
         <div className="shrink-0 flex flex-col items-end gap-2">
@@ -468,4 +502,8 @@ export default function CandidateStageDecisionPanel({
       ) : null}
     </section>
   )
+}
+
+export function CandidatePipelineStatus(props: Omit<Props, 'layout'>) {
+  return <CandidateStageDecisionPanel {...props} layout="status" />
 }

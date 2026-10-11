@@ -122,10 +122,30 @@ export function normalizeSearchValue(value: string): string {
   return value.trim().toLowerCase();
 }
 
+/** Polish diacritics and Cyrillic ё, so "Pawel" matches "Paweł" and "Петр" matches "Пётр". */
+const SEARCH_FOLD: Record<string, string> = {
+  ą: 'a',
+  ć: 'c',
+  ę: 'e',
+  ł: 'l',
+  ń: 'n',
+  ó: 'o',
+  ś: 's',
+  ź: 'z',
+  ż: 'z',
+  ё: 'е',
+}
+
+export function foldSearchText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[ąćęłńóśźżё]/g, (ch) => SEARCH_FOLD[ch] ?? ch)
+}
+
 export function textMatches(source: string | null | undefined, query: string): boolean {
   if (!query) return true;
   if (!source) return false;
-  return source.toLowerCase().includes(query);
+  return foldSearchText(source).includes(foldSearchText(query));
 }
 
 /**
@@ -145,6 +165,12 @@ export function phoneTextMatches(source: string | null | undefined, rawQuery: st
   const qDigits = qCompact.replace(/\D/g, '');
   const sDigits = sCompact.replace(/\D/g, '');
   if (qDigits.length >= 7 && sDigits.includes(qDigits)) return true;
+  // WhatsApp paste with country code (+48…) vs a national number stored without it, and the reverse.
+  if (qDigits.length >= 9 && sDigits.length >= 9) {
+    const qTail = qDigits.slice(-9);
+    const sTail = sDigits.slice(-9);
+    if (qTail === sTail || qDigits.includes(sDigits) || sDigits.endsWith(qTail)) return true;
+  }
   return false;
 }
 

@@ -64,6 +64,8 @@ class EmploymentTermsConfirmation:
     fixed_term_end: date | None
     probation_status: str | None
     probation_end: date | None
+    work_system: str | None = None
+    intended_start_date: date | None = None
     default_vacancy_id: str | None = None
 
 
@@ -98,6 +100,7 @@ def _refusal(confirmation: EmploymentTermsConfirmation) -> str | None:
         _text(confirmation.position),
         _text(confirmation.contract_basis),
         _text(confirmation.work_time_unit),
+        _text(confirmation.work_system),
         _text(confirmation.workplace),
         _text(confirmation.compensation_currency),
         _text(confirmation.compensation_unit),
@@ -106,6 +109,8 @@ def _refusal(confirmation: EmploymentTermsConfirmation) -> str | None:
         return "unresolved"
     if confirmation.work_time_value is None or confirmation.compensation_amount is None:
         return "unresolved"
+    if confirmation.intended_start_date is None:
+        return "intended_start_date"
     if confirmation.duration not in {DURATION_FIXED, DURATION_INDEFINITE}:
         return "unresolved"
     if confirmation.duration == DURATION_FIXED and confirmation.fixed_term_end is None:
@@ -149,6 +154,7 @@ def confirm_employment_terms(
     position = _text(confirmation.position)
     contract_basis = _text(confirmation.contract_basis)
     work_time_unit = _text(confirmation.work_time_unit)
+    work_system = _text(confirmation.work_system)
     workplace = _text(confirmation.workplace)
     compensation_currency = _text(confirmation.compensation_currency)
     compensation_unit = _text(confirmation.compensation_unit)
@@ -158,7 +164,9 @@ def confirm_employment_terms(
         position is None
         or contract_basis is None
         or work_time_unit is None
+        or work_system is None
         or workplace is None
+        or confirmation.intended_start_date is None
         or compensation_currency is None
         or compensation_unit is None
         or work_time_value is None
@@ -182,6 +190,7 @@ def confirm_employment_terms(
         contract_basis=contract_basis,
         work_time_value=work_time_value,
         work_time_unit=work_time_unit,
+        work_system=work_system,
         workplace=workplace,
         compensation_amount=compensation_amount,
         compensation_currency=compensation_currency,
@@ -190,6 +199,7 @@ def confirm_employment_terms(
         fixed_term_end=confirmation.fixed_term_end,
         probation_status=confirmation.probation_status,
         probation_end=confirmation.probation_end,
+        intended_start_date=confirmation.intended_start_date,
         default_vacancy_id=_text(confirmation.default_vacancy_id),
     )
     db.add(row)
@@ -208,6 +218,7 @@ def evaluate_employment_terms(current: HrEmploymentTerms | None) -> str:
             current.position,
             current.contract_basis,
             current.work_time_unit,
+            current.work_system,
             current.workplace,
             current.compensation_currency,
             current.compensation_unit,
@@ -215,6 +226,8 @@ def evaluate_employment_terms(current: HrEmploymentTerms | None) -> str:
     ):
         return TERMS_INCOMPLETE
     if current.work_time_value is None or current.compensation_amount is None:
+        return TERMS_INCOMPLETE
+    if current.intended_start_date is None:
         return TERMS_INCOMPLETE
     if current.duration == DURATION_FIXED and current.fixed_term_end is None:
         return TERMS_INCOMPLETE

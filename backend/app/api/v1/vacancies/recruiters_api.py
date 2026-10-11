@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from backend.app.api.v1.utils.access import resolve_restricted_acl
-from backend.app.api.v1.vacancies.repo import VacancyRepo
+from backend.app.api.v1.vacancies.repo import VacancyRepo, vacancy_read_unrestricted
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.auth.trust_role_deps import require_trust_write
 from backend.app.db.deps import get_db_with_tenant
@@ -80,6 +80,7 @@ async def _load_vacancy_or_404(
     vacancy_id_str: str,
     *,
     is_client: bool,
+    unrestricted: bool = False,
 ):
     vrepo = VacancyRepo(
         db,
@@ -87,6 +88,7 @@ async def _load_vacancy_or_404(
         own_company_id=None,
         visibility=get_tenant_visibility(db, tenant_id_str),
         is_client_tenant=is_client,
+        unrestricted=unrestricted,
     )
     row = await vrepo.get(vacancy_id_str)
     if row is None:
@@ -150,11 +152,19 @@ async def get_vacancy_recruiters(
     tenant_id_str = str(tenant_id)
     vacancy_id_str = str(vacancy_id)
     is_client = await is_client_tenant_for_list(db, tenant_id_str)
-    vacancy = await _load_vacancy_or_404(db, tenant_id_str, vacancy_id_str, is_client=is_client)
+    unrestricted = vacancy_read_unrestricted(getattr(current_user, "role", None))
+    vacancy = await _load_vacancy_or_404(
+        db,
+        tenant_id_str,
+        vacancy_id_str,
+        is_client=is_client,
+        unrestricted=unrestricted,
+    )
     acl = await resolve_restricted_acl(db, tenant_id_str, current_user)
     if not is_client and not _vacancy_allowed(vacancy_id_str, getattr(vacancy, "company_id", None), acl):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-    items = await _list_pool_items(db, tenant_id=tenant_id_str, vacancy_id=vacancy_id_str)
+    pool_tenant_id = str(getattr(vacancy, "tenant_id", "") or tenant_id_str)
+    items = await _list_pool_items(db, tenant_id=pool_tenant_id, vacancy_id=vacancy_id_str)
     return VacancyRecruitersOut(vacancy_id=vacancy_id_str, items=items)
 
 

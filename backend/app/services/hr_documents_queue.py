@@ -63,31 +63,10 @@ def _parse_extra(candidate: Candidate) -> dict[str, Any]:
     return {}
 
 
-def _snapshot_summary(payload: dict[str, Any] | None) -> dict[str, Any]:
-    if not payload:
-        return {}
-    c = payload.get("candidate") or {}
-    name = c.get("name") or {}
-    return {
-        "candidate_id": c.get("id"),
-        "first_name": name.get("first_name"),
-        "last_name": name.get("last_name"),
-    }
-
-
 def _snapshot_doc_status(payload: dict[str, Any] | None, doc_type: str) -> str | None:
-    if not payload:
-        return None
-    canon = normalize_doc_type(doc_type)
-    for d in (payload.get("expected_documents") or []) or []:
-        t = normalize_doc_type(str(d.get("document_code") or ""))
-        if t == canon:
-            return str(d.get("status") or "").strip() or None
-    for d in (payload.get("documents") or []) or []:
-        t = normalize_doc_type(str((d.get("canonical") or {}).get("code") or d.get("type") or ""))
-        if t == canon:
-            return str(d.get("status") or "").strip() or None
-    return None
+    from backend.app.services.hr_handoff_read_model import manifest_doc_status_as_of
+
+    return manifest_doc_status_as_of(payload, doc_type)
 
 
 def _doc_status_str(doc: Any) -> str:
@@ -283,6 +262,7 @@ async def list_hr_documents_missing(
 
         snap_row = snaps.get(str(h.id))
         payload = dict(snap_row.payload) if snap_row is not None else None
+        from backend.app.services.hr_handoff_read_model import live_candidate_summary
 
         for mtype in missing_types:
             canon = normalize_doc_type(mtype)
@@ -295,7 +275,7 @@ async def list_hr_documents_missing(
                 {
                     "handoff_id": str(h.id),
                     "workforce_employee_id": wf.get(str(h.id)),
-                    "candidate_snapshot_summary": _snapshot_summary(payload),
+                    "candidate_snapshot_summary": live_candidate_summary(cand),
                     "document_type": canon,
                     "current_status": _live_best_status_for_type(active, canon),
                     "required": True,
@@ -373,6 +353,7 @@ async def list_hr_documents_expiring(
         )
         snap_row = snaps.get(str(h.id))
         payload = dict(snap_row.payload) if snap_row is not None else None
+        from backend.app.services.hr_handoff_read_model import live_candidate_summary
 
         for d in live_docs:
             if getattr(d, "deleted_at", None) is not None:
@@ -422,7 +403,7 @@ async def list_hr_documents_expiring(
                 {
                     "handoff_id": str(h.id),
                     "workforce_employee_id": wf.get(str(h.id)),
-                    "candidate_snapshot_summary": _snapshot_summary(payload),
+                    "candidate_snapshot_summary": live_candidate_summary(cand),
                     "document_type": canon,
                     "current_status": _doc_status_str(d),
                     "required": False,

@@ -21,6 +21,14 @@ SKIP_SOURCE_READY_FOR_HANDOFF_GATE = "ready_for_handoff_gate"
 SKIP_SOURCE_REMINDER_EXPIRY = "reminder_expiry"
 SKIP_SOURCE_CONTACT_ATTEMPT = "contact_attempt"
 
+_RETURNED_TO_RECRUITMENT = frozenset({"returned_to_recruitment", "returned"})
+
+
+def recruitment_holds_returned_case(status: str | None) -> bool:
+    """Recruitment holds the case. HR does not write it."""
+
+    return str(status or "").strip().lower() in _RETURNED_TO_RECRUITMENT
+
 
 async def is_candidate_locked_by_workforce(
     db: AsyncSession,
@@ -37,7 +45,7 @@ async def is_candidate_locked_by_workforce(
     if emp is None:
         return False
     status = str(getattr(emp, "status", "") or "").strip().lower()
-    if status in ("returned_to_recruitment", "returned", "terminated"):
+    if status in (*_RETURNED_TO_RECRUITMENT, "terminated"):
         return False
     return True
 

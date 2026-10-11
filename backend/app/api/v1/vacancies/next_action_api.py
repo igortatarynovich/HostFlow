@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
-from backend.app.api.v1.vacancies.repo import VacancyRepo
+from backend.app.api.v1.vacancies.repo import VacancyRepo, vacancy_read_unrestricted
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services.handoff import is_client_tenant_for_list
@@ -64,6 +64,7 @@ async def get_vacancy_next_action(
         own_company_id=None,
         visibility=get_tenant_visibility(db, tenant_id_str),
         is_client_tenant=is_client,
+        unrestricted=vacancy_read_unrestricted(getattr(current_user, "role", None)),
     )
     if await vrepo.get(vacancy_id_str) is None:
         raise HTTPException(

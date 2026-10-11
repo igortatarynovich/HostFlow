@@ -60,46 +60,34 @@ def merge_transition_requirement_gate(
     report: dict[str, Any],
     gate: dict[str, Any],
 ) -> dict[str, Any]:
-    """Overlay Requirement Engine + Document Runtime gate on transfer policy report."""
+    """Attach the legacy Requirement Engine evaluation as diagnostics.
+
+    RPM and Candidate Evidence are the handoff authority. This bridge remains in
+    the response for observability, but it cannot add blockers or reverse the
+    canonical transfer decision.
+    """
     merged = dict(report)
     source_layers = set(merged.get("source_layers") or [])
     source_layers.update(gate.get("source_layers") or [REQUIREMENT_SOURCE_LAYER, RUNTIME_SOURCE_LAYER])
     merged["source_layers"] = sorted(source_layers)
 
-    blocking_reasons = list(merged.get("blocking_reasons") or [])
     warnings = list(merged.get("warnings") or [])
-
-    for reason in gate.get("blocking_reasons") or []:
-        if isinstance(reason, dict):
-            blocking_reasons.append(reason)
     for warning in gate.get("warnings") or []:
         if isinstance(warning, dict):
             warnings.append(warning)
-
-    merged["blocking_reasons"] = blocking_reasons
     merged["warnings"] = warnings
 
-    if gate.get("missing_documents"):
-        merged["missing_documents"] = sorted(
-            set(list(merged.get("missing_documents") or []) + list(gate["missing_documents"]))
-        )
-    if gate.get("missing_data_fields"):
-        seen = {str(row.get("field_code") or "") for row in merged.get("missing_data_fields") or []}
-        extra_fields = list(merged.get("missing_data_fields") or [])
-        for row in gate["missing_data_fields"]:
-            if not isinstance(row, dict):
-                continue
-            fc = str(row.get("field_code") or "")
-            if fc and fc not in seen:
-                extra_fields.append(row)
-                seen.add(fc)
-        merged["missing_data_fields"] = extra_fields
-
-    merged["requirement_engine"] = gate.get("requirement_engine")
+    requirement_engine = gate.get("requirement_engine")
+    merged["requirement_engine"] = (
+        {**requirement_engine, "authority_role": "diagnostic_only"}
+        if isinstance(requirement_engine, dict)
+        else requirement_engine
+    )
     merged["document_runtime"] = gate.get("document_runtime")
     merged["requirement_gate"] = {
         "applied": True,
         "satisfied": bool(gate.get("satisfied")),
+        "authority_role": "diagnostic_only",
         "context": gate.get("context") or TRANSITION_CONTEXT,
         "entity_profile_code": gate.get("entity_profile_code"),
         "stage_code": gate.get("stage_code"),
@@ -108,12 +96,6 @@ def merge_transition_requirement_gate(
         "document_runtime": gate.get("document_runtime"),
         "source_layers": list(gate.get("source_layers") or [REQUIREMENT_SOURCE_LAYER, RUNTIME_SOURCE_LAYER]),
     }
-
-    if not gate.get("satisfied"):
-        merged["transfer_allowed"] = False
-        merged["handoff_create_allowed"] = False
-        merged["ready"] = False
-        merged["package_ready"] = False
 
     return merged
 

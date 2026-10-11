@@ -401,6 +401,19 @@ export function buildCandidatesEntityModelSchema(t: TFn): EntityModel {
   }
 }
 
+function canonicalCitizenship(
+  candidate: Record<string, unknown>,
+  extraCitizenship: string | null | undefined,
+): string | undefined {
+  const personal = candidate.personal_data
+  if (personal && typeof personal === 'object' && 'citizenship' in personal) {
+    const value = (personal as { citizenship?: unknown }).citizenship
+    if (typeof value === 'string' && value.trim()) return value
+  }
+  if (extraCitizenship) return extraCitizenship
+  return typeof candidate.citizenship === 'string' ? candidate.citizenship : undefined
+}
+
 /** Table projection — use when migrating Collection (Phase 2.3). */
 export function buildCandidatesResourceSchemaFromEntityModel(t: TFn): ResourceSchema {
   const base = toResourceSchemaFromEntityModel(buildCandidatesEntityModelSchema(t))
@@ -652,7 +665,7 @@ export function resolveCandidateEntityPassport(args: ResolveCandidateEntityPassp
         displayName: displayName(c, t),
         channels,
         preferredChannel: extra?.preferredContact ?? undefined,
-        citizenship: extra?.citizenship ?? (c.citizenship ? String(c.citizenship) : undefined),
+        citizenship: canonicalCitizenship(c, extra?.citizenship),
       },
       tasks: {
         items: taskItems,

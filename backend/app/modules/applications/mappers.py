@@ -6,6 +6,7 @@ from backend.app.models import Lead
 from backend.app.modules.leads.conversion_mapping import is_operator_questionnaire_field
 from backend.app.modules.leads.intake_lifecycle import project_recruitment_intake_lifecycle
 from backend.app.modules.leads.normalizer import resolve_b2b_inquiry_company_name
+from backend.app.reference.intake_readiness import recruitment_next_action_after_intake
 
 from .schemas import ApplicationContactOut, ApplicationOut, ApplicationStatus, ApplicationTabBucket
 
@@ -360,6 +361,9 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
     field_answers, additional_answers = _recruitment_form_answers(normalized, getattr(lead, "payload", None))
     call_latest = normalized.get("call_result_v1") if isinstance(normalized.get("call_result_v1"), dict) else None
     call_history = normalized.get("call_results_v1") if isinstance(normalized.get("call_results_v1"), list) else []
+    rfe_prep = normalized.get("ready_for_employment_prep_v1")
+    if not isinstance(rfe_prep, dict):
+        rfe_prep = None
     meta = _record(normalized.get("meta"))
     assignee = (
         _text(meta.get("assigned_manager_id"))
@@ -377,7 +381,8 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
         status=status,
         tab_bucket=_tab_bucket(status),
         assignee_id=assignee,
-        next_action=_text(getattr(lead, "next_action_type", None)) or None,
+        next_action=_text(getattr(lead, "next_action_type", None))
+        or recruitment_next_action_after_intake(lead),
         last_activity_at=getattr(lead, "updated_at", None),
         created_at=getattr(lead, "created_at", None),
         priority=_text(getattr(lead, "priority", None)) or None,
@@ -396,6 +401,7 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
             else {},
             "call_result_v1": call_latest,
             "call_results_v1": call_history,
+            "ready_for_employment_prep_v1": rfe_prep,
         },
         outcome_entity_id=candidate_id,
         outcome_entity_type="candidate" if candidate_id else None,

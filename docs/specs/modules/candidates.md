@@ -105,6 +105,15 @@
 
 ---
 
+## Gate «Готов к передаче»
+
+- Requirement-policy authority: RPM (`r5_required_set`).
+- Satisfaction authority: Candidate Evidence checklist.
+- `requirement_evaluation_v1` и Document Runtime сохраняются в transfer-readiness как `diagnostic_only`; они не добавляют обязательные типы и не блокируют переход самостоятельно.
+- Ответ `409 handoff_docs_incomplete` содержит composed `message`, `blocking_reasons` и canonical unmet requirement codes; UI показывает эту причину вместо фиксированного текста о документах.
+
+---
+
 ## События
 | Событие | Условие | Действие |
 |----------|----------|----------|

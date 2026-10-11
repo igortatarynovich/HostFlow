@@ -38,6 +38,8 @@ class HrHandoffInboxItem(BaseModel):
     can_approve_for_employment: bool = False
     awaiting_employment_approval: bool = False
     transfer_summary: Optional[dict[str, Any]] = None
+    why_ready: Optional[dict[str, Any]] = None
+    live_target_work: Optional[dict[str, Any]] = None
     documents_verified_count: Optional[int] = None
     documents_total_count: Optional[int] = None
 
@@ -65,6 +67,8 @@ def _inbox_item_from_row(row: dict[str, Any]) -> HrHandoffInboxItem:
         can_approve_for_employment=bool(row.get("can_approve_for_employment")),
         awaiting_employment_approval=bool(row.get("awaiting_employment_approval")),
         transfer_summary=row.get("transfer_summary"),
+        why_ready=row.get("why_ready"),
+        live_target_work=row.get("live_target_work"),
         documents_verified_count=row.get("documents_verified_count"),
         documents_total_count=row.get("documents_total_count"),
     )

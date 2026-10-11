@@ -48,6 +48,18 @@ function normalizeHostname(hostname: string): string {
   return hostname.trim().toLowerCase().replace(/\.$/, '')
 }
 
+function isIpv4Hostname(hostname: string): boolean {
+  return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname)
+}
+
+/** Loopback, .local, or raw IPv4 (VPS composition trees without a module DNS name). */
+export function isLocalDevRuntime(hostname?: string): boolean {
+  const hn = normalizeHostname(
+    hostname ?? (typeof window !== 'undefined' ? window.location.hostname : 'localhost'),
+  )
+  return hn === 'localhost' || hn === '127.0.0.1' || hn.endsWith('.local') || isIpv4Hostname(hn)
+}
+
 function parseModuleOverride(raw: string | null | undefined): ModuleDeployHost | null {
   const v = String(raw || '')
     .trim()
@@ -81,7 +93,7 @@ export function resolveDeployHost(opts?: {
   const hostname = normalizeHostname(
     opts?.hostname ?? (typeof window !== 'undefined' ? window.location.hostname : 'localhost'),
   )
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local')) {
+  if (isLocalDevRuntime(hostname)) {
     return 'shell'
   }
 
@@ -108,11 +120,8 @@ export function isSystemDeployHost(host: ModuleDeployHost = resolveDeployHost())
 
 export function deployHostPublicOrigin(host: ModuleDeployHost, opts?: { protocol?: string }): string {
   const protocol = opts?.protocol ?? (typeof window !== 'undefined' ? window.location.protocol : 'https:')
-  if (typeof window !== 'undefined') {
-    const hn = normalizeHostname(window.location.hostname)
-    if (hn === 'localhost' || hn === '127.0.0.1' || hn.endsWith('.local')) {
-      return window.location.origin
-    }
+  if (typeof window !== 'undefined' && isLocalDevRuntime()) {
+    return window.location.origin
   }
   return `${protocol}//${DEPLOYMENT_HOSTS[host]}`
 }
@@ -224,13 +233,10 @@ export function buildModuleAbsoluteUrl(
 
 export function shellLoginUrl(nextAbsoluteOrPath: string): string {
   const next = nextAbsoluteOrPath
-  if (typeof window !== 'undefined') {
-    const hn = normalizeHostname(window.location.hostname)
-    if (hn === 'localhost' || hn === '127.0.0.1' || hn.endsWith('.local')) {
-      const local = new URL('/login', window.location.origin)
-      local.searchParams.set('next', next)
-      return `${local.pathname}${local.search}`
-    }
+  if (typeof window !== 'undefined' && isLocalDevRuntime()) {
+    const local = new URL('/login', window.location.origin)
+    local.searchParams.set('next', next)
+    return `${local.pathname}${local.search}`
   }
   const url = new URL(`https://${DEPLOYMENT_HOSTS.shell}/login`)
   url.protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:'

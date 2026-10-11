@@ -16,7 +16,8 @@ Implemented in `backend/app/services/workforce_work_eligibility_rules.py`:
 
 - Explicit `eligibility_status` in `ZUS_REGISTRATION_ALLOWED_STATUSES` → ZUS registration **allowed** only if **fee rows** (when present) are not stuck in `required` without `paid` / `waived` / `not_required`.
 - Status in `ZUS_REGISTRATION_BLOCKED_STATUSES` → ZUS registration **blocked** with mapped `blocked_by`.
-- `not_evaluated` + **foreign driver heuristic** ( `position_category=driver`, third-country `citizenship`, no `work_permit_received_at`, `requires_work_permit` not `False` ) → **blocked** until permit path is closed.
+- `not_evaluated`, `work_permit_required`, and `work_permit_pending` do **not** block ZUS registration. A missing or pending work permit is not a ZUS prerequisite. The applicable process decides whether ZUS comes before that permit.
+- `missing_legal_stay` and `blocked` still block ZUS registration. Unpaid fee rows still block it.
 
 **Fee gates** (`validate_work_eligibility_profile_patch`):
 

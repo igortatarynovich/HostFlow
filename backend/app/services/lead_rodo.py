@@ -313,6 +313,10 @@ def lead_rodo_required_block_code(lead: Lead, action: str) -> Optional[str]:
         return None
     if lead_rodo_satisfied(lead):
         return None
+    from backend.app.services.lead_rodo_obligation import notice_provided_at_source
+
+    if notice_provided_at_source(lead.normalized if isinstance(lead.normalized, dict) else None):
+        return None
     return "LEAD_RODO_REQUIRED"
 
 

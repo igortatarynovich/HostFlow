@@ -4,6 +4,7 @@ import { useI18n } from '../i18n'
 import {
   buildModuleAbsoluteUrl,
   DEPLOYMENT_HOSTS,
+  isLocalDevRuntime,
   moduleHomePath,
   resolveDeployHost,
   shellLoginUrl,
@@ -29,13 +30,9 @@ export function ModuleHostAuthRedirect() {
     if (prevNext === nextForLogin && Date.now() - prevTs < BOUNCE_WINDOW_MS) {
       sessionStorage.removeItem(BOUNCE_NEXT_KEY)
       sessionStorage.removeItem(BOUNCE_TS_KEY)
-      const shellOrigin =
-        typeof window !== 'undefined' &&
-        (window.location.hostname === 'localhost' ||
-          window.location.hostname === '127.0.0.1' ||
-          window.location.hostname.endsWith('.local'))
-          ? window.location.origin
-          : `${window.location.protocol}//${DEPLOYMENT_HOSTS.shell}`
+      const shellOrigin = isLocalDevRuntime()
+        ? window.location.origin
+        : `${window.location.protocol}//${DEPLOYMENT_HOSTS.shell}`
       loginHref = `${shellOrigin}/login`
     } else {
       sessionStorage.setItem(BOUNCE_NEXT_KEY, nextForLogin)

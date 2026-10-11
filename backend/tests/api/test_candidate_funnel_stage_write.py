@@ -17,7 +17,8 @@ def test_global_catalog_does_not_know_funnel_local_codes() -> None:
     assert not hiring_stage_exists("skontaktowac__sie_pozniej")
 
 
-def test_candidate_stage_write_does_not_resolve_tenant_funnel_codes() -> None:
+def test_candidate_stage_write_accepts_published_funnel_stage_as_occupancy() -> None:
+    """LI-1 still does not know the code. A published candidate-funnel row may be occupancy."""
     service = (_REPO_ROOT / "backend/app/api/v1/candidates/service.py").read_text(
         encoding="utf-8"
     )
@@ -25,6 +26,8 @@ def test_candidate_stage_write_does_not_resolve_tenant_funnel_codes() -> None:
         encoding="utf-8"
     )
     assert "resolve_writable_stage_code" in service
-    assert "FunnelStage.code" not in helpers
+    assert "FunnelStage.code" in helpers
+    assert "_published_candidate_funnel_stage_code" in helpers
     assert "resolve_hiring_stage_key" in helpers
+    assert "funnel_occupancy" in service
     assert "_STAGE_INDEX" not in helpers

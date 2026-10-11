@@ -149,3 +149,18 @@ def test_recruitment_mapper_lost_stage_is_rejected_not_new() -> None:
     assert app.status == "rejected"
     assert app.tab_bucket == "completed"
     assert app.extensions["stage"] == "lost"
+
+
+def test_recruitment_mapper_intake_readiness_next_action_is_fits() -> None:
+    lead = Lead(
+        id="11111111-1111-1111-1111-111111111111",
+        tenant_id="11111111-1111-1111-1111-111111111111",
+        source="meta",
+        status="processed",
+        vacancy_id="048408be-fcde-4890-af81-37bb44c523b5",
+        lead_type="candidate",
+        payload={},
+        normalized={"full_name": "Jan Nowak", "citizenship": "PL"},
+    )
+    app = lead_to_recruitment_application(lead)
+    assert app.next_action == "fits"

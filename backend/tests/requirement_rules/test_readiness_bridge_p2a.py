@@ -260,7 +260,9 @@ async def test_p2a_recruitment_package_embeds_requirement_engine(monkeypatch: py
 
     pkg = await evaluate_recruitment_package(db, tenant_id="tenant-1", candidate_id="cand-pkg")  # type: ignore[arg-type]
     assert pkg.get("requirement_engine", {}).get("applied") is True
-    assert "code95" in pkg.get("missing_documents") or []
+    assert pkg["requirement_engine"]["authority_role"] == "diagnostic_only"
+    assert "code95" not in (pkg.get("missing_documents") or [])
+    assert pkg["ready"] is True
 
 
 @pytest.mark.anyio

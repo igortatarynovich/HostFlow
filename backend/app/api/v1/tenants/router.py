@@ -39,6 +39,33 @@ from backend.app.modules.client_accounts.ensure_for_company import (
 router = APIRouter(prefix="/tenants", tags=["tenants"], redirect_slashes=False)
 
 
+async def _sync_handoff_funnel_stages(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str | None,
+    enabled: bool,
+    to_client: bool = True,
+    to_hr: bool = False,
+) -> None:
+    from backend.app.services.recruitment_handoff_funnel_gate import (
+        HandoffFunnelGateError,
+        apply_company_handoff_funnel_stages,
+    )
+
+    try:
+        await apply_company_handoff_funnel_stages(
+            db,
+            tenant_id=tenant_id,
+            company_id=company_id,
+            enabled=enabled,
+            to_client=to_client,
+            to_hr=to_hr,
+        )
+    except HandoffFunnelGateError as exc:
+        raise exc.as_http_exception() from exc
+
+
 @router.get("/me", response_model=schemas.TenantMeOut)
 async def get_me(
     ctx: UserCtx = Depends(get_current_user),
@@ -334,20 +361,7 @@ async def create_tenant_link(
     if display_name:
         features["client_display_name"] = display_name
 
-    if payload.handoff_enabled:
-        from backend.app.services.recruitment_handoff_funnel_gate import (
-            HandoffFunnelGateError,
-            ensure_can_enable_handoff_for_company,
-        )
-
-        gate_company_id = cid or handoff_company
-        if gate_company_id:
-            try:
-                await ensure_can_enable_handoff_for_company(
-                    db, tenant_id=str(tenant_id), company_id=gate_company_id
-                )
-            except HandoffFunnelGateError as exc:
-                raise exc.as_http_exception() from exc
+    gate_company_id = cid or handoff_company
 
     if tid and handoff_company:
         # Link to existing employer tenant + company
@@ -375,6 +389,13 @@ async def create_tenant_link(
             reason="operator_link_employer_tenant",
             link_primary_company=False,
         )
+        if payload.handoff_enabled and gate_company_id:
+            await _sync_handoff_funnel_stages(
+                db,
+                tenant_id=str(tenant_id),
+                company_id=gate_company_id,
+                enabled=True,
+            )
         await db.commit()
         await db.refresh(link)
         company_name = company.name
@@ -398,6 +419,13 @@ async def create_tenant_link(
                 actor_user_id=actor,
                 company=company,
                 reason="operator_link_local_company",
+            )
+        if payload.handoff_enabled and gate_company_id:
+            await _sync_handoff_funnel_stages(
+                db,
+                tenant_id=str(tenant_id),
+                company_id=gate_company_id,
+                enabled=True,
             )
         await db.commit()
         await db.refresh(link)
@@ -429,6 +457,13 @@ async def create_tenant_link(
             company=new_company,
             reason="operator_add_client",
         )
+        if payload.handoff_enabled:
+            await _sync_handoff_funnel_stages(
+                db,
+                tenant_id=str(tenant_id),
+                company_id=str(new_company.id),
+                enabled=True,
+            )
         await db.commit()
         await db.refresh(link)
         company_name = new_company.name
@@ -526,21 +561,6 @@ async def update_tenant_link(
         raise HTTPException(status_code=404, detail="Tenant link not found")
     updates = payload.model_dump(exclude_unset=True)
     if updates:
-        if updates.get("handoff_enabled") is True:
-            from backend.app.services.recruitment_handoff_funnel_gate import (
-                HandoffFunnelGateError,
-                ensure_can_enable_handoff_for_company,
-            )
-
-            gate_company_id = str(
-                link.client_company_id or link.handoff_include_company_id or ""
-            ).strip() or None
-            try:
-                await ensure_can_enable_handoff_for_company(
-                    db, tenant_id=str(tenant_id), company_id=gate_company_id
-                )
-            except HandoffFunnelGateError as exc:
-                raise exc.as_http_exception() from exc
         features = dict(link.features_json or {})
         if "handoff_enabled" in updates:
             features["handoff_enabled"] = bool(updates["handoff_enabled"])
@@ -561,6 +581,25 @@ async def update_tenant_link(
             features["see_vacancies"] = updates["see_vacancies"]
         if "see_reduced_profiles" in updates:
             features["see_reduced_profiles"] = updates["see_reduced_profiles"]
+        lane_touched = any(
+            key in updates
+            for key in ("handoff_enabled", "handoff_to_client", "handoff_to_internal_hr")
+        )
+        if lane_touched:
+            enabled_next = bool(features.get("handoff_enabled"))
+            to_client = features.get("handoff_to_client", True) is not False
+            to_hr = bool(features.get("handoff_to_internal_hr"))
+            gate_company_id = str(
+                link.client_company_id or link.handoff_include_company_id or ""
+            ).strip() or None
+            await _sync_handoff_funnel_stages(
+                db,
+                tenant_id=str(tenant_id),
+                company_id=gate_company_id,
+                enabled=enabled_next,
+                to_client=to_client,
+                to_hr=to_hr,
+            )
         link.features_json = features
         flag_modified(link, "features_json")
         await db.commit()

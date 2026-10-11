@@ -140,3 +140,10 @@ def validate_ready_for_employment_package_v1(
 
 def is_valid_ready_for_employment_package_v1(package: Mapping[str, Any] | None) -> bool:
     return not validate_ready_for_employment_package_v1(package)
+
+
+def is_ready_for_employment_manifest(payload: Mapping[str, Any] | None) -> bool:
+    """Discriminator: persisted artifact is ``ready_for_employment.v1`` (not a value projection)."""
+    if not isinstance(payload, Mapping):
+        return False
+    return str(payload.get("contract_id") or "").strip() == CONTRACT_ID

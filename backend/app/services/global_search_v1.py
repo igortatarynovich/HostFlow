@@ -219,6 +219,8 @@ def _candidate_to_mask_dict(c: Any) -> dict[str, Any]:
         "short_id": getattr(c, "short_id", None),
         "first_name": getattr(c, "first_name", None),
         "last_name": getattr(c, "last_name", None),
+        "first_name_latin": getattr(c, "first_name_latin", None),
+        "last_name_latin": getattr(c, "last_name_latin", None),
         "email": getattr(c, "email", None),
         "phone": getattr(c, "phone", None),
         "phone_country_code": getattr(c, "phone_country_code", None),
@@ -303,10 +305,13 @@ async def _search_candidates_slice(
             item = await _apply_client_view_mask(db, item, cid, scope_tenant)
         fn = str(item.get("first_name") or "").strip()
         ln = str(item.get("last_name") or "").strip()
-        title = f"{fn} {ln}".strip() or (str(item.get("email") or "").strip()) or (str(item.get("short_id") or "").strip()) or "Candidate"
+        fn_lat = str(item.get("first_name_latin") or "").strip()
+        ln_lat = str(item.get("last_name_latin") or "").strip()
+        title = f"{fn} {ln}".strip() or f"{fn_lat} {ln_lat}".strip() or (str(item.get("email") or "").strip()) or (str(item.get("short_id") or "").strip()) or "Candidate"
         email = item.get("email")
         stage = item.get("stage")
-        subtitle = str(stage) if stage else (str(email) if email else None)
+        phone = str(item.get("phone") or "").strip()
+        subtitle = " · ".join(x for x in (str(stage) if stage else None, phone or None, str(email) if email and not phone else None) if x) or None
         out.append(
             {
                 "type": "candidate",

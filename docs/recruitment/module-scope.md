@@ -61,6 +61,10 @@ Recruitment **owns** candidate and lead pipeline definitions. Canonical scope:
 
 **Temporary strangler:** pre-migration tenant funnels (`company_id IS NULL`) remain readable via resolver step 4 and analytics `legacy_tenant=true` until backfill + dashboard migration. See spec §7.3.
 
+### Ready-for-handoff authority
+
+The `ready_for_handoff` decision consumes the RPM required set and Candidate Evidence fulfilment through [`hiring-eligibility-composition.md`](../specs/architecture/hiring-eligibility-composition.md). `requirement_evaluation_v1` and its Document Runtime projection remain visible as diagnostics, but cannot add missing types, blockers, or reverse the composed decision. A rejected transition returns the composed refusal reason and canonical unmet requirement codes to the operator.
+
 ## Сопровождение
 
 - Иерархия настроек (tenant / company / module settings per company): [`ADR-005`](../specs/architecture/ADR-005-three-level-settings-hierarchy.md). Схема JSON для компании: **`RecruitmentModuleSettingsV1`**; API `GET/PATCH .../module-settings/recruitment`. **Воронки и этапы подбора** — ownership модуля Recruitment, scope **company** (`company_id` + `module_key=recruitment`); gate и миграция — [`module-owned-pipelines-p0.md`](../specs/architecture/module-owned-pipelines-p0.md).  

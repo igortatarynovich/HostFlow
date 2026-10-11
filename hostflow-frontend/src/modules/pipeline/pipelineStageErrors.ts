@@ -7,6 +7,7 @@ export type PipelineStageErrorKind = 'rodo' | 'handoff_docs' | 'other';
 export type PipelineStageTransitionParse = {
   kind: PipelineStageErrorKind;
   missingTypes: string[];
+  message?: string;
 };
 
 export function parseStageTransitionError(rawError: unknown): PipelineStageTransitionParse {
@@ -30,11 +31,16 @@ export function parseStageTransitionError(rawError: unknown): PipelineStageTrans
 
   const detailObj = parseDetailObject(detailRaw);
   const detailText = String(detailRaw || '').toLowerCase();
+  const blockerRows = Array.isArray(detailObj?.blocking_reasons) ? detailObj.blocking_reasons : [];
+  const firstBlocker = blockerRows.find((row) => row && typeof row === 'object') as
+    | Record<string, unknown>
+    | undefined;
+  const message = String(detailObj?.message || detailObj?.refusal_reason || firstBlocker?.message || '').trim() || undefined;
   if (detailObj && String(detailObj.code || '') === 'handoff_docs_incomplete') {
-    return { kind: 'handoff_docs', missingTypes: toMissing(detailObj.missing_types) };
+    return { kind: 'handoff_docs', missingTypes: toMissing(detailObj.missing_types), message };
   }
   if (detailText.includes('handoff_docs_incomplete')) {
-    return { kind: 'handoff_docs', missingTypes: toMissing(detailObj?.missing_types) };
+    return { kind: 'handoff_docs', missingTypes: toMissing(detailObj?.missing_types), message };
   }
   if (detailText.includes('rodo must be sent') || detailText.includes('contact/screening stage')) {
     return { kind: 'rodo', missingTypes: [] };

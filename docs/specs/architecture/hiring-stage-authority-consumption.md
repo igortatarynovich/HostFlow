@@ -46,7 +46,7 @@ Hiring-path consumers (write + forward-guard normalize):
 |--------------------------------|--------------|----------------------------|
 | Static `new → hired` list (`api/v1/stages.py`, `constants/stages.py`) | Labels / kanban chrome | Answer “does this stage exist?” for a candidate write |
 | Tenant `candidate_stages` dictionary | Tenant dictionary CRUD | Grant occupancy or existence |
-| `funnel_stages` as existence | Company Funnel **configuration** (ADR-037) | Accept a funnel-local code as a writable candidate stage |
+| `funnel_stages` as existence | Company Funnel **configuration** (ADR-037). A code published on a candidate funnel for the tenant is writable **occupancy** | Answer “does this hiring stage exist?”. Mint an LI-1 key |
 
 Aliases may **point at** a registered key. They must not mint identity.
 
@@ -56,7 +56,9 @@ Aliases may **point at** a registered key. They must not mint identity.
 
 Occupancy SoT remains **`Candidate.stage`**. Funnel row, tenant dictionary row, and static list membership are not occupancy.
 
-An unregistered occupancy string already on the row may move **onto** a registered key (escape). It may not move onto another leftover-only code.
+An unregistered occupancy string already on the row may move **onto** a registered key (escape).
+
+A code that is **published** on a candidate funnel for the tenant (`funnel_stages.code`) is writable occupancy even when LI-1 does not know it. That write is not a jump and does not register the code. The transition-order rule applies only when the target normalizes to a registered key. A code that is neither registered nor published on a candidate funnel for the tenant stays `Unknown stage` / jump.
 
 ---
 
@@ -64,12 +66,12 @@ An unregistered occupancy string already on the row may move **onto** a register
 
 Machine id: `forward_moves_guarded_jumps_rejected`.
 
-1. **Target existence** = LI-1 only. Empty target → 422. Unregistered / leftover-granted target → **jump**, 422 `Unknown stage`.  
+1. **Target existence** for the order rule = LI-1. Empty target → 422. A target that is neither a registered key nor a stage published on a candidate funnel for the tenant → **jump**, 422 `Unknown stage`. A published candidate-funnel code is occupancy, not a jump.  
 2. **Occupancy** = caller’s `Candidate.stage`. HE-2 does not ask leftovers what the candidate is on.  
 3. **Same** registered key: allowed.  
 4. **Backward** along `TRANSITION_ORDER`: allowed.  
 5. **Forward** along `TRANSITION_ORDER`: allowed as an **order** move. Existing leftover pipeline guards (documents / vacancy / contact attempts — HE-3 leftovers) continue to guard forward moves. HE-2 does not collapse those answerers and does not mint an adjacent-only stage machine.  
-6. **Jump** = a write whose existence would only be granted by a leftover registry. Rejected.
+6. **Jump** = a write whose target is not a registered key and is not published on a candidate funnel for the tenant. Rejected.
 
 `TRANSITION_ORDER` is the unique sequence of already-registered LI-1 keys used to classify forward vs back. Every key in that tuple must be `is_stage_registered`. Adding a key that is not registered is a gate fail.
 
@@ -111,4 +113,5 @@ Reject: documenting leftovers as “still how candidate PATCH works”; a second
 ## History
 
 - 2026-09-22: **HE-4 Acceptance walk feat opened.** Active Product → **HE-4**. Hiring E2E Acceptance Gate **not PASS**. Not a change to this stage-authority contract. min HR remains queued.
+- 2026-10-05: Published candidate-funnel stage codes are writable occupancy. They do not answer LI-1 existence. Order still applies only to registered targets. Example: `skontaktowac__sie_pozniej` stays unregistered and is writable when that funnel row exists for the tenant.
 - 2026-09-21: Stage Authority Consumption Gate **PASS**. Hiring-path existence consumes LI-1. Occupancy stays `Candidate.stage`. Transition-order rule `forward_moves_guarded_jumps_rejected` is production. Active Product → **HE-2**. HE-3 feat locked. min HR remains queued.

@@ -1,12 +1,10 @@
 /**
- * Mirrors backend `RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES` (stages after recruitment / handoff boundary).
- * Used to keep agency funnel strips and recruitment list filters aligned with the recruitment zone.
+ * Mirrors backend `RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES` (stages after the recruitment boundary).
+ * Transfer lane codes (ready_for_handoff, processing_by_*, handoff_returned) stay visible.
  */
 export const RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES: ReadonlySet<string> = new Set([
   'hired',
   'employed',
-  'processing_by_hr',
-  'processing_by_client',
   'docs_submitted_permit',
   'employment_pending',
   'on_trip',

@@ -680,6 +680,14 @@ Next branch only after:
 ---
 
 ## 8. History
+- 2026-10-05: **Employee Page Cleanup.** The employee page keeps the header, Current Process, and the eight groups. Legacy verification is not rendered there. No new schema. The E2E is not PASS.
+- 2026-10-05: **HR Employee Record Surface code closed.** The E2E is not PASS until one citizenship write is seen by HR and Recruitment and stales the dependent Legal Eligibility decision.
+- 2026-10-05: **HR Employee Record Surface.** The employee page shows the assigned hierarchy and one next action. No new fact store.
+- 2026-10-05: **HR Employee Record Projection Contract Gate PASS.** The HR hierarchy is assigned. Employee Record and Current Process are two views of the same facts. The screen is not rebuilt.
+- 2026-10-05: **HR Employee Record Projection opened.** One fact may be a Recruitment decision step and an HR employee-record group. Neither projection owns the fact. The Contract Gate is not passed. Not the Legal Eligibility vertical. `#hr-verification` is not rewritten.
+- 2026-10-05: **Canonical Fact Authority Contract Gate PASS.** `canonical_fact_authority.v1` names how a capability decision is taken. It assigns no verb. The reading of current RBAC is not opened.
+- 2026-10-05: **Canonical Fact Authority Contract opened.** Handoff changes capabilities over existing fact addresses. It does not transfer a value. No schema. No runtime.
+- 2026-10-05: **Employment Preparation Dependency Amendment.** Preparation inside `preparing` follows each layer's own prerequisites. Legal Eligibility PASS is not that entrance. ZUS is not universally post-start. Terms gain an intended start date and a work system. Ready to Start keeps four inputs. No screen.
 - 2026-10-04: **Ready to Start persistence and Activation PASS.** Append-only `ready_to_start.v1`. Activation is the only `preparing → active`, and only for a current pass. Feat locked.
 - 2026-10-04: **Ready to Start Gate Contract PASS.** `ready_to_start.v1` reads four upstream results. Outcome is `pass` or `blocked`. A stale `pass` does not move Employment to active. No schema. No runtime. Feat locked.
 - 2026-10-04: **Pre-employment Requirements Runtime PASS.** One Employment keeps the set first materialized from policy. Resolution is explicit. Completeness does not write Employment state. Ready to Start Gate Contract stays closed. Feat locked.

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 from uuid import uuid4
 
 from sqlalchemy import and_, or_, select, func
@@ -608,8 +608,16 @@ async def create_handoff(
     assigned_to_user_id: str | None = None,
     destination: str | None = None,
     application_id: str | None = None,
+    ready_for_employment_package: dict[str, Any] | Mapping[str, Any] | None = None,
+    idempotent: bool = False,
 ) -> tuple[CandidateHandoff | None, str | dict[str, Any] | None]:
-    """Create handoff (client portal or internal HR). Returns (handoff, error)."""
+    """Create handoff (client portal or internal HR). Returns (handoff, error).
+
+    When ``ready_for_employment_package`` is provided and valid, it satisfies
+    readiness for the RSO-2 Transfer path (skips legacy PR16 dossier assert).
+    With ``idempotent=True``, an existing pending handoff for the same
+    candidate/client (and application when set) is returned instead of an error.
+    """
     if not client_company_id and not client_tenant_id:
         return None, "Either client_company_id or client_tenant_id required"
     if client_company_id and client_tenant_id:
@@ -639,31 +647,48 @@ async def create_handoff(
     elif cand_stage != "ready_for_handoff":
         return None, "Only candidates at stage 'Gotowy do przekazania' (ready_for_handoff) can be transferred"
 
-    from backend.app.services.recruitment_package_readiness import assert_recruitment_package_ready_for_handoff
+    rfe_package = ready_for_employment_package if isinstance(ready_for_employment_package, Mapping) else None
+    if rfe_package is not None:
+        from backend.app.reference.ready_for_employment import validate_ready_for_employment_package_v1
 
-    pkg_err = await assert_recruitment_package_ready_for_handoff(
-        db,
-        tenant_id=agency_tenant_id,
-        candidate_id=candidate_id,
-    )
-    if pkg_err:
-        return None, pkg_err
+        rfe_errors = validate_ready_for_employment_package_v1(rfe_package)
+        if rfe_errors:
+            return None, {
+                "code": "invalid_ready_for_employment_package",
+                "message": "ready_for_employment.v1 failed validation",
+                "errors": rfe_errors,
+            }
+    else:
+        from backend.app.services.recruitment_package_readiness import assert_recruitment_package_ready_for_handoff
 
-    link = await get_tenant_link(
-        db,
-        agency_tenant_id=agency_tenant_id,
-        client_company_id=client_company_id,
-        client_tenant_id=client_tenant_id,
-    )
-    if not link or not link.get_handoff_enabled():
-        return None, "Handoff not enabled for this client"
-    if dest == "internal_hr" and not link.get_handoff_to_internal_hr():
-        return None, "Internal HR handoff is not enabled for this client link"
+        pkg_err = await assert_recruitment_package_ready_for_handoff(
+            db,
+            tenant_id=agency_tenant_id,
+            candidate_id=candidate_id,
+        )
+        if pkg_err:
+            return None, pkg_err
+
+    if dest != "internal_hr":
+        link = await get_tenant_link(
+            db,
+            agency_tenant_id=agency_tenant_id,
+            client_company_id=client_company_id,
+            client_tenant_id=client_tenant_id,
+        )
+        if not link or not link.get_handoff_enabled():
+            return None, "Handoff not enabled for this client"
 
     existing = await get_pending_handoff(
         db, candidate_id, client_company_id=client_company_id, client_tenant_id=client_tenant_id
     )
     if existing:
+        if idempotent:
+            app_want = str(application_id).strip() if application_id else None
+            app_have = str(getattr(existing, "application_id", None) or "").strip() or None
+            if app_want is None or app_have is None or app_have == app_want:
+                setattr(existing, "_rso_created", False)
+                return existing, None
         return None, "Pending handoff already exists for this candidate and client"
 
     now = datetime.now(timezone.utc)
@@ -691,6 +716,7 @@ async def create_handoff(
     )
     db.add(handoff)
     await db.flush()
+    setattr(handoff, "_rso_created", True)
     resolved_app = await _sync_application_after_handoff_created(
         db,
         tenant_id=agency_tenant_id,
@@ -703,31 +729,6 @@ async def create_handoff(
 
     # internal_hr: PR-4 — do not materialize workforce / HR checklist until accept_handoff.
     # Candidate stays at recruitment stage (e.g. ready_for_handoff) until HR accepts.
-    manifest: dict[str, Any] | None = None
-    # Vacancy-bound internal transfer emits the boundary manifest. A handoff
-    # with no vacancy stays the legacy transport (no package to validate).
-    if dest == "internal_hr" and str(getattr(cand, "vacancy_id", None) or "").strip():
-        from backend.app.services.ready_for_employment_emit import (
-            build_ready_for_employment_manifest,
-        )
-
-        manifest, manifest_err = await build_ready_for_employment_manifest(
-            db,
-            handoff=handoff,
-            candidate=cand,
-            actor_id=requested_by_user_id,
-        )
-        if manifest_err:
-            return None, manifest_err
-        await db.flush()
-
-    audit_payload: dict[str, Any] = {
-        "candidate_id": candidate_id,
-        "client_company_id": client_company_id,
-        "destination": dest,
-    }
-    if manifest is not None:
-        audit_payload["contract_id"] = manifest.get("contract_id")
     await log_audit_event(
         db,
         tenant_id=agency_tenant_id,
@@ -735,7 +736,11 @@ async def create_handoff(
         entity_type=AuditEntityType.handoff,
         entity_id=handoff.id,
         actor_id=requested_by_user_id,
-        payload=audit_payload,
+        payload={
+            "candidate_id": candidate_id,
+            "client_company_id": client_company_id,
+            "destination": dest,
+        },
     )
     # Notify HR (internal lane) or client processors (portal).
     if dest == "internal_hr":
@@ -786,12 +791,20 @@ async def create_handoff(
             assigned_to_user_id=handoff.assigned_to_user_id,
             created_by_user_id=requested_by_user_id,
         )
-        await persist_handoff_create_snapshot(
-            db,
-            handoff=handoff,
-            candidate=cand,
-            ready_for_employment=manifest,
-        )
+        try:
+            await persist_handoff_create_snapshot(db, handoff=handoff, candidate=cand)
+        except Exception as exc:
+            from backend.app.services.ready_for_employment_emit import HandoffManifestValidationError
+
+            if isinstance(exc, HandoffManifestValidationError):
+                await db.delete(handoff)
+                await db.flush()
+                return None, {
+                    "code": "ready_for_employment_invalid",
+                    "message": "ready_for_employment.v1 validation failed",
+                    "errors": list(exc.errors),
+                }
+            raise
         return handoff, None
 
     if handoff.assigned_to_user_id:

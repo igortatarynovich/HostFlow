@@ -109,5 +109,6 @@ Reject: a Hiring-owned required-document list; leaving v1 and v2 as parallel eli
 
 ## History
 
+- 2026-10-07: Runtime parity fix: `requirement_evaluation_v1` and its Document Runtime projection are attached as `diagnostic_only` and cannot mutate `transfer_allowed`, missing types, or blocking reasons. The requirement conjunct reads RPM plus Candidate Evidence fulfilment; the 409/UI surface carries the composed refusal reason.
 - 2026-09-22: **HE-4 Acceptance walk feat opened.** Active Product → **HE-4**. Feat `feat/hiring-e2e-he4-acceptance-walk` from `8d5a9fef`. Hiring E2E Acceptance Gate **not PASS**. RS-7 is not executed. min HR remains queued. Not a change to this composition contract.
 - 2026-09-22: Eligibility Composition Gate **PASS**. One composed decision. Requirement conjunct = RPM `r5_required_set`. v1 and v2 are not eligibility authorities. Active Product → **HE-3**. HE-4 feat locked. Do not start RS-7 / min HR in this PR. Not a HE-2 stage-authority change. Not inherited DR1 / Mapping reds. Foundation stays 🔄. HostFlow v1 is not release-ready.

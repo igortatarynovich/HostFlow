@@ -155,6 +155,11 @@ def test_changed_legal_fact_makes_the_recorded_pass_stale() -> None:
     )
 
 
+class _TermsLookup:
+    def one_or_none(self):
+        return None
+
+
 class _Db:
     def __init__(self) -> None:
         self.added = []
@@ -164,6 +169,9 @@ class _Db:
 
     async def flush(self) -> None:
         return None
+
+    async def scalars(self, _statement):
+        return _TermsLookup()
 
 
 def test_record_keeps_provenance_and_leaves_state() -> None:

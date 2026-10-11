@@ -315,15 +315,13 @@ assert OVERVIEW_STUCK_AGENCY_STAGE in LABELS
 assert all(c in LABELS for c in OVERVIEW_STUCK_EMPLOYER_STAGE_CODES)
 
 # ----- Agency handoff lane (see ADR-002, stage_meta_recruitment_filter) -----
-# Recruitment roles must not jump into HR/client terminal lanes when handoff is enabled.
-# P0 (2026): recruitment *surface* shows only pre-employment / handoff-boundary work; all
-# permit/trip/employment/HR-client processing tails are hidden from recruiter funnel UI.
+# Recruitment roles must not jump into employment tails when handoff is enabled.
+# «Передан» (processing_by_client / processing_by_hr) and «Возвращён» stay visible
+# so the operator can see the transfer lane. Permit/trip/employment tails stay hidden.
 RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES: Final[frozenset[str]] = frozenset(
     {
         "hired",
         "employed",
-        "processing_by_hr",
-        "processing_by_client",
         "docs_submitted_permit",
         "employment_pending",
         "on_trip",

@@ -24,6 +24,7 @@ from backend.app.models.company import Company
 from backend.app.models.document import Document
 from backend.app.models.user import User
 from backend.app.models.vacancy import Vacancy
+from backend.tests.conftest import _build_token, _init_data
 
 pytestmark = pytest.mark.postgres_integration
 
@@ -310,6 +311,74 @@ async def test_tenant_isolation_vacancies(
         headers=tenant2_headers,
     )
     assert resp.status_code == 200, resp.text
+
+
+@pytest.mark.anyio
+async def test_superadmin_get_matches_platform_wide_vacancy_list(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+    tenant2_data: Dict[str, str],
+    tenant_id: str,
+) -> None:
+    """Superadmin list is platform-wide; GET /vacancies/{id} must open those rows.
+
+    Ordinary tenant users still 404 on another tenant's vacancy.
+    """
+    title = f"SA cross-tenant vacancy {uuid.uuid4().hex[:8]}"
+    vacancy2_id = str(uuid.uuid4())
+    async with async_session_maker() as session:
+        await _set_tenant_context(session, TENANT_2_ID)
+        await session.execute(
+            text(
+                """
+                INSERT INTO vacancies (
+                    id, tenant_id, company_id, title, status, employment_type,
+                    extra, settings_json
+                )
+                VALUES (
+                    :id, :tenant_id, :company_id, :title, 'open', 'full_time',
+                    '{}', CAST('{}' AS jsonb)
+                )
+                """
+            ),
+            {
+                "id": vacancy2_id,
+                "tenant_id": TENANT_2_ID,
+                "company_id": tenant2_data["company_id"],
+                "title": title,
+            },
+        )
+        await session.commit()
+
+    data = await _init_data()
+    sa_token = _build_token(
+        data["admin_id"], data["admin_email"], "superadmin", tenant_id
+    )
+    sa_headers = {
+        "Authorization": f"Bearer {sa_token}",
+        "X-Tenant-Id": tenant_id,
+    }
+
+    listed = await client.get(
+        "/api/v1/vacancies",
+        params={"q": title, "limit": 50},
+        headers=sa_headers,
+    )
+    assert listed.status_code == 200, listed.text
+    payload = listed.json()
+    rows = payload if isinstance(payload, list) else payload.get("items") or []
+    assert vacancy2_id in {row.get("id") for row in rows}
+
+    got = await client.get(f"/api/v1/vacancies/{vacancy2_id}", headers=sa_headers)
+    assert got.status_code == 200, got.text
+    body = got.json()
+    assert body["id"] == vacancy2_id
+    assert body["tenant_id"] == TENANT_2_ID
+
+    denied = await client.get(
+        f"/api/v1/vacancies/{vacancy2_id}", headers=manager_headers
+    )
+    assert denied.status_code == 404, denied.text
 
 
 @pytest.mark.anyio

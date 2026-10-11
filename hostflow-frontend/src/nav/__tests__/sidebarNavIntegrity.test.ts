@@ -57,6 +57,7 @@ describe('sidebar nav placement integrity', () => {
         'recruitment-inbox',
         'candidates',
         'vacancies',
+        'hr-workspace',
         'marketing',
         'marketing-sources',
         'sales',
@@ -77,7 +78,7 @@ describe('sidebar nav placement integrity', () => {
     expect(SIDEBAR_AGENCY_RECRUITMENT_ORDER).not.toContain('invoices')
     expect(SIDEBAR_AGENCY_RECRUITMENT_ORDER).not.toContain('marketing')
 
-    expect([...SIDEBAR_AGENCY_HR_ORDER]).toEqual([])
+    expect([...SIDEBAR_AGENCY_HR_ORDER]).toEqual(['hr-workspace'])
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).toEqual(['sales', 'clients'])
     expect(SIDEBAR_AGENCY_SALES_ORDER).not.toContain('marketing')
     expect(SIDEBAR_AGENCY_SALES_ORDER).not.toContain('invoices')
@@ -90,12 +91,12 @@ describe('sidebar nav placement integrity', () => {
     expect([...SIDEBAR_AGENCY_SERVICES_ORDER]).toEqual([])
     expect([...SIDEBAR_AGENCY_FINANCE_ORDER]).toEqual([])
 
-    expect(ALL_AGENCY_PRIMARY_RAIL_KEYS.has('hr-workspace')).toBe(false)
+    expect(ALL_AGENCY_PRIMARY_RAIL_KEYS.has('hr-workspace')).toBe(true)
     expect(ALL_AGENCY_PRIMARY_RAIL_KEYS.has('invoices')).toBe(false)
     expect(ALL_AGENCY_PRIMARY_RAIL_KEYS.has('marketing')).toBe(true)
 
     expect(APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS).toEqual(
-      expect.arrayContaining(['hr-workspace', 'invoices', 'service-orders', 'documents', 'automations']),
+      expect.arrayContaining(['invoices', 'service-orders', 'documents', 'automations']),
     )
   })
 })

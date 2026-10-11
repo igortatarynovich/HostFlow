@@ -1,0 +1,48 @@
+# Keep Cursor indexing off generated, vendor, and bulky trees.
+# This machine has 4 GB RAM; full-repo index + extra workers OOMs it.
+
+# Python / Node vendor
+node_modules/
+.venv/
+.venv312/
+.venv_work/
+.venv-ci/
+**/.venv*/
+**/__pycache__/
+**/*.pyc
+**/.ruff_cache/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.tox/
+
+# Frontend build / coverage
+hostflow-frontend/dist/
+hostflow-frontend/coverage/
+hostflow-frontend/i18n-hardcode-report.json
+backend/htmlcov/
+backend/.coverage
+backend/.coverage.*
+backend/coverage.xml
+**/coverage/
+htmlcov/
+test-results/
+
+# Native / third-party source dumps (hundreds of MB, not edited here)
+opencv/
+opencv_contrib/
+emsdk/
+
+# Runtime / backups
+backups/
+releases/
+postgres_data/
+backend/uploads/
+backend/app/uploads/
+*.db
+
+# Git internals
+.git/objects/
+.git/subtree-cache/
+
+# Nested worktrees must not be indexed from the primary checkout
+.worktrees/

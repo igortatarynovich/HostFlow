@@ -10,10 +10,71 @@ import pytest
 from backend.app.services.transfer_policy_resolver import (
     RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY,
     TransferPolicyResolver,
+    _canonical_requirement_state,
     _pending_confirmations,
     _read_confirmed_blocks,
     _resolve_destinations_from_link,
 )
+
+
+@pytest.fixture(autouse=True)
+def _canonical_requirement_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "backend.app.api.v1.candidates.pipeline_overrides_service.approved_pipeline_relaxed_requirements",
+        AsyncMock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        "backend.app.services.candidate_evidence_service.build_requirements_checklist",
+        AsyncMock(
+            return_value={
+                "requirements": [],
+                "all_fulfilled": True,
+                "pipeline_blockers": {
+                    "missing_requirements": [],
+                    "problematic_requirements": [],
+                    "pending_review_requirements": [],
+                    "unfulfilled_requirements": [],
+                },
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "backend.app.reference.document_policy_overlay_store.load_persisted_tenant_delta",
+        AsyncMock(return_value={}),
+    )
+    monkeypatch.setattr(
+        "backend.app.requirement_rules.readiness_bridge.resolve_entity_profile_code_for_candidate",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "backend.app.services.operational_requirements_service.evaluate_operational_requirements_for_candidate",
+        AsyncMock(return_value=[]),
+    )
+
+
+def test_canonical_requirement_state_uses_checklist_and_applies_requirement_override() -> None:
+    checklist = {
+        "requirements": [
+            {"requirement_code": "passport"},
+            {"requirement_code": "visa_d"},
+        ],
+        "pipeline_blockers": {
+            "missing_requirements": ["passport", "visa_d"],
+            "problematic_requirements": [],
+            "pending_review_requirements": [],
+            "unfulfilled_requirements": [
+                {"requirement_code": "passport", "evaluation_status": "missing"},
+                {"requirement_code": "visa_d", "evaluation_status": "pending_verification"},
+            ],
+        },
+    }
+
+    required, unmet, reasons = _canonical_requirement_state(checklist, {"passport"})
+
+    assert required == {"passport", "visa_d"}
+    assert unmet == {"visa_d"}
+    assert [row["requirement_code"] for row in reasons] == ["visa_d"]
+    assert reasons[0]["source_layer"] == "requirement_fulfillment"
 
 
 def test_read_confirmed_blocks() -> None:

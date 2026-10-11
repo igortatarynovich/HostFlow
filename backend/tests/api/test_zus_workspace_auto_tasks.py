@@ -243,7 +243,7 @@ async def test_registration_blocked_for_third_country_driver_until_ready_for_zus
     hr_officer_headers: Dict[str, str],
     bootstrap: Dict[str, str],
 ) -> None:
-    """Foreign driver + not_evaluated blocks ZUS registration until eligibility is ready_for_zus."""
+    """A missing work permit does not block ZUS. Unpaid fee rows still do."""
     h = {**hr_officer_headers, "Content-Type": "application/json"}
     create = await client.post(
         "/api/v1/workforce/employees",
@@ -285,7 +285,8 @@ async def test_registration_blocked_for_third_country_driver_until_ready_for_zus
     assert reg_blocked.status == "blocked"
     ch = reg_blocked.checklist_json or {}
     bb = set(ch.get("blocked_by") or [])
-    assert "legal_stay" in bb and "work_permit" in bb
+    assert "legal_stay" not in bb
+    assert "work_permit" not in bb
     assert "work_permit_fee" in bb and "red_paper_fee" in bb
 
     prof = await client.get(f"/api/v1/workforce/employees/{emp_id}/operational-profile", headers=hr_officer_headers)
@@ -301,13 +302,6 @@ async def test_registration_blocked_for_third_country_driver_until_ready_for_zus
             json={"payment_status": "paid", "payment_reference": f"ref-{rt}"},
         )
         assert pr.status_code == 200, pr.text
-
-    unblocked = await client.patch(
-        f"/api/v1/workforce/employees/{emp_id}/work-eligibility",
-        headers=h,
-        json={"eligibility_status": "ready_for_zus"},
-    )
-    assert unblocked.status_code == 200, unblocked.text
 
     reg_ready = await _latest_registration_task(tid, emp_id, form_kind="ZUA")
     assert reg_ready is not None

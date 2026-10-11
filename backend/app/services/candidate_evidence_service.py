@@ -672,14 +672,20 @@ async def resolve_required_requirement_codes(
     tenant_id: str,
     candidate: Candidate,
 ) -> list[str]:
-    """Applicable required set for this candidate: the RPM result.
+    """Applicable required set for this candidate.
 
-    Same ``r5_required_set(owner_context, tenant_delta)`` the stage refusal
-    consumes. Slot rules are not a second required set.
+    Starts from ``r5_required_set``. A CE or Code 95 code the operator-facts
+    resolution is not asking for does not stay on as a blocker. Slot rules are
+    not a second required set.
     """
     from backend.app.reference.document_policy_overlay_store import load_persisted_tenant_delta
     from backend.app.reference.requirement_policy_consumer_parity import r5_required_set
     from backend.app.services.candidate_doc_pipeline_guard import _owner_context_for_docs
+    from backend.app.services.operator_facts_surface import (
+        facts_from_personal_data,
+        load_candidate_resolution_evidence,
+        requirement_codes_for_operator,
+    )
 
     extra = candidate._get_extra() if hasattr(candidate, "_get_extra") else {}
     personal = candidate._get_personal_data() if hasattr(candidate, "_get_personal_data") else {}
@@ -689,7 +695,14 @@ async def resolve_required_requirement_codes(
         personal=personal if isinstance(personal, dict) else {},
     )
     tenant_delta = await load_persisted_tenant_delta(db, str(tenant_id))
-    return sorted(r5_required_set(owner_ctx, tenant_delta))
+    policy_codes = sorted(r5_required_set(owner_ctx, tenant_delta))
+    facts = facts_from_personal_data(personal if isinstance(personal, dict) else {})
+    evidence = await load_candidate_resolution_evidence(
+        db,
+        tenant_id=str(tenant_id),
+        candidate_id=str(candidate.id),
+    )
+    return requirement_codes_for_operator(policy_codes, facts, evidence=evidence)
 
 
 def map_requirements_checklist_to_pipeline_blockers(

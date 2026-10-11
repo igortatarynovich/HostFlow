@@ -53,7 +53,7 @@ export function readRequirementFieldValue(candidate: Candidate, qualifiedCode: s
     case 'recruitment.candidate.contacts.email':
       return String(candidate.email || '').trim()
     case 'platform.identity.citizenship':
-      return String(extra.citizenship || '').trim()
+      return String(candidate.personal_data?.citizenship || extra.citizenship || '').trim()
     case 'platform.identity.birth_date':
       return String(extra.birth_date || candidate.birth_date || '').slice(0, 10)
     case 'platform.identity.address':

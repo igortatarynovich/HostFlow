@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.app.api.v1.vacancies.repo import vacancy_read_unrestricted
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
@@ -95,10 +96,16 @@ async def get_search_acquisition(
 ):
     db, tenant_id = db_tenant
     try:
-        vacancy = await get_vacancy_or_raise(db, str(tenant_id), str(vacancy_id))
+        vacancy = await get_vacancy_or_raise(
+            db,
+            str(tenant_id),
+            str(vacancy_id),
+            unrestricted=vacancy_read_unrestricted(getattr(_user, "role", None)),
+        )
     except LookupError:
         raise HTTPException(status_code=404, detail="Vacancy not found")
-    snapshot = await build_acquisition_snapshot(db, str(tenant_id), vacancy, sync_meta=False)
+    snapshot_tenant = str(getattr(vacancy, "tenant_id", "") or tenant_id)
+    snapshot = await build_acquisition_snapshot(db, snapshot_tenant, vacancy, sync_meta=False)
     return AcquisitionSnapshotOut.model_validate(snapshot)
 
 

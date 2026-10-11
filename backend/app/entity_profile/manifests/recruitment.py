@@ -97,7 +97,6 @@ def recruitment_candidate_driver_ce_profile() -> dict[str, Any]:
                 sort_order=65,
                 intake_level=REQUIREMENT_OPTIONAL,
                 card_save_level=REQUIREMENT_REQUIRED,
-                transition_level=REQUIREMENT_REQUIRED,
             ),
             _profile_field(
                 "recruitment.candidate.experience.years_ce",
