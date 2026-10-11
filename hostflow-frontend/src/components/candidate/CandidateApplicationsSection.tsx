@@ -17,6 +17,10 @@ interface CandidateApplicationsSectionProps {
    * section is not empty.
    */
   legacyVacancyId?: string | null
+  /** Compact recruitment-context switcher. Does not invent a second vacancy field. */
+  variant?: 'panel' | 'context'
+  activeVacancyId?: string | null
+  onSelectVacancy?: (vacancyId: string) => void
 }
 
 function CandidateApplicationsSection({
@@ -24,6 +28,9 @@ function CandidateApplicationsSection({
   locale,
   refreshTrigger = 0,
   legacyVacancyId = null,
+  variant = 'panel',
+  activeVacancyId = null,
+  onSelectVacancy,
 }: CandidateApplicationsSectionProps) {
   const { t } = useI18n()
   const [items, setItems] = useState<RecruitmentApplicationOut[]>([])
@@ -84,10 +91,45 @@ function CandidateApplicationsSection({
     }
   }, [items, legacyVacancyTrimmed])
 
+  if (variant === 'context') {
+    const rows = items.length
+      ? items
+      : legacyVacancyTrimmed
+        ? [{ id: 'legacy', vacancy_id: legacyVacancyTrimmed, status: '', source: '' } as RecruitmentApplicationOut]
+        : []
+    if (loading || error || rows.length <= 1) return null
+    return (
+      <div className="mt-2 flex flex-wrap gap-1.5" id="section-applications">
+        {rows.map((row) => {
+          const vacancyId = row.vacancy_id || ''
+          const selected = Boolean(vacancyId) && vacancyId === activeVacancyId
+          const label = (vacancyId && vacancyTitles[vacancyId]) || row.source || vacancyId.slice(0, 8)
+          return (
+            <button
+              key={row.id}
+              type="button"
+              className={
+                selected
+                  ? 'rounded-md border border-brand-600 bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-900'
+                  : 'rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50'
+              }
+              onClick={() => {
+                if (vacancyId) onSelectVacancy?.(vacancyId)
+              }}
+            >
+              {label}
+              {row.status ? ` · ${row.status}` : ''}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <section
       id="section-applications"
-      className="group app-surface scroll-mt-24 p-4 transition-shadow hover:shadow-xl"
+      className="rounded-xl border border-slate-200 bg-white p-3"
     >
       <div className="flex flex-col gap-0.5">
         <h2 className="text-lg font-semibold text-slate-900">

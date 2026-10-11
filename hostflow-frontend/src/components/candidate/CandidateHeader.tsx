@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import {
@@ -63,6 +63,10 @@ interface CandidateHeaderProps {
   nextAction?: CandidateNextActionDTO | null
   nextActionLoading?: boolean
   nextActionError?: unknown
+  compact?: boolean
+  displayName?: string | null
+  candidateCode?: string | null
+  statusChip?: ReactNode
 }
 
 function CandidateHeader({
@@ -101,6 +105,10 @@ function CandidateHeader({
   nextAction = null,
   nextActionLoading = false,
   nextActionError = null,
+  compact = false,
+  displayName = null,
+  candidateCode = null,
+  statusChip = null,
   ..._unusedHeaderProps
 }: CandidateHeaderProps) {
   const { t } = useI18n()
@@ -109,9 +117,15 @@ function CandidateHeader({
   return (
     <>
       {/* Header */}
-      <div className="min-w-0 rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-md">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-2">
+      <div className={clsx('min-w-0 rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 text-white shadow-sm', compact ? 'p-2.5' : 'p-3')}>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 space-y-1.5">
+            {displayName || candidateCode ? (
+              <div className="min-w-0">
+                <div className="truncate text-base font-semibold leading-tight text-white">{displayName || '—'}</div>
+                {candidateCode ? <div className="text-xs font-medium text-white/80">{candidateCode}</div> : null}
+              </div>
+            ) : null}
             {!hideBackLink && backPath ? (
               <div className="text-[11px] text-white/80">
                 <Link className="hover:underline text-white" to={backPath}>
@@ -120,6 +134,7 @@ function CandidateHeader({
               </div>
             ) : null}
             <div className="flex flex-wrap items-center gap-2">
+              {statusChip}
               {candidate && <StageTag code={candidate.stage || 'new'} />}
               {!isNew && candidate?.id ? (
                 <NextActionBadge
@@ -211,13 +226,13 @@ function CandidateHeader({
             {isNew && (
               <>
                 <button
-                  className="rounded-lg border border-white/30 bg-white/10 px-3 py-2 font-medium text-white transition hover:bg-white/20"
+                  className={clsx('rounded-lg border border-white/30 bg-white/10 font-medium text-white transition hover:bg-white/20', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
                   onClick={onCancel}
                 >
                   {t('common.actions.cancel')}
                 </button>
                 <button
-                  className="rounded-lg border border-white bg-white px-3 py-2 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
+                  className={clsx('rounded-lg border border-white bg-white font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
                   disabled={saving || !canEdit}
                   onClick={onSave}
                 >
@@ -237,7 +252,7 @@ function CandidateHeader({
                 ) : onOpenHandoff ? (
                   <button
                     type="button"
-                    className="rounded-lg border border-white bg-white px-3 py-2 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
+                    className={clsx('rounded-lg border border-white bg-white font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
                     onClick={onOpenHandoff}
                     disabled={handoffDisabled}
                     title={handoffDisabled && handoffDisabledTitle ? handoffDisabledTitle : undefined}
@@ -248,18 +263,19 @@ function CandidateHeader({
                 {onOpenActivity ? (
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-3 py-2 font-medium text-white transition hover:bg-white/20"
+                    className={clsx('inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 font-medium text-white transition hover:bg-white/20', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
                     onClick={onOpenActivity}
-                    title={t('app.candidate_card.activity_feed.title', { defaultValue: 'Activity' })}
+                    title={t('app.candidate_card.ia.activity_history', { defaultValue: 'Activity / History' })}
                   >
                     <IconHistory size={18} className="shrink-0 opacity-90" aria-hidden />
-                    {t('app.candidate_card.activity_feed.title', { defaultValue: 'Activity' })}
+                    {t('app.candidate_card.ia.activity_history', { defaultValue: 'Activity / History' })}
                   </button>
                 ) : null}
                 <button
                   type="button"
                   className={clsx(
-                    "rounded-lg border border-white/30 bg-white/10 px-3 py-2 font-medium text-white transition hover:bg-white/20",
+                    "rounded-lg border border-white/30 bg-white/10 font-medium text-white transition hover:bg-white/20",
+                    compact ? "px-2 py-1 text-xs" : "px-3 py-2",
                     editMode && "bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100",
                   )}
                   onClick={onEditToggle}
@@ -272,7 +288,7 @@ function CandidateHeader({
                 <span className="mx-1 hidden h-6 w-px bg-white/30 md:inline-block" />
                 {canDeleteDirect ? (
                   <button
-                    className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 font-semibold text-rose-700 transition hover:bg-rose-100"
+                    className={clsx('rounded-lg border border-rose-300 bg-rose-50 font-semibold text-rose-700 transition hover:bg-rose-100', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
                     onClick={onDelete}
                   >
                     {t('common.actions.delete')}
@@ -283,7 +299,7 @@ function CandidateHeader({
             {!isNew && !canDeleteDirect && canRequestDelete && (
               <button
                 type="button"
-                className="rounded-lg border border-white/30 bg-white/10 px-3 py-2 font-medium text-white transition hover:bg-white/20"
+                className={clsx('rounded-lg border border-white/30 bg-white/10 font-medium text-white transition hover:bg-white/20', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
                 disabled={deleteRequestLoading}
                 onClick={onDeleteRequest}
               >

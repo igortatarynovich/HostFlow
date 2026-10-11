@@ -56,6 +56,8 @@ type Props = {
   canCloseRecruitment?: boolean
   /** Opens contact-attempt register modal (same as Communication section). Used for “Contact candidate” next step. */
   onOpenContactAttempts?: () => void
+  /** Horizontal track is rendered by the workspace. Sidebar keeps stage controls only. */
+  showJourney?: boolean
 }
 
 export default function CandidateStageDecisionPanel({
@@ -82,6 +84,7 @@ export default function CandidateStageDecisionPanel({
   canEdit = true,
   canCloseRecruitment = true,
   onOpenContactAttempts,
+  showJourney = true,
 }: Props) {
   const { t } = useI18n()
 
@@ -440,6 +443,7 @@ export default function CandidateStageDecisionPanel({
         </div>
       ) : null}
 
+      {showJourney ? (
       <div className="mt-3 min-w-0">
         <CandidateStageJourneyPanel
           locale={locale}
@@ -458,6 +462,7 @@ export default function CandidateStageDecisionPanel({
           blocked={pipelineForwardBlocked}
         />
       </div>
+      ) : null}
     </section>
   )
 }

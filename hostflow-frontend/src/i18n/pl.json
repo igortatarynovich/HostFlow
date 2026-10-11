@@ -5771,11 +5771,11 @@
     "candidate_card": {
       "ia": {
         "tabs": {
-          "overview": "Przegląd",
+          "personal": "Dane osobowe",
           "profile": "Profil",
-          "documents": "Dokumenty i prawo do pracy",
-          "matching": "Rekrutacja",
-          "activity": "Aktywność"
+          "documents": "Dokumenty",
+          "legalization": "Legalizacja",
+          "services": "Usługi dodatkowe"
         },
         "sections": {
           "identity": "Dane podstawowe",
@@ -5791,7 +5791,21 @@
         "blockers_none": "Brak",
         "documents_progress": "Dokumenty",
         "open_documents": "Otwórz dokumenty",
+        "open_row": "Otwórz",
         "done": "Gotowe",
+        "recruitment_context": "Wakat → pracodawca",
+        "legalization_gap": "Złożone, w toku i decyzja pojawią się, gdy istnieje instancja procedury. Ten ekran pokazuje fakty bieżącego zatrudnienia.",
+        "legalization_scope": "Uprawnienie do pracy dotyczy zatrudnienia, które już wybierają operator facts, a nie globalnej właściwości kandydata.",
+        "legalization_stay": "Pobyt w kraju",
+        "legalization_work": "Prawo do pracy",
+        "legalization_required": "Wymagane",
+        "legalization_basis": "Podstawa",
+        "legalization_valid_to": "Ważne do",
+        "legalization_document": "Dokument",
+        "legalization_open_document": "Otwórz w dokumentach",
+        "legalization_employment": "Employment",
+        "activity_history": "Aktywność / Historia",
+        "order_service": "Zamów usługę",
         "years_short": "doświadczenie {{count}}",
         "active_vacancy": "Aktywna aplikacja"
       },
@@ -5927,6 +5941,7 @@
       "rodo": {
         "title": "RODO",
         "badge_sent": "Wysłano",
+        "badge_not_sent": "Nie wysłano",
         "send_btn": "Wyślij informację RODO",
         "sent_at": "Wysłano",
         "to": "Do",

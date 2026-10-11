@@ -8,6 +8,7 @@ import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import { useI18n } from '../../i18n'
 import { CandidateProcessControls } from './card/CandidateProcessControls'
 import { Input, SearchableSelect } from './shared/FormComponents'
+import { InlineFieldRow } from '../ui/InlineFieldRow'
 import { translateStageLabel } from '../../utils/stageLabels'
 import { validateEmail, validatePhone } from '../../utils/validation'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
@@ -59,6 +60,9 @@ interface CandidateBasicSectionProps {
   omitBirthDate?: boolean
   /** Drop the section frame when the parent accordion already provides it. */
   plain?: boolean
+  /** Each personal field opens on its own. Override reason stays on the parent save gate. */
+  rowEdit?: boolean
+  onRequestUnlock?: () => void
 }
 
 function CandidateBasicSection({
@@ -91,8 +95,11 @@ function CandidateBasicSection({
   hideProcessControls = false,
   omitBirthDate = false,
   plain = false,
+  rowEdit = false,
+  onRequestUnlock,
 }: CandidateBasicSectionProps) {
   const { t } = useI18n()
+  const [openField, setOpenField] = useState<string | null>(null)
   const [emailError, setEmailError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [emailTouched, setEmailTouched] = useState(false)
@@ -106,6 +113,11 @@ function CandidateBasicSection({
   const fieldRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
   const fieldLabel = (fieldKey: string, defaultLabel: string) =>
     getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
+  const beginRow = (key: string) => {
+    setOpenField(key)
+    if (candidateDataReadOnly) onRequestUnlock?.()
+  }
+  const rowLocked = (key: string) => (rowEdit ? openField !== key || candidateDataReadOnly : candidateDataReadOnly)
   const translateValidationError = (error: string) => {
     if (error === 'Invalid email format') {
       return t('app.candidate_card.validation.email_invalid_format')
@@ -162,9 +174,27 @@ function CandidateBasicSection({
       </div>
       )}
 
-      <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className={clsx('mt-3 grid grid-cols-1 gap-4', rowEdit ? '' : 'lg:grid-cols-2')}>
         <div className="space-y-4">
           {(!candidateProfile || fieldVisible('first_name')) && (
+            rowEdit ? (
+              <InlineFieldRow
+                label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
+                value={candidate.first_name || '—'}
+                editing={openField === 'first_name'}
+                canEdit={canEdit}
+                onEdit={() => beginRow('first_name')}
+                onDone={() => setOpenField(null)}
+              >
+                <Input
+                  label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
+                  value={candidate.first_name}
+                  onChange={(e) => onModelChange((m) => ({ ...m, first_name: e.target.value }))}
+                  readOnly={rowLocked('first_name')}
+                  required={fieldRequired('first_name')}
+                />
+              </InlineFieldRow>
+            ) : (
             <Input
               label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
               value={candidate.first_name}
@@ -172,8 +202,27 @@ function CandidateBasicSection({
               readOnly={candidateDataReadOnly}
               required={fieldRequired('first_name')}
             />
+            )
           )}
           {(!candidateProfile || fieldVisible('last_name')) && (
+            rowEdit ? (
+              <InlineFieldRow
+                label={fieldLabel('last_name', t('app.candidate_card.fields.last_name'))}
+                value={candidate.last_name || '—'}
+                editing={openField === 'last_name'}
+                canEdit={canEdit}
+                onEdit={() => beginRow('last_name')}
+                onDone={() => setOpenField(null)}
+              >
+                <Input
+                  label={fieldLabel('last_name', t('app.candidate_card.fields.last_name'))}
+                  value={candidate.last_name}
+                  onChange={(e) => onModelChange((m) => ({ ...m, last_name: e.target.value }))}
+                  readOnly={rowLocked('last_name')}
+                  required={fieldRequired('last_name')}
+                />
+              </InlineFieldRow>
+            ) : (
             <Input
               label={fieldLabel('last_name', t('app.candidate_card.fields.last_name'))}
               value={candidate.last_name}
@@ -181,6 +230,7 @@ function CandidateBasicSection({
               readOnly={candidateDataReadOnly}
               required={fieldRequired('last_name')}
             />
+            )
           )}
           {(!candidateProfile || fieldVisible('birth_date')) && !omitBirthDate && (
             <Input
@@ -198,6 +248,33 @@ function CandidateBasicSection({
             </p>
           )}
           {(!candidateProfile || fieldVisible('email')) && (
+            rowEdit ? (
+              <InlineFieldRow
+                label={fieldLabel('email', t('app.candidate_card.fields.email'))}
+                value={candidate.email || '—'}
+                editing={openField === 'email'}
+                canEdit={canEdit}
+                onEdit={() => beginRow('email')}
+                onDone={() => setOpenField(null)}
+              >
+                <Input
+                  label={fieldLabel('email', t('app.candidate_card.fields.email'))}
+                  type="email"
+                  value={candidate.email || ''}
+                  onChange={(e) => {
+                    onModelChange((m) => ({ ...m, email: e.target.value }))
+                    setEmailTouched(true)
+                  }}
+                  onBlur={() => setEmailTouched(true)}
+                  className={emailError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
+                  readOnly={rowLocked('email')}
+                  required={fieldRequired('email')}
+                />
+                {emailError && emailTouched && (
+                  <p className="mt-1 text-xs text-red-600">{translateValidationError(emailError)}</p>
+                )}
+              </InlineFieldRow>
+            ) : (
             <div>
               <Input
                 label={fieldLabel('email', t('app.candidate_card.fields.email'))}
@@ -216,9 +293,22 @@ function CandidateBasicSection({
                 <p className="mt-1 text-xs text-red-600">{translateValidationError(emailError)}</p>
               )}
             </div>
+            )
           )}
 
           {(!candidateProfile || fieldVisible('phone')) && (
+            rowEdit && openField !== 'phone' ? (
+              <InlineFieldRow
+                label={fieldLabel('phone', t('app.candidate_card.fields.phone'))}
+                value={candidate.phone || '—'}
+                editing={false}
+                canEdit={canEdit}
+                onEdit={() => beginRow('phone')}
+                onDone={() => setOpenField(null)}
+              >
+                {null}
+              </InlineFieldRow>
+            ) : (
             <div>
               <div className="label">{fieldLabel('phone', t('app.candidate_card.fields.phone'))} {fieldRequired('phone') && <span className="text-red-600">*</span>}</div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -230,7 +320,7 @@ function CandidateBasicSection({
                       const prefix = dialCodes.find((x) => x.value === cc)?.extra?.prefix || ''
                       onExtraChange({ phone_country: cc, phone_prefix: prefix })
                     }}
-                    disabled={candidateDataReadOnly}
+                    disabled={rowLocked('phone')}
                     placeholder={selectTexts.empty}
                     searchPlaceholder={t('app.candidate_card.select.search_country')}
                     noResultsLabel={selectTexts.noResults}
@@ -248,7 +338,7 @@ function CandidateBasicSection({
                     onBlur={() => setPhoneTouched(true)}
                     containerClassName="min-w-0"
                     className={clsx('w-full', phoneError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : '')}
-                    readOnly={candidateDataReadOnly}
+                    readOnly={rowLocked('phone')}
                   />
                   {phoneError && phoneTouched && (
                     <p className="mt-1 text-xs text-red-600">{translateValidationError(phoneError)}</p>
@@ -256,6 +346,7 @@ function CandidateBasicSection({
                 </div>
               </div>
           </div>
+            )
           )}
 
           {(!candidateProfile || fieldVisible('preferred_contact')) && (

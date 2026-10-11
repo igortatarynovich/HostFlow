@@ -11,9 +11,17 @@ interface CandidateRodoSectionProps {
   candidateId: UUID
   onSent?: () => void
   refreshTrigger?: number
+  variant?: 'panel' | 'chip'
+  onOpen?: () => void
 }
 
-function CandidateRodoSection({ candidateId, onSent, refreshTrigger = 0 }: CandidateRodoSectionProps) {
+function CandidateRodoSection({
+  candidateId,
+  onSent,
+  refreshTrigger = 0,
+  variant = 'panel',
+  onOpen,
+}: CandidateRodoSectionProps) {
   const { t } = useI18n()
   const [status, setStatus] = useState<{
     sent: boolean
@@ -70,6 +78,23 @@ function CandidateRodoSection({ candidateId, onSent, refreshTrigger = 0 }: Candi
     } finally {
       setSending(false)
     }
+  }
+
+  if (variant === 'chip') {
+    if (loading || !status) return null
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="text-[11px] inline-flex items-center rounded-lg border border-white/40 bg-white/15 px-2 py-0.5 font-medium text-white"
+      >
+        {t('app.candidate_card.rodo.title')}
+        {' · '}
+        {status.sent
+          ? t('app.candidate_card.rodo.badge_sent')
+          : t('app.candidate_card.rodo.badge_not_sent', { defaultValue: 'Not sent' })}
+      </button>
+    )
   }
 
   if (loading || !status) {

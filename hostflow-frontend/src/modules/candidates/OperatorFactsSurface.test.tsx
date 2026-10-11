@@ -251,6 +251,49 @@ describe('OperatorFactsForm', () => {
     expect(screen.queryByText(/Separate evidence/i)).toBeNull()
     expect(screen.queryByText(/driver_license_code95/)).toBeNull()
   })
+
+  it('keeps categories on the skill presentation and the licence record on the document presentation', () => {
+    const facts = view({
+      licence_category_codes: ['CE'],
+      steps: [
+        { key: 'driving_licence', visible: true, issuing_country: 'PL', categories: ['CE'], valid_to: '2030-01-01' },
+        { key: 'code95', visible: true, presence: true, valid_to: '2028-01-01' },
+        { key: 'tachograph', visible: true, presence: true },
+        { key: 'adr', visible: true, presence: true, issuing_country: 'PL' },
+        { key: 'medical', visible: true, presence: false },
+        { key: 'psych', visible: true, presence: false },
+      ],
+    })
+    const { unmount } = renderForm(
+      <OperatorFactsForm
+        countries={[{ value: 'PL', label: 'Polska' }]}
+        onPatch={() => undefined}
+        region="professional"
+        presentation="skill"
+        view={facts}
+      />,
+    )
+    expect(screen.getByTestId('operator-facts-licence-details')).toBeTruthy()
+    expect(screen.queryByTestId('operator-facts-licence-country')).toBeNull()
+    expect(screen.getByTestId('operator-facts-code95-skill')).toBeTruthy()
+    expect(screen.queryByTestId('operator-facts-tachograph')).toBeNull()
+    expect(screen.queryByTestId('operator-facts-adr-country')).toBeNull()
+    unmount()
+    renderForm(
+      <OperatorFactsForm
+        countries={[{ value: 'PL', label: 'Polska' }]}
+        onPatch={() => undefined}
+        region="professional"
+        presentation="record"
+        view={facts}
+      />,
+    )
+    expect(screen.getByTestId('operator-facts-licence-country')).toBeTruthy()
+    expect(screen.queryByTestId('operator-facts-licence-details')).toBeNull()
+    expect(screen.getByTestId('operator-facts-code95-details')).toBeTruthy()
+    expect(screen.getByTestId('operator-facts-tachograph')).toBeTruthy()
+    expect(screen.getByTestId('operator-facts-adr-country')).toBeTruthy()
+  })
 })
 
 describe('OperatorFactsWorkspace', () => {

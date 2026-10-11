@@ -33,6 +33,7 @@ type Props = {
   onChecklistLoaded?: (checklist: RequirementsChecklistResponse | null) => void
   onChanged?: () => void
   onPipelineBlockersChange?: (blockers: import('../../utils/candidateStageDocPolicy').DocBlockersPayload, loading: boolean) => void
+  density?: 'comfortable' | 'compact'
 }
 
 function requirementTitle(
@@ -77,6 +78,7 @@ function RequirementRow({
   onReplace,
   onOpenDocs,
   onUpload,
+  compact = false,
 }: {
   item: RequirementChecklistItem
   canEdit: boolean
@@ -91,6 +93,7 @@ function RequirementRow({
   onReplace: (variantCode: string) => Promise<unknown>
   onOpenDocs?: (docType?: string) => void
   onUpload?: () => void
+  compact?: boolean
 }) {
   const { t } = useI18n()
   const rowStatus = resolveRequirementRowStatus(item)
@@ -106,6 +109,7 @@ function RequirementRow({
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [rowBusy, setRowBusy] = useState(false)
+  const [expanded, setExpanded] = useState(!compact)
 
   useEffect(() => {
     if (evidence?.evidence_variant_code) {
@@ -176,7 +180,28 @@ function RequirementRow({
     : ''
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
+    <div className={compact ? 'border-b border-slate-100 py-1' : 'rounded-xl border border-slate-200 bg-white p-3'}>
+      {compact ? (
+        <button
+          type="button"
+          className="flex w-full items-center gap-3 py-1 text-left"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900">{requirementTitle(t, item)}</span>
+          <span className={clsx('shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold', requirementStatusBadgeClass(rowStatus))}>
+            {statusLabel}
+          </span>
+          <span className="shrink-0 text-xs font-medium text-brand-700">
+            {expanded
+              ? t('common.actions.collapse')
+              : t('app.candidate_card.ia.open_row', { defaultValue: 'Open' })}
+          </span>
+        </button>
+      ) : null}
+      {compact && !expanded ? null : (
+      <>
+      {compact ? null : (
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-slate-900">{requirementTitle(t, item)}</div>
@@ -199,6 +224,7 @@ function RequirementRow({
           {statusLabel}
         </span>
       </div>
+      )}
 
       {rowStatus === 'not_applicable' ? (
         <div className="mt-2 text-xs text-slate-500">
@@ -465,6 +491,8 @@ function RequirementRow({
           ) : null}
         </div>
       ) : null}
+      </>
+      )}
     </div>
   )
 }
@@ -480,6 +508,7 @@ export default function CandidateRequirementsChecklist({
   onChecklistLoaded,
   onChanged,
   onPipelineBlockersChange,
+  density = 'comfortable',
 }: Props) {
   const { t } = useI18n()
   const { notify } = useToast()
@@ -685,6 +714,7 @@ export default function CandidateRequirementsChecklist({
               }
               onOpenDocs={onOpenDocs}
               onUpload={onUpload}
+              compact={density === 'compact'}
             />
           ))
         ) : (
