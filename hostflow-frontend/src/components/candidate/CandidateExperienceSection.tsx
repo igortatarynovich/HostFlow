@@ -7,7 +7,9 @@ import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import DateInput from '../controls/DateInput'
 import { useI18n } from '../../i18n'
 import { Input, CheckboxMultiSelect } from './shared/FormComponents'
+import { InlineFieldRow } from '../ui/InlineFieldRow'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
+import { formatYearsCount } from '../../modules/candidate-card/utils'
 
 type Option = { value: string; label: string; extra?: any }
 type EmploymentRow = {
@@ -48,6 +50,10 @@ interface CandidateExperienceSectionProps {
   embedded?: boolean
   part?: 'skills' | 'history'
   plain?: boolean
+  /** Read rows until the operator edits one field or the history group. */
+  rowEdit?: boolean
+  /** Split driver experience from trailer and route preferences. */
+  focus?: 'experience' | 'mobility'
 }
 
 function CandidateExperienceSection({
@@ -71,8 +77,11 @@ function CandidateExperienceSection({
   embedded = false,
   part,
   plain = false,
+  rowEdit = false,
+  focus,
 }: CandidateExperienceSectionProps) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const [openField, setOpenField] = useState<string | null>(null)
   const layoutVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
   const layoutRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
   const layoutLabel = (fieldKey: string, defaultLabel: string) =>
@@ -89,6 +98,128 @@ function CandidateExperienceSection({
       return next
     })
   }, [embedded])
+
+  if (rowEdit && part !== 'history') {
+    const showExperience = focus !== 'mobility'
+    const showMobility = focus !== 'experience'
+    const years = (value: unknown) => (typeof value === 'number' && !Number.isNaN(value) ? formatYearsCount(value, locale) : '')
+    const labels = (keys: string[] | undefined, options: Option[]) =>
+      (keys || []).map((key) => options.find((item) => item.value === key)?.label || key).join(', ')
+    return (
+      <div className="space-y-1">
+        {showExperience && (!candidateProfile || layoutVisible('experience_eu_years')) ? (
+          <InlineFieldRow
+            label={layoutLabel('experience_eu_years', t('app.candidate_card.fields.experience_eu'))}
+            value={years(extra.experience_eu_years)}
+            editing={openField === 'experience_eu_years'}
+            canEdit={!candidateDataReadOnly}
+            onEdit={() => setOpenField('experience_eu_years')}
+            onDone={() => setOpenField(null)}
+          >
+            <Input
+              label={layoutLabel('experience_eu_years', t('app.candidate_card.fields.experience_eu'))}
+              type="number"
+              value={typeof extra.experience_eu_years === 'number' ? String(extra.experience_eu_years) : ''}
+              onChange={(e) => onExperienceChange('experience_eu_years', e.target.value)}
+              readOnly={candidateDataReadOnly}
+            />
+          </InlineFieldRow>
+        ) : null}
+        {showExperience && (!candidateProfile || layoutVisible('experience_non_eu_years')) ? (
+          <InlineFieldRow
+            label={layoutLabel('experience_non_eu_years', t('app.candidate_card.fields.experience_non_eu'))}
+            value={years(extra.experience_non_eu_years)}
+            editing={openField === 'experience_non_eu_years'}
+            canEdit={!candidateDataReadOnly}
+            onEdit={() => setOpenField('experience_non_eu_years')}
+            onDone={() => setOpenField(null)}
+          >
+            <Input
+              label={layoutLabel('experience_non_eu_years', t('app.candidate_card.fields.experience_non_eu'))}
+              type="number"
+              value={typeof extra.experience_non_eu_years === 'number' ? String(extra.experience_non_eu_years) : ''}
+              onChange={(e) => onExperienceChange('experience_non_eu_years', e.target.value)}
+              readOnly={candidateDataReadOnly}
+            />
+          </InlineFieldRow>
+        ) : null}
+        {showMobility && (!candidateProfile || layoutVisible('trailer_types')) ? (
+          <InlineFieldRow
+            label={layoutLabel('trailer_types', t('app.candidate_card.intake.fields.trailer_types'))}
+            value={labels(Array.isArray(extra.trailer_types) ? extra.trailer_types : [], trailerTypeOptions)}
+            editing={openField === 'trailer_types'}
+            canEdit={!candidateDataReadOnly}
+            onEdit={() => setOpenField('trailer_types')}
+            onDone={() => setOpenField(null)}
+          >
+            <CheckboxMultiSelect
+              options={trailerTypeOptions}
+              values={Array.isArray(extra.trailer_types) ? extra.trailer_types : []}
+              onChange={(vals) => onExtraChange({ trailer_types: vals })}
+              disabled={candidateDataReadOnly}
+              placeholder={selectTexts.multiNone}
+              searchPlaceholder={selectTexts.search}
+              noResultsLabel={selectTexts.noResults}
+              multiSelectedLabel={selectTexts.multiSelected}
+            />
+          </InlineFieldRow>
+        ) : null}
+        {showMobility && (!candidateProfile || layoutVisible('route_types')) ? (
+          <InlineFieldRow
+            label={layoutLabel('route_types', t('app.candidate_card.intake.fields.route_types'))}
+            value={labels(Array.isArray(extra.route_types) ? extra.route_types : [], routeTypeOptions)}
+            editing={openField === 'route_types'}
+            canEdit={!candidateDataReadOnly}
+            onEdit={() => setOpenField('route_types')}
+            onDone={() => setOpenField(null)}
+          >
+            <CheckboxMultiSelect
+              options={routeTypeOptions}
+              values={Array.isArray(extra.route_types) ? extra.route_types : []}
+              onChange={(vals) => onExtraChange({ route_types: vals })}
+              disabled={candidateDataReadOnly}
+              placeholder={selectTexts.multiNone}
+              searchPlaceholder={selectTexts.search}
+              noResultsLabel={selectTexts.noResults}
+              multiSelectedLabel={selectTexts.multiSelected}
+            />
+          </InlineFieldRow>
+        ) : null}
+      </div>
+    )
+  }
+
+  if (rowEdit && part === 'history' && openField !== 'history') {
+    return (
+      <div className="space-y-1">
+        {employmentHistory.length ? employmentHistory.map((entry) => (
+          <InlineFieldRow
+            key={entry.localId}
+            label={entry.employer_name || t('app.candidate_card.employment.title')}
+            value={[entry.position, entry.country].filter(Boolean).join(' · ')}
+            editing={false}
+            canEdit={!candidateDataReadOnly}
+            onEdit={() => setOpenField('history')}
+            onDone={() => setOpenField(null)}
+          >
+            {null}
+          </InlineFieldRow>
+        )) : (
+          <InlineFieldRow
+            label={t('app.candidate_card.employment.title')}
+            value=""
+            editing={false}
+            canEdit={!candidateDataReadOnly}
+            onEdit={() => setOpenField('history')}
+            onDone={() => setOpenField(null)}
+            emptyLabel={t('app.candidate_card.ia.not_filled')}
+          >
+            {null}
+          </InlineFieldRow>
+        )}
+      </div>
+    )
+  }
 
   return (
     <section
@@ -202,6 +333,11 @@ function CandidateExperienceSection({
 
       {part !== 'skills' && (embedded || !collapsed) && (!candidateProfile || layoutVisible('employment_history')) && (
         <div className="mt-6 space-y-3">
+          {rowEdit && openField === 'history' ? (
+            <button type="button" className="btn-secondary btn-compact" onClick={() => setOpenField(null)}>
+              {t('app.candidate_card.ia.done')}
+            </button>
+          ) : null}
           <div className="flex items-center justify-between">
             <div className="font-semibold text-slate-800">
               {layoutLabel('employment_history', t('app.candidate_card.employment.title'))}

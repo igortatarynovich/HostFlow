@@ -18,7 +18,7 @@ import type {
   Vacancy,
 } from '../api/types'
 import type { ReminderRecord } from '../api/types'
-import { IconBriefcase, IconBuildingSkyscraper, IconInbox, IconNotebook, IconPhone, IconTag, IconUser } from '@tabler/icons-react'
+import { IconBriefcase, IconBuildingSkyscraper, IconCertificate, IconInbox, IconNotebook, IconPhone, IconSteeringWheel, IconTag, IconUser } from '@tabler/icons-react'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, pl, ru } from 'date-fns/locale'
 import { createDeleteRequest } from '../api/deletionRequests'
@@ -31,6 +31,8 @@ import { StagePipeline } from '../components/ui/StagePipeline'
 import { CompactMetric } from '../components/ui/CompactMetric'
 import { ProgressRing } from '../components/ui/ProgressRing'
 import { StatusBadge } from '../components/ui/StatusBadge'
+import { Button } from '../components/ui/Button'
+import { WorkspaceSection } from '../components/ui/WorkspaceSection'
 import { WorkspaceWidget } from '../components/ui/WorkspaceWidget'
 import { ageFromIsoDate, countryFlag, formatYearsCount } from '../modules/candidate-card/utils'
 import { CandidateProcessControls } from '../components/candidate/card/CandidateProcessControls'
@@ -75,7 +77,7 @@ import { isCandidateRecruiterIdCanonEnabled, isDossierLegacyEnabled, isRequireme
 import { usePermissions } from '../hooks/usePermissions'
 import { RECRUITMENT_ASSIGNEE_CATALOG_ROLES, canUseTeamOverviewLane } from '../auth/trustRoles'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
-import { servicesWorkspacePath } from '../modules/services/utils'
+import { createServiceOrder, listAdditionalServices } from '../api/additionalServices'
 import { useI18n, type TranslateFn } from '../i18n'
 import { PREFERRED_CONTACT_VALUES } from '../data/preferredContactChannels'
 import { isCandidateOperationallyTerminal, isPipelineCompletedCanonicalStage } from '../utils/candidatePipelineCompleted'
@@ -126,7 +128,6 @@ import CandidateNextActionPanel from '../components/candidate/CandidateNextActio
 import CandidateNotesRailSection from '../components/candidate/CandidateNotesRailSection'
 import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
 import CandidateRequirementsChecklist from '../components/candidate/CandidateRequirementsChecklist'
-import RequirementsWorkspaceSummaryCard from '../components/candidate/requirements/RequirementsWorkspaceSummaryCard'
 import { CandidateLeadOriginPanel } from '../components/candidate/CandidateLeadOriginPanel'
 import CandidateOpenInHrLink from '../components/candidate/CandidateOpenInHrLink'
 import RecruitmentDossierChecklist from '../components/candidate/RecruitmentDossierChecklist'
@@ -1071,6 +1072,8 @@ export default function CandidateCard(){
   const [pipelineOverrides, setPipelineOverrides] = useState<CandidatePipelineOverride[]>([])
   const [pipelineOverrideBusy, setPipelineOverrideBusy] = useState(false)
   const [docsFocusType, setDocsFocusType] = useState<string | undefined>(undefined)
+  const [legalDocsFocus, setLegalDocsFocus] = useState<string | undefined>(undefined)
+  const [documentReadiness, setDocumentReadiness] = useState<{ ready: number; total: number } | null>(null)
   const docsVerifyTaskSignatureRef = useRef<string | null>(null)
 
   const isAutoDocsVerifyReminder = useCallback((r: ReminderRecord | null | undefined) => {
@@ -3792,7 +3795,6 @@ export default function CandidateCard(){
 
   const useWorkspaceRequirementsRail = isRequirementsWorkspaceEnabled()
   const showRequirementsSummaryCard = showRequirementsChecklist && useWorkspaceRequirementsRail
-  const showFullRequirementsChecklist = showRequirementsChecklist && !useWorkspaceRequirementsRail
   const requirementsWorkspaceHref = useMemo(() => {
     if (!model?.id || !useWorkspaceRequirementsRail) return null
     return `${CRM_APP_PATHS.candidates}/${encodeURIComponent(String(model.id))}/requirements`
@@ -4993,17 +4995,12 @@ export default function CandidateCard(){
             {!isNew && model?.id ? (
               <WorkspaceWidget
                 title={t('app.candidate_card.ia.documents_progress')}
-                action={
-                  <button type="button" className="text-xs font-medium text-brand-700 hover:underline" onClick={() => setCardTab('documents')}>
-                    {t('app.candidate_card.ia.open_documents')}
-                  </button>
-                }
               >
                 <div className="flex items-center gap-2">
-                  <ProgressRing value={docsCountsSummary.ready} max={docsCountsSummary.total} />
+                  <ProgressRing value={documentReadiness?.ready ?? docsCountsSummary.ready} max={documentReadiness?.total ?? docsCountsSummary.total} />
                   <div className="min-w-0">
                     <div className="text-sm font-semibold tabular-nums text-slate-900">
-                      {`${docsCountsSummary.ready} / ${docsCountsSummary.total}`}
+                      {`${documentReadiness?.ready ?? docsCountsSummary.ready} / ${documentReadiness?.total ?? docsCountsSummary.total}`}
                     </div>
                     {docsCountsSummary.total > 0 && docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0 ? (
                       <div className="text-xs font-medium text-emerald-700">{t('app.candidate_card.ia.documents_received')}</div>
@@ -5059,12 +5056,18 @@ export default function CandidateCard(){
           value={cardTab}
           onChange={setCardTab}
           badges={{
-            documents: docsCountsSummary.total > 0 ? (
+            documents: (documentReadiness?.total || docsCountsSummary.total) > 0 ? (
               <StatusBadge
                 size="sm"
                 shape="pill"
-                semantic={docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0 ? 'success' : 'neutral'}
-                label={`${docsCountsSummary.ready}/${docsCountsSummary.total}`}
+                semantic={(documentReadiness
+                  ? documentReadiness.ready >= documentReadiness.total
+                  : docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0)
+                  ? 'success'
+                  : 'neutral'}
+                label={documentReadiness
+                  ? `${documentReadiness.ready}/${documentReadiness.total}`
+                  : `${docsCountsSummary.ready}/${docsCountsSummary.total}`}
               />
             ) : undefined,
             legalization: operatorFactsView && operatorFactsView.legal_eligibility?.outcome !== 'pass' && operatorFactsView.citizenship_class !== 'pl' && operatorFactsView.citizenship_class !== 'eu_eea_ch' && operatorFactsView.steps.some((step) => (step.key === 'stay_basis' || step.key === 'work') && step.visible) ? (
@@ -5250,101 +5253,109 @@ export default function CandidateCard(){
           ) : null}
 
           {cardTab === 'profile' && !isMasked && model?.id ? (
-            <OperatorFactsSurface
-              candidateId={String(model.id)}
-              countries={countries}
-              region="professional"
-              presentation="skill"
-              onSaved={(saved) => {
-                setOperatorFactsRevision((value) => value + 1)
-                setDocsSummaryRefreshTrigger((value) => value + 1)
-                const adr = saved.steps.find((step) => step.key === 'adr')
-                setExtra((prev) => ({
-                  ...prev,
-                  has_adr: typeof adr?.presence === 'boolean' ? adr.presence : null,
-                }))
-              }}
-            />
+            <CardAccordion
+              title={t('app.candidate_card.ia.sections.qualification', { defaultValue: 'Qualification' })}
+              description={t('app.candidate_card.ia.qualification_hint', { defaultValue: 'Categories and professional qualifications' })}
+              icon={<IconCertificate size={16} />}
+              defaultOpen
+            >
+              <OperatorFactsSurface
+                candidateId={String(model.id)}
+                countries={countries}
+                region="professional"
+                presentation="skill"
+                onSaved={(saved) => {
+                  setOperatorFactsRevision((value) => value + 1)
+                  setDocsSummaryRefreshTrigger((value) => value + 1)
+                  const adr = saved.steps.find((step) => step.key === 'adr')
+                  setExtra((prev) => ({
+                    ...prev,
+                    has_adr: typeof adr?.presence === 'boolean' ? adr.presence : null,
+                  }))
+                }}
+              />
+            </CardAccordion>
           ) : null}
           {cardTab === 'profile' && !isMasked && registrySectionVisible('experience') ? (
             <CardAccordion
               title={t('app.candidate_card.ia.sections.driver')}
+              description={t('app.candidate_card.ia.driver_hint', { defaultValue: 'Experience, body types and routes' })}
+              icon={<IconSteeringWheel size={16} />}
               defaultOpen
-              editing={sectionEditing('driver')}
-              onEdit={isNew || candidateEditPhase === 'editing' ? undefined : () => setBlockEdit((prev) => ({ ...prev, driver: true }))}
-              onDone={() => setBlockEdit((prev) => ({ ...prev, driver: false }))}
               summary={joinParts([
-                Array.isArray(extra.license_categories) ? extra.license_categories.join('/') : null,
                 typeof extra.experience_eu_years === 'number'
                   ? t('app.candidate_card.ia.years_short', { values: { count: extra.experience_eu_years } })
                   : null,
-                Array.isArray(extra.trailer_types)
-                  ? extra.trailer_types.map((key) => trailerTypeLabels[key] || key).join(', ')
-                  : null,
               ])}
             >
-              {sectionEditing('driver') ? (
-                <CandidateExperienceSection
-                  extra={extra}
-                  experienceRef={experienceRef}
-                  experienceTotalDisplay={experienceTotalDisplay}
-                  trailerTypeOptions={trailerTypeOptions}
-                  routeTypeOptions={routeTypeOptions}
-                  employmentHistory={employmentHistory}
-                  employmentLoading={employmentLoading}
-                  employmentError={employmentError}
-                  selectTexts={selectTexts}
-                  onExtraChange={setExtra}
-                  onExperienceChange={handleExperienceChange}
-                  onAddEmploymentRow={addEmploymentRow}
-                  onUpdateEmploymentHistory={updateEmploymentHistory}
-                  onRemoveEmploymentRow={removeEmploymentRow}
-                  candidateProfile={candidateProfile}
-                  effectiveLayout={effectiveLayout}
-                  candidateDataReadOnly={model.can_edit === false}
-                  embedded
-                  part="skills"
-                  plain
-                />
-              ) : (
-                <ReadRows
-                  rows={[
-                    {
-                      label: t('app.candidate_card.fields.experience_eu'),
-                      value: typeof extra.experience_eu_years === 'number' ? String(extra.experience_eu_years) : '—',
-                    },
-                    {
-                      label: t('app.candidate_card.fields.experience_non_eu'),
-                      value: typeof extra.experience_non_eu_years === 'number' ? String(extra.experience_non_eu_years) : '—',
-                    },
-                    {
-                      label: t('app.candidate_card.intake.fields.trailer_types'),
-                      value: Array.isArray(extra.trailer_types) && extra.trailer_types.length
-                        ? extra.trailer_types.map((key) => trailerTypeLabels[key] || key).join(', ')
-                        : '—',
-                    },
-                    {
-                      label: t('app.candidate_card.intake.fields.route_types'),
-                      value: Array.isArray(extra.route_types) && extra.route_types.length
-                        ? extra.route_types.join(', ')
-                        : '—',
-                    },
-                  ]}
-                />
-              )}
+              <CandidateExperienceSection
+                extra={extra}
+                experienceRef={experienceRef}
+                experienceTotalDisplay={experienceTotalDisplay}
+                trailerTypeOptions={trailerTypeOptions}
+                routeTypeOptions={routeTypeOptions}
+                employmentHistory={employmentHistory}
+                employmentLoading={employmentLoading}
+                employmentError={employmentError}
+                selectTexts={selectTexts}
+                onExtraChange={setExtra}
+                onExperienceChange={handleExperienceChange}
+                onAddEmploymentRow={addEmploymentRow}
+                onUpdateEmploymentHistory={updateEmploymentHistory}
+                onRemoveEmploymentRow={removeEmploymentRow}
+                candidateProfile={candidateProfile}
+                effectiveLayout={effectiveLayout}
+                candidateDataReadOnly={model.can_edit === false}
+                embedded
+                part="skills"
+                focus="experience"
+                plain
+                rowEdit
+              />
+            </CardAccordion>
+          ) : null}
+          {cardTab === 'profile' && !isMasked && registrySectionVisible('experience') ? (
+            <CardAccordion
+              title={t('app.candidate_card.ia.metric_preferences')}
+              description={t('app.candidate_card.ia.preferences_hint', { defaultValue: 'Body types, routes and related preferences' })}
+              icon={<IconBriefcase size={16} />}
+              defaultOpen
+            >
+              <CandidateExperienceSection
+                extra={extra}
+                experienceRef={experienceRef}
+                experienceTotalDisplay={experienceTotalDisplay}
+                trailerTypeOptions={trailerTypeOptions}
+                routeTypeOptions={routeTypeOptions}
+                employmentHistory={employmentHistory}
+                employmentLoading={employmentLoading}
+                employmentError={employmentError}
+                selectTexts={selectTexts}
+                onExtraChange={setExtra}
+                onExperienceChange={handleExperienceChange}
+                onAddEmploymentRow={addEmploymentRow}
+                onUpdateEmploymentHistory={updateEmploymentHistory}
+                onRemoveEmploymentRow={removeEmploymentRow}
+                candidateProfile={candidateProfile}
+                effectiveLayout={effectiveLayout}
+                candidateDataReadOnly={model.can_edit === false}
+                embedded
+                part="skills"
+                focus="mobility"
+                plain
+                rowEdit
+              />
             </CardAccordion>
           ) : null}
 
           {cardTab === 'profile' && !isMasked && registrySectionVisible('experience') ? (
             <CardAccordion
               title={t('app.candidate_card.ia.sections.experience')}
-              editing={sectionEditing('experience')}
-              onEdit={isNew || candidateEditPhase === 'editing' ? undefined : () => setBlockEdit((prev) => ({ ...prev, experience: true }))}
-              onDone={() => setBlockEdit((prev) => ({ ...prev, experience: false }))}
+              description={t('app.candidate_card.ia.experience_hint', { defaultValue: 'Previous employment' })}
+              icon={<IconBriefcase size={16} />}
               summary={employmentHistory.length ? String(employmentHistory.length) : null}
             >
-              {sectionEditing('experience') ? (
-                <CandidateExperienceSection
+              <CandidateExperienceSection
                   extra={extra}
                   experienceRef={experienceHistoryRef}
                   experienceTotalDisplay={experienceTotalDisplay}
@@ -5365,17 +5376,8 @@ export default function CandidateCard(){
                   embedded
                   part="history"
                   plain
+                  rowEdit
                 />
-              ) : (
-                <ReadRows
-                  rows={employmentHistory.length
-                    ? employmentHistory.map((entry) => ({
-                        label: entry.employer_name || '—',
-                        value: joinParts([entry.position, entry.country]) || '—',
-                      }))
-                    : [{ label: t('app.candidate_card.employment.title'), value: '—' }]}
-                />
-              )}
             </CardAccordion>
           ) : null}
 
@@ -5444,38 +5446,14 @@ export default function CandidateCard(){
         </div>
 
         <div className={cardTab === 'documents' ? 'min-w-0 space-y-3 lg:col-start-1' : 'hidden'}>
-          <CandidateStatusSection
-            extra={extra}
-            statusRef={statusRef}
-            polandBasisOptions={polandBasisOptions}
-            selectTexts={selectTexts}
-            onExtraChange={setExtra}
-            candidateProfile={candidateProfile}
-            effectiveLayout={effectiveLayout}
-            candidateDataReadOnly={candidateDataReadOnly}
-            factsReadOnly={!isMasked && Boolean(model?.id)}
-            embedded
-          />
           {!isNew && model?.id ? (
             <>
               {!isMasked ? (
-                <OperatorFactsSurface
-                  candidateId={String(model.id)}
-                  countries={countries}
-                  region="professional"
-                  presentation="record"
-                  onSaved={() => {
-                    setOperatorFactsRevision((value) => value + 1)
-                    setDocsSummaryRefreshTrigger((value) => value + 1)
-                  }}
-                />
-              ) : null}
-              {!isMasked ? (
-                <div id="candidate-documents-workspace" className="space-y-2" data-document-focus={docsFocusType || undefined}>
-                  <div className="flex flex-wrap items-center gap-2">
+                <div id="candidate-documents-workspace" className="space-y-3" data-document-focus={docsFocusType || undefined}>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     <button
                       type="button"
-                      className="btn-secondary btn-xs"
+                      className="btn-secondary btn-compact"
                       onClick={() => void generateUploadLink()}
                       disabled={uploadLinkBusy}
                     >
@@ -5483,48 +5461,47 @@ export default function CandidateCard(){
                         ? t('app.candidate_card.actions.upload_link_creating')
                         : t('app.candidate_card.actions.upload_link')}
                     </button>
-                    <button
-                      type="button"
-                      className="btn-secondary btn-xs"
-                      onClick={() => void downloadBundle()}
-                      disabled={downloadingBundle}
-                    >
-                      {downloadingBundle
-                        ? t('app.candidate_card.actions.exporting_bundle')
-                        : t('app.candidate_card.actions.export_bundle')}
-                    </button>
                   </div>
                   {(uploadLink?.documents_url || uploadLink?.apply_url) ? (
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                      <div className="font-medium text-slate-800">
-                        {t('app.candidate_card.docs.upload_link_label')}
-                      </div>
-                      <div className="mt-1 break-all">
+                      <div className="mt-0 break-all">
                         {new URL(uploadLink.documents_url || uploadLink.apply_url, window.location.origin).toString()}
                       </div>
-                      {uploadLink.expires_at ? (
-                        <div className="mt-1 text-[11px] text-slate-500">
-                          {t('app.candidate_card.docs.upload_link_expires', {
-                            values: { date: formatDateSafe(uploadLink.expires_at, locale) || uploadLink.expires_at },
-                          })}
-                        </div>
-                      ) : null}
                     </div>
                   ) : null}
-                  <CandidateDocuments
-                    key={`${model.id}:inline:${operatorFactsRevision}`}
+                  <CandidateRequirementsChecklist
                     candidateId={String(model.id)}
-                    hideHeader
-                    inlineWorkspace
-                    candidateProfile={candidateProfile}
-                    initialType={docsFocusType}
-                    onDocumentsChanged={handleDocumentsChanged}
-                    {...({
-                      ownerContext: docsOwnerContext,
-                      onFieldsApplied: (doc: any, fields: Record<string, any>) =>
-                        applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
-                    } as any)}
+                    refreshTrigger={docsSummaryRefreshTrigger}
+                    canEdit={model.can_edit !== false}
+                    onOpenDocs={(typeCode) => focusDocument(typeCode)}
+                    onUpload={() => focusDocument(docsFocusType)}
+                    presentation="workspace"
+                    purposeMode="documents"
+                    onReadiness={setDocumentReadiness}
+                    onChanged={handleDocumentsChanged}
+                    onPipelineBlockersChange={(blockers, loading) => {
+                      setRequirementBlockers(blockers)
+                      setRequirementBlockersLoading(loading)
+                    }}
                   />
+                  {docsFocusType ? (
+                    <CandidateDocuments
+                      key={`${model.id}:inline:${operatorFactsRevision}:${docsFocusType}`}
+                      candidateId={String(model.id)}
+                      hideHeader
+                      inlineWorkspace
+                      requirementLed
+                      compactType
+                      candidateProfile={candidateProfile}
+                      initialType={docsFocusType}
+                      onDocumentsChanged={handleDocumentsChanged}
+                      {...({
+                        ownerContext: docsOwnerContext,
+                        onFieldsApplied: (doc: any, fields: Record<string, any>) =>
+                          applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
+                      } as any)}
+                    />
+                  ) : null}
                 </div>
               ) : null}
               {!isMasked && showRecruitmentDossierChecklist ? (
@@ -5544,42 +5521,8 @@ export default function CandidateCard(){
                   experienceReady={dossierExperienceReady}
                 />
               ) : null}
-              {showRequirementsSummaryCard ? (
-                <RequirementsWorkspaceSummaryCard
-                  candidateId={String(model.id)}
-                  workspace={requirementsWorkspace}
-                  workspaceLoading={requirementsWorkspaceLoading}
-                  workspaceReload={reloadRequirementsWorkspace}
-                  refreshTrigger={docsSummaryRefreshTrigger}
-                  canEdit={model.can_edit !== false}
-                  primaryStepHighlight={railPrimaryFocus === 'docs'}
-                  onPipelineBlockersChange={(blockers, loading) => {
-                    setRequirementBlockers(blockers)
-                    setRequirementBlockersLoading(loading)
-                  }}
-                >
-                  {pipelineStatus}
-                </RequirementsWorkspaceSummaryCard>
-              ) : pipelineStatus ? (
-                <section className="rounded-2xl border border-slate-200 bg-white p-3">{pipelineStatus}</section>
-              ) : null}
-              {showFullRequirementsChecklist ? (
-                <CandidateRequirementsChecklist
-                  candidateId={String(model.id)}
-                  refreshTrigger={docsSummaryRefreshTrigger}
-                  canEdit={model.can_edit !== false}
-                  onOpenDocs={(typeCode) => focusDocument(typeCode)}
-                  onUpload={() => focusDocument(undefined)}
-                  primaryStepHighlight={railPrimaryFocus === 'docs'}
-                  density="compact"
-                  onChanged={handleDocumentsChanged}
-                  onPipelineBlockersChange={(blockers, loading) => {
-                    setRequirementBlockers(blockers)
-                    setRequirementBlockersLoading(loading)
-                  }}
-                />
-              ) : null}
               <CandidateDocsRailPanel
+                headless
                 candidateId={String(model.id)}
                 ownerContext={docsOwnerContext}
                 uploadBusy={false}
@@ -5616,32 +5559,67 @@ export default function CandidateCard(){
 
         <div className={cardTab === 'legalization' ? 'min-w-0 space-y-3 lg:col-start-1' : 'hidden'}>
           {cardTab === 'legalization' && !isMasked && model?.id ? (
-            <OperatorFactsSurface
-              candidateId={String(model.id)}
-              countries={countries}
-              region="legalization"
-              contextLabel={model.company_name || null}
-              onOpenDocuments={() => focusDocument(undefined)}
-              requestedSlice={factsEditSlice}
-              editToken={factsEditToken}
-              onSaved={(saved) => {
-                setOperatorFactsRevision((value) => value + 1)
-                setDocsSummaryRefreshTrigger((value) => value + 1)
-                const citizenship = saved.steps.find((step) => step.key === 'citizenship')?.stored
-                const adr = saved.steps.find((step) => step.key === 'adr')
-                setExtra((prev) => ({
-                  ...prev,
-                  citizenship: citizenship || prev.citizenship,
-                  has_adr: typeof adr?.presence === 'boolean' ? adr.presence : prev.has_adr,
-                }))
-              }}
-            />
-          ) : null}
-          <p className="text-xs leading-relaxed text-slate-500">{t('app.candidate_card.ia.legalization_gap')}</p>
-          {can('services.view') ? (
-            <button type="button" className="btn-secondary btn-sm" onClick={() => setCardTab('services')}>
-              {t('app.candidate_card.ia.order_service')}
-            </button>
+            <>
+              <OperatorFactsSurface
+                candidateId={String(model.id)}
+                countries={countries}
+                region="legalization"
+                contextLabel={model.company_name || null}
+                requestedSlice={factsEditSlice}
+                editToken={factsEditToken}
+                onSaved={(saved) => {
+                  setOperatorFactsRevision((value) => value + 1)
+                  setDocsSummaryRefreshTrigger((value) => value + 1)
+                  const citizenship = saved.steps.find((step) => step.key === 'citizenship')?.stored
+                  const adr = saved.steps.find((step) => step.key === 'adr')
+                  setExtra((prev) => ({
+                    ...prev,
+                    citizenship: citizenship || prev.citizenship,
+                    has_adr: typeof adr?.presence === 'boolean' ? adr.presence : prev.has_adr,
+                  }))
+                }}
+              />
+              <CandidateRequirementsChecklist
+                candidateId={String(model.id)}
+                refreshTrigger={docsSummaryRefreshTrigger}
+                canEdit={model.can_edit !== false}
+                onOpenDocs={(typeCode) => setLegalDocsFocus(typeCode)}
+                onUpload={() => setLegalDocsFocus(legalDocsFocus)}
+                presentation="workspace"
+                purposeMode="legalization"
+                onChanged={handleDocumentsChanged}
+              />
+              {legalDocsFocus ? (
+                <CandidateDocuments
+                  key={`${model.id}:legal:${legalDocsFocus}`}
+                  candidateId={String(model.id)}
+                  hideHeader
+                  inlineWorkspace
+                  requirementLed
+                  compactType
+                  candidateProfile={candidateProfile}
+                  initialType={legalDocsFocus}
+                  onDocumentsChanged={handleDocumentsChanged}
+                  {...({
+                    ownerContext: docsOwnerContext,
+                    onFieldsApplied: (doc: any, fields: Record<string, any>) =>
+                      applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
+                  } as any)}
+                />
+              ) : null}
+              {can('services.view')
+                && operatorFactsView
+                && operatorFactsView.citizenship_class !== 'pl'
+                && operatorFactsView.citizenship_class !== 'eu_eea_ch'
+                && operatorFactsView.steps.some((step) => step.key === 'work' && step.visible) ? (
+                <>
+                  <button type="button" className="btn-secondary btn-compact" onClick={() => setCardTab('services')}>
+                    {t('app.candidate_card.ia.order_service')}
+                  </button>
+                  <p className="text-xs leading-relaxed text-slate-500">{t('app.candidate_card.ia.legalization_gap')}</p>
+                </>
+              ) : null}
+            </>
           ) : null}
         </div>
 
@@ -5963,7 +5941,11 @@ export default function CandidateCard(){
 function CandidateServicesSection({ candidateId, canManage }: { candidateId: string; canManage: boolean }) {
   const query = useMemo(() => ({ candidateId }), [candidateId])
   const { orders, loading, reload } = useServiceOrders(query)
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const [ordering, setOrdering] = useState(false)
+  const [catalog, setCatalog] = useState<Array<{ id: string; name: string }>>([])
+  const [serviceId, setServiceId] = useState('')
+  const [orderError, setOrderError] = useState<string | null>(null)
   const orderStatusLabels = useMemo(() => {
     const map: Record<string, string> = {}
     SERVICE_ORDER_STATUSES.forEach((status) => {
@@ -5982,58 +5964,75 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
   const formatItemStatus = (status: string) => itemStatusLabels[status] || status
 
   return (
-    <div className="min-w-0 space-y-2 rounded-xl border border-slate-200 bg-white p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-xs font-semibold text-slate-800">{t('app.candidate_card.services.title')}</div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <button type="button" className="btn-secondary btn-sm" onClick={reload} disabled={loading}>
-            {loading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}
-          </button>
-          {canManage && (
-            <Link to={servicesWorkspacePath('orders', { candidateId })} className="btn-secondary btn-sm">
-              {t('app.candidate_card.services.open_module')}
-            </Link>
-          )}
+    <WorkspaceSection
+      title={t('app.candidate_card.ia.services_active', { defaultValue: 'Active services' })}
+      description={t('app.candidate_card.services.title')}
+      action={canManage ? (
+        <Button type="button" variant="secondary" size="compact" onClick={() => {
+          setOrdering((value) => !value)
+          if (!catalog.length) {
+            void listAdditionalServices().then((rows) => {
+              setCatalog(rows.filter((row) => row.is_active !== false).map((row) => ({ id: row.id, name: row.name })))
+            }).catch(() => setCatalog([]))
+          }
+        }}>
+          {t('app.candidate_card.ia.order_service')}
+        </Button>
+      ) : null}
+    >
+      {ordering && canManage ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <select className="input max-w-xs text-sm" value={serviceId} onChange={(event) => setServiceId(event.target.value)}>
+            <option value="">{t('app.candidate_card.select.empty')}</option>
+            {catalog.map((service) => (
+              <option key={service.id} value={service.id}>{service.name}</option>
+            ))}
+          </select>
+          <Button
+            type="button"
+            variant="primary"
+            size="compact"
+            disabled={!serviceId}
+            onClick={() => {
+              setOrderError(null)
+              void createServiceOrder({
+                candidate_id: candidateId,
+                currency: 'PLN',
+                items: [{ service_id: serviceId, qty: 1 }],
+              }).then(() => {
+                setServiceId('')
+                setOrdering(false)
+                reload()
+              }).catch(() => setOrderError(t('app.candidate_card.services.loading')))
+            }}
+          >
+            {t('app.candidate_card.ia.order_service')}
+          </Button>
         </div>
-      </div>
-
+      ) : null}
+      {orderError ? <p className="mb-2 text-xs text-rose-700">{orderError}</p> : null}
       {loading ? (
         <div className="text-sm text-slate-500">{t('app.candidate_card.services.loading')}</div>
       ) : orders.length === 0 ? (
         <div className="text-sm text-slate-500">{t('app.candidate_card.services.empty')}</div>
       ) : (
-        <div className="max-h-56 overflow-auto rounded-xl border border-slate-200/90 bg-slate-50/40">
-          <table className="min-w-full divide-y divide-brand-100/70 text-sm">
-            <thead className="bg-brand-50/60">
-              <tr>
-                <th className="px-3 py-2 text-left">{t('app.candidate_card.services.columns.order')}</th>
-                <th className="px-3 py-2 text-left">{t('app.candidate_card.services.columns.status')}</th>
-                <th className="px-3 py-2 text-left">{t('app.candidate_card.services.columns.items')}</th>
-                <th className="px-3 py-2 text-right">{t('app.candidate_card.services.columns.total')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brand-100/70 bg-white/95">
-              {orders.map((order) => (
-                <tr key={order.id}>
-                  <td className="px-3 py-2 font-mono text-xs">{order.id.slice(0, 12)}…</td>
-                  <td className="px-3 py-2 uppercase text-xs text-slate-500">{formatOrderStatus(order.status)}</td>
-                  <td className="px-3 py-2 text-xs">
-                    <ul className="list-disc list-inside space-y-1">
-                      {order.items.map((item) => (
-                        <li key={item.id}>
-                          <span className="font-medium text-slate-700">{item.service?.name || item.service_id}</span>
-                          <span className="ml-2 text-slate-500">{formatItemStatus(item.status)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                  <td className="px-3 py-2 text-right text-sm text-slate-700">{formatAmount(order.total_amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="divide-y divide-slate-100">
+          {orders.map((order) => (
+            <div key={order.id} className="flex items-start justify-between gap-3 py-2">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-slate-900">
+                  {order.items.map((item) => item.service?.name || item.service_id).filter(Boolean).join(', ') || order.id.slice(0, 8)}
+                </div>
+                <div className="mt-0.5 text-xs text-slate-500">
+                  {t('app.candidate_card.ia.ordered_on', { defaultValue: 'Ordered {date}', values: { date: formatDateSafe(order.created_at, locale) || order.created_at } })}
+                  {order.items[0] ? ` · ${formatItemStatus(order.items[0].status)}` : ''}
+                </div>
+              </div>
+              <StatusBadge size="sm" shape="pill" semantic="neutral" label={formatOrderStatus(order.status)} />
+            </div>
+          ))}
         </div>
       )}
-    </div>
+    </WorkspaceSection>
   )
 }

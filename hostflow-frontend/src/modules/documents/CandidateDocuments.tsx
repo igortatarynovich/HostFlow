@@ -314,6 +314,8 @@ type Props = {
   compactType?: boolean;
   /** Same tab workspace: expand the focused type in place. Do not open the file preview. */
   inlineWorkspace?: boolean;
+  /** The resolved requirement list owns creation. Hide the generic type picker. */
+  requirementLed?: boolean;
 };
 
 export default function CandidateDocuments({
@@ -326,6 +328,7 @@ export default function CandidateDocuments({
   initialType,
   compactType = false,
   inlineWorkspace = false,
+  requirementLed = false,
 }: Props) {
   const { can } = usePermissions();
   const { t, locale } = useI18n();
@@ -1945,7 +1948,7 @@ useEffect(() => {
         </div>
       )}
 
-      {inlineWorkspace && canManageDocuments ? (
+      {inlineWorkspace && canManageDocuments && !requirementLed ? (
         <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
           <label className="min-w-[12rem] flex-1 text-xs text-slate-600">
             {t("admin.documents.forms.type", { defaultValue: "Document type" })}

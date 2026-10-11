@@ -32,6 +32,10 @@
 
 Authenticated Hub **metadata** resolve is [`documents-platform.md`](./documents-platform.md), not this upload/ACL surface.
 
+## Operator Candidate Card (presentation only)
+
+The operator Candidate Card may show one Documents Hub instance inside Documents and again inside Legalization. That is a second view of the same file, not a second store, a second upload endpoint, or a new public-link type. Upload, candidate upload links, and document ACL stay on the existing Hub. No new candidate field is introduced for work-authorization order dates or procedure states.
+
 ## Связанные спеки
 
 - `docs/specs/architecture/object_storage.md`

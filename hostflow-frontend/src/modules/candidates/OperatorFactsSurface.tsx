@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { api } from '../../api/client'
 import { CardAccordion, ReadRows, joinParts } from '../../components/candidate/card/CandidateCardChrome'
 import { InlineFieldRow } from '../../components/ui/InlineFieldRow'
+import { WorkspaceSection } from '../../components/ui/WorkspaceSection'
 import { SearchableSelect } from '../../components/candidate/shared/FormComponents'
 import DateInput from '../../components/controls/DateInput'
 import { useI18n } from '../../i18n'
@@ -85,6 +86,7 @@ export function OperatorFactsForm({
   presentation?: OperatorFactsPresentation
 }) {
   const { t, locale } = useI18n()
+  const [skillField, setSkillField] = useState<'categories' | 'adr' | null>(null)
   const citizenship = stepOf(view, 'citizenship')
   const stay = stepOf(view, 'stay_basis')
   const work = stepOf(view, 'work')
@@ -301,7 +303,73 @@ export function OperatorFactsForm({
           {t('app.candidate_card.operator_facts.qualifications', { defaultValue: 'Uprawnienia kierowcy' })}
         </div>
         )}
-        {showQualifications ? (
+        {showQualifications && presentation === 'skill' ? (
+          <div className="space-y-1" data-testid="operator-facts-skill-rows">
+            <InlineFieldRow
+              label={t('app.candidate_card.operator_facts.licence_categories', { defaultValue: 'Categories' })}
+              value={(licence?.categories ?? []).join(' · ')}
+              editing={skillField === 'categories'}
+              canEdit={!disabled}
+              onEdit={() => setSkillField('categories')}
+              onDone={() => setSkillField(null)}
+            >
+              <div className="flex flex-wrap gap-3" data-testid="operator-facts-licence-details">
+                {(view.licence_category_codes ?? []).map((code) => {
+                  const selected = (licence?.categories ?? []).includes(code)
+                  return (
+                    <label key={code} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        disabled={disabled}
+                        checked={selected}
+                        onChange={() => {
+                          const current = new Set(licence?.categories ?? [])
+                          if (selected) current.delete(code)
+                          else current.add(code)
+                          onPatch({ licence_categories: current.size ? Array.from(current) : 'unknown' })
+                        }}
+                      />
+                      <span>{code}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </InlineFieldRow>
+            <InlineFieldRow
+              label={t('app.candidate_card.operator_facts.adr', { defaultValue: 'ADR' })}
+              value={factValue(
+                adr?.presence,
+                t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' }),
+                t('app.candidate_card.operator_facts.no', { defaultValue: 'No' }),
+              )}
+              editing={skillField === 'adr'}
+              canEdit={!disabled}
+              onEdit={() => setSkillField('adr')}
+              onDone={() => setSkillField(null)}
+            >
+              {presenceSelect(adr?.presence, (next) => onPatch({ adr_presence: next }))}
+            </InlineFieldRow>
+            {code95?.visible ? (
+              <InlineFieldRow
+                label={t('app.candidate_card.operator_facts.code95', { defaultValue: 'Code 95' })}
+                value={factValue(
+                  code95.presence,
+                  t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' }),
+                  t('app.candidate_card.operator_facts.no', { defaultValue: 'No' }),
+                  code95.valid_to,
+                  locale,
+                )}
+                editing={false}
+                canEdit={false}
+                onEdit={() => undefined}
+                onDone={() => undefined}
+              >
+                {null}
+              </InlineFieldRow>
+            ) : null}
+          </div>
+        ) : null}
+        {showQualifications && presentation !== 'skill' ? (
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className={nest} data-testid="operator-facts-licence">
             {presentation === 'skill' ? (
@@ -687,61 +755,144 @@ export function OperatorFactsWorkspace({
 function LegalizationFactsSheet({
   view,
   contextLabel,
-  onOpenDocuments,
+  disabled,
+  onPatch,
 }: {
   view: OperatorFactsView
   contextLabel?: string | null
   onOpenDocuments?: () => void
+  disabled?: boolean
+  onPatch?: (patch: Patch) => void
 }) {
   const { t, locale } = useI18n()
+  const [openField, setOpenField] = useState<'stay' | 'stay_until' | 'work' | null>(null)
   const stay = stepOf(view, 'stay_basis')
   const work = stepOf(view, 'work')
   const determined = view.citizenship_class === 'pl' || view.citizenship_class === 'eu_eea_ch'
-  const yes = t('app.candidate_card.operator_facts.yes', { defaultValue: 'Tak' })
-  const no = t('app.candidate_card.operator_facts.no', { defaultValue: 'Nie' })
+  const yes = t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' })
+  const no = t('app.candidate_card.operator_facts.no', { defaultValue: 'No' })
+  const unknownLabel = t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })
+  const stayRequired = !(determined || !stay?.visible)
+  const workRequired = !(determined || !work?.visible)
   const stayCode = stay?.stored && stay.stored !== 'unknown' ? stay.stored : ''
   const stayLabel = stayCode
     ? t(`app.candidate_card.operator_facts.stay_option.${stayCode}`, { defaultValue: stayCode })
-    : '—'
+    : ''
   const workCode = work?.operator_label && work.operator_label !== 'unknown' ? work.operator_label : ''
   const workLabel = workCode
     ? t(`app.candidate_card.operator_facts.work_option.${workCode}`, { defaultValue: workCode })
-    : '—'
-  const stayUntil = stay?.valid_to ? formatDateSafe(stay.valid_to, locale) : '—'
-  const line = (label: string, value: ReactNode) => (
-    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-sm">
-      <div className="text-slate-500">{label}</div>
-      <div className="min-w-0 font-medium text-slate-900">{value}</div>
-    </div>
+    : ''
+  const stayUntil = stay?.valid_to ? formatDateSafe(stay.valid_to, locale) : ''
+  const notRequired = t('app.candidate_card.operator_facts.work_not_required', {
+    defaultValue: 'Stay and a work permit are not required.',
+  })
+  const choice = (
+    value: string,
+    options: readonly string[],
+    group: 'stay_option' | 'work_option',
+    onChange: (next: string) => void,
+    testId: string,
+  ) => (
+    <select
+      data-testid={testId}
+      className="input"
+      disabled={disabled}
+      value={value || 'unknown'}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      <option value="unknown">{unknownLabel}</option>
+      {options.map((code) => (
+        <option key={code} value={code}>
+          {t(`app.candidate_card.operator_facts.${group}.${code}`, { defaultValue: code })}
+        </option>
+      ))}
+    </select>
   )
-  const documentValue = onOpenDocuments ? (
-    <button type="button" className="font-medium text-brand-700 hover:underline" onClick={onOpenDocuments}>
-      {t('app.candidate_card.ia.legalization_open_document', { defaultValue: 'Open in Documents' })}
-    </button>
-  ) : '—'
   return (
     <div className="space-y-3" data-testid="legalization-facts-sheet">
-      <section className="space-y-1.5 rounded-xl border border-slate-200 bg-white p-3">
-        <h3 className="text-sm font-semibold text-slate-900">
-          {t('app.candidate_card.ia.legalization_stay', { defaultValue: 'Stay in the country' })}
-        </h3>
-        {line(t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' }), determined || !stay?.visible ? no : yes)}
-        {line(t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' }), stay?.visible ? stayLabel : '—')}
-        {line(t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' }), stay?.visible ? stayUntil : '—')}
-        {line(t('app.candidate_card.ia.legalization_document', { defaultValue: 'Document' }), documentValue)}
-      </section>
-      <section className="space-y-1.5 rounded-xl border border-slate-200 bg-white p-3">
-        <h3 className="text-sm font-semibold text-slate-900">
-          {t('app.candidate_card.ia.legalization_work', { defaultValue: 'Right to work' })}
-        </h3>
-        {line(t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' }), determined || !work?.visible ? no : yes)}
-        {line(t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' }), work?.visible ? workLabel : '—')}
-        {line(
-          t('app.candidate_card.ia.legalization_employment', { defaultValue: 'Employment' }),
-          contextLabel?.trim() || '—',
-        )}
-        {line(t('app.candidate_card.ia.legalization_document', { defaultValue: 'Document' }), documentValue)}
-      </section>
+      <WorkspaceSection
+        title={t('app.candidate_card.ia.legalization_stay', { defaultValue: 'Stay in the country' })}
+        description={stayRequired ? t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' }) : null}
+      >
+        <InlineFieldRow
+          label={t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' })}
+          value={stayRequired ? yes : no}
+          editing={false}
+          canEdit={false}
+          onEdit={() => undefined}
+          onDone={() => undefined}
+        >
+          {null}
+        </InlineFieldRow>
+        {stayRequired ? (
+          <>
+            <InlineFieldRow
+              label={t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' })}
+              value={stayLabel}
+              editing={openField === 'stay'}
+              canEdit={!disabled && Boolean(onPatch)}
+              onEdit={() => setOpenField('stay')}
+              onDone={() => setOpenField(null)}
+            >
+              {choice(stayCode, view.stay_choices ?? [], 'stay_option', (next) => onPatch?.({ stay_basis: next }), 'operator-facts-stay-input')}
+            </InlineFieldRow>
+            <InlineFieldRow
+              label={t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' })}
+              value={stayUntil}
+              editing={openField === 'stay_until'}
+              canEdit={!disabled && Boolean(onPatch)}
+              onEdit={() => setOpenField('stay_until')}
+              onDone={() => setOpenField(null)}
+            >
+              <DateInput
+                value={stay?.valid_to}
+                disabled={disabled}
+                testId="operator-facts-stay-valid-to"
+                onValueChange={(next) => onPatch?.({ stay_valid_to: next || 'unknown' })}
+              />
+            </InlineFieldRow>
+          </>
+        ) : null}
+      </WorkspaceSection>
+      <WorkspaceSection
+        title={t('app.candidate_card.ia.legalization_work', { defaultValue: 'Right to work' })}
+        description={workRequired ? t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' }) : (!stayRequired ? notRequired : null)}
+      >
+        <InlineFieldRow
+          label={t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' })}
+          value={workRequired ? yes : no}
+          editing={false}
+          canEdit={false}
+          onEdit={() => undefined}
+          onDone={() => undefined}
+        >
+          {null}
+        </InlineFieldRow>
+        {workRequired ? (
+          <InlineFieldRow
+            label={t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' })}
+            value={workLabel}
+            editing={openField === 'work'}
+            canEdit={!disabled && Boolean(onPatch)}
+            onEdit={() => setOpenField('work')}
+            onDone={() => setOpenField(null)}
+          >
+            {choice(workCode, view.work_choices ?? [], 'work_option', (next) => onPatch?.({ work_label: next }), 'operator-facts-work-input')}
+          </InlineFieldRow>
+        ) : null}
+        {contextLabel?.trim() ? (
+          <InlineFieldRow
+            label={t('app.candidate_card.ia.legalization_employment', { defaultValue: 'Employment' })}
+            value={contextLabel.trim()}
+            editing={false}
+            canEdit={false}
+            onEdit={() => undefined}
+            onDone={() => undefined}
+          >
+            {null}
+          </InlineFieldRow>
+        ) : null}
+      </WorkspaceSection>
     </div>
   )
 }
@@ -929,7 +1080,8 @@ export default function OperatorFactsSurface({
         <LegalizationFactsSheet
           view={view}
           contextLabel={contextLabel}
-          onOpenDocuments={onOpenDocuments}
+          disabled={busy}
+          onPatch={(patch) => void onPatch(patch)}
         />
       ) : null}
       {view && region === 'person' ? (

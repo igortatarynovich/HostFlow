@@ -107,6 +107,8 @@ type Props = {
    * Requirements checklist (Candidate Evidence) is the primary confirmation UI.
    */
   hideDocumentTypeChecklist?: boolean
+  /** Keep blocker callbacks without rendering the document rail. */
+  headless?: boolean
   /** When true, do not push document-summary blockers to parent (requirements path owns blockers). */
   suppressBlockerCallbacks?: boolean
   /** Requirement-centric waivers use requirement_code instead of doc_type_code. */
@@ -166,6 +168,7 @@ export default function CandidateDocsRailPanel({
   primaryStepHighlight = false,
   blockersPresentation = 'operational',
   hideDocumentTypeChecklist = false,
+  headless = false,
   suppressBlockerCallbacks = false,
   waiverMode: waiverModeProp,
   externalBlockers,
@@ -541,6 +544,8 @@ export default function CandidateDocsRailPanel({
       setDetailsOpen(true)
     }
   }, [canToggleDetails, shouldAutoOpenDetails])
+
+  if (headless) return null
 
   return (
     <section
