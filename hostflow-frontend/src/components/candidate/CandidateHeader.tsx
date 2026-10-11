@@ -1,21 +1,14 @@
 import { memo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import {
-  IconAlertTriangle,
-  IconBookmark,
-  IconBookmarkFilled,
-  IconClipboardList,
-  IconHistory,
-} from '@tabler/icons-react'
+import { IconAlertTriangle, IconHistory } from '@tabler/icons-react'
 import type { Candidate } from '../../api/types'
 import type { CandidateNextActionDTO } from '../../api/candidates'
-import StageTag from '../StageTag'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import type { CandidateProfile } from '../../api/candidate_profiles'
 import NextActionBadge from './NextActionBadge'
+import { OverflowMenu, type OverflowMenuItem } from '../ui/OverflowMenu'
 
 interface CandidateHeaderProps {
   candidate: Candidate | null
@@ -48,6 +41,7 @@ interface CandidateHeaderProps {
   /** When true, hides the legacy back link (use PageHeader breadcrumb instead). */
   hideBackLink?: boolean
   onFavoriteToggle?: () => void
+  onGenerateShortId?: () => void
   candidateProfile?: import('../../api/candidate_profiles').CandidateProfile | null
   profileLoading?: boolean
   stageSinceAt?: string | null
@@ -67,6 +61,10 @@ interface CandidateHeaderProps {
   displayName?: string | null
   candidateCode?: string | null
   statusChip?: ReactNode
+  /** Operational context under the name: vacancy, stage, warnings. */
+  summary?: ReactNode
+  /** Stage track. Rendered as the last row of the same hero. */
+  pipeline?: ReactNode
 }
 
 function CandidateHeader({
@@ -96,6 +94,7 @@ function CandidateHeader({
   backLabel,
   hideBackLink = false,
   onFavoriteToggle,
+  onGenerateShortId,
   candidateProfile,
   profileLoading,
   focusContent,
@@ -109,217 +108,204 @@ function CandidateHeader({
   displayName = null,
   candidateCode = null,
   statusChip = null,
+  summary = null,
+  pipeline = null,
   ..._unusedHeaderProps
 }: CandidateHeaderProps) {
   const { t } = useI18n()
   void _unusedHeaderProps
 
+  const actionableNext =
+    nextAction && nextAction.kind !== 'idle' && nextAction.kind !== 'done' ? nextAction : null
+  const overflowItems: OverflowMenuItem[] = []
+  if (!isNew && onFavoriteToggle) {
+    overflowItems.push({
+      id: 'favorite',
+      label: candidate?.is_favorite
+        ? t('app.candidate_card.actions.remove_favorite')
+        : t('app.candidate_card.actions.add_favorite'),
+      onSelect: onFavoriteToggle,
+    })
+  }
+  if (!isNew && !candidate?.short_id && onGenerateShortId) {
+    overflowItems.push({
+      id: 'short-id',
+      label: t('app.candidate_card.actions.generate_short_id'),
+      onSelect: onGenerateShortId,
+    })
+  }
+  if (!isNew && editMode && onEditToggle) {
+    overflowItems.push({
+      id: 'cancel-edit',
+      label: t('app.candidate_card.actions.cancel_edit', { defaultValue: 'Cancel edit' }),
+      onSelect: onEditToggle,
+    })
+  }
+  if (!isNew && canDeleteDirect) {
+    overflowItems.push({
+      id: 'delete',
+      label: t('common.actions.delete'),
+      onSelect: onDelete,
+      tone: 'danger',
+    })
+  }
+  if (!isNew && !canDeleteDirect && canRequestDelete) {
+    overflowItems.push({
+      id: 'delete-request',
+      label: deleteRequestLoading
+        ? t('app.candidate_card.actions.delete_request_loading')
+        : t('app.candidate_card.actions.delete_request'),
+      onSelect: onDeleteRequest,
+      disabled: deleteRequestLoading,
+      tone: 'danger',
+    })
+  }
+
+  const actionClass = clsx(
+    'rounded-lg border font-medium transition disabled:opacity-60',
+    compact ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm',
+  )
+
   return (
     <>
-      {/* Header */}
-      <div className={clsx('min-w-0 rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 text-white shadow-sm', compact ? 'p-2.5' : 'p-3')}>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1.5">
-            {displayName || candidateCode ? (
-              <div className="min-w-0">
-                <div className="truncate text-base font-semibold leading-tight text-white">{displayName || '—'}</div>
-                {candidateCode ? <div className="text-xs font-medium text-white/80">{candidateCode}</div> : null}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className={clsx('bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 text-white', compact ? 'px-3 py-2' : 'px-3 py-2.5')}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              {!hideBackLink && backPath ? (
+                <div className="text-[11px] text-white/80">
+                  <Link className="hover:underline text-white" to={backPath}>
+                    {backLabel || t('app.candidate_card.header.back')}
+                  </Link>
+                </div>
+              ) : null}
+              <div className="flex min-w-0 items-baseline gap-2">
+                <h1 className="truncate text-base font-semibold leading-tight text-white">
+                  {displayName || '—'}
+                </h1>
+                {candidateCode ? <span className="shrink-0 text-xs font-medium text-white/80">{candidateCode}</span> : null}
               </div>
-            ) : null}
-            {!hideBackLink && backPath ? (
-              <div className="text-[11px] text-white/80">
-                <Link className="hover:underline text-white" to={backPath}>
-                  {backLabel || t('app.candidate_card.header.back')}
-                </Link>
-              </div>
-            ) : null}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
-              {statusChip}
-              {candidate && <StageTag code={candidate.stage || 'new'} />}
-              {!isNew && candidate?.id ? (
-                <NextActionBadge
-                  dto={nextAction}
-                  loading={nextActionLoading}
-                  error={nextActionError}
-                  inverse
-                />
-              ) : null}
-              {!isMasked && candidate?.intake_application_kind === 'client' && (
-                <span
-                  className="text-[11px] inline-flex items-center rounded-lg border border-blue-200/80 bg-blue-500/20 px-2 py-0.5 font-semibold text-white"
-                  title={t('app.candidate_card.labels.client_intake_badge_hint')}
-                >
-                  {t('app.candidate_card.labels.client_intake_badge')}
-                </span>
-              )}
-              {!isMasked && pipelineWaiverPendingCount > 0 ? (
-                <span
-                  className="text-[11px] inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-400/90 px-2 py-0.5 font-semibold text-amber-950 shadow-sm"
-                  title={t('app.candidate_card.pipeline_override.badge_pending_hint', {
-                    defaultValue: 'Document waiver waiting for manager approval',
-                  })}
-                >
-                  <IconAlertTriangle size={12} />
-                  {t('app.candidate_card.pipeline_override.badge_pending', {
-                    defaultValue: 'Waiver pending ({count})',
-                    values: { count: String(pipelineWaiverPendingCount) },
-                  })}
-                </span>
-              ) : null}
-              {!isMasked && pipelineWaiverApprovedCount > 0 ? (
-                <span
-                  className="text-[11px] inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-500/90 px-2 py-0.5 font-semibold text-emerald-950 shadow-sm"
-                  title={t('app.candidate_card.pipeline_override.badge_active_hint', {
-                    defaultValue: 'Approved document waiver(s) relax pipeline / handoff gates for listed types',
-                  })}
-                >
-                  {t('app.candidate_card.pipeline_override.badge_active', {
-                    defaultValue: 'Waiver active ({count})',
-                    values: { count: String(pipelineWaiverApprovedCount) },
-                  })}
-                </span>
-              ) : null}
-              {profileLoading && (
-                <span className="text-[11px] rounded-lg border border-white/30 px-2 py-0.5 text-white/70">
-                  {t('common.loading')}
-                </span>
-              )}
-              {!profileLoading && candidateProfile && (
-                <Link
-                  to={CRM_APP_PATHS.settingsCandidateProfiles}
-                  className="text-[11px] inline-flex items-center gap-1 rounded-lg border border-white/30 bg-white/20 px-2 py-0.5 transition-colors hover:bg-white/30"
-                  title={candidateProfile.description || candidateProfile.name}
-                  onClick={(e) => {
-                    // Можно добавить логику для скролла к нужному профилю
-                    e.stopPropagation()
-                  }}
-                >
-                  <IconClipboardList size={13} />
-                  <span>{candidateProfile.name}</span>
-                </Link>
-              )}
-              {!profileLoading && !candidateProfile && candidate?.vacancy_id && (
-                <span className="text-[11px] rounded-lg border border-white/30 px-2 py-0.5 text-white/70" title={t('app.candidate_card.labels.no_profile')}>
-                  <span className="inline-flex items-center gap-1">
-                    <IconAlertTriangle size={12} />
-                    {t('app.candidate_card.labels.no_profile_short')}
-                  </span>
-                </span>
-              )}
-              {!isNew && onFavoriteToggle && (
-                <button
-                  type="button"
-                  className="text-[11px] inline-flex items-center gap-1 rounded-lg border border-white/30 px-2 py-1 transition-colors hover:bg-white/10"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onFavoriteToggle()
-                  }}
-                  title={candidate?.is_favorite ? t('app.candidate_card.actions.remove_favorite') : t('app.candidate_card.actions.add_favorite')}
-                >
-                  {candidate?.is_favorite ? <IconBookmarkFilled size={13} /> : <IconBookmark size={13} />}
-                  <span className="sr-only">{candidate?.is_favorite ? t('app.candidate_card.actions.remove_favorite') : t('app.candidate_card.actions.add_favorite')}</span>
-                </button>
+              {isNew ? (
+                <>
+                  <button type="button" className={clsx(actionClass, 'border-white/30 bg-white/10 text-white hover:bg-white/20')} onClick={onCancel}>
+                    {t('common.actions.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    className={clsx(actionClass, 'border-white bg-white font-semibold text-brand-700 shadow-sm hover:bg-white/90')}
+                    disabled={saving || !canEdit}
+                    onClick={onSave}
+                  >
+                    {saving ? t('common.saving') : t('common.actions.create')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {onOpenActivity ? (
+                    <button
+                      type="button"
+                      className={clsx(actionClass, 'inline-flex items-center gap-1.5 border-white/30 bg-white/10 text-white hover:bg-white/20')}
+                      onClick={onOpenActivity}
+                    >
+                      <IconHistory size={16} className="shrink-0 opacity-90" aria-hidden />
+                      {t('app.candidate_card.ia.activity_history', { defaultValue: 'Activity / History' })}
+                    </button>
+                  ) : null}
+                  {handoffReadonlyText ? (
+                    <div className="max-w-xs rounded-lg border border-white/40 bg-white/15 px-2 py-1 text-left text-xs font-medium leading-tight text-white" role="status">
+                      {handoffReadonlyText}
+                    </div>
+                  ) : onOpenHandoff ? (
+                    <button
+                      type="button"
+                      className={clsx(actionClass, 'border-white bg-white font-semibold text-brand-700 shadow-sm hover:bg-white/90')}
+                      onClick={onOpenHandoff}
+                      disabled={handoffDisabled}
+                      title={handoffDisabled && handoffDisabledTitle ? handoffDisabledTitle : undefined}
+                    >
+                      {handoffLabel || t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
+                    </button>
+                  ) : null}
+                  <OverflowMenu
+                    label={t('common.actions.more')}
+                    items={overflowItems}
+                    appearance="inverse"
+                  />
+                </>
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            {isNew && (
-              <>
-                <button
-                  className={clsx('rounded-lg border border-white/30 bg-white/10 font-medium text-white transition hover:bg-white/20', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
-                  onClick={onCancel}
-                >
-                  {t('common.actions.cancel')}
-                </button>
-                <button
-                  className={clsx('rounded-lg border border-white bg-white font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
-                  disabled={saving || !canEdit}
-                  onClick={onSave}
-                >
-                  {saving ? t('common.saving') : t('common.actions.create')}
-                </button>
-              </>
-            )}
-            {!isNew && (
-              <>
-                {handoffReadonlyText ? (
-                  <div
-                    className="max-w-md rounded-lg border border-white/40 bg-white/15 px-3 py-2 text-left text-xs font-medium leading-tight text-white"
-                    role="status"
-                  >
-                    {handoffReadonlyText}
-                  </div>
-                ) : onOpenHandoff ? (
-                  <button
-                    type="button"
-                    className={clsx('rounded-lg border border-white bg-white font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
-                    onClick={onOpenHandoff}
-                    disabled={handoffDisabled}
-                    title={handoffDisabled && handoffDisabledTitle ? handoffDisabledTitle : undefined}
-                  >
-                    {handoffLabel || t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
-                  </button>
-                ) : null}
-                {onOpenActivity ? (
-                  <button
-                    type="button"
-                    className={clsx('inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 font-medium text-white transition hover:bg-white/20', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
-                    onClick={onOpenActivity}
-                    title={t('app.candidate_card.ia.activity_history', { defaultValue: 'Activity / History' })}
-                  >
-                    <IconHistory size={18} className="shrink-0 opacity-90" aria-hidden />
-                    {t('app.candidate_card.ia.activity_history', { defaultValue: 'Activity / History' })}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className={clsx(
-                    "rounded-lg border border-white/30 bg-white/10 font-medium text-white transition hover:bg-white/20",
-                    compact ? "px-2 py-1 text-xs" : "px-3 py-2",
-                    editMode && "bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100",
-                  )}
-                  onClick={onEditToggle}
-                  disabled={!canEdit}
-                >
-                  {editMode
-                    ? t('app.candidate_card.actions.cancel_edit', { defaultValue: 'Cancel edit' })
-                    : t('app.candidate_card.actions.edit', { defaultValue: 'Edit' })}
-                </button>
-                <span className="mx-1 hidden h-6 w-px bg-white/30 md:inline-block" />
-                {canDeleteDirect ? (
-                  <button
-                    className={clsx('rounded-lg border border-rose-300 bg-rose-50 font-semibold text-rose-700 transition hover:bg-rose-100', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
-                    onClick={onDelete}
-                  >
-                    {t('common.actions.delete')}
-                  </button>
-                ) : null}
-              </>
-            )}
-            {!isNew && !canDeleteDirect && canRequestDelete && (
-              <button
-                type="button"
-                className={clsx('rounded-lg border border-white/30 bg-white/10 font-medium text-white transition hover:bg-white/20', compact ? 'px-2 py-1 text-xs' : 'px-3 py-2')}
-                disabled={deleteRequestLoading}
-                onClick={onDeleteRequest}
-              >
-                {deleteRequestLoading
-                  ? t('app.candidate_card.actions.delete_request_loading')
-                  : t('app.candidate_card.actions.delete_request')}
-              </button>
-            )}
-          </div>
         </div>
-        {focusContent ? <div className="mt-3 min-w-0">{focusContent}</div> : null}
+
+        {summary || statusChip || actionableNext || pipelineWaiverPendingCount > 0 || pipelineWaiverApprovedCount > 0 ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 px-3 py-1.5">
+            {summary}
+            {statusChip}
+            {!isMasked && candidate?.intake_application_kind === 'client' ? (
+              <span
+                className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800"
+                title={t('app.candidate_card.labels.client_intake_badge_hint')}
+              >
+                {t('app.candidate_card.labels.client_intake_badge')}
+              </span>
+            ) : null}
+            {!isMasked && pipelineWaiverPendingCount > 0 ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-950"
+                title={t('app.candidate_card.pipeline_override.badge_pending_hint', {
+                  defaultValue: 'Document waiver waiting for manager approval',
+                })}
+              >
+                <IconAlertTriangle size={12} />
+                {t('app.candidate_card.pipeline_override.badge_pending', {
+                  defaultValue: 'Waiver pending ({count})',
+                  values: { count: String(pipelineWaiverPendingCount) },
+                })}
+              </span>
+            ) : null}
+            {!isMasked && pipelineWaiverApprovedCount > 0 ? (
+              <span
+                className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-900"
+                title={t('app.candidate_card.pipeline_override.badge_active_hint', {
+                  defaultValue: 'Approved document waiver(s) relax pipeline / handoff gates for listed types',
+                })}
+              >
+                {t('app.candidate_card.pipeline_override.badge_active', {
+                  defaultValue: 'Waiver active ({count})',
+                  values: { count: String(pipelineWaiverApprovedCount) },
+                })}
+              </span>
+            ) : null}
+            {profileLoading ? (
+              <span className="text-[11px] text-slate-500">{t('common.loading')}</span>
+            ) : null}
+            {!profileLoading && !candidateProfile && candidate?.vacancy_id ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800" title={t('app.candidate_card.labels.no_profile')}>
+                <IconAlertTriangle size={12} />
+                {t('app.candidate_card.labels.no_profile_short')}
+              </span>
+            ) : null}
+            {!isNew && candidate?.id && (actionableNext || nextActionError) ? (
+              <NextActionBadge
+                dto={actionableNext}
+                loading={nextActionLoading}
+                error={nextActionError}
+                inverse={false}
+              />
+            ) : null}
+          </div>
+        ) : null}
+
+        {pipeline ? <div className="border-t border-slate-100 px-2 py-1.5">{pipeline}</div> : null}
+        {focusContent ? <div className="border-t border-slate-100 px-3 py-2">{focusContent}</div> : null}
       </div>
 
-      {/* Status Messages */}
-      {deleteRequestMessage && (
-        <div className="p-3 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
-          {deleteRequestMessage}
-        </div>
-      )}
-      {deleteRequestError && (
+      {deleteRequestMessage ? (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-700">{deleteRequestMessage}</div>
+      ) : null}
+      {deleteRequestError ? (
         <ErrorRecoveryBanner
           info={{
             title: deleteRequestError,
@@ -329,12 +315,12 @@ function CandidateHeader({
           retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
           compact
         />
-      )}
-      {savedOk && (
-        <div className="p-3 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
+      ) : null}
+      {savedOk ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-800">
           {t('app.candidate_card.messages.saved')}
         </div>
-      )}
+      ) : null}
     </>
   )
 }

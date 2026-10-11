@@ -58,6 +58,8 @@ type Props = {
   onOpenContactAttempts?: () => void
   /** Horizontal track is rendered by the workspace. Sidebar keeps stage controls only. */
   showJourney?: boolean
+  /** Drop the card frame when a parent already groups stage, manager and tags. */
+  embedded?: boolean
 }
 
 export default function CandidateStageDecisionPanel({
@@ -85,6 +87,7 @@ export default function CandidateStageDecisionPanel({
   canCloseRecruitment = true,
   onOpenContactAttempts,
   showJourney = true,
+  embedded = false,
 }: Props) {
   const { t } = useI18n()
 
@@ -236,7 +239,7 @@ export default function CandidateStageDecisionPanel({
     (docsPipelineBlocking || docsSoftAdvisory || vacancyPipelineBlocking || contactAttemptPipelineBlocking)
 
   return (
-    <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3">
+    <section className={embedded ? 'min-w-0 p-3' : 'min-w-0 rounded-2xl border border-slate-200 bg-white p-3'}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-semibold text-slate-700">

@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react'
+import { memo, useState, useCallback, useEffect } from 'react'
 import clsx from 'clsx'
 import { IconChevronDown, IconUser } from '@tabler/icons-react'
 import type { Candidate, CandidateExtra } from '../../api/types'
@@ -8,6 +8,7 @@ import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import { useI18n } from '../../i18n'
 import { Input, SearchableSelect, CheckboxMultiSelect, Checkbox } from './shared/FormComponents'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
+import { InlineFieldRow } from '../ui/InlineFieldRow'
 
 type Option = { value: string; label: string; extra?: any }
 
@@ -37,6 +38,10 @@ interface CandidatePersonalSectionProps {
   focus?: 'location' | 'address'
   plain?: boolean
   showBirthDate?: boolean
+  /** Filled values stay in view until the operator opens that row or address group. */
+  rowEdit?: boolean
+  canEdit?: boolean
+  onRequestUnlock?: () => void
 }
 
 function CandidatePersonalSection({
@@ -57,12 +62,41 @@ function CandidatePersonalSection({
   focus,
   plain = false,
   showBirthDate = false,
+  rowEdit = false,
+  canEdit = true,
+  onRequestUnlock,
 }: CandidatePersonalSectionProps) {
   const { t } = useI18n()
+  const [openField, setOpenField] = useState<string | null>(null)
+  const [pendingField, setPendingField] = useState<string | null>(null)
   const fieldVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
   const fieldRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
   const fieldLabel = (fieldKey: string, defaultLabel: string) =>
     getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
+  const beginRow = (key: string) => {
+    if (candidateDataReadOnly) {
+      setPendingField(key)
+      onRequestUnlock?.()
+      return
+    }
+    setOpenField(key)
+  }
+  useEffect(() => {
+    if (!candidateDataReadOnly && pendingField) {
+      setOpenField(pendingField)
+      setPendingField(null)
+    }
+  }, [candidateDataReadOnly, pendingField])
+  const countryLabel = (code?: string | null) => countries.find((item) => item.value === code)?.label || code || ''
+  const formatAddress = (address?: { country?: string | null; city?: string | null; zip?: string | null; street?: string | null; house?: string | null; apt?: string | null } | null) =>
+    [countryLabel(address?.country), address?.city, address?.zip, address?.street, address?.house, address?.apt]
+      .map((part) => (typeof part === 'string' ? part.trim() : ''))
+      .filter(Boolean)
+      .join(', ')
+  const languageValue = (candidate.languages || [])
+    .map((code) => languages.find((item) => item.value === code)?.label || code)
+    .filter(Boolean)
+    .join(', ')
   const [collapsed, setCollapsed] = useState(() => {
     if (plain || embedded) return false
     try {
@@ -100,6 +134,170 @@ function CandidatePersonalSection({
       return next
     })
   }, [])
+  if (rowEdit) {
+    const showLocation = focus !== 'address'
+    const showAddress = focus !== 'location'
+    const regDiff = Boolean((extra as { reg_address_diff?: boolean }).reg_address_diff)
+    const residence = formatAddress(extra.address)
+    const registered = regDiff
+      ? formatAddress(extra.reg_address)
+      : t('app.candidate_card.ia.same_as_residence', { defaultValue: 'Same as the residence address' })
+    return (
+      <section ref={personalRef} id={focus === 'address' ? undefined : 'section-personal'} className="scroll-mt-24">
+        {showLocation ? (
+          <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+            {(!candidateProfile || fieldVisible('citizenship')) && !citizenshipReadOnly ? (
+              <InlineFieldRow
+                label={fieldLabel('citizenship', t('app.candidate_card.fields.citizenship'))}
+                value={countryLabel(extra.citizenship)}
+                editing={openField === 'citizenship'}
+                canEdit={canEdit}
+                onEdit={() => beginRow('citizenship')}
+                onDone={() => setOpenField(null)}
+              >
+                <div className="label">{fieldLabel('citizenship', t('app.candidate_card.fields.citizenship'))}</div>
+                <SearchableSelect
+                  options={countries}
+                  value={(extra.citizenship as string) || ''}
+                  onChange={(v) => onExtraChange({ citizenship: v })}
+                  disabled={candidateDataReadOnly}
+                  placeholder={selectTexts.empty}
+                  searchPlaceholder={selectTexts.search}
+                  noResultsLabel={selectTexts.noResults}
+                />
+              </InlineFieldRow>
+            ) : null}
+            {(!candidateProfile || fieldVisible('country_code')) ? (
+              <InlineFieldRow
+                label={fieldLabel('country_code', t('app.candidate_card.fields.country_code'))}
+                value={countryLabel(candidate.country_code)}
+                editing={openField === 'country_code'}
+                canEdit={canEdit}
+                onEdit={() => beginRow('country_code')}
+                onDone={() => setOpenField(null)}
+              >
+                <div className="label">{fieldLabel('country_code', t('app.candidate_card.fields.country_code'))}</div>
+                <SearchableSelect
+                  options={countries}
+                  value={(candidate.country_code as string) || ''}
+                  onChange={(v) => onModelChange((m) => ({ ...m, country_code: v || null }))}
+                  disabled={candidateDataReadOnly}
+                  placeholder={selectTexts.empty}
+                  searchPlaceholder={selectTexts.search}
+                  noResultsLabel={selectTexts.noResults}
+                />
+                {!candidate.country_code && extra.phone_country ? (
+                  <button
+                    type="button"
+                    className="mt-1 text-xs text-brand-600 hover:underline"
+                    disabled={candidateDataReadOnly}
+                    onClick={() => {
+                      onModelChange((m) => ({ ...m, country_code: extra.phone_country }))
+                      onExtraChange({ country_code: extra.phone_country })
+                    }}
+                  >
+                    {t('app.candidate_card.fields.fill_from_phone')}
+                  </button>
+                ) : null}
+              </InlineFieldRow>
+            ) : null}
+            {(!candidateProfile || fieldVisible('languages')) ? (
+              <InlineFieldRow
+                label={fieldLabel('languages', t('app.candidate_card.fields.languages'))}
+                value={languageValue}
+                editing={openField === 'languages'}
+                canEdit={canEdit}
+                onEdit={() => beginRow('languages')}
+                onDone={() => setOpenField(null)}
+              >
+                <div className="label">{fieldLabel('languages', t('app.candidate_card.fields.languages'))}</div>
+                <CheckboxMultiSelect
+                  options={languages}
+                  values={candidate.languages || []}
+                  onChange={(vals) => onModelChange((m) => ({ ...m, languages: vals }))}
+                  disabled={candidateDataReadOnly}
+                  placeholder={selectTexts.multiNone}
+                  searchPlaceholder={selectTexts.search}
+                  noResultsLabel={selectTexts.noResults}
+                  multiSelectedLabel={selectTexts.multiSelected}
+                />
+              </InlineFieldRow>
+            ) : null}
+          </div>
+        ) : null}
+        {showAddress ? (
+          <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+            <InlineFieldRow
+              label={t('app.candidate_card.sections.personal.address_current')}
+              value={residence}
+              editing={openField === 'address'}
+              canEdit={canEdit}
+              onEdit={() => beginRow('address')}
+              onDone={() => setOpenField(null)}
+              wide
+            >
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label className="block md:col-span-2">
+                  <div className="label">{t('app.candidate_card.fields.address.country')}</div>
+                  <SearchableSelect
+                    options={countries}
+                    value={extra.address?.country || ''}
+                    onChange={(v) => onAddressFieldChange('address', 'country', v)}
+                    disabled={candidateDataReadOnly}
+                    placeholder={selectTexts.empty}
+                    searchPlaceholder={selectTexts.search}
+                    noResultsLabel={selectTexts.noResults}
+                  />
+                </label>
+                <Input label={t('app.candidate_card.fields.address.city')} value={extra.address?.city || ''} onChange={(e) => onAddressFieldChange('address', 'city', e.target.value)} readOnly={candidateDataReadOnly} />
+                <Input label={t('app.candidate_card.fields.address.zip')} value={extra.address?.zip || ''} onChange={(e) => onAddressFieldChange('address', 'zip', e.target.value)} readOnly={candidateDataReadOnly} />
+                <Input label={t('app.candidate_card.fields.address.street')} containerClassName="md:col-span-2" value={extra.address?.street || ''} onChange={(e) => onAddressFieldChange('address', 'street', e.target.value)} readOnly={candidateDataReadOnly} />
+                <Input label={t('app.candidate_card.fields.address.house')} value={extra.address?.house || ''} onChange={(e) => onAddressFieldChange('address', 'house', e.target.value)} readOnly={candidateDataReadOnly} />
+                <Input label={t('app.candidate_card.fields.address.apt')} value={extra.address?.apt || ''} onChange={(e) => onAddressFieldChange('address', 'apt', e.target.value)} readOnly={candidateDataReadOnly} />
+              </div>
+            </InlineFieldRow>
+            <InlineFieldRow
+              label={t('app.candidate_card.sections.personal.address_registered')}
+              value={registered}
+              editing={openField === 'reg_address'}
+              canEdit={canEdit}
+              onEdit={() => beginRow('reg_address')}
+              onDone={() => setOpenField(null)}
+              wide
+            >
+              <Checkbox
+                label={t('app.candidate_card.fields.address.diff')}
+                checked={regDiff}
+                onChange={candidateDataReadOnly ? undefined : (v) => onExtraChange({ reg_address_diff: v })}
+              />
+              {regDiff ? (
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <label className="block md:col-span-2">
+                    <div className="label">{t('app.candidate_card.fields.address.country')}</div>
+                    <SearchableSelect
+                      options={countries}
+                      value={extra.reg_address?.country || ''}
+                      onChange={(v) => onAddressFieldChange('reg_address', 'country', v)}
+                      disabled={candidateDataReadOnly}
+                      placeholder={selectTexts.empty}
+                      searchPlaceholder={selectTexts.search}
+                      noResultsLabel={selectTexts.noResults}
+                    />
+                  </label>
+                  <Input label={t('app.candidate_card.fields.address.city')} value={extra.reg_address?.city || ''} onChange={(e) => onAddressFieldChange('reg_address', 'city', e.target.value)} readOnly={candidateDataReadOnly} />
+                  <Input label={t('app.candidate_card.fields.address.zip')} value={extra.reg_address?.zip || ''} onChange={(e) => onAddressFieldChange('reg_address', 'zip', e.target.value)} readOnly={candidateDataReadOnly} />
+                  <Input label={t('app.candidate_card.fields.address.street')} containerClassName="md:col-span-2" value={extra.reg_address?.street || ''} onChange={(e) => onAddressFieldChange('reg_address', 'street', e.target.value)} readOnly={candidateDataReadOnly} />
+                  <Input label={t('app.candidate_card.fields.address.house')} value={extra.reg_address?.house || ''} onChange={(e) => onAddressFieldChange('reg_address', 'house', e.target.value)} readOnly={candidateDataReadOnly} />
+                  <Input label={t('app.candidate_card.fields.address.apt')} value={extra.reg_address?.apt || ''} onChange={(e) => onAddressFieldChange('reg_address', 'apt', e.target.value)} readOnly={candidateDataReadOnly} />
+                </div>
+              ) : null}
+            </InlineFieldRow>
+          </div>
+        ) : null}
+      </section>
+    )
+  }
+
   return (
     <section
       ref={personalRef}

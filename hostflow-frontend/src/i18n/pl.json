@@ -5779,6 +5779,8 @@
         },
         "sections": {
           "identity": "Dane podstawowe",
+          "contact": "Kontakt",
+          "address": "Adresy",
           "driver": "Profil kierowcy",
           "experience": "Doświadczenie",
           "additional": "Adres i dane dodatkowe",
@@ -5805,6 +5807,8 @@
         "legalization_open_document": "Otwórz w dokumentach",
         "legalization_employment": "Employment",
         "activity_history": "Aktywność / Historia",
+        "same_as_residence": "Taki sam jak adres zamieszkania",
+        "system_created": "Utworzono {date}",
         "order_service": "Zamów usługę",
         "years_short": "doświadczenie {{count}}",
         "active_vacancy": "Aktywna aplikacja"

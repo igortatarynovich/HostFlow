@@ -22,6 +22,7 @@ export function CandidateProcessControls({
   candidateProfile,
   onModelChange,
   onStageChangePersist,
+  hideStageSelect = false,
 }: {
   candidate: Candidate
   stageOptions: string[]
@@ -38,6 +39,8 @@ export function CandidateProcessControls({
   candidateProfile?: CandidateProfile | null
   onModelChange: (updater: (prev: Candidate) => Candidate) => void
   onStageChangePersist?: (stage: string, statusReason: string[]) => void | Promise<void>
+  /** Stage changes live on the decision panel. This widget keeps manager, tags and reasons. */
+  hideStageSelect?: boolean
 }) {
   const { t } = useI18n()
   const [newTagInput, setNewTagInput] = useState('')
@@ -47,6 +50,7 @@ export function CandidateProcessControls({
 
   return (
     <div className="space-y-4">
+      {hideStageSelect ? null : (
       <div>
         <div className="label">{t('app.candidate_card.fields.stage')}</div>
         <div className="flex items-center gap-2">
@@ -98,6 +102,7 @@ export function CandidateProcessControls({
           )
         })()}
       </div>
+      )}
       {(meta?.reason_choices?.[candidate.stage || '']?.length ?? 0) > 0 && (
         <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
           <div className="label mb-1">{t('app.candidate_card.fields.status_reasons')}</div>

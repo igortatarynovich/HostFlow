@@ -6400,6 +6400,8 @@
         },
         "sections": {
           "identity": "Core details",
+          "contact": "Contact",
+          "address": "Addresses",
           "driver": "Driver profile",
           "experience": "Work experience",
           "additional": "Address and extra details",
@@ -6426,6 +6428,8 @@
         "legalization_open_document": "Open in Documents",
         "legalization_employment": "Employment",
         "activity_history": "Activity / History",
+        "same_as_residence": "Same as the residence address",
+        "system_created": "Created {date}",
         "order_service": "Order service",
         "years_short": "experience {{count}}",
         "active_vacancy": "Active application"

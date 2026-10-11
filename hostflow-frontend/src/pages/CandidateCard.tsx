@@ -27,7 +27,6 @@ import CandidateDocuments from '../modules/documents/CandidateDocuments'
 import OperatorFactsSurface, { type OperatorFactsSlice } from '../modules/candidates/OperatorFactsSurface'
 import { CandidateCardTabs, CardAccordion, ReadRows, joinParts, type CandidateCardTabId } from '../components/candidate/card/CandidateCardChrome'
 import { StagePipeline } from '../components/ui/StagePipeline'
-import { StatusBadge } from '../components/ui/StatusBadge'
 import { CandidateProcessControls } from '../components/candidate/card/CandidateProcessControls'
 import { exportCandidateBundle } from '../api/documents'
 import { createCandidateUploadLink, recreateCandidateFromApplication, type CandidateUploadLinkResponse } from '../api/candidates'
@@ -4637,6 +4636,63 @@ export default function CandidateCard(){
         pipelineWaiverPendingCount={pipelineWaiverBadgeCounts.pending}
         pipelineWaiverApprovedCount={pipelineWaiverBadgeCounts.approved}
         onOpenActivity={!isNew && model?.id ? () => setActivityModalOpen(true) : undefined}
+        onGenerateShortId={!model.short_id ? () => void handleGenerateShortId() : undefined}
+        summary={
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-800">
+            <span className="font-medium text-slate-900">
+              {model.company_name || '—'}
+              <span className="mx-1.5 font-normal text-slate-400">/</span>
+              {model.vacancy_name || '—'}
+            </span>
+            <span className="text-slate-300" aria-hidden>·</span>
+            <span className="font-semibold text-brand-800">{stageLabelIntl(String(model.stage || ''))}</span>
+            {!isNew && model.id && !isMasked ? (
+              <CandidateApplicationsSection
+                candidateId={String(model.id)}
+                locale={locale}
+                legacyVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
+                variant="context"
+                activeVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
+                onSelectVacancy={async (vacancyId) => {
+                  const opt = vacancyOpts.find((o) => o.value === vacancyId)
+                  setModel((m) => {
+                    if (!m) return m
+                    return {
+                      ...m,
+                      vacancy_id: vacancyId as any,
+                      vacancy_name: opt?.label || m.vacancy_name || '',
+                      company_id: opt?.extra?.company_id || m.company_id,
+                      company_name: opt?.extra?.company_name || m.company_name || '',
+                    }
+                  })
+                  await loadProfileFromVacancy(vacancyId)
+                }}
+              />
+            ) : null}
+            <CandidateLeadOriginPanel
+              candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
+            />
+            {(effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length) > 0
+              || vacancyPipelineBlockingValue
+              || contactAttemptPipelineBlockingValue ? (
+              <span className="text-xs font-medium text-rose-700">
+                {t('app.candidate_card.ia.blockers')}
+                {(effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length) > 0
+                  ? `: ${effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length}`
+                  : ''}
+              </span>
+            ) : null}
+          </div>
+        }
+        pipeline={
+          <StagePipeline
+            stages={stageJourneyStagesDisplay}
+            currentCode={stageJourneyDisplayStage}
+            completedCodes={completedStageCodes}
+            blocked={docsPipelineBlockingValue || vacancyPipelineBlockingValue || contactAttemptPipelineBlockingValue}
+            ariaLabel={t('app.candidate_card.stage_journey.title', { defaultValue: 'Stage journey' })}
+          />
+        }
         statusChip={
           !isNew && model?.id && !isMasked ? (
             <CandidateRodoSection
@@ -4664,101 +4720,8 @@ export default function CandidateCard(){
       ) : null}
 
       <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_17.5rem]">
-        <section id="candidate-recruitment-context" ref={employerRef} className="rounded-xl border border-slate-200 bg-white px-3 py-2 lg:col-span-2">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            {t('app.candidate_card.ia.recruitment_context')}
-          </div>
-          <p className="mt-0.5 text-sm font-medium text-slate-900">
-            {model.vacancy_name || '—'}
-            <span className="mx-1.5 text-slate-400">→</span>
-            {model.company_name || '—'}
-          </p>
-          {!isMasked ? (
-            <div className="mt-2 max-w-lg">
-              <SearchableSelect
-                options={vacancyOpts}
-                value={(model.vacancy_id as string) || ''}
-                onChange={async (v) => {
-                  if (!v) {
-                    setModel((m) => {
-                      if (!m) return m
-                      return { ...m, vacancy_id: null, vacancy_name: '', company_id: null, company_name: '' }
-                    })
-                    setCandidateProfile(null)
-                    setVacancyFunnelId(null)
-                    return
-                  }
-                  const opt = vacancyOpts.find((o) => o.value === v)
-                  const company_id = opt?.extra?.company_id || null
-                  const company_name = opt?.extra?.company_name || model.company_name || ''
-                  setModel((m) => {
-                    if (!m) return m
-                    return {
-                      ...m,
-                      vacancy_id: v as any,
-                      vacancy_name: opt?.label || '',
-                      company_id,
-                      company_name: company_name || m.company_name || '',
-                    }
-                  })
-                  await loadProfileFromVacancy(v)
-                }}
-                placeholder={selectTexts.empty}
-                searchPlaceholder={selectTexts.search}
-                noResultsLabel={selectTexts.noResults}
-              />
-            </div>
-          ) : null}
-          {!isNew && model?.id && !isMasked ? (
-            <CandidateApplicationsSection
-              candidateId={String(model.id)}
-              locale={locale}
-              legacyVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
-              variant="context"
-              activeVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
-              onSelectVacancy={async (vacancyId) => {
-                const opt = vacancyOpts.find((o) => o.value === vacancyId)
-                setModel((m) => {
-                  if (!m) return m
-                  return {
-                    ...m,
-                    vacancy_id: vacancyId as any,
-                    vacancy_name: opt?.label || m.vacancy_name || '',
-                    company_id: opt?.extra?.company_id || m.company_id,
-                    company_name: opt?.extra?.company_name || m.company_name || '',
-                  }
-                })
-                await loadProfileFromVacancy(vacancyId)
-              }}
-            />
-          ) : null}
-          <CandidateLeadOriginPanel
-            candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
-          />
-        </section>
-        <section className="rounded-xl border border-slate-200 bg-white px-2 py-2 lg:col-span-2">
-          <StagePipeline
-            stages={stageJourneyStagesDisplay}
-            currentCode={stageJourneyDisplayStage}
-            completedCodes={completedStageCodes}
-            blocked={docsPipelineBlockingValue || vacancyPipelineBlockingValue || contactAttemptPipelineBlockingValue}
-            ariaLabel={t('app.candidate_card.stage_journey.title', { defaultValue: 'Stage journey' })}
-          />
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            <StatusBadge
-              size="sm"
-              semantic={(effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length) > 0 ? 'warning' : 'success'}
-              label={
-                (effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length) > 0
-                  ? `${t('app.candidate_card.ia.blockers')}: ${effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length}`
-                  : t('app.candidate_card.ia.blockers_none')
-              }
-            />
-          </div>
-        </section>
-        <div className="contents">
-          <div className="hidden" />
-          <aside className="flex min-w-0 flex-col gap-2 max-lg:order-last lg:sticky lg:top-3 lg:col-start-2 lg:row-start-3 lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto">
+          <aside className="flex min-h-0 min-w-0 flex-col gap-2 max-lg:order-last lg:sticky lg:top-3 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100dvh-4.5rem)] lg:overflow-y-auto lg:overscroll-contain">
+            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             {!isNew && model?.id ? (
               <CandidateStageDecisionPanel
                 locale={locale}
@@ -4785,13 +4748,10 @@ export default function CandidateCard(){
                 onMoveStage={handleStageJourneyChange}
                 onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
                 showJourney={false}
+                embedded
               />
             ) : null}
-            <section className="rounded-xl border border-slate-200 bg-white p-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t('app.candidate_card.ia.process_widget')}
-              </h3>
-              <div className="mt-3">
+              <div className="border-t border-slate-100 px-3 py-3">
                 <CandidateProcessControls
                   candidate={model}
                   stageOptions={stageOptions}
@@ -4805,6 +4765,7 @@ export default function CandidateCard(){
                   candidateProfile={candidateProfile}
                   onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
                   onStageChangePersist={persistStageWithClientGates}
+                  hideStageSelect
                 />
               </div>
             </section>
@@ -4871,13 +4832,6 @@ export default function CandidateCard(){
                     />
                   ) : null}
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="btn-secondary btn-xs"
-                      onClick={() => setActivityModalOpen(true)}
-                    >
-                      {t('app.candidate_card.ia.activity_history', { defaultValue: 'Activity / History' })}
-                    </button>
                     <Link
                       to={buildInboxHubPath({ candidateId: String(model.id) })}
                       className="btn-secondary btn-xs"
@@ -4890,96 +4844,135 @@ export default function CandidateCard(){
               ) : null}
             </div>
           </aside>
-        </div>
 
-        <div className="min-w-0 space-y-3 lg:col-start-1 lg:row-start-3">
+        <div className="min-w-0 space-y-3 lg:col-start-1 lg:row-start-1">
         <CandidateCardTabs value={cardTab} onChange={setCardTab} />
 
         <div className={cardTab === 'personal' || cardTab === 'profile' ? 'min-w-0 space-y-3 lg:col-start-1' : 'hidden'}>
-          {cardTab === 'personal' && !isMasked && model?.id ? (
-            <OperatorFactsSurface
-              candidateId={String(model.id)}
-              countries={countries}
-              region="person"
-              onSaved={(saved) => {
-                setOperatorFactsRevision((value) => value + 1)
-                const citizenship = saved.steps.find((step) => step.key === 'citizenship')?.stored
-                setExtra((prev) => ({ ...prev, citizenship: citizenship || '' }))
-              }}
-            />
-          ) : null}
           {cardTab === 'personal' && !isMasked && registrySectionVisible('basic') ? (
             <CardAccordion
               title={t('app.candidate_card.ia.sections.identity')}
               defaultOpen
-              editing={sectionEditing('identity')}
-              onEdit={isNew || candidateEditPhase === 'editing' ? undefined : () => setBlockEdit((prev) => ({ ...prev, identity: true }))}
-              onDone={() => setBlockEdit((prev) => ({ ...prev, identity: false }))}
               summary={joinParts([
                 [model.first_name, model.last_name].filter(Boolean).join(' '),
-                model.phone,
-                countries.find((item) => item.value === model.country_code)?.label,
+                countries.find((item) => item.value === (extra.citizenship || model.country_code))?.label,
               ])}
             >
-              {(
-                <div className="space-y-4">
-                  <CandidateBasicSection
-                    candidate={model}
-                    extra={extra}
-                    isNew={isNew}
-                    locale={locale}
-                    basicRef={basicRef}
-                    stageOptions={stageOptions}
-                    profileStageCodes={profileStageCodes}
-                    meta={meta ?? undefined}
-                    dialCodes={dialCodes}
-                    managers={managers}
-                    preferredContactOptions={preferredContactOptions}
-                    selectTexts={selectTexts}
-                    createdAtDisplay={createdAtDisplay}
-                    isMetaLead={isMetaLead}
-                    onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
-                    onExtraChange={setExtra}
-                    onPhoneInputChange={handlePhoneInputChange}
-                    onGenerateShortId={handleGenerateShortId}
-                    candidateProfile={candidateProfile}
-                    effectiveLayout={effectiveLayout}
-                    stageLabelIntl={stageLabelIntl}
-                    candidateDataReadOnly={candidateDataReadOnly}
-                    canEdit={model.can_edit !== false}
-                    canCloseRecruitment={canCloseRecruitment}
-                    onStageChangePersist={persistStageWithClientGates}
-                    embedded
-                    hideProcessControls
-                    omitBirthDate
-                    plain
-                    rowEdit
-                    onRequestUnlock={() => {
-                      setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
-                    }}
-                  />
-                  {registrySectionVisible('personal') ? (
-                    <CandidatePersonalSection
-                      candidate={model}
-                      extra={extra}
-                      personalRef={personalRef}
-                      countries={countries}
-                      languages={languages}
-                      selectTexts={selectTexts}
-                      onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
-                      onExtraChange={setExtra}
-                      onAddressFieldChange={setAddressField}
-                      candidateProfile={candidateProfile}
-                      effectiveLayout={effectiveLayout}
-                      candidateDataReadOnly={candidateDataReadOnly}
-                      citizenshipReadOnly={!isMasked && Boolean(model?.id)}
-                      embedded
-                      focus="location"
-                      plain
-                    />
-                  ) : null}
-                </div>
-              )}
+              <CandidateBasicSection
+                candidate={model}
+                extra={extra}
+                isNew={isNew}
+                locale={locale}
+                basicRef={basicRef}
+                stageOptions={stageOptions}
+                profileStageCodes={profileStageCodes}
+                meta={meta ?? undefined}
+                dialCodes={dialCodes}
+                managers={managers}
+                preferredContactOptions={preferredContactOptions}
+                selectTexts={selectTexts}
+                createdAtDisplay={createdAtDisplay}
+                isMetaLead={isMetaLead}
+                onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                onExtraChange={setExtra}
+                onPhoneInputChange={handlePhoneInputChange}
+                onGenerateShortId={handleGenerateShortId}
+                candidateProfile={candidateProfile}
+                effectiveLayout={effectiveLayout}
+                stageLabelIntl={stageLabelIntl}
+                candidateDataReadOnly={candidateDataReadOnly}
+                canEdit={model.can_edit !== false}
+                canCloseRecruitment={canCloseRecruitment}
+                onStageChangePersist={persistStageWithClientGates}
+                embedded
+                hideProcessControls
+                plain
+                rowEdit
+                part="identity"
+                onRequestUnlock={() => {
+                  setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
+                }}
+              />
+              {model?.id ? (
+                <OperatorFactsSurface
+                  candidateId={String(model.id)}
+                  countries={countries}
+                  region="person"
+                  onSaved={(saved) => {
+                    setOperatorFactsRevision((value) => value + 1)
+                    const citizenship = saved.steps.find((step) => step.key === 'citizenship')?.stored
+                    setExtra((prev) => ({ ...prev, citizenship: citizenship || '' }))
+                  }}
+                />
+              ) : null}
+              {registrySectionVisible('personal') ? (
+                <CandidatePersonalSection
+                  candidate={model}
+                  extra={extra}
+                  personalRef={personalRef}
+                  countries={countries}
+                  languages={languages}
+                  selectTexts={selectTexts}
+                  onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                  onExtraChange={setExtra}
+                  onAddressFieldChange={setAddressField}
+                  candidateProfile={candidateProfile}
+                  effectiveLayout={effectiveLayout}
+                  candidateDataReadOnly={candidateDataReadOnly}
+                  citizenshipReadOnly={Boolean(model?.id)}
+                  embedded
+                  focus="location"
+                  plain
+                  rowEdit
+                  canEdit={model.can_edit !== false}
+                  onRequestUnlock={() => {
+                    setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
+                  }}
+                />
+              ) : null}
+            </CardAccordion>
+          ) : null}
+          {cardTab === 'personal' && !isMasked && registrySectionVisible('basic') ? (
+            <CardAccordion
+              title={t('app.candidate_card.ia.sections.contact')}
+              defaultOpen
+              summary={joinParts([model.phone, model.email])}
+            >
+              <CandidateBasicSection
+                candidate={model}
+                extra={extra}
+                isNew={isNew}
+                locale={locale}
+                basicRef={basicRef}
+                stageOptions={stageOptions}
+                profileStageCodes={profileStageCodes}
+                meta={meta ?? undefined}
+                dialCodes={dialCodes}
+                managers={managers}
+                preferredContactOptions={preferredContactOptions}
+                selectTexts={selectTexts}
+                createdAtDisplay={createdAtDisplay}
+                isMetaLead={isMetaLead}
+                onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                onExtraChange={setExtra}
+                onPhoneInputChange={handlePhoneInputChange}
+                onGenerateShortId={handleGenerateShortId}
+                candidateProfile={candidateProfile}
+                effectiveLayout={effectiveLayout}
+                stageLabelIntl={stageLabelIntl}
+                candidateDataReadOnly={candidateDataReadOnly}
+                canEdit={model.can_edit !== false}
+                canCloseRecruitment={canCloseRecruitment}
+                onStageChangePersist={persistStageWithClientGates}
+                embedded
+                hideProcessControls
+                plain
+                rowEdit
+                part="contact"
+                onRequestUnlock={() => {
+                  setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
+                }}
+              />
             </CardAccordion>
           ) : null}
 
@@ -5113,42 +5106,45 @@ export default function CandidateCard(){
             </CardAccordion>
           ) : null}
 
-          {cardTab === 'personal' && !isMasked ? (
+          {cardTab === 'personal' && !isMasked && registrySectionVisible('personal') ? (
             <CardAccordion
-              title={t('app.candidate_card.ia.sections.additional')}
-              editing={sectionEditing('additional')}
-              onEdit={isNew || candidateEditPhase === 'editing' ? undefined : () => setBlockEdit((prev) => ({ ...prev, additional: true }))}
-              onDone={() => setBlockEdit((prev) => ({ ...prev, additional: false }))}
+              title={t('app.candidate_card.ia.sections.address')}
+              defaultOpen
               summary={joinParts([
-                extra.birth_date,
+                countries.find((item) => item.value === extra.address?.country)?.label || extra.address?.country,
                 extra.address?.city,
-                extra.address?.country,
               ])}
             >
-              <div className="space-y-4">
-                  {registrySectionVisible('personal') ? (
-                    <CandidatePersonalSection
-                      candidate={model}
-                      extra={extra}
-                      personalRef={personalAddressRef}
-                      countries={countries}
-                      languages={languages}
-                      selectTexts={selectTexts}
-                      onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
-                      onExtraChange={setExtra}
-                      onAddressFieldChange={setAddressField}
-                      candidateProfile={candidateProfile}
-                      effectiveLayout={effectiveLayout}
-                      candidateDataReadOnly={candidateDataReadOnly}
-                      citizenshipReadOnly
-                      embedded
-                      focus="address"
-                      plain
-                      showBirthDate
-                    />
-                  ) : null}
-                </div>
+              <CandidatePersonalSection
+                candidate={model}
+                extra={extra}
+                personalRef={personalAddressRef}
+                countries={countries}
+                languages={languages}
+                selectTexts={selectTexts}
+                onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                onExtraChange={setExtra}
+                onAddressFieldChange={setAddressField}
+                candidateProfile={candidateProfile}
+                effectiveLayout={effectiveLayout}
+                candidateDataReadOnly={candidateDataReadOnly}
+                citizenshipReadOnly
+                embedded
+                focus="address"
+                plain
+                rowEdit
+                canEdit={model.can_edit !== false}
+                onRequestUnlock={() => {
+                  setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
+                }}
+              />
             </CardAccordion>
+          ) : null}
+          {cardTab === 'personal' && !isMasked && !isNew && createdAtDisplay ? (
+            <p className="px-1 text-xs text-slate-500">
+              {t('app.candidate_card.ia.system_created', { values: { date: createdAtDisplay } })}
+              {isMetaLead ? ` · ${t('app.candidate_card.messages.meta_lead')}` : ''}
+            </p>
           ) : null}
           {cardTab === 'profile' && !isMasked ? (
             <>
