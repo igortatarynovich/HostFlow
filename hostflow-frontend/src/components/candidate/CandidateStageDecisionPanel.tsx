@@ -272,7 +272,7 @@ export default function CandidateStageDecisionPanel({
               </div>
               {blockerLines.map((line) => (
                 <div key={`soft-${line.code}`} className="flex min-w-0 items-center gap-2 text-xs text-slate-800">
-                  <span className="min-w-0 truncate">{labelForBlocker(line.code)}</span>
+                  <span className="min-w-0">{labelForBlocker(line.code)}</span>
                   <StatusBadge size="sm" shape="pill" semantic="info" label={reasonLabel(line.reason)} />
                 </div>
               ))}
@@ -292,8 +292,8 @@ export default function CandidateStageDecisionPanel({
                 {t('app.candidate_card.stage_decision.missing_for_transition', { defaultValue: 'Missing for the next stage:' })}
               </div>
               {blockerLines.map((line) => (
-                <div key={line.code} className="flex min-w-0 items-center gap-2 text-xs text-slate-800">
-                  <span className="min-w-0 truncate">{labelForBlocker(line.code)}</span>
+                <div key={line.code} className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-slate-800">
+                  <span className="min-w-0">{labelForBlocker(line.code)}</span>
                   <StatusBadge
                     size="sm"
                     shape="pill"
@@ -337,7 +337,9 @@ export default function CandidateStageDecisionPanel({
 
       {docsPipelineBlocking ? (
         <div className="mt-2 text-xs font-medium text-amber-800">
-          {t('app.candidate_card.stage_decision.next_step_docs', { defaultValue: 'Next step: → Request documents' })}
+          {blockerLines.some((line) => line.reason === 'missing')
+            ? t('app.candidate_card.stage_decision.next_step_docs', { defaultValue: 'Next step: → Request documents' })
+            : t('app.candidate_card.stage_decision.next_step_verify_documents', { defaultValue: 'Next step: → Verify documents' })}
         </div>
       ) : docsSoftAdvisory ? (
         <div className="mt-2 text-xs font-medium text-sky-900">

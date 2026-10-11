@@ -442,8 +442,9 @@ export default function CandidateDocuments({
 
   const typeByCode = useMemo(() => new Map(docTypes.map((t) => [t.code, t])), [docTypes]);
   const getDocTypeLabel = useCallback(
-    (typeCode: string, dbName?: string | null) => resolveDocTypeLabel(t, typeCode, dbName),
-    [t]
+    (typeCode: string, dbName?: string | null, title?: Record<string, string> | null) =>
+      resolveDocTypeLabel(t, typeCode, dbName, title, locale),
+    [locale, t]
   );
   const selectedDocDefinition = useMemo(() => {
     if (!selectedType) return null;

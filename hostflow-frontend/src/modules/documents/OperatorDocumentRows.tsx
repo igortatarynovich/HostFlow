@@ -18,7 +18,7 @@ import { runtimeBadgeFromDocument } from '../../utils/runtimeBadgePresentation'
 import type { OperatorFactsView } from '../candidates/OperatorFactsSurface'
 import { DocumentMetadataForm } from './components/DocumentMetadataForm'
 import { getDocumentFieldsConfig, isProcedureDocument } from './documentFieldsConfig'
-import { computeTodayIso, documentHasFiles, formatDate, isSyntheticDocumentId, normalizeDocTypeCode } from './documentUtils'
+import { computeTodayIso, documentHasFiles, formatDate, isSyntheticDocumentId, legalDocumentSlot, normalizeDocTypeCode } from './documentUtils'
 import type { MetadataState } from './types'
 
 type TypeLevel = 'required' | 'preferred'
@@ -121,7 +121,7 @@ export function OperatorDocumentRows({
   renderGroups?: (nodes: Record<string, ReactNode>) => ReactNode
   canManage: boolean
   countries?: Array<{ value: string; label: string }>
-  getLabel: (code: string, name?: string | null) => string
+  getLabel: (code: string, name?: string | null, title?: Record<string, string> | null) => string
   onUpload: (doc: Document, file: File) => Promise<void>
   uploading: Record<string, boolean>
   onFactsSaved?: () => void
@@ -171,13 +171,13 @@ export function OperatorDocumentRows({
       const norm = normalizeDocTypeCode(type.code)
       if (sharedCode95 && CODE95_TYPES.has(norm)) return []
       if (only && !only.has(norm)) return []
-      if (!only && exclude.has(norm)) return []
+      if (!only && !groups && (exclude.has(norm) || legalDocumentSlot(type))) return []
       const matches = docs.filter((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || '') === norm)
       const doc = preferredDoc(matches)
       if (!doc) return []
       return [{ type, norm, doc }]
     })
-  }, [docTypes, docs, exclude, only, sharedCode95])
+  }, [docTypes, docs, exclude, groups, only, sharedCode95])
 
   const step = (key: string) => facts?.steps?.find((item) => item.key === key)
   const patchFacts = async (patch: Record<string, unknown>) => {
@@ -437,7 +437,7 @@ export function OperatorDocumentRows({
     return (
       <DocumentRequirementRow
         key={row.norm}
-        title={getLabel(row.type.code, row.type.name)}
+        title={getLabel(row.type.code, row.type.name, row.type.title)}
         requirement={requirement}
         presence={procedure && !hasFile ? (
           <span className="text-sm text-slate-700">{statusLabel(phase || 'absent', row.doc)}</span>
@@ -459,7 +459,7 @@ export function OperatorDocumentRows({
     const nodes: Record<string, ReactNode> = {}
     for (const group of groups) {
       const wanted = expandTypeCodes(group.types)
-      const grouped = rows.filter((row) => wanted.has(row.norm))
+      const grouped = rows.filter((row) => wanted.has(row.norm) || legalDocumentSlot(row.type) === group.key)
       nodes[group.key] = grouped.length ? <DocumentRequirementList columns={columns}>{grouped.map(renderRow)}</DocumentRequirementList> : null
     }
     return <>{renderGroups(nodes)}</>
