@@ -91,6 +91,12 @@ def test_post_transfer_composition_outside_create_handoff() -> None:
     # Composition sits in API after create — not inside create_handoff service.
     assert "apply_employment_accept_after_transfer" in api
 
+    # Operator Transfer is POST .../transfer-to-employment, not create_handoff_route.
+    mutations = (
+        _REPO_ROOT / "backend" / "app" / "modules" / "applications" / "mutations.py"
+    ).read_text(encoding="utf-8")
+    assert "apply_employment_accept_after_transfer" in mutations
+
     funcs = {
         n.name
         for n in ast.parse(orch).body
@@ -109,6 +115,15 @@ def test_recruitment_orchestrator_does_not_call_employment_accept() -> None:
     assert "apply_employment_accept_policy" not in rso
     assert "apply_employment_accept_after_transfer" not in rso
     assert "employment_accept_policy" not in rso
+
+
+def test_internal_hr_accept_ignores_unset_client_lane_flag() -> None:
+    """Unset handoff_to_internal_hr defaults false and must not block Employment init."""
+    orch = _ORCH.read_text(encoding="utf-8")
+    apply_fn = orch.split("async def apply_employment_accept_policy", 1)[1]
+    apply_fn = apply_fn.split("\nasync def ", 1)[0]
+    assert "get_handoff_to_internal_hr" not in apply_fn
+    assert 'dest != "internal_hr"' in apply_fn
 
 
 def test_ritual_accept_not_default_happy_path_ui() -> None:

@@ -135,6 +135,33 @@ def default_pipeline_stage_from_result(
     return str(pipeline_stage or "").strip()
 
 
+async def _bootstrap_missing_company_hr_funnel(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str,
+) -> bool:
+    """Companies created before the HR pipeline bootstrap have no employee funnel."""
+    from backend.app.models.company import Company
+    from backend.app.models.tenant import Tenant
+    from backend.app.services.hr_employee_funnel_bootstrap import (
+        bootstrap_hr_employee_funnel_for_company,
+    )
+
+    tenant = await db.get(Tenant, str(tenant_id))
+    company = await db.get(Company, str(company_id))
+    if tenant is None or company is None:
+        return False
+    if str(getattr(company, "tenant_id", "") or "") != str(tenant_id):
+        return False
+    created = await bootstrap_hr_employee_funnel_for_company(
+        db,
+        tenant=tenant,
+        company=company,
+    )
+    return bool(created)
+
+
 async def resolve_hr_employee_funnel_for_workforce(
     db: AsyncSession,
     *,
@@ -142,7 +169,11 @@ async def resolve_hr_employee_funnel_for_workforce(
     company_id: str,
     explicit_funnel_id: Optional[str] = None,
 ) -> HrEmployeeFunnelResolveResult:
-    """Resolve HR employee pipeline funnel; raises HTTPException on failure."""
+    """Resolve HR employee pipeline funnel; raises HTTPException on failure.
+
+    A missing company funnel is bootstrapped once from the HR pipeline manifest,
+    then resolved again. An explicit funnel id is never replaced.
+    """
     try:
         return await resolve_hr_employee_funnel(
             db,
@@ -150,10 +181,28 @@ async def resolve_hr_employee_funnel_for_workforce(
             company_id=company_id,
             explicit_funnel_id=explicit_funnel_id,
         )
+    except HrEmployeeFunnelNotFoundError as exc:
+        if explicit_funnel_id or not await _bootstrap_missing_company_hr_funnel(
+            db,
+            tenant_id=tenant_id,
+            company_id=company_id,
+        ):
+            raise _http_from_resolve_error(exc) from exc
+        try:
+            return await resolve_hr_employee_funnel(
+                db,
+                tenant_id=tenant_id,
+                company_id=company_id,
+            )
+        except (
+            HrModuleNotEnabledError,
+            HrEmployeeFunnelForbiddenError,
+            HrEmployeeFunnelNotFoundError,
+        ) as retry_exc:
+            raise _http_from_resolve_error(retry_exc) from retry_exc
     except (
         HrModuleNotEnabledError,
         HrEmployeeFunnelForbiddenError,
-        HrEmployeeFunnelNotFoundError,
     ) as exc:
         raise _http_from_resolve_error(exc) from exc
 

@@ -689,7 +689,11 @@ async def recruitment_transfer_to_employment(
     payload: ApplicationTransferIn,
     current_user: UserCtx,
 ) -> ApplicationTransferResult:
-    """RSO-2 Transfer: boundary only. Revalidates package; create_handoff + audit."""
+    """RSO-2 Transfer, then Employment auto-init for internal HR.
+
+    Recruitment emit stays in ``run_transfer_to_employment``. Accept is applied
+    here, outside ``create_handoff``, the same way ``create_handoff_route`` does.
+    """
     from backend.app.modules.recruitment.services.ready_for_employment_orchestrator import (
         RsoOrchestratorError,
         run_transfer_to_employment,
@@ -711,6 +715,28 @@ async def recruitment_transfer_to_employment(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
         ) from exc
+
+    dest = (payload.destination or "internal_hr").strip().lower()
+    if dest == "internal_hr" and result.handoff_id:
+        from backend.app.services.employment_accept_orchestrator import (
+            EmploymentAcceptError,
+            apply_employment_accept_after_transfer,
+        )
+
+        try:
+            await apply_employment_accept_after_transfer(
+                db,
+                tenant_id=tenant_id,
+                handoff_id=str(result.handoff_id),
+                actor_id=actor_id,
+                destination=dest,
+            )
+        except EmploymentAcceptError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
+            ) from exc
+
     await db.commit()
     app = await _reload_recruitment(db, tenant_id, application_id)
     return ApplicationTransferResult(

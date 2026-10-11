@@ -1307,7 +1307,7 @@
           "tab_accepted": "Принятые",
           "total": "Всего: {{n}}",
           "handoff_row": "Handoff {{id}}",
-          "view_snapshot": "Снимок",
+          "view_snapshot": "Открыть дело",
           "empty": "В этой очереди нет handoff.",
           "tab_all": "All active",
           "view_review": "HR review",

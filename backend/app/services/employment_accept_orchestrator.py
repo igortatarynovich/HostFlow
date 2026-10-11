@@ -154,23 +154,25 @@ async def apply_employment_accept_policy(
     resolved = await resolve_ready_for_employment_package(db, handoff=handoff, package=package)
     dest = _text(getattr(handoff, "destination", None)) or "internal_hr"
 
-    # Link-level enablement (best-effort).
+    # Client-portal link flags gate client_portal handoff only.
+    # internal_hr is same-tenant Employment init: create_handoff already skips
+    # the link, and an unset handoff_to_internal_hr defaults to false — that
+    # must not leave a valid package stuck in awaiting pickup.
     handoff_enabled = True
-    try:
-        from backend.app.services.tenant_links import get_tenant_link
+    if dest != "internal_hr":
+        try:
+            from backend.app.services.tenant_links import get_tenant_link
 
-        link = await get_tenant_link(
-            db,
-            agency_tenant_id=str(handoff.agency_tenant_id),
-            client_company_id=getattr(handoff, "client_company_id", None),
-            client_tenant_id=getattr(handoff, "client_tenant_id", None),
-        )
-        if link is not None:
-            handoff_enabled = bool(link.get_handoff_enabled())
-            if dest == "internal_hr" and hasattr(link, "get_handoff_to_internal_hr"):
-                handoff_enabled = handoff_enabled and bool(link.get_handoff_to_internal_hr())
-    except Exception:  # noqa: BLE001 — policy still evaluates package
-        pass
+            link = await get_tenant_link(
+                db,
+                agency_tenant_id=str(handoff.agency_tenant_id),
+                client_company_id=getattr(handoff, "client_company_id", None),
+                client_tenant_id=getattr(handoff, "client_tenant_id", None),
+            )
+            if link is not None:
+                handoff_enabled = bool(link.get_handoff_enabled())
+        except Exception:  # noqa: BLE001 — policy still evaluates package
+            pass
 
     decision = evaluate_employment_accept_policy_v1(
         package=resolved,

@@ -1307,7 +1307,7 @@
           "tab_accepted": "Zaakceptowane",
           "total": "Razem: {{n}}",
           "handoff_row": "Przekazanie {{id}}",
-          "view_snapshot": "Migawka",
+          "view_snapshot": "Otwórz sprawę",
           "empty": "Brak przekazań w tej kolejce.",
           "tab_all": "All active",
           "view_review": "HR review",
