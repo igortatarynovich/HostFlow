@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
-import { OperatorFactsForm, type OperatorFactsView } from './OperatorFactsSurface'
+import { OperatorFactsForm, OperatorFactsWorkspace, type OperatorFactsView } from './OperatorFactsSurface'
 
 const STAY_CHOICES = [
   'visa_d',
@@ -250,5 +250,36 @@ describe('OperatorFactsForm', () => {
     expect(screen.queryByText(/Gdzie potwierdzony/)).toBeNull()
     expect(screen.queryByText(/Separate evidence/i)).toBeNull()
     expect(screen.queryByText(/driver_license_code95/)).toBeNull()
+  })
+})
+
+describe('OperatorFactsWorkspace', () => {
+  it('shows a compact read row and reveals conditional ADR fields only while editing', () => {
+    renderForm(
+      <OperatorFactsWorkspace
+        countries={[{ value: 'PL', label: 'Polska' }]}
+        onPatch={() => undefined}
+        view={view({
+          citizenship_class: 'third_country',
+          steps: [
+            { key: 'citizenship', visible: true, stored: 'BY' },
+            { key: 'stay_basis', visible: true, stored: 'karta_pobytu' },
+            { key: 'work', visible: true, operator_label: 'unknown' },
+            { key: 'driving_licence', visible: true, issuing_country: 'BY', categories: ['CE'], valid_to: '2041-01-13' },
+            { key: 'code95', visible: true, presence: false },
+            { key: 'tachograph', visible: true, presence: false },
+            { key: 'adr', visible: true, presence: false },
+            { key: 'medical', visible: true, presence: true },
+            { key: 'psych', visible: true, presence: true },
+          ],
+        })}
+      />,
+    )
+    expect(screen.getByTestId('operator-facts-workspace')).toBeTruthy()
+    expect(screen.queryByTestId('operator-facts-adr')).toBeNull()
+    expect(screen.getAllByText('ADR').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getAllByText('Edytuj')[1])
+    expect(screen.getByTestId('operator-facts-adr')).toBeTruthy()
+    expect(screen.queryByTestId('operator-facts-card-parameters')).toBeNull()
   })
 })

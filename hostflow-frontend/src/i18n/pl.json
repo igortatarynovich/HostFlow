@@ -5769,6 +5769,32 @@
       }
     },
     "candidate_card": {
+      "ia": {
+        "tabs": {
+          "overview": "Przegląd",
+          "profile": "Profil",
+          "documents": "Dokumenty i prawo do pracy",
+          "matching": "Rekrutacja",
+          "activity": "Aktywność"
+        },
+        "sections": {
+          "identity": "Dane podstawowe",
+          "driver": "Profil kierowcy",
+          "experience": "Doświadczenie",
+          "additional": "Adres i dane dodatkowe",
+          "rights": "Prawo do pracy",
+          "documents": "Dokumenty zawodowe",
+          "extra_facts": "Dodatkowo"
+        },
+        "process_widget": "Etap, opiekun i tagi",
+        "blockers": "Blokery",
+        "blockers_none": "Brak",
+        "documents_progress": "Dokumenty",
+        "open_documents": "Otwórz dokumenty",
+        "done": "Gotowe",
+        "years_short": "doświadczenie {{count}}",
+        "active_vacancy": "Aktywna aplikacja"
+      },
       "operator_facts": {
         "driver_block": "Dane i uprawnienia kierowcy",
         "citizenship": "Obywatelstwo",

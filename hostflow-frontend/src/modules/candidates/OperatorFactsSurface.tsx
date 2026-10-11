@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
+import { CardAccordion, ReadRows, joinParts } from '../../components/candidate/card/CandidateCardChrome'
 import { SearchableSelect } from '../../components/candidate/shared/FormComponents'
 import DateInput from '../../components/controls/DateInput'
 import { useI18n } from '../../i18n'
+import { formatDateSafe } from './candidateUtils'
 
 type CountryOption = { value: string; label: string }
 
@@ -53,16 +55,22 @@ function stepOf(view: OperatorFactsView, key: string): Step | undefined {
   return view.steps.find((step) => step.key === key)
 }
 
+export type OperatorFactsSlice = 'rights' | 'documents' | 'extra'
+
 export function OperatorFactsForm({
   view,
   countries,
   disabled,
   onPatch,
+  slice,
+  plain = false,
 }: {
   view: OperatorFactsView
   countries: CountryOption[]
   disabled?: boolean
   onPatch: (patch: Patch) => void
+  slice?: OperatorFactsSlice
+  plain?: boolean
 }) {
   const { t } = useI18n()
   const citizenship = stepOf(view, 'citizenship')
@@ -155,14 +163,23 @@ export function OperatorFactsForm({
     />
   )
 
+  const showRights = !slice || slice === 'rights'
+  const showDocuments = !slice || slice === 'documents'
+  const showExtra = !slice || slice === 'extra'
+  const shell = plain ? 'space-y-3' : 'scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4'
+  const nest = plain ? 'space-y-3' : 'space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3'
+
   return (
     <div className="space-y-4" data-testid="operator-facts-form">
-      <section className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4" data-testid="operator-facts-driver">
+      {showRights ? (
+      <section className={shell} data-testid="operator-facts-driver">
+        {plain ? null : (
         <div className="text-sm font-semibold text-slate-900">
           {t('app.candidate_card.operator_facts.driver_block', {
             defaultValue: 'Dane i uprawnienia kierowcy',
           })}
         </div>
+        )}
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           {field(
             t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Obywatelstwo' }),
@@ -171,7 +188,7 @@ export function OperatorFactsForm({
           )}
 
           {stay?.visible ? (
-            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-stay">
+            <div className={nest} data-testid="operator-facts-stay">
               <div className="text-xs font-semibold text-slate-700">
                 {t('app.candidate_card.operator_facts.stay_question', {
                   defaultValue: 'Na jakiej podstawie przebywa w Polsce?',
@@ -198,12 +215,15 @@ export function OperatorFactsForm({
           ) : null}
         </div>
       </section>
+      ) : null}
 
-      {determined || work?.visible ? (
-        <section className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4" data-testid="operator-facts-work-rights">
+      {showRights && (determined || work?.visible) ? (
+        <section className={shell} data-testid="operator-facts-work-rights">
+          {plain ? null : (
           <div className="text-sm font-semibold text-slate-900">
             {t('app.candidate_card.operator_facts.work_block', { defaultValue: 'Prawo do pracy' })}
           </div>
+          )}
           <div className="mt-4 space-y-4">
             {determined ? (
               <p className="text-sm text-slate-800" data-testid="operator-facts-work-determined">
@@ -213,7 +233,7 @@ export function OperatorFactsForm({
               </p>
             ) : null}
             {work?.visible ? (
-              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className={nest}>
                 {field(
                   t('app.candidate_card.operator_facts.work_question', {
                     defaultValue: 'Na jakiej podstawie może pracować?',
@@ -256,12 +276,16 @@ export function OperatorFactsForm({
         </section>
       ) : null}
 
-      <section className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4" data-testid="operator-facts-qualifications">
+      {showDocuments || showExtra ? (
+      <section className={shell} data-testid="operator-facts-qualifications">
+        {plain ? null : (
         <div className="text-sm font-semibold text-slate-900">
           {t('app.candidate_card.operator_facts.qualifications', { defaultValue: 'Uprawnienia kierowcy' })}
         </div>
+        )}
+        {showDocuments ? (
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-licence">
+          <div className={nest} data-testid="operator-facts-licence">
             <div className="text-xs font-semibold text-slate-700">
               {t('app.candidate_card.operator_facts.licence_title', { defaultValue: 'Prawo jazdy' })}
             </div>
@@ -314,7 +338,7 @@ export function OperatorFactsForm({
           </div>
 
           {code95?.visible ? (
-            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-code95">
+            <div className={nest} data-testid="operator-facts-code95">
               {field(
                 t('app.candidate_card.operator_facts.code95', { defaultValue: 'Code 95' }),
                 presenceSelect(code95?.presence, (next) => onPatch({ code95_presence: next }), 'operator-facts-code95-presence'),
@@ -330,7 +354,7 @@ export function OperatorFactsForm({
             </div>
           ) : null}
 
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-tachograph">
+          <div className={nest} data-testid="operator-facts-tachograph">
             {field(
               t('app.candidate_card.operator_facts.tachograph', { defaultValue: 'Karta kierowcy' }),
               presenceSelect(tacho?.presence, (next) => onPatch({ tachograph_presence: next })),
@@ -353,7 +377,7 @@ export function OperatorFactsForm({
             ) : null}
           </div>
 
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-adr">
+          <div className={nest} data-testid="operator-facts-adr">
             {field(
               t('app.candidate_card.operator_facts.adr', { defaultValue: 'ADR' }),
               presenceSelect(adr?.presence, (next) => onPatch({ adr_presence: next })),
@@ -372,19 +396,23 @@ export function OperatorFactsForm({
             ) : null}
           </div>
 
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-medical">
+          <div className={nest} data-testid="operator-facts-medical">
             {field(
               t('app.candidate_card.operator_facts.medical', { defaultValue: 'Badania lekarskie' }),
               presenceSelect(stepOf(view, 'medical')?.presence, (next) => onPatch({ medical_presence: next })),
             )}
           </div>
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-psych">
+          <div className={nest} data-testid="operator-facts-psych">
             {field(
               t('app.candidate_card.operator_facts.psych', { defaultValue: 'Testy psychologiczne' }),
               presenceSelect(stepOf(view, 'psych')?.presence, (next) => onPatch({ psych_presence: next })),
             )}
           </div>
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-pesel">
+        </div>
+        ) : null}
+        {showExtra ? (
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className={nest} data-testid="operator-facts-pesel">
             {field(
               t('app.candidate_card.operator_facts.pesel', { defaultValue: 'PESEL' }),
               presenceSelect(stepOf(view, 'pesel')?.presence, (next) => onPatch({ pesel_presence: next })),
@@ -401,14 +429,194 @@ export function OperatorFactsForm({
               )
             ) : null}
           </div>
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="operator-facts-additional">
+          <div className={nest} data-testid="operator-facts-additional">
             {field(
               t('app.candidate_card.operator_facts.additional', { defaultValue: 'Dodatkowy dokument' }),
               presenceSelect(stepOf(view, 'additional')?.presence, (next) => onPatch({ additional_presence: next })),
             )}
           </div>
         </div>
+        ) : null}
       </section>
+      ) : null}
+    </div>
+  )
+}
+
+function countryName(code: string | null | undefined, countries: CountryOption[]): string {
+  if (!code || code === 'unknown') return '—'
+  return countries.find((item) => item.value === code)?.label || code
+}
+
+function factValue(
+  present: boolean | null | undefined,
+  yes: string,
+  no: string,
+  until?: string | null,
+  locale?: string,
+): string {
+  if (present === false) return no
+  if (present !== true) return '—'
+  const date = until ? formatDateSafe(until, locale) : ''
+  return date && date !== '—' ? `${yes} · ${date}` : yes
+}
+
+export function readOperatorFacts(
+  view: OperatorFactsView,
+  countries: CountryOption[],
+  t: (key: string, options?: { defaultValue?: string }) => string,
+  locale: string,
+) {
+  const yes = t('app.candidate_card.operator_facts.yes', { defaultValue: 'Tak' })
+  const no = t('app.candidate_card.operator_facts.no', { defaultValue: 'Nie' })
+  const licence = stepOf(view, 'driving_licence')
+  const code95 = stepOf(view, 'code95')
+  const tacho = stepOf(view, 'tachograph')
+  const adr = stepOf(view, 'adr')
+  const medical = stepOf(view, 'medical')
+  const psych = stepOf(view, 'psych')
+  const stay = stepOf(view, 'stay_basis')
+  const work = stepOf(view, 'work')
+  const citizenship = stepOf(view, 'citizenship')
+  const pesel = stepOf(view, 'pesel')
+  const categories = (licence?.categories ?? []).filter(Boolean)
+  const stayCode = stay?.stored && stay.stored !== 'unknown' ? stay.stored : ''
+  const stayLabel = stayCode
+    ? t(`app.candidate_card.operator_facts.stay_option.${stayCode}`, { defaultValue: stayCode })
+    : '—'
+  const workCode = work?.operator_label && work.operator_label !== 'unknown' ? work.operator_label : ''
+  const workLabel = workCode
+    ? t(`app.candidate_card.operator_facts.work_option.${workCode}`, { defaultValue: workCode })
+    : '—'
+  const rights = [
+    {
+      label: t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Obywatelstwo' }),
+      value: countryName(citizenship?.stored, countries),
+    },
+    ...(stay?.visible
+      ? [
+          {
+            label: t('app.candidate_card.operator_facts.stay_question', { defaultValue: 'Pobyt' }),
+            value: joinParts([
+              stayLabel,
+              stay?.valid_to ? formatDateSafe(stay.valid_to, locale) : null,
+            ]) || '—',
+          },
+        ]
+      : []),
+    ...(work?.visible
+      ? [
+          {
+            label: t('app.candidate_card.operator_facts.work_question', { defaultValue: 'Praca' }),
+            value: workLabel,
+          },
+        ]
+      : []),
+  ]
+  const documents = [
+    {
+      label: t('app.candidate_card.operator_facts.licence_title', { defaultValue: 'Prawo jazdy' }),
+      value: categories.length
+        ? joinParts([
+            categories.join('/'),
+            countryName(licence?.issuing_country, countries),
+            licence?.valid_to ? formatDateSafe(licence.valid_to, locale) : null,
+          ])
+        : '—',
+    },
+    ...(code95?.visible
+      ? [
+          {
+            label: t('app.candidate_card.operator_facts.code95', { defaultValue: 'Code 95' }),
+            value: factValue(code95.presence, yes, no, code95.valid_to, locale),
+          },
+        ]
+      : []),
+    {
+      label: t('app.candidate_card.operator_facts.tachograph', { defaultValue: 'Karta kierowcy' }),
+      value: factValue(tacho?.presence, yes, no, tacho?.valid_to, locale),
+    },
+    {
+      label: t('app.candidate_card.operator_facts.adr', { defaultValue: 'ADR' }),
+      value: factValue(adr?.presence, yes, no, adr?.valid_to, locale),
+    },
+    {
+      label: t('app.candidate_card.operator_facts.medical', { defaultValue: 'Badania lekarskie' }),
+      value: factValue(medical?.presence, yes, no),
+    },
+    {
+      label: t('app.candidate_card.operator_facts.psych', { defaultValue: 'Testy psychologiczne' }),
+      value: factValue(psych?.presence, yes, no),
+    },
+  ]
+  const extra = [
+    {
+      label: t('app.candidate_card.operator_facts.pesel', { defaultValue: 'PESEL' }),
+      value: pesel?.presence === true ? pesel.stored || yes : factValue(pesel?.presence, yes, no),
+    },
+  ]
+  const documentsLine = joinParts(
+    documents
+      .filter((row) => row.value && row.value !== '—')
+      .map((row) => `${row.label} ${row.value}`),
+  )
+  const rightsLine = joinParts(
+    rights
+      .filter((row) => row.value && row.value !== '—')
+      .map((row) => `${row.label} ${row.value}`),
+  )
+  return { rights, documents, extra, documentsLine, rightsLine, categoryLine: categories.join('/') }
+}
+
+export function OperatorFactsWorkspace({
+  view,
+  countries,
+  disabled,
+  onPatch,
+  requestedSlice,
+  editToken = 0,
+}: {
+  view: OperatorFactsView
+  countries: CountryOption[]
+  disabled?: boolean
+  onPatch: (patch: Patch) => void
+  requestedSlice?: OperatorFactsSlice | null
+  editToken?: number
+}) {
+  const { t, locale } = useI18n()
+  const [editing, setEditing] = useState<OperatorFactsSlice | null>(null)
+  useEffect(() => {
+    if (requestedSlice) setEditing(requestedSlice)
+  }, [editToken, requestedSlice])
+  const read = readOperatorFacts(view, countries, t, locale)
+  const block = (slice: OperatorFactsSlice, title: string, rows: Array<{ label: string; value: string }>, defaultOpen: boolean) => (
+    <CardAccordion
+      title={title}
+      summary={joinParts(rows.filter((row) => row.value !== '—').map((row) => `${row.label} ${row.value}`))}
+      defaultOpen={defaultOpen}
+      editing={editing === slice}
+      onEdit={() => setEditing(slice)}
+      onDone={() => setEditing(null)}
+    >
+      {editing === slice ? (
+        <OperatorFactsForm
+          view={view}
+          countries={countries}
+          disabled={disabled}
+          onPatch={onPatch}
+          slice={slice}
+          plain
+        />
+      ) : (
+        <ReadRows rows={rows} />
+      )}
+    </CardAccordion>
+  )
+  return (
+    <div className="space-y-3" data-testid="operator-facts-workspace">
+      {block('rights', t('app.candidate_card.ia.sections.rights'), read.rights, true)}
+      {block('documents', t('app.candidate_card.ia.sections.documents'), read.documents, true)}
+      {block('extra', t('app.candidate_card.ia.sections.extra_facts'), read.extra, false)}
     </div>
   )
 }
@@ -417,15 +625,23 @@ export default function OperatorFactsSurface({
   candidateId,
   countries,
   onSaved,
+  onLoaded,
+  requestedSlice,
+  editToken = 0,
 }: {
   candidateId: string
   countries: CountryOption[]
   onSaved?: (view: OperatorFactsView) => void
+  onLoaded?: (view: OperatorFactsView) => void
+  requestedSlice?: OperatorFactsSlice | null
+  editToken?: number
 }) {
   const { t } = useI18n()
   const [view, setView] = useState<OperatorFactsView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const onLoadedRef = useRef(onLoaded)
+  onLoadedRef.current = onLoaded
 
   const load = useCallback(async () => {
     const response = await api.get<OperatorFactsView>(`/candidates/${candidateId}/operator-facts`)
@@ -438,7 +654,10 @@ export default function OperatorFactsSurface({
     void api
       .get<OperatorFactsView>(`/candidates/${candidateId}/operator-facts`)
       .then((response) => {
-        if (!cancelled) setView(response.data)
+        if (!cancelled) {
+          setView(response.data)
+          onLoadedRef.current?.(response.data)
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -458,6 +677,7 @@ export default function OperatorFactsSurface({
         const response = await api.put<OperatorFactsView>(`/candidates/${candidateId}/operator-facts`, patch)
         setView(response.data)
         onSaved?.(response.data)
+        onLoadedRef.current?.(response.data)
       } catch {
         setError(t('app.candidate_card.operator_facts.save_failed', { defaultValue: 'Could not save facts' }))
         await load()
@@ -472,7 +692,14 @@ export default function OperatorFactsSurface({
     <div className="space-y-4" data-testid="operator-facts-surface">
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       {view ? (
-        <OperatorFactsForm view={view} countries={countries} disabled={busy} onPatch={(patch) => void onPatch(patch)} />
+        <OperatorFactsWorkspace
+          view={view}
+          countries={countries}
+          disabled={busy}
+          onPatch={(patch) => void onPatch(patch)}
+          requestedSlice={requestedSlice}
+          editToken={editToken}
+        />
       ) : null}
     </div>
   )

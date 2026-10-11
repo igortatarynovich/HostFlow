@@ -6390,6 +6390,32 @@
       }
     },
     "candidate_card": {
+      "ia": {
+        "tabs": {
+          "overview": "Overview",
+          "profile": "Profile",
+          "documents": "Documents and work rights",
+          "matching": "Matching",
+          "activity": "Activity"
+        },
+        "sections": {
+          "identity": "Core details",
+          "driver": "Driver profile",
+          "experience": "Work experience",
+          "additional": "Address and extra details",
+          "rights": "Right to work",
+          "documents": "Professional documents",
+          "extra_facts": "Additional"
+        },
+        "process_widget": "Stage, manager and tags",
+        "blockers": "Blockers",
+        "blockers_none": "None",
+        "documents_progress": "Documents",
+        "open_documents": "Open documents",
+        "done": "Done",
+        "years_short": "experience {{count}}",
+        "active_vacancy": "Active application"
+      },
       "operator_facts": {
         "driver_block": "Driver details and entitlements",
         "citizenship": "Citizenship",

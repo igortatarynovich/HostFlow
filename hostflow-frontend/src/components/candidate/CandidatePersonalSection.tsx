@@ -33,6 +33,10 @@ interface CandidatePersonalSectionProps {
   embedded?: boolean
   /** Citizenship is edited in Operator Facts. This section only shows the stored value. */
   citizenshipReadOnly?: boolean
+  /** Split location (country, languages) from the address block. */
+  focus?: 'location' | 'address'
+  plain?: boolean
+  showBirthDate?: boolean
 }
 
 function CandidatePersonalSection({
@@ -50,6 +54,9 @@ function CandidatePersonalSection({
   candidateDataReadOnly = false,
   embedded = false,
   citizenshipReadOnly = false,
+  focus,
+  plain = false,
+  showBirthDate = false,
 }: CandidatePersonalSectionProps) {
   const { t } = useI18n()
   const fieldVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
@@ -57,7 +64,7 @@ function CandidatePersonalSection({
   const fieldLabel = (fieldKey: string, defaultLabel: string) =>
     getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
   const [collapsed, setCollapsed] = useState(() => {
-    if (embedded) return false
+    if (plain || embedded) return false
     try {
       const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}')
       return !!s.personal
@@ -96,12 +103,17 @@ function CandidatePersonalSection({
   return (
     <section
       ref={personalRef}
-      id="section-personal"
+      id={focus === 'address' ? undefined : 'section-personal'}
       className={clsx(
         'scroll-mt-24',
-        embedded ? 'rounded-2xl border border-slate-200 bg-white p-4' : 'group app-surface p-4 transition-shadow hover:shadow-xl',
+        plain
+          ? undefined
+          : embedded
+            ? 'rounded-2xl border border-slate-200 bg-white p-4'
+            : 'group app-surface p-4 transition-shadow hover:shadow-xl',
       )}
     >
+      {plain ? null : (
       <button
         type="button"
         onClick={embedded ? undefined : toggle}
@@ -115,8 +127,9 @@ function CandidatePersonalSection({
           <IconChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
         ) : null}
       </button>
+      )}
 
-      {!collapsed && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {!collapsed && focus !== 'address' && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {(!candidateProfile || fieldVisible('citizenship')) && !citizenshipReadOnly && (
           <label className="block">
             <div className="label">{fieldLabel('citizenship', t('app.candidate_card.fields.citizenship'))} {fieldRequired('citizenship') && <span className="text-red-600">*</span>}</div>
@@ -182,8 +195,20 @@ function CandidatePersonalSection({
         )}
       </div>}
 
-      {!collapsed && (
+      {!collapsed && focus !== 'location' && (
         <div className="mt-4">
+          {showBirthDate ? (
+            <div className="mb-4 max-w-xs">
+              <Input
+                label={fieldLabel('birth_date', t('app.candidate_card.fields.birth_date'))}
+                type="date"
+                value={(extra.birth_date as string) || ''}
+                onChange={(e) => onExtraChange({ birth_date: e.target.value })}
+                readOnly={candidateDataReadOnly}
+                required={fieldRequired('birth_date')}
+              />
+            </div>
+          ) : null}
           {!embedded && (
             <button
               type="button"

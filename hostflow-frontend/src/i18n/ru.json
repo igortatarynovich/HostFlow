@@ -6317,6 +6317,32 @@
       }
     },
     "candidate_card": {
+      "ia": {
+        "tabs": {
+          "overview": "Обзор",
+          "profile": "Профиль",
+          "documents": "Документы и право на работу",
+          "matching": "Подбор",
+          "activity": "Активность"
+        },
+        "sections": {
+          "identity": "Основные данные",
+          "driver": "Водительский профиль",
+          "experience": "Опыт работы",
+          "additional": "Адрес и дополнительные данные",
+          "rights": "Право на работу",
+          "documents": "Профессиональные документы",
+          "extra_facts": "Дополнительно"
+        },
+        "process_widget": "Этап, менеджер и теги",
+        "blockers": "Блокеры",
+        "blockers_none": "Нет",
+        "documents_progress": "Документы",
+        "open_documents": "Открыть документы",
+        "done": "Готово",
+        "years_short": "опыт {{count}}",
+        "active_vacancy": "Активная заявка"
+      },
       "operator_facts": {
         "driver_block": "Данные и права водителя",
         "citizenship": "Гражданство",
