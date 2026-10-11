@@ -126,8 +126,11 @@ export function layoutFieldLabel(
   ) => string,
 ): string {
   const layoutField = resolveLayoutField(effectiveLayout, fieldKey)
+  const sameScript = (value: string) =>
+    /[А-Яа-яЁё]/.test(value) === /[А-Яа-яЁё]/.test(defaultLabel)
   const override = layoutField?.label_override?.trim()
-  if (override) return override
-  if (layoutField?.name?.trim()) return layoutField.name.trim()
+  if (override && sameScript(override)) return override
+  const name = layoutField?.name?.trim()
+  if (name && sameScript(name)) return name
   return profileFallback(profile, fieldKey, defaultLabel)
 }

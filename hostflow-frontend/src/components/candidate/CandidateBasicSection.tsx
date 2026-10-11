@@ -14,6 +14,7 @@ import { validateEmail, validatePhone } from '../../utils/validation'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
 import { hasCyrillic } from '../../utils/transliterate'
 import { formatDateSafe } from '../../modules/candidates/candidateUtils'
+import { ageFromIsoDate } from '../../modules/candidate-card/utils'
 
 type Option = { value: string; label: string; extra?: any }
 type PreferredContact = 'viber' | 'whatsapp' | 'telegram' | 'phone' | ''
@@ -65,7 +66,11 @@ interface CandidateBasicSectionProps {
   rowEdit?: boolean
   onRequestUnlock?: () => void
   /** Split identity from contact so each section can sit in its own card. */
-  part?: 'identity' | 'contact'
+  part?: 'identity' | 'contact' | 'preferred'
+  /** Rows participate in a parent two-column workspace grid. */
+  flow?: boolean
+  /** Preferred channel belongs on the identity sheet as well as contact. */
+  includePreferred?: boolean
 }
 
 function CandidateBasicSection({
@@ -101,6 +106,8 @@ function CandidateBasicSection({
   rowEdit = false,
   onRequestUnlock,
   part,
+  flow = false,
+  includePreferred = false,
 }: CandidateBasicSectionProps) {
   const { t } = useI18n()
   const [openField, setOpenField] = useState<string | null>(null)
@@ -170,14 +177,19 @@ function CandidateBasicSection({
     preferredContactOptions.find((opt) => opt.value === (extra.preferred_contact || ''))?.label
     || (extra.preferred_contact as string)
     || ''
-  const birthValue = extra.birth_date ? formatDateSafe(String(extra.birth_date), locale) : ''
+  const birthAge = ageFromIsoDate(typeof extra.birth_date === 'string' ? extra.birth_date : null)
+  const birthValue = extra.birth_date
+    ? [formatDateSafe(String(extra.birth_date), locale), birthAge != null ? `(${birthAge})` : null].filter(Boolean).join(' ')
+    : ''
 
   if (rowEdit) {
-    const showIdentity = part !== 'contact'
-    const showContact = part !== 'identity'
+    const showIdentity = part !== 'contact' && part !== 'preferred'
+    const showContact = part === 'contact' || part == null
+    const showPreferred = part === 'preferred' || showContact || includePreferred
+    const col = (side: 1 | 2) => (flow ? side : undefined)
     return (
-      <Container ref={part === 'contact' ? undefined : basicRef} id={part === 'contact' ? undefined : 'section-basic'} className="scroll-mt-24">
-        <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+      <Container ref={part === 'identity' ? basicRef : undefined} id={part === 'identity' ? 'section-basic' : undefined} className={flow ? 'contents' : 'scroll-mt-24'}>
+        <div className={flow ? 'contents' : 'grid grid-cols-1 gap-x-8 md:grid-cols-2'}>
           {showIdentity && (!candidateProfile || fieldVisible('first_name')) ? (
             <InlineFieldRow
               label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
@@ -186,6 +198,8 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('first_name')}
               onDone={() => setOpenField(null)}
+              column={col(1)}
+              row={flow ? 1 : undefined}
             >
               <Input
                 label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
@@ -204,6 +218,8 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('last_name')}
               onDone={() => setOpenField(null)}
+              column={col(1)}
+              row={flow ? 2 : undefined}
             >
               <Input
                 label={fieldLabel('last_name', t('app.candidate_card.fields.last_name'))}
@@ -222,6 +238,8 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('birth_date')}
               onDone={() => setOpenField(null)}
+              column={col(1)}
+              row={flow ? 3 : undefined}
             >
               <Input
                 label={fieldLabel('birth_date', t('app.candidate_card.fields.birth_date'))}
@@ -241,7 +259,9 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('phone')}
               onDone={() => setOpenField(null)}
-              wide
+              wide={!flow}
+              column={col(1)}
+              row={flow ? 1 : undefined}
             >
               <div className="label">{fieldLabel('phone', t('app.candidate_card.fields.phone'))}</div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -288,6 +308,8 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('phone_additional')}
               onDone={() => setOpenField(null)}
+              column={col(1)}
+              row={flow ? 2 : undefined}
             >
               <Input
                 label={t('app.candidate_card.fields.phone_additional', { defaultValue: 'Additional phone' })}
@@ -305,6 +327,8 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('email')}
               onDone={() => setOpenField(null)}
+              column={col(2)}
+              row={flow ? 1 : undefined}
             >
               <Input
                 label={fieldLabel('email', t('app.candidate_card.fields.email'))}
@@ -324,7 +348,7 @@ function CandidateBasicSection({
               ) : null}
             </InlineFieldRow>
           ) : null}
-          {showContact && (!candidateProfile || fieldVisible('preferred_contact')) ? (
+          {showPreferred && (!candidateProfile || fieldVisible('preferred_contact')) ? (
             <InlineFieldRow
               label={fieldLabel('preferred_contact', t('app.candidate_card.fields.preferred_contact'))}
               value={preferredLabel}
@@ -332,6 +356,8 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('preferred_contact')}
               onDone={() => setOpenField(null)}
+              column={col(2)}
+              row={flow ? (part === 'preferred' ? 4 : 2) : undefined}
             >
               <label className="block">
                 <div className="label">{fieldLabel('preferred_contact', t('app.candidate_card.fields.preferred_contact'))}</div>

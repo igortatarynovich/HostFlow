@@ -9,6 +9,7 @@ import { useI18n } from '../../i18n'
 import { Input, SearchableSelect, CheckboxMultiSelect, Checkbox } from './shared/FormComponents'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
 import { InlineFieldRow } from '../ui/InlineFieldRow'
+import { countryFlag } from '../../modules/candidate-card/utils'
 
 type Option = { value: string; label: string; extra?: any }
 
@@ -42,6 +43,8 @@ interface CandidatePersonalSectionProps {
   rowEdit?: boolean
   canEdit?: boolean
   onRequestUnlock?: () => void
+  /** Rows participate in a parent two-column workspace grid. */
+  flow?: boolean
 }
 
 function CandidatePersonalSection({
@@ -65,6 +68,7 @@ function CandidatePersonalSection({
   rowEdit = false,
   canEdit = true,
   onRequestUnlock,
+  flow = false,
 }: CandidatePersonalSectionProps) {
   const { t } = useI18n()
   const [openField, setOpenField] = useState<string | null>(null)
@@ -88,8 +92,13 @@ function CandidatePersonalSection({
     }
   }, [candidateDataReadOnly, pendingField])
   const countryLabel = (code?: string | null) => countries.find((item) => item.value === code)?.label || code || ''
+  const flagged = (code?: string | null) => {
+    const label = countryLabel(code)
+    const flag = countryFlag(code)
+    return flag && label ? `${flag} ${label}` : label
+  }
   const formatAddress = (address?: { country?: string | null; city?: string | null; zip?: string | null; street?: string | null; house?: string | null; apt?: string | null } | null) =>
-    [countryLabel(address?.country), address?.city, address?.zip, address?.street, address?.house, address?.apt]
+    [flagged(address?.country), address?.city, address?.zip, address?.street, address?.house, address?.apt]
       .map((part) => (typeof part === 'string' ? part.trim() : ''))
       .filter(Boolean)
       .join(', ')
@@ -142,18 +151,20 @@ function CandidatePersonalSection({
     const registered = regDiff
       ? formatAddress(extra.reg_address)
       : t('app.candidate_card.ia.same_as_residence', { defaultValue: 'Same as the residence address' })
+    const col = (side: 1 | 2) => (flow ? side : undefined)
     return (
-      <section ref={personalRef} id={focus === 'address' ? undefined : 'section-personal'} className="scroll-mt-24">
+      <section ref={personalRef} id={focus === 'address' ? undefined : 'section-personal'} className={flow ? 'contents' : 'scroll-mt-24'}>
         {showLocation ? (
-          <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+          <div className={flow ? 'contents' : 'grid grid-cols-1 gap-x-8 md:grid-cols-2'}>
             {(!candidateProfile || fieldVisible('citizenship')) && !citizenshipReadOnly ? (
               <InlineFieldRow
                 label={fieldLabel('citizenship', t('app.candidate_card.fields.citizenship'))}
-                value={countryLabel(extra.citizenship)}
+                value={flagged(extra.citizenship)}
                 editing={openField === 'citizenship'}
                 canEdit={canEdit}
                 onEdit={() => beginRow('citizenship')}
                 onDone={() => setOpenField(null)}
+                column={col(1)}
               >
                 <div className="label">{fieldLabel('citizenship', t('app.candidate_card.fields.citizenship'))}</div>
                 <SearchableSelect
@@ -167,14 +178,40 @@ function CandidatePersonalSection({
                 />
               </InlineFieldRow>
             ) : null}
+            {(!candidateProfile || fieldVisible('languages')) ? (
+              <InlineFieldRow
+                label={fieldLabel('languages', t('app.candidate_card.fields.languages'))}
+                value={languageValue}
+                editing={openField === 'languages'}
+                canEdit={canEdit}
+                onEdit={() => beginRow('languages')}
+                onDone={() => setOpenField(null)}
+                column={col(2)}
+                row={flow ? 2 : undefined}
+              >
+                <div className="label">{fieldLabel('languages', t('app.candidate_card.fields.languages'))}</div>
+                <CheckboxMultiSelect
+                  options={languages}
+                  values={candidate.languages || []}
+                  onChange={(vals) => onModelChange((m) => ({ ...m, languages: vals }))}
+                  disabled={candidateDataReadOnly}
+                  placeholder={selectTexts.multiNone}
+                  searchPlaceholder={selectTexts.search}
+                  noResultsLabel={selectTexts.noResults}
+                  multiSelectedLabel={selectTexts.multiSelected}
+                />
+              </InlineFieldRow>
+            ) : null}
             {(!candidateProfile || fieldVisible('country_code')) ? (
               <InlineFieldRow
                 label={fieldLabel('country_code', t('app.candidate_card.fields.country_code'))}
-                value={countryLabel(candidate.country_code)}
+                value={flagged(candidate.country_code)}
                 editing={openField === 'country_code'}
                 canEdit={canEdit}
                 onEdit={() => beginRow('country_code')}
                 onDone={() => setOpenField(null)}
+                column={col(2)}
+                row={flow ? 3 : undefined}
               >
                 <div className="label">{fieldLabel('country_code', t('app.candidate_card.fields.country_code'))}</div>
                 <SearchableSelect
@@ -201,32 +238,10 @@ function CandidatePersonalSection({
                 ) : null}
               </InlineFieldRow>
             ) : null}
-            {(!candidateProfile || fieldVisible('languages')) ? (
-              <InlineFieldRow
-                label={fieldLabel('languages', t('app.candidate_card.fields.languages'))}
-                value={languageValue}
-                editing={openField === 'languages'}
-                canEdit={canEdit}
-                onEdit={() => beginRow('languages')}
-                onDone={() => setOpenField(null)}
-              >
-                <div className="label">{fieldLabel('languages', t('app.candidate_card.fields.languages'))}</div>
-                <CheckboxMultiSelect
-                  options={languages}
-                  values={candidate.languages || []}
-                  onChange={(vals) => onModelChange((m) => ({ ...m, languages: vals }))}
-                  disabled={candidateDataReadOnly}
-                  placeholder={selectTexts.multiNone}
-                  searchPlaceholder={selectTexts.search}
-                  noResultsLabel={selectTexts.noResults}
-                  multiSelectedLabel={selectTexts.multiSelected}
-                />
-              </InlineFieldRow>
-            ) : null}
           </div>
         ) : null}
         {showAddress ? (
-          <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+          <div className={flow ? 'contents' : 'grid grid-cols-1 gap-x-8 md:grid-cols-2'}>
             <InlineFieldRow
               label={t('app.candidate_card.sections.personal.address_current')}
               value={residence}
@@ -234,7 +249,9 @@ function CandidatePersonalSection({
               canEdit={canEdit}
               onEdit={() => beginRow('address')}
               onDone={() => setOpenField(null)}
-              wide
+              variant="summary"
+              emptyLabel={t('app.candidate_card.ia.not_filled', { defaultValue: 'Not filled' })}
+              wide={!flow}
             >
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <label className="block md:col-span-2">
@@ -263,7 +280,9 @@ function CandidatePersonalSection({
               canEdit={canEdit}
               onEdit={() => beginRow('reg_address')}
               onDone={() => setOpenField(null)}
-              wide
+              variant="summary"
+              emptyLabel={t('app.candidate_card.ia.not_filled', { defaultValue: 'Not filled' })}
+              wide={!flow}
             >
               <Checkbox
                 label={t('app.candidate_card.fields.address.diff')}

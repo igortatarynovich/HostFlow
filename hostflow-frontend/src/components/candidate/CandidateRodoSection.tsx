@@ -1,11 +1,12 @@
 import { memo, useEffect, useState } from 'react'
-import { IconCheck } from '@tabler/icons-react'
+import { IconCheck, IconAlertTriangle } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
 import type { UUID } from '../../api/types'
 import { getRodoStatus, sendRodo } from '../../api/legalDocuments'
 import { formatDateTime } from '../../utils/dateFormat'
 import { explainWhyRodoNotSentYet } from '../../utils/contactAttemptRodoHints'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
+import { StatusBadge } from '../ui/StatusBadge'
 
 interface CandidateRodoSectionProps {
   candidateId: UUID
@@ -83,20 +84,18 @@ function CandidateRodoSection({
   if (variant === 'chip') {
     if (loading || !status) return null
     return (
-      <button
-        type="button"
-        onClick={onOpen}
-        className={
-          status.sent
-            ? 'text-[11px] inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-medium text-emerald-800'
-            : 'text-[11px] inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 font-medium text-amber-900'
-        }
-      >
-        {t('app.candidate_card.rodo.title')}
-        {' · '}
-        {status.sent
-          ? t('app.candidate_card.rodo.badge_sent')
-          : t('app.candidate_card.rodo.badge_not_sent', { defaultValue: 'Not sent' })}
+      <button type="button" onClick={onOpen} className="inline-flex">
+        <StatusBadge
+          shape="pill"
+          size="md"
+          semantic={status.sent ? 'success' : 'warning'}
+          icon={status.sent ? <IconCheck size={12} /> : <IconAlertTriangle size={12} />}
+          label={
+            status.sent
+              ? t('app.candidate_card.rodo.title')
+              : `${t('app.candidate_card.rodo.title')} · ${t('app.candidate_card.rodo.badge_not_sent', { defaultValue: 'Not sent' })}`
+          }
+        />
       </button>
     )
   }

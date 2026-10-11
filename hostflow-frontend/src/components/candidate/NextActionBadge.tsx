@@ -131,6 +131,14 @@ function NextActionBadgeInner({
     ? t(dto.title_key, { defaultValue: dto.title })
     : dto.title
 
+  const technicalTitle = String(titleText || '').trim().toLowerCase()
+  if (
+    technicalTitle.includes('candidate pipeline:')
+    || /^(docs_got|docs_wait|ready_for_handoff|ready_for_hr|handoff_returned|no_answer)$/.test(technicalTitle)
+  ) {
+    return null
+  }
+
   const hintText = dto.hint_key
     ? t(dto.hint_key, { defaultValue: dto.hint ?? '' })
     : dto.hint ?? undefined

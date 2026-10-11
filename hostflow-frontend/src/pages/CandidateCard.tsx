@@ -18,15 +18,21 @@ import type {
   Vacancy,
 } from '../api/types'
 import type { ReminderRecord } from '../api/types'
+import { IconBriefcase, IconBuildingSkyscraper, IconInbox, IconNotebook, IconPhone, IconTag, IconUser } from '@tabler/icons-react'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, pl, ru } from 'date-fns/locale'
 import { createDeleteRequest } from '../api/deletionRequests'
 import { sendRodo } from '../api/legalDocuments'
 import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
-import OperatorFactsSurface, { type OperatorFactsSlice } from '../modules/candidates/OperatorFactsSurface'
+import OperatorFactsSurface, { type OperatorFactsSlice, type OperatorFactsView } from '../modules/candidates/OperatorFactsSurface'
 import { CandidateCardTabs, CardAccordion, ReadRows, joinParts, type CandidateCardTabId } from '../components/candidate/card/CandidateCardChrome'
 import { StagePipeline } from '../components/ui/StagePipeline'
+import { CompactMetric } from '../components/ui/CompactMetric'
+import { ProgressRing } from '../components/ui/ProgressRing'
+import { StatusBadge } from '../components/ui/StatusBadge'
+import { WorkspaceWidget } from '../components/ui/WorkspaceWidget'
+import { ageFromIsoDate, countryFlag, formatYearsCount } from '../modules/candidate-card/utils'
 import { CandidateProcessControls } from '../components/candidate/card/CandidateProcessControls'
 import { exportCandidateBundle } from '../api/documents'
 import { createCandidateUploadLink, recreateCandidateFromApplication, type CandidateUploadLinkResponse } from '../api/candidates'
@@ -1044,6 +1050,23 @@ export default function CandidateCard(){
   const [requirementBlockersLoading, setRequirementBlockersLoading] = useState(false)
   const [docsSummaryRefreshTrigger, setDocsSummaryRefreshTrigger] = useState(0)
   const [operatorFactsRevision, setOperatorFactsRevision] = useState(0)
+  const [operatorFactsView, setOperatorFactsView] = useState<OperatorFactsView | null>(null)
+  useEffect(() => {
+    const candidateId = model?.id
+    if (!candidateId || isNew) {
+      setOperatorFactsView(null)
+      return
+    }
+    let cancelled = false
+    void api.get<OperatorFactsView>(`/candidates/${candidateId}/operator-facts`).then((response) => {
+      if (!cancelled) setOperatorFactsView(response.data)
+    }).catch(() => {
+      if (!cancelled) setOperatorFactsView(null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [model?.id, isNew, operatorFactsRevision])
   const [docsSummarySnapshot, setDocsSummarySnapshot] = useState<Record<string, unknown> | null>(null)
   const [pipelineOverrides, setPipelineOverrides] = useState<CandidatePipelineOverride[]>([])
   const [pipelineOverrideBusy, setPipelineOverrideBusy] = useState(false)
@@ -1471,10 +1494,14 @@ export default function CandidateCard(){
         setDialCodes(dcList)
 
         // managers
-        const mgrList: Option[] = toArray(m.data).map((x:any)=>({
-          value: String(x.id ?? x.user_id ?? x.uuid ?? ''),
-          label: x.label || x.full_name || x.email || x.name || String(x.id ?? ''),
-        })).filter((o: Option) => o.value && o.label)
+        const mgrList: Option[] = toArray(m.data).map((x:any)=>{
+          const role = [x.position, x.job_title, x.role_label].find((value) => typeof value === 'string' && value.trim())
+          return {
+            value: String(x.id ?? x.user_id ?? x.uuid ?? ''),
+            label: x.label || x.full_name || x.email || x.name || String(x.id ?? ''),
+            extra: role ? { role: String(role).trim() } : undefined,
+          }
+        }).filter((o: Option) => o.value && o.label)
         // добавляем текущего пользователя (рекрутер) если его нет в списке
         try {
           const meResp = await api.get('/users/me').catch(()=>null)
@@ -4677,51 +4704,127 @@ export default function CandidateCard(){
         pipelineWaiverApprovedCount={pipelineWaiverBadgeCounts.approved}
         onOpenActivity={!isNew && model?.id ? () => setActivityModalOpen(true) : undefined}
         onGenerateShortId={!model.short_id ? () => void handleGenerateShortId() : undefined}
-        summary={
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-800">
-            <span className="font-medium text-slate-900">
-              {model.company_name || '—'}
-              <span className="mx-1.5 font-normal text-slate-400">/</span>
-              {model.vacancy_name || '—'}
-            </span>
-            <span className="text-slate-300" aria-hidden>·</span>
-            <span className="font-semibold text-brand-800">{stageLabelIntl(String(model.stage || ''))}</span>
-            {!isNew && model.id && !isMasked ? (
-              <CandidateApplicationsSection
-                candidateId={String(model.id)}
-                locale={locale}
-                legacyVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
-                variant="context"
-                activeVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
-                onSelectVacancy={async (vacancyId) => {
-                  const opt = vacancyOpts.find((o) => o.value === vacancyId)
-                  setModel((m) => {
-                    if (!m) return m
-                    return {
-                      ...m,
-                      vacancy_id: vacancyId as any,
-                      vacancy_name: opt?.label || m.vacancy_name || '',
-                      company_id: opt?.extra?.company_id || m.company_id,
-                      company_name: opt?.extra?.company_name || m.company_name || '',
-                    }
-                  })
-                  await loadProfileFromVacancy(vacancyId)
-                }}
+        meta={(() => {
+          const citizenshipCode = String(extra.citizenship || '').trim()
+          const citizenshipLabel = countries.find((item) => item.value === citizenshipCode)?.label
+          const citizenshipFlag = countryFlag(citizenshipCode)
+          const residenceCode = String(extra.address?.country || model.country_code || '').trim()
+          const residenceLabel = countries.find((item) => item.value === residenceCode)?.label
+          const residenceCity = String(extra.address?.city || '').trim()
+          const residenceFlag = countryFlag(residenceCode)
+          const birthIso = typeof extra.birth_date === 'string' ? extra.birth_date : ''
+          const age = ageFromIsoDate(birthIso)
+          const birthLabel = birthIso ? formatDateSafe(birthIso, locale) : ''
+          const languageLabel = (model.languages || [])
+            .map((code) => languages.find((item) => item.value === code)?.label || '')
+            .filter(Boolean)
+            .join(', ')
+          const stay = operatorFactsView?.steps.find((step) => step.key === 'stay_basis')
+          const work = operatorFactsView?.steps.find((step) => step.key === 'work')
+          const determined = operatorFactsView?.citizenship_class === 'pl' || operatorFactsView?.citizenship_class === 'eu_eea_ch'
+          const legalizationRequired = Boolean(
+            operatorFactsView
+            && operatorFactsView.legal_eligibility?.outcome !== 'pass'
+            && !determined
+            && (stay?.visible || work?.visible),
+          )
+          const docsComplete = docsCountsSummary.total > 0 && docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0
+          const documentsReceived = docsComplete || canonicalStageForOps === 'docs_got'
+          return (
+            <>
+              {citizenshipLabel ? (
+                <StatusBadge size="sm" shape="pill" semantic="neutral" label={citizenshipFlag ? `${citizenshipFlag} ${citizenshipLabel}` : citizenshipLabel} />
+              ) : null}
+              {age != null && birthLabel ? (
+                <StatusBadge size="sm" shape="pill" semantic="neutral" label={`${formatYearsCount(age, locale)} (${birthLabel})`} />
+              ) : null}
+              {residenceLabel || residenceCity ? (
+                <StatusBadge
+                  size="sm"
+                  shape="pill"
+                  semantic="neutral"
+                  label={[residenceFlag && residenceLabel ? `${residenceFlag} ${residenceLabel}` : residenceLabel, residenceCity ? `(${residenceCity})` : null].filter(Boolean).join(' ')}
+                />
+              ) : null}
+              {languageLabel ? <StatusBadge size="sm" shape="pill" semantic="neutral" label={languageLabel} /> : null}
+              {documentsReceived ? (
+                <StatusBadge semantic="success" shape="pill" size="sm" label={t('app.candidate_card.ia.documents_received')} />
+              ) : null}
+              {legalizationRequired ? (
+                <StatusBadge semantic="warning" shape="pill" size="sm" label={t('app.candidate_card.ia.legalization_needed')} />
+              ) : null}
+            </>
+          )
+        })()}
+        context={
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              {model.vacancy_name ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <IconBriefcase size={15} className="text-slate-400" />
+                  <span className="text-slate-500">{t('app.candidate_card.fields.vacancy')}</span>
+                  <span className="font-semibold text-slate-900">{model.vacancy_name}</span>
+                </span>
+              ) : null}
+              {model.vacancy_name && model.company_name ? <span className="text-slate-300" aria-hidden>→</span> : null}
+              {model.company_name ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <IconBuildingSkyscraper size={15} className="text-slate-400" />
+                  <span className="text-slate-500">{t('app.candidate_card.employment.columns.employer')}</span>
+                  <span className="font-semibold text-slate-900">{model.company_name}</span>
+                </span>
+              ) : null}
+              {!isNew && model.id && !isMasked ? (
+                <CandidateApplicationsSection
+                  candidateId={String(model.id)}
+                  locale={locale}
+                  legacyVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
+                  variant="context"
+                  activeVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
+                  onSelectVacancy={async (vacancyId) => {
+                    const opt = vacancyOpts.find((o) => o.value === vacancyId)
+                    setModel((m) => {
+                      if (!m) return m
+                      return {
+                        ...m,
+                        vacancy_id: vacancyId as any,
+                        vacancy_name: opt?.label || m.vacancy_name || '',
+                        company_id: opt?.extra?.company_id || m.company_id,
+                        company_name: opt?.extra?.company_name || m.company_name || '',
+                      }
+                    })
+                    await loadProfileFromVacancy(vacancyId)
+                  }}
+                />
+              ) : null}
+              <CandidateLeadOriginPanel
+                candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
               />
-            ) : null}
-            <CandidateLeadOriginPanel
-              candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
-            />
-            {(effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length) > 0
-              || vacancyPipelineBlockingValue
-              || contactAttemptPipelineBlockingValue ? (
-              <span className="text-xs font-medium text-rose-700">
-                {t('app.candidate_card.ia.blockers')}
-                {(effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length) > 0
-                  ? `: ${effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length}`
-                  : ''}
-              </span>
-            ) : null}
+            </div>
+            {(() => {
+              const licence = operatorFactsView?.steps.find((step) => step.key === 'driving_licence')
+              const fromFacts = (licence?.categories || []).filter(Boolean)
+              const typeValue = fromFacts.length
+                ? fromFacts.join('/')
+                : Array.isArray(extra.license_categories) && extra.license_categories.length
+                  ? extra.license_categories.join('/')
+                  : ''
+              const experienceValue = typeof extra.experience_eu_years === 'number'
+                ? formatYearsCount(extra.experience_eu_years, locale)
+                : ''
+              const preferenceValue = [
+                ...(Array.isArray(extra.trailer_types) ? extra.trailer_types.map((key) => trailerTypeLabels[key] || key) : []),
+                ...(Array.isArray(extra.route_types) ? extra.route_types : []),
+              ].filter(Boolean).join(', ')
+              if (!typeValue && !experienceValue && !preferenceValue) return null
+              return (
+                <div className="flex flex-wrap gap-5">
+                  {typeValue ? <CompactMetric label={t('app.candidate_card.ia.metric_type')} value={typeValue} /> : null}
+                  {experienceValue ? <CompactMetric label={t('app.candidate_card.ia.metric_experience')} value={experienceValue} /> : null}
+                  {preferenceValue ? <CompactMetric label={t('app.candidate_card.ia.metric_preferences')} value={preferenceValue} /> : null}
+                </div>
+              )
+            })()}
           </div>
         }
         pipeline={
@@ -4749,7 +4852,7 @@ export default function CandidateCard(){
         nextActionError={nextActionError}
       />
 
-      {!isNew && model?.id ? (
+      {!isNew && model?.id && showOpenInHrLink ? (
         <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2">
           <CandidateOpenInHrLink
             candidateId={String(model.id)}
@@ -4759,56 +4862,93 @@ export default function CandidateCard(){
         </div>
       ) : null}
 
-      <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_17.5rem]">
+      <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <aside className="flex min-h-0 min-w-0 flex-col gap-2 max-lg:order-last lg:sticky lg:top-3 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100dvh-4.5rem)] lg:overflow-y-auto lg:overscroll-contain">
-            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             {!isNew && model?.id ? (
-              <CandidateStageDecisionPanel
-                locale={locale}
-                stageSinceAt={stageSinceAt}
-                stageJourneyStages={stageJourneyStagesPipeline}
-                journeyPanelStages={stageJourneyStagesDisplay}
-                stageOutcomeStages={stageOutcomeStages}
-                stageJourneyDisplayStage={stageJourneyDisplayStage}
-                stageJourneyOutcomeStage={stageJourneyOutcomeStage}
-                stageJourneySignals={stageJourneySignals}
-                completedStageCodes={completedStageCodes}
-                currentStageCode={model.stage}
-                candidateRowStatus={model.row_status}
-                candidateStatus={model.status}
-                stageLabelIntl={stageLabelIntl}
-                docsBlockers={effectiveDocsBlockersForPipeline}
-                blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
-                docsPipelineBlocking={docsPipelineBlockingValue}
-                docsPipelineSoftWarn={docsPipelineSoftWarnValue}
-                vacancyPipelineBlocking={vacancyPipelineBlockingValue}
-                contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
-                canEdit={model.can_edit !== false}
-                canCloseRecruitment={canCloseRecruitment}
-                onMoveStage={handleStageJourneyChange}
-                onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
-                showJourney={false}
-                embedded
-              />
-            ) : null}
-              <div className="border-t border-slate-100 px-3 py-3">
-                <CandidateProcessControls
-                  candidate={model}
-                  stageOptions={stageOptions}
-                  profileStageCodes={profileStageCodes}
-                  meta={meta ?? undefined}
-                  managers={managers}
-                  selectTexts={selectTexts}
+              <WorkspaceWidget title={t('app.candidate_card.ia.stage_and_actions')}>
+                <CandidateStageDecisionPanel
+                  locale={locale}
+                  stageSinceAt={stageSinceAt}
+                  stageJourneyStages={stageJourneyStagesPipeline}
+                  journeyPanelStages={stageJourneyStagesDisplay}
+                  stageOutcomeStages={stageOutcomeStages}
+                  stageJourneyDisplayStage={stageJourneyDisplayStage}
+                  stageJourneyOutcomeStage={stageJourneyOutcomeStage}
+                  stageJourneySignals={stageJourneySignals}
+                  completedStageCodes={completedStageCodes}
+                  currentStageCode={model.stage}
+                  candidateRowStatus={model.row_status}
+                  candidateStatus={model.status}
                   stageLabelIntl={stageLabelIntl}
+                  docsBlockers={effectiveDocsBlockersForPipeline}
+                  blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
+                  docsPipelineBlocking={docsPipelineBlockingValue}
+                  docsPipelineSoftWarn={docsPipelineSoftWarnValue}
+                  vacancyPipelineBlocking={vacancyPipelineBlockingValue}
+                  contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
                   canEdit={model.can_edit !== false}
                   canCloseRecruitment={canCloseRecruitment}
-                  candidateProfile={candidateProfile}
-                  onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
-                  onStageChangePersist={persistStageWithClientGates}
-                  hideStageSelect
+                  onMoveStage={handleStageJourneyChange}
+                  onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
+                  showJourney={false}
+                  embedded
                 />
-              </div>
-            </section>
+                <div className="mt-2">
+                  <CandidateProcessControls
+                    candidate={model}
+                    stageOptions={stageOptions}
+                    profileStageCodes={profileStageCodes}
+                    meta={meta ?? undefined}
+                    managers={managers}
+                    selectTexts={selectTexts}
+                    stageLabelIntl={stageLabelIntl}
+                    canEdit={model.can_edit !== false}
+                    canCloseRecruitment={canCloseRecruitment}
+                    candidateProfile={candidateProfile}
+                    onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                    onStageChangePersist={persistStageWithClientGates}
+                    hideStageSelect
+                    part="reasons"
+                  />
+                </div>
+              </WorkspaceWidget>
+            ) : null}
+            <WorkspaceWidget title={t('app.candidate_card.ia.responsible')} icon={<IconUser size={14} />}>
+              <CandidateProcessControls
+                candidate={model}
+                stageOptions={stageOptions}
+                profileStageCodes={profileStageCodes}
+                meta={meta ?? undefined}
+                managers={managers}
+                selectTexts={selectTexts}
+                stageLabelIntl={stageLabelIntl}
+                canEdit={model.can_edit !== false}
+                canCloseRecruitment={canCloseRecruitment}
+                candidateProfile={candidateProfile}
+                onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                onStageChangePersist={persistStageWithClientGates}
+                hideStageSelect
+                part="manager"
+              />
+            </WorkspaceWidget>
+            <WorkspaceWidget title={t('app.candidate_card.fields.tags')} icon={<IconTag size={14} />}>
+              <CandidateProcessControls
+                candidate={model}
+                stageOptions={stageOptions}
+                profileStageCodes={profileStageCodes}
+                meta={meta ?? undefined}
+                managers={managers}
+                selectTexts={selectTexts}
+                stageLabelIntl={stageLabelIntl}
+                canEdit={model.can_edit !== false}
+                canCloseRecruitment={canCloseRecruitment}
+                candidateProfile={candidateProfile}
+                onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                onStageChangePersist={persistStageWithClientGates}
+                hideStageSelect
+                part="tags"
+              />
+            </WorkspaceWidget>
             {!isNew && model?.id ? (
               <CandidateNextActionPanel
                 candidateId={String(model.id)}
@@ -4847,57 +4987,105 @@ export default function CandidateCard(){
                   railPrimaryFocus === 'next_action' || railPrimaryFocus === 'vacancy'
                 }
                 documentsChecklistSibling
+                onlyOperatorReminder
               />
+            ) : null}
+            {!isNew && model?.id ? (
+              <WorkspaceWidget
+                title={t('app.candidate_card.ia.documents_progress')}
+                action={
+                  <button type="button" className="text-xs font-medium text-brand-700 hover:underline" onClick={() => setCardTab('documents')}>
+                    {t('app.candidate_card.ia.open_documents')}
+                  </button>
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <ProgressRing value={docsCountsSummary.ready} max={docsCountsSummary.total} />
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold tabular-nums text-slate-900">
+                      {`${docsCountsSummary.ready} / ${docsCountsSummary.total}`}
+                    </div>
+                    {docsCountsSummary.total > 0 && docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0 ? (
+                      <div className="text-xs font-medium text-emerald-700">{t('app.candidate_card.ia.documents_received')}</div>
+                    ) : null}
+                  </div>
+                </div>
+              </WorkspaceWidget>
             ) : null}
             <div className="flex min-w-0 flex-col gap-2" data-candidate-control-rail>
               {!isNew && model?.id ? (
                 <>
                   {!isMasked ? (
-                    <CandidateContactAttemptsSection
-                      candidateId={String(model.id) as any}
-                      refreshTrigger={rodoSentTrigger}
-                      openRegisterSignal={contactAttemptOpenSignal}
-                      onAttemptCreated={model?.id ? () => void fetchCandidate(String(model.id), model) : undefined}
-                    />
+                    <WorkspaceWidget title={t('app.candidate_card.contact_attempts.title', { defaultValue: 'Contact attempts' })} icon={<IconPhone size={14} />}>
+                      <CandidateContactAttemptsSection
+                        candidateId={String(model.id) as any}
+                        refreshTrigger={rodoSentTrigger}
+                        openRegisterSignal={contactAttemptOpenSignal}
+                        onAttemptCreated={model?.id ? () => void fetchCandidate(String(model.id), model) : undefined}
+                        variant="widget"
+                      />
+                    </WorkspaceWidget>
                   ) : null}
                   {!isMasked ? (
-                    <CandidateNotesRailSection
-                      notes={notes}
-                      notesLoading={notesLoading}
-                      newNote={newNote}
-                      noteSending={noteSending}
-                      onNewNoteChange={setNewNote}
-                      onAddNote={addNote}
-                      onRefreshNotes={() => model?.id && fetchNotes(String(model.id))}
-                    />
+                    <WorkspaceWidget title={t('app.candidate_card.sections.notes.title')} icon={<IconNotebook size={14} />}>
+                      <CandidateNotesRailSection
+                        notes={notes}
+                        notesLoading={notesLoading}
+                        newNote={newNote}
+                        noteSending={noteSending}
+                        onNewNoteChange={setNewNote}
+                        onAddNote={addNote}
+                        onRefreshNotes={() => model?.id && fetchNotes(String(model.id))}
+                        variant="preview"
+                      />
+                    </WorkspaceWidget>
                   ) : null}
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      to={buildInboxHubPath({ candidateId: String(model.id) })}
-                      className="btn-secondary btn-xs"
-                      title={t('app.candidate_card.control.inbox_title')}
-                    >
-                      {t('app.candidate_card.control.open_unified_inbox')}
-                    </Link>
-                  </div>
+                  <WorkspaceWidget
+                    title={t('app.candidate_card.control.inbox_title')}
+                    icon={<IconInbox size={14} />}
+                    action={
+                      <Link to={buildInboxHubPath({ candidateId: String(model.id) })} className="text-xs font-medium text-brand-700 hover:underline">
+                        {t('app.candidate_card.ia.open_row')}
+                      </Link>
+                    }
+                  />
                 </>
               ) : null}
             </div>
           </aside>
 
         <div className="min-w-0 space-y-3 lg:col-start-1 lg:row-start-1">
-        <CandidateCardTabs value={cardTab} onChange={setCardTab} />
+        <CandidateCardTabs
+          value={cardTab}
+          onChange={setCardTab}
+          badges={{
+            documents: docsCountsSummary.total > 0 ? (
+              <StatusBadge
+                size="sm"
+                shape="pill"
+                semantic={docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0 ? 'success' : 'neutral'}
+                label={`${docsCountsSummary.ready}/${docsCountsSummary.total}`}
+              />
+            ) : undefined,
+            legalization: operatorFactsView && operatorFactsView.legal_eligibility?.outcome !== 'pass' && operatorFactsView.citizenship_class !== 'pl' && operatorFactsView.citizenship_class !== 'eu_eea_ch' && operatorFactsView.steps.some((step) => (step.key === 'stay_basis' || step.key === 'work') && step.visible) ? (
+              <StatusBadge size="sm" shape="pill" semantic="warning" label={t('app.candidate_card.ia.legalization_required')} />
+            ) : undefined,
+          }}
+        />
 
         <div className={cardTab === 'personal' || cardTab === 'profile' ? 'min-w-0 space-y-3 lg:col-start-1' : 'hidden'}>
           {cardTab === 'personal' && !isMasked && registrySectionVisible('basic') ? (
             <CardAccordion
               title={t('app.candidate_card.ia.sections.identity')}
+              description={t('app.candidate_card.ia.basic_hint')}
+              icon={<IconUser size={16} />}
               defaultOpen
               summary={joinParts([
                 [model.first_name, model.last_name].filter(Boolean).join(' '),
                 countries.find((item) => item.value === (extra.citizenship || model.country_code))?.label,
               ])}
             >
+              <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-8">
               <CandidateBasicSection
                 candidate={model}
                 extra={extra}
@@ -4928,6 +5116,7 @@ export default function CandidateCard(){
                 hideProcessControls
                 plain
                 rowEdit
+                flow
                 part="identity"
                 onRequestUnlock={() => {
                   setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
@@ -4937,6 +5126,7 @@ export default function CandidateCard(){
                 <OperatorFactsSurface
                   candidateId={String(model.id)}
                   countries={countries}
+                  flow
                   region="person"
                   onSaved={(saved) => {
                     setOperatorFactsRevision((value) => value + 1)
@@ -4964,20 +5154,13 @@ export default function CandidateCard(){
                   focus="location"
                   plain
                   rowEdit
+                  flow
                   canEdit={model.can_edit !== false}
                   onRequestUnlock={() => {
                     setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
                   }}
                 />
               ) : null}
-            </CardAccordion>
-          ) : null}
-          {cardTab === 'personal' && !isMasked && registrySectionVisible('basic') ? (
-            <CardAccordion
-              title={t('app.candidate_card.ia.sections.contact')}
-              defaultOpen
-              summary={joinParts([model.phone, model.email])}
-            >
               <CandidateBasicSection
                 candidate={model}
                 extra={extra}
@@ -5008,11 +5191,61 @@ export default function CandidateCard(){
                 hideProcessControls
                 plain
                 rowEdit
+                flow
+                part="preferred"
+                onRequestUnlock={() => {
+                  setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
+                }}
+              />
+              </div>
+            </CardAccordion>
+          ) : null}
+          {cardTab === 'personal' && !isMasked && registrySectionVisible('basic') ? (
+            <CardAccordion
+              title={t('app.candidate_card.ia.sections.contact')}
+              description={t('app.candidate_card.ia.contact_hint')}
+              icon={<IconPhone size={16} />}
+              defaultOpen
+              summary={joinParts([model.phone, model.email])}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-8">
+              <CandidateBasicSection
+                candidate={model}
+                extra={extra}
+                isNew={isNew}
+                locale={locale}
+                basicRef={basicRef}
+                stageOptions={stageOptions}
+                profileStageCodes={profileStageCodes}
+                meta={meta ?? undefined}
+                dialCodes={dialCodes}
+                managers={managers}
+                preferredContactOptions={preferredContactOptions}
+                selectTexts={selectTexts}
+                createdAtDisplay={createdAtDisplay}
+                isMetaLead={isMetaLead}
+                onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
+                onExtraChange={setExtra}
+                onPhoneInputChange={handlePhoneInputChange}
+                onGenerateShortId={handleGenerateShortId}
+                candidateProfile={candidateProfile}
+                effectiveLayout={effectiveLayout}
+                stageLabelIntl={stageLabelIntl}
+                candidateDataReadOnly={candidateDataReadOnly}
+                canEdit={model.can_edit !== false}
+                canCloseRecruitment={canCloseRecruitment}
+                onStageChangePersist={persistStageWithClientGates}
+                embedded
+                hideProcessControls
+                plain
+                rowEdit
+                flow
                 part="contact"
                 onRequestUnlock={() => {
                   setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
                 }}
               />
+              </div>
             </CardAccordion>
           ) : null}
 
@@ -5155,6 +5388,7 @@ export default function CandidateCard(){
                 extra.address?.city,
               ])}
             >
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <CandidatePersonalSection
                 candidate={model}
                 extra={extra}
@@ -5173,18 +5407,26 @@ export default function CandidateCard(){
                 focus="address"
                 plain
                 rowEdit
+                flow
                 canEdit={model.can_edit !== false}
                 onRequestUnlock={() => {
                   setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
                 }}
               />
+              </div>
             </CardAccordion>
           ) : null}
           {cardTab === 'personal' && !isMasked && !isNew && createdAtDisplay ? (
-            <p className="px-1 text-xs text-slate-500">
-              {t('app.candidate_card.ia.system_created', { values: { date: createdAtDisplay } })}
-              {isMetaLead ? ` · ${t('app.candidate_card.messages.meta_lead')}` : ''}
-            </p>
+            <CardAccordion
+              title={t('app.candidate_card.ia.sections.extra_facts')}
+              defaultOpen={false}
+              summary={t('app.candidate_card.ia.system_created', { values: { date: createdAtDisplay } })}
+            >
+              <p className="text-xs text-slate-500">
+                {t('app.candidate_card.ia.system_created', { values: { date: createdAtDisplay } })}
+                {isMetaLead ? ` · ${t('app.candidate_card.messages.meta_lead')}` : ''}
+              </p>
+            </CardAccordion>
           ) : null}
           {cardTab === 'profile' && !isMasked ? (
             <>

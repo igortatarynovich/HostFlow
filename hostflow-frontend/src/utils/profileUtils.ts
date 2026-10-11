@@ -143,7 +143,7 @@ function _getFieldLabelFromProfile(
   // Prevent mixed-language UI when legacy profile labels are Cyrillic
   // but the current translated default label is Latin script (PL/EN).
   const hasCyrillic = (value: string) => /[А-Яа-яЁё]/.test(value)
-  if (hasCyrillic(profileLabel) && !hasCyrillic(defaultLabel)) {
+  if (hasCyrillic(profileLabel) !== hasCyrillic(defaultLabel)) {
     return defaultLabel
   }
   return profileLabel

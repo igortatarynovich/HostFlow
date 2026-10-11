@@ -42,6 +42,7 @@ interface CandidateContactAttemptsSectionProps {
    * when policy allows. Waits until policy is loaded if still fetching.
    */
   openRegisterSignal?: number
+  variant?: 'panel' | 'widget'
 }
 
 function CandidateContactAttemptsSection({
@@ -49,6 +50,7 @@ function CandidateContactAttemptsSection({
   onAttemptCreated,
   refreshTrigger = 0,
   openRegisterSignal = 0,
+  variant = 'panel',
 }: CandidateContactAttemptsSectionProps) {
   const { t } = useI18n()
   const { notify } = useToast()
@@ -175,6 +177,9 @@ function CandidateContactAttemptsSection({
   }
 
   if (loading || !policy) {
+    if (variant === 'widget') {
+      return <p className="text-xs text-slate-500">{loading ? t('common.loading') : '—'}</p>
+    }
     return (
       <section className="card w-full p-4">
         <h3 className="text-sm font-medium text-slate-700">
@@ -190,6 +195,13 @@ function CandidateContactAttemptsSection({
   }
 
   if (!policy.enabled) {
+    if (variant === 'widget') {
+      return (
+        <p className="line-clamp-2 text-[11px] leading-snug text-slate-500" title={explainContactTrackingDisabled(policy.tracking_disabled_reason, t)}>
+          {explainContactTrackingDisabled(policy.tracking_disabled_reason, t)}
+        </p>
+      )
+    }
     return (
       <section className="card w-full border border-slate-200 bg-slate-50/60 p-4">
         <h3 className="text-sm font-medium text-slate-800">
@@ -207,6 +219,90 @@ function CandidateContactAttemptsSection({
   const canAdd = attempts.length < policy.max_attempts
   const rodoRequired = !policy.rodo_sent
   const showWhyCannotRegister = !canAdd || rodoRequired
+
+  if (variant === 'widget') {
+    return (
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold tabular-nums text-slate-900">
+            {attempts.length} / {policy.max_attempts}
+          </span>
+          <button
+            type="button"
+            onClick={() => !rodoRequired && canAdd && setModalOpen(true)}
+            disabled={rodoRequired || !canAdd}
+            className="btn-primary btn-compact disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t('app.candidate_card.contact_attempts.register_btn', {
+              defaultValue: 'Register',
+            })}
+          </button>
+        </div>
+        {rodoRequired ? (
+          <p className="mt-1 text-[11px] text-amber-800">
+            {t('app.candidate_card.contact_attempts.rodo_required', {
+              defaultValue: 'Send RODO information before registering a contact attempt.',
+            })}
+          </p>
+        ) : null}
+        {modalOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            onClick={() => !submitting && setModalOpen(false)}
+          >
+            <div className="card max-h-[90vh] w-full max-w-md overflow-auto p-4 shadow-xl" onClick={(event) => event.stopPropagation()}>
+              <h4 className="text-lg font-medium text-slate-800">
+                {t('app.candidate_card.contact_attempts.register_btn', { defaultValue: 'Register contact attempt' })}
+              </h4>
+              <div className="mt-4 space-y-3">
+                <label className="block">
+                  <span className="label">{t('app.candidate_card.contact_attempts.fields.channel', { defaultValue: 'Channel' })}</span>
+                  <select
+                    value={form.channel}
+                    onChange={(event) => setForm((current) => ({ ...current, channel: event.target.value as ContactAttemptCreate['channel'] }))}
+                    className="input mt-1"
+                  >
+                    {(['call', 'sms', 'email', 'whatsapp', 'messenger'] as const).map((channel) => (
+                      <option key={channel} value={channel}>{CHANNEL_LABELS[channel]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="label">{t('app.candidate_card.contact_attempts.fields.result', { defaultValue: 'Result' })}</span>
+                  <select
+                    value={form.result}
+                    onChange={(event) => setForm((current) => ({ ...current, result: event.target.value as ContactAttemptCreate['result'] }))}
+                    className="input mt-1"
+                  >
+                    {(['no_answer', 'answered', 'wrong_number', 'unavailable'] as const).map((result) => (
+                      <option key={result} value={result}>{RESULT_LABELS[result]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="label">{t('app.candidate_card.contact_attempts.fields.note', { defaultValue: 'Note' })}</span>
+                  <textarea
+                    value={form.note ?? ''}
+                    onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
+                    rows={2}
+                    className="textarea mt-1"
+                  />
+                </label>
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button type="button" className="btn-secondary btn-compact" disabled={submitting} onClick={() => setModalOpen(false)}>
+                  {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                </button>
+                <button type="button" className="btn-primary btn-compact" disabled={submitting} onClick={() => void handleSubmit()}>
+                  {submitting ? t('common.saving') : t('common.actions.save', { defaultValue: 'Save' })}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <section className="card w-full p-4">

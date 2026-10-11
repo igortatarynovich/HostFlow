@@ -1,14 +1,16 @@
-import { memo, type ReactNode } from 'react'
+import { memo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import clsx from 'clsx'
-import { IconAlertTriangle, IconHistory } from '@tabler/icons-react'
+import { IconAlertTriangle, IconHistory, IconStar } from '@tabler/icons-react'
 import type { Candidate } from '../../api/types'
 import type { CandidateNextActionDTO } from '../../api/candidates'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import NextActionBadge from './NextActionBadge'
+import { Button } from '../ui/Button'
+import { EntitySummaryHeader } from '../ui/EntitySummaryHeader'
 import { OverflowMenu, type OverflowMenuItem } from '../ui/OverflowMenu'
+import { StatusBadge } from '../ui/StatusBadge'
 
 interface CandidateHeaderProps {
   candidate: Candidate | null
@@ -63,8 +65,12 @@ interface CandidateHeaderProps {
   displayName?: string | null
   candidateCode?: string | null
   statusChip?: ReactNode
+  /** Identity facts under the name: citizenship, age, residence, languages, status. */
+  meta?: ReactNode
   /** Operational context under the name: vacancy, stage, warnings. */
   summary?: ReactNode
+  /** Recruitment context row: vacancy, employer, professional facts. */
+  context?: ReactNode
   /** Stage track. Rendered as the last row of the same hero. */
   pipeline?: ReactNode
 }
@@ -112,11 +118,14 @@ function CandidateHeader({
   displayName = null,
   candidateCode = null,
   statusChip = null,
+  meta = null,
   summary = null,
+  context = null,
   pipeline = null,
   ..._unusedHeaderProps
 }: CandidateHeaderProps) {
   const { t } = useI18n()
+  const [copied, setCopied] = useState(false)
   void _unusedHeaderProps
 
   const actionableNext =
@@ -165,136 +174,135 @@ function CandidateHeader({
     })
   }
 
-  const actionClass = clsx(
-    'rounded-lg border font-medium transition disabled:opacity-60',
-    compact ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm',
+  const name = displayName || '—'
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || '•'
+  void compact
+
+  const copyCode = async () => {
+    if (!candidateCode) return
+    try {
+      await navigator.clipboard.writeText(candidateCode)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1200)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  const actions = isNew ? (
+    <>
+      <Button type="button" variant="secondary" size="compact" onClick={onCancel}>
+        {t('common.actions.cancel')}
+      </Button>
+      <Button type="button" variant="primary" size="compact" disabled={saving || !canEdit} onClick={onSave}>
+        {saving ? t('common.saving') : t('common.actions.create')}
+      </Button>
+    </>
+  ) : (
+    <>
+      {onFavoriteToggle ? (
+        <Button
+          type="button"
+          variant="icon"
+          size="compact"
+          onClick={onFavoriteToggle}
+          aria-label={
+            candidate?.is_favorite
+              ? t('app.candidate_card.actions.remove_favorite')
+              : t('app.candidate_card.actions.add_favorite')
+          }
+        >
+          <IconStar size={16} className={candidate?.is_favorite ? 'fill-amber-400 text-amber-500' : 'text-slate-500'} />
+        </Button>
+      ) : null}
+      <OverflowMenu label={t('common.actions.more')} items={overflowItems} />
+      {onOpenActivity ? (
+        <Button type="button" variant="secondary" size="compact" onClick={onOpenActivity}>
+          <IconHistory size={14} className="shrink-0" aria-hidden />
+          {t('app.candidate_card.ia.activity_history', { defaultValue: 'Activity / History' })}
+        </Button>
+      ) : null}
+      {handoffReadonlyText ? (
+        <StatusBadge label={handoffReadonlyText} semantic="info" size="md" />
+      ) : onOpenHandoff ? (
+        <Button
+          type="button"
+          variant="primary"
+          size="compact"
+          onClick={onOpenHandoff}
+          disabled={handoffDisabled}
+          title={handoffDisabled && handoffDisabledTitle ? handoffDisabledTitle : undefined}
+        >
+          {handoffLabel || t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
+        </Button>
+      ) : null}
+      {onOpenHrTransfer ? (
+        <Button type="button" variant="primary" size="compact" onClick={onOpenHrTransfer} disabled={handoffDisabled}>
+          {hrTransferLabel || t('app.candidate_card.handoff.transfer_internal_hr_btn', { defaultValue: 'Передать в HR' })}
+        </Button>
+      ) : null}
+    </>
   )
 
   return (
     <>
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className={clsx('bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 text-white', compact ? 'px-3 py-2' : 'px-3 py-2.5')}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0">
-              {!hideBackLink && backPath ? (
-                <div className="text-[11px] text-white/80">
-                  <Link className="hover:underline text-white" to={backPath}>
-                    {backLabel || t('app.candidate_card.header.back')}
-                  </Link>
-                </div>
-              ) : null}
-              <div className="flex min-w-0 items-baseline gap-2">
-                <h1 className="truncate text-base font-semibold leading-tight text-white">
-                  {displayName || '—'}
-                </h1>
-                {candidateCode ? <span className="shrink-0 text-xs font-medium text-white/80">{candidateCode}</span> : null}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {isNew ? (
-                <>
-                  <button type="button" className={clsx(actionClass, 'border-white/30 bg-white/10 text-white hover:bg-white/20')} onClick={onCancel}>
-                    {t('common.actions.cancel')}
-                  </button>
-                  <button
-                    type="button"
-                    className={clsx(actionClass, 'border-white bg-white font-semibold text-brand-700 shadow-sm hover:bg-white/90')}
-                    disabled={saving || !canEdit}
-                    onClick={onSave}
-                  >
-                    {saving ? t('common.saving') : t('common.actions.create')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {onOpenActivity ? (
-                    <button
-                      type="button"
-                      className={clsx(actionClass, 'inline-flex items-center gap-1.5 border-white/30 bg-white/10 text-white hover:bg-white/20')}
-                      onClick={onOpenActivity}
-                    >
-                      <IconHistory size={16} className="shrink-0 opacity-90" aria-hidden />
-                      {t('app.candidate_card.ia.activity_history', { defaultValue: 'Activity / History' })}
-                    </button>
-                  ) : null}
-                  {handoffReadonlyText ? (
-                    <div className="max-w-xs rounded-lg border border-white/40 bg-white/15 px-2 py-1 text-left text-xs font-medium leading-tight text-white" role="status">
-                      {handoffReadonlyText}
-                    </div>
-                  ) : onOpenHandoff ? (
-                    <button
-                      type="button"
-                      className={clsx(actionClass, 'border-white bg-white font-semibold text-brand-700 shadow-sm hover:bg-white/90')}
-                      onClick={onOpenHandoff}
-                      disabled={handoffDisabled}
-                      title={handoffDisabled && handoffDisabledTitle ? handoffDisabledTitle : undefined}
-                    >
-                      {handoffLabel || t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
-                    </button>
-                  ) : null}
-                  {onOpenHrTransfer ? (
-                    <button
-                      type="button"
-                      className={clsx(actionClass, 'border-white bg-white font-semibold text-brand-700 shadow-sm hover:bg-white/90')}
-                      onClick={onOpenHrTransfer}
-                      disabled={handoffDisabled}
-                    >
-                      {hrTransferLabel || t('app.candidate_card.handoff.transfer_internal_hr_btn', { defaultValue: 'Передать в HR' })}
-                    </button>
-                  ) : null}
-                  <OverflowMenu
-                    label={t('common.actions.more')}
-                    items={overflowItems}
-                    appearance="inverse"
-                  />
-                </>
-              )}
-            </div>
-          </div>
+      {!hideBackLink && backPath ? (
+        <div className="mb-1 text-[11px] text-slate-500">
+          <Link className="hover:underline" to={backPath}>
+            {backLabel || t('app.candidate_card.header.back')}
+          </Link>
         </div>
-
-        {summary || statusChip || actionableNext || pipelineWaiverPendingCount > 0 || pipelineWaiverApprovedCount > 0 ? (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 px-3 py-1.5">
-            {summary}
+      ) : null}
+      <EntitySummaryHeader
+        initials={initials}
+        title={name}
+        code={copied ? t('common.actions.copied', { defaultValue: 'Copied' }) : candidateCode}
+        onCopyCode={candidateCode ? () => void copyCode() : undefined}
+        copyLabel={t('common.actions.copy', { defaultValue: 'Copy' })}
+        actions={actions}
+        context={context}
+        pipeline={pipeline}
+        meta={
+          <>
+            {meta}
             {statusChip}
+            {summary}
             {!isMasked && candidate?.intake_application_kind === 'client' ? (
-              <span
-                className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800"
-                title={t('app.candidate_card.labels.client_intake_badge_hint')}
-              >
-                {t('app.candidate_card.labels.client_intake_badge')}
-              </span>
+              <StatusBadge label={t('app.candidate_card.labels.client_intake_badge')} semantic="info" size="sm" title={t('app.candidate_card.labels.client_intake_badge_hint')} />
             ) : null}
             {!isMasked && pipelineWaiverPendingCount > 0 ? (
-              <span
-                className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-950"
-                title={t('app.candidate_card.pipeline_override.badge_pending_hint', {
-                  defaultValue: 'Document waiver waiting for manager approval',
-                })}
-              >
-                <IconAlertTriangle size={12} />
-                {t('app.candidate_card.pipeline_override.badge_pending', {
+              <StatusBadge
+                semantic="warning"
+                size="sm"
+                icon={<IconAlertTriangle size={12} />}
+                label={t('app.candidate_card.pipeline_override.badge_pending', {
                   defaultValue: 'Waiver pending ({count})',
                   values: { count: String(pipelineWaiverPendingCount) },
                 })}
-              </span>
+                title={t('app.candidate_card.pipeline_override.badge_pending_hint', {
+                  defaultValue: 'Document waiver waiting for manager approval',
+                })}
+              />
             ) : null}
             {!isMasked && pipelineWaiverApprovedCount > 0 ? (
-              <span
-                className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-900"
-                title={t('app.candidate_card.pipeline_override.badge_active_hint', {
-                  defaultValue: 'Approved document waiver(s) relax pipeline / handoff gates for listed types',
-                })}
-              >
-                {t('app.candidate_card.pipeline_override.badge_active', {
+              <StatusBadge
+                semantic="success"
+                size="sm"
+                label={t('app.candidate_card.pipeline_override.badge_active', {
                   defaultValue: 'Waiver active ({count})',
                   values: { count: String(pipelineWaiverApprovedCount) },
                 })}
-              </span>
+                title={t('app.candidate_card.pipeline_override.badge_active_hint', {
+                  defaultValue: 'Approved document waiver(s) relax pipeline / handoff gates for listed types',
+                })}
+              />
             ) : null}
-            {profileLoading ? (
-              <span className="text-[11px] text-slate-500">{t('common.loading')}</span>
-            ) : null}
+            {profileLoading ? <span className="text-[11px] text-slate-500">{t('common.loading')}</span> : null}
             {!profileLoading && !candidateProfile && candidate?.vacancy_id ? (
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800" title={t('app.candidate_card.labels.no_profile')}>
                 <IconAlertTriangle size={12} />
@@ -302,19 +310,12 @@ function CandidateHeader({
               </span>
             ) : null}
             {!isNew && candidate?.id && (actionableNext || nextActionError) ? (
-              <NextActionBadge
-                dto={actionableNext}
-                loading={nextActionLoading}
-                error={nextActionError}
-                inverse={false}
-              />
+              <NextActionBadge dto={actionableNext} loading={nextActionLoading} error={nextActionError} inverse={false} />
             ) : null}
-          </div>
-        ) : null}
-
-        {pipeline ? <div className="border-t border-slate-100 px-2 py-1.5">{pipeline}</div> : null}
-        {focusContent ? <div className="border-t border-slate-100 px-3 py-2">{focusContent}</div> : null}
-      </div>
+          </>
+        }
+      />
+      {focusContent ? <div className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2">{focusContent}</div> : null}
 
       {deleteRequestMessage ? (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-700">{deleteRequestMessage}</div>

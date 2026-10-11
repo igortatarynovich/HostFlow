@@ -97,32 +97,40 @@ function CandidateApplicationsSection({
       : legacyVacancyTrimmed
         ? [{ id: 'legacy', vacancy_id: legacyVacancyTrimmed, status: '', source: '' } as RecruitmentApplicationOut]
         : []
-    if (loading || error || rows.length <= 1) return null
+    if (loading || error || rows.length === 0) return null
     return (
-      <div className="flex flex-wrap gap-1.5" id="section-applications">
-        {rows.map((row) => {
-          const vacancyId = row.vacancy_id || ''
-          const selected = Boolean(vacancyId) && vacancyId === activeVacancyId
-          const label = (vacancyId && vacancyTitles[vacancyId]) || row.source || vacancyId.slice(0, 8)
-          return (
-            <button
-              key={row.id}
-              type="button"
-              className={
-                selected
-                  ? 'rounded-md border border-brand-600 bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-900'
-                  : 'rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50'
-              }
-              onClick={() => {
-                if (vacancyId) onSelectVacancy?.(vacancyId)
-              }}
-            >
-              {label}
-              {row.status ? ` · ${row.status}` : ''}
-            </button>
-          )
-        })}
-      </div>
+      <details className="relative" id="section-applications">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700">
+          {t('app.candidate_card.ia.change_application', {
+            defaultValue: 'Switch application ({count})',
+            values: { count: rows.length },
+          })}
+          <span aria-hidden>▾</span>
+        </summary>
+        <div className="absolute z-20 mt-1 min-w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          {rows.map((row) => {
+            const vacancyId = row.vacancy_id || ''
+            const selected = Boolean(vacancyId) && vacancyId === activeVacancyId
+            const label = (vacancyId && vacancyTitles[vacancyId]) || vacancyId.slice(0, 8)
+            return (
+              <button
+                key={row.id}
+                type="button"
+                className={
+                  selected
+                    ? 'block w-full px-3 py-1.5 text-left text-xs font-semibold text-brand-800'
+                    : 'block w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50'
+                }
+                onClick={() => {
+                  if (vacancyId) onSelectVacancy?.(vacancyId)
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </details>
     )
   }
 

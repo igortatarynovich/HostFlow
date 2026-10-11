@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import clsx from 'clsx'
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import CandidateStageJourneyPanel from './CandidateStageJourneyPanel'
 import { useI18n } from '../../i18n'
 import { isCandidateOperationallyTerminal } from '../../utils/candidatePipelineCompleted'
@@ -405,30 +406,42 @@ export default function CandidateStageDecisionPanel({
   }
 
   return (
-    <section className={embedded ? 'min-w-0 p-3' : 'min-w-0 rounded-2xl border border-slate-200 bg-white p-3'}>
+    <section className={embedded ? 'min-w-0' : 'min-w-0 rounded-xl border border-slate-200 bg-white p-3'}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs font-semibold text-slate-700">
-            {t('app.candidate_card.stage_decision.title', { defaultValue: 'Stage' })}
-          </div>
-          <div className="mt-1 text-sm font-semibold text-slate-900 truncate">
+          {embedded ? null : (
+            <div className="text-xs font-semibold text-slate-700">
+              {t('app.candidate_card.stage_decision.title', { defaultValue: 'Stage' })}
+            </div>
+          )}
+          <div className="text-sm font-semibold leading-tight text-slate-900" title={currentCode ? stageLabelIntl(currentCode) : undefined}>
             {currentCode ? stageLabelIntl(currentCode) : t('common.labels.not_available')}
           </div>
-          <div className="mt-2">{statusBody}</div>
+          <div className="mt-1.5">{statusBody}</div>
         </div>
 
-        <div className="shrink-0 flex flex-col items-end gap-2">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
-            className="btn-secondary btn-sm"
+            className="btn-icon btn-icon-sm border border-slate-200 bg-white text-slate-600 disabled:opacity-40"
             disabled={!prevStage || !canMutatePipeline}
+            aria-label={t('app.candidate_card.stage_decision.move_back', { defaultValue: 'Move back' })}
             onClick={() => prevStage && onMoveStage(prevStage.code)}
           >
-            {t('app.candidate_card.stage_decision.move_back', { defaultValue: 'Move back' })}
+            <IconChevronLeft size={16} />
           </button>
           <button
             type="button"
-            className="btn-primary btn-sm"
+            className="btn-icon btn-icon-sm border border-slate-200 bg-white text-slate-600 disabled:opacity-40"
+            disabled={!nextStage || !canMutatePipeline || pipelineForwardBlocked}
+            aria-label={t('app.candidate_card.ia.forward', { defaultValue: 'Forward' })}
+            onClick={() => nextStage && onMoveStage(nextStage.code)}
+          >
+            <IconChevronRight size={16} />
+          </button>
+          <button
+            type="button"
+            className="btn-primary btn-compact"
             disabled={!nextStage || !canMutatePipeline || pipelineForwardBlocked}
             onClick={() => nextStage && onMoveStage(nextStage.code)}
             title={
@@ -453,7 +466,9 @@ export default function CandidateStageDecisionPanel({
                     : undefined
             }
           >
-            {t('app.candidate_card.stage_decision.move_forward', { defaultValue: 'Move forward' })}
+            {embedded
+              ? t('app.candidate_card.ia.forward', { defaultValue: 'Forward' })
+              : t('app.candidate_card.stage_decision.move_forward', { defaultValue: 'Move forward' })}
           </button>
         </div>
       </div>
@@ -469,7 +484,7 @@ export default function CandidateStageDecisionPanel({
               <button
                 key={s.code}
                 type="button"
-                className="btn-secondary btn-sm"
+                className="btn-secondary btn-compact"
                 disabled={!canUseOutcomes || isCurrent}
                 onClick={() => onMoveStage(s.code)}
               >

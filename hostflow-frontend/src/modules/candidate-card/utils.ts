@@ -16,6 +16,45 @@ export function ccToFlag(cc: string): string {
   return cc.replace(/./g, (ch) => String.fromCodePoint(127397 + ch.toUpperCase().charCodeAt(0)));
 }
 
+export function countryFlag(code: string | null | undefined): string {
+  const normalized = String(code || '').trim().toUpperCase()
+  if (!/^[A-Z]{2}$/.test(normalized)) return ''
+  return ccToFlag(normalized)
+}
+
+export function ageFromIsoDate(iso: string | null | undefined, now = new Date()): number | null {
+  if (!iso) return null
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
+  if (!match) return null
+  const birth = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  if (Number.isNaN(birth.getTime())) return null
+  let age = now.getFullYear() - birth.getFullYear()
+  const month = now.getMonth() - birth.getMonth()
+  if (month < 0 || (month === 0 && now.getDate() < birth.getDate())) age -= 1
+  if (age < 0 || age > 120) return null
+  return age
+}
+
+export function formatYearsCount(count: number, locale: string): string {
+  const abs = Math.abs(Math.trunc(count))
+  if (locale.startsWith('ru')) {
+    const mod100 = abs % 100
+    const mod10 = abs % 10
+    if (mod100 > 10 && mod100 < 20) return `${count} лет`
+    if (mod10 === 1) return `${count} год`
+    if (mod10 > 1 && mod10 < 5) return `${count} года`
+    return `${count} лет`
+  }
+  if (locale.startsWith('pl')) {
+    if (abs === 1) return `${count} rok`
+    const mod100 = abs % 100
+    const mod10 = abs % 10
+    if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return `${count} lata`
+    return `${count} lat`
+  }
+  return `${count} ${abs === 1 ? 'year' : 'years'}`
+}
+
 export function makeAddress(value?: Partial<AddressFields> | null): AddressFields {
   const base: AddressFields = { country: '', city: '', street: '', house: '', apt: '', zip: '' };
   if (!value || typeof value !== 'object') return { ...base };

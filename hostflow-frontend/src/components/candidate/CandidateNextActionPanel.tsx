@@ -8,6 +8,7 @@ import {
   type StageOperationalHintKind,
 } from '../../utils/stageOperationalHints'
 import { isPipelineCompletedCanonicalStage } from '../../utils/candidatePipelineCompleted'
+import { isRecruitmentPipelineSystemReminder } from '../../modules/candidates/candidatesDetailRailLogic'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 
 function parseTs(value?: string | null): number {
@@ -93,6 +94,8 @@ export default function CandidateNextActionPanel(props: {
    * keep missing types + upload only in that panel.
    */
   documentsChecklistSibling?: boolean
+  /** Hide stage-hint duplicates. Show only a real operator reminder. */
+  onlyOperatorReminder?: boolean
 }) {
   const { t, locale } = useI18n()
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -174,7 +177,10 @@ export default function CandidateNextActionPanel(props: {
     }
   }, [props.reminderEditorInModal, props.onReminderModalOpenChange])
 
-  const next = useMemo(() => pickNextAction(props.reminders || [], nowTs), [props.reminders, nowTs])
+  const next = useMemo(
+    () => pickNextAction((props.reminders || []).filter((reminder) => !isRecruitmentPipelineSystemReminder(reminder)), nowTs),
+    [props.reminders, nowTs],
+  )
   const dueLabel = useMemo(() => {
     if (!next?.due_at) return '—'
     try {
@@ -225,6 +231,10 @@ export default function CandidateNextActionPanel(props: {
   const primary = Boolean(props.primaryStepHighlight)
   const missingDataHints = props.missingDataHints || []
   const hasMissingDataHints = missingDataHints.length > 0
+
+  if (props.onlyOperatorReminder && !next && !props.remindersLoading && !props.remindersError) return null
+
+  if (pipelineCompleted && props.onlyOperatorReminder) return null
 
   if (pipelineCompleted) {
     return (

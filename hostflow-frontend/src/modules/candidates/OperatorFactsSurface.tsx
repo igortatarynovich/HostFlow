@@ -6,6 +6,7 @@ import { SearchableSelect } from '../../components/candidate/shared/FormComponen
 import DateInput from '../../components/controls/DateInput'
 import { useI18n } from '../../i18n'
 import { formatDateSafe } from './candidateUtils'
+import { countryFlag } from '../candidate-card/utils'
 
 type CountryOption = { value: string; label: string }
 
@@ -505,7 +506,9 @@ export function OperatorFactsForm({
 
 function countryName(code: string | null | undefined, countries: CountryOption[]): string {
   if (!code || code === 'unknown') return '—'
-  return countries.find((item) => item.value === code)?.label || code
+  const label = countries.find((item) => item.value === code)?.label || code
+  const flag = countryFlag(code)
+  return flag ? `${flag} ${label}` : label
 }
 
 function factValue(
@@ -748,11 +751,13 @@ export function PersonIdentityFacts({
   countries,
   disabled,
   onPatch,
+  flow = false,
 }: {
   view: OperatorFactsView
   countries: CountryOption[]
   disabled?: boolean
   onPatch: (patch: Patch) => void
+  flow?: boolean
 }) {
   const { t } = useI18n()
   const [openField, setOpenField] = useState<'citizenship' | 'pesel' | null>(null)
@@ -769,7 +774,7 @@ export function PersonIdentityFacts({
       : ''
 
   return (
-    <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2" data-testid="operator-facts-person-rows">
+    <div className={flow ? 'contents' : 'grid grid-cols-1 gap-x-8 md:grid-cols-2'} data-testid="operator-facts-person-rows">
       <InlineFieldRow
         label={t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' })}
         value={countryName(citizenship?.stored, countries)}
@@ -777,6 +782,8 @@ export function PersonIdentityFacts({
         canEdit={!disabled}
         onEdit={() => setOpenField('citizenship')}
         onDone={() => setOpenField(null)}
+        column={flow ? 1 : undefined}
+        row={flow ? 4 : undefined}
       >
         <div className="label" data-testid="operator-facts-citizenship">
           {t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' })}
@@ -800,7 +807,9 @@ export function PersonIdentityFacts({
         canEdit={!disabled}
         onEdit={() => setOpenField('pesel')}
         onDone={() => setOpenField(null)}
-        wide
+        wide={!flow}
+        column={flow ? 2 : undefined}
+        row={flow ? 1 : undefined}
       >
         <div data-testid="operator-facts-pesel">
           <label className="block">
@@ -847,6 +856,7 @@ export default function OperatorFactsSurface({
   presentation,
   contextLabel,
   onOpenDocuments,
+  flow = false,
 }: {
   candidateId: string
   countries: CountryOption[]
@@ -858,6 +868,7 @@ export default function OperatorFactsSurface({
   presentation?: OperatorFactsPresentation
   contextLabel?: string | null
   onOpenDocuments?: () => void
+  flow?: boolean
 }) {
   const { t } = useI18n()
   const [view, setView] = useState<OperatorFactsView | null>(null)
@@ -912,7 +923,7 @@ export default function OperatorFactsSurface({
   )
 
   return (
-    <div className="space-y-3" data-testid="operator-facts-surface">
+    <div className={flow && region === 'person' ? 'contents' : 'space-y-3'} data-testid="operator-facts-surface">
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       {view && region === 'legalization' ? (
         <LegalizationFactsSheet
@@ -927,6 +938,7 @@ export default function OperatorFactsSurface({
           countries={countries}
           disabled={busy}
           onPatch={(patch) => void onPatch(patch)}
+          flow={flow}
         />
       ) : null}
       {view && region && region !== 'person' && region !== 'legalization' ? (
