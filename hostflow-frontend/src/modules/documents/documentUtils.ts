@@ -3,7 +3,7 @@
  */
 
 import { docsApi } from "../../api/client";
-import { COMBINED_LICENSE_SATISFIES, MODULE_PERSIST_DOC_TYPE_ALIASES } from "../../data/documentTypeAliases";
+import { COMBINED_LICENSE_SATISFIES, EQUIVALENT_TYPE_GROUPS, MODULE_PERSIST_DOC_TYPE_ALIASES } from "../../data/documentTypeAliases";
 import {
   MAX_FILE_BYTES,
   DOCUMENT_STATUS_META,
@@ -223,18 +223,40 @@ export const isPlainLicenseWithoutCode95 = (value?: string | null): boolean => {
   return LICENSE_SLOT_TYPES.has(normalized) && normalized !== COMBINED_LICENSE_TYPE;
 };
 
+const localizedTypeCode = (
+  t: (key: string, opts?: any) => string,
+  code: string,
+): string | null => {
+  const normalized = normalizeDocTypeCode(code);
+  if (!normalized) return null;
+  const key = `admin.documents.type_codes.${normalized}`;
+  const translated = String(t(key, { defaultValue: "" }) || "").trim();
+  if (!translated || translated === key) return null;
+  return translated;
+};
+
 export const resolveDocTypeLabel = (
   t: (key: string, opts?: any) => string,
   typeCode: string,
   dbName?: string | null
 ): string => {
   const normalized = normalizeDocTypeCode(typeCode);
-  const key = `admin.documents.type_codes.${normalized}`;
-  const translated = t(key, { defaultValue: key });
-  if (translated && translated !== key) return translated;
-  if (dbName && dbName.trim()) return dbName.trim();
-  if (normalized) return normalized.replace(/_/g, " ");
-  return "";
+  const queue = [normalized, DOC_TYPE_CODE_ALIASES[normalized], normalized === "additional" ? "additional_document" : ""];
+  for (const group of EQUIVALENT_TYPE_GROUPS) {
+    if (group.some((item) => normalizeDocTypeCode(item) === normalized)) queue.push(...group);
+  }
+  const seen = new Set<string>();
+  for (const code of queue) {
+    const norm = normalizeDocTypeCode(code);
+    if (!norm || seen.has(norm)) continue;
+    seen.add(norm);
+    const translated = localizedTypeCode(t, norm);
+    if (translated) return translated;
+  }
+  const catalogName = String(dbName || "").trim();
+  const raw = normalized.replace(/_/g, " ");
+  if (catalogName && catalogName.toLowerCase() !== raw) return catalogName;
+  return raw;
 };
 
 export const effectiveStatus = (doc: Document): DocumentStatus => {

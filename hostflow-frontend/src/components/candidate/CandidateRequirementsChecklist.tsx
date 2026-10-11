@@ -40,7 +40,12 @@ type Props = {
   presentation?: 'list' | 'workspace'
   /** Documents keep professional requirements. Legalization keeps stay and work. */
   purposeMode?: 'documents' | 'legalization'
-  onReadiness?: (counts: { ready: number; total: number }) => void
+  onReadiness?: (counts: {
+    ready: number
+    total: number
+    gaps: Array<{ code: string; label: string; status: string }>
+    labels: Record<string, string>
+  }) => void
   /** Keep blocker and readiness effects without rendering the evidence UI. */
   headless?: boolean
   /** Document type codes this purpose's requirements can use. Placement only. */
@@ -622,11 +627,23 @@ export default function CandidateRequirementsChecklist({
   const labelForType = useCallback(
     (code: string) => {
       const norm = normDocType(code)
+      const fromRequirements = t(`app.candidate_card.requirements_checklist.requirements.${norm}`, { defaultValue: '' }).trim()
+      if (fromRequirements) return fromRequirements
       const fromTypeCodes = t(`admin.documents.type_codes.${norm}`, { defaultValue: '' }).trim()
       if (fromTypeCodes) return fromTypeCodes
       return norm.replace(/_/g, ' ')
     },
     [t],
+  )
+  const labelForRequirement = useCallback(
+    (item: { requirement_code?: string | null; public_name?: string | null }) => {
+      const code = String(item.requirement_code || '').trim()
+      const localized = code ? labelForType(code) : ''
+      if (localized && localized !== code.replace(/_/g, ' ')) return localized
+      const named = String(item.public_name || '').trim()
+      return named || localized || code
+    },
+    [labelForType],
   )
 
   const applicableRequirements = useMemo(
@@ -641,11 +658,22 @@ export default function CandidateRequirementsChecklist({
   )
   useEffect(() => {
     if (!onReadiness) return
+    const labels: Record<string, string> = {}
+    for (const item of checklist?.requirements || []) {
+      const code = String(item.requirement_code || '').trim()
+      if (code) labels[code] = labelForRequirement(item)
+    }
     onReadiness({
       ready: applicableRequirements.filter((item) => item.fulfilled).length,
       total: applicableRequirements.length,
+      gaps: applicableRequirements.filter((item) => !item.fulfilled).map((item) => ({
+        code: String(item.requirement_code || ''),
+        label: labelForRequirement(item),
+        status: String(item.evaluation?.status || item.candidate_evidence?.status || ''),
+      })),
+      labels,
     })
-  }, [applicableRequirements, onReadiness])
+  }, [applicableRequirements, checklist, labelForRequirement, onReadiness])
   useEffect(() => {
     if (!onPlacementTypes && !onPlacementGroups) return
     const source = purposeMode === 'legalization'

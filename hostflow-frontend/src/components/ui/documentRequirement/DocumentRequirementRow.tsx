@@ -35,8 +35,8 @@ export function DocumentRequirementRow({
         <div className="min-w-0">{titleNode}</div>
         <div className="min-w-0">{requirement}</div>
         <div className="min-w-0">{presence}</div>
-        <div className="flex min-w-0 items-center gap-2">{fileStatus}</div>
-        <div className="justify-self-start md:justify-self-end">{action}</div>
+        <div className="flex min-w-0 items-center gap-2 overflow-hidden">{fileStatus}</div>
+        <div className="flex min-w-0 justify-start md:justify-end">{action}</div>
       </div>
       {expanded ? details : null}
     </div>

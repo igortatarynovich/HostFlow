@@ -819,92 +819,102 @@ function LegalizationFactsSheet({
       ))}
     </select>
   )
-  const withDocuments = Boolean(stayDocuments || workDocuments)
+  const composeDocuments = stayDocuments !== undefined || workDocuments !== undefined
   return (
-    <div className={withDocuments ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 gap-3 lg:grid-cols-2'} data-testid="legalization-facts-sheet">
+    <div className={composeDocuments ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 gap-3 lg:grid-cols-2'} data-testid="legalization-facts-sheet">
       <WorkspaceSection
         title={t('app.candidate_card.ia.legalization_stay', { defaultValue: 'Stay in the country' })}
-        description={stayRequired ? t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' }) : null}
+        description={stayRequired ? t('app.candidate_card.ia.legalization_stay_hint', { defaultValue: 'Documents that confirm the right to stay.' }) : null}
       >
-        <InlineFieldRow
-          label={t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' })}
-          value={stayRequired ? yes : no}
-          editing={false}
-          canEdit={false}
-          onEdit={() => undefined}
-          onDone={() => undefined}
-        >
-          {null}
-        </InlineFieldRow>
-        {stayRequired ? (
+        {composeDocuments ? null : (
           <>
             <InlineFieldRow
-              label={t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' })}
-              value={stayLabel}
-              editing={openField === 'stay'}
-              canEdit={!disabled && Boolean(onPatch)}
-              onEdit={() => setOpenField('stay')}
-              onDone={() => setOpenField(null)}
+              label={t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' })}
+              value={stayRequired ? yes : no}
+              editing={false}
+              canEdit={false}
+              onEdit={() => undefined}
+              onDone={() => undefined}
             >
-              {choice(stayCode, view.stay_choices ?? [], 'stay_option', (next) => onPatch?.({ stay_basis: next }), 'operator-facts-stay-input')}
+              {null}
             </InlineFieldRow>
-            <InlineFieldRow
-              label={t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' })}
-              value={stayUntil}
-              editing={openField === 'stay_until'}
-              canEdit={!disabled && Boolean(onPatch)}
-              onEdit={() => setOpenField('stay_until')}
-              onDone={() => setOpenField(null)}
-            >
-              <DateInput
-                value={stay?.valid_to}
-                disabled={disabled}
-                testId="operator-facts-stay-valid-to"
-                onValueChange={(next) => onPatch?.({ stay_valid_to: next || 'unknown' })}
-              />
-            </InlineFieldRow>
+            {stayRequired ? (
+              <>
+                <InlineFieldRow
+                  label={t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' })}
+                  value={stayLabel}
+                  editing={openField === 'stay'}
+                  canEdit={!disabled && Boolean(onPatch)}
+                  onEdit={() => setOpenField('stay')}
+                  onDone={() => setOpenField(null)}
+                >
+                  {choice(stayCode, view.stay_choices ?? [], 'stay_option', (next) => onPatch?.({ stay_basis: next }), 'operator-facts-stay-input')}
+                </InlineFieldRow>
+                <InlineFieldRow
+                  label={t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' })}
+                  value={stayUntil}
+                  editing={openField === 'stay_until'}
+                  canEdit={!disabled && Boolean(onPatch)}
+                  onEdit={() => setOpenField('stay_until')}
+                  onDone={() => setOpenField(null)}
+                >
+                  <DateInput
+                    value={stay?.valid_to}
+                    disabled={disabled}
+                    testId="operator-facts-stay-valid-to"
+                    onValueChange={(next) => onPatch?.({ stay_valid_to: next || 'unknown' })}
+                  />
+                </InlineFieldRow>
+              </>
+            ) : null}
           </>
-        ) : null}
+        )}
         {stayDocuments}
       </WorkspaceSection>
       <WorkspaceSection
         title={t('app.candidate_card.ia.legalization_work', { defaultValue: 'Right to work' })}
-        description={workRequired ? t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' }) : (!stayRequired ? notRequired : null)}
+        description={workRequired
+          ? t('app.candidate_card.ia.legalization_work_hint', { defaultValue: 'Documents and procedures that confirm the right to work.' })
+          : (!stayRequired ? notRequired : null)}
       >
-        <InlineFieldRow
-          label={t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' })}
-          value={workRequired ? yes : no}
-          editing={false}
-          canEdit={false}
-          onEdit={() => undefined}
-          onDone={() => undefined}
-        >
-          {null}
-        </InlineFieldRow>
-        {workRequired ? (
-          <InlineFieldRow
-            label={t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' })}
-            value={workLabel}
-            editing={openField === 'work'}
-            canEdit={!disabled && Boolean(onPatch)}
-            onEdit={() => setOpenField('work')}
-            onDone={() => setOpenField(null)}
-          >
-            {choice(workCode, view.work_choices ?? [], 'work_option', (next) => onPatch?.({ work_label: next }), 'operator-facts-work-input')}
-          </InlineFieldRow>
-        ) : null}
-        {contextLabel?.trim() ? (
-          <InlineFieldRow
-            label={t('app.candidate_card.ia.legalization_employment', { defaultValue: 'Employment' })}
-            value={contextLabel.trim()}
-            editing={false}
-            canEdit={false}
-            onEdit={() => undefined}
-            onDone={() => undefined}
-          >
-            {null}
-          </InlineFieldRow>
-        ) : null}
+        {composeDocuments ? null : (
+          <>
+            <InlineFieldRow
+              label={t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' })}
+              value={workRequired ? yes : no}
+              editing={false}
+              canEdit={false}
+              onEdit={() => undefined}
+              onDone={() => undefined}
+            >
+              {null}
+            </InlineFieldRow>
+            {workRequired ? (
+              <InlineFieldRow
+                label={t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' })}
+                value={workLabel}
+                editing={openField === 'work'}
+                canEdit={!disabled && Boolean(onPatch)}
+                onEdit={() => setOpenField('work')}
+                onDone={() => setOpenField(null)}
+              >
+                {choice(workCode, view.work_choices ?? [], 'work_option', (next) => onPatch?.({ work_label: next }), 'operator-facts-work-input')}
+              </InlineFieldRow>
+            ) : null}
+            {contextLabel?.trim() ? (
+              <InlineFieldRow
+                label={t('app.candidate_card.ia.legalization_employment', { defaultValue: 'Employment' })}
+                value={contextLabel.trim()}
+                editing={false}
+                canEdit={false}
+                onEdit={() => undefined}
+                onDone={() => undefined}
+              >
+                {null}
+              </InlineFieldRow>
+            ) : null}
+          </>
+        )}
         {workDocuments}
       </WorkspaceSection>
     </div>
@@ -1093,7 +1103,7 @@ export default function OperatorFactsSurface({
 
   return (
     <div className={flow && region === 'person' ? 'contents' : 'space-y-3'} data-testid="operator-facts-surface">
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="text-xs text-slate-700">{error}</p> : null}
       {view && region === 'legalization' ? (
         <LegalizationFactsSheet
           view={view}

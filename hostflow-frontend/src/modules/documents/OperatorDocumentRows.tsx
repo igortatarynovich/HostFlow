@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
 import type { Document, DocumentStatus } from '../../api/types'
+import { EQUIVALENT_TYPE_GROUPS } from '../../data/documentTypeAliases'
 import { Button } from '../../components/ui/Button'
 import { DocumentDetails } from '../../components/ui/documentRequirement/DocumentDetails'
 import { DocumentFile } from '../../components/ui/documentRequirement/DocumentFile'
-import { DocumentRequirementList } from '../../components/ui/documentRequirement/DocumentRequirementList'
+import { DocumentRequirementList, type DocumentRequirementColumns } from '../../components/ui/documentRequirement/DocumentRequirementList'
+import { DocumentUploadAction } from '../../components/ui/documentRequirement/DocumentUploadAction'
 import { DocumentRequirementRow } from '../../components/ui/documentRequirement/DocumentRequirementRow'
 import { DocumentStatus as DocumentStatusBadge, type DocumentStatusKind } from '../../components/ui/documentRequirement/DocumentStatus'
 import { PresenceToggle } from '../../components/ui/documentRequirement/PresenceToggle'
@@ -51,6 +53,22 @@ const LICENCE_TYPES = new Set(['driver_license', 'driver_license_code95', 'drive
 const CODE95_TYPES = new Set(['code95', 'driver_qualification_card', 'qualification_code95'])
 
 export type DocumentRowGroup = { key: string; types: string[] }
+
+function expandTypeCodes(codes: Iterable<string>): Set<string> {
+  const out = new Set<string>()
+  const pending = Array.from(codes, (code) => normalizeDocTypeCode(code)).filter(Boolean)
+  while (pending.length) {
+    const norm = pending.pop() || ''
+    if (!norm || out.has(norm)) continue
+    out.add(norm)
+    for (const group of EQUIVALENT_TYPE_GROUPS) {
+      if (group.some((item) => normalizeDocTypeCode(item) === norm)) {
+        for (const item of group) pending.push(normalizeDocTypeCode(item))
+      }
+    }
+  }
+  return out
+}
 
 function preferredDoc(list: Document[]): Document | undefined {
   const real = list.filter((doc) => !isSyntheticDocumentId(doc.id))
@@ -124,6 +142,13 @@ export function OperatorDocumentRows({
   const [permitType, setPermitType] = useState<Record<string, string>>({})
   const yes = t('app.candidate_card.ia.doc_present', { defaultValue: 'Present' })
   const no = t('app.candidate_card.ia.doc_absent', { defaultValue: 'Absent' })
+  const columns: DocumentRequirementColumns = {
+    name: t('app.candidate_card.ia.doc_col_name', { defaultValue: 'Document' }),
+    requirement: t('app.candidate_card.ia.doc_col_requirement', { defaultValue: 'Requirement' }),
+    presence: t('app.candidate_card.ia.doc_col_presence', { defaultValue: 'Presence' }),
+    file: t('app.candidate_card.ia.doc_col_file', { defaultValue: 'File and status' }),
+    action: t('app.candidate_card.ia.doc_col_action', { defaultValue: 'Action' }),
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -137,8 +162,8 @@ export function OperatorDocumentRows({
     }
   }, [candidateId, docs])
 
-  const only = useMemo(() => (onlyTypes ? new Set(onlyTypes.map(normalizeDocTypeCode)) : null), [onlyTypes])
-  const exclude = useMemo(() => new Set((excludeTypes || []).map(normalizeDocTypeCode)), [excludeTypes])
+  const only = useMemo(() => (onlyTypes ? expandTypeCodes(onlyTypes) : null), [onlyTypes])
+  const exclude = useMemo(() => expandTypeCodes(excludeTypes || []), [excludeTypes])
   const sharedCode95 = facts?.ce_code95?.evidence_shape === 'shared'
 
   const rows = useMemo(() => {
@@ -227,28 +252,20 @@ export function OperatorDocumentRows({
       void persistPresence(row.norm, next)
     }
     const uploadControl = (
-      <label className="btn btn-secondary btn-compact cursor-pointer">
-        {uploading[row.doc.id]
+      <DocumentUploadAction
+        label={uploading[row.doc.id]
           ? t('common.saving')
           : hasFile
             ? t('admin.documents.actions.replace', { defaultValue: 'Replace' })
             : t('app.candidate_card.documents.upload_btn', { defaultValue: 'Upload' })}
-        <input
-          type="file"
-          className="sr-only"
-          disabled={!canManage || uploading[row.doc.id]}
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            event.target.value = ''
-            if (file) {
-              setOpenCode(row.norm)
-              void onUpload(row.doc, file).then(() => {
-                if (readPresence(row.norm) !== true) void persistPresence(row.norm, true)
-              })
-            }
-          }}
-        />
-      </label>
+        disabled={!canManage || uploading[row.doc.id]}
+        onFile={(file) => {
+          setOpenCode(row.norm)
+          void onUpload(row.doc, file).then(() => {
+            if (readPresence(row.norm) !== true) void persistPresence(row.norm, true)
+          })
+        }}
+      />
     )
     const requirement = (
       <StatusBadge
@@ -302,6 +319,12 @@ export function OperatorDocumentRows({
       )
     } else if ((procedure && phase === 'received' && !hasFile) || (!procedure && presence === true && !hasFile)) {
       action = uploadControl
+    } else if (hasFile) {
+      action = (
+        <Button type="button" variant="secondary" size="compact" onClick={() => openDoc(row.doc)}>
+          {t('admin.documents.actions.open', { defaultValue: 'Open' })}
+        </Button>
+      )
     }
 
     const details = expanded ? (
@@ -359,10 +382,10 @@ export function OperatorDocumentRows({
         metadata={(
           <div className="space-y-3">
             {licence && presence === true ? (
-              <label className="block text-xs text-slate-500">
-                {t('app.candidate_card.ia.issuing_country', { defaultValue: 'Issuing country' })}
+              <label className="block">
+                <div className="text-[11px] text-slate-500">{t('app.candidate_card.ia.issuing_country', { defaultValue: 'Issuing country' })}</div>
                 <select
-                  className="input mt-1 text-sm"
+                  className="input input-sm mt-1"
                   disabled={!canManage}
                   value={country || 'unknown'}
                   onChange={(event) => void patchFacts({ licence_issuing_country: event.target.value })}
@@ -375,8 +398,8 @@ export function OperatorDocumentRows({
               </label>
             ) : null}
             {showSharedCode95 ? (
-              <label className="block text-xs text-slate-500">
-                {t('app.candidate_card.ia.code95_valid_to', { defaultValue: 'Code 95 valid to' })}
+              <label className="block">
+                <div className="text-[11px] text-slate-500">{t('app.candidate_card.ia.code95_valid_to', { defaultValue: 'Code 95 valid to' })}</div>
                 <DateInput
                   className="mt-1"
                   disabled={!canManage}
@@ -435,28 +458,22 @@ export function OperatorDocumentRows({
   if (groups && renderGroups) {
     const nodes: Record<string, ReactNode> = {}
     for (const group of groups) {
-      const wanted = new Set(group.types.map(normalizeDocTypeCode))
+      const wanted = expandTypeCodes(group.types)
       const grouped = rows.filter((row) => wanted.has(row.norm))
-      nodes[group.key] = grouped.length ? <DocumentRequirementList>{grouped.map(renderRow)}</DocumentRequirementList> : null
+      nodes[group.key] = grouped.length ? <DocumentRequirementList columns={columns}>{grouped.map(renderRow)}</DocumentRequirementList> : null
     }
     return <>{renderGroups(nodes)}</>
   }
 
   if (!rows.length) return null
-  const required = rows.filter((row) => (typeLevel[row.type.code] || 'required') === 'required')
-  const preferred = rows.filter((row) => typeLevel[row.type.code] === 'preferred')
+  const ordered = [...rows].sort((left, right) => {
+    const leftRequired = (typeLevel[left.type.code] || 'required') === 'required' ? 0 : 1
+    const rightRequired = (typeLevel[right.type.code] || 'required') === 'required' ? 0 : 1
+    return leftRequired - rightRequired
+  })
   return (
-    <div className="space-y-3">
-      {required.length ? (
-        <WorkspaceSection title={t('app.candidate_card.ia.mandatory_group', { defaultValue: 'Required' })}>
-          <DocumentRequirementList>{required.map(renderRow)}</DocumentRequirementList>
-        </WorkspaceSection>
-      ) : null}
-      {preferred.length ? (
-        <WorkspaceSection title={t('app.candidate_card.ia.preferred_group', { defaultValue: 'Preferred' })}>
-          <DocumentRequirementList>{preferred.map(renderRow)}</DocumentRequirementList>
-        </WorkspaceSection>
-      ) : null}
-    </div>
+    <WorkspaceSection title={t('app.candidate_card.ia.documents_list', { defaultValue: 'Documents' })}>
+      <DocumentRequirementList columns={columns}>{ordered.map(renderRow)}</DocumentRequirementList>
+    </WorkspaceSection>
   )
 }

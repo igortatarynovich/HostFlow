@@ -1940,7 +1940,7 @@ useEffect(() => {
     return (
       <div className={framed ? 'contents' : 'space-y-3'}>
         {operatorError ? (
-          <div className="rounded border border-rose-200 bg-rose-50 px-2 py-2 text-sm text-rose-700">{operatorError}</div>
+          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 text-sm text-slate-800">{operatorError}</div>
         ) : null}
         {loading && docs.length === 0 && !framed ? (
           <div className="text-sm text-slate-500">{t("common.loading")}</div>

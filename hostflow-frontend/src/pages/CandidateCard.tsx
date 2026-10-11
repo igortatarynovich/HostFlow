@@ -1085,7 +1085,12 @@ export default function CandidateCard(){
         : groups
     ))
   }, [])
-  const [documentReadiness, setDocumentReadiness] = useState<{ ready: number; total: number } | null>(null)
+  const [documentReadiness, setDocumentReadiness] = useState<{
+    ready: number
+    total: number
+    gaps?: Array<{ code: string; label: string; status: string }>
+    labels?: Record<string, string>
+  } | null>(null)
   const docsVerifyTaskSignatureRef = useRef<string | null>(null)
 
   const isAutoDocsVerifyReminder = useCallback((r: ReminderRecord | null | undefined) => {
@@ -4653,6 +4658,7 @@ export default function CandidateCard(){
       stageLabelIntl={stageLabelIntl}
       docsBlockers={effectiveDocsBlockersForPipeline}
       blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
+      blockerLabels={documentReadiness?.labels}
       docsPipelineBlocking={docsPipelineBlockingValue}
       docsPipelineSoftWarn={docsPipelineSoftWarnValue}
       vacancyPipelineBlocking={vacancyPipelineBlockingValue}
@@ -4896,6 +4902,7 @@ export default function CandidateCard(){
                   stageLabelIntl={stageLabelIntl}
                   docsBlockers={effectiveDocsBlockersForPipeline}
                   blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
+                  blockerLabels={documentReadiness?.labels}
                   docsPipelineBlocking={docsPipelineBlockingValue}
                   docsPipelineSoftWarn={docsPipelineSoftWarnValue}
                   vacancyPipelineBlocking={vacancyPipelineBlockingValue}
@@ -5008,14 +5015,31 @@ export default function CandidateCard(){
               <WorkspaceWidget
                 title={t('app.candidate_card.ia.documents_progress')}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-start gap-2">
                   <ProgressRing value={documentReadiness?.ready ?? docsCountsSummary.ready} max={documentReadiness?.total ?? docsCountsSummary.total} />
                   <div className="min-w-0">
                     <div className="text-sm font-semibold tabular-nums text-slate-900">
                       {`${documentReadiness?.ready ?? docsCountsSummary.ready} / ${documentReadiness?.total ?? docsCountsSummary.total}`}
                     </div>
-                    {docsCountsSummary.total > 0 && docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0 ? (
-                      <div className="text-xs font-medium text-emerald-700">{t('app.candidate_card.ia.documents_received')}</div>
+                    <div className="text-xs text-slate-500">
+                      {documentReadiness
+                        ? t('app.candidate_card.ia.profile_requirements_progress', { defaultValue: 'Profile requirements closed' })
+                        : t('app.candidate_card.ia.stored_docs_progress', { defaultValue: 'Stored document progress' })}
+                    </div>
+                    {documentReadiness?.gaps?.length ? (
+                      <div className="mt-2 space-y-1">
+                        {documentReadiness.gaps.map((gap) => (
+                          <div key={gap.code || gap.label} className="text-xs text-slate-800">
+                            {gap.label}
+                            {' — '}
+                            {gap.status === 'pending_verification' || gap.status === 'pending_review'
+                              ? t('app.candidate_card.stage_decision.blocker_approval', { defaultValue: 'Needs approval' })
+                              : gap.status === 'rejected'
+                                ? t('app.candidate_card.stage_decision.blocker_rejected', { defaultValue: 'Rejected' })
+                                : t('app.candidate_card.stage_decision.blocker_missing', { defaultValue: 'Missing' })}
+                          </div>
+                        ))}
+                      </div>
                     ) : null}
                   </div>
                 </div>
@@ -5077,6 +5101,9 @@ export default function CandidateCard(){
                   : docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0)
                   ? 'success'
                   : 'neutral'}
+                title={documentReadiness
+                  ? t('app.candidate_card.ia.profile_requirements_progress', { defaultValue: 'Profile requirements closed' })
+                  : t('app.candidate_card.ia.stored_docs_progress', { defaultValue: 'Stored document progress' })}
                 label={documentReadiness
                   ? `${documentReadiness.ready}/${documentReadiness.total}`
                   : `${docsCountsSummary.ready}/${docsCountsSummary.total}`}

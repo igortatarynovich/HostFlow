@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import clsx from 'clsx'
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import CandidateStageJourneyPanel from './CandidateStageJourneyPanel'
+import { StatusBadge } from '../ui/StatusBadge'
 import { useI18n } from '../../i18n'
 import { isCandidateOperationallyTerminal } from '../../utils/candidatePipelineCompleted'
 import { canonicalStageKey } from '../../utils/stageLabels'
@@ -39,6 +39,8 @@ type Props = {
   docsBlockers: DocsBlockers
   /** Label blockers as requirement names vs document type codes. */
   blockerLabelMode?: 'requirement' | 'document'
+  /** Localized names already resolved from the checklist. */
+  blockerLabels?: Record<string, string>
   /** When true, forward movement in the pipeline is blocked by documents. */
   docsPipelineBlocking: boolean
   /**
@@ -81,6 +83,7 @@ export default function CandidateStageDecisionPanel({
   stageLabelIntl,
   docsBlockers,
   blockerLabelMode = 'document',
+  blockerLabels,
   docsPipelineBlocking,
   docsPipelineSoftWarn = false,
   vacancyPipelineBlocking = false,
@@ -140,24 +143,26 @@ export default function CandidateStageDecisionPanel({
   const nextStage = currentIdx >= 0 && currentIdx < pipelineSteps.length - 1 ? pipelineSteps[currentIdx + 1] : null
   const nextStageCode = nextStage?.code ?? null
 
-  const requiredCodes = useMemo(() => {
-    const out: string[] = []
+  const blockerLines = useMemo(() => {
+    const out: Array<{ code: string; reason: 'missing' | 'approval' | 'rejected' }> = []
     const seen = new Set<string>()
-    const push = (c: string) => {
+    const push = (c: string, reason: 'missing' | 'approval' | 'rejected') => {
       const code = String(c || '').trim()
       if (!code || seen.has(code)) return
       seen.add(code)
-      out.push(code)
+      out.push({ code, reason })
     }
-    docsBlockers.problematic.forEach(push)
-    docsBlockers.missing.forEach(push)
-    if (docsSoftAdvisory) {
-      ;(docsBlockers.inProgress || []).forEach(push)
+    docsBlockers.missing.forEach((code) => push(code, 'missing'))
+    docsBlockers.problematic.forEach((code) => push(code, 'rejected'))
+    if (docsPipelineBlocking || docsSoftAdvisory) {
+      ;(docsBlockers.inProgress || []).forEach((code) => push(code, 'approval'))
     }
     return out
-  }, [docsBlockers.missing, docsBlockers.problematic, docsBlockers.inProgress, docsSoftAdvisory])
+  }, [docsBlockers.missing, docsBlockers.problematic, docsBlockers.inProgress, docsPipelineBlocking, docsSoftAdvisory])
 
   const labelForBlocker = (code: string) => {
+    const provided = String(blockerLabels?.[code] || '').trim()
+    if (provided) return provided
     if (blockerLabelMode === 'requirement') {
       const fromRequirements = t(`app.candidate_card.requirements_checklist.requirements.${code}`, {
         defaultValue: '',
@@ -170,6 +175,16 @@ export default function CandidateStageDecisionPanel({
     if (fromProcessTypes) return fromProcessTypes
     const normalized = String(code || '').replace(/[_-]+/g, ' ').trim()
     return normalized || code
+  }
+
+  const reasonLabel = (reason: 'missing' | 'approval' | 'rejected') => {
+    if (reason === 'approval') {
+      return t('app.candidate_card.stage_decision.blocker_approval', { defaultValue: 'Needs approval' })
+    }
+    if (reason === 'rejected') {
+      return t('app.candidate_card.stage_decision.blocker_rejected', { defaultValue: 'Rejected' })
+    }
+    return t('app.candidate_card.stage_decision.blocker_missing', { defaultValue: 'Missing' })
   }
 
   const earlyOperationalHint = useMemo(() => {
@@ -250,25 +265,20 @@ export default function CandidateStageDecisionPanel({
         </div>
       ) : (
         <div className="space-y-2">
-          {docsSoftAdvisory && requiredCodes.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
-                {t('app.candidate_card.stage_decision.advisory', { defaultValue: 'Advisory' })}
-              </span>
-              {requiredCodes.slice(0, 4).map((code) => (
-                <span
-                  key={`soft-${code}`}
-                  className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900"
-                >
-                  {labelForBlocker(code)}
-                </span>
+          {docsSoftAdvisory && blockerLines.length > 0 ? (
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-slate-700">
+                {t('app.candidate_card.stage_decision.missing_for_transition', { defaultValue: 'Missing for the next stage:' })}
+              </div>
+              {blockerLines.map((line) => (
+                <div key={`soft-${line.code}`} className="flex min-w-0 items-center gap-2 text-xs text-slate-800">
+                  <span className="min-w-0 truncate">{labelForBlocker(line.code)}</span>
+                  <StatusBadge size="sm" shape="pill" semantic="info" label={reasonLabel(line.reason)} />
+                </div>
               ))}
-              {requiredCodes.length > 4 ? (
-                <span className="text-[11px] text-slate-500">{t('common.and_more', { defaultValue: 'and more…' })}</span>
-              ) : null}
             </div>
           ) : null}
-          {docsSoftAdvisory && !requiredCodes.length ? (
+          {docsSoftAdvisory && !blockerLines.length ? (
             <div className="text-xs font-medium text-sky-900">
               {t('app.candidate_card.stage_decision.docs_soft_policy', {
                 defaultValue:
@@ -276,27 +286,22 @@ export default function CandidateStageDecisionPanel({
               })}
             </div>
           ) : null}
-          {docsPipelineBlocking && requiredCodes.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
-                {t('app.candidate_card.stage_decision.required', { defaultValue: 'Required' })}
-              </span>
-              {requiredCodes.slice(0, 4).map((code) => (
-                <span
-                  key={code}
-                  className={clsx(
-                    'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold',
-                    docsBlockers.missing.includes(code)
-                      ? 'border-rose-200 bg-rose-50 text-rose-800'
-                      : 'border-amber-200 bg-amber-50 text-amber-800',
-                  )}
-                >
-                  {labelForBlocker(code)}
-                </span>
+          {docsPipelineBlocking && blockerLines.length > 0 ? (
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-slate-700">
+                {t('app.candidate_card.stage_decision.missing_for_transition', { defaultValue: 'Missing for the next stage:' })}
+              </div>
+              {blockerLines.map((line) => (
+                <div key={line.code} className="flex min-w-0 items-center gap-2 text-xs text-slate-800">
+                  <span className="min-w-0 truncate">{labelForBlocker(line.code)}</span>
+                  <StatusBadge
+                    size="sm"
+                    shape="pill"
+                    semantic={line.reason === 'rejected' ? 'danger' : line.reason === 'approval' ? 'warning' : 'neutral'}
+                    label={reasonLabel(line.reason)}
+                  />
+                </div>
               ))}
-              {requiredCodes.length > 4 ? (
-                <span className="text-[11px] text-slate-500">{t('common.and_more', { defaultValue: 'and more…' })}</span>
-              ) : null}
             </div>
           ) : docsPipelineBlocking ? (
             <div className="text-xs font-medium text-amber-800">
