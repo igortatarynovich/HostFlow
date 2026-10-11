@@ -15,6 +15,7 @@ type Step = {
   key: string
   visible: boolean
   stored?: string | null
+  card_kind?: string | null
   operator_label?: string | null
   visa_type?: string | null
   visa_purpose?: string | null
@@ -826,6 +827,30 @@ function LegalizationFactsSheet({
         title={t('app.candidate_card.ia.legalization_stay', { defaultValue: 'Stay in the country' })}
         description={stayRequired ? t('app.candidate_card.ia.legalization_stay_hint', { defaultValue: 'Documents that confirm the right to stay.' }) : null}
       >
+        {composeDocuments ? (
+          <label className="mb-3 block">
+            <div className="text-[11px] text-slate-500">{t('app.candidate_card.ia.stay_document', { defaultValue: 'Stay basis' })}</div>
+            <select
+              className="input input-sm mt-1"
+              disabled={disabled || !onPatch}
+              value={stayCode === 'karta_pobytu'
+                ? (stay?.card_kind === 'rezydent' ? 'rezydent' : 'pobytu')
+                : (stayCode === 'visa_c' || stayCode === 'visa_d' ? 'visa' : '')}
+              onChange={(event) => {
+                const next = event.target.value
+                if (next === 'visa') onPatch?.({ stay_basis: 'visa_d', stay_card_kind: null })
+                else if (next === 'rezydent') onPatch?.({ stay_basis: 'karta_pobytu', stay_card_kind: 'rezydent' })
+                else if (next === 'pobytu') onPatch?.({ stay_basis: 'karta_pobytu', stay_card_kind: 'pobytu' })
+                else onPatch?.({ stay_basis: 'unknown', stay_card_kind: null })
+              }}
+            >
+              <option value="">{t('app.candidate_card.ia.stay_document_choose', { defaultValue: 'Choose the stay basis' })}</option>
+              <option value="pobytu">{t('app.candidate_card.ia.stay_document_pobytu', { defaultValue: 'Residence card' })}</option>
+              <option value="rezydent">{t('app.candidate_card.ia.stay_document_rezydent', { defaultValue: 'Resident card' })}</option>
+              <option value="visa">{t('app.candidate_card.ia.stay_document_visa', { defaultValue: 'Visa' })}</option>
+            </select>
+          </label>
+        ) : null}
         {composeDocuments ? null : (
           <>
             <InlineFieldRow

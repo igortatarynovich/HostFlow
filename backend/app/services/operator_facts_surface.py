@@ -109,6 +109,7 @@ def empty_facts() -> dict[str, Any]:
     return {
         "citizenship": None,
         "stay_basis": None,
+        "stay_card_kind": None,
         "visa_type": None,
         "visa_purpose": None,
         "stay_valid_to": None,
@@ -150,6 +151,9 @@ def facts_from_personal_data(personal_data: Mapping[str, Any] | None) -> dict[st
     stay = _text(raw.get("stay_basis"))
     if stay in _STAY:
         facts["stay_basis"] = stay
+    card_kind = _text(raw.get("stay_card_kind"))
+    if facts["stay_basis"] == "karta_pobytu" and card_kind in {"pobytu", "rezydent"}:
+        facts["stay_card_kind"] = card_kind
     facts["visa_type"] = _text(raw.get("visa_type"))
     facts["visa_purpose"] = _text(raw.get("visa_purpose"))
     facts["stay_valid_to"] = _date_text(raw.get("stay_valid_to"))
@@ -359,6 +363,7 @@ def apply_operator_facts_patch(
     klass = citizenship_class(nxt.get("citizenship"))
     if klass in {"pl", "eu_eea_ch"}:
         nxt["stay_basis"] = None
+        nxt["stay_card_kind"] = None
         nxt["visa_type"] = None
         nxt["visa_purpose"] = None
         nxt["stay_valid_to"] = None
@@ -376,8 +381,13 @@ def apply_operator_facts_patch(
                 if stay not in _STAY:
                     raise OperatorFactsRejected(f"stay_basis {stay} is not a chain value")
                 nxt["stay_basis"] = stay
+                if stay != "karta_pobytu":
+                    nxt["stay_card_kind"] = None
                 nxt["visa_type"] = None
                 nxt["visa_purpose"] = None
+        if "stay_card_kind" in patch:
+            kind = _text(patch.get("stay_card_kind"))
+            nxt["stay_card_kind"] = kind if kind in {"pobytu", "rezydent"} and nxt.get("stay_basis") == "karta_pobytu" else None
         if "visa_type" in patch:
             nxt["visa_type"] = None if _is_unknown(patch.get("visa_type")) else _text(patch.get("visa_type"))
         if "visa_purpose" in patch:
@@ -687,6 +697,7 @@ def build_operator_facts_view(
             "key": "stay_basis",
             "visible": stay_visible,
             "stored": facts.get("stay_basis") if stay_visible else None,
+            "card_kind": facts.get("stay_card_kind") if stay_visible else None,
             "valid_to": facts.get("stay_valid_to") if stay_visible else None,
         },
         {
@@ -1106,6 +1117,7 @@ def personal_data_with_facts(
         personal.pop("citizenship", None)
     personal["operator_facts"] = {
         "stay_basis": facts.get("stay_basis"),
+        "stay_card_kind": facts.get("stay_card_kind"),
         "visa_type": facts.get("visa_type"),
         "visa_purpose": facts.get("visa_purpose"),
         "stay_valid_to": facts.get("stay_valid_to"),

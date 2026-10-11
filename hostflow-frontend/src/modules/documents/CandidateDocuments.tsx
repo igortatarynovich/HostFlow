@@ -698,6 +698,7 @@ export default function CandidateDocuments({
         displayTypes = nextTypes;
       }
 
+      let profileRequiresCode95 = false;
       if (operatorRows) {
         const levels: Record<string, "required" | "preferred"> = {};
         if (profileFilterActive) {
@@ -705,6 +706,30 @@ export default function CandidateDocuments({
           for (const type of displayTypes) {
             const cfg = profileConfigByTypeCode.get(type.code);
             levels[type.code] = cfg?.required === true ? "required" : "preferred";
+          }
+          const licenceNorms = new Set(["driver_license", "driver_license_code95", "driver_licence"]);
+          const code95Norms = new Set(["code95", "driver_qualification_card", "qualification_code95"]);
+          const code95Required = displayTypes.some((type) => {
+            const norm = normalizeDocTypeCode(type.code);
+            return levels[type.code] === "required" && (code95Norms.has(norm) || norm === "driver_license_code95");
+          });
+          profileRequiresCode95 = code95Required;
+          const licences = displayTypes.filter((type) => licenceNorms.has(normalizeDocTypeCode(type.code)));
+          if (licences.length > 1) {
+            const keep = licences.find((type) => normalizeDocTypeCode(type.code) === "driver_license") || licences[0];
+            const required = licences.some((type) => levels[type.code] === "required");
+            displayTypes = displayTypes.filter((type) => !licenceNorms.has(normalizeDocTypeCode(type.code)) || type.code === keep.code);
+            levels[keep.code] = required ? "required" : levels[keep.code];
+          }
+          if (code95Required) {
+            const catalog = new Map(allTypes.map((type) => [normalizeDocTypeCode(type.code), type] as const));
+            const qualification = ["code95", "driver_qualification_card", "qualification_code95"]
+              .map((code) => catalog.get(code))
+              .find((type): type is DocType => Boolean(type));
+            if (qualification && !displayTypes.some((type) => normalizeDocTypeCode(type.code) === normalizeDocTypeCode(qualification.code))) {
+              displayTypes = [...displayTypes, qualification];
+              levels[qualification.code] = "required";
+            }
           }
         } else {
           const projectedNorms = projectedRequired
@@ -806,6 +831,11 @@ export default function CandidateDocuments({
         }
       });
       
+      if (profileRequiresCode95 && !docsList.some((doc) => ["code95", "driver_qualification_card", "qualification_code95"].includes(normalizeDocTypeCode(doc.type_code || doc.doc_type)))) {
+        for (const code of ["code95", "driver_qualification_card", "qualification_code95", "code_95"]) {
+          existingTypeCodes.delete(code);
+        }
+      }
       // Создаем синтетические документы для всех типов из docTypes, которых еще нет
       displayTypes.forEach((type) => {
         const typeCode = type.code;

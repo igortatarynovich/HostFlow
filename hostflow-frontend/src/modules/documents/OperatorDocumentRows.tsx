@@ -18,7 +18,7 @@ import { runtimeBadgeFromDocument } from '../../utils/runtimeBadgePresentation'
 import type { OperatorFactsView } from '../candidates/OperatorFactsSurface'
 import { DocumentMetadataForm } from './components/DocumentMetadataForm'
 import { getDocumentFieldsConfig, isProcedureDocument } from './documentFieldsConfig'
-import { computeTodayIso, documentHasFiles, formatDate, isSyntheticDocumentId, legalDocumentSlot, normalizeDocTypeCode } from './documentUtils'
+import { computeTodayIso, documentHasFiles, formatDate, isSyntheticDocumentId, legalDocumentSlot, normalizeDocTypeCode, stayDocumentRole } from './documentUtils'
 import type { MetadataState } from './types'
 
 type TypeLevel = 'required' | 'preferred'
@@ -164,12 +164,17 @@ export function OperatorDocumentRows({
 
   const only = useMemo(() => (onlyTypes ? expandTypeCodes(onlyTypes) : null), [onlyTypes])
   const exclude = useMemo(() => expandTypeCodes(excludeTypes || []), [excludeTypes])
-  const sharedCode95 = facts?.ce_code95?.evidence_shape === 'shared'
+  const issuingCountry = facts?.steps?.find((item) => item.key === 'driving_licence')?.issuing_country || ''
+  const separateCode95 = facts?.steps?.find((item) => item.key === 'code95')?.visible === true
+  const code95Required = Object.entries(typeLevel).some(([code, level]) => {
+    const norm = normalizeDocTypeCode(code)
+    return level === 'required' && (CODE95_TYPES.has(norm) || norm === 'driver_license_code95')
+  })
 
   const rows = useMemo(() => {
-    return docTypes.flatMap((type) => {
+    const built = docTypes.flatMap((type) => {
       const norm = normalizeDocTypeCode(type.code)
-      if (sharedCode95 && CODE95_TYPES.has(norm)) return []
+      if (CODE95_TYPES.has(norm) && (!code95Required || !separateCode95)) return []
       if (only && !only.has(norm)) return []
       if (!only && !groups && (exclude.has(norm) || legalDocumentSlot(type))) return []
       const matches = docs.filter((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || '') === norm)
@@ -177,7 +182,13 @@ export function OperatorDocumentRows({
       if (!doc) return []
       return [{ type, norm, doc }]
     })
-  }, [docTypes, docs, exclude, groups, only, sharedCode95])
+    const licences = built.filter((row) => LICENCE_TYPES.has(row.norm))
+    if (licences.length < 2) return built
+    const keep = licences.find((row) => documentHasFiles(row.doc))
+      || licences.find((row) => row.norm === 'driver_license')
+      || licences[0]
+    return built.filter((row) => !LICENCE_TYPES.has(row.norm) || row === keep)
+  }, [code95Required, docTypes, docs, exclude, groups, only, separateCode95])
 
   const step = (key: string) => facts?.steps?.find((item) => item.key === key)
   const patchFacts = async (patch: Record<string, unknown>) => {
@@ -235,13 +246,15 @@ export function OperatorDocumentRows({
       : (hasFile ? true : null)
     const fileName = row.doc.files?.[0]?.name || ''
     const licence = LICENCE_TYPES.has(row.norm)
-    const country = licence ? step('driving_licence')?.issuing_country || '' : ''
-    const showSharedCode95 = licence && sharedCode95 && presence === true
+    const country = licence ? issuingCountry : ''
+    const showSharedCode95 = licence && code95Required && Boolean(issuingCountry) && !separateCode95 && presence === true
+    const needsCountry = licence && code95Required && !issuingCountry && presence !== false
+    const stayRole = stayDocumentRole(row.type)
     const phase: DocumentStatusKind | null = procedure
       ? (hasFile ? null : row.doc.status === 'in_progress' ? 'received' : row.doc.ordered_at ? 'ordered' : 'absent')
       : null
     const kind = phase || statusKind(row.doc, hasFile)
-    const expanded = procedure || (presence === true && openCode === row.norm && (hasFile || licence))
+    const expanded = procedure || needsCountry || (presence === true && (openCode === row.norm || Boolean(stayRole)) && (hasFile || licence || Boolean(stayRole)))
     const meta = (row.doc.meta_json || row.doc.meta || {}) as Record<string, unknown>
     const storedPermit = typeof meta.work_permit_type === 'string' ? meta.work_permit_type : ''
     const selectedPermit = permitType[row.norm] ?? storedPermit
@@ -267,12 +280,14 @@ export function OperatorDocumentRows({
         }}
       />
     )
+    const markedRequired = (typeLevel[row.type.code] || 'required') === 'required'
+      || (licence && Object.entries(typeLevel).some(([code, level]) => level === 'required' && LICENCE_TYPES.has(normalizeDocTypeCode(code))))
     const requirement = (
       <StatusBadge
         size="sm"
         shape="pill"
-        semantic={(typeLevel[row.type.code] || 'required') === 'required' ? 'warning' : 'neutral'}
-        label={(typeLevel[row.type.code] || 'required') === 'required'
+        semantic={markedRequired ? 'warning' : 'neutral'}
+        label={markedRequired
           ? t('app.candidate_card.ia.required_mark', { defaultValue: 'Required' })
           : t('app.candidate_card.ia.preferred_mark', { defaultValue: 'Preferred' })}
       />
@@ -381,7 +396,7 @@ export function OperatorDocumentRows({
         )}
         metadata={(
           <div className="space-y-3">
-            {licence && presence === true ? (
+            {licence && (presence === true || needsCountry) ? (
               <label className="block">
                 <div className="text-[11px] text-slate-500">{t('app.candidate_card.ia.issuing_country', { defaultValue: 'Issuing country' })}</div>
                 <select
@@ -408,7 +423,7 @@ export function OperatorDocumentRows({
                 />
               </label>
             ) : null}
-            {hasFile ? (
+            {hasFile || (stayRole && presence === true) ? (
               <>
                 <DocumentMetadataForm
                   doc={row.doc}
@@ -437,7 +452,9 @@ export function OperatorDocumentRows({
     return (
       <DocumentRequirementRow
         key={row.norm}
-        title={getLabel(row.type.code, row.type.name, row.type.title)}
+        title={licence
+          ? t('admin.documents.type_codes.driver_license', { defaultValue: 'Driving licence' })
+          : getLabel(row.type.code, row.type.name, row.type.title)}
         requirement={requirement}
         presence={procedure && !hasFile ? (
           <span className="text-sm text-slate-700">{statusLabel(phase || 'absent', row.doc)}</span>
@@ -459,7 +476,22 @@ export function OperatorDocumentRows({
     const nodes: Record<string, ReactNode> = {}
     for (const group of groups) {
       const wanted = expandTypeCodes(group.types)
-      const grouped = rows.filter((row) => wanted.has(row.norm) || legalDocumentSlot(row.type) === group.key)
+      const stayBasis = step('stay_basis')?.stored || ''
+      const stayKind = step('stay_basis')?.card_kind || ''
+      const stayChoice = stayBasis === 'visa_c' || stayBasis === 'visa_d'
+        ? 'visa'
+        : stayBasis === 'karta_pobytu'
+          ? (stayKind === 'rezydent' ? 'rezydent' : 'pobytu')
+          : null
+      const grouped = rows.filter((row) => {
+        const inGroup = wanted.has(row.norm) || legalDocumentSlot(row.type) === group.key
+        if (!inGroup) return false
+        if (group.key !== 'stay') return true
+        const role = stayDocumentRole(row.type)
+        if (stayChoice === 'visa') return role === 'visa'
+        if (stayChoice === 'pobytu' || stayChoice === 'rezydent') return role === 'card' || role === 'decision'
+        return false
+      })
       nodes[group.key] = grouped.length ? <DocumentRequirementList columns={columns}>{grouped.map(renderRow)}</DocumentRequirementList> : null
     }
     return <>{renderGroups(nodes)}</>

@@ -270,6 +270,24 @@ export const legalDocumentSlot = (
   return null;
 };
 
+export const stayDocumentRole = (
+  type: { code?: string | null; process_type?: string | null },
+): "visa" | "card" | "decision" | null => {
+  const code = rawDocTypeCode(type.code);
+  const process = rawDocTypeCode(type.process_type);
+  if (code === "visa" || process === "visa") return "visa";
+  if (
+    code === "decision"
+    || code === "decyzja"
+    || code === "voivodeship_decision"
+    || code === "temporary_residence_decision"
+    || process === "decision"
+  ) {
+    return "decision";
+  }
+  return legalDocumentSlot(type) === "stay" ? "card" : null;
+};
+
 export const resolveDocTypeLabel = (
   t: (key: string, opts?: any) => string,
   typeCode: string,
