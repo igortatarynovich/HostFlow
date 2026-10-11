@@ -29,6 +29,8 @@ interface CandidateHeaderProps {
   onEditToggle?: () => void
   editMode?: boolean
   onOpenHandoff?: () => void
+  onOpenHrTransfer?: () => void
+  hrTransferLabel?: string
   /** When set, replaces the handoff button with a read-only status line (active handoff). */
   handoffReadonlyText?: string | null
   handoffDisabled?: boolean
@@ -84,6 +86,8 @@ function CandidateHeader({
   onEditToggle,
   editMode = false,
   onOpenHandoff,
+  onOpenHrTransfer,
+  hrTransferLabel,
   handoffReadonlyText = null,
   handoffDisabled = false,
   handoffDisabledTitle = null,
@@ -226,6 +230,16 @@ function CandidateHeader({
                       title={handoffDisabled && handoffDisabledTitle ? handoffDisabledTitle : undefined}
                     >
                       {handoffLabel || t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
+                    </button>
+                  ) : null}
+                  {onOpenHrTransfer ? (
+                    <button
+                      type="button"
+                      className={clsx(actionClass, 'border-white bg-white font-semibold text-brand-700 shadow-sm hover:bg-white/90')}
+                      onClick={onOpenHrTransfer}
+                      disabled={handoffDisabled}
+                    >
+                      {hrTransferLabel || t('app.candidate_card.handoff.transfer_internal_hr_btn', { defaultValue: 'Передать в HR' })}
                     </button>
                   ) : null}
                   <OverflowMenu
