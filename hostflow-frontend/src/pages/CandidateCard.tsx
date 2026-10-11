@@ -69,7 +69,7 @@ function translateCandidateFieldKey(t: TranslateFn, fieldKey: string, label: str
 
 type CandidateEditPhase = 'idle' | 'picking_reason' | 'editing'
 import { getFunnel } from '../api/funnels'
-import { validateRequiredFields } from '../utils/profileUtils'
+import { getDocumentConfigs, isDefaultProfileWithEmptyDocumentConfig, validateRequiredFields } from '../utils/profileUtils'
 import { isCardSectionVisible } from '../utils/fieldLayoutUtils'
 import { useEffectiveCandidateLayout } from '../hooks/useEffectiveCandidateLayout'
 import { buildInboxHubPath } from '../utils/inboxDeepLinks'
@@ -757,6 +757,18 @@ const toArray = (value: any) =>
 
 
 /* ------------------------------- основная страница ------------------------------- */
+function blockersFromProfileGaps(gaps: Array<{ code: string; status: string }>) {
+  const missing: string[] = []
+  const problematic: string[] = []
+  const inProgress: string[] = []
+  for (const gap of gaps) {
+    if (gap.status === 'rejected') problematic.push(gap.code)
+    else if (gap.status === 'pending_review' || gap.status === 'pending_verification') inProgress.push(gap.code)
+    else missing.push(gap.code)
+  }
+  return { missing, problematic, inProgress }
+}
+
 export default function CandidateCard(){
   const { t, locale } = useI18n()
   const unknownErrorLabel = t('common.errors.unknown')
@@ -2964,7 +2976,14 @@ export default function CandidateCard(){
       (terminal ||
         ['docs_got', 'ready_for_handoff', 'processing_by_hr'].includes(stage) ||
         (Boolean(stage) && !early.has(stage)))
-    const blockers = useRequirements ? requirementBlockers : docsBlockers
+    const profileOwnsDocuments = Boolean(
+      candidateProfile
+      && !isDefaultProfileWithEmptyDocumentConfig(candidateProfile)
+      && getDocumentConfigs(candidateProfile).length,
+    )
+    const blockers = profileOwnsDocuments && documentReadiness
+      ? blockersFromProfileGaps(documentReadiness.gaps || [])
+      : useRequirements ? requirementBlockers : docsBlockers
     const needsVerification = blockers.inProgress.length > 0
     const needsRequest = blockers.missing.length > 0 || blockers.problematic.length > 0
 
@@ -2980,6 +2999,8 @@ export default function CandidateCard(){
       void generateUploadLink({ copyToClipboard: false, notifyOnReady: false })
     }
   }, [
+    candidateProfile,
+    documentReadiness,
     docsBlockers,
     requirementBlockers,
     generateUploadLink,
@@ -3825,20 +3846,36 @@ export default function CandidateCard(){
     reload: reloadRequirementsWorkspace,
   } = useRequirementsWorkspace(requirementsWorkspaceCandidateId, docsSummaryRefreshTrigger)
 
-  const activePipelineBlockers = showRequirementsChecklist ? requirementBlockers : docsBlockers
-  const activePipelineBlockersLoading = showRequirementsChecklist
-    ? requirementBlockersLoading
-    : docsBlockersLoading
+  const profileOwnsDocuments = Boolean(
+    candidateProfile
+    && !isDefaultProfileWithEmptyDocumentConfig(candidateProfile)
+    && getDocumentConfigs(candidateProfile).length,
+  )
+  const profileDocumentBlockers = useMemo(
+    () => blockersFromProfileGaps(documentReadiness?.gaps || []),
+    [documentReadiness],
+  )
+  const activePipelineBlockers = profileOwnsDocuments
+    ? profileDocumentBlockers
+    : showRequirementsChecklist ? requirementBlockers : docsBlockers
+  const activePipelineBlockersLoading = profileOwnsDocuments
+    ? documentReadiness == null
+    : showRequirementsChecklist
+      ? requirementBlockersLoading
+      : docsBlockersLoading
 
   const effectiveDocsBlockersForPipeline = useMemo(
     () =>
-      showRequirementsChecklist
+      profileOwnsDocuments
+        ? relaxDocBlockers(activePipelineBlockers, pipelineRelaxedTypes)
+        : showRequirementsChecklist
         ? relaxRequirementBlockers(activePipelineBlockers, pipelineRelaxedRequirements)
         : relaxDocBlockers(activePipelineBlockers, pipelineRelaxedTypes),
     [
       activePipelineBlockers,
       pipelineRelaxedRequirements,
       pipelineRelaxedTypes,
+      profileOwnsDocuments,
       showRequirementsChecklist,
     ],
   )
@@ -4657,7 +4694,7 @@ export default function CandidateCard(){
       candidateStatus={model.status}
       stageLabelIntl={stageLabelIntl}
       docsBlockers={effectiveDocsBlockersForPipeline}
-      blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
+      blockerLabelMode={profileOwnsDocuments ? 'document' : showRequirementsChecklist ? 'requirement' : 'document'}
       blockerLabels={documentReadiness?.labels}
       docsPipelineBlocking={docsPipelineBlockingValue}
       docsPipelineSoftWarn={docsPipelineSoftWarnValue}
@@ -4901,7 +4938,7 @@ export default function CandidateCard(){
                   candidateStatus={model.status}
                   stageLabelIntl={stageLabelIntl}
                   docsBlockers={effectiveDocsBlockersForPipeline}
-                  blockerLabelMode={showRequirementsChecklist ? 'requirement' : 'document'}
+                  blockerLabelMode={profileOwnsDocuments ? 'document' : showRequirementsChecklist ? 'requirement' : 'document'}
                   blockerLabels={documentReadiness?.labels}
                   docsPipelineBlocking={docsPipelineBlockingValue}
                   docsPipelineSoftWarn={docsPipelineSoftWarnValue}
@@ -5011,19 +5048,19 @@ export default function CandidateCard(){
                 onlyOperatorReminder
               />
             ) : null}
-            {!isNew && model?.id ? (
+            {!isNew && model?.id && (!profileOwnsDocuments || documentReadiness) ? (
               <WorkspaceWidget
                 title={t('app.candidate_card.ia.documents_progress')}
               >
                 <div className="flex items-start gap-2">
-                  <ProgressRing value={documentReadiness?.ready ?? docsCountsSummary.ready} max={documentReadiness?.total ?? docsCountsSummary.total} />
+                  <ProgressRing value={profileOwnsDocuments ? (documentReadiness?.ready ?? 0) : (documentReadiness?.ready ?? docsCountsSummary.ready)} max={profileOwnsDocuments ? (documentReadiness?.total ?? 0) : (documentReadiness?.total ?? docsCountsSummary.total)} />
                   <div className="min-w-0">
                     <div className="text-sm font-semibold tabular-nums text-slate-900">
-                      {`${documentReadiness?.ready ?? docsCountsSummary.ready} / ${documentReadiness?.total ?? docsCountsSummary.total}`}
+                      {`${profileOwnsDocuments ? (documentReadiness?.ready ?? 0) : (documentReadiness?.ready ?? docsCountsSummary.ready)} / ${profileOwnsDocuments ? (documentReadiness?.total ?? 0) : (documentReadiness?.total ?? docsCountsSummary.total)}`}
                     </div>
                     <div className="text-xs text-slate-500">
-                      {documentReadiness
-                        ? t('app.candidate_card.ia.profile_requirements_progress', { defaultValue: 'Profile requirements closed' })
+                      {profileOwnsDocuments || documentReadiness
+                        ? t('app.candidate_card.ia.profile_requirements_progress', { defaultValue: 'Approved required profile documents' })
                         : t('app.candidate_card.ia.stored_docs_progress', { defaultValue: 'Stored document progress' })}
                     </div>
                     {documentReadiness?.gaps?.length ? (
@@ -5092,20 +5129,20 @@ export default function CandidateCard(){
           value={cardTab}
           onChange={setCardTab}
           badges={{
-            documents: (documentReadiness?.total || docsCountsSummary.total) > 0 ? (
+            documents: ((profileOwnsDocuments ? documentReadiness?.total : (documentReadiness?.total || docsCountsSummary.total)) || 0) > 0 ? (
               <StatusBadge
                 size="sm"
                 shape="pill"
-                semantic={(documentReadiness
-                  ? documentReadiness.ready >= documentReadiness.total
+                semantic={((profileOwnsDocuments || documentReadiness)
+                  ? (documentReadiness?.ready ?? 0) >= (documentReadiness?.total ?? 0) && (documentReadiness?.total ?? 0) > 0
                   : docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0)
                   ? 'success'
                   : 'neutral'}
-                title={documentReadiness
-                  ? t('app.candidate_card.ia.profile_requirements_progress', { defaultValue: 'Profile requirements closed' })
+                title={profileOwnsDocuments || documentReadiness
+                  ? t('app.candidate_card.ia.profile_requirements_progress', { defaultValue: 'Approved required profile documents' })
                   : t('app.candidate_card.ia.stored_docs_progress', { defaultValue: 'Stored document progress' })}
-                label={documentReadiness
-                  ? `${documentReadiness.ready}/${documentReadiness.total}`
+                label={profileOwnsDocuments || documentReadiness
+                  ? `${documentReadiness?.ready ?? 0}/${documentReadiness?.total ?? 0}`
                   : `${docsCountsSummary.ready}/${docsCountsSummary.total}`}
               />
             ) : undefined,
@@ -5514,7 +5551,6 @@ export default function CandidateCard(){
                     refreshTrigger={docsSummaryRefreshTrigger}
                     canEdit={model.can_edit !== false}
                     purposeMode="documents"
-                    onReadiness={setDocumentReadiness}
                     onChanged={handleDocumentsChanged}
                     onPipelineBlockersChange={(blockers, loading) => {
                       setRequirementBlockers(blockers)
@@ -5529,6 +5565,7 @@ export default function CandidateCard(){
                     requirementLed
                     operatorRows
                     excludeTypes={legalDocTypes}
+                    onProfileReadiness={setDocumentReadiness}
                     countries={countries}
                     candidateProfile={candidateProfile}
                     onDocumentsChanged={handleDocumentsChanged}

@@ -327,6 +327,13 @@ type Props = {
   stayTypes?: string[];
   workTypes?: string[];
   renderFrame?: (sections: { stay: ReactNode; work: ReactNode }) => ReactNode;
+  /** Required rows from the candidate profile and their Hub review state. */
+  onProfileReadiness?: (readiness: {
+    ready: number
+    total: number
+    gaps: Array<{ code: string; label: string; status: string }>
+    labels: Record<string, string>
+  } | null) => void
 };
 
 export default function CandidateDocuments({
@@ -348,6 +355,7 @@ export default function CandidateDocuments({
   stayTypes,
   workTypes,
   renderFrame,
+  onProfileReadiness,
 }: Props) {
   const { can } = usePermissions();
   const { t, locale } = useI18n();
@@ -397,6 +405,43 @@ export default function CandidateDocuments({
   const [docs, setDocs] = useState<Document[]>([]);
   const [summaryResponse, setSummaryResponse] = useState<CandidateDocumentsSummaryResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!onProfileReadiness || !operatorRows || renderFrame) return;
+    const profileActive = Boolean(candidateProfile && !isDefaultProfileWithEmptyDocumentConfig(candidateProfile));
+    if (!profileActive) {
+      onProfileReadiness(null);
+      return;
+    }
+    if (loading || !summaryResponse) return;
+    const required = docTypes.filter((type) => typeLevel[type.code] === "required");
+    const labels: Record<string, string> = {};
+    const gaps: Array<{ code: string; label: string; status: string }> = [];
+    let ready = 0;
+    for (const type of required) {
+      const label = resolveDocTypeLabel(t, type.code, type.name, type.title, locale);
+      labels[type.code] = label;
+      const norm = normalizeDocTypeCode(type.code);
+      const matches = docs.filter((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || "") === norm);
+      const real = matches.filter((doc) => !isSyntheticDocumentId(doc.id));
+      const pool = real.length ? real : matches;
+      const doc = pool.find((item) => documentHasFiles(item)) || pool[0];
+      if (doc && documentHasFiles(doc)) {
+        const badge = runtimeBadgeFromDocument(doc).badge;
+        if (badge === "approved") {
+          ready += 1;
+          continue;
+        }
+        gaps.push({
+          code: type.code,
+          label,
+          status: badge === "rejected" ? "rejected" : "pending_review",
+        });
+        continue;
+      }
+      gaps.push({ code: type.code, label, status: "missing" });
+    }
+    onProfileReadiness({ ready, total: required.length, gaps, labels });
+  }, [candidateProfile, docTypes, docs, loading, locale, onProfileReadiness, operatorRows, renderFrame, summaryResponse, t, typeLevel]);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
@@ -654,43 +699,36 @@ export default function CandidateDocuments({
       }
 
       if (operatorRows) {
-        const projectedNorms = projectedRequired
-          ? new Set(projectedRequired.map((code) => normalizeDocTypeCode(String(code))))
-          : null;
-        const ceFamily = new Set([
-          "code95",
-          "driver_qualification_card",
-          "driver_license",
-          "driver_license_code95",
-          "driver_licence",
-        ]);
-        const catalog = new Map(allTypes.map((type) => [normalizeDocTypeCode(type.code), type] as const));
-        const merged = new Map<string, DocType>();
-        const base = profileFilterActive ? filteredTypes : [];
-        for (const type of base) {
-          const norm = normalizeDocTypeCode(type.code);
-          if (projectedNorms && ceFamily.has(norm) && !projectedNorms.has(norm)) continue;
-          merged.set(type.code, type);
-        }
-        if (projectedNorms) {
-          for (const code of projectedRequired || []) {
-            const hit = catalog.get(normalizeDocTypeCode(String(code)));
-            if (!hit) continue;
-            const already = Array.from(merged.keys()).some((key) => normalizeDocTypeCode(key) === normalizeDocTypeCode(hit.code));
-            if (!already) merged.set(hit.code, hit);
-          }
-        }
-        displayTypes = Array.from(merged.values());
-        const optionalNorms = new Set(
-          (Array.isArray(checklistPayload?.optionalTypes) ? checklistPayload.optionalTypes : []).map((code: unknown) =>
-            normalizeDocTypeCode(String(code)),
-          ),
-        );
         const levels: Record<string, "required" | "preferred"> = {};
-        for (const type of displayTypes) {
-          const cfg = profileConfigByTypeCode.get(type.code);
-          const norm = normalizeDocTypeCode(type.code);
-          levels[type.code] = optionalNorms.has(norm) || cfg?.required === false ? "preferred" : "required";
+        if (profileFilterActive) {
+          displayTypes = filteredTypes;
+          for (const type of displayTypes) {
+            const cfg = profileConfigByTypeCode.get(type.code);
+            levels[type.code] = cfg?.required === true ? "required" : "preferred";
+          }
+        } else {
+          const projectedNorms = projectedRequired
+            ? new Set(projectedRequired.map((code) => normalizeDocTypeCode(String(code))))
+            : null;
+          const catalog = new Map(allTypes.map((type) => [normalizeDocTypeCode(type.code), type] as const));
+          const merged = new Map<string, DocType>();
+          if (projectedNorms) {
+            for (const code of projectedRequired || []) {
+              const hit = catalog.get(normalizeDocTypeCode(String(code)));
+              if (!hit || merged.has(hit.code)) continue;
+              merged.set(hit.code, hit);
+            }
+          }
+          displayTypes = Array.from(merged.values());
+          const optionalNorms = new Set(
+            (Array.isArray(checklistPayload?.optionalTypes) ? checklistPayload.optionalTypes : []).map((code: unknown) =>
+              normalizeDocTypeCode(String(code)),
+            ),
+          );
+          for (const type of displayTypes) {
+            const norm = normalizeDocTypeCode(type.code);
+            levels[type.code] = optionalNorms.has(norm) ? "preferred" : "required";
+          }
         }
         setTypeLevel(levels);
       }

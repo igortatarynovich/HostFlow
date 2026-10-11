@@ -6342,7 +6342,7 @@
         "blockers_none": "Нет",
         "documents_progress": "Документы",
         "documents_list": "Документы",
-        "profile_requirements_progress": "Закрыто требований профиля",
+        "profile_requirements_progress": "Одобрено из обязательных документов профиля",
         "stored_docs_progress": "Сохранённый прогресс документов",
         "doc_col_name": "Документ",
         "doc_col_requirement": "Требование",
