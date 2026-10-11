@@ -6492,11 +6492,11 @@
     "candidate_card": {
       "ia": {
         "tabs": {
-          "overview": "Overview",
+          "personal": "Personal data",
           "profile": "Profile",
-          "documents": "Documents and work rights",
-          "matching": "Matching",
-          "activity": "Activity"
+          "documents": "Documents",
+          "legalization": "Legalization",
+          "services": "Additional services"
         },
         "sections": {
           "identity": "Core details",
@@ -6512,7 +6512,21 @@
         "blockers_none": "None",
         "documents_progress": "Documents",
         "open_documents": "Open documents",
+        "open_row": "Open",
         "done": "Done",
+        "recruitment_context": "Vacancy → employer",
+        "legalization_gap": "Submitted, in progress and decision appear when a procedure instance exists. This screen is the facts for the current employment.",
+        "legalization_scope": "Work authorization follows the employment already selected by operator facts. It is not a global property of the candidate.",
+        "legalization_stay": "Stay in the country",
+        "legalization_work": "Right to work",
+        "legalization_required": "Required",
+        "legalization_basis": "Basis",
+        "legalization_valid_to": "Valid to",
+        "legalization_document": "Document",
+        "legalization_open_document": "Open in Documents",
+        "legalization_employment": "Employment",
+        "activity_history": "Activity / History",
+        "order_service": "Order service",
         "years_short": "experience {{count}}",
         "active_vacancy": "Active application"
       },
@@ -6648,6 +6662,7 @@
       "rodo": {
         "title": "RODO",
         "badge_sent": "Sent",
+        "badge_not_sent": "Not sent",
         "send_btn": "Send RODO information",
         "sent_at": "Sent",
         "to": "To",

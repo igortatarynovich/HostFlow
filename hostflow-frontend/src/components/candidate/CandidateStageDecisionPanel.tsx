@@ -58,6 +58,8 @@ type Props = {
   onOpenContactAttempts?: () => void
   /** `journey` is the candidate-card line only. `status` is next step and blockers. */
   layout?: 'full' | 'journey' | 'status'
+  /** Horizontal track is rendered by the workspace. Sidebar keeps stage controls only. */
+  showJourney?: boolean
 }
 
 export default function CandidateStageDecisionPanel({
@@ -85,6 +87,7 @@ export default function CandidateStageDecisionPanel({
   canCloseRecruitment = true,
   onOpenContactAttempts,
   layout = 'full',
+  showJourney = true,
 }: Props) {
   const { t } = useI18n()
 
@@ -474,6 +477,7 @@ export default function CandidateStageDecisionPanel({
         </div>
       ) : null}
 
+      {showJourney ? (
       <div className="mt-3 min-w-0">
         <CandidateStageJourneyPanel
           locale={locale}
@@ -492,6 +496,7 @@ export default function CandidateStageDecisionPanel({
           blocked={pipelineForwardBlocked}
         />
       </div>
+      ) : null}
     </section>
   )
 }

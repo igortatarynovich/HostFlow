@@ -312,6 +312,8 @@ type Props = {
   candidateProfile?: import('../../api/candidate_profiles').CandidateProfile | null;
   initialType?: string;
   compactType?: boolean;
+  /** Same tab workspace: expand the focused type in place. Do not open the file preview. */
+  inlineWorkspace?: boolean;
 };
 
 export default function CandidateDocuments({
@@ -323,6 +325,7 @@ export default function CandidateDocuments({
   candidateProfile,
   initialType,
   compactType = false,
+  inlineWorkspace = false,
 }: Props) {
   const { can } = usePermissions();
   const { t, locale } = useI18n();
@@ -1572,6 +1575,35 @@ useEffect(() => {
   }, [candidateId, initialType]);
 
   useEffect(() => {
+    if (initialType) setSelectedType(initialType);
+  }, [initialType]);
+
+  useEffect(() => {
+    if (!inlineWorkspace || !initialType) return;
+    if (initialTypeAutoOpenedRef.current === `inline:${initialType}`) return;
+    const normalizedInitial = normalizeDocTypeCode(initialType);
+    const matches = docs.filter((doc) => {
+      const docType = normalizeDocTypeCode(doc.type_code || doc.doc_type || "");
+      return docType === normalizedInitial;
+    });
+    if (!matches.length) return;
+    initialTypeAutoOpenedRef.current = `inline:${initialType}`;
+    setExpandedDocs((prev) => {
+      const next = { ...prev };
+      matches.forEach((doc) => {
+        next[doc.id] = true;
+      });
+      return next;
+    });
+    const targetId = matches[0]?.id;
+    if (!targetId) return;
+    window.setTimeout(() => {
+      document.getElementById(`candidate-doc-${targetId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }, [docs, initialType, inlineWorkspace]);
+
+  useEffect(() => {
+    if (inlineWorkspace) return;
     if (!initialType) return;
     if (initialTypeAutoOpenedRef.current === initialType) return;
 
@@ -1593,7 +1625,7 @@ useEffect(() => {
 
     initialTypeAutoOpenedRef.current = initialType;
     void openDoc(candidates[0]);
-  }, [candidateId, docs, initialType, openDoc]);
+  }, [candidateId, docs, initialType, inlineWorkspace, openDoc]);
 
   // Функция для получения значения поля из документа
   const getFieldValue = useCallback((doc: Document, fieldKey: string, metadataValues: MetadataState): any => {
@@ -1913,6 +1945,36 @@ useEffect(() => {
         </div>
       )}
 
+      {inlineWorkspace && canManageDocuments ? (
+        <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <label className="min-w-[12rem] flex-1 text-xs text-slate-600">
+            {t("admin.documents.forms.type", { defaultValue: "Document type" })}
+            <select
+              className="input mt-1 w-full text-sm"
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+            >
+              <option value="">—</option>
+              {docTypes.map((type) => (
+                <option key={type.code} value={type.code}>
+                  {getDocTypeLabel(type.code, type.name)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="btn-primary btn-sm"
+            disabled={!selectedType || creatingDocument}
+            onClick={() => void createDocumentWithoutFile()}
+          >
+            {creatingDocument
+              ? t("common.saving")
+              : t("admin.documents.actions.create_document", { defaultValue: "Create document" })}
+          </button>
+        </div>
+      ) : null}
+
       {error ? (
         <div className="rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-sm text-rose-700">{error}</div>
       ) : null}
@@ -2160,8 +2222,8 @@ useEffect(() => {
                 </div>
                 <div className="space-y-3">
                   {kindDocs.map((doc) => (
+                    <div id={`candidate-doc-${doc.id}`} key={doc.id}>
                     <DocumentCard
-                      key={doc.id}
                       doc={doc}
                       typeByCode={typeByCode}
                       metadataFieldMap={metadataFieldMap}
@@ -2190,6 +2252,7 @@ useEffect(() => {
                       setExpandedDocs={setExpandedDocs}
                       setError={setError}
                     />
+                    </div>
                   ))}
                 </div>
               </div>

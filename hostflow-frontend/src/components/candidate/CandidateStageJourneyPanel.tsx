@@ -4,6 +4,7 @@ import { formatDistanceToNowStrict } from 'date-fns'
 import { enUS, pl, ru } from 'date-fns/locale'
 import { useI18n } from '../../i18n'
 import { formatDateSafe } from '../../modules/candidates/candidateUtils'
+import { StagePipeline } from '../ui/StagePipeline'
 
 type Stage = { code: string; label: string }
 
@@ -134,54 +135,14 @@ export default function CandidateStageJourneyPanel({
       </div> : null}
 
       {variant === 'horizontal' ? (
-        <div className={clsx(heading ? 'mt-3' : 'mt-0', compact && heading && 'mt-2')}>
-          <div
-            className={clsx(
-              'relative min-w-0 overflow-x-auto rounded-xl border px-3 py-3',
-              isHero ? 'border-white/20 bg-white/5' : 'border-slate-200 bg-white',
-              compact && 'px-2 py-2',
-            )}
-          >
-            <div className={clsx('min-w-[520px]', compact && 'min-w-[420px]')}>
-              <div className={clsx('absolute left-6 right-6 top-[18px] h-px', isHero ? 'bg-white/20' : 'bg-slate-200')} />
-              <div className="relative flex items-start justify-between gap-4">
-                {stages.map((s, idx) => {
-                  const isCurrent = currentStage ? s.code === currentStage : idx === 0
-                  const isCompleted = completedStageCodes?.has(s.code) || (currentIdx >= 0 && idx < currentIdx)
-                  const dotClass = isCurrent
-                    ? (blocked ? 'bg-rose-600 ring-rose-200' : 'bg-brand-600 ring-brand-200')
-                    : isCompleted
-                      ? 'bg-emerald-500 ring-emerald-100'
-                      : 'bg-slate-300 ring-slate-100'
-                  const labelClass = isCurrent ? 'text-slate-900' : isCompleted ? 'text-slate-700' : 'text-slate-500'
-
-                  return (
-                    <div key={s.code} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={!canEdit || !onStageChange || isCurrent}
-                        onClick={() => onStageChange?.(s.code)}
-                        className={clsx(
-                          compact ? 'h-[18px] w-[18px] ring-[3px]' : 'h-[22px] w-[22px] ring-4',
-                          'rounded-full transition-colors',
-                          dotClass,
-                          canEdit && onStageChange && !isCurrent ? 'hover:opacity-90' : 'cursor-default',
-                        )}
-                        title={
-                          canEdit && onStageChange && !isCurrent
-                            ? t('app.candidate_card.stage_journey.change_to', { defaultValue: 'Change stage to' }) + ` ${s.label}`
-                            : s.label
-                        }
-                      />
-                      <div className={clsx('text-[11px]', 'font-semibold text-center leading-snug', labelClass, isHero && 'text-white/85')}>
-                        {s.label}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
+        <div className={clsx('mt-3', compact && 'mt-2')}>
+          <StagePipeline
+            stages={stages}
+            currentCode={currentStage}
+            completedCodes={completedStageCodes}
+            blocked={blocked}
+            ariaLabel={t('app.candidate_card.stage_journey.title', { defaultValue: 'Stage journey' })}
+          />
         </div>
       ) : (
         <div className="mt-3 relative">

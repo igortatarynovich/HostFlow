@@ -2,9 +2,9 @@ import { useState, type ReactNode } from 'react'
 import clsx from 'clsx'
 import { useI18n } from '../../../i18n'
 
-export type CandidateCardTabId = 'overview' | 'profile' | 'documents' | 'matching' | 'activity'
+export type CandidateCardTabId = 'personal' | 'profile' | 'documents' | 'legalization' | 'services'
 
-const TAB_IDS: CandidateCardTabId[] = ['overview', 'profile', 'documents', 'matching', 'activity']
+const TAB_IDS: CandidateCardTabId[] = ['personal', 'profile', 'documents', 'legalization', 'services']
 
 export function CandidateCardTabs({
   value,
@@ -25,7 +25,7 @@ export function CandidateCardTabs({
             role="tab"
             aria-selected={selected}
             className={clsx(
-              '-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium',
+              '-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-semibold',
               selected ? 'border-brand-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800',
             )}
             onClick={() => onChange(id)}

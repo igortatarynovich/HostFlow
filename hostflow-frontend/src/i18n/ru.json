@@ -6419,11 +6419,11 @@
     "candidate_card": {
       "ia": {
         "tabs": {
-          "overview": "Обзор",
+          "personal": "Персональные данные",
           "profile": "Профиль",
-          "documents": "Документы и право на работу",
-          "matching": "Подбор",
-          "activity": "Активность"
+          "documents": "Документы",
+          "legalization": "Легализация",
+          "services": "Дополнительные услуги"
         },
         "sections": {
           "identity": "Основные данные",
@@ -6439,7 +6439,21 @@
         "blockers_none": "Нет",
         "documents_progress": "Документы",
         "open_documents": "Открыть документы",
+        "open_row": "Открыть",
         "done": "Готово",
+        "recruitment_context": "Вакансия → работодатель",
+        "legalization_gap": "Подано, в работе и решение появятся, когда будет экземпляр процедуры. Сейчас здесь факты текущего employment.",
+        "legalization_scope": "Разрешение на работу относится к текущему employment, который уже выбирает operator facts, а не к глобальному свойству кандидата.",
+        "legalization_stay": "Пребывание в стране",
+        "legalization_work": "Право на работу",
+        "legalization_required": "Требуется",
+        "legalization_basis": "Основание",
+        "legalization_valid_to": "Действительно до",
+        "legalization_document": "Документ",
+        "legalization_open_document": "Открыть в документах",
+        "legalization_employment": "Employment",
+        "activity_history": "Активность / История",
+        "order_service": "Заказать услугу",
         "years_short": "опыт {{count}}",
         "active_vacancy": "Активная заявка"
       },
@@ -6575,6 +6589,7 @@
       "rodo": {
         "title": "RODO",
         "badge_sent": "Отправлено",
+        "badge_not_sent": "Не отправлено",
         "send_btn": "Отправить информацию RODO",
         "sent_at": "Отправлено",
         "to": "Кому",
