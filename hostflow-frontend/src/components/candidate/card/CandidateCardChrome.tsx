@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useI18n } from '../../../i18n'
+import { Button } from '../../ui/Button'
 import { WorkspaceSection } from '../../ui/WorkspaceSection'
 import { WorkspaceTabs } from '../../ui/WorkspaceTabs'
 
@@ -68,31 +69,19 @@ export function CardAccordion({
       }}
       action={
         onEdit ? (
-          <button
+          <Button
             type="button"
-            className="shrink-0 text-xs font-medium text-brand-700 hover:underline"
+            variant="link"
+            className="shrink-0 text-xs"
             onClick={editing ? onDone : onEdit}
           >
             {editing ? t('app.candidate_card.ia.done') : t('common.actions.edit')}
-          </button>
+          </Button>
         ) : null
       }
     >
       {children}
     </WorkspaceSection>
-  )
-}
-
-export function ReadRows({ rows }: { rows: Array<{ label: string; value: string }> }) {
-  return (
-    <dl>
-      {rows.map((row) => (
-        <div key={row.label} className="flex items-baseline justify-between gap-6 py-1">
-          <dt className="text-sm text-slate-500">{row.label}</dt>
-          <dd className="text-right text-sm font-medium text-slate-900">{row.value}</dd>
-        </div>
-      ))}
-    </dl>
   )
 }
 

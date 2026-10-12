@@ -8,10 +8,11 @@ import type {
 } from '../../../api/candidateRequirements'
 import {
   evidenceStatusLabelKey,
-  requirementStatusBadgeClass,
   resolveRequirementRowStatus,
 } from '../requirementsChecklistPresentation'
 import { requirementTitle } from './requirementRowLabels'
+import { StatusBadge } from '../../ui/StatusBadge'
+import { requirementRowStatusToSemantic } from '../../ui/statusBadgeSemantics'
 
 type FilterMode = 'all' | 'open'
 
@@ -163,14 +164,12 @@ export default function RequirementsWorkspaceNavList({
                     <span className="min-w-0 text-sm font-medium text-slate-900">
                       {requirementTitle(t, item)}
                     </span>
-                    <span
-                      className={clsx(
-                        'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                        requirementStatusBadgeClass(status),
-                      )}
-                    >
-                      {t(evidenceStatusLabelKey(status), { defaultValue: status.replace(/_/g, ' ') })}
-                    </span>
+                    <StatusBadge
+                      size="sm"
+                      shape="pill"
+                      semantic={requirementRowStatusToSemantic(status)}
+                      label={t(evidenceStatusLabelKey(status), { defaultValue: status.replace(/_/g, ' ') })}
+                    />
                   </button>
                 </li>
               )

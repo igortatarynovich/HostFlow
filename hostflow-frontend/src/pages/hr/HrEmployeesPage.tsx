@@ -8,9 +8,15 @@ import {
 } from '../../api/workforce'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../components/Toast'
-import { Toolbar, DataTableFrame } from '../../components/layout'
+import { DataTableFrame } from '../../components/layout'
+import { PageHeader } from '../../components/nav/PageHeader'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { HrVerificationProgressBadge } from '../../components/hr/HrVerificationProgressBadge'
+import { Button } from '../../components/ui/Button'
+import { FilterBar } from '../../components/ui/FilterBar'
+import { StatusBadge } from '../../components/ui/StatusBadge'
+import { WorkspaceSection } from '../../components/ui/WorkspaceSection'
+import type { StatusBadgeSemantic } from '../../components/ui/statusBadgeSemantics'
 
 const hrEmployeePath = (id: string, hash?: string) =>
   `${CRM_APP_PATHS.hrEmployees}/${encodeURIComponent(id)}${hash ? `#${hash.replace(/^#/, '')}` : ''}`
@@ -47,18 +53,18 @@ function isHighRisk(level: string | null | undefined): boolean {
   return k === 'high' || k === 'critical'
 }
 
-function eligibilityTone(status: string | null | undefined): string {
+function eligibilitySemantic(status: string | null | undefined): StatusBadgeSemantic {
   const s = String(status || '').toLowerCase()
-  if (s.includes('block') || s.includes('suspend')) return 'border-rose-200 bg-rose-50 text-rose-800'
-  if (s.includes('missing') || s.includes('expir')) return 'border-amber-200 bg-amber-50 text-amber-900'
-  return 'border-emerald-200 bg-emerald-50 text-emerald-800'
+  if (s.includes('block') || s.includes('suspend')) return 'danger'
+  if (s.includes('missing') || s.includes('expir')) return 'warning'
+  return 'success'
 }
 
-function statusTone(status: string | null | undefined): string {
+function statusSemantic(status: string | null | undefined): StatusBadgeSemantic {
   const s = String(status || '').toLowerCase()
-  if (s === 'active') return 'border-emerald-200 bg-emerald-50 text-emerald-800'
-  if (s.includes('suspend') || s.includes('terminated')) return 'border-rose-200 bg-rose-50 text-rose-800'
-  return 'border-slate-200 bg-slate-50 text-slate-800'
+  if (s === 'active') return 'success'
+  if (s.includes('suspend') || s.includes('terminated')) return 'danger'
+  return 'neutral'
 }
 
 function deriveNextAction(r: WorkforceEmployeeDirectoryRow): string {
@@ -201,35 +207,51 @@ export default function HrEmployeesPage() {
 
   return (
     <div className="space-y-4">
-      <Toolbar>
-        {!loading && !err ? (
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="badge border border-slate-200 font-medium tabular-nums">
-              {t('app.nav.hr.employees.stat_total', { defaultValue: 'Directory total: {n}', values: { n: stats.total } })}
-            </span>
-            <span className="badge border border-slate-200 font-medium tabular-nums">
-              {t('app.nav.hr.employees.stat_loaded', { defaultValue: 'Loaded: {n}', values: { n: stats.shown } })}
-            </span>
-            <span className="badge border border-rose-100 bg-rose-50/90 font-medium tabular-nums text-rose-900">
-              {t('app.nav.hr.employees.stat_high_risk', { defaultValue: 'High/critical risk: {n}', values: { n: stats.high } })}
-            </span>
-            <span className="badge border border-amber-100 bg-amber-50/90 font-medium tabular-nums text-amber-950">
-              {t('app.nav.hr.employees.stat_missing_sum', { defaultValue: 'Missing doc slots (page): {n}', values: { n: stats.missingSum } })}
-            </span>
-          </div>
-        ) : null}
-        {rangeLabel ? <div className="text-xs text-slate-600">{rangeLabel}</div> : null}
+      <PageHeader
+        kind="browse"
+        title={t('app.nav.items.hr_employees', { defaultValue: 'HR · Employees' })}
+        subtitle={rangeLabel || undefined}
+        secondaryActions={
+          <>
+            <Link className="btn btn-secondary btn-sm" to={CRM_APP_PATHS.hrDocuments}>
+              {t('app.nav.hr.employees.quick_hub', { defaultValue: 'Documents hub' })}
+            </Link>
+            <Button type="button" variant="secondary" size="sm" onClick={() => void load()}>
+              {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrDocuments}>
-            {t('app.nav.hr.employees.quick_hub', { defaultValue: 'Documents hub' })}
-          </Link>
-          <button type="button" className="btn-secondary btn-sm shrink-0" onClick={() => void load()}>
-            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          </button>
+      {!loading && !err ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge
+            size="sm"
+            semantic="neutral"
+            label={t('app.nav.hr.employees.stat_total', { defaultValue: 'Directory total: {n}', values: { n: stats.total } })}
+          />
+          <StatusBadge
+            size="sm"
+            semantic="neutral"
+            label={t('app.nav.hr.employees.stat_loaded', { defaultValue: 'Loaded: {n}', values: { n: stats.shown } })}
+          />
+          <StatusBadge
+            size="sm"
+            semantic="danger"
+            label={t('app.nav.hr.employees.stat_high_risk', { defaultValue: 'High/critical risk: {n}', values: { n: stats.high } })}
+          />
+          <StatusBadge
+            size="sm"
+            semantic="warning"
+            label={t('app.nav.hr.employees.stat_missing_sum', { defaultValue: 'Missing doc slots (page): {n}', values: { n: stats.missingSum } })}
+          />
         </div>
+      ) : null}
 
-        <div className="mt-3 flex flex-wrap items-end gap-4">
+      <FilterBar
+        actions={null}
+        filters={
+          <>
             <label className="flex min-w-[140px] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600" htmlFor="dir-status">
                 {t('app.nav.hr.directory.filters_status', { defaultValue: 'Status' })}
@@ -289,28 +311,31 @@ export default function HrEmployeesPage() {
               <input type="checkbox" checked={expiringOnly} onChange={(e) => setExpiringOnly(e.target.checked)} />
               {t('app.nav.hr.directory.filters_expiring_only', { defaultValue: 'Only with expiring documents' })}
             </label>
-          </div>
-      </Toolbar>
+          </>
+        }
+      />
 
-      {can('workforce.manage') && (
-        <div className="card flex flex-wrap items-end gap-3 p-4">
-          <label className="flex flex-col gap-2">
-            <span className="label mb-0 text-xs text-slate-600" htmlFor="hr-emp-name">
-              {t('app.nav.hr.employees.add_manual', { defaultValue: 'Add without candidate link' })}
-            </span>
-            <input
-              id="hr-emp-name"
-              className="input min-w-[220px] text-sm"
-              value={nameDraft}
-              onChange={(e) => setNameDraft(e.target.value)}
-              placeholder={t('app.nav.hr.employees.display_name', { defaultValue: 'Full name' })}
-            />
-          </label>
-          <button type="button" className="btn-primary btn-sm" disabled={creating} onClick={() => void onCreate()}>
-            {t('app.nav.hr.employees.create', { defaultValue: 'Create' })}
-          </button>
-        </div>
-      )}
+      {can('workforce.manage') ? (
+        <WorkspaceSection title={t('app.nav.hr.employees.add_manual', { defaultValue: 'Add without candidate link' })}>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-2">
+              <span className="label mb-0 text-xs text-slate-600" htmlFor="hr-emp-name">
+                {t('app.nav.hr.employees.display_name', { defaultValue: 'Full name' })}
+              </span>
+              <input
+                id="hr-emp-name"
+                className="input min-w-[220px] text-sm"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                placeholder={t('app.nav.hr.employees.display_name', { defaultValue: 'Full name' })}
+              />
+            </label>
+            <Button type="button" variant="primary" size="sm" disabled={creating} onClick={() => void onCreate()}>
+              {t('app.nav.hr.employees.create', { defaultValue: 'Create' })}
+            </Button>
+          </div>
+        </WorkspaceSection>
+      ) : null}
 
       {err && !loading ? (
         <div className="alert-error">
@@ -353,20 +378,18 @@ export default function HrEmployeesPage() {
                   <tr key={r.employee_id}>
                     <td>
                       <div className="font-medium text-slate-900">{r.full_name}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-500">
+                      <div className="mt-0.5 text-xs text-slate-500">
                         {r.position || dash}
                         {r.start_date ? ` · ${formatShortDate(r.start_date)}` : ''}
                       </div>
-                      <div className="mt-0.5 font-mono text-[10px] text-slate-400">emp:{r.employee_id.slice(0, 8)}…</div>
+                      <div className="mt-0.5 font-mono text-xs text-slate-400">emp:{r.employee_id.slice(0, 8)}…</div>
                     </td>
                     <td className="max-w-[200px]">
                       <div className="truncate text-slate-800" title={r.employer || ''}>{r.employer || dash}</div>
                       <div className="truncate text-xs text-slate-500" title={r.client || ''}>{r.client || dash}</div>
                     </td>
                     <td>
-                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusTone(r.status)}`}>
-                        {r.status || dash}
-                      </span>
+                      <StatusBadge size="sm" shape="pill" semantic={statusSemantic(r.status)} label={r.status || dash} />
                     </td>
                     <td>
                       <HrVerificationProgressBadge
@@ -376,9 +399,12 @@ export default function HrEmployeesPage() {
                       />
                     </td>
                     <td>
-                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${eligibilityTone(r.compliance_status)}`}>
-                        {r.compliance_status || dash}
-                      </span>
+                      <StatusBadge
+                        size="sm"
+                        shape="pill"
+                        semantic={eligibilitySemantic(r.compliance_status)}
+                        label={r.compliance_status || dash}
+                      />
                     </td>
                     <td className="tabular-nums text-slate-700">{r.missing_documents_count}</td>
                     <td className="tabular-nums text-slate-700">{r.expiring_documents_count}</td>

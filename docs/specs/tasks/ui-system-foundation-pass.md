@@ -1,6 +1,6 @@
 # Task: UI System Foundation Pass
 
-**Status:** Open — canon constraint recorded; Candidate Card reference cutover not started  
+**Status:** In progress — Phases A–D shell cutovers landed on this line; remaining candidate-rail migrate-on-touch and HR field-row polish stay open  
 **ADR:** [`ADR-011-hostflow-ui-platform-standard.md`](../architecture/ADR-011-hostflow-ui-platform-standard.md) §13  
 **Frontend canon:** [`FOUNDATION_V1.md`](../frontend/FOUNDATION_V1.md), [`PRIMITIVES_V1.md`](../frontend/PRIMITIVES_V1.md), [`REF-UI-000-ui-standardization-roadmap.md`](../frontend/REF-UI-000-ui-standardization-roadmap.md)  
 **North star:** [`HOSTFLOW_UX_NORTH_STAR.md`](../frontend/HOSTFLOW_UX_NORTH_STAR.md)
@@ -51,11 +51,12 @@ Preserve operational baseline ([`HOSTFLOW_UX_NORTH_STAR.md`](../frontend/HOSTFLO
 
 Системный слой уже частично используется: `StagePipeline`, `StatusBadge`, `Button`, `WorkspaceSection`, `WorkspaceWidget`, `WorkspaceTabs` (через chrome).
 
-| Item | Location | Problem | Target |
-|------|----------|---------|--------|
-| `ReadRows` | `hostflow-frontend/src/components/candidate/card/CandidateCardChrome.tsx` | Local field-row layout beside `InlineFieldRow` / `FieldGrid` | System field row / `FieldGrid` composition |
-| Edit / Done control in `CardAccordion` | same file | Raw `<button className="text-xs …">` | `Button` (system) |
-| `text-[11px]` meta / captions | `CandidateDocsWorkspacePanel`, `CandidateTimelinePanel`, `CandidateProcessControls`, related panels | Outside `FOUNDATION_V1` body scale (`type-body-xs` = `text-xs`) | Allowed typography tokens / system meta text |
+| Item | Location | Problem | Target | Status |
+|------|----------|---------|--------|--------|
+| `ReadRows` | was in `CandidateCardChrome.tsx` | Local field-row layout beside `InlineFieldRow` / `FieldGrid` | `components/ui/ReadFieldRows.tsx` | Done |
+| Edit / Done control in `CardAccordion` | `CandidateCardChrome.tsx` | Raw `<button className="text-xs …">` | `Button` variant `link` | Done |
+| `text-[11px]` meta / captions | `CandidateDocsWorkspacePanel`, `CandidateTimelinePanel`, `CandidateProcessControls` | Outside `FOUNDATION_V1` body scale (`type-body-xs` = `text-xs`) | `text-xs` + system `Button` where interactive | Done (named files) |
+| Remaining `text-[11px]` / local badges | other `components/candidate/**` rails / checklists | Still feature-local | Migrate on touch via system `StatusBadge` / `Button` / `text-xs` | Open |
 
 Доработка system components (если UX эталона требует): расширять `FieldGrid`, `DocumentRequirementRow`, `StatusBadge`, `EntitySummaryHeader` и соседние `components/ui/*` — не дублировать в `components/candidate/**`.
 
@@ -77,18 +78,20 @@ Preserve operational baseline ([`HOSTFLOW_UX_NORTH_STAR.md`](../frontend/HOSTFLO
 
 ## Explicit non-goals
 
-- HR redesign / HR styling pass in this task  
 - Blind SPA-wide Button / Input / Card class replacement  
 - New module design systems (Recruitment, Documents, HR)  
 - Reopening `FOUNDATION_V1` / `PRIMITIVES_V1` / `TABLE_V1` locks  
 - Mixing with requirement-resolution contract work in the same PR  
+- Full delete of every `text-[11px]` outside Phase A tab surfaces  
 
 ## Checklist
 
 - [x] ADR-011 §13 records No feature-local UI language  
 - [x] This task records acceptance + sequence + inventories  
-- [ ] Candidate Card reference cutover (system components only)  
-- [ ] Candidate local visual inventory → 0  
-- [ ] Documents / Profile / Legalization via system components only  
-- [ ] HR audit vs page patterns (separate)  
-- [ ] HR page-by-page migration PRs (separate; after STOP)  
+- [x] Named Candidate Card inventory items → system (`ReadFieldRows`, `CardAccordion`/`Button`, three panels `text-xs`)  
+- [x] Phase A: Profile/Documents/Legalization — `FieldGrid` wrappers, `StatusBadge` for requirement status, upload `Button`, `requirementRowStatusToSemantic`  
+- [x] Phase B: Employee Card → `EntitySummaryHeader` / `StagePipeline` / `WorkspaceTabs` / `WorkspaceWidget`; dead `EmployeeRecordHeader` removed  
+- [x] Phase C: Employees list → `PageHeader` / metrics `StatusBadge` / `FilterBar` / table; verification badge uses system `StatusBadge`  
+- [x] Phase D: ZUS → `PageHeader` / `FilterBar` / `WorkspaceSection` queue; sticky gradient removed  
+- [ ] Remaining candidate rails `text-[11px]` — migrate-on-touch only  
+- [ ] Employee Card field rows → `FieldGrid` / `ReadFieldRows` on touch  

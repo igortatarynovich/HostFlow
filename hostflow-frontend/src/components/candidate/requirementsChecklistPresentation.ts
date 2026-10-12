@@ -40,25 +40,6 @@ export function resolveRequirementRowStatus(item: RequirementChecklistItem): Req
   return 'missing'
 }
 
-export function requirementStatusBadgeClass(status: RequirementRowStatus): string {
-  switch (status) {
-    case 'approved':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-900'
-    case 'pending_review':
-      return 'border-amber-200 bg-amber-50 text-amber-950'
-    case 'selected':
-      return 'border-blue-200 bg-blue-50 text-blue-900'
-    case 'rejected':
-      return 'border-rose-200 bg-rose-50 text-rose-900'
-    case 'superseded':
-      return 'border-slate-200 bg-slate-50 text-slate-600'
-    case 'not_applicable':
-      return 'border-slate-200 bg-white text-slate-500'
-    default:
-      return 'border-amber-200 bg-amber-50 text-amber-950'
-  }
-}
-
 export function evidenceStatusLabelKey(status: CandidateEvidenceStatus | RequirementRowStatus): string {
   return `app.candidate_card.requirements_checklist.status.${status}`
 }
@@ -77,4 +58,40 @@ export function documentMatchesVariantTypes(
   const normalizedAllowed = new Set(allowedTypes.map(normDocType))
   const docNorm = normDocType(docType)
   return normalizedAllowed.has(docNorm)
+}
+
+/** Evaluated evidence alternatives on a checklist row (when API provides them). */
+export function evaluatedAlternatives(item: RequirementChecklistItem): Array<{
+  alternative_code?: string
+  evidence_variant_code?: string
+  status?: string
+  document_type_codes?: string[]
+}> {
+  const raw = (item as { evaluated_alternatives?: unknown; alternatives?: unknown }).evaluated_alternatives
+    ?? (item as { alternatives?: unknown }).alternatives
+  return Array.isArray(raw) ? (raw as Array<{
+    alternative_code?: string
+    evidence_variant_code?: string
+    status?: string
+    document_type_codes?: string[]
+  }>) : []
+}
+
+export function hasExtractionBlockers(item: RequirementChecklistItem): boolean {
+  const docs = (item.candidate_evidence?.documents || []) as Array<{
+    missing_extraction_fields?: string[]
+  }>
+  return docs.some((doc) => (doc.missing_extraction_fields?.length || 0) > 0)
+}
+
+export function formatExtractionValue(value: unknown): string {
+  if (value == null || value === '') return '—'
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
 }

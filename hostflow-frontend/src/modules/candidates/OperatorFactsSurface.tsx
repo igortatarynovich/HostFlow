@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
-import { CardAccordion, ReadRows, joinParts } from '../../components/candidate/card/CandidateCardChrome'
+import { CardAccordion, joinParts } from '../../components/candidate/card/CandidateCardChrome'
+import { ReadFieldRows } from '../../components/ui/ReadFieldRows'
 import { InlineFieldRow } from '../../components/ui/InlineFieldRow'
 import { LegalBasisRow } from '../../components/ui/documentRequirement/LegalBasisRow'
 import { LegalizationStatus } from '../../components/ui/documentRequirement/LegalizationStatus'
@@ -790,7 +791,7 @@ export function OperatorFactsWorkspace({
           plain
         />
       ) : (
-        <ReadRows rows={rows} />
+        <ReadFieldRows rows={rows} />
       )}
     </CardAccordion>
   )

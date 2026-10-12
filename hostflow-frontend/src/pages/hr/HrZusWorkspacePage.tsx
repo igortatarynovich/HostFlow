@@ -12,7 +12,20 @@ import {
 import { listWorkforceEmployees, type WorkforceEmployee } from '../../api/workforce'
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
-import { Toolbar } from '../../components/layout'
+import { PageHeader } from '../../components/nav/PageHeader'
+import { Button } from '../../components/ui/Button'
+import { FilterBar } from '../../components/ui/FilterBar'
+import { StatusBadge } from '../../components/ui/StatusBadge'
+import { WorkspaceSection } from '../../components/ui/WorkspaceSection'
+import type { StatusBadgeSemantic } from '../../components/ui/statusBadgeSemantics'
+
+function zusStatusSemantic(status: string): StatusBadgeSemantic {
+  const s = String(status || '').toLowerCase()
+  if (s === 'done') return 'success'
+  if (s === 'blocked' || s === 'cancelled') return 'danger'
+  if (s === 'in_progress') return 'info'
+  return 'warning'
+}
 
 const LANES: { value: ZusWorkspaceLane; i18n: string }[] = [
   { value: 'task_queue', i18n: 'lane_task_queue' },
@@ -155,54 +168,43 @@ export default function HrZusWorkspacePage() {
 
   return (
     <div className="space-y-4">
-      <Toolbar>
-        <div className="flex w-full flex-wrap items-center justify-end gap-2">
-          <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.hrTasks}>
-            {t('app.nav.hr.zus_workspace.quick_tasks', { defaultValue: 'HR tasks' })}
-          </Link>
-          <button type="button" className="btn-secondary btn-sm" onClick={() => void load()}>
-            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          </button>
+      <PageHeader
+        kind="browse"
+        title={t('app.nav.hr.zus_workspace.title', { defaultValue: 'ZUS workspace' })}
+        secondaryActions={
+          <>
+            <Link className="btn btn-secondary btn-sm" to={CRM_APP_PATHS.hrTasks}>
+              {t('app.nav.hr.zus_workspace.quick_tasks', { defaultValue: 'HR tasks' })}
+            </Link>
+            <Button type="button" variant="secondary" size="sm" onClick={() => void load()}>
+              {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </Button>
+          </>
+        }
+      />
+
+      {!loading && !err ? (
+        <div className="flex flex-wrap gap-2">
+          <StatusBadge size="sm" semantic="neutral" label={t('app.nav.hr.zus_workspace.stat_total', { defaultValue: 'API total: {n}', values: { n: stats.total } })} />
+          <StatusBadge size="sm" semantic="neutral" label={t('app.nav.hr.zus_workspace.stat_loaded', { defaultValue: 'Loaded: {n}', values: { n: stats.loaded } })} />
+          <StatusBadge size="sm" semantic="warning" label={t('app.nav.hr.zus_workspace.stat_open', { defaultValue: 'Open: {n}', values: { n: stats.open } })} />
+          <StatusBadge size="sm" semantic="info" label={t('app.nav.hr.zus_workspace.stat_in_progress', { defaultValue: 'In progress: {n}', values: { n: stats.inProg } })} />
+          <StatusBadge size="sm" semantic="danger" label={t('app.nav.hr.zus_workspace.stat_blocked', { defaultValue: 'Blocked: {n}', values: { n: stats.blocked } })} />
+          <StatusBadge size="sm" semantic="success" label={t('app.nav.hr.zus_workspace.stat_done', { defaultValue: 'Done: {n}', values: { n: stats.done } })} />
         </div>
-      </Toolbar>
+      ) : null}
 
-      <div className="sticky top-0 z-20 -mx-1 space-y-4 border-b border-slate-200/90 bg-gradient-to-b from-brand-50/95 via-white/95 to-white pb-4 pt-1 backdrop-blur-sm">
-        {!loading && !err ? (
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className="badge border border-slate-200 font-medium tabular-nums">
-              {t('app.nav.hr.zus_workspace.stat_total', { defaultValue: 'API total: {n}', values: { n: stats.total } })}
-            </span>
-            <span className="badge border border-slate-200 font-medium tabular-nums">
-              {t('app.nav.hr.zus_workspace.stat_loaded', { defaultValue: 'Loaded: {n}', values: { n: stats.loaded } })}
-            </span>
-            <span className="badge border border-emerald-100 bg-emerald-50/90 font-medium tabular-nums text-emerald-900">
-              {t('app.nav.hr.zus_workspace.stat_open', { defaultValue: 'Open: {n}', values: { n: stats.open } })}
-            </span>
-            <span className="badge border border-brand-100 bg-brand-50/90 font-medium tabular-nums text-brand-900">
-              {t('app.nav.hr.zus_workspace.stat_in_progress', { defaultValue: 'In progress: {n}', values: { n: stats.inProg } })}
-            </span>
-            <span className="badge border border-rose-100 bg-rose-50/90 font-medium tabular-nums text-rose-900">
-              {t('app.nav.hr.zus_workspace.stat_blocked', { defaultValue: 'Blocked: {n}', values: { n: stats.blocked } })}
-            </span>
-            <span className="badge border border-slate-200 font-medium tabular-nums text-slate-700">
-              {t('app.nav.hr.zus_workspace.stat_done', { defaultValue: 'Done: {n}', values: { n: stats.done } })}
-            </span>
-          </div>
-        ) : null}
-
-        <section className="card p-4 sm:p-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('app.nav.hr.zus_workspace.filters', { defaultValue: 'Filters' })}
-          </div>
-          <div className="mt-3 flex flex-wrap items-end gap-4">
+      <FilterBar
+        actions={
+          <Button type="button" variant="primary" size="sm" onClick={() => void load()}>
+            {t('app.nav.hr.zus_workspace.apply_filters', { defaultValue: 'Apply' })}
+          </Button>
+        }
+        filters={
+          <>
             <label className="flex flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_status', { defaultValue: 'Status' })}</span>
-              <input
-                className="input w-36 text-sm"
-                value={fStatus}
-                onChange={(e) => setFStatus(e.target.value)}
-                placeholder="open"
-              />
+              <input className="input w-36 text-sm" value={fStatus} onChange={(e) => setFStatus(e.target.value)} placeholder="open" />
             </label>
             <label className="flex min-w-[11rem] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_lane', { defaultValue: 'Lane' })}</span>
@@ -238,21 +240,15 @@ export default function HrZusWorkspacePage() {
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.f_due_before', { defaultValue: 'Due to (date)' })}</span>
               <input type="date" className="input text-sm" value={fDueBefore} onChange={(e) => setFDueBefore(e.target.value)} />
             </label>
-            <button type="button" className="btn-primary btn-sm" onClick={() => void load()}>
-              {t('app.nav.hr.zus_workspace.apply_filters', { defaultValue: 'Apply' })}
-            </button>
-          </div>
-        </section>
-      </div>
+          </>
+        }
+      />
 
       {loading ? <p className="text-sm text-slate-600">{t('common.loading')}</p> : null}
       {err ? <div className="alert-error">{err}</div> : null}
 
       {manage ? (
-        <section className="card space-y-3 p-4">
-          <h3 className="text-sm font-semibold text-slate-900">
-            {t('app.nav.hr.zus_workspace.create_heading', { defaultValue: 'Add queue row' })}
-          </h3>
+        <WorkspaceSection title={t('app.nav.hr.zus_workspace.create_heading', { defaultValue: 'Add queue row' })}>
           <div className="flex flex-wrap items-end gap-4">
             <label className="flex min-w-[14rem] flex-col gap-2">
               <span className="label mb-0 text-xs text-slate-600">{t('app.nav.hr.zus_workspace.col_employee', { defaultValue: 'Employee' })}</span>
@@ -288,19 +284,16 @@ export default function HrZusWorkspacePage() {
                 placeholder="e.g. Zgłoszenie do ZUS"
               />
             </label>
-            <button type="button" disabled={cSaving || !cEmployee} className="btn-primary btn-sm" onClick={() => void onCreate()}>
+            <Button type="button" variant="primary" size="sm" disabled={cSaving || !cEmployee} onClick={() => void onCreate()}>
               {t('app.nav.hr.zus_workspace.create_btn', { defaultValue: 'Create' })}
-            </button>
+            </Button>
           </div>
-        </section>
+        </WorkspaceSection>
       ) : null}
 
-      <section className="card overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
-          <h3 className="text-sm font-semibold text-slate-900">
-            {t('app.nav.hr.zus_workspace.table_heading', { defaultValue: 'Queue ({{n}})', values: { n: total } })}
-          </h3>
-        </div>
+      <WorkspaceSection
+        title={t('app.nav.hr.zus_workspace.table_heading', { defaultValue: 'Queue ({{n}})', values: { n: total } })}
+      >
         <div className="overflow-x-auto">
           <table className="table w-full min-w-[1280px] text-left text-sm">
             <thead>
@@ -322,7 +315,7 @@ export default function HrZusWorkspacePage() {
                     <Link className="font-medium text-brand-700 hover:underline" to={employeePostApproveHref(row.employee_id)}>
                       {row.employee_display_name || row.employee_id}
                     </Link>
-                    <div className="text-[10px] font-mono text-slate-400">{row.employee_id}</div>
+                    <div className="font-mono text-xs text-slate-400">{row.employee_id}</div>
                   </td>
                   <td className="text-xs">{laneLabel(row.workspace_lane)}</td>
                   <td className="font-mono text-xs">{row.task_kind}</td>
@@ -343,7 +336,7 @@ export default function HrZusWorkspacePage() {
                         ))}
                       </select>
                     ) : (
-                      row.status
+                      <StatusBadge size="sm" shape="pill" semantic={zusStatusSemantic(row.status)} label={row.status} />
                     )}
                   </td>
                   <td className="whitespace-nowrap text-xs">{formatDue(row.due_at)}</td>
@@ -370,7 +363,7 @@ export default function HrZusWorkspacePage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </WorkspaceSection>
     </div>
   )
 }
