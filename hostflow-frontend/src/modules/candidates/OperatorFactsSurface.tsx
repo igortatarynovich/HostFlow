@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { api } from '../../api/client'
 import { CardAccordion, ReadRows, joinParts } from '../../components/candidate/card/CandidateCardChrome'
 import { InlineFieldRow } from '../../components/ui/InlineFieldRow'
+import { LegalBasisRow } from '../../components/ui/documentRequirement/LegalBasisRow'
+import { LegalizationStatus } from '../../components/ui/documentRequirement/LegalizationStatus'
+import { PresenceToggle } from '../../components/ui/documentRequirement/PresenceToggle'
 import { WorkspaceSection } from '../../components/ui/WorkspaceSection'
 import { SearchableSelect } from '../../components/candidate/shared/FormComponents'
 import DateInput from '../../components/controls/DateInput'
@@ -47,6 +50,46 @@ export type OperatorFactsView = {
   licence_category_codes?: string[]
   stay_choices?: string[]
   work_choices?: string[]
+  legalization?: {
+    recommendation: { stay_required: boolean | null; work_required: boolean | null; reason: string }
+    selection: {
+      stay_required: boolean | null
+      work_required: boolean | null
+      stay_manual: boolean
+      work_manual: boolean
+      stay_code: string | null
+      stay_exemption: string | null
+      work_exemption: string | null
+      visa_type: string | null
+    }
+    resolved: {
+      residence: string
+      work: string
+      missing_residence?: string[]
+      missing_work?: string[]
+      residence_detail?: string | null
+      work_detail?: string | null
+    }
+    readiness?: { ready: boolean }
+    applicable_stay: Array<{
+      code: string
+      kind: string
+      stay_basis: string
+      card_kind?: string | null
+      documents: string[]
+      dependent_documents: string[]
+    }>
+    applicable_work: Array<{ code: string; kind: string }>
+    work_exemptions: string[]
+    stay_exemptions: string[]
+    selected_stay: {
+      code: string
+      kind: string
+      documents: string[]
+      dependent_documents: string[]
+      evidence?: Array<{ label: string; codes: string[]; metadata?: string[] }>
+    } | null
+  }
   asks_file?: boolean
   legal_eligibility?: {
     outcome?: string | null
@@ -821,6 +864,19 @@ function LegalizationFactsSheet({
     </select>
   )
   const composeDocuments = stayDocuments !== undefined || workDocuments !== undefined
+  const legal = view.legalization
+  const basisName = (code: string) => t(`app.candidate_card.ia.legalization.basis.${code}`, {
+    defaultValue: t(`app.candidate_card.operator_facts.work_option.${code}`, {
+      defaultValue: t(`app.candidate_card.operator_facts.stay_option.${code}`, { defaultValue: code }),
+    }),
+  })
+  const manualNote = t('app.candidate_card.ia.legalization.manual', { defaultValue: 'Set manually' })
+  const question = (label: string, value: boolean | null, onChange: (next: boolean) => void) => (
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="text-sm text-slate-700">{label}</span>
+      <PresenceToggle value={value} yesLabel={yes} noLabel={no} disabled={disabled || !onPatch} onChange={onChange} />
+    </div>
+  )
   return (
     <div className={composeDocuments ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 gap-3 lg:grid-cols-2'} data-testid="legalization-facts-sheet">
       <WorkspaceSection
@@ -828,8 +884,104 @@ function LegalizationFactsSheet({
         description={stayRequired ? t('app.candidate_card.ia.legalization_stay_hint', { defaultValue: 'Documents that confirm the right to stay.' }) : null}
       >
         {composeDocuments ? (
-          stayRequired ? stayDocuments : (
-            <p className="text-sm text-slate-800">{stayLabel || notRequired}</p>
+          legal ? (
+            <div className="space-y-3">
+              {question(
+                t('app.candidate_card.ia.legalization.stay_required_question', { defaultValue: 'Is a separate stay basis required?' }),
+                legal.selection.stay_required,
+                (next) => onPatch?.({ stay_required: next }),
+              )}
+              {legal.selection.stay_manual ? <p className="text-xs text-slate-500">{manualNote}</p> : null}
+              <LegalizationStatus
+                status={legal.resolved.residence}
+                missing={legal.resolved.missing_residence}
+                detail={legal.resolved.residence_detail}
+              />
+              {legal.selection.stay_required === false ? (
+                legal.selection.stay_manual ? (
+                  <label className="workspace-editor block max-w-sm">
+                    <div className="text-xs text-slate-500">{t('app.candidate_card.ia.work_exemption', { defaultValue: 'Exemption basis' })}</div>
+                    <select
+                      className="input"
+                      disabled={disabled || !onPatch}
+                      value={legal.selection.stay_exemption || 'other'}
+                      onChange={(event) => onPatch?.({ stay_exemption: event.target.value })}
+                    >
+                      {legal.stay_exemptions.map((code) => (
+                        <option key={code} value={code}>{basisName(code)}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="text-sm text-slate-800">{basisName(legal.selection.stay_exemption || legal.recommendation.reason)}</p>
+                )
+              ) : null}
+              {legal.selection.stay_required === true ? (
+                <div className="space-y-3">
+                  <label className="workspace-editor block max-w-sm">
+                    <div className="text-xs text-slate-500">{t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' })}</div>
+                    <select
+                      className="input"
+                      data-testid="legalization-stay-basis"
+                      disabled={disabled || !onPatch}
+                      value={legal.selection.stay_code || ''}
+                      onChange={(event) => {
+                        const item = legal.applicable_stay.find((basis) => basis.code === event.target.value)
+                        if (!item) return
+                        onPatch?.({
+                          stay_basis: item.stay_basis,
+                          stay_card_kind: item.card_kind || 'unknown',
+                          visa_type: item.code === 'visa' ? 'D' : 'unknown',
+                        })
+                      }}
+                    >
+                      <option value="">{unknownLabel}</option>
+                      {legal.applicable_stay.map((item) => (
+                        <option key={item.code} value={item.code}>{basisName(item.code)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {legal.selection.stay_code === 'visa' ? (
+                    <label className="workspace-editor block max-w-sm">
+                      <div className="text-xs text-slate-500">{t('app.candidate_card.ia.legalization.visa_type', { defaultValue: 'Visa type' })}</div>
+                      <select
+                        className="input"
+                        disabled={disabled || !onPatch}
+                        value={legal.selection.visa_type === 'C' ? 'C' : 'D'}
+                        onChange={(event) => onPatch?.({ visa_type: event.target.value })}
+                      >
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                      </select>
+                    </label>
+                  ) : null}
+                  {legal.selected_stay?.kind === 'document' ? stayDocuments : null}
+                  {legal.selected_stay?.kind === 'regime' ? (
+                    <LegalBasisRow title={basisName(legal.selected_stay.code)}>
+                      {legal.selected_stay.code === 'visa_free' ? (
+                        <>
+                          <p className="text-sm text-slate-600">
+                            {t('app.candidate_card.ia.legalization.visa_free_limit', { defaultValue: 'Short stay follows the 90/180 rule.' })}
+                          </p>
+                          <label className="workspace-editor block max-w-sm">
+                            <div className="text-xs text-slate-500">{t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' })}</div>
+                            <DateInput
+                              value={stay?.valid_to}
+                              disabled={disabled}
+                              onValueChange={(next) => onPatch?.({ stay_valid_to: next || 'unknown' })}
+                            />
+                          </label>
+                        </>
+                      ) : (
+                        <LegalizationStatus status="needs_verification" />
+                      )}
+                    </LegalBasisRow>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            stayRequired ? stayDocuments : <p className="text-sm text-slate-800">{stayLabel || notRequired}</p>
           )
         ) : (
           <>
@@ -882,7 +1034,81 @@ function LegalizationFactsSheet({
           : null}
       >
         {composeDocuments ? (
-          workRequired ? workDocuments : (
+          legal ? (
+            <div className="space-y-3">
+              {question(
+                t('app.candidate_card.ia.work_required_question', { defaultValue: 'Is a work permit required?' }),
+                legal.selection.work_required,
+                (next) => onPatch?.({ work_required: next, ...(next ? { work_label: 'work_permit' } : { work_exemption: legal.work_exemptions[0] || 'other' }) }),
+              )}
+              {legal.selection.work_manual ? <p className="text-xs text-slate-500">{manualNote}</p> : null}
+              <LegalizationStatus
+                status={legal.resolved.work}
+                missing={legal.resolved.missing_work}
+                detail={legal.resolved.work_detail}
+              />
+              {legal.selection.work_required === false ? (
+                legal.selection.work_manual ? (
+                  <label className="workspace-editor block max-w-sm">
+                    <div className="text-xs text-slate-500">{t('app.candidate_card.ia.work_exemption', { defaultValue: 'Exemption basis' })}</div>
+                    <select
+                      className="input"
+                      disabled={disabled || !onPatch}
+                      value={legal.selection.work_exemption || 'other'}
+                      onChange={(event) => {
+                        const code = event.target.value
+                        onPatch?.({
+                          work_exemption: code,
+                          ...(code === 'not_required' || code === 'included_in_stay' ? { work_label: code } : { work_label: 'not_required' }),
+                        })
+                      }}
+                    >
+                      {legal.work_exemptions.map((code) => (
+                        <option key={code} value={code}>{basisName(code)}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="text-sm text-slate-800">{basisName(legal.selection.work_exemption || legal.recommendation.reason)}</p>
+                )
+              ) : null}
+              {legal.selection.work_required === true ? (
+                <div className="space-y-3">
+                  <label className="workspace-editor block max-w-sm">
+                    <div className="text-xs text-slate-500">{t('app.candidate_card.ia.doc_choose_type', { defaultValue: 'Choose type' })}</div>
+                    <select
+                      className="input"
+                      data-testid="legalization-work-type"
+                      disabled={disabled || !onPatch}
+                      value={workCode}
+                      onChange={(event) => onPatch?.({ work_label: event.target.value })}
+                    >
+                      <option value="">{unknownLabel}</option>
+                      {legal.applicable_work.map((item) => (
+                        <option key={item.code} value={item.code}>{basisName(item.code)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {workCode === 'work_permit' || workCode === 'oswiadczenie' ? workDocuments : null}
+                </div>
+              ) : null}
+            </div>
+          ) : workRequired ? (
+            <div className="space-y-3">
+              {question(
+                t('app.candidate_card.ia.work_required_question', { defaultValue: 'Is a work permit required?' }),
+                workCode === 'work_permit' || workCode === 'oswiadczenie' ? true : workCode === 'not_required' || workCode === 'included_in_stay' ? false : null,
+                (next) => {
+                  if (!onPatch) return
+                  if (next) onPatch({ work_label: 'work_permit' })
+                  else onPatch({ work_label: 'not_required' })
+                },
+              )}
+              {workCode === 'work_permit' || workCode === 'oswiadczenie' ? workDocuments : (
+                <p className="text-sm text-slate-800">{workLabel || notRequired}</p>
+              )}
+            </div>
+          ) : (
             <p className="text-sm text-slate-800">{workLabel || notRequired}</p>
           )
         ) : (

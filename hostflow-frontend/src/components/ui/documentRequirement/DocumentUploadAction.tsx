@@ -6,17 +6,20 @@ export function DocumentUploadAction({
   disabled,
   onFile,
   appearance = 'button',
+  inputId,
 }: {
   label: string
   disabled?: boolean
   onFile: (file: File) => void
-  appearance?: 'button' | 'link'
+  appearance?: 'button' | 'link' | 'hidden'
+  /** Lets another control open this picker, for example an overflow menu. */
+  inputId?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const open = () => inputRef.current?.click()
   return (
     <>
-      {appearance === 'link' ? (
+      {appearance === 'hidden' ? null : appearance === 'link' ? (
         <Button type="button" variant="link" disabled={disabled} onClick={open}>
           {label}
         </Button>
@@ -27,6 +30,7 @@ export function DocumentUploadAction({
       )}
       <input
         ref={inputRef}
+        id={inputId}
         type="file"
         className="sr-only"
         disabled={disabled}

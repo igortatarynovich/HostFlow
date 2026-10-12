@@ -189,7 +189,7 @@ def test_work_permit_and_oswiadczenie_project_onto_existing_values() -> None:
 
     free, _ = _view({"work_label": "not_required"}, base=base)
     assert free["chain"]["work_authorization_basis"] == "not_required"
-    assert free["chain"]["valid_for_this_employment"] == "yes"
+    assert free["chain"]["valid_for_this_employment"] == "operator_verification"
     assert _step(free, "work")["operator_label"] == "not_required"
 
     missing, _ = _view({"work_label": "no_right"}, base=base)

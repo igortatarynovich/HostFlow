@@ -402,6 +402,7 @@ export default function CandidateDocuments({
   }), []);
 
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
+  const [catalogDocTypes, setCatalogDocTypes] = useState<DocType[]>([]);
   const [typeLevel, setTypeLevel] = useState<Record<string, 'required' | 'preferred'>>({});
   const [docs, setDocs] = useState<Document[]>([]);
   const [summaryResponse, setSummaryResponse] = useState<CandidateDocumentsSummaryResponse | null>(null);
@@ -759,7 +760,8 @@ export default function CandidateDocuments({
         setTypeLevel(levels);
       }
 
-      setDocTypes(displayTypes);
+        setCatalogDocTypes(allTypes);
+        setDocTypes(displayTypes);
       setSummaryResponse(summaryResp);
       const summaryDocsRaw = Array.isArray(summaryResp?.documents)
         ? (summaryResp.documents as Document[])
@@ -1829,6 +1831,7 @@ useEffect(() => {
     setReplacePct,
     setReplaceFile,
     flash,
+    onDocumentsChanged,
   });
 
   const discardFieldEdits = (doc: Document) => {
@@ -2062,6 +2065,17 @@ useEffect(() => {
             recordProcedure={recordProcedure}
             discardEdits={discardFieldEdits}
             coreSaving={coreSaving}
+            catalogTypes={catalogDocTypes}
+            hasEdits={(docId) => {
+              const doc = docs.find((item) => item.id === docId)
+              if (!doc) return false
+              const core = coreEdits[docId]
+              const meta = metadataEdits[docId]
+              const coreDirty = core ? JSON.stringify(core) !== JSON.stringify(coreFromDocument(doc)) : false
+              const baseMeta = buildMetadataStateFromDoc(doc, metadataFieldMap.get(doc.doc_type) ?? [])
+              const metaDirty = meta ? JSON.stringify(meta) !== JSON.stringify(baseMeta) : false
+              return coreDirty || metaDirty
+            }}
           />
         )}
         </div>

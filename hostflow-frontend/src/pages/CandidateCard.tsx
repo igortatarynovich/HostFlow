@@ -4123,6 +4123,7 @@ export default function CandidateCard(){
 
   const handleDocumentsChanged = useCallback(() => {
     setDocsSummaryRefreshTrigger((x) => x + 1)
+    setOperatorFactsRevision((value) => value + 1)
     docsVerifyTaskSignatureRef.current = null
   }, [])
 
@@ -5146,7 +5147,10 @@ export default function CandidateCard(){
                   : `${docsCountsSummary.ready}/${docsCountsSummary.total}`}
               />
             ) : undefined,
-            legalization: operatorFactsView && operatorFactsView.legal_eligibility?.outcome !== 'pass' && operatorFactsView.citizenship_class !== 'pl' && operatorFactsView.citizenship_class !== 'eu_eea_ch' && operatorFactsView.steps.some((step) => (step.key === 'stay_basis' || step.key === 'work') && step.visible) ? (
+            legalization: operatorFactsView?.legalization?.readiness
+              ? operatorFactsView.legalization.readiness.ready ? undefined : (
+              <StatusBadge size="sm" shape="pill" semantic="warning" label={t('app.candidate_card.ia.legalization_required')} />
+            ) : operatorFactsView && operatorFactsView.legal_eligibility?.outcome !== 'pass' && operatorFactsView.citizenship_class !== 'pl' && operatorFactsView.citizenship_class !== 'eu_eea_ch' && operatorFactsView.steps.some((step) => (step.key === 'stay_basis' || step.key === 'work') && step.visible) ? (
               <StatusBadge size="sm" shape="pill" semantic="warning" label={t('app.candidate_card.ia.legalization_required')} />
             ) : undefined,
           }}

@@ -167,6 +167,14 @@
 
 ---
 
+## Legalization on the card
+
+**Status:** complete. Named gate **PASS** (2026-10-12): [Legalization Resolution Gate](../gates/legalization-resolution-gate.md).
+
+Applicability decides what can apply and what evidence is required. Document Hub holds the file. Legalization resolution evaluates that evidence once. Readiness reads only the resolved result. Further Candidate Card work does not reopen this contract.
+
+---
+
 ## AI Agent Notes
 - Все операции с кандидатами должны выполняться в контексте tenant и с соблюдением RLS.  
 - Нельзя изменять статус кандидата напрямую в БД — только через сервис `change_status()`.  

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
 import type { Document, DocumentStatus } from '../../api/types'
 import { EQUIVALENT_TYPE_GROUPS } from '../../data/documentTypeAliases'
@@ -10,8 +10,8 @@ import { DocumentUploadAction } from '../../components/ui/documentRequirement/Do
 import { DocumentRequirementRow } from '../../components/ui/documentRequirement/DocumentRequirementRow'
 import { DocumentStatus as DocumentStatusBadge, type DocumentStatusKind } from '../../components/ui/documentRequirement/DocumentStatus'
 import { PresenceToggle } from '../../components/ui/documentRequirement/PresenceToggle'
-import { InlineActions } from '../../components/ui/InlineActions'
 import { MetadataGrid } from '../../components/ui/MetadataGrid'
+import { OverflowMenu, type OverflowMenuItem } from '../../components/ui/OverflowMenu'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { WorkspaceSection } from '../../components/ui/WorkspaceSection'
 import DateInput from '../../components/controls/DateInput'
@@ -56,6 +56,20 @@ const CODE95_TYPES = new Set(['code95', 'driver_qualification_card', 'qualificat
 
 export type DocumentRowGroup = { key: string; types: string[] }
 
+function placeholderDocument(candidateId: string, code: string, processType?: string | null): Document {
+  return {
+    id: `synthetic::${code}::${candidateId}`,
+    candidate_id: candidateId,
+    doc_type: code,
+    type_code: code,
+    process_type: processType || undefined,
+    status: 'missing',
+    files: [],
+    meta_json: { synthetic: true, doc_type: code },
+    has_files: false,
+  } as Document
+}
+
 function expandTypeCodes(codes: Iterable<string>): Set<string> {
   const out = new Set<string>()
   const pending = Array.from(codes, (code) => normalizeDocTypeCode(code)).filter(Boolean)
@@ -80,11 +94,14 @@ function preferredDoc(list: Document[]): Document | undefined {
 
 function statusKind(doc: Document, hasFile: boolean): DocumentStatusKind {
   if (!hasFile) return 'missing'
+  const status = String(doc.status || '').toLowerCase()
+  if (status === 'rejected' || status === 'cancelled') return 'rejected'
+  if (status === 'expired') return 'expired'
+  if (status === 'approved' || status === 'verified' || status === 'completed') return 'approved'
   const badge = runtimeBadgeFromDocument(doc).badge
-  if (badge === 'approved') return 'approved'
   if (badge === 'rejected') return 'rejected'
-  if (badge === 'pending' || badge === 'expiring_soon' || badge === 'expired') return 'review'
-  return 'uploaded'
+  if (badge === 'expired') return 'expired'
+  return 'review'
 }
 
 export function OperatorDocumentRows({
@@ -113,6 +130,8 @@ export function OperatorDocumentRows({
   recordProcedure,
   discardEdits,
   coreSaving,
+  hasEdits,
+  catalogTypes = [],
 }: {
   candidateId: string
   docs: Document[]
@@ -139,10 +158,14 @@ export function OperatorDocumentRows({
   recordProcedure: (doc: Document, patch: { ordered_at?: string | null; status?: DocumentStatus; meta?: Record<string, unknown> }) => Promise<void>
   discardEdits: (doc: Document) => void
   coreSaving: Record<string, boolean>
+  hasEdits?: (docId: string) => boolean
+  catalogTypes?: Array<{ code: string; name?: string | null; title?: Record<string, string> | null; process_type?: string | null; aliases?: string[] | null }>
 }) {
   const { t } = useI18n()
   const [facts, setFacts] = useState<OperatorFactsView | null>(null)
+  const factsRequest = useRef(0)
   const [openCode, setOpenCode] = useState<string | null>(null)
+  const [editingCode, setEditingCode] = useState<string | null>(null)
   const [permitType, setPermitType] = useState<Record<string, string>>({})
   const yes = t('app.candidate_card.ia.doc_present', { defaultValue: 'Present' })
   const no = t('app.candidate_card.ia.doc_absent', { defaultValue: 'Absent' })
@@ -155,11 +178,12 @@ export function OperatorDocumentRows({
   }
 
   useEffect(() => {
+    const request = ++factsRequest.current
     let cancelled = false
     void api.get<OperatorFactsView>(`/candidates/${candidateId}/operator-facts`).then((response) => {
-      if (!cancelled) setFacts(response.data)
+      if (!cancelled && request === factsRequest.current) setFacts(response.data)
     }).catch(() => {
-      if (!cancelled) setFacts(null)
+      if (!cancelled && request === factsRequest.current) setFacts(null)
     })
     return () => {
       cancelled = true
@@ -196,8 +220,9 @@ export function OperatorDocumentRows({
 
   const step = (key: string) => facts?.steps?.find((item) => item.key === key)
   const patchFacts = async (patch: Record<string, unknown>) => {
+    const request = ++factsRequest.current
     const response = await api.put<OperatorFactsView>(`/candidates/${candidateId}/operator-facts`, patch)
-    setFacts(response.data)
+    if (request === factsRequest.current) setFacts(response.data)
     onFactsSaved?.()
   }
   const readPresence = (norm: string): boolean | null => {
@@ -282,7 +307,6 @@ export function OperatorDocumentRows({
       ? storedPresence
       : (hasFile ? true : null)
     const fileName = row.doc.files?.[0]?.name || ''
-    const uploadedAt = row.doc.files?.[0]?.uploaded_at
     const licence = LICENCE_TYPES.has(row.norm)
     const country = licence ? issuingCountry : ''
     const showSharedCode95 = licence && code95Required && Boolean(issuingCountry) && !separateCode95 && presence === true
@@ -320,7 +344,8 @@ export function OperatorDocumentRows({
         }}
       />
     )
-    const markedRequired = (typeLevel[row.type.code] || 'required') === 'required'
+    const markedRequired = stayDocumentRole(row.type) === 'decision'
+      || (typeLevel[row.type.code] || 'required') === 'required'
       || (licence && Object.entries(typeLevel).some(([code, level]) => level === 'required' && LICENCE_TYPES.has(normalizeDocTypeCode(code))))
     const requirement = (
       <StatusBadge
@@ -363,9 +388,54 @@ export function OperatorDocumentRows({
         ) : null}
       </span>
     )
-    let action: ReactNode = null
-    if (procedure && !hasFile && phase === 'absent') {
-      action = (
+    const reviewKind = statusKind(row.doc, true)
+    const menuItems: OverflowMenuItem[] = []
+    if (procedure && !hasFile && phase === 'ordered' && canManage) {
+      menuItems.push({
+        id: 'received',
+        label: t('app.candidate_card.ia.doc_mark_received', { defaultValue: 'Document received' }),
+        disabled: Boolean(coreSaving[row.doc.id]),
+        onSelect: () => void recordProcedure(row.doc, { status: 'in_progress' }),
+      })
+    }
+    if (hasFile && canManage) {
+      menuItems.push({
+        id: 'replace',
+        label: t('admin.documents.actions.replace', { defaultValue: 'Replace' }),
+        disabled: Boolean(uploading[row.doc.id]),
+        onSelect: () => document.getElementById(`doc-replace-${row.doc.id}`)?.click(),
+      })
+      menuItems.push({
+        id: 'remove',
+        label: t('app.candidate_card.ia.doc_remove', { defaultValue: 'Remove file' }),
+        tone: 'danger',
+        onSelect: () => deleteDocumentFile(row.doc),
+      })
+    }
+    if (hasFile && canManage && reviewKind !== 'approved') {
+      menuItems.push({
+        id: 'approve',
+        label: t('admin.documents.actions.approve', { defaultValue: 'Approve' }),
+        onSelect: () => approveDocument(row.doc),
+      })
+    }
+    if (hasFile && canManage && reviewKind !== 'rejected') {
+      menuItems.push({
+        id: 'reject',
+        label: t('admin.documents.actions.reject', { defaultValue: 'Reject' }),
+        tone: 'danger',
+        onSelect: () => rejectDocument(row.doc),
+      })
+    }
+    let primary: ReactNode = null
+    if (hasFile) {
+      primary = (
+        <Button type="button" variant="link" onClick={() => openDoc(row.doc)}>
+          {t('admin.documents.actions.open', { defaultValue: 'Open' })}
+        </Button>
+      )
+    } else if (procedure && phase === 'absent') {
+      primary = (
         <Button
           type="button"
           variant="primary"
@@ -379,101 +449,51 @@ export function OperatorDocumentRows({
           {t('app.candidate_card.ia.doc_order', { defaultValue: 'Order' })}
         </Button>
       )
-    } else if (procedure && !hasFile && phase === 'ordered') {
-      action = (
-        <Button
-          type="button"
-          variant="primary"
-          size="compact"
-          disabled={!canManage || coreSaving[row.doc.id]}
-          onClick={() => void recordProcedure(row.doc, { status: 'in_progress' })}
-        >
-          {t('app.candidate_card.ia.doc_mark_received', { defaultValue: 'Document received' })}
-        </Button>
-      )
-    } else if ((procedure && phase === 'received' && !hasFile) || (!procedure && presence === true && !hasFile)) {
-      action = uploadControl('button')
-    } else if (hasFile) {
-      action = (
-        <Button type="button" variant="link" onClick={() => openDoc(row.doc)}>
-          {t('admin.documents.actions.open', { defaultValue: 'Open' })}
-        </Button>
-      )
+    } else if ((procedure && phase === 'received') || (!procedure && presence === true)) {
+      primary = uploadControl('button')
     }
-    const reviewKind = statusKind(row.doc, true)
-    const metadataForm = showMetadata ? (
-      <DocumentMetadataForm
-        doc={row.doc}
-        metadataValues={metadataEdits[row.doc.id] ?? {}}
-        disabled={!canManage}
-        omitKeys={licence ? ['country'] : undefined}
-        getFieldValue={getFieldValue}
-        onChange={updateFieldValue}
-      />
-    ) : null
-    const details = expanded ? (
-      <DocumentDetails
-        file={hasFile ? (
-          <div className="space-y-2">
-            <div className="text-xs text-slate-500">{t('app.candidate_card.ia.doc_file_heading', { defaultValue: 'File' })}</div>
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <DocumentFile name={fileName} />
-              <DocumentStatusBadge kind={reviewKind} label={statusLabel(reviewKind, row.doc)} />
-            </div>
-            {uploadedAt ? (
-              <div className="text-xs text-slate-500">
-                {t('app.candidate_card.ia.doc_uploaded_on', {
-                  defaultValue: 'Uploaded {date}',
-                  values: { date: formatDate(uploadedAt) },
-                })}
-              </div>
-            ) : null}
-            <InlineActions
-              items={[
-                {
-                  key: 'open',
-                  node: (
-                    <Button type="button" variant="link" onClick={() => openDoc(row.doc)}>
-                      {t('admin.documents.actions.open', { defaultValue: 'Open' })}
-                    </Button>
-                  ),
-                },
-                { key: 'replace', node: canManage ? uploadControl('link') : null },
-                {
-                  key: 'remove',
-                  node: canManage ? (
-                    <Button type="button" variant="linkDanger" onClick={() => deleteDocumentFile(row.doc)}>
-                      {t('app.candidate_card.ia.doc_remove', { defaultValue: 'Remove file' })}
-                    </Button>
-                  ) : null,
-                },
-              ]}
-            />
-            <InlineActions
-              items={[
-                reviewKind !== 'approved' ? {
-                  key: 'approve',
-                  node: (
-                    <Button type="button" variant="link" disabled={!canManage} onClick={() => approveDocument(row.doc)}>
-                      {t('admin.documents.actions.approve', { defaultValue: 'Approve' })}
-                    </Button>
-                  ),
-                } : { key: 'approve', node: null },
-                reviewKind !== 'rejected' ? {
-                  key: 'reject',
-                  node: (
-                    <Button type="button" variant="linkDanger" disabled={!canManage} onClick={() => rejectDocument(row.doc)}>
-                      {t('admin.documents.actions.reject', { defaultValue: 'Reject' })}
-                    </Button>
-                  ),
-                } : { key: 'reject', node: null },
-              ]}
-            />
-          </div>
+    const action = (
+      <div className="flex items-center justify-end gap-1">
+        {primary}
+        {hasFile && canManage ? (
+          <DocumentUploadAction
+            appearance="hidden"
+            inputId={`doc-replace-${row.doc.id}`}
+            label={t('admin.documents.actions.replace', { defaultValue: 'Replace' })}
+            disabled={uploading[row.doc.id]}
+            onFile={(file) => void onUpload(row.doc, file)}
+          />
         ) : null}
-        metadata={(showMetadata || showFacts) ? (
-          <div className="space-y-3">
-            <MetadataGrid title={showMetadata ? t('app.candidate_card.ia.doc_data_heading', { defaultValue: 'Document data' }) : undefined}>
+        {menuItems.length ? (
+          <OverflowMenu
+            label={t('app.candidate_card.ia.doc_more_actions', { defaultValue: 'More actions' })}
+            items={menuItems}
+          />
+        ) : null}
+      </div>
+    )
+    const editing = editingCode === row.norm
+    const metadataValues = metadataEdits[row.doc.id] ?? {}
+    const readField = (key: string, kind: string) => {
+      const raw = getFieldValue(row.doc, key, metadataValues)
+      if (Array.isArray(raw)) return raw.filter(Boolean).join(', ')
+      if (raw == null || raw === '') return ''
+      if (kind === 'date') return formatDate(String(raw))
+      if (kind === 'select') {
+        const option = getDocumentFieldsConfig(row.norm).find((field) => field.key === key)?.options?.find((item) => item.value === raw)
+        if (!option) return String(raw)
+        return option.labelKey ? t(option.labelKey, { defaultValue: option.label }) : option.label
+      }
+      return String(raw)
+    }
+    const countryLabel = !country || country === 'unknown'
+      ? t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })
+      : ((countries || []).find((item) => item.value === country)?.label || country)
+    const details = expanded ? (
+      <DocumentDetails>
+        <MetadataGrid title={t('app.candidate_card.ia.doc_data_heading', { defaultValue: 'Document data' })}>
+          {editing ? (
+            <>
               {licence && (presence === true || needsCountry) ? (
                 <label className="block">
                   <div className="text-xs text-slate-500">{t('app.candidate_card.ia.issuing_country', { defaultValue: 'Issuing country' })}</div>
@@ -500,27 +520,80 @@ export function OperatorDocumentRows({
                   />
                 </label>
               ) : null}
-              {metadataForm}
-            </MetadataGrid>
-            {showMetadata && canManage ? (
-              <div className="flex items-center justify-end gap-2">
-                <Button type="button" variant="secondary" size="compact" onClick={() => discardEdits(row.doc)}>
+              {showMetadata ? (
+                <DocumentMetadataForm
+                  doc={row.doc}
+                  metadataValues={metadataValues}
+                  disabled={!canManage}
+                  omitKeys={licence ? ['country'] : undefined}
+                  getFieldValue={getFieldValue}
+                  onChange={updateFieldValue}
+                />
+              ) : null}
+            </>
+          ) : (
+            <>
+              {licence ? (
+                <div>
+                  <div className="text-xs text-slate-500">{t('app.candidate_card.ia.issuing_country', { defaultValue: 'Issuing country' })}</div>
+                  <div className="mt-1 text-sm text-slate-900">{countryLabel || '—'}</div>
+                </div>
+              ) : null}
+              {showSharedCode95 ? (
+                <div>
+                  <div className="text-xs text-slate-500">{t('app.candidate_card.ia.code95_valid_to', { defaultValue: 'Code 95 valid to' })}</div>
+                  <div className="mt-1 text-sm text-slate-900">{formatDate(step('code95')?.valid_to) || '—'}</div>
+                </div>
+              ) : null}
+              {showMetadata ? getDocumentFieldsConfig(row.norm)
+                .filter((field) => !(licence && field.key === 'country'))
+                .map((field) => (
+                  <div key={field.key}>
+                    <div className="text-xs text-slate-500">
+                      {field.labelKey ? t(field.labelKey, { defaultValue: field.label }) : field.label}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-900">{readField(field.key, field.type) || '—'}</div>
+                  </div>
+                )) : null}
+            </>
+          )}
+        </MetadataGrid>
+        {canManage ? (
+          <div className="mt-3 flex items-center justify-end gap-2">
+            {editing ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="compact"
+                  onClick={() => {
+                    discardEdits(row.doc)
+                    setEditingCode(null)
+                  }}
+                >
                   {t('common.actions.cancel', { defaultValue: 'Cancel' })}
                 </Button>
                 <Button
                   type="button"
                   variant="primary"
                   size="compact"
-                  disabled={coreSaving[row.doc.id]}
-                  onClick={() => saveCoreFields(row.doc)}
+                  disabled={coreSaving[row.doc.id] || !hasEdits?.(row.doc.id)}
+                  onClick={() => {
+                    saveCoreFields(row.doc)
+                    setEditingCode(null)
+                  }}
                 >
                   {coreSaving[row.doc.id] ? t('common.saving') : t('common.actions.save', { defaultValue: 'Save' })}
                 </Button>
-              </div>
-            ) : null}
+              </>
+            ) : (
+              <Button type="button" variant="secondary" size="compact" onClick={() => setEditingCode(row.norm)}>
+                {t('common.actions.edit', { defaultValue: 'Edit' })}
+              </Button>
+            )}
           </div>
         ) : null}
-      />
+      </DocumentDetails>
     ) : null
 
     const subtitle = contextLine(row.doc) || (licence && country
@@ -544,7 +617,7 @@ export function OperatorDocumentRows({
         fileStatus={fileStatus}
         action={action}
         expanded={expanded}
-        onToggle={(presence === true && (hasFile || Boolean(stayRole) || licence)) || (procedure && hasFile)
+        onToggle={(showMetadata || showFacts)
           ? () => setOpenCode((current) => (current === row.norm ? null : row.norm))
           : undefined}
         details={details}
@@ -556,20 +629,86 @@ export function OperatorDocumentRows({
     const nodes: Record<string, ReactNode> = {}
     for (const group of groups) {
       const wanted = expandTypeCodes(group.types)
+      const legal = facts?.legalization
+      const selectedStay = legal?.selected_stay
+      const workLabel = step('work')?.operator_label || ''
+      const evidenceGroups = group.key === 'stay'
+        ? (selectedStay?.evidence?.length
+          ? selectedStay.evidence
+          : [
+              { codes: selectedStay?.documents || [] },
+              { codes: selectedStay?.dependent_documents || [] },
+            ].filter((item) => item.codes.length))
+        : group.key === 'work' && (workLabel === 'oswiadczenie' || workLabel === 'work_permit')
+          ? [{ codes: [workLabel === 'oswiadczenie' ? 'oswiadczenie' : 'work_permit'] }]
+          : []
+      const requiredCodes = evidenceGroups.flatMap((item) => item.codes)
+      const supplemented = [...rows]
+      for (const evidenceGroup of evidenceGroups) {
+        const known = expandTypeCodes(evidenceGroup.codes.filter((code) => normalizeDocTypeCode(code) !== 'unclassified'))
+        const stored = docs.find((doc) => !isSyntheticDocumentId(doc.id) && known.has(normalizeDocTypeCode(doc.type_code || doc.doc_type || '')))
+        if (stored && !supplemented.some((row) => row.doc.id === stored.id)) {
+          const norm = normalizeDocTypeCode(stored.type_code || stored.doc_type || '')
+          const type = docTypes.find((item) => normalizeDocTypeCode(item.code) === norm)
+            || catalogTypes.find((item) => normalizeDocTypeCode(item.code) === norm)
+            || { code: norm, name: norm }
+          supplemented.push({ type, norm, doc: stored })
+        }
+        if (supplemented.some((row) => known.has(row.norm) && !isSyntheticDocumentId(row.doc.id))) continue
+        if (supplemented.some((row) => known.has(row.norm))) continue
+        const type = evidenceGroup.codes.map((code) => {
+          const norm = normalizeDocTypeCode(code)
+          if (!norm || norm === 'unclassified') return undefined
+          return catalogTypes.find((item) => normalizeDocTypeCode(item.code) === norm)
+        }).find(Boolean)
+        if (!type) continue
+        supplemented.push({
+          type,
+          norm: normalizeDocTypeCode(type.code),
+          doc: placeholderDocument(candidateId, type.code, type.process_type),
+        })
+      }
       const stayBasis = step('stay_basis')?.stored || ''
-      const cardChosen = rows.some((row) => {
+      const cardChosen = supplemented.some((row) => {
         if (stayDocumentRole(row.type) !== 'card') return false
         const stored = readPresence(row.norm)
         return stored === true || (stored !== false && documentHasFiles(row.doc))
       })
-      const grouped = rows.filter((row) => {
-        const inGroup = wanted.has(row.norm) || legalDocumentSlot(row.type) === group.key
+      const grouped = supplemented.filter((row) => {
+        const inGroup = wanted.has(row.norm) || legalDocumentSlot(row.type) === group.key || requiredCodes.some((code) => expandTypeCodes([code]).has(row.norm))
         if (!inGroup) return false
+        if (group.key === 'work') {
+          if (legal && legal.selection.work_required !== true) return documentHasFiles(row.doc)
+          const norm = row.norm
+          if (workLabel === 'oswiadczenie') return norm === 'oswiadczenie'
+          if (workLabel === 'work_permit') return norm !== 'oswiadczenie'
+          return documentHasFiles(row.doc)
+        }
         if (group.key !== 'stay') return true
+        if (legal) {
+          if (legal.selection.stay_required !== true || !selectedStay) return documentHasFiles(row.doc)
+          if (documentHasFiles(row.doc)) return true
+          const documents = expandTypeCodes(selectedStay.documents || [])
+          const dependent = expandTypeCodes(selectedStay.dependent_documents || [])
+          if (stayDocumentRole(row.type) === 'decision') return dependent.has(row.norm)
+          return documents.has(row.norm)
+        }
         if (stayDocumentRole(row.type) !== 'decision') return true
         return cardChosen || stayBasis === 'karta_pobytu'
       })
-      nodes[group.key] = grouped.length ? <DocumentRequirementList columns={columns}>{grouped.map(renderRow)}</DocumentRequirementList> : null
+      const visible = evidenceGroups.length
+        ? evidenceGroups.flatMap((evidenceGroup) => {
+            const known = expandTypeCodes(evidenceGroup.codes)
+            const matches = grouped.filter((row) => known.has(row.norm))
+            const best = matches.find((row) => documentHasFiles(row.doc))
+              || matches.find((row) => !isSyntheticDocumentId(row.doc.id) && row.doc.ordered_at)
+              || matches.find((row) => !isSyntheticDocumentId(row.doc.id))
+              || matches.find((row) => row.norm !== 'unclassified')
+              || matches[0]
+            return best ? [best] : []
+          }).concat(grouped.filter((row) => documentHasFiles(row.doc) && !evidenceGroups.some((evidenceGroup) => expandTypeCodes(evidenceGroup.codes).has(row.norm))))
+        : grouped
+      nodes[group.key] = visible.length ? <DocumentRequirementList columns={columns}>{visible.map(renderRow)}</DocumentRequirementList> : null
     }
     return <>{renderGroups(nodes)}</>
   }
