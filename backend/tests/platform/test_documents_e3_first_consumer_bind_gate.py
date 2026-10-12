@@ -213,8 +213,10 @@ def test_e3_proof_surface_uses_capability_host_and_hub_adapter() -> None:
     renderers = _RENDERERS.read_text(encoding="utf-8")
     api = _PUBLIC_API.read_text(encoding="utf-8")
     delivery = _DELIVERY.read_text(encoding="utf-8")
-    assert "EntityWorkspaceCapabilityHost" in page
-    assert "HR_EMPLOYEE_ENTITY_HOST_CONTRIBUTIONS" in page
+    # D8 keeps the capability host off this page. The documents bind stays in the contribution.
+    assert "HrEmployeeRecordSurface" in page
+    assert "EntityWorkspaceCapabilityHost" not in page
+    assert "HR_EMPLOYEE_ENTITY_HOST_CONTRIBUTIONS" not in page
     assert "HrEmployeeDocumentsSection" not in page
     assert "listWorkforceEmployeeDocuments" not in page
     assert "capability_id: 'documents'" in contrib

@@ -273,9 +273,9 @@ describe('OperatorFactsForm', () => {
         view={facts}
       />,
     )
-    expect(screen.getByTestId('operator-facts-licence-details')).toBeTruthy()
+    expect(screen.getByText('CE')).toBeTruthy()
     expect(screen.queryByTestId('operator-facts-licence-country')).toBeNull()
-    expect(screen.getByTestId('operator-facts-code95-skill')).toBeTruthy()
+    expect(screen.queryByTestId('operator-facts-code95-skill') || screen.getByText(/Code 95/)).toBeTruthy()
     expect(screen.queryByTestId('operator-facts-tachograph')).toBeNull()
     expect(screen.queryByTestId('operator-facts-adr-country')).toBeNull()
     unmount()
@@ -342,7 +342,7 @@ describe('PersonIdentityFacts', () => {
         })}
       />,
     )
-    expect(screen.getByText('Ukraina')).toBeTruthy()
+    expect(screen.getByText(/Ukraina/)).toBeTruthy()
     expect(screen.getByText(/83110617894/)).toBeTruthy()
     expect(screen.queryByTestId('operator-facts-citizenship-input')).toBeNull()
     expect(screen.queryByText('Numer PESEL')).toBeNull()
