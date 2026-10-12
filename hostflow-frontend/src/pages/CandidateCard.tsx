@@ -26,7 +26,9 @@ import { sendRodo } from '../api/legalDocuments'
 import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
 import OperatorFactsSurface, { type OperatorFactsSlice, type OperatorFactsView } from '../modules/candidates/OperatorFactsSurface'
-import { CandidateCardTabs, CardAccordion, ReadRows, joinParts, type CandidateCardTabId } from '../components/candidate/card/CandidateCardChrome'
+import { CandidateCardTabs, CardAccordion, joinParts, type CandidateCardTabId } from '../components/candidate/card/CandidateCardChrome'
+import { ReadFieldRows } from '../components/ui/ReadFieldRows'
+import { FieldGrid } from '../components/ui/FieldGrid'
 import { StagePipeline } from '../components/ui/StagePipeline'
 import { CompactMetric } from '../components/ui/CompactMetric'
 import { ProgressRing } from '../components/ui/ProgressRing'
@@ -4123,6 +4125,7 @@ export default function CandidateCard(){
 
   const handleDocumentsChanged = useCallback(() => {
     setDocsSummaryRefreshTrigger((x) => x + 1)
+    setOperatorFactsRevision((value) => value + 1)
     docsVerifyTaskSignatureRef.current = null
   }, [])
 
@@ -5146,7 +5149,10 @@ export default function CandidateCard(){
                   : `${docsCountsSummary.ready}/${docsCountsSummary.total}`}
               />
             ) : undefined,
-            legalization: operatorFactsView && operatorFactsView.legal_eligibility?.outcome !== 'pass' && operatorFactsView.citizenship_class !== 'pl' && operatorFactsView.citizenship_class !== 'eu_eea_ch' && operatorFactsView.steps.some((step) => (step.key === 'stay_basis' || step.key === 'work') && step.visible) ? (
+            legalization: operatorFactsView?.legalization?.readiness
+              ? operatorFactsView.legalization.readiness.ready ? undefined : (
+              <StatusBadge size="sm" shape="pill" semantic="warning" label={t('app.candidate_card.ia.legalization_required')} />
+            ) : operatorFactsView && operatorFactsView.legal_eligibility?.outcome !== 'pass' && operatorFactsView.citizenship_class !== 'pl' && operatorFactsView.citizenship_class !== 'eu_eea_ch' && operatorFactsView.steps.some((step) => (step.key === 'stay_basis' || step.key === 'work') && step.visible) ? (
               <StatusBadge size="sm" shape="pill" semantic="warning" label={t('app.candidate_card.ia.legalization_required')} />
             ) : undefined,
           }}
@@ -5164,7 +5170,7 @@ export default function CandidateCard(){
                 countries.find((item) => item.value === (extra.citizenship || model.country_code))?.label,
               ])}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-8">
+              <FieldGrid cols={2}>
               <CandidateBasicSection
                 candidate={model}
                 extra={extra}
@@ -5276,7 +5282,7 @@ export default function CandidateCard(){
                   setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
                 }}
               />
-              </div>
+              </FieldGrid>
             </CardAccordion>
           ) : null}
           {cardTab === 'personal' && !isMasked && registrySectionVisible('basic') ? (
@@ -5287,7 +5293,7 @@ export default function CandidateCard(){
               defaultOpen
               summary={joinParts([model.phone, model.email])}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-8">
+              <FieldGrid cols={2}>
               <CandidateBasicSection
                 candidate={model}
                 extra={extra}
@@ -5324,7 +5330,7 @@ export default function CandidateCard(){
                   setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
                 }}
               />
-              </div>
+              </FieldGrid>
             </CardAccordion>
           ) : null}
 
@@ -5466,7 +5472,7 @@ export default function CandidateCard(){
                 extra.address?.city,
               ])}
             >
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <FieldGrid cols={2}>
               <CandidatePersonalSection
                 candidate={model}
                 extra={extra}
@@ -5491,7 +5497,7 @@ export default function CandidateCard(){
                   setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
                 }}
               />
-              </div>
+              </FieldGrid>
             </CardAccordion>
           ) : null}
           {cardTab === 'personal' && !isMasked && !isNew && createdAtDisplay ? (
@@ -5527,16 +5533,17 @@ export default function CandidateCard(){
               {!isMasked ? (
                 <div id="candidate-documents-workspace" className="space-y-3" data-document-focus={docsFocusType || undefined}>
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    <button
+                    <Button
                       type="button"
-                      className="btn-secondary btn-compact"
+                      variant="secondary"
+                      size="compact"
                       onClick={() => void generateUploadLink()}
                       disabled={uploadLinkBusy}
                     >
                       {uploadLinkBusy
                         ? t('app.candidate_card.actions.upload_link_creating')
                         : t('app.candidate_card.actions.upload_link')}
-                    </button>
+                    </Button>
                   </div>
                   {(uploadLink?.documents_url || uploadLink?.apply_url) ? (
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
@@ -5771,7 +5778,7 @@ export default function CandidateCard(){
                   </div>
                 </section>
               ) : (
-                <ReadRows
+                <ReadFieldRows
                   rows={[
                     { label: t('app.candidate_card.fields.vacancy'), value: model.vacancy_name || '—' },
                     { label: t('app.candidate_card.fields.company'), value: model.company_name || '—' },

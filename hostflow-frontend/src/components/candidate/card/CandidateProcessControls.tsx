@@ -85,7 +85,7 @@ export function CandidateProcessControls({
   if (part === 'manager') {
     return (
       <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-700">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
           {managerInitials}
         </div>
         <div className="min-w-0 flex-1">
@@ -109,7 +109,7 @@ export function CandidateProcessControls({
               <div className="truncate text-sm font-medium text-slate-900">
                 {managerName || t('app.candidate_card.fields.manager_not_assigned', { defaultValue: 'Not assigned' })}
               </div>
-              {managerRole ? <div className="truncate text-[11px] text-slate-500">{managerRole}</div> : null}
+              {managerRole ? <div className="truncate text-xs text-slate-500">{managerRole}</div> : null}
             </>
           )}
         </div>

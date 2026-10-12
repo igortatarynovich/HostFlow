@@ -10,11 +10,12 @@ import {
   formatExtractionValue,
   hasExtractionBlockers,
   normDocType,
-  requirementStatusBadgeClass,
   resolveRequirementRowStatus,
   variantDocumentTypeCodes,
 } from '../requirementsChecklistPresentation'
 import { requirementTitle, variantLabel } from './requirementRowLabels'
+import { StatusBadge } from '../../ui/StatusBadge'
+import { requirementRowStatusToSemantic } from '../../ui/statusBadgeSemantics'
 
 export type RequirementDetailPaneProps = {
   item: RequirementChecklistItem
@@ -173,14 +174,7 @@ export default function RequirementDetailPane({
             </div>
           )}
         </div>
-        <span
-          className={clsx(
-            'shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold',
-            requirementStatusBadgeClass(rowStatus),
-          )}
-        >
-          {statusLabel}
-        </span>
+        <StatusBadge size="sm" shape="pill" semantic={requirementRowStatusToSemantic(rowStatus)} label={statusLabel} />
       </div>
 
       {rowStatus === 'not_applicable' ? (
@@ -193,7 +187,7 @@ export default function RequirementDetailPane({
 
       {!evidence && canLinkOrSelect ? (
         <div className="mt-4 space-y-2">
-          <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
             {t('app.candidate_card.requirements_checklist.evidence_picker_label', {
               defaultValue: 'Confirm with',
             })}
@@ -240,7 +234,7 @@ export default function RequirementDetailPane({
           ) : null}
 
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
               {t('app.candidate_card.requirements_checklist.linked_documents', {
                 defaultValue: 'Linked documents',
               })}
@@ -283,7 +277,7 @@ export default function RequirementDetailPane({
 
           {canLinkOrSelect && (rowStatus === 'selected' || rowStatus === 'pending_review' || rowStatus === 'rejected') ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-2">
-              <div className="text-[11px] font-semibold text-slate-700">
+              <div className="text-xs font-semibold text-slate-700">
                 {t('app.candidate_card.requirements_checklist.link_document', {
                   defaultValue: 'Link document',
                 })}
@@ -351,7 +345,7 @@ export default function RequirementDetailPane({
 
           {showAlternativePaths ? (
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                 {t('app.candidate_card.requirements_checklist.evidence_paths', {
                   defaultValue: 'Evidence paths',
                 })}
@@ -395,7 +389,7 @@ export default function RequirementDetailPane({
               (doc.missing_extraction_fields?.length || 0) > 0,
           ) ? (
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                 {t('app.candidate_card.requirements_checklist.extraction_fields', {
                   defaultValue: 'Document data',
                 })}

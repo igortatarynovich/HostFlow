@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { useI18n } from '../../i18n'
 import CandidateDocuments from '../../modules/documents/CandidateDocuments'
 import type { CandidateProfile } from '../../api/candidate_profiles'
+import { Button } from '../ui/Button'
 
 export default function CandidateDocsWorkspacePanel({
   candidateId,
@@ -44,21 +45,22 @@ export default function CandidateDocsWorkspacePanel({
           <div className="text-xs font-semibold text-slate-700">
             {t('app.candidate_card.docs_workspace.title', { defaultValue: 'Documents' })}
           </div>
-          <div className="mt-0.5 text-[11px] text-slate-500">
+          <div className="mt-0.5 text-xs text-slate-500">
             {t('app.candidate_card.docs_workspace.hint', { defaultValue: 'Checklist, uploads, checks.' })}
           </div>
         </div>
 
         <div className="shrink-0 flex flex-wrap items-center gap-2">
-          <button
+          <Button
             type="button"
-            className="text-[11px] text-slate-500 hover:text-slate-700"
+            variant="link"
+            className="text-xs text-slate-500 hover:text-slate-700"
             onClick={() => setOpen((v) => !v)}
             disabled={isDisabled}
             title={isDisabled ? t('app.candidate_card.docs.disabled') : undefined}
           >
             {open ? t('common.actions.collapse') : t('common.actions.expand')}
-          </button>
+          </Button>
         </div>
       </div>
 

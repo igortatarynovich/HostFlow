@@ -99,3 +99,34 @@ export function nextActionPriorityToSemantic(
       return 'neutral'
   }
 }
+
+/** Requirement / evidence checklist row status → semantic. */
+export function requirementRowStatusToSemantic(
+  status?:
+    | 'missing'
+    | 'selected'
+    | 'pending_review'
+    | 'approved'
+    | 'rejected'
+    | 'superseded'
+    | 'not_applicable'
+    | string
+    | null,
+): StatusBadgeSemantic {
+  switch (String(status || '').toLowerCase()) {
+    case 'approved':
+      return 'success'
+    case 'pending_review':
+      return 'warning'
+    case 'selected':
+      return 'info'
+    case 'rejected':
+      return 'danger'
+    case 'superseded':
+    case 'not_applicable':
+      return 'neutral'
+    case 'missing':
+    default:
+      return 'warning'
+  }
+}

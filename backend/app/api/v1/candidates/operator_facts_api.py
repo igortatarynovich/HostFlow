@@ -15,6 +15,7 @@ from backend.app.auth.trust_role_deps import require_trust_read, require_trust_w
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.services.operator_facts_persistence import (
+    hub_documents_for_candidate,
     operator_facts_view_for_candidate,
     preparing_employment_for_candidate,
     save_operator_facts,
@@ -59,9 +60,14 @@ async def get_operator_facts(
     employment = await preparing_employment_for_candidate(
         db, tenant_id=tenant_id_str, candidate_id=candidate_id_str
     )
+    documents = await hub_documents_for_candidate(
+        db, tenant_id=tenant_id_str, candidate_id=candidate_id_str
+    )
     return operator_facts_view_for_candidate(
         candidate,
         employment_id=str(employment.id) if employment is not None else None,
+        hub_documents=documents,
+        employment_context={"client_company_id": employment.client_company_id} if employment is not None else {},
     )
 
 

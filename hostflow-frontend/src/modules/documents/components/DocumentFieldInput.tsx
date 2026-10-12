@@ -80,14 +80,22 @@ export const DocumentFieldInput = memo(function DocumentFieldInput({
     return (
       <label className="col-span-full block">
         <div className="text-xs text-slate-500">{label}</div>
-        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+        <div className="mt-1 flex flex-wrap gap-1.5">
           {fieldConfig.options?.map((opt) => {
             const isChecked = selectedValues.includes(opt.value);
+            const text = opt.labelKey ? t(opt.labelKey, { defaultValue: opt.label }) : opt.label;
             return (
-              <label key={opt.value} className="flex items-center gap-2 text-xs">
+              <label
+                key={opt.value}
+                className={`inline-flex h-7 items-center rounded-md border px-2 text-xs ${
+                  isChecked
+                    ? 'border-brand-300 bg-brand-50 text-slate-900'
+                    : 'border-slate-200 bg-white text-slate-600'
+                } ${disabled ? 'cursor-default opacity-60' : 'cursor-pointer'}`}
+              >
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300"
+                  className="sr-only"
                   checked={isChecked}
                   onChange={(e) => {
                     if (e.target.checked) {
@@ -98,7 +106,7 @@ export const DocumentFieldInput = memo(function DocumentFieldInput({
                   }}
                   disabled={disabled}
                 />
-                <span>{opt.labelKey ? t(opt.labelKey, { defaultValue: opt.label }) : opt.label}</span>
+                <span>{text}</span>
               </label>
             );
           })}

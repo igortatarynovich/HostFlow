@@ -25,6 +25,7 @@ STAY_BASIS = (
     "visa_free",
     "waiting_for_trc",
     "special_protection",
+    "withdrawal_agreement",
     "other",
     "none",
 )

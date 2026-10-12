@@ -19,7 +19,7 @@
 
 **Documents are shared platform objects, not module-owned files.**
 
-- **Ownership:** `owner_company_id` задаёт владельца.  
+- **Ownership:** `owner_company_id` задаёт владельца. Candidate Card legalization does not keep a second file. It reads Hub evidence and shows the resolved result ([Legalization Resolution Gate](../specs/gates/legalization-resolution-gate.md), **PASS** 2026-10-12).  
 - **Использование:** `Document Link` + `module_key` + `access_scope` — где документ фигурирует.  
 - **Права:** кто видит / проверяет / меняет / скачивает.  
 - **Handoff между компаниями:** явная политика (какие документы, поля, срок, download vs просмотр, запрос исправления).

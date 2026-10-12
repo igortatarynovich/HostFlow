@@ -461,6 +461,7 @@ export function useDocumentActions({
         }
         flash(t("admin.documents.notifications.core_saved"));
         await loadAll();
+        onDocumentsChanged?.();
       } catch (e: any) {
         if (
           planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.core_failed"))
@@ -488,6 +489,7 @@ export function useDocumentActions({
       setCoreSaving,
       flash,
       onFieldsApplied,
+      onDocumentsChanged,
       t,
     ]
   );

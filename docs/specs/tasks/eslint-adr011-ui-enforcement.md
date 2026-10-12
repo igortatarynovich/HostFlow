@@ -1,7 +1,7 @@
 # Задача: автоматизация чеклиста ADR-011 (ESLint + статические проверки)
 
 **Статус:** В работе — фаза A: скрипт layout `*-[\d]px` **в CI с `--fail`**; база arbitrary layout px вычищена (токены `hf-*` в `tailwind.config.cjs`).  
-**Связано с:** [`ADR-011: Платформенный стандарт UI`](../architecture/ADR-011-hostflow-ui-platform-standard.md) (§12 чеклист PR и **политика против дрейфа**, §13 эволюция п.4).
+**Связано с:** [`ADR-011: Платформенный стандарт UI`](../architecture/ADR-011-hostflow-ui-platform-standard.md) (§12 чеклист PR и **политика против дрейфа**, §14 эволюция п.4).
 
 ## Цель
 
@@ -41,7 +41,7 @@
 
 - [x] В `hostflow-frontend` есть команда `ui:adr011:check` (layout arbitrary `px`, **`--fail`** в CI).
 - [x] `eslint-plugin-jsx-a11y` в ESLint (пресет **`strict`** + кастом **`anchor-is-valid`** для Router).
-- [x] В ADR-011 §13 п.4 — ссылка на эту задачу.
+- [x] В ADR-011 §14 п.4 — ссылка на эту задачу.
 - [x] В [`ci_gates.md`](../quality/ci_gates.md) — актуализировано описание гейта.
 - [x] CI: `qa:static` падает при новых layout arbitrary `px` (регрессия ADR-011 §3).
 

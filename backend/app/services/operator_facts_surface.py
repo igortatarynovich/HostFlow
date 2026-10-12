@@ -32,6 +32,8 @@ from backend.app.reference.legal_eligibility_chain import (
     WORK_LABELS as _WORK_LABELS,
     citizenship_class,
 )
+from backend.app.reference.legalization_catalog import CARD_KINDS, resolve_legalization
+from backend.app.reference.legalization_resolution import apply_hub_resolution, readiness_from_resolved
 from backend.app.reference.requirement_resolution import (
     CE_DOCUMENT_CODES,
     POLICY_ID as POLICY_REQUIREMENT_RESOLUTION,
@@ -110,6 +112,10 @@ def empty_facts() -> dict[str, Any]:
         "citizenship": None,
         "stay_basis": None,
         "stay_card_kind": None,
+        "stay_required_override": None,
+        "stay_exemption": None,
+        "work_required_override": None,
+        "work_exemption": None,
         "visa_type": None,
         "visa_purpose": None,
         "stay_valid_to": None,
@@ -152,8 +158,12 @@ def facts_from_personal_data(personal_data: Mapping[str, Any] | None) -> dict[st
     if stay in _STAY:
         facts["stay_basis"] = stay
     card_kind = _text(raw.get("stay_card_kind"))
-    if facts["stay_basis"] == "karta_pobytu" and card_kind in {"pobytu", "rezydent"}:
+    if facts["stay_basis"] == "karta_pobytu" and card_kind in CARD_KINDS:
         facts["stay_card_kind"] = card_kind
+    facts["stay_required_override"] = _bool_or_none(raw.get("stay_required_override"))
+    facts["stay_exemption"] = _text(raw.get("stay_exemption"))
+    facts["work_required_override"] = _bool_or_none(raw.get("work_required_override"))
+    facts["work_exemption"] = _text(raw.get("work_exemption"))
     facts["visa_type"] = _text(raw.get("visa_type"))
     facts["visa_purpose"] = _text(raw.get("visa_purpose"))
     facts["stay_valid_to"] = _date_text(raw.get("stay_valid_to"))
@@ -268,7 +278,11 @@ def _presence_code(value: Any) -> str | None:
     if not raw or re.fullmatch(r"[a-z0-9_]{1,80}", raw) is None:
         return None
     mapped = canonical_document_code(raw)
-    return mapped or raw
+    # ``decision`` is a legalization evidence code. The registry alias maps it
+    # to the inbox bucket, which would hide the operator's Есть/Нет.
+    if not mapped or mapped == "unclassified":
+        return raw
+    return mapped
 
 
 def _document_presence(value: Any) -> dict[str, bool]:
@@ -360,53 +374,55 @@ def apply_operator_facts_patch(
             nxt["citizenship"] = None
         else:
             nxt["citizenship"] = _country(patch.get("citizenship"))
-    klass = citizenship_class(nxt.get("citizenship"))
-    if klass in {"pl", "eu_eea_ch"}:
-        nxt["stay_basis"] = None
-        nxt["stay_card_kind"] = None
-        nxt["visa_type"] = None
-        nxt["visa_purpose"] = None
-        nxt["stay_valid_to"] = None
-        nxt["work"] = _blank_work()
-        if employment_id:
-            employments = dict(nxt["employments"])
-            employments.pop(employment_id, None)
-            nxt["employments"] = employments
-    else:
-        if "stay_basis" in patch:
-            if _is_unknown(patch.get("stay_basis")) or not _text(patch.get("stay_basis")):
-                nxt["stay_basis"] = None
-            else:
-                stay = str(patch.get("stay_basis")).strip()
-                if stay not in _STAY:
-                    raise OperatorFactsRejected(f"stay_basis {stay} is not a chain value")
-                nxt["stay_basis"] = stay
-                if stay != "karta_pobytu":
-                    nxt["stay_card_kind"] = None
+    if "stay_required" in patch:
+        nxt["stay_required_override"] = _bool_or_none(patch.get("stay_required"))
+    if "stay_exemption" in patch:
+        nxt["stay_exemption"] = None if _is_unknown(patch.get("stay_exemption")) else _text(patch.get("stay_exemption"))
+    if "work_required" in patch:
+        nxt["work_required_override"] = _bool_or_none(patch.get("work_required"))
+    if "work_exemption" in patch:
+        nxt["work_exemption"] = None if _is_unknown(patch.get("work_exemption")) else _text(patch.get("work_exemption"))
+    if "stay_basis" in patch:
+        if _is_unknown(patch.get("stay_basis")) or not _text(patch.get("stay_basis")):
+            nxt["stay_basis"] = None
+        else:
+            stay = str(patch.get("stay_basis")).strip()
+            if stay not in _STAY:
+                raise OperatorFactsRejected(f"stay_basis {stay} is not a chain value")
+            nxt["stay_basis"] = stay
+            if stay != "karta_pobytu":
+                nxt["stay_card_kind"] = None
+            if stay not in STAY_WITH_VISA_PARAMETERS and stay not in {"visa_c", "visa_d"}:
                 nxt["visa_type"] = None
                 nxt["visa_purpose"] = None
-        if "stay_card_kind" in patch:
-            kind = _text(patch.get("stay_card_kind"))
-            nxt["stay_card_kind"] = kind if kind in {"pobytu", "rezydent"} and nxt.get("stay_basis") == "karta_pobytu" else None
-        if "visa_type" in patch:
-            nxt["visa_type"] = None if _is_unknown(patch.get("visa_type")) else _text(patch.get("visa_type"))
-        if "visa_purpose" in patch:
-            nxt["visa_purpose"] = None if _is_unknown(patch.get("visa_purpose")) else _text(patch.get("visa_purpose"))
-        if "stay_valid_to" in patch:
-            nxt["stay_valid_to"] = None if _is_unknown(patch.get("stay_valid_to")) else _date_text(patch.get("stay_valid_to"))
-        if any(
-            key in patch
-            for key in (
-                "work_label",
-                "work_authorization_basis",
-                "procedure_type",
-                "valid_for_this_employment",
-                "authorization_valid_from",
-                "authorization_valid_to",
-                "authorization_conditions",
-            )
-        ):
-            _apply_work_patch(nxt, patch, employment_id)
+    if "stay_card_kind" in patch:
+        kind = _text(patch.get("stay_card_kind"))
+        nxt["stay_card_kind"] = kind if kind in CARD_KINDS and nxt.get("stay_basis") == "karta_pobytu" else None
+    if "visa_type" in patch:
+        nxt["visa_type"] = None if _is_unknown(patch.get("visa_type")) else _text(patch.get("visa_type"))
+        if nxt["visa_type"] in {"C", "c"} and nxt.get("stay_basis") in {None, "visa_c", "visa_d"}:
+            nxt["stay_basis"] = "visa_c"
+            nxt["visa_type"] = "C"
+        elif nxt["visa_type"] in {"D", "d"} and nxt.get("stay_basis") in {None, "visa_c", "visa_d"}:
+            nxt["stay_basis"] = "visa_d"
+            nxt["visa_type"] = "D"
+    if "visa_purpose" in patch:
+        nxt["visa_purpose"] = None if _is_unknown(patch.get("visa_purpose")) else _text(patch.get("visa_purpose"))
+    if "stay_valid_to" in patch:
+        nxt["stay_valid_to"] = None if _is_unknown(patch.get("stay_valid_to")) else _date_text(patch.get("stay_valid_to"))
+    if any(
+        key in patch
+        for key in (
+            "work_label",
+            "work_authorization_basis",
+            "procedure_type",
+            "valid_for_this_employment",
+            "authorization_valid_from",
+            "authorization_valid_to",
+            "authorization_conditions",
+        )
+    ):
+        _apply_work_patch(nxt, patch, employment_id)
     if "licence_issuing_country" in patch:
         _assign_country(nxt, "licence_issuing_country", patch.get("licence_issuing_country"))
     if "licence_categories" in patch:
@@ -549,12 +565,36 @@ def chain_reading(facts: Mapping[str, Any], *, employment_id: str | None = None)
 
     klass = citizenship_class(facts.get("citizenship"))
     if klass in {"pl", "eu_eea_ch"}:
-        return {
-            "citizenship_class": klass,
-            "stay_basis": "not_required",
-            "work_authorization_basis": "not_required",
-            "valid_for_this_employment": "yes",
-        }
+        stay_stored = facts.get("stay_basis") if facts.get("stay_basis") in _STAY else None
+        work_now = _work_for(facts, employment_id)
+        label = operator_work_label(work_now)
+        stay_open = facts.get("stay_required_override") is True or stay_stored not in {None, "not_required"}
+        work_open = facts.get("work_required_override") is True or (
+            label not in {None, "not_required"} and facts.get("work_required_override") is not False
+        )
+        if not stay_open and not work_open:
+            return {
+                "citizenship_class": klass,
+                "stay_basis": "not_required",
+                "work_authorization_basis": "not_required",
+                "valid_for_this_employment": "yes",
+            }
+        if not stay_open:
+            basis = work_now.get("work_authorization_basis")
+            if basis in {"included_in_stay", "separate_required"}:
+                valid = "no" if work_now.get("valid_no") else "operator_verification"
+                return {
+                    "citizenship_class": klass,
+                    "stay_basis": "not_required",
+                    "work_authorization_basis": basis,
+                    "valid_for_this_employment": valid,
+                }
+            return {
+                "citizenship_class": klass,
+                "stay_basis": "not_required",
+                "work_authorization_basis": None,
+                "valid_for_this_employment": "operator_verification",
+            }
     if klass is None:
         return {
             "citizenship_class": None,
@@ -584,7 +624,7 @@ def chain_reading(facts: Mapping[str, Any], *, employment_id: str | None = None)
             "citizenship_class": klass,
             "stay_basis": stay,
             "work_authorization_basis": "not_required",
-            "valid_for_this_employment": "yes",
+            "valid_for_this_employment": "operator_verification",
         }
     if basis not in {"included_in_stay", "separate_required"}:
         return {
@@ -665,6 +705,27 @@ def _card_row(row: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _legalization_reading(
+    facts: Mapping[str, Any],
+    *,
+    hub_documents: list[Mapping[str, Any]] | None,
+    employment_context: Mapping[str, Any] | None,
+    today: date | None,
+) -> dict[str, Any]:
+    reading = resolve_legalization(facts)
+    if hub_documents is None:
+        reading = dict(reading)
+        reading["readiness"] = readiness_from_resolved(reading.get("resolved") or {})
+        return reading
+    return apply_hub_resolution(
+        reading,
+        list(hub_documents),
+        facts=facts,
+        employment=employment_context,
+        today=today,
+    )
+
+
 def build_operator_facts_view(
     facts: Mapping[str, Any],
     *,
@@ -672,6 +733,8 @@ def build_operator_facts_view(
     today: date | None = None,
     requirements: list[Mapping[str, Any]] | None = None,
     evidence: list[Mapping[str, Any]] | None = None,
+    hub_documents: list[Mapping[str, Any]] | None = None,
+    employment_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     klass = citizenship_class(facts.get("citizenship"))
     chain = chain_reading(facts, employment_id=employment_id)
@@ -767,6 +830,12 @@ def build_operator_facts_view(
         "licence_category_codes": licence_category_codes(),
         "stay_choices": list(_STAY),
         "work_choices": list(OPERATOR_WORK_CHOICES),
+        "legalization": _legalization_reading(
+            {**facts, "work": work},
+            hub_documents=hub_documents,
+            employment_context=employment_context,
+            today=today,
+        ),
         "employment_id": employment_id,
         "document_presence": dict(facts.get("document_presence") or {}),
     }
@@ -1118,6 +1187,10 @@ def personal_data_with_facts(
     personal["operator_facts"] = {
         "stay_basis": facts.get("stay_basis"),
         "stay_card_kind": facts.get("stay_card_kind"),
+        "stay_required_override": facts.get("stay_required_override"),
+        "stay_exemption": facts.get("stay_exemption"),
+        "work_required_override": facts.get("work_required_override"),
+        "work_exemption": facts.get("work_exemption"),
         "visa_type": facts.get("visa_type"),
         "visa_purpose": facts.get("visa_purpose"),
         "stay_valid_to": facts.get("stay_valid_to"),

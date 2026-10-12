@@ -5,6 +5,7 @@ import type { CandidateNote, StageHistoryEntry } from '../../modules/candidate-c
 import { useI18n } from '../../i18n'
 import { formatDateSafe } from '../../modules/candidates/candidateUtils'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { Button } from '../ui/Button'
 
 type TimelineFilter = { stage: boolean; notes: boolean; reminders: boolean }
 
@@ -152,21 +153,23 @@ export default function CandidateTimelinePanel({
               {t('app.candidate_card.activity_feed.title', { defaultValue: 'Activity' })}
             </div>
             {stageHistoryShortcut && includeStageChanges ? (
-              <button
+              <Button
                 type="button"
-                className="text-[11px] font-medium text-brand-700 hover:text-brand-800 hover:underline"
+                variant="link"
+                className="text-xs"
                 onClick={() => {
                   setFilter({ stage: true, notes: false, reminders: false })
                   setOpen(true)
                 }}
               >
                 {t('app.candidate_card.timeline.stage_changes_only', { defaultValue: 'Stage changes only' })}
-              </button>
+              </Button>
             ) : null}
             {!hideToggle ? (
-              <button
+              <Button
                 type="button"
-                className="text-[11px] text-slate-500 hover:text-slate-700"
+                variant="link"
+                className="text-xs text-slate-500 hover:text-slate-700"
                 onClick={() => {
                   const next = !open
                   setOpen(next)
@@ -174,14 +177,14 @@ export default function CandidateTimelinePanel({
                 }}
               >
                 {open ? t('common.actions.collapse') : t('common.actions.expand')}
-              </button>
+              </Button>
             ) : null}
           </div>
           {timelineError ? (
             <div className="mt-1 text-xs text-red-600">
               <div>{timelineError.title}</div>
               {timelineError.detail ? (
-                <div className="mt-0.5 text-[11px] text-red-700/90">{timelineError.detail}</div>
+                <div className="mt-0.5 text-xs text-red-700/90">{timelineError.detail}</div>
               ) : null}
             </div>
           ) : null}
@@ -240,7 +243,7 @@ export default function CandidateTimelinePanel({
                       <div className="text-sm font-medium text-slate-900">{it.title}</div>
                       {it.meta ? <div className="mt-0.5 text-xs text-slate-600">{it.meta}</div> : null}
                     </div>
-                    <div className="shrink-0 text-[11px] text-slate-500" title={it.at}>
+                    <div className="shrink-0 text-xs text-slate-500" title={it.at}>
                       {formatDateSafe(it.at, locale) || it.at}
                     </div>
                   </div>
@@ -262,9 +265,9 @@ export default function CandidateTimelinePanel({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-slate-900 truncate">{it.title}</div>
-                      {it.meta ? <div className="mt-0.5 text-[11px] text-slate-600 truncate">{it.meta}</div> : null}
+                      {it.meta ? <div className="mt-0.5 text-xs text-slate-600 truncate">{it.meta}</div> : null}
                     </div>
-                    <div className="shrink-0 text-[11px] text-slate-500" title={it.at}>
+                    <div className="shrink-0 text-xs text-slate-500" title={it.at}>
                       {formatDateSafe(it.at, locale) || it.at}
                     </div>
                   </div>

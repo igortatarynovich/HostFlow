@@ -95,7 +95,7 @@ export default function RequirementsWorkspaceSummaryCard({
             className="border-0 p-0 shadow-none"
           />
           {workspace.field_requirements.missing_count > 0 ? (
-            <p className="mt-2 text-[11px] text-amber-800">
+            <p className="mt-2 text-xs text-amber-800">
               {t('app.candidate_requirements.workspace.card_data_missing', {
                 defaultValue: '{count} required data field(s) still open',
                 values: { count: workspace.field_requirements.missing_count },

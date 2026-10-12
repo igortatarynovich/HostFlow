@@ -51,7 +51,7 @@ export default function RequirementsWorkspaceSummaryBar({
             total: summary.total_requirements,
           })}
         </div>
-        <div className="flex flex-wrap gap-2 text-[11px] text-slate-600">
+        <div className="flex flex-wrap gap-2 text-xs text-slate-600">
           {summary.pending_review_count > 0 ? (
             <span>
               {t('app.candidate_requirements.workspace.pending_review', {

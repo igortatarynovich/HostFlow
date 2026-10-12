@@ -19,10 +19,10 @@ import {
   documentMatchesVariantTypes,
   evidenceStatusLabelKey,
   normDocType,
-  requirementStatusBadgeClass,
   resolveRequirementRowStatus,
   variantDocumentTypeCodes,
 } from './requirementsChecklistPresentation'
+import { requirementRowStatusToSemantic } from '../ui/statusBadgeSemantics'
 
 type Props = {
   candidateId: string
@@ -251,9 +251,7 @@ function RequirementRow({
                     : t('app.candidate_card.ia.preferred_mark', { defaultValue: 'Preferred' })}
                 />
               ) : (
-                <span className={clsx('shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold', requirementStatusBadgeClass(rowStatus))}>
-                  {statusLabel}
-                </span>
+                <StatusBadge size="sm" shape="pill" semantic={requirementRowStatusToSemantic(rowStatus)} label={statusLabel} />
               )}
             </span>
             <span className="mt-0.5 block truncate text-xs text-slate-500">{statusLabel}</span>
@@ -268,23 +266,16 @@ function RequirementRow({
         <div className="min-w-0">
           <div className="text-sm font-semibold text-slate-900">{requirementTitle(t, locale, item, labelForType)}</div>
           {purposeHint ? (
-            <div className="mt-0.5 text-[11px] text-slate-600">{purposeHint}</div>
+            <div className="mt-0.5 text-xs text-slate-600">{purposeHint}</div>
           ) : (
-            <div className="mt-0.5 text-[11px] text-slate-600">
+            <div className="mt-0.5 text-xs text-slate-600">
               {t('app.candidate_card.requirements_checklist.confirm_hint', {
                 defaultValue: 'Choose how you confirm this requirement, then link supporting documents.',
               })}
             </div>
           )}
         </div>
-        <span
-          className={clsx(
-            'shrink-0 rounded-full border px-3 py-0.5 text-[11px] font-semibold',
-            requirementStatusBadgeClass(rowStatus),
-          )}
-        >
-          {statusLabel}
-        </span>
+        <StatusBadge size="sm" shape="pill" semantic={requirementRowStatusToSemantic(rowStatus)} label={statusLabel} />
       </div>
       )}
 
@@ -298,7 +289,7 @@ function RequirementRow({
 
       {!evidence && canLinkOrSelect ? (
         <div className="mt-3 space-y-2">
-          <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
             {t('app.candidate_card.requirements_checklist.evidence_picker_label', {
               defaultValue: 'Confirm with',
             })}
@@ -345,7 +336,7 @@ function RequirementRow({
           ) : null}
 
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
               {t('app.candidate_card.requirements_checklist.linked_documents', {
                 defaultValue: 'Linked documents',
               })}
@@ -363,7 +354,7 @@ function RequirementRow({
                         onClick={() => onOpenDocs?.(typeCode || undefined)}
                       >
                         <span className="font-medium text-slate-900">{labelForType(typeCode)}</span>
-                        <span className="text-[11px] text-slate-600">
+                        <span className="text-xs text-slate-600">
                           {doc.has_files === false
                             ? t('app.candidate_card.requirements_checklist.no_files', {
                                 defaultValue: 'No files',
@@ -388,7 +379,7 @@ function RequirementRow({
 
           {canLinkOrSelect && (rowStatus === 'selected' || rowStatus === 'pending_review' || rowStatus === 'rejected') ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-2 space-y-2">
-              <div className="text-[11px] font-semibold text-slate-700">
+              <div className="text-xs font-semibold text-slate-700">
                 {t('app.candidate_card.requirements_checklist.link_document', {
                   defaultValue: 'Link document',
                 })}
@@ -828,7 +819,7 @@ export default function CandidateRequirementsChecklist({
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-[11px] text-slate-600">
+          <p className="mt-1 text-xs text-slate-600">
             {t('app.candidate_card.requirements_checklist.subtitle', {
               defaultValue: 'Confirm each requirement — choose evidence, link documents, then approve.',
             })}
@@ -856,7 +847,7 @@ export default function CandidateRequirementsChecklist({
       </div>
 
       {!loading && totalCount > 0 ? (
-        <div className="mt-1 text-[11px] font-medium text-slate-700">
+        <div className="mt-1 text-xs font-medium text-slate-700">
           {t('app.candidate_card.requirements_checklist.progress', {
             defaultValue: '{fulfilled}/{total} confirmed',
             values: { fulfilled: fulfilledCount, total: totalCount },

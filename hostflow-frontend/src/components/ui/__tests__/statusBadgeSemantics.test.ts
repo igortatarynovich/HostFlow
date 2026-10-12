@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   documentSeverityToSemantic,
   nextActionPriorityToSemantic,
+  requirementRowStatusToSemantic,
   stageSemanticForCode,
 } from '../statusBadgeSemantics'
 
@@ -46,5 +47,16 @@ describe('documentSeverityToSemantic', () => {
     expect(documentSeverityToSemantic('warn')).toBe('warning')
     expect(documentSeverityToSemantic('bad')).toBe('danger')
     expect(documentSeverityToSemantic('info')).toBe('info')
+  })
+})
+
+describe('requirementRowStatusToSemantic', () => {
+  it('maps requirement evidence statuses', () => {
+    expect(requirementRowStatusToSemantic('approved')).toBe('success')
+    expect(requirementRowStatusToSemantic('pending_review')).toBe('warning')
+    expect(requirementRowStatusToSemantic('selected')).toBe('info')
+    expect(requirementRowStatusToSemantic('rejected')).toBe('danger')
+    expect(requirementRowStatusToSemantic('superseded')).toBe('neutral')
+    expect(requirementRowStatusToSemantic('missing')).toBe('warning')
   })
 })

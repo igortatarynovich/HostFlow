@@ -126,23 +126,55 @@
 2. **Допустимое отступление** только с явной пометкой: в PR — кратко *почему* и *как погасим* (ссылка на задачу tech debt **или** обновление этого ADR и токенов в `tailwind.config.cjs` / `components.css`). В коде, где работает автоматическая проверка, допускается комментарий с `adr011-allow` / `adr011-ignore` (см. `npm run ui:adr011:check`).  
 3. **Зона изменений:** ревьюер по возможности просит убрать дрейф в затронутых фрагментах или завести follow-up; не блокировать фичу из‑за несвязанного legacy в том же файле — но **не принимать** новый дрейф под видом «как было рядом».
 
-## 13. Эволюция
+## 13. No feature-local UI language
+
+**Правило:** любая страница HostFlow собирается из единой системы tokens / primitives, system components и page patterns. Feature или module задаёт данные, composition и business behavior. Ему не принадлежат размеры, цвета, borders, spacing, tabs, cards, form controls, badges, tables или navigation patterns.
+
+Три уровня (сверху вниз владение идёт у платформы, не у модуля):
+
+| Уровень | Что входит | Где живёт |
+|---------|------------|-----------|
+| **1. Tokens / primitives** | Spacing, typography, control heights, radius, border, surface, text colors, semantic colors, shadows, focus / hover / disabled; затем Button, Input, Select, Checkbox, Badge / Chip, IconButton, Avatar, Divider | `FOUNDATION_V1`, `PRIMITIVES_V1`, `tailwind.config.cjs`, `components.css`, `hostflow-frontend/src/components/ui/` |
+| **2. System components** | Tabs, Section / Card, FieldRow, FieldGrid, InlineEditField, StatusBadge, ActionMenu, StagePipeline, SidebarWidget, ProgressWidget, FilterBar, DataTable, EmptyState, Alert, PageHeader / EntityHeader, EntityContextBar, DocumentRequirementRow | `hostflow-frontend/src/components/ui/` (+ layout shells по ADR-010) |
+| **3. Page patterns** | Entity workspace, list / table workspace, operational queue, dashboard, settings / configuration | Композиция из уровня 2; Candidate Card — reference implementation Entity Workspace |
+
+**Обязательные следствия:**
+
+1. Если необходимого UI-элемента нет — он создаётся как **reusable system component** (уровень 1 или 2).  
+2. Если существующий system component не позволяет получить утверждённый UX — **изменяется сам system component**, а не создаётся локальная копия для Candidate / HR / Documents / Recruitment.  
+3. Запрещены feature-local `h-[31px]`, произвольные `text-[11px]`, сырые `#...`, свои border / radius / tab / card / badge / table shells непосредственно в module pages.  
+4. **Запрещён** глобальный редизайн слепой заменой CSS-классов по всему SPA. Сначала reference page (Candidate Card) доводится до эталона через system components; затем страницы мигрируют последовательно. Массовая замена `Button` / `Input` / `Card` без page-by-page cutover ломает legacy composition.  
+5. Documents / Profile / Legalization и последующий HR cutover закрываются **только** через уровни 1–3. Модуль не получает отдельный design system.
+
+Acceptance и безопасная последовательность — implementation note: [`../tasks/ui-system-foundation-pass.md`](../tasks/ui-system-foundation-pass.md). Allow-list токенов и primitives (`FOUNDATION_V1`, `PRIMITIVES_V1`, `TABLE_V1`) этим разделом **не переоткрываются**.
+
+Дополнение к чеклисту §12 для нового UI:
+
+- [ ] Нет feature-local visual primitives: новый визуальный паттерн либо уже system, либо добавлен в `components/ui` / токены в том же PR.  
+- [ ] Нет слепой массовой замены классов вне зоны reference / текущей page migration.
+
+## 14. Эволюция
 
 1. Свести разрозненные страницы к **одному** набору layout-классов (`.crm-page-inset`, `.settings-page-shell`, …).  
 2. Расширить `tailwind.config.cjs` недостающими токенами (~~z-index шкала~~ — `z-hf-*`; ~~типографика H1–H3 приложения~~ — `fontSize.hf-h1|hf-h2|hf-h3`, используются в `.app-ui :where(h1–h3)` в `components.css`).  
 3. Вынести модалку / drawer в **один** React-компонент с тестами.  
-4. Подключить **lint** на запрещённые паттерны (например raw hex в className) — отдельная инженерная задача: [`eslint-adr011-ui-enforcement.md`](../tasks/eslint-adr011-ui-enforcement.md). Уже в репозитории: `npm run ui:adr011:check` в `hostflow-frontend` (layout arbitrary `px`, **`--fail`** в CI через `qa:static`); повторяющиеся размеры — токены **`hf-*`** в `tailwind.config.cjs`.
+4. Подключить **lint** на запрещённые паттерны (например raw hex в className) — отдельная инженерная задача: [`eslint-adr011-ui-enforcement.md`](../tasks/eslint-adr011-ui-enforcement.md). Уже в репозитории: `npm run ui:adr011:check` в `hostflow-frontend` (layout arbitrary `px`, **`--fail`** в CI через `qa:static`); повторяющиеся размеры — токены **`hf-*`** в `tailwind.config.cjs`.  
+5. System UI foundation pass — Candidate Card как reference Entity Workspace без feature-local visual ownership; затем page-by-page cutover (HR и др.): [`../tasks/ui-system-foundation-pass.md`](../tasks/ui-system-foundation-pass.md).
 
 ## References
 
 - [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md)  
 - [`pipedesign.md`](../../pipedesign.md)  
 - [`../frontend/ACQUISITION_MARKETING_IA_V1.md`](../frontend/ACQUISITION_MARKETING_IA_V1.md)  
+- [`../frontend/FOUNDATION_V1.md`](../frontend/FOUNDATION_V1.md)  
+- [`../frontend/PRIMITIVES_V1.md`](../frontend/PRIMITIVES_V1.md)  
+- [`../tasks/ui-system-foundation-pass.md`](../tasks/ui-system-foundation-pass.md)  
 - `hostflow-frontend/tailwind.config.cjs`  
 - `hostflow-frontend/src/styles/components.css`  
 
 ## История
 
+- **2026-10-12:** §13 — **No feature-local UI language** (три уровня tokens → system components → page patterns; запрет локальной копии и слепой замены классов); §14 — эволюция (бывший §13); task [`ui-system-foundation-pass.md`](../tasks/ui-system-foundation-pass.md).  
 - **2026-05:** первичная фиксация платформенного UI-стандарта (токены, две поверхности, формы, таблицы, i18n, даты, чеклист).  
 - **2026-05:** §12 — политика против дрейфа для ревью и отдельный пункт чеклиста.  
 - **2026-05:** CI — `ui:adr011:check --fail`; база layout arbitrary `px` вычищена, токены `hf-*`.  

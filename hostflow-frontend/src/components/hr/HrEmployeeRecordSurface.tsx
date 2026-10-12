@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import clsx from 'clsx'
 import { api, listReminders } from '../../api/client'
 import type { ReminderRecord } from '../../api/types'
 import {
@@ -36,7 +35,10 @@ import { ActionMenu, type ActionMenuItem } from '../ui/ActionMenu'
 import { Alert } from '../ui/Alert'
 import { Button } from '../ui/Button'
 import { Chip } from '../ui/Chip'
-import { ProgressStepper } from '../ui/ProgressStepper'
+import { EntitySummaryHeader } from '../ui/EntitySummaryHeader'
+import { StagePipeline } from '../ui/StagePipeline'
+import { WorkspaceTabs } from '../ui/WorkspaceTabs'
+import { WorkspaceWidget } from '../ui/WorkspaceWidget'
 import { documentSeverityToSemantic, type StatusBadgeSemantic } from '../ui/statusBadgeSemantics'
 import { getLanguageDisplayName, getRegionDisplayName } from '../../utils/catalogLocale'
 import { EndEmploymentModal, ReturnToRecruitmentModal } from './EmployeeLifecycleModals'
@@ -276,27 +278,21 @@ export default function HrEmployeeRecordSurface({
         onOpen={openPath}
         onReload={load}
       />
-      {error ? <p className="alert-error">{error}</p> : null}
-      <div className="card min-w-0 p-3">
+      {error ? <Alert semantic="danger" title={error} /> : null}
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
         <div className="min-w-0 space-y-4 lg:pr-6">
 
-          <div className="tabs flex-wrap gap-x-1 gap-y-0" role="tablist">
-            {RECORD_TABS.map((id) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                className={clsx('tab cursor-pointer border-0 bg-transparent', tab === id && 'tab-active')}
-                onClick={() => setTab(id)}
-              >
-                {activeGroup(id)?.label || id}
-              </button>
-            ))}
-          </div>
+          <WorkspaceTabs
+            ariaLabel={t('app.hr.employee_record.tabs', { defaultValue: 'Employee record' })}
+            value={tab}
+            onChange={(id) => setTab(id as (typeof RECORD_TABS)[number])}
+            items={RECORD_TABS.map((id) => ({
+              id,
+              label: activeGroup(id)?.label || id,
+            }))}
+          />
 
-          <section id={`record-group-${tab}`} className="app-surface p-4">
+          <section id={`record-group-${tab}`} className="rounded-xl border border-slate-200 bg-white p-4">
             {tab === 'dane_osobowe' ? (
               <PersonForm
                 key={employeeId}
@@ -365,17 +361,24 @@ export default function HrEmployeeRecordSurface({
           data-candidate-control-rail
           className="flex w-full min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto"
         >
-          <RecordTasks
-            candidateId={surface.candidate_id}
-            candidateLabel={surface.header.name}
-            locked={returned}
-          />
+          <WorkspaceWidget title={t('app.hr.employee_record.tasks', { defaultValue: 'Tasks' })}>
+            <RecordTasks
+              candidateId={surface.candidate_id}
+              candidateLabel={surface.header.name}
+              locked={returned}
+            />
+          </WorkspaceWidget>
           {surface.candidate_id ? (
-            <RecordNotes candidateId={surface.candidate_id} locked={returned} />
+            <WorkspaceWidget title={t('app.hr.employee_record.notes', { defaultValue: 'Notes' })}>
+              <RecordNotes candidateId={surface.candidate_id} locked={returned} />
+            </WorkspaceWidget>
           ) : null}
-          {surface.candidate_id ? <RecordTimeline candidateId={surface.candidate_id} /> : null}
+          {surface.candidate_id ? (
+            <WorkspaceWidget title={t('app.hr.employee_record.timeline', { defaultValue: 'Activity' })}>
+              <RecordTimeline candidateId={surface.candidate_id} />
+            </WorkspaceWidget>
+          ) : null}
         </aside>
-      </div>
       </div>
     </div>
   )
@@ -416,7 +419,7 @@ function EmployeeHero({
               : overview.phase,
   })
   const semantic: StatusBadgeSemantic = overview.phase === 'active'
-    ? 'ok'
+    ? 'success'
     : overview.phase === 'preparing'
       ? 'warning'
       : overview.phase === 'returned'
@@ -485,87 +488,117 @@ function EmployeeHero({
       ].filter((value): value is string => Boolean(value))
     : standardDomainChips
 
+  const initials = surface.header.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || '?'
+
+  const currentPathStep = path.find((step) => step.mark === 'current' || step.mark === 'blocked')
+  const completedCodes = new Set(path.filter((step) => step.mark === 'completed').map((step) => step.id))
+  const pipelineBlocked = path.some((step) => step.mark === 'blocked')
+
   return (
     <>
-      <section className="card min-w-0 overflow-visible p-4 sm:p-5" aria-labelledby="employee-lifecycle-heading">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h2 id="employee-lifecycle-heading" className="truncate text-xl font-semibold text-slate-950">{surface.header.name}</h2>
-            {role ? <p className="mt-1 text-sm text-slate-600">{role}</p> : null}
+      <EntitySummaryHeader
+        initials={initials}
+        title={surface.header.name}
+        code={employeeId.slice(0, 8)}
+        meta={
+          <>
+            <StatusBadge label={phaseLabel.toLocaleUpperCase(locale)} semantic={semantic} />
+            {overview.phase === 'active' && contract !== '—' ? <StatusBadge label={contract} semantic="neutral" /> : null}
+            {overview.phase === 'active' && overview.start_on ? (
+              <StatusBadge label={`od ${formatDay(overview.start_on)}`} semantic="neutral" />
+            ) : null}
+            {overview.phase === 'ended' ? (
+              <StatusBadge
+                label={`Employment zakończone${surface.header.ended_on ? ` · ${formatDay(surface.header.ended_on)}` : ''}`}
+                semantic="neutral"
+              />
+            ) : null}
+          </>
+        }
+        actions={<ActionMenu items={lifecycleItems} label="Działania lifecycle" />}
+        context={
+          <div className="space-y-3">
+            {role ? <p className="text-sm text-slate-600">{role}</p> : null}
+            {overview.phase === 'returned' ? (
+              <div className="text-sm text-slate-600">
+                <p className="font-medium text-slate-900">HR processing stopped</p>
+                <p>Waiting for Recruitment update</p>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap gap-2" aria-label="Status domen pracownika">
+              {domainChips.map((label) => (
+                <Chip key={label} behavior="static" size="md" label={label} />
+              ))}
+            </div>
+            {overview.phase === 'returned' ? (
+              <Alert
+                semantic="info"
+                title="Proces HR zatrzymany"
+                action={
+                  surface.candidate_id ? (
+                    <Button size="sm" onClick={() => onOpen('recruitment')}>
+                      Otwórz sprawę w Recruitment
+                    </Button>
+                  ) : null
+                }
+              >
+                Oczekuje na ponowne przekazanie przez Recruitment.
+              </Alert>
+            ) : overview.notice === 'healthy' ? (
+              <Alert semantic="success" title="Wszystko w porządku">
+                {overview.nearest_label && overview.nearest_on
+                  ? `Najbliższy termin: ${overview.nearest_label} · ${formatDay(overview.nearest_on)}`
+                  : 'Brak pilnych działań.'}
+              </Alert>
+            ) : overview.phase !== 'ended' ? (
+              <Alert
+                semantic="warning"
+                title="Wymaga uwagi"
+                action={
+                  actionTarget ? (
+                    <Button size="sm" onClick={() => onOpen(actionTarget)}>
+                      {actionLabel}
+                    </Button>
+                  ) : null
+                }
+              >
+                {action?.reason || action?.title || `${overview.attention_count} rzeczy wymagają działania.`}
+              </Alert>
+            ) : null}
           </div>
-          <ActionMenu items={lifecycleItems} label="Działania lifecycle" />
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <StatusBadge label={phaseLabel.toLocaleUpperCase(locale)} semantic={semantic} />
-          {overview.phase === 'active' && contract !== '—' ? <StatusBadge label={contract} semantic="neutral" /> : null}
-          {overview.phase === 'active' && overview.start_on ? <StatusBadge label={`od ${formatDay(overview.start_on)}`} semantic="neutral" /> : null}
-        </div>
-
-        {overview.phase === 'returned' ? (
-          <div className="mt-3 text-sm text-slate-600">
-            <p className="font-medium text-slate-900">HR processing stopped</p>
-            <p>Waiting for Recruitment update</p>
-          </div>
-        ) : null}
-
-        <div className="mt-4 flex flex-wrap gap-2" aria-label="Status domen pracownika">
-          {domainChips.map((label) => <Chip key={label} behavior="static" size="md" label={label} />)}
-        </div>
-
-        {overview.phase === 'returned' ? (
-          <Alert
-            className="mt-4"
-            semantic="info"
-            title="Proces HR zatrzymany"
-            action={surface.candidate_id ? <Button size="sm" onClick={() => onOpen('recruitment')}>Otwórz sprawę w Recruitment</Button> : null}
-          >
-            Oczekuje na ponowne przekazanie przez Recruitment.
-          </Alert>
-        ) : overview.notice === 'healthy' ? (
-          <Alert className="mt-4" semantic="success" title="Wszystko w porządku">
-            {overview.nearest_label && overview.nearest_on
-              ? `Najbliższy termin: ${overview.nearest_label} · ${formatDay(overview.nearest_on)}`
-              : 'Brak pilnych działań.'}
-          </Alert>
-        ) : overview.phase !== 'ended' ? (
-          <Alert
-            className="mt-4"
-            semantic="warning"
-            title="Wymaga uwagi"
-            action={actionTarget ? <Button size="sm" onClick={() => onOpen(actionTarget)}>{actionLabel}</Button> : null}
-          >
-            {action?.reason || action?.title || `${overview.attention_count} rzeczy wymagają działania.`}
-          </Alert>
-        ) : null}
-      </section>
-
-      {overview.phase === 'preparing' ? (
-        <section className="card min-w-0 p-4 sm:p-5" aria-labelledby="employment-preparation-heading">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 id="employment-preparation-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-700">
-              Przygotowanie do zatrudnienia
-            </h3>
-            <span className="text-sm font-semibold text-slate-700">{progressPosition} / {path.length}</span>
-          </div>
-          <ProgressStepper
-            label="Przygotowanie do zatrudnienia"
-            steps={path.map((step) => ({
-              id: step.id,
-              label: step.label,
-              state: step.mark,
-              detail: (step.mark === 'current' || step.mark === 'blocked') && action?.title ? action.title : null,
-              onOpen: step.target ? () => onOpen(step.target) : null,
-            }))}
-          />
-        </section>
-      ) : overview.phase === 'active' ? (
-        <p className="px-1 text-sm font-medium text-slate-700">Employment active{overview.start_on ? ` · od ${formatDay(overview.start_on)}` : ''}</p>
-      ) : overview.phase === 'ended' ? (
-        <p className="px-1 text-sm font-medium text-slate-700">Employment zakończone{surface.header.ended_on ? ` · ${formatDay(surface.header.ended_on)}` : ''}</p>
-      ) : (
-        <p className="px-1 text-sm font-medium text-slate-700">HR process zatrzymany · Returned to Recruitment</p>
-      )}
+        }
+        pipeline={
+          overview.phase === 'preparing' && path.length ? (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Przygotowanie do zatrudnienia
+                </span>
+                <span className="text-xs font-semibold text-slate-700">
+                  {progressPosition} / {path.length}
+                </span>
+              </div>
+              <StagePipeline
+                ariaLabel="Przygotowanie do zatrudnienia"
+                stages={path.map((step) => ({
+                  code: step.id,
+                  label: step.label,
+                  secondary:
+                    (step.mark === 'current' || step.mark === 'blocked') && action?.title ? action.title : null,
+                }))}
+                currentCode={currentPathStep?.id}
+                completedCodes={completedCodes}
+                blocked={pipelineBlocked}
+              />
+            </div>
+          ) : null
+        }
+      />
 
       <ReturnToRecruitmentModal
         employeeId={employeeId}
@@ -670,24 +703,24 @@ function RecordTasks({
   )}`
 
   return (
-    <section className="card w-full p-4">
-      <h3>
-        {t('app.hr.employee_record.tasks', { defaultValue: 'Zadania' })} {items.length}
-      </h3>
+    <div className="space-y-2">
+      <p className="text-xs text-slate-500">{items.length}</p>
       {items.slice(0, 3).map((item) => (
-        <p key={item.id}>
+        <p key={item.id} className="text-sm text-slate-800">
           {item.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Zadanie' })}
           {item.due_at ? ` · ${formatDay(item.due_at)}` : ''}
         </p>
       ))}
-      {locked || !candidateId ? null : (
-        <button type="button" className="btn-secondary btn-sm" onClick={() => setAdding(true)}>
-          {t('app.hr.employee_record.add_task', { defaultValue: 'Dodaj' })}
-        </button>
-      )}
-      <Link to={tasksHref} className="btn-secondary btn-sm">
-        {t('app.hr.employee_record.show_history', { defaultValue: 'Pokaż wszystkie' })}
-      </Link>
+      <div className="flex flex-wrap gap-2">
+        {locked || !candidateId ? null : (
+          <Button type="button" variant="secondary" size="sm" onClick={() => setAdding(true)}>
+            {t('app.hr.employee_record.add_task', { defaultValue: 'Dodaj' })}
+          </Button>
+        )}
+        <Link to={tasksHref} className="btn btn-secondary btn-sm">
+          {t('app.hr.employee_record.show_history', { defaultValue: 'Pokaż wszystkie' })}
+        </Link>
+      </div>
       {candidateId ? (
         <CandidateQuickTaskModal
           open={adding}
@@ -700,7 +733,7 @@ function RecordTasks({
           t={t}
         />
       ) : null}
-    </section>
+    </div>
   )
 }
 
