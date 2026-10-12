@@ -99,7 +99,7 @@ function CandidateApplicationsSection({
         : []
     if (loading || error || rows.length <= 1) return null
     return (
-      <div className="mt-2 flex flex-wrap gap-1.5" id="section-applications">
+      <div className="flex flex-wrap gap-1.5" id="section-applications">
         {rows.map((row) => {
           const vacancyId = row.vacancy_id || ''
           const selected = Boolean(vacancyId) && vacancyId === activeVacancyId

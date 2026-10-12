@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
 import { CardAccordion, ReadRows, joinParts } from '../../components/candidate/card/CandidateCardChrome'
+import { InlineFieldRow } from '../../components/ui/InlineFieldRow'
 import { SearchableSelect } from '../../components/candidate/shared/FormComponents'
 import DateInput from '../../components/controls/DateInput'
 import { useI18n } from '../../i18n'
@@ -742,6 +743,99 @@ function LegalizationFactsSheet({
   )
 }
 
+export function PersonIdentityFacts({
+  view,
+  countries,
+  disabled,
+  onPatch,
+}: {
+  view: OperatorFactsView
+  countries: CountryOption[]
+  disabled?: boolean
+  onPatch: (patch: Patch) => void
+}) {
+  const { t } = useI18n()
+  const [openField, setOpenField] = useState<'citizenship' | 'pesel' | null>(null)
+  const citizenship = stepOf(view, 'citizenship')
+  const pesel = stepOf(view, 'pesel')
+  const yes = t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' })
+  const no = t('app.candidate_card.operator_facts.no', { defaultValue: 'No' })
+  const unknownLabel = t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })
+  const countryOptions = [{ value: 'unknown', label: unknownLabel }, ...countries]
+  const peselValue = pesel?.presence === true
+    ? [yes, pesel.stored].filter((part) => part && part !== 'unknown').join(' · ')
+    : pesel?.presence === false
+      ? no
+      : ''
+
+  return (
+    <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2" data-testid="operator-facts-person-rows">
+      <InlineFieldRow
+        label={t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' })}
+        value={countryName(citizenship?.stored, countries)}
+        editing={openField === 'citizenship'}
+        canEdit={!disabled}
+        onEdit={() => setOpenField('citizenship')}
+        onDone={() => setOpenField(null)}
+      >
+        <div className="label" data-testid="operator-facts-citizenship">
+          {t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' })}
+        </div>
+        <div data-testid="operator-facts-citizenship-input">
+          <SearchableSelect
+            options={countryOptions}
+            value={citizenship?.stored || 'unknown'}
+            onChange={(next) => onPatch({ citizenship: next })}
+            disabled={disabled}
+            placeholder={t('app.candidate_card.select.empty')}
+            searchPlaceholder={t('app.candidate_card.select.search')}
+            noResultsLabel={t('app.candidate_card.select.no_results')}
+          />
+        </div>
+      </InlineFieldRow>
+      <InlineFieldRow
+        label={t('app.candidate_card.operator_facts.pesel', { defaultValue: 'PESEL' })}
+        value={peselValue === '—' ? '' : peselValue}
+        editing={openField === 'pesel'}
+        canEdit={!disabled}
+        onEdit={() => setOpenField('pesel')}
+        onDone={() => setOpenField(null)}
+        wide
+      >
+        <div data-testid="operator-facts-pesel">
+          <label className="block">
+            <div className="label">{t('app.candidate_card.operator_facts.pesel', { defaultValue: 'PESEL' })}</div>
+            <select
+              className="input max-w-md"
+              disabled={disabled}
+              value={pesel?.presence === true ? 'yes' : pesel?.presence === false ? 'no' : 'unknown'}
+              onChange={(event) => {
+                const next = event.target.value
+                onPatch({ pesel_presence: next === 'yes' ? true : next === 'no' ? false : 'unknown' })
+              }}
+            >
+              <option value="unknown">{unknownLabel}</option>
+              <option value="yes">{yes}</option>
+              <option value="no">{no}</option>
+            </select>
+          </label>
+          {pesel?.presence === true ? (
+            <label className="mt-3 block">
+              <div className="label">{t('app.candidate_card.operator_facts.pesel_number', { defaultValue: 'PESEL number' })}</div>
+              <input
+                className="input max-w-md"
+                disabled={disabled}
+                value={pesel.stored || ''}
+                onChange={(event) => onPatch({ pesel: event.target.value || 'unknown' })}
+              />
+            </label>
+          ) : null}
+        </div>
+      </InlineFieldRow>
+    </div>
+  )
+}
+
 export default function OperatorFactsSurface({
   candidateId,
   countries,
@@ -827,7 +921,15 @@ export default function OperatorFactsSurface({
           onOpenDocuments={onOpenDocuments}
         />
       ) : null}
-      {view && region ? (
+      {view && region === 'person' ? (
+        <PersonIdentityFacts
+          view={view}
+          countries={countries}
+          disabled={busy}
+          onPatch={(patch) => void onPatch(patch)}
+        />
+      ) : null}
+      {view && region && region !== 'person' && region !== 'legalization' ? (
         <OperatorFactsForm
           view={view}
           countries={countries}

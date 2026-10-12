@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
-import { OperatorFactsForm, OperatorFactsWorkspace, type OperatorFactsView } from './OperatorFactsSurface'
+import { OperatorFactsForm, OperatorFactsWorkspace, PersonIdentityFacts, type OperatorFactsView } from './OperatorFactsSurface'
 
 const STAY_CHOICES = [
   'visa_d',
@@ -324,5 +324,29 @@ describe('OperatorFactsWorkspace', () => {
     fireEvent.click(screen.getAllByText('Edytuj')[1])
     expect(screen.getByTestId('operator-facts-adr')).toBeTruthy()
     expect(screen.queryByTestId('operator-facts-card-parameters')).toBeNull()
+  })
+})
+
+describe('PersonIdentityFacts', () => {
+  it('keeps citizenship and PESEL in view until the operator opens the row', () => {
+    const onPatch = vi.fn()
+    renderForm(
+      <PersonIdentityFacts
+        countries={[{ value: 'UA', label: 'Ukraina' }]}
+        onPatch={onPatch}
+        view={view({
+          steps: [
+            { key: 'citizenship', visible: true, stored: 'UA' },
+            { key: 'pesel', visible: true, presence: true, stored: '83110617894' },
+          ],
+        })}
+      />,
+    )
+    expect(screen.getByText('Ukraina')).toBeTruthy()
+    expect(screen.getByText(/83110617894/)).toBeTruthy()
+    expect(screen.queryByTestId('operator-facts-citizenship-input')).toBeNull()
+    expect(screen.queryByText('Numer PESEL')).toBeNull()
+    fireEvent.click(screen.getAllByText('Edytuj')[1])
+    expect(screen.getByText('Numer PESEL')).toBeTruthy()
   })
 })

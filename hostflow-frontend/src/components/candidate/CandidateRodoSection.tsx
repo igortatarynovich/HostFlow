@@ -86,7 +86,11 @@ function CandidateRodoSection({
       <button
         type="button"
         onClick={onOpen}
-        className="text-[11px] inline-flex items-center rounded-lg border border-white/40 bg-white/15 px-2 py-0.5 font-medium text-white"
+        className={
+          status.sent
+            ? 'text-[11px] inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-medium text-emerald-800'
+            : 'text-[11px] inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 font-medium text-amber-900'
+        }
       >
         {t('app.candidate_card.rodo.title')}
         {' · '}

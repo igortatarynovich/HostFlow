@@ -45,7 +45,7 @@ export function StagePipeline({
           const isCompleted = completedCodes?.has(stage.code) || (currentIdx >= 0 && index < currentIdx)
           const isLast = index === stages.length - 1
           return (
-            <li key={stage.code} className="flex min-w-[4.5rem] flex-1 items-start">
+            <li key={stage.code} className="flex min-w-[4.25rem] max-w-[8.5rem] flex-1 items-start">
               <div className="flex w-full min-w-0 flex-col items-center">
                 <div className="flex w-full items-center">
                   <span
@@ -54,7 +54,7 @@ export function StagePipeline({
                   />
                   <span
                     className={clsx(
-                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
+                      'flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
                       isCurrent && blocked && 'bg-rose-600 text-white ring-2 ring-rose-100',
                       isCurrent && !blocked && 'bg-brand-600 text-white ring-2 ring-brand-100',
                       !isCurrent && isCompleted && 'bg-emerald-500 text-white',
@@ -70,9 +70,10 @@ export function StagePipeline({
                   />
                 </div>
                 <span
+                  title={stage.label}
                   className={clsx(
-                    'mt-1 px-1 text-center text-[11px] font-medium leading-snug',
-                    isCurrent ? 'text-slate-900' : isCompleted ? 'text-slate-700' : 'text-slate-400',
+                    'mt-0.5 line-clamp-2 break-words px-0.5 text-center text-[11px] leading-tight',
+                    isCurrent ? 'font-semibold text-brand-800' : isCompleted ? 'font-medium text-slate-700' : 'font-medium text-slate-400',
                   )}
                 >
                   {stage.label}
