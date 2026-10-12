@@ -37,7 +37,6 @@ function resolveMark(
   const isCurrent = stage.mark === 'current' || (stage.mark == null && (currentCode ? stage.code === currentCode : index === 0))
   const isCompleted =
     stage.mark == null && (completedCodes?.has(stage.code) || (currentIdx >= 0 && index < currentIdx))
-  if (isCurrent && (blocked || stage.mark === 'current') && blocked && stage.mark == null) return 'blocked'
   if (isCurrent && blocked) return 'blocked'
   if (isCurrent) return 'current'
   if (isCompleted) return 'completed'
@@ -63,6 +62,8 @@ export function StagePipeline({
     resolveMark(stage, index, currentIdx, currentCode, completedCodes, blocked),
   )
   const completedCount = marks.filter((mark) => mark === 'completed').length
+  const activeIdx = marks.findIndex((mark) => mark === 'current' || mark === 'blocked')
+  const counterAt = activeIdx >= 0 ? activeIdx : currentIdx
 
   return (
     <div className={clsx('flex min-w-0 items-start gap-3', className)}>
@@ -76,44 +77,45 @@ export function StagePipeline({
             <>
               <div className="flex w-full items-center">
                 <span
-                  className={clsx('h-px flex-1', index === 0 ? 'bg-transparent' : leftDone ? 'bg-emerald-400' : 'bg-slate-200')}
+                  className={clsx('h-0.5 flex-1', index === 0 ? 'bg-transparent' : leftDone ? 'bg-emerald-400' : 'bg-slate-200')}
                   aria-hidden
                 />
                 <span
                   className={clsx(
-                    'flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold',
-                    mark === 'blocked' && 'bg-rose-600 text-white ring-2 ring-rose-100',
-                    mark === 'current' && 'bg-brand-600 text-white ring-2 ring-brand-100',
+                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold',
+                    mark === 'blocked' && 'bg-white text-rose-700 ring-2 ring-rose-500',
+                    mark === 'current' && 'bg-white text-brand-700 ring-2 ring-brand-600',
                     mark === 'completed' && 'bg-emerald-500 text-white',
                     (mark === 'pending' || mark === 'not_applicable') && 'border border-slate-300 bg-white text-slate-300',
                   )}
                   aria-current={mark === 'current' || mark === 'blocked' ? 'step' : undefined}
+                  aria-invalid={mark === 'blocked' ? true : undefined}
                 >
-                  {mark === 'completed' ? '✓' : mark === 'current' || mark === 'blocked' ? '●' : mark === 'not_applicable' ? '–' : '○'}
+                  {mark === 'completed' ? '✓' : mark === 'current' || mark === 'blocked' ? '●' : mark === 'not_applicable' ? '–' : ''}
                 </span>
                 <span
-                  className={clsx('h-px flex-1', isLast ? 'bg-transparent' : rightDone ? 'bg-emerald-400' : 'bg-slate-200')}
+                  className={clsx('h-0.5 flex-1', isLast ? 'bg-transparent' : rightDone ? 'bg-emerald-400' : 'bg-slate-200')}
                   aria-hidden
                 />
               </div>
               <span
                 title={stage.label}
                 className={clsx(
-                  'mt-0.5 line-clamp-2 break-words px-0.5 text-center text-[11px] leading-tight',
-                  mark === 'current' || mark === 'blocked' ? 'font-semibold text-brand-800' : mark === 'completed' ? 'font-medium text-slate-700' : 'font-medium text-slate-400',
+                  'mt-1 w-full truncate px-0.5 text-center text-[10px] leading-tight',
+                  mark === 'current' || mark === 'blocked' ? 'font-semibold text-slate-900' : mark === 'completed' ? 'font-medium text-slate-600' : 'font-medium text-slate-400',
                 )}
               >
                 {stage.label}
               </span>
               {stage.secondary ? (
-                <span className="px-1 text-center text-[10px] leading-snug text-slate-500">{stage.secondary}</span>
+                <span className="w-full truncate px-0.5 text-center text-[10px] leading-snug text-slate-500">{stage.secondary}</span>
               ) : null}
             </>
           )
           return (
-            <li key={stage.code} className="flex min-w-[4.25rem] max-w-[8.5rem] flex-1 items-start">
+            <li key={stage.code} className="flex min-w-0 flex-1 items-start">
               {stage.onSelect ? (
-                <button type="button" className="flex w-full min-w-0 flex-col items-center" onClick={stage.onSelect}>
+                <button type="button" className="flex w-full min-w-0 flex-col items-center bg-transparent" onClick={stage.onSelect}>
                   {body}
                 </button>
               ) : (
@@ -123,8 +125,8 @@ export function StagePipeline({
           )
         })}
       </ol>
-      <div className="shrink-0 pt-0.5 text-xs font-semibold tabular-nums text-slate-600">
-        {completedCount}/{stages.length}
+      <div className="shrink-0 pt-0.5 text-sm font-semibold tabular-nums text-slate-700">
+        {counterAt >= 0 ? counterAt + 1 : completedCount} / {stages.length}
       </div>
     </div>
   )

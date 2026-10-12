@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'link' | 'icon'
-export type ButtonSize = 'md' | 'sm' | 'xs'
+export type ButtonSize = 'md' | 'sm' | 'xs' | 'compact'
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: 'btn btn-primary',
@@ -18,6 +18,7 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
   md: '',
   sm: 'btn-sm',
   xs: 'btn-xs',
+  compact: 'btn-compact',
 }
 
 export type ButtonProps = {
@@ -30,7 +31,11 @@ export type ButtonProps = {
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'children' | 'className'>
 
 function buttonClasses(variant: ButtonVariant, size: ButtonSize, className?: string) {
-  const sized = variant === 'link' || variant === 'icon' ? '' : SIZE_CLASSES[size]
+  if (variant === 'icon') {
+    const iconSize = size === 'md' ? '' : 'btn-icon-sm'
+    return clsx(VARIANT_CLASSES.icon, iconSize, className)
+  }
+  const sized = variant === 'link' ? '' : SIZE_CLASSES[size]
   return clsx(VARIANT_CLASSES[variant], sized, className)
 }
 

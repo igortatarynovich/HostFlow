@@ -544,18 +544,17 @@ function EmployeeHero({
   return (
     <>
       <EntityRecordHeader
-        compact
         title={surface.header.name || '—'}
         code={surface.person?.short_id || null}
         actions={
           <OverflowMenu
             label={t('app.hr.employee_record.lifecycle.menu', { defaultValue: 'Lifecycle actions' })}
             items={lifecycleItems}
-            appearance="inverse"
+            appearance="default"
           />
         }
-        summary={
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-800">
+        meta={
+          <span className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-800">
             <span className="font-medium text-slate-900">
               {surface.header.employer || '—'}
               {surface.header.position ? (
@@ -567,8 +566,11 @@ function EmployeeHero({
             </span>
             <span className="text-slate-300" aria-hidden>·</span>
             <span className="font-semibold text-brand-800">{phaseLabel}</span>
-            <span className="text-slate-300" aria-hidden>·</span>
-            <span className="min-w-0 text-slate-700">{contextLine.join(' · ')}</span>
+          </span>
+        }
+        context={
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
+            <span>{contextLine.join(' · ')}</span>
             {noticeReason ? <span className="text-xs text-slate-600">{noticeReason}</span> : null}
             {noticeTitle && noticeTarget ? (
               <button type="button" className="text-xs font-medium text-brand-700 hover:underline" onClick={() => onOpen(noticeTarget)}>
@@ -1128,7 +1130,7 @@ function PersonForm({
   return (
     <div className="space-y-3">
     <CardAccordion title={t('app.candidate_card.ia.sections.identity')} defaultOpen summary={[draft.first_name, draft.last_name].filter(Boolean).join(' ')}>
-      <div>
+      <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
       <InlineFieldRow
         label={t('app.candidate_card.fields.first_name')}
         value={draft.first_name}
@@ -1213,7 +1215,7 @@ function PersonForm({
       </div>
     </CardAccordion>
     <CardAccordion title={t('app.candidate_card.ia.sections.contact')} summary={[draft.phone, draft.email].filter(Boolean).join(' · ')}>
-      <div>
+      <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
       <InlineFieldRow
         label={t('app.candidate_card.fields.phone')}
         value={phoneLabel}

@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import type { ReactNode } from 'react'
 
 import {
   STATUS_BADGE_SEMANTIC_CLASSES,
@@ -17,6 +18,7 @@ export type StatusBadgeProps = {
   inverse?: boolean
   /** `pill` = fully rounded (document status). */
   shape?: 'default' | 'pill'
+  icon?: ReactNode
   className?: string
 }
 
@@ -27,13 +29,14 @@ export function StatusBadge({
   title,
   inverse = false,
   shape = 'default',
+  icon,
   className,
 }: StatusBadgeProps) {
   const palette = inverse ? STATUS_BADGE_SEMANTIC_CLASSES_INVERSE : STATUS_BADGE_SEMANTIC_CLASSES
   return (
     <span
       className={clsx(
-        'inline-flex max-w-full items-center truncate font-medium',
+        'inline-flex max-w-full items-center gap-1 truncate font-medium',
         shape === 'pill' ? 'rounded-full' : 'rounded-md',
         STATUS_BADGE_SIZE_CLASSES[size],
         palette[semantic],
@@ -41,6 +44,7 @@ export function StatusBadge({
       )}
       title={title ?? label}
     >
+      {icon}
       {label}
     </span>
   )

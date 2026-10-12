@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
-import clsx from 'clsx'
 import { useI18n } from '../../i18n'
+import { WorkspaceSection } from '../../components/ui/WorkspaceSection'
+import { WorkspaceTabs } from '../../components/ui/WorkspaceTabs'
 
 /**
  * Operator entity record.
@@ -22,7 +23,7 @@ export function EntityRecordSurface({
     <div className="min-w-0 space-y-3">
       {header}
       {banner}
-      <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_17.5rem]">
+      <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <aside className="flex min-h-0 min-w-0 flex-col gap-2 max-lg:order-last lg:sticky lg:top-3 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100dvh-4.5rem)] lg:overflow-y-auto lg:overscroll-contain">
           {rail}
         </aside>
@@ -36,38 +37,28 @@ export function EntityRecordTabs<T extends string>({
   value,
   onChange,
   tabs,
+  ariaLabel,
 }: {
   value: T
   onChange: (id: T) => void
-  tabs: Array<{ id: T; label: string }>
+  tabs: Array<{ id: T; label: string; badge?: ReactNode }>
+  ariaLabel?: string
 }) {
   return (
-    <div className="flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist">
-      {tabs.map((item) => {
-        const selected = value === item.id
-        return (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            className={clsx(
-              '-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-semibold',
-              selected ? 'border-brand-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800',
-            )}
-            onClick={() => onChange(item.id)}
-          >
-            {item.label}
-          </button>
-        )
-      })}
-    </div>
+    <WorkspaceTabs
+      ariaLabel={ariaLabel}
+      value={value}
+      onChange={(id) => onChange(id as T)}
+      items={tabs.map((item) => ({ id: item.id, label: item.label, badge: item.badge }))}
+    />
   )
 }
 
 export function EntityRecordSection({
   title,
   summary,
+  description,
+  icon,
   defaultOpen = false,
   editing = false,
   onEdit,
@@ -76,6 +67,8 @@ export function EntityRecordSection({
 }: {
   title: string
   summary?: string | null
+  description?: string | null
+  icon?: ReactNode
   defaultOpen?: boolean
   editing?: boolean
   onEdit?: () => void
@@ -87,22 +80,17 @@ export function EntityRecordSection({
   const expanded = editing || open
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white">
-      <div className="flex items-start gap-3 px-3 py-2.5">
-        <button
-          type="button"
-          className="min-w-0 flex-1 text-left"
-          aria-expanded={expanded}
-          onClick={() => {
-            if (!editing) setOpen((value) => !value)
-          }}
-        >
-          <span className="text-sm font-semibold text-slate-900">{title}</span>
-          {!expanded && summary ? (
-            <span className="mt-0.5 block truncate text-xs text-slate-500">{summary}</span>
-          ) : null}
-        </button>
-        {onEdit ? (
+    <WorkspaceSection
+      title={title}
+      description={expanded ? description || null : summary || description}
+      icon={icon}
+      collapsible
+      open={expanded}
+      onOpenChange={(next) => {
+        if (!editing) setOpen(next)
+      }}
+      action={
+        onEdit ? (
           <button
             type="button"
             className="shrink-0 text-xs font-medium text-brand-700 hover:underline"
@@ -110,20 +98,11 @@ export function EntityRecordSection({
           >
             {editing ? t('app.candidate_card.ia.done') : t('common.actions.edit')}
           </button>
-        ) : null}
-        <button
-          type="button"
-          className="shrink-0 text-xs text-slate-400"
-          aria-label={expanded ? t('common.actions.collapse') : t('common.actions.expand')}
-          onClick={() => {
-            if (!editing) setOpen((value) => !value)
-          }}
-        >
-          {expanded ? '−' : '+'}
-        </button>
-      </div>
-      {expanded ? <div className="border-t border-slate-100 px-3 py-3">{children}</div> : null}
-    </section>
+        ) : null
+      }
+    >
+      {children}
+    </WorkspaceSection>
   )
 }
 

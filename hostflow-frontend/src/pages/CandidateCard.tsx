@@ -26,6 +26,9 @@ import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
 import OperatorFactsSurface, { type OperatorFactsSlice } from '../modules/candidates/OperatorFactsSurface'
 import { CandidateCardTabs, CardAccordion, ReadRows, joinParts, type CandidateCardTabId } from '../components/candidate/card/CandidateCardChrome'
+import { StatusBadge } from '../components/ui/StatusBadge'
+import { CompactMetric } from '../components/ui/CompactMetric'
+import { IconBriefcase, IconBuildingSkyscraper } from '@tabler/icons-react'
 import { EntityRecordSurface } from '../platform/entity-workspace/entityRecordSurface'
 import { StagePipeline } from '../components/ui/StagePipeline'
 import { CandidateProcessControls } from '../components/candidate/card/CandidateProcessControls'
@@ -155,6 +158,9 @@ import type { PreferredContact, Option, AddressFields, CandidateNote, StageHisto
 import {
   createLocalId,
   ccToFlag,
+  countryFlag,
+  ageFromIsoDate,
+  formatYearsCount,
   makeAddress,
   isUuidLike,
   formatDateTime,
@@ -4634,7 +4640,6 @@ export default function CandidateCard(){
       <EntityRecordSurface
         header={(
       <CandidateHeader
-        compact
         displayName={[model.first_name, model.last_name].filter(Boolean).join(' ') || t('common.labels.unnamed')}
         candidateCode={model.short_id || null}
         candidate={model}
@@ -4681,51 +4686,121 @@ export default function CandidateCard(){
         pipelineWaiverApprovedCount={pipelineWaiverBadgeCounts.approved}
         onOpenActivity={!isNew && model?.id ? () => setActivityModalOpen(true) : undefined}
         onGenerateShortId={!model.short_id ? () => void handleGenerateShortId() : undefined}
-        summary={
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-800">
-            <span className="font-medium text-slate-900">
-              {model.company_name || '—'}
-              <span className="mx-1.5 font-normal text-slate-400">/</span>
-              {model.vacancy_name || '—'}
-            </span>
-            <span className="text-slate-300" aria-hidden>·</span>
-            <span className="font-semibold text-brand-800">{stageLabelIntl(String(model.stage || ''))}</span>
-            {!isNew && model.id && !isMasked ? (
-              <CandidateApplicationsSection
-                candidateId={String(model.id)}
-                locale={locale}
-                legacyVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
-                variant="context"
-                activeVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
-                onSelectVacancy={async (vacancyId) => {
-                  const opt = vacancyOpts.find((o) => o.value === vacancyId)
-                  setModel((m) => {
-                    if (!m) return m
-                    return {
-                      ...m,
-                      vacancy_id: vacancyId as any,
-                      vacancy_name: opt?.label || m.vacancy_name || '',
-                      company_id: opt?.extra?.company_id || m.company_id,
-                      company_name: opt?.extra?.company_name || m.company_name || '',
-                    }
-                  })
-                  await loadProfileFromVacancy(vacancyId)
-                }}
+        meta={(() => {
+          const citizenshipCode = String(extra.citizenship || '').trim()
+          const citizenshipLabel = countries.find((item) => item.value === citizenshipCode)?.label
+          const citizenshipFlag = countryFlag(citizenshipCode)
+          const residenceCode = String(extra.address?.country || model.country_code || '').trim()
+          const residenceLabel = countries.find((item) => item.value === residenceCode)?.label
+          const residenceCity = String(extra.address?.city || '').trim()
+          const residenceFlag = countryFlag(residenceCode)
+          const birthIso = typeof extra.birth_date === 'string' ? extra.birth_date : ''
+          const age = ageFromIsoDate(birthIso)
+          const birthLabel = birthIso ? formatDateSafe(birthIso, locale) : ''
+          const languageLabel = (model.languages || [])
+            .map((code) => languages.find((item) => item.value === code)?.label || '')
+            .filter(Boolean)
+            .join(', ')
+          const docsComplete = docsCountsSummary.total > 0 && docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0
+          const documentsReceived = docsComplete || canonicalStageForOps === 'docs_got'
+          return (
+            <>
+              {citizenshipLabel ? (
+                <StatusBadge size="sm" shape="pill" semantic="neutral" label={citizenshipFlag ? `${citizenshipFlag} ${citizenshipLabel}` : citizenshipLabel} />
+              ) : null}
+              {age != null && birthLabel ? (
+                <StatusBadge size="sm" shape="pill" semantic="neutral" label={`${formatYearsCount(age, locale)} (${birthLabel})`} />
+              ) : null}
+              {residenceLabel || residenceCity ? (
+                <StatusBadge
+                  size="sm"
+                  shape="pill"
+                  semantic="neutral"
+                  label={[residenceFlag && residenceLabel ? `${residenceFlag} ${residenceLabel}` : residenceLabel, residenceCity ? `(${residenceCity})` : null].filter(Boolean).join(' ')}
+                />
+              ) : null}
+              {languageLabel ? <StatusBadge size="sm" shape="pill" semantic="neutral" label={languageLabel} /> : null}
+              {documentsReceived ? (
+                <StatusBadge semantic="success" shape="pill" size="sm" label={t('app.candidate_card.ia.documents_received')} />
+              ) : null}
+            </>
+          )
+        })()}
+        context={
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              {model.vacancy_name ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <IconBriefcase size={15} className="text-slate-400" />
+                  <span className="text-slate-500">{t('app.candidate_card.fields.vacancy')}</span>
+                  <span className="font-semibold text-slate-900">{model.vacancy_name}</span>
+                </span>
+              ) : null}
+              {model.vacancy_name && model.company_name ? <span className="text-slate-300" aria-hidden>→</span> : null}
+              {model.company_name ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <IconBuildingSkyscraper size={15} className="text-slate-400" />
+                  <span className="text-slate-500">{t('app.candidate_card.employment.columns.employer')}</span>
+                  <span className="font-semibold text-slate-900">{model.company_name}</span>
+                </span>
+              ) : null}
+              {!isNew && model.id && !isMasked ? (
+                <CandidateApplicationsSection
+                  candidateId={String(model.id)}
+                  locale={locale}
+                  legacyVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
+                  variant="context"
+                  activeVacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
+                  onSelectVacancy={async (vacancyId) => {
+                    const opt = vacancyOpts.find((o) => o.value === vacancyId)
+                    setModel((m) => {
+                      if (!m) return m
+                      return {
+                        ...m,
+                        vacancy_id: vacancyId as any,
+                        vacancy_name: opt?.label || m.vacancy_name || '',
+                        company_id: opt?.extra?.company_id || m.company_id,
+                        company_name: opt?.extra?.company_name || m.company_name || '',
+                      }
+                    })
+                    await loadProfileFromVacancy(vacancyId)
+                  }}
+                />
+              ) : null}
+              <CandidateLeadOriginPanel
+                candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
               />
-            ) : null}
-            <CandidateLeadOriginPanel
-              candidateExtra={(model.extra as Record<string, unknown> | null | undefined) ?? undefined}
-            />
-            {(effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length) > 0
-              || vacancyPipelineBlockingValue
-              || contactAttemptPipelineBlockingValue ? (
-              <span className="text-xs font-medium text-rose-700">
-                {t('app.candidate_card.ia.blockers')}
-                {(effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length) > 0
-                  ? `: ${effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length}`
-                  : ''}
-              </span>
-            ) : null}
+              {(effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length) > 0
+                || vacancyPipelineBlockingValue
+                || contactAttemptPipelineBlockingValue ? (
+                <span className="text-xs font-medium text-rose-700">
+                  {t('app.candidate_card.ia.blockers')}
+                  {(effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length) > 0
+                    ? `: ${effectiveDocsBlockersForPipeline.missing.length + effectiveDocsBlockersForPipeline.problematic.length}`
+                    : ''}
+                </span>
+              ) : null}
+            </div>
+            {(() => {
+              const typeValue = Array.isArray(extra.license_categories) && extra.license_categories.length
+                ? extra.license_categories.join('/')
+                : ''
+              const experienceValue = typeof extra.experience_eu_years === 'number'
+                ? formatYearsCount(extra.experience_eu_years, locale)
+                : ''
+              const preferenceValue = [
+                ...(Array.isArray(extra.trailer_types) ? extra.trailer_types.map((key) => trailerTypeLabels[key] || key) : []),
+                ...(Array.isArray(extra.route_types) ? extra.route_types : []),
+              ].filter(Boolean).join(', ')
+              if (!typeValue && !experienceValue && !preferenceValue) return null
+              return (
+                <div className="flex flex-wrap gap-5">
+                  {typeValue ? <CompactMetric label={t('app.candidate_card.ia.metric_type')} value={typeValue} /> : null}
+                  {experienceValue ? <CompactMetric label={t('app.candidate_card.ia.metric_experience')} value={experienceValue} /> : null}
+                  {preferenceValue ? <CompactMetric label={t('app.candidate_card.ia.metric_preferences')} value={preferenceValue} /> : null}
+                </div>
+              )
+            })()}
           </div>
         }
         pipeline={
@@ -4889,7 +4964,20 @@ export default function CandidateCard(){
           </>
         )}
       >
-        <CandidateCardTabs value={cardTab} onChange={setCardTab} />
+        <CandidateCardTabs
+          value={cardTab}
+          onChange={setCardTab}
+          badges={{
+            documents: docsCountsSummary.total > 0 ? (
+              <StatusBadge
+                size="sm"
+                shape="pill"
+                semantic={docsCountsSummary.ready >= docsCountsSummary.total && docsCountsSummary.problem === 0 ? 'success' : 'neutral'}
+                label={`${docsCountsSummary.ready}/${docsCountsSummary.total}`}
+              />
+            ) : undefined,
+          }}
+        />
 
         <div className={cardTab === 'personal' || cardTab === 'profile' ? 'min-w-0 space-y-3 lg:col-start-1' : 'hidden'}>
           {cardTab === 'personal' && !isMasked && registrySectionVisible('basic') ? (
