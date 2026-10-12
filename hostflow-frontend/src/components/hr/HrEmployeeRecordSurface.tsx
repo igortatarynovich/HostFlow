@@ -1280,7 +1280,7 @@ function PersonForm({
           multiSelectedLabel={selectTexts.multiSelected}
         />
       </InlineFieldRow>
-      <h3 className="md:col-span-2 py-1 text-sm font-semibold text-slate-900">{t('app.candidate_card.intake.steps.contacts')}</h3>
+      <h3 className="md:col-span-2 py-1 text-sm font-semibold text-slate-900">{t('app.candidate_card.ia.sections.contact')}</h3>
       <InlineFieldRow
         label={t('app.candidate_card.fields.phone')}
         value={phoneLabel}
