@@ -29,9 +29,9 @@ export const DocumentFieldInput = memo(function DocumentFieldInput({
   if (fieldConfig.type === "text") {
     return (
       <label className="block">
-        <div className="text-[11px] text-slate-500">{label}</div>
+        <div className="text-xs text-slate-500">{label}</div>
         <input
-          className="input input-sm mt-1"
+          className="input"
           type="text"
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
@@ -44,9 +44,8 @@ export const DocumentFieldInput = memo(function DocumentFieldInput({
   if (fieldConfig.type === "date") {
     return (
       <label className="block">
-        <div className="text-[11px] text-slate-500">{label}</div>
+        <div className="text-xs text-slate-500">{label}</div>
         <DateInput
-          className="mt-1"
           value={value ? String(value).slice(0, 10) : ""}
           onValueChange={onChange}
           disabled={disabled}
@@ -58,9 +57,9 @@ export const DocumentFieldInput = memo(function DocumentFieldInput({
   if (fieldConfig.type === "select") {
     return (
       <label className="block">
-        <div className="text-[11px] text-slate-500">{label}</div>
+        <div className="text-xs text-slate-500">{label}</div>
         <select
-          className="input input-sm mt-1"
+          className="input"
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
@@ -79,9 +78,9 @@ export const DocumentFieldInput = memo(function DocumentFieldInput({
   if (fieldConfig.type === "multiselect") {
     const selectedValues = Array.isArray(value) ? value : [];
     return (
-      <label className="block">
-        <div className="text-[11px] text-slate-500">{label}</div>
-        <div className="mt-1 space-y-1">
+      <label className="col-span-full block">
+        <div className="text-xs text-slate-500">{label}</div>
+        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
           {fieldConfig.options?.map((opt) => {
             const isChecked = selectedValues.includes(opt.value);
             return (

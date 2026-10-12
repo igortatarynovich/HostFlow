@@ -57,6 +57,7 @@ import {
   MAX_FILE_MB,
 } from "./constants";
 import { getDocumentFieldsConfig } from "./documentFieldsConfig";
+import { DocumentViewer } from "../../components/ui/DocumentViewer";
 import { OperatorDocumentRows } from "./OperatorDocumentRows";
 import { COMBINED_LICENSE_SATISFIES } from "../../data/documentTypeAliases";
 import {
@@ -1830,6 +1831,21 @@ useEffect(() => {
     flash,
   });
 
+  const discardFieldEdits = (doc: Document) => {
+    setCoreEdits((prev) => {
+      if (!prev[doc.id]) return prev;
+      const next = { ...prev };
+      delete next[doc.id];
+      return next;
+    });
+    setMetadataEdits((prev) => {
+      if (!prev[doc.id]) return prev;
+      const next = { ...prev };
+      delete next[doc.id];
+      return next;
+    });
+  };
+
   // Функция для обновления значения поля
   const updateFieldValue = (doc: Document, fieldKey: string, value: any) => {
     // Core поля
@@ -2007,14 +2023,15 @@ useEffect(() => {
     const operatorError = error && /evidence variant/i.test(String(error)) ? null : error;
     const framed = Boolean(renderFrame);
     return (
-      <div className={framed ? 'contents' : 'space-y-3'}>
-        {operatorError ? (
-          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 text-sm text-slate-800">{operatorError}</div>
-        ) : null}
-        {loading && docs.length === 0 && !framed ? (
-          <div className="text-sm text-slate-500">{t("common.loading")}</div>
-        ) : (
-          <OperatorDocumentRows
+      <>
+        <div className={framed ? 'contents' : 'space-y-3'}>
+          {operatorError ? (
+            <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 text-sm text-slate-800">{operatorError}</div>
+          ) : null}
+          {loading && docs.length === 0 && !framed ? (
+            <div className="text-sm text-slate-500">{t("common.loading")}</div>
+          ) : (
+            <OperatorDocumentRows
             candidateId={candidateId}
             docs={docs}
             docTypes={docTypes}
@@ -2043,10 +2060,20 @@ useEffect(() => {
             deleteDocumentFile={deleteDocumentFile}
             openDoc={openDoc}
             recordProcedure={recordProcedure}
+            discardEdits={discardFieldEdits}
             coreSaving={coreSaving}
           />
         )}
-      </div>
+        </div>
+        <DocumentViewer
+          open={previewOpen}
+          url={previewUrl}
+          contentType={previewContentType}
+          title={t("admin.documents.preview.dialog_aria", { defaultValue: "Document preview" })}
+          closeLabel={t("common.actions.close", { defaultValue: "Close" })}
+          onClose={closePreview}
+        />
+      </>
     );
   }
 
@@ -2526,38 +2553,14 @@ useEffect(() => {
         </div>
       )}
 
-      {previewOpen && previewUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4"
-          onClick={closePreview}
-          role="presentation"
-        >
-          <div
-            className="flex h-[min(90vh,920px)] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("admin.documents.preview.dialog_aria")}
-          >
-            <div className="flex shrink-0 items-center justify-end border-b border-slate-200 bg-slate-50 px-2 py-1.5">
-              <button type="button" className="btn-secondary btn-xs" onClick={closePreview}>
-                {t("common.actions.close")}
-              </button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-auto bg-slate-100">
-              {previewContentType?.includes("pdf") || previewUrl.toLowerCase().endsWith(".pdf") ? (
-                <iframe title={t("admin.documents.preview.iframe_title")} src={previewUrl} className="h-full min-h-[70vh] w-full" />
-              ) : (
-                <img
-                  src={previewUrl}
-                  alt=""
-                  className="mx-auto block h-auto max-h-full min-h-0 w-auto max-w-full object-contain"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <DocumentViewer
+        open={previewOpen}
+        url={previewUrl}
+        contentType={previewContentType}
+        title={t("admin.documents.preview.dialog_aria", { defaultValue: "Document preview" })}
+        closeLabel={t("common.actions.close", { defaultValue: "Close" })}
+        onClose={closePreview}
+      />
     </div>
   );
 }

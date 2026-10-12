@@ -119,11 +119,20 @@
   }
   .workspace-editor .input,
   .workspace-editor select.input,
-  .workspace-editor .textarea {
+  .workspace-editor .btn {
     min-height: 2rem;
+    height: 2rem;
     border-radius: 0.5rem;
-    padding-top: 0.25rem;
-    padding-bottom: 0.25rem;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .workspace-editor textarea.input,
+  .workspace-editor .textarea {
+    height: auto;
+    min-height: 6rem;
+    border-radius: 0.5rem;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
   }
 
   /* Бейдж */

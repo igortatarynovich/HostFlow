@@ -32,7 +32,7 @@ export function DocumentMetadataForm({
   })
   if (!fields.length) return null
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <>
       {fields.map((field) => (
         <DocumentFieldInput
           key={field.key}
@@ -42,6 +42,6 @@ export function DocumentMetadataForm({
           disabled={Boolean(disabled)}
         />
       ))}
-    </div>
+    </>
   )
 }

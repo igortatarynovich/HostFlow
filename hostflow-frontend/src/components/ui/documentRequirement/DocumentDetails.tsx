@@ -1,10 +1,24 @@
 import type { ReactNode } from 'react'
+import clsx from 'clsx'
 
-export function DocumentDetails({ file, metadata }: { file: ReactNode; metadata: ReactNode }) {
+/** Continuation of a document row: file cluster beside metadata, not a nested card. */
+export function DocumentDetails({
+  file,
+  metadata,
+}: {
+  file?: ReactNode
+  metadata?: ReactNode
+}) {
+  const both = Boolean(file) && Boolean(metadata)
   return (
-    <div className="mt-2 space-y-3 border-t border-slate-100 pt-2">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">{file}</div>
-      <div className="min-w-0">{metadata}</div>
+    <div
+      className={clsx(
+        'mt-2 border-t border-slate-100 pt-3',
+        both ? 'grid gap-4 md:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)]' : 'space-y-3',
+      )}
+    >
+      {file ? <div className="min-w-0 space-y-2">{file}</div> : null}
+      {metadata ? <div className="min-w-0 space-y-2">{metadata}</div> : null}
     </div>
   )
 }

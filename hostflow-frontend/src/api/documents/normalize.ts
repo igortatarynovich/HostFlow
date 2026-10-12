@@ -629,6 +629,7 @@ export function normalizeDocument<T extends Record<string, any>>(raw: T): Docume
     tenant_id: String(raw.tenant_id ?? ""),
     candidate_id: String(raw.candidate_id ?? raw.owner_id ?? ""),
     company_id: raw.company_id != null ? String(raw.company_id) : null,
+    own_company_id: raw.own_company_id != null ? String(raw.own_company_id) : null,
     kind,
     doc_type: docType,
     type: docType,

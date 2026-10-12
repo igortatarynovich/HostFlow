@@ -3,6 +3,7 @@ import { documentRequirementGridClass } from './documentRequirementGrid'
 
 type Props = {
   title: string
+  subtitle?: string | null
   requirement?: ReactNode
   presence: ReactNode
   fileStatus?: ReactNode
@@ -14,6 +15,7 @@ type Props = {
 
 export function DocumentRequirementRow({
   title,
+  subtitle,
   requirement,
   presence,
   fileStatus,
@@ -22,17 +24,21 @@ export function DocumentRequirementRow({
   onToggle,
   details,
 }: Props) {
+  const titleClass = 'block max-w-full truncate text-left text-sm font-medium text-slate-900'
   const titleNode = onToggle ? (
-    <button type="button" className="truncate text-left text-sm font-medium text-slate-900" onClick={onToggle}>
+    <button type="button" className={titleClass} onClick={onToggle}>
       {title}
     </button>
   ) : (
-    <span className="truncate text-sm font-medium text-slate-900">{title}</span>
+    <span className={titleClass}>{title}</span>
   )
   return (
-    <div className="py-2">
+    <div className="py-1.5">
       <div className={documentRequirementGridClass}>
-        <div className="min-w-0">{titleNode}</div>
+        <div className="min-w-0">
+          {titleNode}
+          {subtitle ? <div className="truncate text-xs text-slate-500">{subtitle}</div> : null}
+        </div>
         <div className="min-w-0">{requirement}</div>
         <div className="min-w-0">{presence}</div>
         <div className="flex min-w-0 items-center gap-2 overflow-hidden">{fileStatus}</div>

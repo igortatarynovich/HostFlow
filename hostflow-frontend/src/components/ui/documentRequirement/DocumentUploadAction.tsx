@@ -5,23 +5,26 @@ export function DocumentUploadAction({
   label,
   disabled,
   onFile,
+  appearance = 'button',
 }: {
   label: string
   disabled?: boolean
   onFile: (file: File) => void
+  appearance?: 'button' | 'link'
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const open = () => inputRef.current?.click()
   return (
     <>
-      <Button
-        type="button"
-        variant="secondary"
-        size="compact"
-        disabled={disabled}
-        onClick={() => inputRef.current?.click()}
-      >
-        {label}
-      </Button>
+      {appearance === 'link' ? (
+        <Button type="button" variant="link" disabled={disabled} onClick={open}>
+          {label}
+        </Button>
+      ) : (
+        <Button type="button" variant="primary" size="compact" disabled={disabled} onClick={open}>
+          {label}
+        </Button>
+      )}
       <input
         ref={inputRef}
         type="file"

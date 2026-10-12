@@ -2,7 +2,7 @@ import clsx from 'clsx'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'link' | 'icon'
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'link' | 'linkDanger' | 'icon'
 export type ButtonSize = 'md' | 'sm' | 'xs' | 'compact'
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
@@ -10,7 +10,8 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   secondary: 'btn btn-secondary',
   danger: 'btn btn-danger',
   ghost: 'btn btn-ghost',
-  link: 'inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800 hover:underline',
+  link: 'inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800 hover:underline disabled:opacity-50',
+  linkDanger: 'inline-flex items-center gap-1 text-sm font-medium text-rose-700 hover:text-rose-800 hover:underline disabled:opacity-50',
   icon: 'btn-icon',
 }
 
@@ -35,7 +36,7 @@ function buttonClasses(variant: ButtonVariant, size: ButtonSize, className?: str
     const iconSize = size === 'md' ? '' : 'btn-icon-sm'
     return clsx(VARIANT_CLASSES.icon, iconSize, className)
   }
-  if (variant === 'link') return clsx(VARIANT_CLASSES.link, className)
+  if (variant === 'link' || variant === 'linkDanger') return clsx(VARIANT_CLASSES[variant], className)
   return clsx(VARIANT_CLASSES[variant], SIZE_CLASSES[size], className)
 }
 

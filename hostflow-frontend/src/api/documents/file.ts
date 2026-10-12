@@ -1,4 +1,4 @@
-import { docsApi } from "../client";
+import { docsApi, getStoredAccessToken, resolveApiBase, settings } from "../client";
 import type { DocumentFileDownload } from "./types";
 
 const parseContentDisposition = (value: string | null | undefined): string | null => {
@@ -12,10 +12,44 @@ const parseContentDisposition = (value: string | null | undefined): string | nul
   }
 };
 
+async function downloadDocumentFileForCompany(
+  docId: string,
+  ownCompanyId: string,
+  viewerChannel?: string,
+): Promise<DocumentFileDownload> {
+  const base = resolveApiBase().replace(/\/$/, "");
+  const headers: Record<string, string> = {
+    Accept: "*/*",
+    "X-Tenant-Id": settings.get(),
+    "X-Own-Company-Id": ownCompanyId,
+  };
+  const token = getStoredAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (viewerChannel) headers["X-Document-Viewer-Channel"] = viewerChannel;
+  const response = await fetch(`${base}/db/documents/${docId}/file`, {
+    headers,
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const error = new Error("file download failed") as Error & { response?: { status: number } };
+    error.response = { status: response.status };
+    throw error;
+  }
+  const blob = await response.blob();
+  return {
+    blob,
+    filename: parseContentDisposition(response.headers.get("content-disposition")),
+    contentType: response.headers.get("content-type"),
+  };
+}
+
 export async function downloadDocumentFile(
   docId: string,
-  options?: { viewerChannel?: string },
+  options?: { viewerChannel?: string; ownCompanyId?: string },
 ): Promise<DocumentFileDownload> {
+  if (options?.ownCompanyId) {
+    return downloadDocumentFileForCompany(docId, options.ownCompanyId, options.viewerChannel);
+  }
   const requestHeaders: Record<string, string> = {}
   if (options?.viewerChannel) {
     requestHeaders['X-Document-Viewer-Channel'] = options.viewerChannel

@@ -1,6 +1,5 @@
 import { memo, useMemo, useEffect, useState, useCallback } from 'react'
 import type { RefObject } from 'react'
-import { IconClipboardList } from '@tabler/icons-react'
 import type { CandidateProfile } from '../../api/candidate_profiles'
 import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import type { CandidateExtra } from '../../api/types'
@@ -8,6 +7,8 @@ import type { CustomFieldDefinition } from '../../api/custom_fields'
 import { listCustomFieldDefinitions } from '../../api/custom_fields'
 import { getFieldConfigs, isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
 import { Input, Checkbox, SearchableSelect, CheckboxMultiSelect } from './shared/FormComponents'
+import { FieldGrid } from '../ui/FieldGrid'
+import { WorkspaceSection } from '../ui/WorkspaceSection'
 import { useI18n } from '../../i18n'
 
 interface CandidateCustomFieldsSectionProps {
@@ -129,34 +130,20 @@ function CandidateCustomFieldsSection({
 
   if (loading) {
     return (
-      <section
-        ref={customFieldsRef}
-        id="section-custom-fields"
-        className="group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl"
-      >
+      <WorkspaceSection title={t('app.candidate_card.sections.custom_fields.title')}>
         <div className="text-sm text-slate-500">{t('common.loading')}</div>
-      </section>
+      </WorkspaceSection>
     )
   }
 
   return (
-    <section
-      ref={customFieldsRef}
-      id="section-custom-fields"
-      className="group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl"
-    >
-      <div className="flex items-center gap-3">
-        <IconClipboardList size={22} className="text-slate-600" />
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">
-            {t('app.candidate_card.sections.custom_fields.title')}
-          </h2>
-          <p className="text-sm text-slate-500">
-            {t('app.candidate_card.sections.custom_fields.description')}
-          </p>
-        </div>
-      </div>
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+    <section ref={customFieldsRef} id="section-custom-fields" className="scroll-mt-24">
+      <WorkspaceSection
+        title={t('app.candidate_card.sections.custom_fields.title')}
+        description={t('app.candidate_card.sections.custom_fields.description')}
+      >
+      <div className="workspace-editor">
+      <FieldGrid>
         {visibleFields.map((fieldConfig) => {
           const definition = fieldDefinitionMap.get(fieldConfig.field_key)
           if (!definition) return null
@@ -285,7 +272,9 @@ function CandidateCustomFieldsSection({
               return null
           }
         })}
+      </FieldGrid>
       </div>
+      </WorkspaceSection>
     </section>
   )
 }
