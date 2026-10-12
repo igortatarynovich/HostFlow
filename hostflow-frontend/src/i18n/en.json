@@ -245,6 +245,10 @@
       }
     },
     "hr": {
+      "employee_record": {
+        "confirm_terms": "Confirm employment terms",
+        "confirm_legal": "Confirm legal eligibility"
+      },
       "employee_detail": {
         "documents_load_error": "Could not load documents",
         "section_documents": "HR documents",

@@ -3,7 +3,7 @@
 The browser walk is not PASS. Citizenship is the reference pattern.
 """
 
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from backend.app.services.candidate_workforce_lock import recruitment_holds_returned_case
@@ -376,6 +376,156 @@ def test_path_marks_existing_readings_and_skips_processes_without_a_task() -> No
     assert overview["notice"] == "attention"
     assert overview["stay_until"] == "2027-07-29"
     assert overview["attention_count"] == 3
+
+
+def test_choose_display_employment_keeps_active_then_falls_back_to_newest() -> None:
+    from backend.app.models.hr_employment import Employment
+    from backend.app.services.employment_records import choose_display_employment
+
+    active = Employment(
+        id="A",
+        tenant_id="tenant-1",
+        employee_id="employee-1",
+        state="active",
+        created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )
+    preparing = Employment(
+        id="B",
+        tenant_id="tenant-1",
+        employee_id="employee-1",
+        state="preparing",
+        created_at=datetime(2026, 10, 1, tzinfo=timezone.utc),
+    )
+
+    assert choose_display_employment([preparing, active]) is active
+
+    active.state = "ended"
+    assert choose_display_employment([preparing, active]) is preparing
+
+
+async def test_employee_card_opens_active_employment_ahead_of_newer_preparing(monkeypatch) -> None:
+    from backend.app.models.hr_employment import Employment
+    from backend.app.models.workforce_employee import WorkforceEmployee
+    from backend.app.services import employment_records
+    from backend.app.services import hr_employee_record_surface as service
+    from backend.app.services.hr_driver_operator_surface import SurfaceCase, choose_next_action
+
+    active = Employment(
+        id="A",
+        tenant_id="tenant-1",
+        employee_id="employee-1",
+        state="active",
+        created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )
+    preparing = Employment(
+        id="B",
+        tenant_id="tenant-1",
+        employee_id="employee-1",
+        state="preparing",
+        created_at=datetime(2026, 10, 1, tzinfo=timezone.utc),
+    )
+    rows = [preparing, active]
+    employee = WorkforceEmployee(id="employee-1", tenant_id="tenant-1", display_name="Jan", status="active", meta={})
+
+    async def list_rows(*_args, **_kwargs):
+        return list(rows)
+
+    async def build_driver(_db, *, tenant_id, employee, employment=None, employment_chosen=False):
+        assert tenant_id == "tenant-1"
+        assert employment_chosen is True
+        action = None
+        if employment is not None:
+            action = choose_next_action(
+                SurfaceCase(
+                    state=employment.state,
+                    terms_complete=False,
+                    work_yes=False,
+                    legal_pass=False,
+                    zus_open=False,
+                    ready_pass=False,
+                    facts=(),
+                )
+            )
+        return {
+            "employee_id": str(employee.id),
+            "employment_id": None if employment is None else str(employment.id),
+            "state": None if employment is None else employment.state,
+            "header": {"name": employee.display_name, "position": None, "employer": None, "planned_start": None},
+            "identity": {
+                "first_name": "Jan",
+                "last_name": "Kowalski",
+                "birth_date": "1988-04-12",
+                "citizenship": "UA",
+                "complete": True,
+            },
+            "legal_stay": {"basis": None, "status": "unknown"},
+            "work_eligibility": {"basis": None, "status": "pending", "valid_for_this_employment": None},
+            "professional": {"defined": False, "satisfied": 0, "applicable": 0, "facts": []},
+            "terms": None,
+            "next_action": action,
+            "ready_to_start": {
+                "status": "active" if employment is not None and employment.state == "active" else "blocked",
+                "reasons": [],
+                "can_start": False,
+            },
+        }
+
+    class _Scalars:
+        def all(self):
+            return []
+
+    class _DB:
+        async def get(self, model, ident):
+            if model is Employment:
+                return next((row for row in rows if row.id == ident), None)
+            return None
+
+        async def scalars(self, *_args, **_kwargs):
+            return _Scalars()
+
+    async def no_documents(*_args, **_kwargs):
+        return []
+
+    monkeypatch.setattr(employment_records, "list_employments", list_rows)
+    monkeypatch.setattr(service, "build_hr_driver_operator_surface", build_driver)
+    monkeypatch.setattr(service, "_linked_documents", no_documents)
+
+    opened = await service.build_hr_employee_record_surface(_DB(), tenant_id="tenant-1", employee=employee)
+
+    assert opened["employment_id"] == "A"
+    assert opened["state"] == "active"
+    assert opened["overview"]["phase"] == "active"
+    assert opened["current_process"]["next_action"] is None
+
+    active.state = "ended"
+    reopened = await service.build_hr_employee_record_surface(_DB(), tenant_id="tenant-1", employee=employee)
+
+    assert reopened["employment_id"] == "B"
+    assert reopened["state"] == "preparing"
+    assert reopened["overview"]["phase"] == "preparing"
+    assert reopened["current_process"]["next_action"]["code"] == "confirm_terms"
+
+
+async def test_driver_surface_default_keeps_preparing_selector(monkeypatch) -> None:
+    from backend.app.models.workforce_employee import WorkforceEmployee
+    from backend.app.services import hr_driver_operator_surface as driver
+
+    seen = {"called": False}
+
+    async def latest(*_args, **_kwargs):
+        seen["called"] = True
+        return None
+
+    class _DB:
+        async def get(self, *_args, **_kwargs):
+            return None
+
+    monkeypatch.setattr(driver, "_latest_employment", latest)
+    employee = WorkforceEmployee(id="employee-1", tenant_id="tenant-1", display_name="Jan", status="active", meta={})
+    result = await driver.build_hr_driver_operator_surface(_DB(), tenant_id="tenant-1", employee=employee)
+
+    assert seen["called"] is True
+    assert result["employment_id"] is None
 
 
 def _group(projected: dict, group_id: str) -> dict:

@@ -227,6 +227,10 @@
   },
   "app": {
     "hr": {
+      "employee_record": {
+        "confirm_terms": "Подтвердить условия",
+        "confirm_legal": "Подтвердить легализацию"
+      },
       "employee_detail": {
         "documents_load_error": "Не удалось загрузить документы",
         "section_documents": "Документы HR",
