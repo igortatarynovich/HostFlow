@@ -314,6 +314,11 @@ type Props = {
   compactType?: boolean;
   /** Same tab workspace: expand the focused type in place. Do not open the file preview. */
   inlineWorkspace?: boolean;
+  /**
+   * This mount is a read-only projection. Document Hub permissions stay unchanged;
+   * the surface only withholds mutation controls for this view.
+   */
+  mutationsLocked?: boolean;
 };
 
 export default function CandidateDocuments({
@@ -326,6 +331,7 @@ export default function CandidateDocuments({
   initialType,
   compactType = false,
   inlineWorkspace = false,
+  mutationsLocked = false,
 }: Props) {
   const { can } = usePermissions();
   const { t, locale } = useI18n();
@@ -354,7 +360,7 @@ export default function CandidateDocuments({
   // (recruiter, supervisor, …). UI used only documents.manage, which also requires the
   // "documents" module cell to be editable — misconfigured matrices blocked recruiters who
   // could still edit candidates. Allow uploads when the user can manage the candidate.
-  const canManageDocuments = can("documents.manage") || can("candidates.manage");
+  const canManageDocuments = (can("documents.manage") || can("candidates.manage")) && !mutationsLocked;
   const planLimitModal = usePlanLimitModal();
 
   const coreFromDocument = useCallback((doc: Document): CoreFields => ({

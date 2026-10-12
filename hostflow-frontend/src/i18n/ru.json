@@ -227,6 +227,10 @@
   },
   "app": {
     "hr": {
+      "employee_record": {
+        "confirm_terms": "Подтвердить условия",
+        "confirm_legal": "Подтвердить легализацию"
+      },
       "employee_detail": {
         "documents_load_error": "Не удалось загрузить документы",
         "section_documents": "Документы HR",
@@ -6427,6 +6431,8 @@
         },
         "sections": {
           "identity": "Основные данные",
+          "contact": "Контактная информация",
+          "address": "Адреса",
           "driver": "Водительский профиль",
           "experience": "Опыт работы",
           "additional": "Адрес и дополнительные данные",
@@ -6453,6 +6459,8 @@
         "legalization_open_document": "Открыть в документах",
         "legalization_employment": "Employment",
         "activity_history": "Активность / История",
+        "same_as_residence": "Совпадает с адресом проживания",
+        "system_created": "Создан {date}",
         "order_service": "Заказать услугу",
         "years_short": "опыт {{count}}",
         "active_vacancy": "Активная заявка"

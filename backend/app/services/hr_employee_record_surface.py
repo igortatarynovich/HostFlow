@@ -723,7 +723,14 @@ async def build_hr_employee_record_surface(
     tenant_id: str,
     employee: WorkforceEmployee,
 ) -> dict[str, Any]:
-    driver = await build_hr_driver_operator_surface(db, tenant_id=tenant_id, employee=employee)
+    shown = await display_employment(db, str(tenant_id), str(employee.id))
+    driver = await build_hr_driver_operator_surface(
+        db,
+        tenant_id=tenant_id,
+        employee=employee,
+        employment=shown,
+        employment_chosen=True,
+    )
     candidate = None
     if employee.candidate_id:
         candidate = await db.get(Candidate, str(employee.candidate_id))
