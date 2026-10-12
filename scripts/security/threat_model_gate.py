@@ -28,6 +28,9 @@ def _is_security_doc(path: str) -> bool:
 
 def _is_sensitive(path: str) -> bool:
     p = path.replace("\\", "/")
+    name = PurePosixPath(p).name
+    if "/__tests__/" in p or name.endswith((".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")):
+        return False
     sensitive_prefixes = (
         "backend/app/auth/",
         "backend/app/api/public/",
