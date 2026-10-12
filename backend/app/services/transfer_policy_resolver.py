@@ -132,23 +132,12 @@ def _pending_confirmations(
     blocks: list[dict[str, Any]],
     confirmed: list[str],
 ) -> list[dict[str, Any]]:
-    confirmed_set = set(confirmed)
-    pending: list[dict[str, Any]] = []
-    for block in blocks:
-        key = str(block.get("document_key") or block.get("label") or "").strip()
-        if not key:
-            continue
-        if str(block.get("status") or "").lower() != "ready":
-            continue
-        if key in confirmed_set:
-            continue
-        pending.append(
-            {
-                "block_key": key,
-                "confirmed_by_role": "recruiter",
-            }
-        )
-    return pending
+    """Document verify/confirm on the file is the only recruiter confirmation.
+
+    Extra dossier-block clicks are not a transfer gate.
+    """
+    _ = blocks, confirmed
+    return []
 
 
 def _canonical_requirement_state(
@@ -237,8 +226,6 @@ class TransferPolicyResolver:
             }
 
         stage_code = str(target_stage or getattr(cand, "stage", "") or "").strip().lower()
-        extra = _candidate_extra(cand)
-        confirmed_blocks = _read_confirmed_blocks(extra)
         source_layers: set[str] = set()
         blocking_reasons: list[dict[str, Any]] = []
         warnings: list[dict[str, Any]] = []
@@ -475,20 +462,7 @@ class TransferPolicyResolver:
         ops_ready = not ops_blockers
 
         package_blocks = list(pkg.get("blocks") or [])
-        required_confirmations = _pending_confirmations(package_blocks, confirmed_blocks)
-        if required_confirmations:
-            source_layers.add("recruiter_confirmation")
-            for item in required_confirmations:
-                key = str(item.get("block_key") or "")
-                blocking_reasons.append(
-                    _blocking_reason(
-                        code="unconfirmed_block",
-                        message=f"Recruiter must confirm reviewed block: {key}",
-                        source_layer="recruiter_confirmation",
-                        block_key=key,
-                        confirmed_by_role="recruiter",
-                    )
-                )
+        required_confirmations: list[dict[str, Any]] = []
 
         destinations_allowed, tenant_link, handoff_meta = await _resolve_destinations_for_candidate(
             db,
@@ -538,7 +512,7 @@ class TransferPolicyResolver:
         if approved_overrides and docs_ready:
             readiness_ok = True
 
-        package_ready = bool(pkg.get("ready")) and not required_confirmations
+        package_ready = bool(pkg.get("ready"))
 
         from backend.app.reference.hiring_eligibility_composition import (
             compose_hiring_eligibility,
@@ -553,11 +527,7 @@ class TransferPolicyResolver:
             conjuncts["workforce_packs"] = (False, "Workforce eligibility blocks transfer")
         if not package_ready:
             package_message = "Recruitment dossier is not ready for transfer"
-            if required_confirmations:
-                key = str(required_confirmations[0].get("block_key") or "").strip()
-                if key:
-                    package_message = f"Recruiter must confirm reviewed block: {key}"
-            elif pkg.get("blocking_blocks"):
+            if pkg.get("blocking_blocks"):
                 block_key = str((pkg.get("blocking_blocks") or [""])[0] or "").strip()
                 if block_key:
                     package_message = f"Dossier block incomplete: {block_key}"

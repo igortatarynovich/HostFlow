@@ -110,6 +110,7 @@ def build_transfer_readiness_section(report: dict[str, Any]) -> dict[str, Any]:
         "destinations_allowed": list(report.get("destinations_allowed") or []),
         "policy_version": report.get("policy_version"),
         "source_layers": list(report.get("source_layers") or []),
+        "required_confirmations": list(report.get("required_confirmations") or []),
     }
     if isinstance(report.get("requirement_engine"), dict):
         section["requirement_engine"] = report["requirement_engine"]

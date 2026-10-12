@@ -89,7 +89,7 @@ def test_pending_confirmations() -> None:
         {"document_key": "Medical", "status": "missing"},
     ]
     pending = _pending_confirmations(blocks, ["Passport / ID"])
-    assert pending == [{"block_key": "Driver license", "confirmed_by_role": "recruiter"}]
+    assert pending == []
 
 
 def test_resolve_destinations_from_link() -> None:
@@ -203,10 +203,10 @@ async def test_transfer_policy_blocked_by_unconfirmed_blocks(monkeypatch: pytest
         tenant_id="tenant-1",
         candidate_id="cand-1",
     )
-    assert report["transfer_allowed"] is False
-    assert report["required_confirmations"]
-    assert any(r["code"] == "unconfirmed_block" for r in report["blocking_reasons"])
-    assert "recruiter_confirmation" in report["source_layers"]
+    assert report["transfer_allowed"] is True
+    assert report["required_confirmations"] == []
+    assert not any(r["code"] == "unconfirmed_block" for r in report["blocking_reasons"])
+    assert "recruiter_confirmation" not in report["source_layers"]
 
 
 @pytest.mark.anyio

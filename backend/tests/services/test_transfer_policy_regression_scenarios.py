@@ -102,9 +102,9 @@ async def test_regression_unconfirmed_blocks_block_transfer(monkeypatch: pytest.
         tenant_id="tenant-1",
         candidate_id="cand-1",
     )
-    assert report["transfer_allowed"] is False
-    assert report["required_confirmations"]
-    assert any(r.get("code") == "unconfirmed_block" for r in report["blocking_reasons"])
+    assert report["transfer_allowed"] is True
+    assert report["required_confirmations"] == []
+    assert not any(r.get("code") == "unconfirmed_block" for r in report["blocking_reasons"])
 
 
 @pytest.mark.anyio
