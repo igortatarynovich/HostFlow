@@ -23,6 +23,7 @@ import { useI18n } from '../../i18n'
 import { usePlatformCountryOptions, usePlatformDialCodeOptions } from '../../hooks/usePlatformCatalogOptions'
 import { PREFERRED_CONTACT_VALUES } from '../../data/preferredContactChannels'
 import CandidateDocuments from '../../modules/documents/CandidateDocuments'
+import OperatorFactsSurface from '../../modules/candidates/OperatorFactsSurface'
 import { CandidateQuickTaskModal } from '../../modules/candidates/components/CandidateQuickTaskModal'
 import CandidateNotesRailSection from '../candidate/CandidateNotesRailSection'
 import CandidateTimelinePanel from '../candidate/CandidateTimelinePanel'
@@ -39,7 +40,9 @@ import { EntitySummaryHeader } from '../ui/EntitySummaryHeader'
 import { StagePipeline } from '../ui/StagePipeline'
 import { WorkspaceTabs } from '../ui/WorkspaceTabs'
 import { WorkspaceWidget } from '../ui/WorkspaceWidget'
+import { InlineFieldRow } from '../ui/InlineFieldRow'
 import { documentSeverityToSemantic, type StatusBadgeSemantic } from '../ui/statusBadgeSemantics'
+import { requirementStatusBadgeClass, type RequirementRowStatus } from '../candidate/requirementsChecklistPresentation'
 import { getLanguageDisplayName, getRegionDisplayName } from '../../utils/catalogLocale'
 import { EndEmploymentModal, ReturnToRecruitmentModal } from './EmployeeLifecycleModals'
 
@@ -170,6 +173,7 @@ export default function HrEmployeeRecordSurface({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState<(typeof RECORD_TABS)[number]>('dane_osobowe')
+  const [documentFocus, setDocumentFocus] = useState<string | undefined>(undefined)
 
   const load = useCallback(async () => {
     const next = await getHrEmployeeRecordSurface(employeeId)
@@ -197,7 +201,13 @@ export default function HrEmployeeRecordSurface({
 
   useEffect(() => {
     setTab('dane_osobowe')
+    setDocumentFocus(undefined)
   }, [employeeId])
+
+  const openDocuments = (typeCode?: string) => {
+    setDocumentFocus(typeCode)
+    setTab('dokumenty')
+  }
 
   const openTarget = (target: string | null) => {
     if (!target) return
@@ -309,9 +319,12 @@ export default function HrEmployeeRecordSurface({
               <LegalForm
                 key={employeeId}
                 employeeId={employeeId}
+                candidateId={surface.candidate_id}
+                contextLabel={[surface.header.employer, surface.header.position].filter(Boolean).join(' · ')}
                 group={activeGroup('legalizacja')!}
                 legal={surface.legal}
                 writable={canEdit && surface.state === 'preparing'}
+                onOpenDocuments={() => openDocuments()}
                 onError={setError}
                 onSaved={() => {
                   void load()
@@ -320,7 +333,12 @@ export default function HrEmployeeRecordSurface({
             ) : null}
             {tab === 'kwalifikacje' ? (
               <div className="space-y-6">
-                <FactSections group={activeGroup('kwalifikacje')} locale={locale} approvedLabel={t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })} />
+                <FactSections
+                  group={activeGroup('kwalifikacje')}
+                  locale={locale}
+                  approvedLabel={t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })}
+                  onOpenDocuments={() => openDocuments()}
+                />
                 {activeGroup('badania') ? (
                   <div id="record-group-badania">
                     <h3>
@@ -329,7 +347,11 @@ export default function HrEmployeeRecordSurface({
                         ? ` · ${factCoverage(activeGroup('badania'))} ${t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })}`
                         : ''}
                     </h3>
-                    <GroupBody group={activeGroup('badania')!} locale={locale} />
+                    <GroupBody
+                      group={activeGroup('badania')!}
+                      locale={locale}
+                      onOpenDocuments={() => openDocuments()}
+                    />
                   </div>
                 ) : null}
               </div>
@@ -351,7 +373,26 @@ export default function HrEmployeeRecordSurface({
               <CompactGroup group={activeGroup('formalnosci')!} locale={locale} documents={surface.documents} />
             ) : null}
             {tab === 'dokumenty' && surface.candidate_id ? (
-              <CandidateDocuments candidateId={surface.candidate_id} hideHeader onDocumentsChanged={() => void load()} />
+              <div className="space-y-4">
+                {(activeGroup('dokumenty')?.rows || [])
+                  .filter((row) => row.id === 'dokumenty.passport')
+                  .map((row) => (
+                    <RequirementFactRow
+                      key={row.id}
+                      row={row}
+                      locale={locale}
+                      onOpenDocuments={() => openDocuments(row.id.slice('dokumenty.'.length))}
+                    />
+                  ))}
+                <CandidateDocuments
+                  candidateId={surface.candidate_id}
+                  hideHeader
+                  inlineWorkspace
+                  initialType={documentFocus}
+                  mutationsLocked={returned}
+                  onDocumentsChanged={() => void load()}
+                />
+              </div>
             ) : null}
           </section>
         </div>
@@ -626,10 +667,12 @@ function FactSections({
   group,
   locale,
   approvedLabel,
+  onOpenDocuments,
 }: {
   group?: HrEmployeeRecordGroup
   locale: 'en' | 'ru' | 'pl'
   approvedLabel: string
+  onOpenDocuments: () => void
 }) {
   if (!group) return null
   const buckets: { keys: string[] }[] = [
@@ -655,7 +698,7 @@ function FactSections({
             {rows[0].label}
             {factCoverage({ ...group, rows }) ? ` · ${factCoverage({ ...group, rows })} ${approvedLabel}` : ''}
           </h3>
-          <GroupBody group={{ ...group, rows }} locale={locale} />
+          <GroupBody group={{ ...group, rows }} locale={locale} onOpenDocuments={onOpenDocuments} />
         </div>
       ))}
     </div>
@@ -871,41 +914,132 @@ function factCoverage(group: HrEmployeeRecordGroup): string | null {
   return `${confirmed}/${applicable.length}`
 }
 
-function evidenceSemantic(code: string | null): StatusBadgeSemantic {
-  if (code === 'approved') return documentSeverityToSemantic('ok')
-  if (code === 'expired' || code === 'rejected') return documentSeverityToSemantic('bad')
-  if (code === 'missing' || code === 'not_required') return 'neutral'
-  return documentSeverityToSemantic('info')
+function resolutionBadgeStatus(status: string): RequirementRowStatus {
+  if (status === 'satisfied') return 'approved'
+  if (status === 'waived') return 'superseded'
+  if (status === 'blocking') return 'rejected'
+  if (status === 'not_applicable') return 'not_applicable'
+  if (status === 'pending') return 'pending_review'
+  return 'missing'
 }
 
-function GroupBody({ group, locale }: { group: HrEmployeeRecordGroup; locale: 'en' | 'ru' | 'pl' }) {
+function resolutionLabel(t: Translate, status: string): string {
+  if (status === 'satisfied') {
+    return t('app.candidate_card.requirements_checklist.status.satisfied', { defaultValue: 'Confirmed' })
+  }
+  if (status === 'not_applicable') {
+    return t('app.candidate_card.requirements_checklist.status.not_applicable', { defaultValue: 'Not applicable' })
+  }
+  return displayStatus(status) || status
+}
+
+function evidenceLinked(code: string | null): boolean {
+  return Boolean(code && code !== 'missing' && code !== 'not_required')
+}
+
+function RequirementFactRow({
+  row,
+  locale,
+  onOpenDocuments,
+}: {
+  row: HrEmployeeRecordRow
+  locale: 'en' | 'ru' | 'pl'
+  onOpenDocuments?: () => void
+}) {
+  const { t } = useI18n()
+  const [expanded, setExpanded] = useState(false)
+  const linked = evidenceLinked(row.evidence)
+  return (
+    <div className="border-b border-slate-100 py-1" id={`record-row-${row.id}`} data-testid="hr-requirement-row">
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 py-1 text-left"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((value) => !value)}
+      >
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900">{row.label}</span>
+        <span className={clsx('shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold', requirementStatusBadgeClass(resolutionBadgeStatus(row.status)))}>
+          {resolutionLabel(t, row.status)}
+        </span>
+        <span className="shrink-0 text-xs font-medium text-brand-700">
+          {expanded
+            ? t('common.actions.collapse')
+            : t('app.candidate_card.ia.open_row', { defaultValue: 'Open' })}
+        </span>
+      </button>
+      {expanded ? (
+        <div className="pb-2 pl-0">
+          {row.status === 'not_applicable' ? (
+            <p className="mt-2 text-xs text-slate-500">
+              {t('app.candidate_card.requirements_checklist.not_applicable_hint', {
+                defaultValue: 'Not required for this candidate profile.',
+              })}
+            </p>
+          ) : (
+            <div className="mt-2 space-y-3">
+              {(row.details || []).map((detail) => (
+                <div key={detail.label} className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-baseline gap-2 text-xs">
+                  <div className="text-slate-500">{detail.label}</div>
+                  <p className="font-medium text-slate-900">{displayValue(detail.value, detail.label, locale, t)}</p>
+                </div>
+              ))}
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                  {t('app.candidate_card.requirements_checklist.linked_documents', { defaultValue: 'Linked documents' })}
+                </div>
+                {linked ? (
+                  <button
+                    type="button"
+                    className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-left text-xs hover:bg-slate-100"
+                    onClick={onOpenDocuments}
+                    disabled={!onOpenDocuments}
+                  >
+                    <span className="font-medium text-slate-900">{evidenceLabel(row.evidence, t)}</span>
+                    <span className="text-[11px] text-slate-600">
+                      {t('app.candidate_card.ia.legalization_open_document', { defaultValue: 'Open in Documents' })}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="mt-1 space-y-2">
+                    <p className="text-xs text-slate-600">
+                      {t('app.candidate_card.requirements_checklist.no_linked_documents', {
+                        defaultValue: 'No documents linked yet.',
+                      })}
+                    </p>
+                    {onOpenDocuments ? (
+                      <button type="button" className="text-xs font-medium text-brand-700 hover:underline" onClick={onOpenDocuments}>
+                        {t('app.candidate_card.ia.legalization_open_document', { defaultValue: 'Open in Documents' })}
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function GroupBody({
+  group,
+  locale,
+  onOpenDocuments,
+}: {
+  group: HrEmployeeRecordGroup
+  locale: 'en' | 'ru' | 'pl'
+  onOpenDocuments?: () => void
+}) {
   const { t } = useI18n()
   if (group.rows.length === 0) {
     return <p>{EMPTY_GROUP[group.id] || 'Nieuzupełnione'}</p>
   }
   if (group.id === 'kwalifikacje' || group.id === 'badania') {
     return (
-      <div className="mt-3 space-y-3">
+      <div className="mt-1">
         {group.rows.map((row) => (
-          <div key={row.id} id={`record-row-${row.id}`}>
-            <p>{row.label}</p>
-            {(row.details || []).map((detail) => (
-              <div key={detail.label} className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-baseline gap-2">
-                <div className="label mb-0">{detail.label}</div>
-                <p>{displayValue(detail.value, detail.label, locale)}</p>
-              </div>
-            ))}
-            <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-baseline gap-2">
-              <div className="label mb-0">Evidence</div>
-              <p>
-                <StatusBadge
-                  label={evidenceLabel(row.evidence, t)}
-                  semantic={evidenceSemantic(row.evidence)}
-                  size="sm"
-                />
-              </p>
-            </div>
-          </div>
+          <RequirementFactRow key={row.id} row={row} locale={locale} onOpenDocuments={onOpenDocuments} />
         ))}
       </div>
     )
@@ -930,8 +1064,6 @@ function GroupBody({ group, locale }: { group: HrEmployeeRecordGroup; locale: 'e
   )
 }
 
-const AUTO_SAVE_DELAY_MS = 1500
-
 const EMPTY_ADDRESS: HrEmployeeRecordAddress = {
   country: '',
   city: '',
@@ -947,29 +1079,45 @@ function addressDraft(value: HrEmployeeRecordAddress | string | null | undefined
   return { ...EMPTY_ADDRESS }
 }
 
-function useAutosave(fingerprint: string, enabled: boolean, save: () => Promise<boolean>) {
-  const saved = useRef<string | null>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const saveRef = useRef(save)
-  useEffect(() => {
-    saveRef.current = save
-  })
-  useEffect(() => {
-    if (saved.current === null) saved.current = fingerprint
-    if (!enabled) return
-    if (saved.current === fingerprint) return
-    if (timer.current) clearTimeout(timer.current)
-    const pending = fingerprint
-    timer.current = setTimeout(() => {
-      timer.current = null
-      void saveRef.current().then((ok) => {
-        if (ok) saved.current = pending
-      })
-    }, AUTO_SAVE_DELAY_MS)
-    return () => {
-      if (timer.current) clearTimeout(timer.current)
-    }
-  }, [fingerprint, enabled])
+type PersonField =
+  | 'first_name'
+  | 'last_name'
+  | 'birth_date'
+  | 'citizenship'
+  | 'pesel'
+  | 'languages'
+  | 'phone'
+  | 'email'
+  | 'preferred_contact'
+  | 'address'
+  | 'reg_address'
+
+function personPayload(person: HrEmployeeRecordSurface['person']): HrEmployeeRecordPersonIn {
+  return {
+    first_name: person?.first_name || '',
+    last_name: person?.last_name || '',
+    birth_date: person?.birth_date || '',
+    citizenship: person?.citizenship || '',
+    phone: person?.phone || '',
+    phone_country: person?.phone_country || '',
+    email: person?.email || '',
+    preferred_contact: person?.preferred_contact || '',
+    address: addressDraft(person?.address),
+    reg_address_diff: Boolean(person?.reg_address_diff),
+    reg_address: addressDraft(person?.reg_address),
+    pesel: person?.pesel || '',
+    languages: person?.languages || '',
+  }
+}
+
+function formatAddressLine(
+  address: HrEmployeeRecordAddress,
+  countryLabel: (code: string) => string,
+): string {
+  return [countryLabel(address.country), address.city, address.zip, address.street, address.house, address.apt]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(', ')
 }
 
 function PersonForm({
@@ -999,288 +1147,466 @@ function PersonForm({
     }),
     [t],
   )
-  const [firstName, setFirstName] = useState(person?.first_name || '')
-  const [lastName, setLastName] = useState(person?.last_name || '')
-  const [birth, setBirth] = useState(person?.birth_date || '')
-  const [citizenship, setCitizenship] = useState(person?.citizenship || '')
-  const [phone, setPhone] = useState(person?.phone || '')
-  const [phoneCountry, setPhoneCountry] = useState(person?.phone_country || '')
-  const [email, setEmail] = useState(person?.email || '')
-  const [preferredContact, setPreferredContact] = useState(person?.preferred_contact || '')
-  const [address, setAddress] = useState<HrEmployeeRecordAddress>(() => addressDraft(person?.address))
-  const [regDiff, setRegDiff] = useState(Boolean(person?.reg_address_diff))
-  const [regAddress, setRegAddress] = useState<HrEmployeeRecordAddress>(() => addressDraft(person?.reg_address))
-  const [pesel, setPesel] = useState(person?.pesel || '')
-  const [languages, setLanguages] = useState(person?.languages || '')
-  const languageValues = languages.split(',').map((part) => part.trim()).filter(Boolean)
-  const payload: HrEmployeeRecordPersonIn = {
-    first_name: firstName,
-    last_name: lastName,
-    birth_date: birth,
-    citizenship,
-    phone,
-    phone_country: phoneCountry,
-    email,
-    preferred_contact: preferredContact,
-    address,
-    reg_address_diff: regDiff,
-    reg_address: regAddress,
-    pesel,
-    languages,
-  }
-  const fingerprint = JSON.stringify(payload)
-  useAutosave(fingerprint, writable && Boolean(firstName.trim() && lastName.trim()), async () => {
+  const serverKey = JSON.stringify(personPayload(person))
+  const personRef = useRef(person)
+  personRef.current = person
+  const [draft, setDraft] = useState<HrEmployeeRecordPersonIn>(() => personPayload(person))
+  const [openField, setOpenField] = useState<PersonField | null>(null)
+  const savingRef = useRef(false)
+  useEffect(() => {
+    setDraft(personPayload(personRef.current))
+    setOpenField(null)
+  }, [serverKey])
+  const countryLabel = (code: string) => countries.find((item) => item.value === code)?.label || code
+  const languageValues = draft.languages.split(',').map((part) => part.trim()).filter(Boolean)
+  const languageLabel = languageValues
+    .map((code) => languagesCatalog.find((item) => item.value === code)?.label || code)
+    .join(', ')
+  const dialLabel = dialCodes.find((item) => item.value === draft.phone_country)?.label || draft.phone_country
+  const phoneLabel = [dialLabel, draft.phone].filter(Boolean).join(' ')
+  const commit = async () => {
+    if (!writable) {
+      setOpenField(null)
+      return
+    }
+    if (savingRef.current) return
+    if (JSON.stringify(draft) === serverKey) {
+      setOpenField(null)
+      return
+    }
+    savingRef.current = true
     try {
-      const result = await updateHrEmployeeRecordPerson(employeeId, payload)
+      const result = await updateHrEmployeeRecordPerson(employeeId, draft)
       if (result.accepted === false) {
         onError(result.reason || t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
-        return false
+        return
       }
       onError(null)
+      setOpenField(null)
       onSaved()
-      return true
     } catch {
       onError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
-      return false
+    } finally {
+      savingRef.current = false
     }
-  })
+  }
   const setAddressPart = (key: keyof HrEmployeeRecordAddress, value: string) => {
-    setAddress((current) => ({ ...current, [key]: value }))
+    setDraft((current) => ({ ...current, address: { ...current.address, [key]: value } }))
   }
   const setRegPart = (key: keyof HrEmployeeRecordAddress, value: string) => {
-    setRegAddress((current) => ({ ...current, [key]: value }))
+    setDraft((current) => ({ ...current, reg_address: { ...current.reg_address, [key]: value } }))
   }
   return (
-    <div className="space-y-6">
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <h3 className="lg:col-span-2">{t('app.candidate_card.sections.basic.title')}</h3>
-        <Input label={t('app.candidate_card.fields.first_name')} value={firstName} readOnly={!writable} onChange={(event) => setFirstName(event.target.value)} />
-        <Input label={t('app.candidate_card.fields.last_name')} value={lastName} readOnly={!writable} onChange={(event) => setLastName(event.target.value)} />
-        <Input label={t('app.candidate_card.fields.birth_date')} type="date" value={birth} readOnly={!writable} onChange={(event) => setBirth(event.target.value)} />
-        <label className="block">
-          <div className="label">{t('app.candidate_card.fields.citizenship')}</div>
-          <SearchableSelect
-            options={countries}
-            value={citizenship}
-            onChange={setCitizenship}
-            disabled={!writable}
-            placeholder={selectTexts.empty}
-            searchPlaceholder={selectTexts.search}
-            noResultsLabel={selectTexts.noResults}
-          />
-        </label>
-        <Input label="PESEL" value={pesel} readOnly={!writable} onChange={(event) => setPesel(event.target.value)} />
-        <Input label={t('app.candidate_card.fields.short_id')} value={person?.short_id || ''} readOnly />
-        <div className="lg:col-span-2">
-          <div className="label">{t('app.candidate_card.fields.languages')}</div>
-          <CheckboxMultiSelect
-            options={languagesCatalog}
-            values={languageValues}
-            onChange={(values) => setLanguages(values.join(','))}
-            disabled={!writable}
-            placeholder={selectTexts.multiNone}
-            searchPlaceholder={selectTexts.search}
-            noResultsLabel={selectTexts.noResults}
-            multiSelectedLabel={selectTexts.multiSelected}
-          />
-        </div>
-      </section>
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <h3 className="lg:col-span-2">{t('app.candidate_card.intake.steps.contacts')}</h3>
-        <label className="block">
-          <div className="label">{t('app.candidate_card.fields.phone')}</div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-            <div className="sm:w-64">
-              <SearchableSelect
-                options={dialCodes}
-                value={phoneCountry}
-                onChange={setPhoneCountry}
-                disabled={!writable}
-                placeholder={selectTexts.empty}
-                searchPlaceholder={selectTexts.search}
-                noResultsLabel={selectTexts.noResults}
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <Input value={phone} readOnly={!writable} onChange={(event) => setPhone(event.target.value)} />
-            </div>
-          </div>
-        </label>
-        <Input label={t('app.candidate_card.fields.email')} value={email} readOnly={!writable} onChange={(event) => setEmail(event.target.value)} />
-        <label className="block">
-          <div className="label">{t('app.candidate_card.fields.preferred_contact')}</div>
-          <select className="input" value={preferredContact} disabled={!writable} onChange={(event) => setPreferredContact(event.target.value)}>
-            {PREFERRED_CONTACT_VALUES.map((value) => (
-              <option key={value || 'none'} value={value}>
-                {t(`app.candidate_card.contacts.options.${value || 'none'}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
-      <AddressFields
-        title={t('app.candidate_card.sections.personal.address_current')}
-        address={address}
-        countries={countries}
-        writable={writable}
-        selectTexts={selectTexts}
-        onChange={setAddressPart}
-        t={t}
-      />
-      <Checkbox
-        label={t('app.candidate_card.fields.address.diff')}
-        checked={regDiff}
-        onChange={writable ? setRegDiff : undefined}
-      />
-      {regDiff ? (
-        <AddressFields
-          title={t('app.candidate_card.sections.personal.address_registered')}
-          address={regAddress}
-          countries={countries}
-          writable={writable}
-          selectTexts={selectTexts}
-          onChange={setRegPart}
-          t={t}
+    <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+      <h3 className="md:col-span-2 py-1 text-sm font-semibold text-slate-900">{t('app.candidate_card.sections.basic.title')}</h3>
+      <InlineFieldRow
+        label={t('app.candidate_card.fields.first_name')}
+        value={draft.first_name}
+        editing={openField === 'first_name'}
+        canEdit={writable}
+        onEdit={() => setOpenField('first_name')}
+        onDone={() => void commit()}
+      >
+        <Input label={t('app.candidate_card.fields.first_name')} value={draft.first_name} onChange={(event) => setDraft((current) => ({ ...current, first_name: event.target.value }))} />
+      </InlineFieldRow>
+      <InlineFieldRow
+        label={t('app.candidate_card.fields.last_name')}
+        value={draft.last_name}
+        editing={openField === 'last_name'}
+        canEdit={writable}
+        onEdit={() => setOpenField('last_name')}
+        onDone={() => void commit()}
+      >
+        <Input label={t('app.candidate_card.fields.last_name')} value={draft.last_name} onChange={(event) => setDraft((current) => ({ ...current, last_name: event.target.value }))} />
+      </InlineFieldRow>
+      <InlineFieldRow
+        label={t('app.candidate_card.fields.birth_date')}
+        value={draft.birth_date ? formatDay(draft.birth_date) : ''}
+        editing={openField === 'birth_date'}
+        canEdit={writable}
+        onEdit={() => setOpenField('birth_date')}
+        onDone={() => void commit()}
+      >
+        <Input label={t('app.candidate_card.fields.birth_date')} type="date" value={draft.birth_date} onChange={(event) => setDraft((current) => ({ ...current, birth_date: event.target.value }))} />
+      </InlineFieldRow>
+      <InlineFieldRow
+        label={t('app.candidate_card.fields.citizenship')}
+        value={countryLabel(draft.citizenship)}
+        editing={openField === 'citizenship'}
+        canEdit={writable}
+        onEdit={() => setOpenField('citizenship')}
+        onDone={() => void commit()}
+      >
+        <div className="label">{t('app.candidate_card.fields.citizenship')}</div>
+        <SearchableSelect
+          options={countries}
+          value={draft.citizenship}
+          onChange={(value) => setDraft((current) => ({ ...current, citizenship: value }))}
+          placeholder={selectTexts.empty}
+          searchPlaceholder={selectTexts.search}
+          noResultsLabel={selectTexts.noResults}
         />
-      ) : null}
+      </InlineFieldRow>
+      <InlineFieldRow
+        label="PESEL"
+        value={draft.pesel}
+        editing={openField === 'pesel'}
+        canEdit={writable}
+        onEdit={() => setOpenField('pesel')}
+        onDone={() => void commit()}
+      >
+        <Input label="PESEL" value={draft.pesel} onChange={(event) => setDraft((current) => ({ ...current, pesel: event.target.value }))} />
+      </InlineFieldRow>
+      <InlineFieldRow label={t('app.candidate_card.fields.short_id')} value={person?.short_id || ''} editing={false} canEdit={false} onEdit={() => undefined} onDone={() => undefined}>
+        <Input label={t('app.candidate_card.fields.short_id')} value={person?.short_id || ''} readOnly />
+      </InlineFieldRow>
+      <InlineFieldRow
+        label={t('app.candidate_card.fields.languages')}
+        value={languageLabel}
+        editing={openField === 'languages'}
+        canEdit={writable}
+        onEdit={() => setOpenField('languages')}
+        onDone={() => void commit()}
+        wide
+      >
+        <div className="label">{t('app.candidate_card.fields.languages')}</div>
+        <CheckboxMultiSelect
+          options={languagesCatalog}
+          values={languageValues}
+          onChange={(values) => setDraft((current) => ({ ...current, languages: values.join(',') }))}
+          placeholder={selectTexts.multiNone}
+          searchPlaceholder={selectTexts.search}
+          noResultsLabel={selectTexts.noResults}
+          multiSelectedLabel={selectTexts.multiSelected}
+        />
+      </InlineFieldRow>
+      <h3 className="md:col-span-2 py-1 text-sm font-semibold text-slate-900">{t('app.candidate_card.intake.steps.contacts')}</h3>
+      <InlineFieldRow
+        label={t('app.candidate_card.fields.phone')}
+        value={phoneLabel}
+        editing={openField === 'phone'}
+        canEdit={writable}
+        onEdit={() => setOpenField('phone')}
+        onDone={() => void commit()}
+        wide
+      >
+        <div className="label">{t('app.candidate_card.fields.phone')}</div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+          <div className="sm:w-56">
+            <SearchableSelect
+              options={dialCodes}
+              value={draft.phone_country}
+              onChange={(value) => setDraft((current) => ({ ...current, phone_country: value }))}
+              placeholder={selectTexts.empty}
+              searchPlaceholder={selectTexts.search}
+              noResultsLabel={selectTexts.noResults}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <Input value={draft.phone} onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))} />
+          </div>
+        </div>
+      </InlineFieldRow>
+      <InlineFieldRow
+        label={t('app.candidate_card.fields.email')}
+        value={draft.email}
+        editing={openField === 'email'}
+        canEdit={writable}
+        onEdit={() => setOpenField('email')}
+        onDone={() => void commit()}
+      >
+        <Input label={t('app.candidate_card.fields.email')} value={draft.email} onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))} />
+      </InlineFieldRow>
+      <InlineFieldRow
+        label={t('app.candidate_card.fields.preferred_contact')}
+        value={t(`app.candidate_card.contacts.options.${draft.preferred_contact || 'none'}`)}
+        editing={openField === 'preferred_contact'}
+        canEdit={writable}
+        onEdit={() => setOpenField('preferred_contact')}
+        onDone={() => void commit()}
+      >
+        <div className="label">{t('app.candidate_card.fields.preferred_contact')}</div>
+        <select className="input" value={draft.preferred_contact} onChange={(event) => setDraft((current) => ({ ...current, preferred_contact: event.target.value }))}>
+          {PREFERRED_CONTACT_VALUES.map((value) => (
+            <option key={value || 'none'} value={value}>
+              {t(`app.candidate_card.contacts.options.${value || 'none'}`)}
+            </option>
+          ))}
+        </select>
+      </InlineFieldRow>
+      <InlineFieldRow
+        label={t('app.candidate_card.sections.personal.address_current')}
+        value={formatAddressLine(draft.address, countryLabel)}
+        editing={openField === 'address'}
+        canEdit={writable}
+        onEdit={() => setOpenField('address')}
+        onDone={() => void commit()}
+        wide
+      >
+        <AddressEditor address={draft.address} countries={countries} selectTexts={selectTexts} onChange={setAddressPart} t={t} />
+      </InlineFieldRow>
+      <InlineFieldRow
+        label={t('app.candidate_card.sections.personal.address_registered')}
+        value={draft.reg_address_diff ? formatAddressLine(draft.reg_address, countryLabel) : t('app.candidate_card.ia.same_as_residence', { defaultValue: 'Same as the residence address' })}
+        editing={openField === 'reg_address'}
+        canEdit={writable}
+        onEdit={() => setOpenField('reg_address')}
+        onDone={() => void commit()}
+        wide
+      >
+        <Checkbox
+          label={t('app.candidate_card.fields.address.diff')}
+          checked={draft.reg_address_diff}
+          onChange={(value) => setDraft((current) => ({ ...current, reg_address_diff: value }))}
+        />
+        {draft.reg_address_diff ? (
+          <div className="mt-3">
+            <AddressEditor address={draft.reg_address} countries={countries} selectTexts={selectTexts} onChange={setRegPart} t={t} />
+          </div>
+        ) : null}
+      </InlineFieldRow>
     </div>
   )
 }
 
-function AddressFields({
-  title,
+function AddressEditor({
   address,
   countries,
-  writable,
   selectTexts,
   onChange,
   t,
 }: {
-  title: string
   address: HrEmployeeRecordAddress
   countries: { value: string; label: string }[]
-  writable: boolean
   selectTexts: { empty: string; search: string; noResults: string }
   onChange: (key: keyof HrEmployeeRecordAddress, value: string) => void
   t: Translate
 }) {
   return (
-    <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <h3 className="lg:col-span-2">{title}</h3>
-      <label className="block lg:col-span-2">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <label className="block md:col-span-2">
         <div className="label">{t('app.candidate_card.fields.address.country')}</div>
         <SearchableSelect
           options={countries}
           value={address.country}
           onChange={(value) => onChange('country', value)}
-          disabled={!writable}
           placeholder={selectTexts.empty}
           searchPlaceholder={selectTexts.search}
           noResultsLabel={selectTexts.noResults}
         />
       </label>
-      <Input label={t('app.candidate_card.fields.address.city')} value={address.city} readOnly={!writable} onChange={(event) => onChange('city', event.target.value)} />
-      <Input label={t('app.candidate_card.fields.address.zip')} value={address.zip} readOnly={!writable} onChange={(event) => onChange('zip', event.target.value)} />
-      <div className="lg:col-span-2">
-        <Input label={t('app.candidate_card.fields.address.street')} value={address.street} readOnly={!writable} onChange={(event) => onChange('street', event.target.value)} />
+      <Input label={t('app.candidate_card.fields.address.city')} value={address.city} onChange={(event) => onChange('city', event.target.value)} />
+      <Input label={t('app.candidate_card.fields.address.zip')} value={address.zip} onChange={(event) => onChange('zip', event.target.value)} />
+      <div className="md:col-span-2">
+        <Input label={t('app.candidate_card.fields.address.street')} value={address.street} onChange={(event) => onChange('street', event.target.value)} />
       </div>
-      <Input label={t('app.candidate_card.fields.address.house')} value={address.house} readOnly={!writable} onChange={(event) => onChange('house', event.target.value)} />
-      <Input label={t('app.candidate_card.fields.address.apt')} value={address.apt} readOnly={!writable} onChange={(event) => onChange('apt', event.target.value)} />
-    </section>
+      <Input label={t('app.candidate_card.fields.address.house')} value={address.house} onChange={(event) => onChange('house', event.target.value)} />
+      <Input label={t('app.candidate_card.fields.address.apt')} value={address.apt} onChange={(event) => onChange('apt', event.target.value)} />
+    </div>
   )
+}
+
+type LegalField = 'citizenship_class' | 'stay_basis' | 'work_authorization_basis' | 'valid_for_this_employment'
+
+function legalPayload(legal: HrEmployeeRecordSurface['legal']): HrDriverLegalIn {
+  return {
+    citizenship_class: legal?.citizenship_class || '',
+    stay_basis: legal?.stay_basis || '',
+    work_authorization_basis: legal?.work_authorization_basis || '',
+    valid_for_this_employment: legal?.valid_for_this_employment || '',
+  }
+}
+
+function chainOptionLabel(t: Translate, value: string): string {
+  if (!value) return ''
+  const known = knownOptionLabel(t, value)
+  if (known) return known
+  const stayKey = `app.candidate_card.operator_facts.stay_option.${value}`
+  const stay = t(stayKey, { defaultValue: '' })
+  if (stay && stay !== stayKey) return stay
+  const workKey = `app.candidate_card.operator_facts.work_option.${value}`
+  const work = t(workKey, { defaultValue: '' })
+  if (work && work !== workKey) return work
+  return value
 }
 
 function LegalForm({
   employeeId,
+  candidateId,
+  contextLabel,
   group,
   legal,
   writable,
+  onOpenDocuments,
   onError,
   onSaved,
 }: {
   employeeId: string
+  candidateId: string | null
+  contextLabel: string
   group: HrEmployeeRecordGroup
   legal: HrEmployeeRecordSurface['legal']
   writable: boolean
+  onOpenDocuments: () => void
   onError: (message: string | null) => void
   onSaved: () => void
 }) {
   const { t, locale } = useI18n()
-  const [citizenshipClass, setCitizenshipClass] = useState(legal?.citizenship_class || 'third_country')
-  const [stay, setStay] = useState(legal?.stay_basis && legal.stay_basis !== 'none' ? legal.stay_basis : 'none')
-  const [basis, setBasis] = useState(legal?.work_authorization_basis || 'separate_required')
-  const [valid, setValid] = useState(legal?.valid_for_this_employment || 'operator_verification')
-  const payload: HrDriverLegalIn = {
-    citizenship_class: citizenshipClass,
-    stay_basis: stay,
-    work_authorization_basis: basis,
-    valid_for_this_employment: valid,
-  }
-  const fingerprint = JSON.stringify(payload)
-  useAutosave(fingerprint, writable, async () => {
+  const countries = usePlatformCountryOptions(locale)
+  const serverKey = JSON.stringify(legalPayload(legal))
+  const legalRef = useRef(legal)
+  legalRef.current = legal
+  const [draft, setDraft] = useState<HrDriverLegalIn>(() => legalPayload(legal))
+  const [openField, setOpenField] = useState<LegalField | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  useEffect(() => {
+    setDraft(legalPayload(legalRef.current))
+    setOpenField(null)
+  }, [serverKey])
+  const dirty = JSON.stringify(draft) !== serverKey
+  const closeField = () => setOpenField(null)
+  const labelOf = (value: string) => chainOptionLabel(t, value)
+  const confirmReading = async () => {
+    if (!writable || openField !== null || !dirty || confirming) return
+    setConfirming(true)
     try {
-      const result = await confirmHrDriverLegal(employeeId, payload)
-      if (result.reason === 'not_preparing') {
-        onError(result.reason)
-        return false
+      const result = await confirmHrDriverLegal(employeeId, draft)
+      if (result.accepted === false) {
+        onError(result.reason || t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
+        return
       }
       onError(null)
       onSaved()
-      return true
     } catch {
       onError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
-      return false
+    } finally {
+      setConfirming(false)
     }
-  })
+  }
   const statusRows = group.rows.filter((row) => row.id === 'legalizacja.status')
   return (
-    <div className="space-y-6">
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <h3 className="lg:col-span-2">{rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}</h3>
-        <CatalogSelect
+    <div className="space-y-4">
+      {candidateId ? (
+        <OperatorFactsSurface
+          candidateId={candidateId}
+          countries={countries}
+          region="legalization"
+          contextLabel={contextLabel}
+          onOpenDocuments={onOpenDocuments}
+        />
+      ) : null}
+      <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+        <InlineFieldRow
           label={t('app.candidate_card.fields.citizenship')}
-          value={citizenshipClass}
-          options={['pl', 'eu_eea_ch', 'third_country']}
-          onChange={setCitizenshipClass}
-          disabled={!writable}
-          t={t}
-        />
-        <CatalogSelect
-          label={rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}
-          value={stay}
-          options={['not_required', 'visa_d', 'visa_c', 'karta_pobytu', 'visa_free', 'waiting_for_trc', 'special_protection', 'other', 'none']}
-          onChange={setStay}
-          disabled={!writable}
-          t={t}
-        />
-      </section>
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <h3 className="lg:col-span-2">{rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}</h3>
-        <CatalogSelect
-          label={rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}
-          value={basis}
-          options={['not_required', 'included_in_stay', 'separate_required']}
-          onChange={setBasis}
-          disabled={!writable}
-          t={t}
-        />
-      </section>
-      <section className="space-y-3">
-        <h3>{rowLabel(group, 'legalizacja.valid_for_this_employment', t('common.labels.status'))}</h3>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          value={labelOf(draft.citizenship_class)}
+          editing={openField === 'citizenship_class'}
+          canEdit={writable}
+          onEdit={() => setOpenField('citizenship_class')}
+          onDone={closeField}
+        >
           <CatalogSelect
-            label={rowLabel(group, 'legalizacja.valid_for_this_employment', t('common.labels.status'))}
-            value={valid}
-            options={['yes', 'no', 'operator_verification']}
-            onChange={setValid}
-            disabled={!writable}
+            label={t('app.candidate_card.fields.citizenship')}
+            value={draft.citizenship_class}
+            options={['pl', 'eu_eea_ch', 'third_country']}
+            onChange={(value) => setDraft((current) => ({ ...current, citizenship_class: value }))}
+            labelFor={labelOf}
             t={t}
           />
-        </div>
-        <GroupBody group={{ ...group, rows: statusRows }} locale={locale} />
-      </section>
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}
+          value={labelOf(draft.stay_basis)}
+          editing={openField === 'stay_basis'}
+          canEdit={writable}
+          onEdit={() => setOpenField('stay_basis')}
+          onDone={closeField}
+        >
+          <CatalogSelect
+            label={rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}
+            value={draft.stay_basis}
+            options={['not_required', 'visa_d', 'visa_c', 'karta_pobytu', 'visa_free', 'waiting_for_trc', 'special_protection', 'other', 'none']}
+            onChange={(value) => setDraft((current) => ({ ...current, stay_basis: value }))}
+            labelFor={labelOf}
+            t={t}
+          />
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}
+          value={labelOf(draft.work_authorization_basis)}
+          editing={openField === 'work_authorization_basis'}
+          canEdit={writable}
+          onEdit={() => setOpenField('work_authorization_basis')}
+          onDone={closeField}
+        >
+          <CatalogSelect
+            label={rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}
+            value={draft.work_authorization_basis}
+            options={['not_required', 'included_in_stay', 'separate_required']}
+            onChange={(value) => setDraft((current) => ({ ...current, work_authorization_basis: value }))}
+            labelFor={labelOf}
+            t={t}
+          />
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'legalizacja.valid_for_this_employment', t('common.labels.status'))}
+          value={labelOf(draft.valid_for_this_employment)}
+          editing={openField === 'valid_for_this_employment'}
+          canEdit={writable}
+          onEdit={() => setOpenField('valid_for_this_employment')}
+          onDone={closeField}
+        >
+          <CatalogSelect
+            label={rowLabel(group, 'legalizacja.valid_for_this_employment', t('common.labels.status'))}
+            value={draft.valid_for_this_employment}
+            options={['yes', 'no', 'operator_verification']}
+            onChange={(value) => setDraft((current) => ({ ...current, valid_for_this_employment: value }))}
+            labelFor={labelOf}
+            t={t}
+          />
+        </InlineFieldRow>
+      </div>
+      <GroupBody group={{ ...group, rows: statusRows }} locale={locale} />
+      {writable && dirty ? (
+        <Button variant="primary" size="sm" disabled={confirming || openField !== null} onClick={() => void confirmReading()}>
+          {confirming
+            ? t('common.saving', { defaultValue: 'Saving…' })
+            : t('app.hr.employee_record.confirm_legal', { defaultValue: 'Confirm legal eligibility' })}
+        </Button>
+      ) : null}
     </div>
   )
+}
+
+type TermsField =
+  | 'position'
+  | 'contract_basis'
+  | 'workplace'
+  | 'work_time'
+  | 'work_system'
+  | 'compensation'
+  | 'duration'
+  | 'probation'
+  | 'planned_start'
+
+function termsPayload(terms: HrEmployeeRecordSurface['terms']): HrDriverTermsIn {
+  const duration = terms?.duration || ''
+  const probation = terms?.probation_status || ''
+  return {
+    position: terms?.position || '',
+    contract_basis: terms?.contract_basis || '',
+    work_time_value: terms?.work_time_value || '',
+    work_time_unit: terms?.work_time_unit || '',
+    work_system: terms?.work_system || '',
+    workplace: terms?.workplace || '',
+    compensation_amount: terms?.compensation_amount || '',
+    compensation_currency: terms?.compensation_currency || '',
+    compensation_unit: terms?.compensation_unit || '',
+    duration,
+    fixed_term_end: duration === 'fixed' ? terms?.fixed_term_end || null : null,
+    probation_status: probation,
+    probation_end: probation === 'dated' ? terms?.probation_end || null : null,
+    intended_start_date: terms?.intended_start_date || '',
+  }
 }
 
 function TermsForm({
@@ -1299,86 +1625,210 @@ function TermsForm({
   onSaved: () => void
 }) {
   const { t } = useI18n()
-  const [position, setPosition] = useState(terms?.position || '')
-  const [contractBasis, setContractBasis] = useState(terms?.contract_basis || '')
-  const [workTime, setWorkTime] = useState(terms?.work_time_value || '')
-  const [workTimeUnit, setWorkTimeUnit] = useState(terms?.work_time_unit || 'fte')
-  const [workSystem, setWorkSystem] = useState(terms?.work_system || '')
-  const [workplace, setWorkplace] = useState(terms?.workplace || '')
-  const [amount, setAmount] = useState(terms?.compensation_amount || '')
-  const [currency, setCurrency] = useState(terms?.compensation_currency || 'PLN')
-  const [period, setPeriod] = useState(terms?.compensation_unit || 'month')
-  const [duration, setDuration] = useState(terms?.duration || 'indefinite')
-  const [fixedEnd, setFixedEnd] = useState(terms?.fixed_term_end || '')
-  const [probation, setProbation] = useState(terms?.probation_status || 'none')
-  const [probationEnd, setProbationEnd] = useState(terms?.probation_end || '')
-  const [planned, setPlanned] = useState(terms?.intended_start_date || '')
-  const payload: HrDriverTermsIn = {
-    position,
-    contract_basis: contractBasis,
-    work_time_value: workTime,
-    work_time_unit: workTimeUnit,
-    work_system: workSystem,
-    workplace,
-    compensation_amount: amount,
-    compensation_currency: currency,
-    compensation_unit: period,
-    duration,
-    fixed_term_end: duration === 'fixed' ? fixedEnd || null : null,
-    probation_status: probation,
-    probation_end: probation === 'dated' ? probationEnd || null : null,
-    intended_start_date: planned,
-  }
-  const fingerprint = JSON.stringify(payload)
-  useAutosave(fingerprint, writable, async () => {
+  const serverKey = JSON.stringify(termsPayload(terms))
+  const termsRef = useRef(terms)
+  termsRef.current = terms
+  const [draft, setDraft] = useState<HrDriverTermsIn>(() => termsPayload(terms))
+  const [openField, setOpenField] = useState<TermsField | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  useEffect(() => {
+    setDraft(termsPayload(termsRef.current))
+    setOpenField(null)
+  }, [serverKey])
+  const dirty = JSON.stringify(draft) !== serverKey
+  const optionLabel = (value: string) => knownOptionLabel(t, value) || value
+  const closeField = () => setOpenField(null)
+  const confirmSnapshot = async () => {
+    if (!writable || openField !== null || !dirty || confirming) return
+    setConfirming(true)
     try {
-      const result = await confirmHrDriverTerms(employeeId, payload)
+      const result = await confirmHrDriverTerms(employeeId, draft)
       if (result.accepted === false) {
         onError(result.reason || t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
-        return false
+        return
       }
       onError(null)
       onSaved()
-      return true
     } catch {
       onError(t('app.hr.employee_record.save_error', { defaultValue: 'Could not save.' }))
-      return false
+    } finally {
+      setConfirming(false)
     }
-  })
+  }
+  const employer = rowById([group], 'zatrudnienie.employer')?.value || ''
+  const actualStart = rowById([group], 'zatrudnienie.actual_start')?.value || ''
+  const workTimeLabel = [draft.work_time_value, draft.work_time_unit].filter(Boolean).join(' ')
+  const compensationLabel = [draft.compensation_amount, draft.compensation_currency, draft.compensation_unit].filter(Boolean).join(' ')
+  const durationLabel = [
+    optionLabel(draft.duration),
+    draft.duration === 'fixed' && draft.fixed_term_end ? formatDay(draft.fixed_term_end) : '',
+  ].filter(Boolean).join(' · ')
+  const probationLabel = [
+    optionLabel(draft.probation_status),
+    draft.probation_status === 'dated' && draft.probation_end ? formatDay(draft.probation_end) : '',
+  ].filter(Boolean).join(' · ')
   return (
-    <div className="space-y-6">
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <h3 className="lg:col-span-2">{rowLabel(group, 'zatrudnienie.position', t('app.candidate_card.employment.placeholders.position'))}</h3>
-        <Input label={rowLabel(group, 'zatrudnienie.employer', t('app.candidate_card.employment.columns.employer', { defaultValue: 'Pracodawca' }))} value={rowById([group], 'zatrudnienie.employer')?.value || ''} readOnly />
-        <Input label={rowLabel(group, 'zatrudnienie.position', t('app.candidate_card.employment.placeholders.position'))} value={position} readOnly={!writable} onChange={(event) => setPosition(event.target.value)} />
-        <Input label={rowLabel(group, 'zatrudnienie.contract_basis', t('app.candidate_card.employment.columns.position'))} value={contractBasis} readOnly={!writable} onChange={(event) => setContractBasis(event.target.value)} />
-        <Input label={rowLabel(group, 'zatrudnienie.workplace', t('app.candidate_card.fields.address.city'))} value={workplace} readOnly={!writable} onChange={(event) => setWorkplace(event.target.value)} />
-      </section>
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <h3 className="lg:col-span-2">{rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))}</h3>
-        <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={workTime} readOnly={!writable} onChange={(event) => setWorkTime(event.target.value)} />
-        <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={workTimeUnit} readOnly={!writable} onChange={(event) => setWorkTimeUnit(event.target.value)} />
-        <Input label={rowLabel(group, 'zatrudnienie.work_system', t('public.company_intake.fields.work_system'))} value={workSystem} readOnly={!writable} onChange={(event) => setWorkSystem(event.target.value)} />
-      </section>
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <h3 className="lg:col-span-2">{rowLabel(group, 'zatrudnienie.compensation', t('app.hr.employee_detail.payroll_base_rate'))}</h3>
-        <Input label={rowLabel(group, 'zatrudnienie.compensation', t('app.hr.employee_detail.payroll_base_rate'))} value={amount} readOnly={!writable} onChange={(event) => setAmount(event.target.value)} />
-        <Input label={t('app.hr.employee_detail.payroll_currency')} value={currency} readOnly={!writable} onChange={(event) => setCurrency(event.target.value)} />
-        <Input label={t('app.hr.employee_detail.payroll_pay_type')} value={period} readOnly={!writable} onChange={(event) => setPeriod(event.target.value)} />
-      </section>
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <h3 className="lg:col-span-2">{rowLabel(group, 'zatrudnienie.planned_start', t('app.candidate_card.employment.columns.start'))}</h3>
-        <CatalogSelect label={rowLabel(group, 'zatrudnienie.duration', t('app.candidate_card.employment.columns.end'))} value={duration} options={['indefinite', 'fixed']} onChange={setDuration} disabled={!writable} t={t} />
-        {duration === 'fixed' ? (
-          <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={fixedEnd} readOnly={!writable} onChange={(event) => setFixedEnd(event.target.value)} />
-        ) : null}
-        <CatalogSelect label={rowLabel(group, 'zatrudnienie.probation', t('app.hr.employee_detail.workforce_journey.contract'))} value={probation} options={['none', 'dated']} onChange={setProbation} disabled={!writable} t={t} />
-        {probation === 'dated' ? (
-          <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={probationEnd} readOnly={!writable} onChange={(event) => setProbationEnd(event.target.value)} />
-        ) : null}
-        <Input label={rowLabel(group, 'zatrudnienie.planned_start', t('app.candidate_card.employment.columns.start'))} type="date" value={planned} readOnly={!writable} onChange={(event) => setPlanned(event.target.value)} />
-        <Input label={rowLabel(group, 'zatrudnienie.actual_start', t('app.candidate_card.employment.columns.start'))} value={rowById([group], 'zatrudnienie.actual_start')?.value || ''} readOnly />
-      </section>
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.employer', t('app.candidate_card.employment.columns.employer', { defaultValue: 'Employer' }))}
+          value={employer}
+          editing={false}
+          canEdit={false}
+          onEdit={() => undefined}
+          onDone={() => undefined}
+        >
+          <span />
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.position', t('app.candidate_card.employment.placeholders.position'))}
+          value={draft.position}
+          editing={openField === 'position'}
+          canEdit={writable}
+          onEdit={() => setOpenField('position')}
+          onDone={closeField}
+        >
+          <Input label={rowLabel(group, 'zatrudnienie.position', t('app.candidate_card.employment.placeholders.position'))} value={draft.position} onChange={(event) => setDraft((current) => ({ ...current, position: event.target.value }))} />
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.contract_basis', t('app.candidate_card.employment.columns.position'))}
+          value={draft.contract_basis}
+          editing={openField === 'contract_basis'}
+          canEdit={writable}
+          onEdit={() => setOpenField('contract_basis')}
+          onDone={closeField}
+        >
+          <Input label={rowLabel(group, 'zatrudnienie.contract_basis', t('app.candidate_card.employment.columns.position'))} value={draft.contract_basis} onChange={(event) => setDraft((current) => ({ ...current, contract_basis: event.target.value }))} />
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.workplace', t('app.candidate_card.fields.address.city'))}
+          value={draft.workplace}
+          editing={openField === 'workplace'}
+          canEdit={writable}
+          onEdit={() => setOpenField('workplace')}
+          onDone={closeField}
+        >
+          <Input label={rowLabel(group, 'zatrudnienie.workplace', t('app.candidate_card.fields.address.city'))} value={draft.workplace} onChange={(event) => setDraft((current) => ({ ...current, workplace: event.target.value }))} />
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))}
+          value={workTimeLabel}
+          editing={openField === 'work_time'}
+          canEdit={writable}
+          onEdit={() => setOpenField('work_time')}
+          onDone={closeField}
+          wide
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={draft.work_time_value} onChange={(event) => setDraft((current) => ({ ...current, work_time_value: event.target.value }))} />
+            <Input label={rowLabel(group, 'zatrudnienie.work_time', t('app.candidate_card.employment.columns.start'))} value={draft.work_time_unit} onChange={(event) => setDraft((current) => ({ ...current, work_time_unit: event.target.value }))} />
+          </div>
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.work_system', t('public.company_intake.fields.work_system'))}
+          value={draft.work_system}
+          editing={openField === 'work_system'}
+          canEdit={writable}
+          onEdit={() => setOpenField('work_system')}
+          onDone={closeField}
+        >
+          <Input label={rowLabel(group, 'zatrudnienie.work_system', t('public.company_intake.fields.work_system'))} value={draft.work_system} onChange={(event) => setDraft((current) => ({ ...current, work_system: event.target.value }))} />
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.compensation', t('app.hr.employee_detail.payroll_base_rate'))}
+          value={compensationLabel}
+          editing={openField === 'compensation'}
+          canEdit={writable}
+          onEdit={() => setOpenField('compensation')}
+          onDone={closeField}
+          wide
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Input label={rowLabel(group, 'zatrudnienie.compensation', t('app.hr.employee_detail.payroll_base_rate'))} value={draft.compensation_amount} onChange={(event) => setDraft((current) => ({ ...current, compensation_amount: event.target.value }))} />
+            <Input label={t('app.hr.employee_detail.payroll_currency')} value={draft.compensation_currency} onChange={(event) => setDraft((current) => ({ ...current, compensation_currency: event.target.value }))} />
+            <Input label={t('app.hr.employee_detail.payroll_pay_type')} value={draft.compensation_unit} onChange={(event) => setDraft((current) => ({ ...current, compensation_unit: event.target.value }))} />
+          </div>
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.duration', t('app.candidate_card.employment.columns.end'))}
+          value={durationLabel}
+          editing={openField === 'duration'}
+          canEdit={writable}
+          onEdit={() => setOpenField('duration')}
+          onDone={closeField}
+          wide
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <CatalogSelect
+              label={rowLabel(group, 'zatrudnienie.duration', t('app.candidate_card.employment.columns.end'))}
+              value={draft.duration}
+              options={['indefinite', 'fixed']}
+              onChange={(value) => setDraft((current) => ({
+                ...current,
+                duration: value,
+                fixed_term_end: value === 'fixed' ? current.fixed_term_end : null,
+              }))}
+              t={t}
+            />
+            {draft.duration === 'fixed' ? (
+              <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={draft.fixed_term_end || ''} onChange={(event) => setDraft((current) => ({ ...current, fixed_term_end: event.target.value || null }))} />
+            ) : null}
+          </div>
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.probation', t('app.hr.employee_detail.workforce_journey.contract'))}
+          value={probationLabel}
+          editing={openField === 'probation'}
+          canEdit={writable}
+          onEdit={() => setOpenField('probation')}
+          onDone={closeField}
+          wide
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <CatalogSelect
+              label={rowLabel(group, 'zatrudnienie.probation', t('app.hr.employee_detail.workforce_journey.contract'))}
+              value={draft.probation_status}
+              options={['none', 'dated']}
+              onChange={(value) => setDraft((current) => ({
+                ...current,
+                probation_status: value,
+                probation_end: value === 'dated' ? current.probation_end : null,
+              }))}
+              t={t}
+            />
+            {draft.probation_status === 'dated' ? (
+              <Input label={t('app.candidate_card.employment.columns.end')} type="date" value={draft.probation_end || ''} onChange={(event) => setDraft((current) => ({ ...current, probation_end: event.target.value || null }))} />
+            ) : null}
+          </div>
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.planned_start', t('app.candidate_card.employment.columns.start'))}
+          value={draft.intended_start_date ? formatDay(draft.intended_start_date) : ''}
+          editing={openField === 'planned_start'}
+          canEdit={writable}
+          onEdit={() => setOpenField('planned_start')}
+          onDone={closeField}
+        >
+          <Input label={rowLabel(group, 'zatrudnienie.planned_start', t('app.candidate_card.employment.columns.start'))} type="date" value={draft.intended_start_date} onChange={(event) => setDraft((current) => ({ ...current, intended_start_date: event.target.value }))} />
+        </InlineFieldRow>
+        <InlineFieldRow
+          label={rowLabel(group, 'zatrudnienie.actual_start', t('app.candidate_card.employment.columns.start'))}
+          value={actualStart ? formatDay(actualStart) : ''}
+          editing={false}
+          canEdit={false}
+          onEdit={() => undefined}
+          onDone={() => undefined}
+        >
+          <span />
+        </InlineFieldRow>
+      </div>
+      {writable && dirty ? (
+        <Button variant="primary" size="sm" disabled={confirming || openField !== null} onClick={() => void confirmSnapshot()}>
+          {confirming
+            ? t('common.saving', { defaultValue: 'Saving…' })
+            : t('app.hr.employee_record.confirm_terms', { defaultValue: 'Confirm employment terms' })}
+        </Button>
+      ) : null}
     </div>
   )
 }
@@ -1393,6 +1843,7 @@ function CatalogSelect({
   options,
   onChange,
   disabled,
+  labelFor,
   t,
 }: {
   label: string
@@ -1400,15 +1851,17 @@ function CatalogSelect({
   options: string[]
   onChange: (value: string) => void
   disabled?: boolean
+  labelFor?: (value: string) => string
   t: Translate
 }) {
   return (
     <label className="block">
       <div className="label">{label}</div>
       <select className="input" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
+        {value === '' ? <option value="">—</option> : null}
         {options.map((option) => (
           <option key={option} value={option}>
-            {knownOptionLabel(t, option) || option}
+            {(labelFor ? labelFor(option) : knownOptionLabel(t, option)) || option}
           </option>
         ))}
       </select>

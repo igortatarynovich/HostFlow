@@ -227,6 +227,10 @@
   },
   "app": {
     "hr": {
+      "employee_record": {
+        "confirm_terms": "Potwierdź warunki zatrudnienia",
+        "confirm_legal": "Potwierdź legalizację"
+      },
       "employee_detail": {
         "documents_load_error": "Nie udało się wczytać dokumentów",
         "section_documents": "Dokumenty HR",

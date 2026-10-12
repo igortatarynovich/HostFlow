@@ -305,9 +305,12 @@ async def build_hr_driver_operator_surface(
     *,
     tenant_id: str,
     employee: WorkforceEmployee,
+    employment: Employment | None = None,
+    employment_chosen: bool = False,
 ) -> dict[str, Any]:
     tenant = str(tenant_id).strip()
-    employment = await _latest_employment(db, tenant, str(employee.id))
+    if not employment_chosen:
+        employment = await _latest_employment(db, tenant, str(employee.id))
     candidate = None
     if employee.candidate_id:
         candidate = await db.get(Candidate, str(employee.candidate_id))
