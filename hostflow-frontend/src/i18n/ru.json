@@ -6549,7 +6549,8 @@
           "additional": "Адрес и дополнительные данные",
           "rights": "Право на работу",
           "documents": "Профессиональные документы",
-          "extra_facts": "Дополнительно"
+          "extra_facts": "Дополнительно",
+          "qualification": "Квалификация"
         },
         "process_widget": "Этап, менеджер и теги",
         "blockers": "Блокеры",
@@ -6589,7 +6590,11 @@
         "system_created": "Создан {date}",
         "order_service": "Заказать услугу",
         "years_short": "опыт {{count}}",
-        "active_vacancy": "Активная заявка"
+        "active_vacancy": "Активная заявка",
+        "qualification_hint": "Категории и профессиональные квалификации",
+        "driver_hint": "Опыт, типы кузова и маршруты",
+        "preferences_hint": "Типы прицепов, маршруты и связанные предпочтения",
+        "experience_hint": "Предыдущие места работы"
       },
       "operator_facts": {
         "driver_block": "Данные и права водителя",

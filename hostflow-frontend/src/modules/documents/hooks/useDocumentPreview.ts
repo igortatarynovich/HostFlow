@@ -5,6 +5,8 @@
 import { useCallback, useState, useEffect } from "react";
 import type { Document } from "../../../api/types";
 import { getDocumentFileUrl, downloadDocumentFile } from "../../../api/documents";
+import { resolveApiBase } from "../../../api/client";
+import http from "../../../api/http";
 import { formatErrorForDisplay } from "../../../utils/errorHandling";
 import { usePlanLimitModal } from "../../../contexts/PlanLimitModalContext";
 import { useI18n } from "../../../i18n";
@@ -45,6 +47,22 @@ export function useDocumentPreview({ setError }: UseDocumentPreviewProps) {
       let directLink: string | null = null;
       let directFilename: string | null = null;
 
+      const storedFileBlob = async () => {
+        const entry = (doc.files || []).find((file) => file?.url);
+        const raw = entry?.url;
+        if (!raw) return null;
+        const origin = resolveApiBase().replace(/\/api\/v1\/?$/i, "");
+        const absolute = /^https?:\/\//i.test(raw)
+          ? raw
+          : `${origin}${raw.startsWith("/") ? raw : `/${raw}`}`;
+        const response = await http.get<Blob>(absolute, { responseType: "blob" });
+        return {
+          blob: response.data,
+          filename: entry?.name || filenameFromUrl(absolute),
+          contentType: entry?.mime || (typeof response.headers?.["content-type"] === "string" ? response.headers["content-type"] : null),
+        };
+      };
+
       try {
         try {
           const res = await getDocumentFileUrl(doc.id);
@@ -62,7 +80,24 @@ export function useDocumentPreview({ setError }: UseDocumentPreviewProps) {
           }
         }
 
-        const fileData = await downloadDocumentFile(doc.id);
+        let fileData: { blob: Blob; filename: string | null; contentType: string | null } | null = null;
+        try {
+          fileData = await downloadDocumentFile(doc.id);
+        } catch (downloadError: any) {
+          if (downloadError?.response?.status !== 404) throw downloadError;
+          if (doc.own_company_id) {
+            try {
+              fileData = await downloadDocumentFile(doc.id, { ownCompanyId: doc.own_company_id });
+            } catch (ownerError: any) {
+              if (ownerError?.response?.status !== 404) throw ownerError;
+            }
+          }
+          if (!fileData) {
+            const stored = await storedFileBlob();
+            if (!stored) throw downloadError;
+            fileData = stored;
+          }
+        }
         const { blob, filename, contentType } = fileData;
         const previewable = guessPreviewable(contentType, filename);
 

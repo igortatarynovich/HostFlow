@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
-import { CardAccordion, ReadRows, joinParts } from '../../components/candidate/card/CandidateCardChrome'
+import { CardAccordion, joinParts } from '../../components/candidate/card/CandidateCardChrome'
+import { ReadFieldRows } from '../../components/ui/ReadFieldRows'
 import { InlineFieldRow } from '../../components/ui/InlineFieldRow'
+import { LegalBasisRow } from '../../components/ui/documentRequirement/LegalBasisRow'
+import { LegalizationStatus } from '../../components/ui/documentRequirement/LegalizationStatus'
+import { PresenceToggle } from '../../components/ui/documentRequirement/PresenceToggle'
+import { WorkspaceSection } from '../../components/ui/WorkspaceSection'
 import { SearchableSelect } from '../../components/candidate/shared/FormComponents'
 import DateInput from '../../components/controls/DateInput'
 import { useI18n } from '../../i18n'
 import { formatDateSafe } from './candidateUtils'
+import { countryFlag } from '../candidate-card/utils'
 
 type CountryOption = { value: string; label: string }
 
@@ -13,6 +19,7 @@ type Step = {
   key: string
   visible: boolean
   stored?: string | null
+  card_kind?: string | null
   operator_label?: string | null
   visa_type?: string | null
   visa_purpose?: string | null
@@ -32,6 +39,7 @@ export type OperatorFactsView = {
   citizenship_class?: string | null
   chain?: Record<string, string | null>
   steps: Step[]
+  document_presence?: Record<string, boolean>
   ce_code95?: {
     progress?: string | null
     evidence_shape?: string | null
@@ -43,6 +51,46 @@ export type OperatorFactsView = {
   licence_category_codes?: string[]
   stay_choices?: string[]
   work_choices?: string[]
+  legalization?: {
+    recommendation: { stay_required: boolean | null; work_required: boolean | null; reason: string }
+    selection: {
+      stay_required: boolean | null
+      work_required: boolean | null
+      stay_manual: boolean
+      work_manual: boolean
+      stay_code: string | null
+      stay_exemption: string | null
+      work_exemption: string | null
+      visa_type: string | null
+    }
+    resolved: {
+      residence: string
+      work: string
+      missing_residence?: string[]
+      missing_work?: string[]
+      residence_detail?: string | null
+      work_detail?: string | null
+    }
+    readiness?: { ready: boolean }
+    applicable_stay: Array<{
+      code: string
+      kind: string
+      stay_basis: string
+      card_kind?: string | null
+      documents: string[]
+      dependent_documents: string[]
+    }>
+    applicable_work: Array<{ code: string; kind: string }>
+    work_exemptions: string[]
+    stay_exemptions: string[]
+    selected_stay: {
+      code: string
+      kind: string
+      documents: string[]
+      dependent_documents: string[]
+      evidence?: Array<{ label: string; codes: string[]; metadata?: string[] }>
+    } | null
+  }
   asks_file?: boolean
   legal_eligibility?: {
     outcome?: string | null
@@ -84,6 +132,7 @@ export function OperatorFactsForm({
   presentation?: OperatorFactsPresentation
 }) {
   const { t, locale } = useI18n()
+  const [skillField, setSkillField] = useState<'categories' | 'adr' | null>(null)
   const citizenship = stepOf(view, 'citizenship')
   const stay = stepOf(view, 'stay_basis')
   const work = stepOf(view, 'work')
@@ -300,7 +349,79 @@ export function OperatorFactsForm({
           {t('app.candidate_card.operator_facts.qualifications', { defaultValue: 'Uprawnienia kierowcy' })}
         </div>
         )}
-        {showQualifications ? (
+        {showQualifications && presentation === 'skill' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2" data-testid="operator-facts-skill-rows">
+            <InlineFieldRow
+              label={t('app.candidate_card.operator_facts.licence_categories', { defaultValue: 'Categories' })}
+              value={(licence?.categories ?? []).join(' · ')}
+              editing={skillField === 'categories'}
+              canEdit={!disabled}
+              onEdit={() => setSkillField('categories')}
+              onDone={() => setSkillField(null)}
+              column={1}
+              row={1}
+            >
+              <div className="flex flex-wrap gap-3" data-testid="operator-facts-licence-details">
+                {(view.licence_category_codes ?? []).map((code) => {
+                  const selected = (licence?.categories ?? []).includes(code)
+                  return (
+                    <label key={code} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        disabled={disabled}
+                        checked={selected}
+                        onChange={() => {
+                          const current = new Set(licence?.categories ?? [])
+                          if (selected) current.delete(code)
+                          else current.add(code)
+                          onPatch({ licence_categories: current.size ? Array.from(current) : 'unknown' })
+                        }}
+                      />
+                      <span>{code}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </InlineFieldRow>
+            <InlineFieldRow
+              label={t('app.candidate_card.operator_facts.adr', { defaultValue: 'ADR' })}
+              value={factValue(
+                adr?.presence,
+                t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' }),
+                t('app.candidate_card.operator_facts.no', { defaultValue: 'No' }),
+              )}
+              editing={skillField === 'adr'}
+              canEdit={!disabled}
+              onEdit={() => setSkillField('adr')}
+              onDone={() => setSkillField(null)}
+              column={2}
+              row={1}
+            >
+              {presenceSelect(adr?.presence, (next) => onPatch({ adr_presence: next }))}
+            </InlineFieldRow>
+            {code95?.visible ? (
+              <InlineFieldRow
+                label={t('app.candidate_card.operator_facts.code95', { defaultValue: 'Code 95' })}
+                value={factValue(
+                  code95.presence,
+                  t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' }),
+                  t('app.candidate_card.operator_facts.no', { defaultValue: 'No' }),
+                  code95.valid_to,
+                  locale,
+                )}
+                editing={false}
+                canEdit={false}
+                onEdit={() => undefined}
+                onDone={() => undefined}
+                column={1}
+                row={2}
+              >
+                {null}
+              </InlineFieldRow>
+            ) : null}
+          </div>
+        ) : null}
+        {showQualifications && presentation !== 'skill' ? (
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className={nest} data-testid="operator-facts-licence">
             {presentation === 'skill' ? (
@@ -505,7 +626,9 @@ export function OperatorFactsForm({
 
 function countryName(code: string | null | undefined, countries: CountryOption[]): string {
   if (!code || code === 'unknown') return '—'
-  return countries.find((item) => item.value === code)?.label || code
+  const label = countries.find((item) => item.value === code)?.label || code
+  const flag = countryFlag(code)
+  return flag ? `${flag} ${label}` : label
 }
 
 function factValue(
@@ -668,7 +791,7 @@ export function OperatorFactsWorkspace({
           plain
         />
       ) : (
-        <ReadRows rows={rows} />
+        <ReadFieldRows rows={rows} />
       )}
     </CardAccordion>
   )
@@ -684,61 +807,350 @@ export function OperatorFactsWorkspace({
 function LegalizationFactsSheet({
   view,
   contextLabel,
-  onOpenDocuments,
+  disabled,
+  onPatch,
+  stayDocuments,
+  workDocuments,
 }: {
   view: OperatorFactsView
   contextLabel?: string | null
   onOpenDocuments?: () => void
+  disabled?: boolean
+  onPatch?: (patch: Patch) => void
+  stayDocuments?: ReactNode
+  workDocuments?: ReactNode
 }) {
   const { t, locale } = useI18n()
+  const [openField, setOpenField] = useState<'stay' | 'stay_until' | 'work' | null>(null)
   const stay = stepOf(view, 'stay_basis')
   const work = stepOf(view, 'work')
   const determined = view.citizenship_class === 'pl' || view.citizenship_class === 'eu_eea_ch'
-  const yes = t('app.candidate_card.operator_facts.yes', { defaultValue: 'Tak' })
-  const no = t('app.candidate_card.operator_facts.no', { defaultValue: 'Nie' })
+  const yes = t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' })
+  const no = t('app.candidate_card.operator_facts.no', { defaultValue: 'No' })
+  const unknownLabel = t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })
+  const stayRequired = !(determined || !stay?.visible)
+  const workRequired = !(determined || !work?.visible)
   const stayCode = stay?.stored && stay.stored !== 'unknown' ? stay.stored : ''
   const stayLabel = stayCode
     ? t(`app.candidate_card.operator_facts.stay_option.${stayCode}`, { defaultValue: stayCode })
-    : '—'
+    : ''
   const workCode = work?.operator_label && work.operator_label !== 'unknown' ? work.operator_label : ''
   const workLabel = workCode
     ? t(`app.candidate_card.operator_facts.work_option.${workCode}`, { defaultValue: workCode })
-    : '—'
-  const stayUntil = stay?.valid_to ? formatDateSafe(stay.valid_to, locale) : '—'
-  const line = (label: string, value: ReactNode) => (
-    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-sm">
-      <div className="text-slate-500">{label}</div>
-      <div className="min-w-0 font-medium text-slate-900">{value}</div>
+    : ''
+  const stayUntil = stay?.valid_to ? formatDateSafe(stay.valid_to, locale) : ''
+  const notRequired = t('app.candidate_card.operator_facts.work_not_required', {
+    defaultValue: 'Stay and a work permit are not required.',
+  })
+  const choice = (
+    value: string,
+    options: readonly string[],
+    group: 'stay_option' | 'work_option',
+    onChange: (next: string) => void,
+    testId: string,
+  ) => (
+    <select
+      data-testid={testId}
+      className="input"
+      disabled={disabled}
+      value={value || 'unknown'}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      <option value="unknown">{unknownLabel}</option>
+      {options.map((code) => (
+        <option key={code} value={code}>
+          {t(`app.candidate_card.operator_facts.${group}.${code}`, { defaultValue: code })}
+        </option>
+      ))}
+    </select>
+  )
+  const composeDocuments = stayDocuments !== undefined || workDocuments !== undefined
+  const legal = view.legalization
+  const basisName = (code: string) => t(`app.candidate_card.ia.legalization.basis.${code}`, {
+    defaultValue: t(`app.candidate_card.operator_facts.work_option.${code}`, {
+      defaultValue: t(`app.candidate_card.operator_facts.stay_option.${code}`, { defaultValue: code }),
+    }),
+  })
+  const manualNote = t('app.candidate_card.ia.legalization.manual', { defaultValue: 'Set manually' })
+  const question = (label: string, value: boolean | null, onChange: (next: boolean) => void) => (
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="text-sm text-slate-700">{label}</span>
+      <PresenceToggle value={value} yesLabel={yes} noLabel={no} disabled={disabled || !onPatch} onChange={onChange} />
     </div>
   )
-  const documentValue = onOpenDocuments ? (
-    <button type="button" className="font-medium text-brand-700 hover:underline" onClick={onOpenDocuments}>
-      {t('app.candidate_card.ia.legalization_open_document', { defaultValue: 'Open in Documents' })}
-    </button>
-  ) : '—'
   return (
-    <div className="space-y-3" data-testid="legalization-facts-sheet">
-      <section className="space-y-1.5 rounded-xl border border-slate-200 bg-white p-3">
-        <h3 className="text-sm font-semibold text-slate-900">
-          {t('app.candidate_card.ia.legalization_stay', { defaultValue: 'Stay in the country' })}
-        </h3>
-        {line(t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' }), determined || !stay?.visible ? no : yes)}
-        {line(t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' }), stay?.visible ? stayLabel : '—')}
-        {line(t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' }), stay?.visible ? stayUntil : '—')}
-        {line(t('app.candidate_card.ia.legalization_document', { defaultValue: 'Document' }), documentValue)}
-      </section>
-      <section className="space-y-1.5 rounded-xl border border-slate-200 bg-white p-3">
-        <h3 className="text-sm font-semibold text-slate-900">
-          {t('app.candidate_card.ia.legalization_work', { defaultValue: 'Right to work' })}
-        </h3>
-        {line(t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' }), determined || !work?.visible ? no : yes)}
-        {line(t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' }), work?.visible ? workLabel : '—')}
-        {line(
-          t('app.candidate_card.ia.legalization_employment', { defaultValue: 'Employment' }),
-          contextLabel?.trim() || '—',
+    <div className={composeDocuments ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 gap-3 lg:grid-cols-2'} data-testid="legalization-facts-sheet">
+      <WorkspaceSection
+        title={t('app.candidate_card.ia.legalization_stay', { defaultValue: 'Stay in the country' })}
+        description={stayRequired ? t('app.candidate_card.ia.legalization_stay_hint', { defaultValue: 'Documents that confirm the right to stay.' }) : null}
+      >
+        {composeDocuments ? (
+          legal ? (
+            <div className="space-y-3">
+              {question(
+                t('app.candidate_card.ia.legalization.stay_required_question', { defaultValue: 'Is a separate stay basis required?' }),
+                legal.selection.stay_required,
+                (next) => onPatch?.({ stay_required: next }),
+              )}
+              {legal.selection.stay_manual ? <p className="text-xs text-slate-500">{manualNote}</p> : null}
+              <LegalizationStatus
+                status={legal.resolved.residence}
+                missing={legal.resolved.missing_residence}
+                detail={legal.resolved.residence_detail}
+              />
+              {legal.selection.stay_required === false ? (
+                legal.selection.stay_manual ? (
+                  <label className="workspace-editor block max-w-sm">
+                    <div className="text-xs text-slate-500">{t('app.candidate_card.ia.work_exemption', { defaultValue: 'Exemption basis' })}</div>
+                    <select
+                      className="input"
+                      disabled={disabled || !onPatch}
+                      value={legal.selection.stay_exemption || 'other'}
+                      onChange={(event) => onPatch?.({ stay_exemption: event.target.value })}
+                    >
+                      {legal.stay_exemptions.map((code) => (
+                        <option key={code} value={code}>{basisName(code)}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="text-sm text-slate-800">{basisName(legal.selection.stay_exemption || legal.recommendation.reason)}</p>
+                )
+              ) : null}
+              {legal.selection.stay_required === true ? (
+                <div className="space-y-3">
+                  <label className="workspace-editor block max-w-sm">
+                    <div className="text-xs text-slate-500">{t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' })}</div>
+                    <select
+                      className="input"
+                      data-testid="legalization-stay-basis"
+                      disabled={disabled || !onPatch}
+                      value={legal.selection.stay_code || ''}
+                      onChange={(event) => {
+                        const item = legal.applicable_stay.find((basis) => basis.code === event.target.value)
+                        if (!item) return
+                        onPatch?.({
+                          stay_basis: item.stay_basis,
+                          stay_card_kind: item.card_kind || 'unknown',
+                          visa_type: item.code === 'visa' ? 'D' : 'unknown',
+                        })
+                      }}
+                    >
+                      <option value="">{unknownLabel}</option>
+                      {legal.applicable_stay.map((item) => (
+                        <option key={item.code} value={item.code}>{basisName(item.code)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {legal.selection.stay_code === 'visa' ? (
+                    <label className="workspace-editor block max-w-sm">
+                      <div className="text-xs text-slate-500">{t('app.candidate_card.ia.legalization.visa_type', { defaultValue: 'Visa type' })}</div>
+                      <select
+                        className="input"
+                        disabled={disabled || !onPatch}
+                        value={legal.selection.visa_type === 'C' ? 'C' : 'D'}
+                        onChange={(event) => onPatch?.({ visa_type: event.target.value })}
+                      >
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                      </select>
+                    </label>
+                  ) : null}
+                  {legal.selected_stay?.kind === 'document' ? stayDocuments : null}
+                  {legal.selected_stay?.kind === 'regime' ? (
+                    <LegalBasisRow title={basisName(legal.selected_stay.code)}>
+                      {legal.selected_stay.code === 'visa_free' ? (
+                        <>
+                          <p className="text-sm text-slate-600">
+                            {t('app.candidate_card.ia.legalization.visa_free_limit', { defaultValue: 'Short stay follows the 90/180 rule.' })}
+                          </p>
+                          <label className="workspace-editor block max-w-sm">
+                            <div className="text-xs text-slate-500">{t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' })}</div>
+                            <DateInput
+                              value={stay?.valid_to}
+                              disabled={disabled}
+                              onValueChange={(next) => onPatch?.({ stay_valid_to: next || 'unknown' })}
+                            />
+                          </label>
+                        </>
+                      ) : (
+                        <LegalizationStatus status="needs_verification" />
+                      )}
+                    </LegalBasisRow>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            stayRequired ? stayDocuments : <p className="text-sm text-slate-800">{stayLabel || notRequired}</p>
+          )
+        ) : (
+          <>
+            <InlineFieldRow
+              label={t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' })}
+              value={stayRequired ? yes : no}
+              editing={false}
+              canEdit={false}
+              onEdit={() => undefined}
+              onDone={() => undefined}
+            >
+              {null}
+            </InlineFieldRow>
+            {stayRequired ? (
+              <>
+                <InlineFieldRow
+                  label={t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' })}
+                  value={stayLabel}
+                  editing={openField === 'stay'}
+                  canEdit={!disabled && Boolean(onPatch)}
+                  onEdit={() => setOpenField('stay')}
+                  onDone={() => setOpenField(null)}
+                >
+                  {choice(stayCode, view.stay_choices ?? [], 'stay_option', (next) => onPatch?.({ stay_basis: next }), 'operator-facts-stay-input')}
+                </InlineFieldRow>
+                <InlineFieldRow
+                  label={t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' })}
+                  value={stayUntil}
+                  editing={openField === 'stay_until'}
+                  canEdit={!disabled && Boolean(onPatch)}
+                  onEdit={() => setOpenField('stay_until')}
+                  onDone={() => setOpenField(null)}
+                >
+                  <DateInput
+                    value={stay?.valid_to}
+                    disabled={disabled}
+                    testId="operator-facts-stay-valid-to"
+                    onValueChange={(next) => onPatch?.({ stay_valid_to: next || 'unknown' })}
+                  />
+                </InlineFieldRow>
+              </>
+            ) : null}
+          </>
         )}
-        {line(t('app.candidate_card.ia.legalization_document', { defaultValue: 'Document' }), documentValue)}
-      </section>
+      </WorkspaceSection>
+      <WorkspaceSection
+        title={t('app.candidate_card.ia.legalization_work', { defaultValue: 'Right to work' })}
+        description={workRequired
+          ? t('app.candidate_card.ia.legalization_work_hint', { defaultValue: 'Documents and procedures that confirm the right to work.' })
+          : null}
+      >
+        {composeDocuments ? (
+          legal ? (
+            <div className="space-y-3">
+              {question(
+                t('app.candidate_card.ia.work_required_question', { defaultValue: 'Is a work permit required?' }),
+                legal.selection.work_required,
+                (next) => onPatch?.({ work_required: next, ...(next ? { work_label: 'work_permit' } : { work_exemption: legal.work_exemptions[0] || 'other' }) }),
+              )}
+              {legal.selection.work_manual ? <p className="text-xs text-slate-500">{manualNote}</p> : null}
+              <LegalizationStatus
+                status={legal.resolved.work}
+                missing={legal.resolved.missing_work}
+                detail={legal.resolved.work_detail}
+              />
+              {legal.selection.work_required === false ? (
+                legal.selection.work_manual ? (
+                  <label className="workspace-editor block max-w-sm">
+                    <div className="text-xs text-slate-500">{t('app.candidate_card.ia.work_exemption', { defaultValue: 'Exemption basis' })}</div>
+                    <select
+                      className="input"
+                      disabled={disabled || !onPatch}
+                      value={legal.selection.work_exemption || 'other'}
+                      onChange={(event) => {
+                        const code = event.target.value
+                        onPatch?.({
+                          work_exemption: code,
+                          ...(code === 'not_required' || code === 'included_in_stay' ? { work_label: code } : { work_label: 'not_required' }),
+                        })
+                      }}
+                    >
+                      {legal.work_exemptions.map((code) => (
+                        <option key={code} value={code}>{basisName(code)}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="text-sm text-slate-800">{basisName(legal.selection.work_exemption || legal.recommendation.reason)}</p>
+                )
+              ) : null}
+              {legal.selection.work_required === true ? (
+                <div className="space-y-3">
+                  <label className="workspace-editor block max-w-sm">
+                    <div className="text-xs text-slate-500">{t('app.candidate_card.ia.doc_choose_type', { defaultValue: 'Choose type' })}</div>
+                    <select
+                      className="input"
+                      data-testid="legalization-work-type"
+                      disabled={disabled || !onPatch}
+                      value={workCode}
+                      onChange={(event) => onPatch?.({ work_label: event.target.value })}
+                    >
+                      <option value="">{unknownLabel}</option>
+                      {legal.applicable_work.map((item) => (
+                        <option key={item.code} value={item.code}>{basisName(item.code)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {workCode === 'work_permit' || workCode === 'oswiadczenie' ? workDocuments : null}
+                </div>
+              ) : null}
+            </div>
+          ) : workRequired ? (
+            <div className="space-y-3">
+              {question(
+                t('app.candidate_card.ia.work_required_question', { defaultValue: 'Is a work permit required?' }),
+                workCode === 'work_permit' || workCode === 'oswiadczenie' ? true : workCode === 'not_required' || workCode === 'included_in_stay' ? false : null,
+                (next) => {
+                  if (!onPatch) return
+                  if (next) onPatch({ work_label: 'work_permit' })
+                  else onPatch({ work_label: 'not_required' })
+                },
+              )}
+              {workCode === 'work_permit' || workCode === 'oswiadczenie' ? workDocuments : (
+                <p className="text-sm text-slate-800">{workLabel || notRequired}</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-800">{workLabel || notRequired}</p>
+          )
+        ) : (
+          <>
+            <InlineFieldRow
+              label={t('app.candidate_card.ia.legalization_required', { defaultValue: 'Required' })}
+              value={workRequired ? yes : no}
+              editing={false}
+              canEdit={false}
+              onEdit={() => undefined}
+              onDone={() => undefined}
+            >
+              {null}
+            </InlineFieldRow>
+            {workRequired ? (
+              <InlineFieldRow
+                label={t('app.candidate_card.ia.legalization_basis', { defaultValue: 'Basis' })}
+                value={workLabel}
+                editing={openField === 'work'}
+                canEdit={!disabled && Boolean(onPatch)}
+                onEdit={() => setOpenField('work')}
+                onDone={() => setOpenField(null)}
+              >
+                {choice(workCode, view.work_choices ?? [], 'work_option', (next) => onPatch?.({ work_label: next }), 'operator-facts-work-input')}
+              </InlineFieldRow>
+            ) : null}
+            {contextLabel?.trim() ? (
+              <InlineFieldRow
+                label={t('app.candidate_card.ia.legalization_employment', { defaultValue: 'Employment' })}
+                value={contextLabel.trim()}
+                editing={false}
+                canEdit={false}
+                onEdit={() => undefined}
+                onDone={() => undefined}
+              >
+                {null}
+              </InlineFieldRow>
+            ) : null}
+          </>
+        )}
+      </WorkspaceSection>
     </div>
   )
 }
@@ -748,11 +1160,13 @@ export function PersonIdentityFacts({
   countries,
   disabled,
   onPatch,
+  flow = false,
 }: {
   view: OperatorFactsView
   countries: CountryOption[]
   disabled?: boolean
   onPatch: (patch: Patch) => void
+  flow?: boolean
 }) {
   const { t } = useI18n()
   const [openField, setOpenField] = useState<'citizenship' | 'pesel' | null>(null)
@@ -769,7 +1183,7 @@ export function PersonIdentityFacts({
       : ''
 
   return (
-    <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2" data-testid="operator-facts-person-rows">
+    <div className={flow ? 'contents' : 'grid grid-cols-1 gap-x-8 md:grid-cols-2'} data-testid="operator-facts-person-rows">
       <InlineFieldRow
         label={t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' })}
         value={countryName(citizenship?.stored, countries)}
@@ -777,6 +1191,8 @@ export function PersonIdentityFacts({
         canEdit={!disabled}
         onEdit={() => setOpenField('citizenship')}
         onDone={() => setOpenField(null)}
+        column={flow ? 1 : undefined}
+        row={flow ? 4 : undefined}
       >
         <div className="label" data-testid="operator-facts-citizenship">
           {t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' })}
@@ -800,7 +1216,9 @@ export function PersonIdentityFacts({
         canEdit={!disabled}
         onEdit={() => setOpenField('pesel')}
         onDone={() => setOpenField(null)}
-        wide
+        wide={!flow}
+        column={flow ? 2 : undefined}
+        row={flow ? 1 : undefined}
       >
         <div data-testid="operator-facts-pesel">
           <label className="block">
@@ -847,6 +1265,9 @@ export default function OperatorFactsSurface({
   presentation,
   contextLabel,
   onOpenDocuments,
+  flow = false,
+  stayDocuments,
+  workDocuments,
 }: {
   candidateId: string
   countries: CountryOption[]
@@ -858,6 +1279,9 @@ export default function OperatorFactsSurface({
   presentation?: OperatorFactsPresentation
   contextLabel?: string | null
   onOpenDocuments?: () => void
+  flow?: boolean
+  stayDocuments?: ReactNode
+  workDocuments?: ReactNode
 }) {
   const { t } = useI18n()
   const [view, setView] = useState<OperatorFactsView | null>(null)
@@ -912,13 +1336,16 @@ export default function OperatorFactsSurface({
   )
 
   return (
-    <div className="space-y-3" data-testid="operator-facts-surface">
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+    <div className={flow && region === 'person' ? 'contents' : 'space-y-3'} data-testid="operator-facts-surface">
+      {error ? <p className="text-xs text-slate-700">{error}</p> : null}
       {view && region === 'legalization' ? (
         <LegalizationFactsSheet
           view={view}
           contextLabel={contextLabel}
-          onOpenDocuments={onOpenDocuments}
+          disabled={busy}
+          onPatch={(patch) => void onPatch(patch)}
+          stayDocuments={stayDocuments}
+          workDocuments={workDocuments}
         />
       ) : null}
       {view && region === 'person' ? (
@@ -927,6 +1354,7 @@ export default function OperatorFactsSurface({
           countries={countries}
           disabled={busy}
           onPatch={(patch) => void onPatch(patch)}
+          flow={flow}
         />
       ) : null}
       {view && region && region !== 'person' && region !== 'legalization' ? (

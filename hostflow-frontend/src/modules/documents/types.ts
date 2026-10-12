@@ -9,6 +9,7 @@ export type DocType = {
   code: string;
   aliases?: string[] | null;
   name?: string;
+  title?: Record<string, string> | null;
   required?: boolean;
   meta_schema?: any;
   metadata_schema?: Record<string, any> | null;

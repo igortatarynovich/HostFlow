@@ -8,20 +8,21 @@ import type {
   RequirementsChecklistResponse,
 } from '../../api/candidateRequirements'
 import { useI18n } from '../../i18n'
+import { StatusBadge } from '../ui/StatusBadge'
+import { WorkspaceSection } from '../ui/WorkspaceSection'
 import { useCandidateRequirementsChecklist } from '../../hooks/useCandidateRequirementsChecklist'
 import { useToast } from '../Toast'
 import {
   mapRequirementsChecklistToBlockers,
 } from '../../utils/requirementsPipelineBlockers'
-import { RequirementRowFrame } from './RequirementRowFrame'
 import {
   documentMatchesVariantTypes,
   evidenceStatusLabelKey,
   normDocType,
-  requirementStatusBadgeClass,
   resolveRequirementRowStatus,
   variantDocumentTypeCodes,
 } from './requirementsChecklistPresentation'
+import { requirementRowStatusToSemantic } from '../ui/statusBadgeSemantics'
 
 type Props = {
   candidateId: string
@@ -35,18 +36,61 @@ type Props = {
   onChanged?: () => void
   onPipelineBlockersChange?: (blockers: import('../../utils/candidateStageDocPolicy').DocBlockersPayload, loading: boolean) => void
   density?: 'comfortable' | 'compact'
+  /** Grouped read-first rows. Edit opens the existing evidence actions. */
+  presentation?: 'list' | 'workspace'
+  /** Documents keep professional requirements. Legalization keeps stay and work. */
+  purposeMode?: 'documents' | 'legalization'
+  onReadiness?: (counts: {
+    ready: number
+    total: number
+    gaps: Array<{ code: string; label: string; status: string }>
+    labels: Record<string, string>
+  }) => void
+  /** Keep blocker and readiness effects without rendering the evidence UI. */
+  headless?: boolean
+  /** Document type codes this purpose's requirements can use. Placement only. */
+  onPlacementTypes?: (codes: string[]) => void
+  /** Stay versus work placement. Legalization only. */
+  onPlacementGroups?: (groups: { stay: string[]; work: string[] }) => void
+}
+
+const LEGAL_PURPOSES = new Set(['legal_stay', 'right_to_work', 'work_permit_process', 'residence_permit_process'])
+const STAY_PURPOSES = new Set(['legal_stay', 'residence_permit_process'])
+const WORK_PURPOSES = new Set(['right_to_work', 'work_permit_process'])
+
+function requirementLevel(item: RequirementChecklistItem): 'required' | 'preferred' {
+  const level = String(item.level || 'blocking').toLowerCase()
+  if (level === 'warning' || level === 'preferred' || level === 'optional') return 'preferred'
+  return 'required'
 }
 
 function requirementTitle(
   t: ReturnType<typeof useI18n>['t'],
+  locale: string,
   item: RequirementChecklistItem,
+  labelForType: (code: string) => string,
 ): string {
   const code = item.requirement_code
+  const fromKey = t(`app.candidate_card.requirements_checklist.requirements.${code}`, { defaultValue: '' }).trim()
+  if (fromKey) return fromKey
   const fromApi = String(item.public_name || '').trim()
-  if (fromApi) return fromApi
-  return t(`app.candidate_card.requirements_checklist.requirements.${code}`, {
-    defaultValue: code.replace(/_/g, ' '),
-  })
+  const wantsCyrillic = locale.toLowerCase().startsWith('ru')
+  const apiMatchesUi = Boolean(fromApi) && /[А-Яа-яЁё]/.test(fromApi) === wantsCyrillic
+  if (fromApi && apiMatchesUi) return fromApi
+  const translatedType = (raw: string) => {
+    const labeled = labelForType(raw)
+    const fallback = raw.trim().toLowerCase().replace(/-/g, '_').replace(/_/g, ' ')
+    return labeled && labeled.toLowerCase() !== fallback ? labeled : ''
+  }
+  const fromCode = translatedType(code)
+  if (fromCode) return fromCode
+  const slug = fromApi.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+  const fromSlug = slug ? translatedType(slug) : ''
+  if (fromSlug) return fromSlug
+  const variantType = (item.accepted_evidence_variants || []).flatMap((variant) => variantDocumentTypeCodes(variant))[0]
+  const fromVariant = variantType ? translatedType(variantType) : ''
+  if (fromVariant) return fromVariant
+  return fromApi || code.replace(/_/g, ' ')
 }
 
 function variantLabel(
@@ -80,6 +124,7 @@ function RequirementRow({
   onOpenDocs,
   onUpload,
   compact = false,
+  workspace = false,
 }: {
   item: RequirementChecklistItem
   canEdit: boolean
@@ -95,8 +140,9 @@ function RequirementRow({
   onOpenDocs?: (docType?: string) => void
   onUpload?: () => void
   compact?: boolean
+  workspace?: boolean
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const rowStatus = resolveRequirementRowStatus(item)
   const evidence = item.candidate_evidence
   const variants = item.accepted_evidence_variants || []
@@ -110,6 +156,7 @@ function RequirementRow({
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [rowBusy, setRowBusy] = useState(false)
+  const [expanded, setExpanded] = useState(!compact)
 
   useEffect(() => {
     if (evidence?.evidence_variant_code) {
@@ -179,30 +226,56 @@ function RequirementRow({
       }).trim()
     : ''
 
-  const details = (
-    <>
+  return (
+    <div className={compact ? 'border-b border-slate-100 py-1' : 'rounded-xl border border-slate-200 bg-white p-3'}>
+      {compact ? (
+        <button
+          type="button"
+          className="flex w-full items-start gap-2 py-1.5 text-left"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          <span className={clsx('mt-0.5 w-4 shrink-0 text-sm', rowStatus === 'approved' ? 'text-emerald-600' : rowStatus === 'missing' ? 'text-rose-500' : 'text-slate-400')}>
+            {rowStatus === 'approved' ? '✓' : rowStatus === 'missing' ? '×' : '○'}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-1.5">
+              <span className="text-sm font-medium text-slate-900">{requirementTitle(t, locale, item, labelForType)}</span>
+              {workspace ? (
+                <StatusBadge
+                  size="sm"
+                  shape="pill"
+                  semantic={requirementLevel(item) === 'required' ? 'warning' : 'neutral'}
+                  label={requirementLevel(item) === 'required'
+                    ? t('app.candidate_card.ia.required_mark', { defaultValue: 'Required' })
+                    : t('app.candidate_card.ia.preferred_mark', { defaultValue: 'Preferred' })}
+                />
+              ) : (
+                <StatusBadge size="sm" shape="pill" semantic={requirementRowStatusToSemantic(rowStatus)} label={statusLabel} />
+              )}
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-slate-500">{statusLabel}</span>
+          </span>
+          <span className="shrink-0 text-xs text-slate-400">{expanded ? '−' : '✎'}</span>
+        </button>
+      ) : null}
+      {compact && !expanded ? null : (
+      <>
       {compact ? null : (
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-900">{requirementTitle(t, item)}</div>
+          <div className="text-sm font-semibold text-slate-900">{requirementTitle(t, locale, item, labelForType)}</div>
           {purposeHint ? (
-            <div className="mt-0.5 text-[11px] text-slate-600">{purposeHint}</div>
+            <div className="mt-0.5 text-xs text-slate-600">{purposeHint}</div>
           ) : (
-            <div className="mt-0.5 text-[11px] text-slate-600">
+            <div className="mt-0.5 text-xs text-slate-600">
               {t('app.candidate_card.requirements_checklist.confirm_hint', {
                 defaultValue: 'Choose how you confirm this requirement, then link supporting documents.',
               })}
             </div>
           )}
         </div>
-        <span
-          className={clsx(
-            'shrink-0 rounded-full border px-3 py-0.5 text-[11px] font-semibold',
-            requirementStatusBadgeClass(rowStatus),
-          )}
-        >
-          {statusLabel}
-        </span>
+        <StatusBadge size="sm" shape="pill" semantic={requirementRowStatusToSemantic(rowStatus)} label={statusLabel} />
       </div>
       )}
 
@@ -216,7 +289,7 @@ function RequirementRow({
 
       {!evidence && canLinkOrSelect ? (
         <div className="mt-3 space-y-2">
-          <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
             {t('app.candidate_card.requirements_checklist.evidence_picker_label', {
               defaultValue: 'Confirm with',
             })}
@@ -263,7 +336,7 @@ function RequirementRow({
           ) : null}
 
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
               {t('app.candidate_card.requirements_checklist.linked_documents', {
                 defaultValue: 'Linked documents',
               })}
@@ -281,7 +354,7 @@ function RequirementRow({
                         onClick={() => onOpenDocs?.(typeCode || undefined)}
                       >
                         <span className="font-medium text-slate-900">{labelForType(typeCode)}</span>
-                        <span className="text-[11px] text-slate-600">
+                        <span className="text-xs text-slate-600">
                           {doc.has_files === false
                             ? t('app.candidate_card.requirements_checklist.no_files', {
                                 defaultValue: 'No files',
@@ -306,7 +379,7 @@ function RequirementRow({
 
           {canLinkOrSelect && (rowStatus === 'selected' || rowStatus === 'pending_review' || rowStatus === 'rejected') ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-2 space-y-2">
-              <div className="text-[11px] font-semibold text-slate-700">
+              <div className="text-xs font-semibold text-slate-700">
                 {t('app.candidate_card.requirements_checklist.link_document', {
                   defaultValue: 'Link document',
                 })}
@@ -471,16 +544,10 @@ function RequirementRow({
           ) : null}
         </div>
       ) : null}
-    </>
+      </>
+      )}
+    </div>
   )
-  if (compact) {
-    return (
-      <RequirementRowFrame label={requirementTitle(t, item)} status={rowStatus}>
-        {details}
-      </RequirementRowFrame>
-    )
-  }
-  return <div className="rounded-xl border border-slate-200 bg-white p-3">{details}</div>
 }
 
 export default function CandidateRequirementsChecklist({
@@ -495,6 +562,12 @@ export default function CandidateRequirementsChecklist({
   onChanged,
   onPipelineBlockersChange,
   density = 'comfortable',
+  presentation = 'list',
+  purposeMode,
+  onReadiness,
+  headless = false,
+  onPlacementTypes,
+  onPlacementGroups,
 }: Props) {
   const { t } = useI18n()
   const { notify } = useToast()
@@ -545,17 +618,76 @@ export default function CandidateRequirementsChecklist({
   const labelForType = useCallback(
     (code: string) => {
       const norm = normDocType(code)
+      const fromRequirements = t(`app.candidate_card.requirements_checklist.requirements.${norm}`, { defaultValue: '' }).trim()
+      if (fromRequirements) return fromRequirements
       const fromTypeCodes = t(`admin.documents.type_codes.${norm}`, { defaultValue: '' }).trim()
       if (fromTypeCodes) return fromTypeCodes
       return norm.replace(/_/g, ' ')
     },
     [t],
   )
+  const labelForRequirement = useCallback(
+    (item: { requirement_code?: string | null; public_name?: string | null }) => {
+      const code = String(item.requirement_code || '').trim()
+      const localized = code ? labelForType(code) : ''
+      if (localized && localized !== code.replace(/_/g, ' ')) return localized
+      const named = String(item.public_name || '').trim()
+      return named || localized || code
+    },
+    [labelForType],
+  )
 
   const applicableRequirements = useMemo(
-    () => (checklist?.requirements || []).filter((item) => resolveRequirementRowStatus(item) !== 'not_applicable'),
-    [checklist],
+    () => (checklist?.requirements || []).filter((item) => {
+      if (resolveRequirementRowStatus(item) === 'not_applicable') return false
+      if (!purposeMode) return true
+      const purpose = String(item.business_purpose || '')
+      const legal = LEGAL_PURPOSES.has(purpose)
+      return purposeMode === 'legalization' ? legal : !legal
+    }),
+    [checklist, purposeMode],
   )
+  useEffect(() => {
+    if (!onReadiness) return
+    const labels: Record<string, string> = {}
+    for (const item of checklist?.requirements || []) {
+      const code = String(item.requirement_code || '').trim()
+      if (code) labels[code] = labelForRequirement(item)
+    }
+    onReadiness({
+      ready: applicableRequirements.filter((item) => item.fulfilled).length,
+      total: applicableRequirements.length,
+      gaps: applicableRequirements.filter((item) => !item.fulfilled).map((item) => ({
+        code: String(item.requirement_code || ''),
+        label: labelForRequirement(item),
+        status: String(item.evaluation?.status || item.candidate_evidence?.status || ''),
+      })),
+      labels,
+    })
+  }, [applicableRequirements, checklist, labelForRequirement, onReadiness])
+  useEffect(() => {
+    if (!onPlacementTypes && !onPlacementGroups) return
+    const source = purposeMode === 'legalization'
+      ? (checklist?.requirements || []).filter((item) => LEGAL_PURPOSES.has(String(item.business_purpose || '')))
+      : applicableRequirements
+    const codes = new Set<string>()
+    const stay = new Set<string>()
+    const work = new Set<string>()
+    for (const item of source) {
+      const purpose = String(item.business_purpose || '')
+      const bucket = STAY_PURPOSES.has(purpose) ? stay : WORK_PURPOSES.has(purpose) ? work : null
+      for (const variant of item.accepted_evidence_variants || []) {
+        for (const code of variantDocumentTypeCodes(variant)) {
+          codes.add(code)
+          bucket?.add(code)
+        }
+      }
+    }
+    onPlacementTypes?.(Array.from(codes))
+    if (purposeMode === 'legalization') {
+      onPlacementGroups?.({ stay: Array.from(stay), work: Array.from(work) })
+    }
+  }, [applicableRequirements, checklist, onPlacementGroups, onPlacementTypes, purposeMode])
   const fulfilledCount = useMemo(
     () => (checklist?.requirements || []).filter((item) => item.fulfilled).length,
     [checklist],
@@ -587,6 +719,83 @@ export default function CandidateRequirementsChecklist({
 
   const primary = Boolean(primaryStepHighlight)
 
+  const renderRequirement = (item: RequirementChecklistItem) => (
+    <RequirementRow
+      key={item.requirement_code}
+      item={item}
+      canEdit={canEdit}
+      actionBusy={actionBusy}
+      labelForType={labelForType}
+      candidateDocuments={candidateDocuments}
+      docsLoading={docsLoading}
+      compact={presentation === 'workspace' || density === 'compact'}
+      workspace={presentation === 'workspace'}
+      onSelectVariant={(variantCode) =>
+        wrapAction(
+          () => selectEvidence(item.requirement_code, variantCode),
+          'app.candidate_card.requirements_checklist.toast_selected',
+          'Evidence selected',
+        )
+      }
+      onLinkDocument={(evidenceId, documentId) =>
+        wrapAction(
+          () => linkDocument(evidenceId, documentId),
+          'app.candidate_card.requirements_checklist.toast_linked',
+          'Document linked',
+        )
+      }
+      onApprove={(evidenceId) =>
+        wrapAction(
+          () => approveEvidence(evidenceId),
+          'app.candidate_card.requirements_checklist.toast_approved',
+          'Requirement approved',
+        )
+      }
+      onReject={(evidenceId, reason) =>
+        wrapAction(
+          () => rejectEvidence(evidenceId, reason),
+          'app.candidate_card.requirements_checklist.toast_rejected',
+          'Evidence rejected',
+        )
+      }
+      onReplace={(variantCode) =>
+        wrapAction(
+          () => replaceEvidence(item.requirement_code, variantCode),
+          'app.candidate_card.requirements_checklist.toast_replaced',
+          'Evidence replaced',
+        )
+      }
+      onOpenDocs={onOpenDocs}
+      onUpload={onUpload}
+    />
+  )
+
+  if (headless) return null
+
+  if (presentation === 'workspace') {
+    const mandatory = applicableRequirements.filter((item) => requirementLevel(item) === 'required')
+    const preferred = applicableRequirements.filter((item) => requirementLevel(item) === 'preferred')
+    return (
+      <div className="space-y-3" data-testid={`requirements-workspace-${purposeMode || 'all'}`}>
+        {loading ? <div className="text-xs text-slate-500">{t('common.loading')}</div> : null}
+        {error ? <div className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-2 text-xs text-rose-800">{error}</div> : null}
+        {!loading && !error && !applicableRequirements.length && purposeMode !== 'legalization' ? (
+          <div className="text-sm text-slate-500">{t('app.candidate_card.ia.not_filled')}</div>
+        ) : null}
+        {mandatory.length ? (
+          <WorkspaceSection title={t('app.candidate_card.ia.mandatory_group', { defaultValue: 'Required' })}>
+            <div>{mandatory.map(renderRequirement)}</div>
+          </WorkspaceSection>
+        ) : null}
+        {preferred.length ? (
+          <WorkspaceSection title={t('app.candidate_card.ia.preferred_group', { defaultValue: 'Preferred' })}>
+            <div>{preferred.map(renderRequirement)}</div>
+          </WorkspaceSection>
+        ) : null}
+      </div>
+    )
+  }
+
   return (
     <section
       className={clsx(
@@ -610,7 +819,7 @@ export default function CandidateRequirementsChecklist({
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-[11px] text-slate-600">
+          <p className="mt-1 text-xs text-slate-600">
             {t('app.candidate_card.requirements_checklist.subtitle', {
               defaultValue: 'Confirm each requirement — choose evidence, link documents, then approve.',
             })}
@@ -638,7 +847,7 @@ export default function CandidateRequirementsChecklist({
       </div>
 
       {!loading && totalCount > 0 ? (
-        <div className="mt-1 text-[11px] font-medium text-slate-700">
+        <div className="mt-1 text-xs font-medium text-slate-700">
           {t('app.candidate_card.requirements_checklist.progress', {
             defaultValue: '{fulfilled}/{total} confirmed',
             values: { fulfilled: fulfilledCount, total: totalCount },

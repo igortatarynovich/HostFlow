@@ -9,7 +9,7 @@ import { formatErrorForDisplay } from "../../../utils/errorHandling";
 import { usePlanLimitModal } from "../../../contexts/PlanLimitModalContext";
 import { useI18n } from "../../../i18n";
 import { getDocumentFieldsConfig } from "../documentFieldsConfig";
-import { documentHasFiles, statusRequiresUploadedFile } from "../documentUtils";
+import { documentHasFiles, isSyntheticDocumentId, statusRequiresUploadedFile } from "../documentUtils";
 import type { DocumentPatchPayload, CreateCandidateDocumentPayload } from "../../../api/documents";
 import { createCandidateDocument } from "../../../api/documents";
 import type { CoreFields, MetadataState } from "../types";
@@ -461,6 +461,7 @@ export function useDocumentActions({
         }
         flash(t("admin.documents.notifications.core_saved"));
         await loadAll();
+        onDocumentsChanged?.();
       } catch (e: any) {
         if (
           planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.core_failed"))
@@ -488,6 +489,7 @@ export function useDocumentActions({
       setCoreSaving,
       flash,
       onFieldsApplied,
+      onDocumentsChanged,
       t,
     ]
   );
@@ -547,6 +549,55 @@ export function useDocumentActions({
     ]
   );
 
+  const recordProcedure = useCallback(
+    async (
+      doc: Document,
+      patch: { ordered_at?: string | null; status?: DocumentStatus; meta?: Record<string, unknown> },
+    ) => {
+      if (!canManageDocuments) {
+        setError(t("admin.documents.errors.permission_edit"));
+        return;
+      }
+      setCoreSaving((prev) => ({ ...prev, [doc.id]: true }));
+      try {
+        let target = doc;
+        const synthetic = Boolean((doc.meta_json as { synthetic?: boolean } | null)?.synthetic || (doc.meta as { synthetic?: boolean } | null)?.synthetic) || isSyntheticDocumentId(doc.id);
+        if (synthetic) {
+          target = await createDocumentFromChecklist(doc);
+        }
+        const payload: DocumentPatchPayload = {};
+        if (patch.ordered_at !== undefined) payload.ordered_at = patch.ordered_at;
+        if (patch.status) payload.status = patch.status;
+        if (patch.meta) {
+          payload.meta_json = { ...(target.meta_json ?? {}), ...patch.meta };
+        }
+        const updated = await patchDocument(target.id, payload);
+        updateDocumentState(updated);
+        flash(t("admin.documents.notifications.core_saved"));
+        await loadAll();
+        onDocumentsChanged?.();
+      } catch (e: unknown) {
+        const message = formatErrorForDisplay(e, {
+          fallback: t("admin.documents.notifications.core_failed"),
+        });
+        setError(message);
+      } finally {
+        setCoreSaving((prev) => ({ ...prev, [doc.id]: false }));
+      }
+    },
+    [
+      canManageDocuments,
+      createDocumentFromChecklist,
+      updateDocumentState,
+      loadAll,
+      onDocumentsChanged,
+      setError,
+      setCoreSaving,
+      flash,
+      t,
+    ],
+  );
+
   return {
     updateStatus,
     approveDocument,
@@ -556,6 +607,7 @@ export function useDocumentActions({
     saveCoreFields,
     deleteDocumentFile,
     createDocumentFromChecklist,
+    recordProcedure,
   };
 }
 

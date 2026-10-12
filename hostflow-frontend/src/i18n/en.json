@@ -6622,7 +6622,8 @@
           "additional": "Address and extra details",
           "rights": "Right to work",
           "documents": "Professional documents",
-          "extra_facts": "Additional"
+          "extra_facts": "Additional",
+          "qualification": "Qualification"
         },
         "process_widget": "Stage, manager and tags",
         "blockers": "Blockers",
@@ -6662,7 +6663,11 @@
         "system_created": "Created {date}",
         "order_service": "Order service",
         "years_short": "experience {{count}}",
-        "active_vacancy": "Active application"
+        "active_vacancy": "Active application",
+        "qualification_hint": "Categories and professional qualifications",
+        "driver_hint": "Experience, body types and routes",
+        "preferences_hint": "Trailer types, routes and related preferences",
+        "experience_hint": "Previous employment"
       },
       "operator_facts": {
         "driver_block": "Driver details and entitlements",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import clsx from "clsx";
 import {
   getDocumentTypes,
@@ -57,6 +57,8 @@ import {
   MAX_FILE_MB,
 } from "./constants";
 import { getDocumentFieldsConfig } from "./documentFieldsConfig";
+import { DocumentViewer } from "../../components/ui/DocumentViewer";
+import { OperatorDocumentRows } from "./OperatorDocumentRows";
 import { COMBINED_LICENSE_SATISFIES } from "../../data/documentTypeAliases";
 import {
   toArray,
@@ -319,6 +321,25 @@ type Props = {
    * the surface only withholds mutation controls for this view.
    */
   mutationsLocked?: boolean;
+  /** The resolved requirement list owns creation. Hide the generic type picker. */
+  requirementLed?: boolean;
+  /** Profile list as operator rows: presence, file, existing metadata. */
+  operatorRows?: boolean;
+  onlyTypes?: string[];
+  excludeTypes?: string[];
+  countries?: Array<{ value: string; label: string }>;
+  onFactsSaved?: () => void;
+  /** Legalization projections. The same Hub rows, grouped by stay and work. */
+  stayTypes?: string[];
+  workTypes?: string[];
+  renderFrame?: (sections: { stay: ReactNode; work: ReactNode }) => ReactNode;
+  /** Required rows from the candidate profile and their Hub review state. */
+  onProfileReadiness?: (readiness: {
+    ready: number
+    total: number
+    gaps: Array<{ code: string; label: string; status: string }>
+    labels: Record<string, string>
+  } | null) => void
 };
 
 export default function CandidateDocuments({
@@ -332,6 +353,16 @@ export default function CandidateDocuments({
   compactType = false,
   inlineWorkspace = false,
   mutationsLocked = false,
+  requirementLed = false,
+  operatorRows = false,
+  onlyTypes,
+  excludeTypes,
+  countries,
+  onFactsSaved,
+  stayTypes,
+  workTypes,
+  renderFrame,
+  onProfileReadiness,
 }: Props) {
   const { can } = usePermissions();
   const { t, locale } = useI18n();
@@ -377,9 +408,48 @@ export default function CandidateDocuments({
   }), []);
 
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
+  const [catalogDocTypes, setCatalogDocTypes] = useState<DocType[]>([]);
+  const [typeLevel, setTypeLevel] = useState<Record<string, 'required' | 'preferred'>>({});
   const [docs, setDocs] = useState<Document[]>([]);
   const [summaryResponse, setSummaryResponse] = useState<CandidateDocumentsSummaryResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!onProfileReadiness || !operatorRows || renderFrame) return;
+    const profileActive = Boolean(candidateProfile && !isDefaultProfileWithEmptyDocumentConfig(candidateProfile));
+    if (!profileActive) {
+      onProfileReadiness(null);
+      return;
+    }
+    if (loading || !summaryResponse) return;
+    const required = docTypes.filter((type) => typeLevel[type.code] === "required");
+    const labels: Record<string, string> = {};
+    const gaps: Array<{ code: string; label: string; status: string }> = [];
+    let ready = 0;
+    for (const type of required) {
+      const label = resolveDocTypeLabel(t, type.code, type.name, type.title, locale);
+      labels[type.code] = label;
+      const norm = normalizeDocTypeCode(type.code);
+      const matches = docs.filter((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || "") === norm);
+      const real = matches.filter((doc) => !isSyntheticDocumentId(doc.id));
+      const pool = real.length ? real : matches;
+      const doc = pool.find((item) => documentHasFiles(item)) || pool[0];
+      if (doc && documentHasFiles(doc)) {
+        const badge = runtimeBadgeFromDocument(doc).badge;
+        if (badge === "approved") {
+          ready += 1;
+          continue;
+        }
+        gaps.push({
+          code: type.code,
+          label,
+          status: badge === "rejected" ? "rejected" : "pending_review",
+        });
+        continue;
+      }
+      gaps.push({ code: type.code, label, status: "missing" });
+    }
+    onProfileReadiness({ ready, total: required.length, gaps, labels });
+  }, [candidateProfile, docTypes, docs, loading, locale, onProfileReadiness, operatorRows, renderFrame, summaryResponse, t, typeLevel]);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
@@ -425,8 +495,9 @@ export default function CandidateDocuments({
 
   const typeByCode = useMemo(() => new Map(docTypes.map((t) => [t.code, t])), [docTypes]);
   const getDocTypeLabel = useCallback(
-    (typeCode: string, dbName?: string | null) => resolveDocTypeLabel(t, typeCode, dbName),
-    [t]
+    (typeCode: string, dbName?: string | null, title?: Record<string, string> | null) =>
+      resolveDocTypeLabel(t, typeCode, dbName, title, locale),
+    [locale, t]
   );
   const selectedDocDefinition = useMemo(() => {
     if (!selectedType) return null;
@@ -635,7 +706,68 @@ export default function CandidateDocuments({
         displayTypes = nextTypes;
       }
 
-      setDocTypes(displayTypes);
+      let profileRequiresCode95 = false;
+      if (operatorRows) {
+        const levels: Record<string, "required" | "preferred"> = {};
+        if (profileFilterActive) {
+          displayTypes = filteredTypes;
+          for (const type of displayTypes) {
+            const cfg = profileConfigByTypeCode.get(type.code);
+            levels[type.code] = cfg?.required === true ? "required" : "preferred";
+          }
+          const licenceNorms = new Set(["driver_license", "driver_license_code95", "driver_licence"]);
+          const code95Norms = new Set(["code95", "driver_qualification_card", "qualification_code95"]);
+          const code95Required = displayTypes.some((type) => {
+            const norm = normalizeDocTypeCode(type.code);
+            return levels[type.code] === "required" && (code95Norms.has(norm) || norm === "driver_license_code95");
+          });
+          profileRequiresCode95 = code95Required;
+          const licences = displayTypes.filter((type) => licenceNorms.has(normalizeDocTypeCode(type.code)));
+          if (licences.length > 1) {
+            const keep = licences.find((type) => normalizeDocTypeCode(type.code) === "driver_license") || licences[0];
+            const required = licences.some((type) => levels[type.code] === "required");
+            displayTypes = displayTypes.filter((type) => !licenceNorms.has(normalizeDocTypeCode(type.code)) || type.code === keep.code);
+            levels[keep.code] = required ? "required" : levels[keep.code];
+          }
+          if (code95Required) {
+            const catalog = new Map(allTypes.map((type) => [normalizeDocTypeCode(type.code), type] as const));
+            const qualification = ["code95", "driver_qualification_card", "qualification_code95"]
+              .map((code) => catalog.get(code))
+              .find((type): type is DocType => Boolean(type));
+            if (qualification && !displayTypes.some((type) => normalizeDocTypeCode(type.code) === normalizeDocTypeCode(qualification.code))) {
+              displayTypes = [...displayTypes, qualification];
+              levels[qualification.code] = "required";
+            }
+          }
+        } else {
+          const projectedNorms = projectedRequired
+            ? new Set(projectedRequired.map((code) => normalizeDocTypeCode(String(code))))
+            : null;
+          const catalog = new Map(allTypes.map((type) => [normalizeDocTypeCode(type.code), type] as const));
+          const merged = new Map<string, DocType>();
+          if (projectedNorms) {
+            for (const code of projectedRequired || []) {
+              const hit = catalog.get(normalizeDocTypeCode(String(code)));
+              if (!hit || merged.has(hit.code)) continue;
+              merged.set(hit.code, hit);
+            }
+          }
+          displayTypes = Array.from(merged.values());
+          const optionalNorms = new Set(
+            (Array.isArray(checklistPayload?.optionalTypes) ? checklistPayload.optionalTypes : []).map((code: unknown) =>
+              normalizeDocTypeCode(String(code)),
+            ),
+          );
+          for (const type of displayTypes) {
+            const norm = normalizeDocTypeCode(type.code);
+            levels[type.code] = optionalNorms.has(norm) ? "preferred" : "required";
+          }
+        }
+        setTypeLevel(levels);
+      }
+
+        setCatalogDocTypes(allTypes);
+        setDocTypes(displayTypes);
       setSummaryResponse(summaryResp);
       const summaryDocsRaw = Array.isArray(summaryResp?.documents)
         ? (summaryResp.documents as Document[])
@@ -708,6 +840,11 @@ export default function CandidateDocuments({
         }
       });
       
+      if (profileRequiresCode95 && !docsList.some((doc) => ["code95", "driver_qualification_card", "qualification_code95"].includes(normalizeDocTypeCode(doc.type_code || doc.doc_type)))) {
+        for (const code of ["code95", "driver_qualification_card", "qualification_code95", "code_95"]) {
+          existingTypeCodes.delete(code);
+        }
+      }
       // Создаем синтетические документы для всех типов из docTypes, которых еще нет
       displayTypes.forEach((type) => {
         const typeCode = type.code;
@@ -829,7 +966,7 @@ export default function CandidateDocuments({
     } finally {
       setLoading(false);
     }
-  }, [candidateId, ownerContext, coreFromDocument, candidateProfile, planLimitModal, t]);
+  }, [candidateId, ownerContext, coreFromDocument, candidateProfile, planLimitModal, t, operatorRows]);
 
   useEffect(() => {
     loadAll();
@@ -1672,6 +1809,7 @@ useEffect(() => {
     saveCoreFields,
     deleteDocumentFile,
     createDocumentFromChecklist,
+    recordProcedure,
   } = useDocumentActions({
     candidateId,
     canManageDocuments,
@@ -1699,7 +1837,23 @@ useEffect(() => {
     setReplacePct,
     setReplaceFile,
     flash,
+    onDocumentsChanged,
   });
+
+  const discardFieldEdits = (doc: Document) => {
+    setCoreEdits((prev) => {
+      if (!prev[doc.id]) return prev;
+      const next = { ...prev };
+      delete next[doc.id];
+      return next;
+    });
+    setMetadataEdits((prev) => {
+      if (!prev[doc.id]) return prev;
+      const next = { ...prev };
+      delete next[doc.id];
+      return next;
+    });
+  };
 
   // Функция для обновления значения поля
   const updateFieldValue = (doc: Document, fieldKey: string, value: any) => {
@@ -1874,6 +2028,75 @@ useEffect(() => {
     }
   };
 
+  if (operatorRows) {
+    const operatorError = error && /evidence variant/i.test(String(error)) ? null : error;
+    const framed = Boolean(renderFrame);
+    return (
+      <>
+        <div className={framed ? 'contents' : 'space-y-3'}>
+          {operatorError ? (
+            <div className="rounded border border-slate-200 bg-slate-50 px-2 py-2 text-sm text-slate-800">{operatorError}</div>
+          ) : null}
+          {loading && docs.length === 0 && !framed ? (
+            <div className="text-sm text-slate-500">{t("common.loading")}</div>
+          ) : (
+            <OperatorDocumentRows
+            candidateId={candidateId}
+            docs={docs}
+            docTypes={docTypes}
+            typeLevel={typeLevel}
+            onlyTypes={framed ? undefined : onlyTypes}
+            excludeTypes={framed ? undefined : excludeTypes}
+            groups={framed ? [
+              { key: 'stay', types: stayTypes || [] },
+              { key: 'work', types: workTypes || [] },
+            ] : undefined}
+            renderGroups={renderFrame
+              ? (nodes) => renderFrame({ stay: nodes.stay ?? null, work: nodes.work ?? null })
+              : undefined}
+            canManage={canManageDocuments}
+            countries={countries}
+            getLabel={getDocTypeLabel}
+            onUpload={handleReplaceUploadHook}
+            uploading={replaceUploading}
+            onFactsSaved={onFactsSaved}
+            metadataEdits={metadataEdits}
+            getFieldValue={getFieldValue}
+            updateFieldValue={updateFieldValue}
+            saveCoreFields={saveCoreFields}
+            approveDocument={approveDocument}
+            rejectDocument={rejectDocument}
+            deleteDocumentFile={deleteDocumentFile}
+            openDoc={openDoc}
+            recordProcedure={recordProcedure}
+            discardEdits={discardFieldEdits}
+            coreSaving={coreSaving}
+            catalogTypes={catalogDocTypes}
+            hasEdits={(docId) => {
+              const doc = docs.find((item) => item.id === docId)
+              if (!doc) return false
+              const core = coreEdits[docId]
+              const meta = metadataEdits[docId]
+              const coreDirty = core ? JSON.stringify(core) !== JSON.stringify(coreFromDocument(doc)) : false
+              const baseMeta = buildMetadataStateFromDoc(doc, metadataFieldMap.get(doc.doc_type) ?? [])
+              const metaDirty = meta ? JSON.stringify(meta) !== JSON.stringify(baseMeta) : false
+              return coreDirty || metaDirty
+            }}
+          />
+        )}
+        </div>
+        <DocumentViewer
+          open={previewOpen}
+          url={previewUrl}
+          contentType={previewContentType}
+          title={t("admin.documents.preview.dialog_aria", { defaultValue: "Document preview" })}
+          closeLabel={t("common.actions.close", { defaultValue: "Close" })}
+          onClose={closePreview}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {!hideHeader && (
@@ -1951,7 +2174,7 @@ useEffect(() => {
         </div>
       )}
 
-      {inlineWorkspace && canManageDocuments ? (
+      {inlineWorkspace && canManageDocuments && !requirementLed ? (
         <div className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
           <label className="min-w-[12rem] flex-1 text-xs text-slate-600">
             {t("admin.documents.forms.type", { defaultValue: "Document type" })}
@@ -2350,38 +2573,14 @@ useEffect(() => {
         </div>
       )}
 
-      {previewOpen && previewUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4"
-          onClick={closePreview}
-          role="presentation"
-        >
-          <div
-            className="flex h-[min(90vh,920px)] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("admin.documents.preview.dialog_aria")}
-          >
-            <div className="flex shrink-0 items-center justify-end border-b border-slate-200 bg-slate-50 px-2 py-1.5">
-              <button type="button" className="btn-secondary btn-xs" onClick={closePreview}>
-                {t("common.actions.close")}
-              </button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-auto bg-slate-100">
-              {previewContentType?.includes("pdf") || previewUrl.toLowerCase().endsWith(".pdf") ? (
-                <iframe title={t("admin.documents.preview.iframe_title")} src={previewUrl} className="h-full min-h-[70vh] w-full" />
-              ) : (
-                <img
-                  src={previewUrl}
-                  alt=""
-                  className="mx-auto block h-auto max-h-full min-h-0 w-auto max-w-full object-contain"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <DocumentViewer
+        open={previewOpen}
+        url={previewUrl}
+        contentType={previewContentType}
+        title={t("admin.documents.preview.dialog_aria", { defaultValue: "Document preview" })}
+        closeLabel={t("common.actions.close", { defaultValue: "Close" })}
+        onClose={closePreview}
+      />
     </div>
   );
 }

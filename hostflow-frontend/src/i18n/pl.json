@@ -6001,7 +6001,8 @@
           "additional": "Adres i dane dodatkowe",
           "rights": "Prawo do pracy",
           "documents": "Dokumenty zawodowe",
-          "extra_facts": "Dodatkowo"
+          "extra_facts": "Dodatkowo",
+          "qualification": "Kwalifikacje"
         },
         "process_widget": "Etap, opiekun i tagi",
         "blockers": "Blokery",
@@ -6041,7 +6042,11 @@
         "system_created": "Utworzono {date}",
         "order_service": "Zamów usługę",
         "years_short": "doświadczenie {{count}}",
-        "active_vacancy": "Aktywna aplikacja"
+        "active_vacancy": "Aktywna aplikacja",
+        "qualification_hint": "Kategorie i kwalifikacje zawodowe",
+        "driver_hint": "Doświadczenie, typy zabudowy i trasy",
+        "preferences_hint": "Typy naczep, trasy i powiązane preferencje",
+        "experience_hint": "Poprzednie zatrudnienie"
       },
       "operator_facts": {
         "driver_block": "Dane i uprawnienia kierowcy",

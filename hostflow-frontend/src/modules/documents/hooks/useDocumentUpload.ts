@@ -20,6 +20,7 @@ interface UseDocumentUploadProps {
   setReplacePct: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   setReplaceFile: React.Dispatch<React.SetStateAction<Record<string, File | null>>>;
   flash: (message: string) => void;
+  onDocumentsChanged?: () => void;
 }
 
 export function useDocumentUpload({
@@ -31,6 +32,7 @@ export function useDocumentUpload({
   setReplacePct,
   setReplaceFile,
   flash,
+  onDocumentsChanged,
 }: UseDocumentUploadProps) {
   const { t } = useI18n();
   const planLimitModal = usePlanLimitModal();
@@ -71,6 +73,7 @@ export function useDocumentUpload({
         if (timer) window.clearInterval(timer);
         setReplacePct((prev) => ({ ...prev, [doc.id]: 100 }));
         await loadAll();
+        onDocumentsChanged?.();
         flash(t("admin.documents.notifications.replace_success"));
         setReplaceFile((prev) => ({ ...prev, [doc.id]: null }));
       } catch (e: any) {
@@ -102,6 +105,7 @@ export function useDocumentUpload({
       setReplacePct,
       setReplaceFile,
       flash,
+      onDocumentsChanged,
       t,
     ]
   );

@@ -3,7 +3,7 @@
  */
 
 import { docsApi } from "../../api/client";
-import { COMBINED_LICENSE_SATISFIES, MODULE_PERSIST_DOC_TYPE_ALIASES } from "../../data/documentTypeAliases";
+import { COMBINED_LICENSE_SATISFIES, EQUIVALENT_TYPE_GROUPS, MODULE_PERSIST_DOC_TYPE_ALIASES } from "../../data/documentTypeAliases";
 import {
   MAX_FILE_BYTES,
   DOCUMENT_STATUS_META,
@@ -223,18 +223,101 @@ export const isPlainLicenseWithoutCode95 = (value?: string | null): boolean => {
   return LICENSE_SLOT_TYPES.has(normalized) && normalized !== COMBINED_LICENSE_TYPE;
 };
 
+const rawDocTypeCode = (value?: string | null): string =>
+  String(value || "").trim().toLowerCase().replace(/-/g, "_");
+
+const localizedTypeCode = (
+  t: (key: string, opts?: any) => string,
+  code: string,
+): string | null => {
+  const raw = rawDocTypeCode(code);
+  if (!raw) return null;
+  const key = `admin.documents.type_codes.${raw}`;
+  const translated = String(t(key, { defaultValue: "" }) || "").trim();
+  if (!translated || translated === key) return null;
+  return translated;
+};
+
+const STAY_PROCESS = new Set(["visa", "residence_card", "residence_permit"]);
+const WORK_PROCESS = new Set(["work_permit"]);
+const STAY_CODES = new Set([
+  "visa",
+  "residence_card",
+  "residence_permit",
+  "karta_pobytu",
+  "decision",
+  "decyzja",
+  "voivodeship_decision",
+  "temporary_residence_decision",
+  "eu_residence_registration",
+]);
+const WORK_CODES = new Set([
+  "work_permit",
+  "work_permit_decision",
+  "oswiadczenie",
+  "zezwolenie_a",
+  "temporary_residence_and_work_decision",
+]);
+
+/** Stay/work placement from the document type's own process and code. */
+export const legalDocumentSlot = (
+  type: { code?: string | null; process_type?: string | null },
+): "stay" | "work" | null => {
+  const process = rawDocTypeCode(type.process_type);
+  const code = rawDocTypeCode(type.code);
+  if (WORK_PROCESS.has(process) || WORK_CODES.has(code)) return "work";
+  if (STAY_PROCESS.has(process) || STAY_CODES.has(code) || process === "decision") return "stay";
+  return null;
+};
+
+export const stayDocumentRole = (
+  type: { code?: string | null; process_type?: string | null },
+): "visa" | "card" | "decision" | null => {
+  const code = rawDocTypeCode(type.code);
+  const process = rawDocTypeCode(type.process_type);
+  if (code === "visa" || process === "visa") return "visa";
+  if (
+    code === "decision"
+    || code === "decyzja"
+    || code === "voivodeship_decision"
+    || code === "temporary_residence_decision"
+    || process === "decision"
+  ) {
+    return "decision";
+  }
+  return legalDocumentSlot(type) === "stay" ? "card" : null;
+};
+
 export const resolveDocTypeLabel = (
   t: (key: string, opts?: any) => string,
   typeCode: string,
-  dbName?: string | null
+  dbName?: string | null,
+  title?: Record<string, string> | null,
+  locale?: string | null,
 ): string => {
-  const normalized = normalizeDocTypeCode(typeCode);
-  const key = `admin.documents.type_codes.${normalized}`;
-  const translated = t(key, { defaultValue: key });
-  if (translated && translated !== key) return translated;
-  if (dbName && dbName.trim()) return dbName.trim();
-  if (normalized) return normalized.replace(/_/g, " ");
-  return "";
+  const loc = String(locale || "").trim().toLowerCase();
+  const catalogTitle = loc ? String(title?.[loc] || "").trim() : "";
+  if (catalogTitle) return catalogTitle;
+  const raw = rawDocTypeCode(typeCode);
+  const queue = [raw, DOC_TYPE_CODE_ALIASES[raw] || "", raw === "additional" ? "additional_document" : ""];
+  for (const group of EQUIVALENT_TYPE_GROUPS) {
+    if (group.some((item) => rawDocTypeCode(item) === raw || normalizeDocTypeCode(item) === normalizeDocTypeCode(raw))) {
+      queue.push(...group);
+    }
+  }
+  const seen = new Set<string>();
+  for (const code of queue) {
+    const key = rawDocTypeCode(code);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    const translated = localizedTypeCode(t, key);
+    if (translated) return translated;
+  }
+  if (loc === "en") {
+    const catalogName = String(dbName || "").trim();
+    if (catalogName) return catalogName;
+  }
+  return raw.replace(/_/g, " ");
 };
 
 export const effectiveStatus = (doc: Document): DocumentStatus => {

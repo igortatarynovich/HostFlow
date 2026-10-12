@@ -248,3 +248,9 @@ export const DOCUMENT_FIELDS_CONFIG: DocumentFieldsConfig = {
 export function getDocumentFieldsConfig(docType: string): DocumentFieldConfig[] {
   return DOCUMENT_FIELDS_CONFIG[docType] || DOCUMENT_FIELDS_CONFIG.default || [];
 }
+
+/** Work-authorization documents that already store an order date and a permit type. */
+export function isProcedureDocument(docType: string): boolean {
+  const keys = new Set(getDocumentFieldsConfig(docType).map((field) => field.key));
+  return keys.has("ordered_at") && keys.has("work_permit_type");
+}
