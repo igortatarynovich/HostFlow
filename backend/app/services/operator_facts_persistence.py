@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 from typing import Any, Mapping
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from backend.app.models.candidate import Candidate
+from backend.app.models.document import Document
+from backend.app.models.document_entity_link import DocumentEntityLink
 from backend.app.models.hr_employment import Employment
 from backend.app.services.hr_legal_eligibility_gate import (
     evaluate_hr_legal_eligibility_gate,
@@ -132,7 +134,13 @@ async def save_operator_facts(
             "chain": evaluated.chain,
         }
     await db.commit()
-    view = build_operator_facts_view(facts, employment_id=bound_employment)
+    documents = await hub_documents_for_candidate(db, tenant_id=tenant_id, candidate_id=str(candidate.id))
+    view = build_operator_facts_view(
+        facts,
+        employment_id=bound_employment,
+        hub_documents=documents,
+        employment_context=_employment_context(employment),
+    )
     view["legal_eligibility"] = legal
     return view
 
@@ -141,9 +149,66 @@ def operator_facts_view_for_candidate(
     candidate: Candidate,
     *,
     employment_id: str | None = None,
+    hub_documents: list[Mapping[str, Any]] | None = None,
+    employment_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     personal = candidate.personal_data if isinstance(candidate.personal_data, dict) else {}
     facts = facts_from_personal_data(personal)
-    view = build_operator_facts_view(facts, employment_id=employment_id)
+    view = build_operator_facts_view(
+        facts,
+        employment_id=employment_id,
+        hub_documents=hub_documents,
+        employment_context=employment_context,
+    )
     view["legal_eligibility"] = None
     return view
+
+
+def _employment_context(employment: Employment | None) -> dict[str, Any]:
+    if employment is None:
+        return {}
+    return {"client_company_id": employment.client_company_id}
+
+
+async def hub_documents_for_candidate(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+) -> list[dict[str, Any]]:
+    rows = (
+        await db.execute(
+            select(Document)
+            .join(
+                DocumentEntityLink,
+                and_(
+                    Document.id == DocumentEntityLink.document_id,
+                    Document.tenant_id == DocumentEntityLink.tenant_id,
+                ),
+            )
+            .where(
+                DocumentEntityLink.tenant_id == tenant_id,
+                DocumentEntityLink.linked_entity_type == "candidate",
+                DocumentEntityLink.linked_entity_id == candidate_id,
+                DocumentEntityLink.relation_type == "primary",
+                Document.deleted_at.is_(None),
+            )
+        )
+    ).scalars().all()
+    return [_hub_document(row) for row in rows]
+
+
+def _hub_document(row: Document) -> dict[str, Any]:
+    status = row.status.value if hasattr(row.status, "value") else str(row.status or "")
+    files = row.files or []
+    return {
+        "id": row.id,
+        "type_code": row.doc_type,
+        "status": status,
+        "has_file": bool(files) or bool(row.path) or bool(row.filename),
+        "expire_date": row.expire_date.isoformat() if row.expire_date else None,
+        "ordered_at": row.ordered_at.isoformat() if row.ordered_at else None,
+        "issue_date": row.issue_date.isoformat() if row.issue_date else None,
+        "number": row.number,
+        "meta": dict(row.meta or {}),
+    }
