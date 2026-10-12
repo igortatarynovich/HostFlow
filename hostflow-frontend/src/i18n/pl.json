@@ -229,7 +229,118 @@
     "hr": {
       "employee_record": {
         "confirm_terms": "Potwierdź warunki zatrudnienia",
-        "confirm_legal": "Potwierdź legalizację"
+        "confirm_legal": "Potwierdź legalizację",
+        "load_error": "Nie udało się wczytać karty pracownika.",
+        "save_error": "Nie udało się zapisać.",
+        "tasks": "Zadania",
+        "add_task": "Dodaj",
+        "show_history": "Pokaż wszystkie",
+        "legal_chain": "Uprawnienie dla tego zatrudnienia",
+        "formalities_open": "Otwórz ZUS",
+        "documents_count": "{count} dokumentów",
+        "documents_attention": "{count} wymaga uwagi",
+        "groups": {
+          "dane_osobowe": "Dane osobowe",
+          "legalizacja": "Legalizacja",
+          "kwalifikacje": "Kwalifikacje",
+          "badania": "Badania",
+          "zatrudnienie": "Zatrudnienie",
+          "formalnosci": "Formalności",
+          "dokumenty": "Dokumenty"
+        },
+        "phase": {
+          "preparing": "Przygotowanie do zatrudnienia",
+          "active": "Zatrudniony",
+          "ended": "Zatrudnienie zakończone",
+          "returned": "Zwrócony do rekrutacji"
+        },
+        "path": {
+          "handoff": "Przekazanie",
+          "verification": "Kwalifikacje",
+          "legal": "Legalizacja",
+          "formalities": "Formalności",
+          "terms": "Zatrudnienie",
+          "ready": "Gotowy do startu",
+          "start": "Rozpocznij zatrudnienie"
+        },
+        "mark": {
+          "blocked": "Zablokowane",
+          "not_applicable": "Nie dotyczy",
+          "current": "Bieżący",
+          "completed": "Gotowe",
+          "pending": "Oczekuje"
+        },
+        "next_action": {
+          "confirm_terms": {
+            "title": "Potwierdź warunki",
+            "reason": "Procedura prawa do pracy czeka na uzgodnione warunki."
+          },
+          "confirm_legal": {
+            "title": "Potwierdź legalizację",
+            "reason": "Legalizacja dla tego zatrudnienia nie jest potwierdzona."
+          },
+          "register_zus": {
+            "title": "Zarejestruj w ZUS",
+            "reason": "Rejestracja w ZUS dla tej procedury jest nadal otwarta."
+          },
+          "start_work_authorization": {
+            "title": "Rozpocznij zezwolenie na pracę",
+            "reason": "Zezwolenie na pracę dla tego zatrudnienia jest nadal otwarte."
+          },
+          "resolve_requirement": {
+            "title": "Zamknij wymaganie",
+            "reason": "Wymaganie zawodowe blokuje przygotowanie."
+          },
+          "confirm_fact": {
+            "title": "Potwierdź wymaganie",
+            "reason": "Wymaganie zawodowe nie jest potwierdzone."
+          },
+          "start_employment": {
+            "title": "Rozpocznij zatrudnienie",
+            "reason": "Zatrudnienie można rozpocząć."
+          },
+          "record_ready": {
+            "title": "Zapisz gotowość",
+            "reason": "Odczyty są zaliczone. Gotowość do startu nie jest zapisana."
+          },
+          "returned_to_recruitment": {
+            "title": "Otwórz kandydata",
+            "reason": "Oczekuje na aktualizację z rekrutacji."
+          }
+        },
+        "lifecycle": {
+          "menu": "Działania cyklu",
+          "return": "Wróć do rekrutacji",
+          "change_terms": "Zmień warunki",
+          "open_terms": "Otwórz warunki",
+          "end": "Zakończ zatrudnienie",
+          "open_recruitment": "Otwórz w rekrutacji"
+        },
+        "empty": {
+          "not_materialized": "Dla tego zatrudnienia wymagania nie zostały jeszcze utworzone.",
+          "no_applicable_element": "Tutaj nic nie obowiązuje.",
+          "missing": "Nieuzupełnione",
+          "generic": "Brak danych",
+          "timeline": "Historia jest w kolumnie bocznej."
+        },
+        "context": {
+          "stay": "Pobyt",
+          "work": "Prawo do pracy",
+          "contract": "Umowa",
+          "zus": "ZUS",
+          "medical": "Badania",
+          "since": "od {date}",
+          "known": "Jest",
+          "open": "Otwarte"
+        },
+        "chain": {
+          "pl": "Obywatel Polski",
+          "eu_eea_ch": "UE / EOG / Szwajcaria",
+          "third_country": "Państwo trzecie",
+          "separate_required": "Odrębne zezwolenie na pracę",
+          "operator_verification": "Wymaga sprawdzenia",
+          "withdrawal_agreement": "Umowa o wystąpieniu"
+        }
       },
       "employee_detail": {
         "documents_load_error": "Nie udało się wczytać dokumentów",
@@ -5960,14 +6071,21 @@
           "waiting_for_trc": "Oczekuje na kartę pobytu",
           "special_protection": "Ochrona",
           "other": "Inna",
-          "none": "Brak"
+          "none": "Brak",
+          "withdrawal_agreement": "Umowa o wystąpieniu"
+        },
+        "citizenship_class": {
+          "pl": "Obywatel Polski",
+          "eu_eea_ch": "UE / EOG / Szwajcaria",
+          "third_country": "Państwo trzecie"
         },
         "work_option": {
           "work_permit": "Zezwolenie na pracę",
           "oswiadczenie": "Oświadczenie",
           "included_in_stay": "Prawo do pracy wynika z pobytu",
           "not_required": "Nie wymaga zezwolenia",
-          "no_right": "Brak prawa do pracy"
+          "no_right": "Brak prawa do pracy",
+          "separate_required": "Odrębne zezwolenie na pracę"
         }
       },
       "actions": {

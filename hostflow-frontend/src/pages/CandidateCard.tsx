@@ -26,6 +26,7 @@ import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
 import OperatorFactsSurface, { type OperatorFactsSlice } from '../modules/candidates/OperatorFactsSurface'
 import { CandidateCardTabs, CardAccordion, ReadRows, joinParts, type CandidateCardTabId } from '../components/candidate/card/CandidateCardChrome'
+import { EntityRecordSurface } from '../platform/entity-workspace/entityRecordSurface'
 import { StagePipeline } from '../components/ui/StagePipeline'
 import { CandidateProcessControls } from '../components/candidate/card/CandidateProcessControls'
 import { exportCandidateBundle } from '../api/documents'
@@ -4630,6 +4631,8 @@ export default function CandidateCard(){
         <PageHeader breadcrumbItems={candidateBreadcrumbItems} kind="browse" />
       </PageShellHeader>
       <PageShellBody>
+      <EntityRecordSurface
+        header={(
       <CandidateHeader
         compact
         displayName={[model.first_name, model.last_name].filter(Boolean).join(' ') || t('common.labels.unnamed')}
@@ -4749,19 +4752,18 @@ export default function CandidateCard(){
         nextActionLoading={nextActionLoading}
         nextActionError={nextActionError}
       />
-
-      {!isNew && model?.id ? (
-        <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2">
-          <CandidateOpenInHrLink
-            candidateId={String(model.id)}
-            enabled={showOpenInHrLink}
-            fallbackHandoffId={internalHrHandoffId}
-          />
-        </div>
-      ) : null}
-
-      <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_17.5rem]">
-          <aside className="flex min-h-0 min-w-0 flex-col gap-2 max-lg:order-last lg:sticky lg:top-3 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100dvh-4.5rem)] lg:overflow-y-auto lg:overscroll-contain">
+        )}
+        banner={!isNew && model?.id ? (
+          <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2">
+            <CandidateOpenInHrLink
+              candidateId={String(model.id)}
+              enabled={showOpenInHrLink}
+              fallbackHandoffId={internalHrHandoffId}
+            />
+          </div>
+        ) : null}
+        rail={(
+          <>
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             {!isNew && model?.id ? (
               <CandidateStageDecisionPanel
@@ -4884,9 +4886,9 @@ export default function CandidateCard(){
                 </>
               ) : null}
             </div>
-          </aside>
-
-        <div className="min-w-0 space-y-3 lg:col-start-1 lg:row-start-1">
+          </>
+        )}
+      >
         <CandidateCardTabs value={cardTab} onChange={setCardTab} />
 
         <div className={cardTab === 'personal' || cardTab === 'profile' ? 'min-w-0 space-y-3 lg:col-start-1' : 'hidden'}>
@@ -5486,9 +5488,7 @@ export default function CandidateCard(){
             />
           ) : null}
         </details>
-
-        </div>
-      </div>
+      </EntityRecordSurface>
       </PageShellBody>
 
       {!isNew && model?.id && handoffModalOpen ? (

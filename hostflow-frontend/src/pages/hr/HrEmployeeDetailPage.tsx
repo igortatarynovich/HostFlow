@@ -109,7 +109,7 @@ export default function HrEmployeeDetailPage() {
             kind="browse"
           />
         </div>
-        <div className="mt-6 min-w-0">
+        <div className="min-w-0">
           <div data-entity-workspace-slot="overview">
             <HrEmployeeRecordSurface employeeId={employeeId} manage={manage} />
           </div>

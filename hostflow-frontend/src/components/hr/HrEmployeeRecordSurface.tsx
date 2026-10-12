@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import clsx from 'clsx'
 import { api, listReminders } from '../../api/client'
 import type { ReminderRecord } from '../../api/types'
 import {
@@ -19,28 +18,34 @@ import {
   type HrEmployeeRecordSurface,
 } from '../../api/workforce'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import { Input, Checkbox, CheckboxMultiSelect, SearchableSelect } from '../candidate/shared/FormComponents'
+import { Combobox } from '../ui/Combobox'
+import { Checkbox, Input } from '../ui/FieldControls'
+import { MultiCombobox } from '../ui/MultiCombobox'
 import { useI18n } from '../../i18n'
 import { usePlatformCountryOptions, usePlatformDialCodeOptions } from '../../hooks/usePlatformCatalogOptions'
 import { PREFERRED_CONTACT_VALUES } from '../../data/preferredContactChannels'
 import CandidateDocuments from '../../modules/documents/CandidateDocuments'
 import OperatorFactsSurface from '../../modules/candidates/OperatorFactsSurface'
 import { CandidateQuickTaskModal } from '../../modules/candidates/components/CandidateQuickTaskModal'
-import CandidateNotesRailSection from '../candidate/CandidateNotesRailSection'
-import CandidateTimelinePanel from '../candidate/CandidateTimelinePanel'
 import type { CandidateNote, StageHistoryEntry } from '../../modules/candidate-card/types'
+import ActivityRailWidget from '../../platform/entity-workspace/ActivityRailWidget'
+import { EntityRecordHeader } from '../../platform/entity-workspace/EntityRecordHeader'
+import NotesRailWidget from '../../platform/entity-workspace/NotesRailWidget'
+import { RequirementRowFrame } from '../../platform/entity-workspace/RequirementRow'
+import {
+  EntityRecordSection as CardAccordion,
+  EntityRecordSurface,
+  EntityRecordTabs,
+  RailWidget,
+} from '../../platform/entity-workspace/entityRecordSurface'
+import { evidenceStatusLabelKey, type RequirementRowStatus } from '../../platform/entity-workspace/requirementRowStatus'
 import { translateStageLabel } from '../../utils/stageLabels'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { useToast } from '../Toast'
-import { StatusBadge } from '../ui/StatusBadge'
-import { ActionMenu, type ActionMenuItem } from '../ui/ActionMenu'
-import { Alert } from '../ui/Alert'
 import { Button } from '../ui/Button'
-import { Chip } from '../ui/Chip'
 import { InlineFieldRow } from '../ui/InlineFieldRow'
-import { ProgressStepper } from '../ui/ProgressStepper'
-import { documentSeverityToSemantic, type StatusBadgeSemantic } from '../ui/statusBadgeSemantics'
-import { requirementStatusBadgeClass, type RequirementRowStatus } from '../candidate/requirementsChecklistPresentation'
+import { OverflowMenu, type OverflowMenuItem } from '../ui/OverflowMenu'
+import { StagePipeline } from '../ui/StagePipeline'
 import { getLanguageDisplayName, getRegionDisplayName } from '../../utils/catalogLocale'
 import { EndEmploymentModal, ReturnToRecruitmentModal } from './EmployeeLifecycleModals'
 
@@ -76,7 +81,72 @@ function looksTechnical(value: string): boolean {
 
 function knownOptionLabel(t: Translate, value: string): string | null {
   const key = KNOWN_OPTION_KEY[value]
-  return key ? t(key) : null
+  if (!key) return null
+  const label = t(key, { defaultValue: '' })
+  return label && label !== key ? label : null
+}
+
+function catalogLabel(t: Translate, value: string): string {
+  if (!value) return ''
+  const known = knownOptionLabel(t, value)
+  if (known) return known
+  const keys = [
+    `app.candidate_card.operator_facts.stay_option.${value}`,
+    `app.candidate_card.operator_facts.work_option.${value}`,
+    `app.candidate_card.operator_facts.citizenship_class.${value}`,
+    `app.hr.employee_record.chain.${value}`,
+  ]
+  for (const key of keys) {
+    const label = t(key, { defaultValue: '' })
+    if (label && label !== key) return label
+  }
+  return ''
+}
+
+function copyOrEmpty(t: Translate, key: string, fallbackKey: string): string {
+  const label = t(key, { defaultValue: '' })
+  if (label && label !== key) return label
+  const fallback = t(fallbackKey, { defaultValue: '' })
+  return fallback && fallback !== fallbackKey ? fallback : ''
+}
+
+function groupTitle(t: Translate, id: string): string {
+  return copyOrEmpty(t, `app.hr.employee_record.groups.${id}`, 'app.hr.employee_record.empty.generic')
+}
+
+function emptyCopy(t: Translate, code: string | null | undefined): string {
+  if (!code) return copyOrEmpty(t, 'app.hr.employee_record.empty.generic', 'app.hr.employee_record.empty.generic')
+  return copyOrEmpty(t, `app.hr.employee_record.empty.${code}`, 'app.hr.employee_record.empty.generic')
+}
+
+function actionCopy(t: Translate, code: string, part: 'title' | 'reason'): string {
+  const key = `app.hr.employee_record.next_action.${code}.${part}`
+  const label = t(key, { defaultValue: '' })
+  return label && label !== key ? label : ''
+}
+
+function ownsNextAction(stepId: string, code: string | undefined, targetRowId: string | null): boolean {
+  if (!code) return false
+  if (code === 'confirm_terms') return stepId === 'terms'
+  if (code === 'register_zus') return stepId === 'formalities'
+  if (code === 'start_work_authorization' || code === 'confirm_legal') return stepId === 'legal'
+  if (code === 'start_employment') return stepId === 'start'
+  if (code === 'record_ready') return stepId === 'ready'
+  if (code === 'confirm_fact' || code === 'resolve_requirement') {
+    const group = (targetRowId || '').split('.')[0]
+    if (group === 'legalizacja') return stepId === 'legal'
+    if (group === 'zatrudnienie') return stepId === 'terms'
+    if (group === 'formalnosci') return stepId === 'formalities'
+    return stepId === 'verification'
+  }
+  return false
+}
+
+function pathTitle(t: Translate, stepId: string, target: string | null): string {
+  if (stepId === 'verification') {
+    return groupTitle(t, target === 'dane_osobowe' ? 'dane_osobowe' : 'kwalifikacje')
+  }
+  return copyOrEmpty(t, `app.hr.employee_record.path.${stepId}`, 'app.hr.employee_record.empty.generic')
 }
 
 function displayValue(value: string | null, label: string, locale: 'en' | 'ru' | 'pl', t?: Translate): string {
@@ -84,48 +154,14 @@ function displayValue(value: string | null, label: string, locale: 'en' | 'ru' |
   if (looksTechnical(value)) return '—'
   if (/^\d{4}-\d{2}-\d{2}/.test(value)) return formatDay(value)
   if (t) {
-    const mapped = knownOptionLabel(t, value)
+    const mapped = catalogLabel(t, value)
     if (mapped) return mapped
   }
   if (value.trim().length === 2 && (label === 'Obywatelstwo' || label === 'Citizenship')) {
     return getRegionDisplayName(value, locale)
   }
+  if (/^[a-z0-9_]+$/.test(value.trim())) return '—'
   return value
-}
-
-function displayStatus(status: string): string | null {
-  if (HIDDEN_STATUS.has(status)) return null
-  if (status === 'not_applicable') return 'Not required'
-  if (status === 'satisfied') return 'Verified'
-  if (status === 'unresolved') return 'To verify'
-  if (status === 'pending') return 'Pending'
-  if (status === 'blocking') return 'Blocking'
-  if (status === 'waived') return 'Waived'
-  if (status === 'current') return 'Current'
-  return null
-}
-
-const EMPTY_ROW: Record<string, string> = {
-  'dane_osobowe.birth_date': 'Data urodzenia nieuzupełniona',
-  'dane_osobowe.citizenship': 'Obywatelstwo nieustalone',
-  'dane_osobowe.phone': 'Brak telefonu',
-  'dane_osobowe.email': 'Brak adresu e-mail',
-  'dane_osobowe.address': 'Adres nieuzupełniony',
-  'dane_osobowe.pesel': 'PESEL nieuzupełniony',
-  'legalizacja.stay_basis': 'Brak danych o podstawie pobytu',
-  'legalizacja.work_basis': 'Prawo do pracy nieustalone',
-  'legalizacja.valid_for_this_employment': 'Ważność dla tego zatrudnienia nieustalona',
-}
-
-const EMPTY_GROUP: Record<string, string> = {
-  dane_osobowe: 'Brak danych osobowych',
-  legalizacja: 'Brak danych o legalizacji',
-  kwalifikacje: 'Brak zarejestrowanych uprawnień',
-  badania: 'Brak zarejestrowanych badań',
-  zatrudnienie: 'Brak danych o zatrudnieniu',
-  formalnosci: 'Brak formalności do wykonania',
-  dokumenty: 'Brak dokumentów',
-  historia: 'Brak zdarzeń',
 }
 
 const RECORD_TABS = ['dane_osobowe', 'legalizacja', 'kwalifikacje', 'zatrudnienie', 'formalnosci', 'dokumenty'] as const
@@ -152,10 +188,10 @@ function rowById(groups: HrEmployeeRecordGroup[], id: string): HrEmployeeRecordR
   return undefined
 }
 
-function meaningfulValue(row: HrEmployeeRecordRow, locale: 'en' | 'ru' | 'pl'): string {
-  const shown = displayValue(row.value, row.label, locale)
+function meaningfulValue(row: HrEmployeeRecordRow, locale: 'en' | 'ru' | 'pl', t: Translate): string {
+  const shown = displayValue(row.value, row.label, locale, t)
   if (shown !== '—') return shown
-  return EMPTY_ROW[row.id] || 'Nieuzupełnione'
+  return t('app.hr.employee_record.empty.missing', { defaultValue: 'Not filled in' })
 }
 
 export default function HrEmployeeRecordSurface({
@@ -276,37 +312,42 @@ export default function HrEmployeeRecordSurface({
     }
   }
 
+  const qualificationCoverage = factCoverage(activeGroup('kwalifikacje') || { id: 'kwalifikacje', label: '', rows: [], empty: null })
+  const medicalCoverage = factCoverage(activeGroup('badania') || { id: 'badania', label: '', rows: [], empty: null })
+
   return (
-    <div className="min-w-0 space-y-4">
-      <EmployeeHero
-        employeeId={employeeId}
-        surface={surface}
-        locale={locale}
-        manage={manage}
-        onOpen={openPath}
-        onReload={load}
-      />
-      {error ? <p className="alert-error">{error}</p> : null}
-      <div className="card min-w-0 p-3">
-      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-4 lg:pr-6">
-
-          <div className="tabs flex-wrap gap-x-1 gap-y-0" role="tablist">
-            {RECORD_TABS.map((id) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                className={clsx('tab cursor-pointer border-0 bg-transparent', tab === id && 'tab-active')}
-                onClick={() => setTab(id)}
-              >
-                {activeGroup(id)?.label || id}
-              </button>
-            ))}
-          </div>
-
-          <section id={`record-group-${tab}`} className="app-surface p-4">
+    <EntityRecordSurface
+      header={(
+        <EmployeeHero
+          employeeId={employeeId}
+          surface={surface}
+          locale={locale}
+          manage={manage}
+          onOpen={openPath}
+          onReload={load}
+        />
+      )}
+      banner={error ? <p className="alert-error">{error}</p> : null}
+      rail={(
+        <>
+          <RecordTasks
+            candidateId={surface.candidate_id}
+            candidateLabel={surface.header.name}
+            locked={returned}
+          />
+          {surface.candidate_id ? (
+            <RecordNotes candidateId={surface.candidate_id} locked={returned} />
+          ) : null}
+          {surface.candidate_id ? <RecordTimeline candidateId={surface.candidate_id} /> : null}
+        </>
+      )}
+    >
+          <EntityRecordTabs
+            value={tab}
+            onChange={setTab}
+            tabs={RECORD_TABS.map((id) => ({ id, label: groupTitle(t, id) }))}
+          />
+          <div className="min-w-0 space-y-3" id={`record-group-${tab}`}>
             {tab === 'dane_osobowe' ? (
               <PersonForm
                 key={employeeId}
@@ -336,48 +377,56 @@ export default function HrEmployeeRecordSurface({
               />
             ) : null}
             {tab === 'kwalifikacje' ? (
-              <div className="space-y-6">
-                <FactSections
-                  group={activeGroup('kwalifikacje')}
-                  locale={locale}
-                  approvedLabel={t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })}
-                  onOpenDocuments={() => openDocuments()}
-                />
-                {activeGroup('badania') ? (
-                  <div id="record-group-badania">
-                    <h3>
-                      {activeGroup('badania')!.label}
-                      {factCoverage(activeGroup('badania'))
-                        ? ` · ${factCoverage(activeGroup('badania'))} ${t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })}`
-                        : ''}
-                    </h3>
+              <div className="space-y-3">
+                <CardAccordion
+                  title={groupTitle(t, 'kwalifikacje')}
+                  defaultOpen
+                  summary={qualificationCoverage ? `${qualificationCoverage} ${t('app.candidate_card.requirements_checklist.status.satisfied', { defaultValue: 'Confirmed' })}` : null}
+                >
+                  <FactSections
+                    group={activeGroup('kwalifikacje')}
+                    locale={locale}
+                    onOpenDocuments={() => openDocuments()}
+                  />
+                </CardAccordion>
+                <CardAccordion
+                  title={groupTitle(t, 'badania')}
+                  summary={medicalCoverage ? `${medicalCoverage} ${t('app.candidate_card.requirements_checklist.status.satisfied', { defaultValue: 'Confirmed' })}` : null}
+                >
+                  {activeGroup('badania') ? (
                     <GroupBody
                       group={activeGroup('badania')!}
                       locale={locale}
                       onOpenDocuments={() => openDocuments()}
                     />
-                  </div>
-                ) : null}
+                  ) : (
+                    <p className="text-sm text-slate-500">{emptyCopy(t, 'not_materialized')}</p>
+                  )}
+                </CardAccordion>
               </div>
             ) : null}
             {tab === 'zatrudnienie' && activeGroup('zatrudnienie') ? (
-              <TermsForm
-                key={employeeId}
-                employeeId={employeeId}
-                group={activeGroup('zatrudnienie')!}
-                terms={surface.terms}
-                writable={canEdit && surface.state === 'preparing'}
-                onError={setError}
-                onSaved={() => {
-                  void load()
-                }}
-              />
+              <CardAccordion title={groupTitle(t, 'zatrudnienie')} defaultOpen>
+                <TermsForm
+                  key={employeeId}
+                  employeeId={employeeId}
+                  group={activeGroup('zatrudnienie')!}
+                  terms={surface.terms}
+                  writable={canEdit && surface.state === 'preparing'}
+                  onError={setError}
+                  onSaved={() => {
+                    void load()
+                  }}
+                />
+              </CardAccordion>
             ) : null}
             {tab === 'formalnosci' && activeGroup('formalnosci') ? (
-              <CompactGroup group={activeGroup('formalnosci')!} locale={locale} documents={surface.documents} />
+              <CardAccordion title={groupTitle(t, 'formalnosci')} defaultOpen>
+                <CompactGroup group={activeGroup('formalnosci')!} locale={locale} documents={surface.documents} />
+              </CardAccordion>
             ) : null}
             {tab === 'dokumenty' && surface.candidate_id ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {(activeGroup('dokumenty')?.rows || [])
                   .filter((row) => row.id === 'dokumenty.passport')
                   .map((row) => (
@@ -398,27 +447,8 @@ export default function HrEmployeeRecordSurface({
                 />
               </div>
             ) : null}
-          </section>
-        </div>
-
-        <aside
-          id="hr-verification"
-          data-candidate-control-rail
-          className="flex w-full min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-3.5rem)] lg:overflow-y-auto"
-        >
-          <RecordTasks
-            candidateId={surface.candidate_id}
-            candidateLabel={surface.header.name}
-            locked={returned}
-          />
-          {surface.candidate_id ? (
-            <RecordNotes candidateId={surface.candidate_id} locked={returned} />
-          ) : null}
-          {surface.candidate_id ? <RecordTimeline candidateId={surface.candidate_id} /> : null}
-        </aside>
-      </div>
-      </div>
-    </div>
+          </div>
+    </EntityRecordSurface>
   )
 }
 
@@ -444,169 +474,132 @@ function EmployeeHero({
   const path = surface.path || []
   if (!overview) return null
   const groups = surface.groups
-  const phaseLabel = t(`app.hr.employee_record.status.${overview.phase}`, {
-    defaultValue:
-      overview.phase === 'active'
-        ? 'Zatrudniony · Aktywny'
-        : overview.phase === 'preparing'
-          ? 'Przygotowanie do zatrudnienia'
-          : overview.phase === 'returned'
-            ? 'Wrócił do rekrutacji'
-            : overview.phase === 'ended'
-              ? 'Zatrudnienie zakończone'
-              : overview.phase,
-  })
-  const semantic: StatusBadgeSemantic = overview.phase === 'active'
-    ? 'ok'
-    : overview.phase === 'preparing'
-      ? 'warning'
-      : overview.phase === 'returned'
-        ? 'info'
-        : 'neutral'
+  const phaseLabel = copyOrEmpty(t, `app.hr.employee_record.phase.${overview.phase}`, 'app.hr.employee_record.empty.generic')
   const citizenship = overview.citizenship ? getRegionDisplayName(overview.citizenship, locale) : ''
   const contractRow = rowById(groups, 'zatrudnienie.contract_basis')
   const contract = contractRow ? displayValue(overview.contract_basis, contractRow.label, locale, t) : displayValue(overview.contract_basis, '', locale, t)
-  const role = [surface.header.position, surface.header.employer].filter(Boolean).join(' · ')
   const formalities = path.find((step) => step.id === 'formalities')
   const medicalRows = groupById(groups, 'badania')?.rows || []
   const medicalMark = medicalRows.length === 0
     ? null
     : medicalRows.every((row) => row.status === 'satisfied' || row.status === 'not_applicable')
-      ? '✓'
+      ? t('app.hr.employee_record.context.known', { defaultValue: 'In place' })
       : medicalRows.some((row) => row.status === 'blocking' || row.status === 'pending')
-        ? '⚠'
+        ? t('app.hr.employee_record.context.open', { defaultValue: 'Open' })
         : '—'
   const action = surface.current_process.next_action
-  const actionTarget = overview.notice_target || surface.current_process.target_row_id
-  const actionLabel = actionTarget === 'legalizacja'
-    ? 'Otwórz legalizację'
-    : actionTarget === 'zatrudnienie'
-      ? 'Otwórz warunki'
-      : actionTarget === 'formalnosci'
-        ? 'Otwórz formalności'
-        : 'Otwórz'
-  const lifecycleItems: ActionMenuItem[] = []
+  const noticeTarget = surface.current_process.destination === 'recruitment'
+    ? 'recruitment'
+    : surface.current_process.target_row_id
+  const lifecycleItems: OverflowMenuItem[] = []
   if (manage && overview.phase === 'preparing') {
     lifecycleItems.push(
-      { id: 'return', label: 'Wróć do rekrutacji', onSelect: () => setReturnOpen(true) },
-      { id: 'terms', label: 'Zmień warunki Employment', onSelect: () => onOpen('zatrudnienie') },
+      { id: 'return', label: t('app.hr.employee_record.lifecycle.return', { defaultValue: 'Return to recruitment' }), onSelect: () => setReturnOpen(true) },
+      { id: 'terms', label: t('app.hr.employee_record.lifecycle.change_terms', { defaultValue: 'Change employment terms' }), onSelect: () => onOpen('zatrudnienie') },
     )
   }
   if (manage && overview.phase === 'active') {
     lifecycleItems.push(
-      { id: 'terms', label: 'Otwórz warunki Employment', onSelect: () => onOpen('zatrudnienie') },
-      { id: 'end', label: 'Zakończ zatrudnienie', danger: true, onSelect: () => setEndOpen(true) },
+      { id: 'terms', label: t('app.hr.employee_record.lifecycle.open_terms', { defaultValue: 'Open employment terms' }), onSelect: () => onOpen('zatrudnienie') },
+      { id: 'end', label: t('app.hr.employee_record.lifecycle.end', { defaultValue: 'End employment' }), onSelect: () => setEndOpen(true), tone: 'danger' },
     )
   }
   if (overview.phase === 'returned' && surface.candidate_id) {
-    lifecycleItems.push({ id: 'recruitment', label: 'Otwórz sprawę w Recruitment', onSelect: () => onOpen('recruitment') })
+    lifecycleItems.push({
+      id: 'recruitment',
+      label: t('app.hr.employee_record.lifecycle.open_recruitment', { defaultValue: 'Open in recruitment' }),
+      onSelect: () => onOpen('recruitment'),
+    })
   }
 
-  const progressPosition = Math.min(
-    path.length,
-    path.filter((step) => step.mark === 'completed').length + (path.some((step) => step.mark === 'current' || step.mark === 'blocked') ? 1 : 0),
-  )
-
-  const standardDomainChips = [
-    citizenship
-      ? `${countryFlag(overview.citizenship)} ${citizenship}`.trim()
+  const stayLabel = overview.stay_basis && overview.stay_basis !== 'none'
+    ? catalogLabel(t, overview.stay_basis) || t('app.hr.employee_record.context.known', { defaultValue: 'In place' })
+    : '—'
+  const workLabel = overview.work_status === 'eligible'
+    ? t('app.hr.employee_record.context.known', { defaultValue: 'In place' })
+    : overview.work_status === 'pending'
+      ? t('app.hr.employee_record.context.open', { defaultValue: 'Open' })
+      : '—'
+  const zusLabel = formalities?.mark === 'completed'
+    ? t('app.hr.employee_record.context.known', { defaultValue: 'In place' })
+    : formalities?.mark === 'current' || formalities?.mark === 'blocked'
+      ? t('app.hr.employee_record.context.open', { defaultValue: 'Open' })
+      : '—'
+  const contextLine = [
+    citizenship ? `${countryFlag(overview.citizenship)} ${citizenship}`.trim() : null,
+    `${t('app.hr.employee_record.context.stay', { defaultValue: 'Stay' })} ${stayLabel}`,
+    `${t('app.hr.employee_record.context.work', { defaultValue: 'Right to work' })} ${overview.phase === 'returned' ? '—' : workLabel}`,
+    overview.phase === 'returned'
+      ? t('app.hr.employee_record.phase.ended', { defaultValue: 'Employment ended' })
+      : `${t('app.hr.employee_record.context.contract', { defaultValue: 'Contract' })} ${contract}`,
+    `${t('app.hr.employee_record.context.zus', { defaultValue: 'ZUS' })} ${zusLabel}`,
+    medicalMark ? `${t('app.hr.employee_record.context.medical', { defaultValue: 'Medical' })} ${medicalMark}` : null,
+    overview.phase === 'active' && overview.start_on
+      ? t('app.hr.employee_record.context.since', { defaultValue: 'since {date}', values: { date: formatDay(overview.start_on) } })
       : null,
-    `Pobyt ${overview.stay_basis && overview.stay_basis !== 'none' ? '✓' : '—'}${overview.stay_until ? ` ${formatDay(overview.stay_until)}` : ''}`,
-    `Prawo do pracy ${overview.work_status === 'eligible' ? '✓' : overview.work_status === 'pending' ? '⚠' : '—'}${overview.work_until ? ` ${formatDay(overview.work_until)}` : ''}`,
-    `Umowa ${contract !== '—' ? contract : '—'}`,
-    `ZUS ${formalities?.mark === 'completed' ? '✓' : formalities?.mark === 'current' || formalities?.mark === 'blocked' ? '⚠' : '—'}`,
-    medicalMark ? `Badania ${medicalMark}` : null,
   ].filter((value): value is string => Boolean(value))
-  const domainChips = overview.phase === 'returned'
-    ? [
-        citizenship ? `${countryFlag(overview.citizenship)} ${citizenship}`.trim() : null,
-        `Pobyt ${overview.stay_basis && overview.stay_basis !== 'none' ? '✓' : '—'}${overview.stay_until ? ` ${formatDay(overview.stay_until)}` : ''}`,
-        'Prawo do pracy —',
-        'Employment zakończone',
-      ].filter((value): value is string => Boolean(value))
-    : standardDomainChips
+  const noticeTitle = action ? actionCopy(t, action.code, 'title') : ''
+  const noticeReason = action ? actionCopy(t, action.code, 'reason') : ''
 
   return (
     <>
-      <section className="card min-w-0 overflow-visible p-4 sm:p-5" aria-labelledby="employee-lifecycle-heading">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h2 id="employee-lifecycle-heading" className="truncate text-xl font-semibold text-slate-950">{surface.header.name}</h2>
-            {role ? <p className="mt-1 text-sm text-slate-600">{role}</p> : null}
-          </div>
-          <ActionMenu items={lifecycleItems} label="Działania lifecycle" />
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <StatusBadge label={phaseLabel.toLocaleUpperCase(locale)} semantic={semantic} />
-          {overview.phase === 'active' && contract !== '—' ? <StatusBadge label={contract} semantic="neutral" /> : null}
-          {overview.phase === 'active' && overview.start_on ? <StatusBadge label={`od ${formatDay(overview.start_on)}`} semantic="neutral" /> : null}
-        </div>
-
-        {overview.phase === 'returned' ? (
-          <div className="mt-3 text-sm text-slate-600">
-            <p className="font-medium text-slate-900">HR processing stopped</p>
-            <p>Waiting for Recruitment update</p>
-          </div>
-        ) : null}
-
-        <div className="mt-4 flex flex-wrap gap-2" aria-label="Status domen pracownika">
-          {domainChips.map((label) => <Chip key={label} behavior="static" size="md" label={label} />)}
-        </div>
-
-        {overview.phase === 'returned' ? (
-          <Alert
-            className="mt-4"
-            semantic="info"
-            title="Proces HR zatrzymany"
-            action={surface.candidate_id ? <Button size="sm" onClick={() => onOpen('recruitment')}>Otwórz sprawę w Recruitment</Button> : null}
-          >
-            Oczekuje na ponowne przekazanie przez Recruitment.
-          </Alert>
-        ) : overview.notice === 'healthy' ? (
-          <Alert className="mt-4" semantic="success" title="Wszystko w porządku">
-            {overview.nearest_label && overview.nearest_on
-              ? `Najbliższy termin: ${overview.nearest_label} · ${formatDay(overview.nearest_on)}`
-              : 'Brak pilnych działań.'}
-          </Alert>
-        ) : overview.phase !== 'ended' ? (
-          <Alert
-            className="mt-4"
-            semantic="warning"
-            title="Wymaga uwagi"
-            action={actionTarget ? <Button size="sm" onClick={() => onOpen(actionTarget)}>{actionLabel}</Button> : null}
-          >
-            {action?.reason || action?.title || `${overview.attention_count} rzeczy wymagają działania.`}
-          </Alert>
-        ) : null}
-      </section>
-
-      {overview.phase === 'preparing' ? (
-        <section className="card min-w-0 p-4 sm:p-5" aria-labelledby="employment-preparation-heading">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 id="employment-preparation-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-700">
-              Przygotowanie do zatrudnienia
-            </h3>
-            <span className="text-sm font-semibold text-slate-700">{progressPosition} / {path.length}</span>
-          </div>
-          <ProgressStepper
-            label="Przygotowanie do zatrudnienia"
-            steps={path.map((step) => ({
-              id: step.id,
-              label: step.label,
-              state: step.mark,
-              detail: (step.mark === 'current' || step.mark === 'blocked') && action?.title ? action.title : null,
-              onOpen: step.target ? () => onOpen(step.target) : null,
-            }))}
+      <EntityRecordHeader
+        compact
+        title={surface.header.name || '—'}
+        code={surface.person?.short_id || null}
+        actions={
+          <OverflowMenu
+            label={t('app.hr.employee_record.lifecycle.menu', { defaultValue: 'Lifecycle actions' })}
+            items={lifecycleItems}
+            appearance="inverse"
           />
-        </section>
-      ) : overview.phase === 'active' ? (
-        <p className="px-1 text-sm font-medium text-slate-700">Employment active{overview.start_on ? ` · od ${formatDay(overview.start_on)}` : ''}</p>
-      ) : overview.phase === 'ended' ? (
-        <p className="px-1 text-sm font-medium text-slate-700">Employment zakończone{surface.header.ended_on ? ` · ${formatDay(surface.header.ended_on)}` : ''}</p>
-      ) : (
-        <p className="px-1 text-sm font-medium text-slate-700">HR process zatrzymany · Returned to Recruitment</p>
-      )}
+        }
+        summary={
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-800">
+            <span className="font-medium text-slate-900">
+              {surface.header.employer || '—'}
+              {surface.header.position ? (
+                <>
+                  <span className="mx-1.5 font-normal text-slate-400">/</span>
+                  {surface.header.position}
+                </>
+              ) : null}
+            </span>
+            <span className="text-slate-300" aria-hidden>·</span>
+            <span className="font-semibold text-brand-800">{phaseLabel}</span>
+            <span className="text-slate-300" aria-hidden>·</span>
+            <span className="min-w-0 text-slate-700">{contextLine.join(' · ')}</span>
+            {noticeReason ? <span className="text-xs text-slate-600">{noticeReason}</span> : null}
+            {noticeTitle && noticeTarget ? (
+              <button type="button" className="text-xs font-medium text-brand-700 hover:underline" onClick={() => onOpen(noticeTarget)}>
+                {noticeTitle}
+              </button>
+            ) : null}
+          </div>
+        }
+        pipeline={overview.phase === 'preparing' ? (
+          <StagePipeline
+            ariaLabel={t('app.hr.employee_record.phase.preparing', { defaultValue: 'Preparing for employment' })}
+            stages={path.map((step) => {
+              const owns = ownsNextAction(step.id, action?.code, surface.current_process.target_row_id)
+              const secondary = owns
+                ? noticeTitle
+                : step.mark === 'blocked'
+                  ? t('app.hr.employee_record.mark.blocked', { defaultValue: 'Blocked' })
+                  : step.mark === 'not_applicable'
+                    ? t('app.hr.employee_record.mark.not_applicable', { defaultValue: 'Not applicable' })
+                    : null
+              return {
+                code: step.id,
+                label: pathTitle(t, step.id, step.target),
+                mark: step.mark,
+                secondary,
+                onSelect: step.target ? () => onOpen(step.target) : null,
+              }
+            })}
+          />
+        ) : null}
+      />
 
       <ReturnToRecruitmentModal
         employeeId={employeeId}
@@ -633,14 +626,13 @@ function countryFlag(code: string | null): string {
 function FactSections({
   group,
   locale,
-  approvedLabel,
   onOpenDocuments,
 }: {
   group?: HrEmployeeRecordGroup
   locale: 'en' | 'ru' | 'pl'
-  approvedLabel: string
   onOpenDocuments: () => void
 }) {
+  const { t } = useI18n()
   if (!group) return null
   const buckets: { keys: string[] }[] = [
     { keys: ['driving_licence', 'code_95'] },
@@ -656,17 +648,11 @@ function FactSections({
     .filter((rows) => rows.length > 0)
   const rest = group.rows.filter((row) => !used.has(row.id))
   if (rest.length) sections.push(rest)
-  if (!sections.length) return <p>{group.empty}</p>
+  if (!sections.length) return <p className="text-sm text-slate-500">{emptyCopy(t, group.empty)}</p>
   return (
-    <div className="space-y-6" id={`record-group-${group.id}`}>
+    <div id={`record-group-${group.id}`}>
       {sections.map((rows) => (
-        <div key={rows[0].id}>
-          <h3>
-            {rows[0].label}
-            {factCoverage({ ...group, rows }) ? ` · ${factCoverage({ ...group, rows })} ${approvedLabel}` : ''}
-          </h3>
-          <GroupBody group={{ ...group, rows }} locale={locale} onOpenDocuments={onOpenDocuments} />
-        </div>
+        <GroupBody key={rows[0].id} group={{ ...group, rows }} locale={locale} onOpenDocuments={onOpenDocuments} />
       ))}
     </div>
   )
@@ -713,10 +699,8 @@ function RecordTasks({
   )}`
 
   return (
-    <section className="card w-full p-4">
-      <h3>
-        {t('app.hr.employee_record.tasks', { defaultValue: 'Zadania' })} {items.length}
-      </h3>
+    <RailWidget title={`${t('app.hr.employee_record.tasks', { defaultValue: 'Tasks' })} ${items.length}`}>
+      <div>
       {items.slice(0, 3).map((item) => (
         <p key={item.id}>
           {item.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Zadanie' })}
@@ -743,7 +727,8 @@ function RecordTasks({
           t={t}
         />
       ) : null}
-    </section>
+      </div>
+    </RailWidget>
   )
 }
 
@@ -788,7 +773,7 @@ function RecordNotes({ candidateId, locked }: { candidateId: string; locked: boo
   }
 
   return (
-    <CandidateNotesRailSection
+    <NotesRailWidget
       notes={notes}
       notesLoading={loading}
       newNote={draft}
@@ -856,7 +841,7 @@ function RecordTimeline({ candidateId }: { candidateId: string }) {
   }, [load])
 
   return (
-    <CandidateTimelinePanel
+    <ActivityRailWidget
       locale={locale}
       stageHistory={stageHistory}
       notes={notes}
@@ -891,13 +876,7 @@ function resolutionBadgeStatus(status: string): RequirementRowStatus {
 }
 
 function resolutionLabel(t: Translate, status: string): string {
-  if (status === 'satisfied') {
-    return t('app.candidate_card.requirements_checklist.status.satisfied', { defaultValue: 'Confirmed' })
-  }
-  if (status === 'not_applicable') {
-    return t('app.candidate_card.requirements_checklist.status.not_applicable', { defaultValue: 'Not applicable' })
-  }
-  return displayStatus(status) || status
+  return t(evidenceStatusLabelKey(resolutionBadgeStatus(status)), { defaultValue: '' })
 }
 
 function evidenceLinked(code: string | null): boolean {
@@ -914,27 +893,10 @@ function RequirementFactRow({
   onOpenDocuments?: () => void
 }) {
   const { t } = useI18n()
-  const [expanded, setExpanded] = useState(false)
   const linked = evidenceLinked(row.evidence)
   return (
-    <div className="border-b border-slate-100 py-1" id={`record-row-${row.id}`} data-testid="hr-requirement-row">
-      <button
-        type="button"
-        className="flex w-full items-center gap-3 py-1 text-left"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((value) => !value)}
-      >
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900">{row.label}</span>
-        <span className={clsx('shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold', requirementStatusBadgeClass(resolutionBadgeStatus(row.status)))}>
-          {resolutionLabel(t, row.status)}
-        </span>
-        <span className="shrink-0 text-xs font-medium text-brand-700">
-          {expanded
-            ? t('common.actions.collapse')
-            : t('app.candidate_card.ia.open_row', { defaultValue: 'Open' })}
-        </span>
-      </button>
-      {expanded ? (
+    <div id={`record-row-${row.id}`} data-testid="hr-requirement-row">
+      <RequirementRowFrame label={row.label} status={resolutionBadgeStatus(row.status)}>
         <div className="pb-2 pl-0">
           {row.status === 'not_applicable' ? (
             <p className="mt-2 text-xs text-slate-500">
@@ -957,7 +919,7 @@ function RequirementFactRow({
                 {linked ? (
                   <button
                     type="button"
-                    className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-left text-xs hover:bg-slate-100"
+                    className="btn-secondary btn-sm mt-1 flex w-full items-center justify-between gap-2 text-left"
                     onClick={onOpenDocuments}
                     disabled={!onOpenDocuments}
                   >
@@ -984,7 +946,7 @@ function RequirementFactRow({
             </div>
           )}
         </div>
-      ) : null}
+      </RequirementRowFrame>
     </div>
   )
 }
@@ -1000,7 +962,7 @@ function GroupBody({
 }) {
   const { t } = useI18n()
   if (group.rows.length === 0) {
-    return <p>{EMPTY_GROUP[group.id] || 'Nieuzupełnione'}</p>
+    return <p className="text-sm text-slate-500">{emptyCopy(t, group.empty)}</p>
   }
   if (group.id === 'kwalifikacje' || group.id === 'badania') {
     return (
@@ -1014,14 +976,14 @@ function GroupBody({
   return (
     <div className="mt-3 space-y-2">
       {group.rows.map((row) => {
-        const status = displayStatus(row.status)
-        const evidence = row.evidence && !looksTechnical(row.evidence) ? row.evidence : null
+        const status = HIDDEN_STATUS.has(row.status) ? '' : resolutionLabel(t, row.status)
+        const evidence = row.evidence && !looksTechnical(row.evidence) ? catalogLabel(t, row.evidence) : ''
         return (
-          <div key={row.id} id={`record-row-${row.id}`} className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-baseline gap-2">
-            <div className="label mb-0">{row.label}</div>
-            <p>
-              {meaningfulValue(row, locale)}
-              {status ? <span className="badge ml-2">{status}</span> : null}
+          <div key={row.id} id={`record-row-${row.id}`} className="flex items-baseline justify-between gap-6 py-1">
+            <div className="text-sm text-slate-500">{row.label}</div>
+            <p className="text-right text-sm font-medium text-slate-900">
+              {meaningfulValue(row, locale, t)}
+              {status ? <span className="ml-2 text-xs font-medium text-slate-500">{status}</span> : null}
               {evidence ? ` · ${evidence}` : ''}
             </p>
           </div>
@@ -1164,8 +1126,9 @@ function PersonForm({
     setDraft((current) => ({ ...current, reg_address: { ...current.reg_address, [key]: value } }))
   }
   return (
-    <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
-      <h3 className="md:col-span-2 py-1 text-sm font-semibold text-slate-900">{t('app.candidate_card.sections.basic.title')}</h3>
+    <div className="space-y-3">
+    <CardAccordion title={t('app.candidate_card.ia.sections.identity')} defaultOpen summary={[draft.first_name, draft.last_name].filter(Boolean).join(' ')}>
+      <div>
       <InlineFieldRow
         label={t('app.candidate_card.fields.first_name')}
         value={draft.first_name}
@@ -1205,7 +1168,7 @@ function PersonForm({
         onDone={() => void commit()}
       >
         <div className="label">{t('app.candidate_card.fields.citizenship')}</div>
-        <SearchableSelect
+        <Combobox
           options={countries}
           value={draft.citizenship}
           onChange={(value) => setDraft((current) => ({ ...current, citizenship: value }))}
@@ -1237,7 +1200,7 @@ function PersonForm({
         wide
       >
         <div className="label">{t('app.candidate_card.fields.languages')}</div>
-        <CheckboxMultiSelect
+        <MultiCombobox
           options={languagesCatalog}
           values={languageValues}
           onChange={(values) => setDraft((current) => ({ ...current, languages: values.join(',') }))}
@@ -1247,7 +1210,10 @@ function PersonForm({
           multiSelectedLabel={selectTexts.multiSelected}
         />
       </InlineFieldRow>
-      <h3 className="md:col-span-2 py-1 text-sm font-semibold text-slate-900">{t('app.candidate_card.intake.steps.contacts')}</h3>
+      </div>
+    </CardAccordion>
+    <CardAccordion title={t('app.candidate_card.ia.sections.contact')} summary={[draft.phone, draft.email].filter(Boolean).join(' · ')}>
+      <div>
       <InlineFieldRow
         label={t('app.candidate_card.fields.phone')}
         value={phoneLabel}
@@ -1260,7 +1226,7 @@ function PersonForm({
         <div className="label">{t('app.candidate_card.fields.phone')}</div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
           <div className="sm:w-56">
-            <SearchableSelect
+            <Combobox
               options={dialCodes}
               value={draft.phone_country}
               onChange={(value) => setDraft((current) => ({ ...current, phone_country: value }))}
@@ -1301,6 +1267,10 @@ function PersonForm({
           ))}
         </select>
       </InlineFieldRow>
+      </div>
+    </CardAccordion>
+    <CardAccordion title={t('app.candidate_card.ia.sections.address')} summary={formatAddressLine(draft.address, countryLabel)}>
+      <div>
       <InlineFieldRow
         label={t('app.candidate_card.sections.personal.address_current')}
         value={formatAddressLine(draft.address, countryLabel)}
@@ -1332,6 +1302,8 @@ function PersonForm({
           </div>
         ) : null}
       </InlineFieldRow>
+      </div>
+    </CardAccordion>
     </div>
   )
 }
@@ -1353,7 +1325,7 @@ function AddressEditor({
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       <label className="block md:col-span-2">
         <div className="label">{t('app.candidate_card.fields.address.country')}</div>
-        <SearchableSelect
+        <Combobox
           options={countries}
           value={address.country}
           onChange={(value) => onChange('country', value)}
@@ -1385,16 +1357,7 @@ function legalPayload(legal: HrEmployeeRecordSurface['legal']): HrDriverLegalIn 
 }
 
 function chainOptionLabel(t: Translate, value: string): string {
-  if (!value) return ''
-  const known = knownOptionLabel(t, value)
-  if (known) return known
-  const stayKey = `app.candidate_card.operator_facts.stay_option.${value}`
-  const stay = t(stayKey, { defaultValue: '' })
-  if (stay && stay !== stayKey) return stay
-  const workKey = `app.candidate_card.operator_facts.work_option.${value}`
-  const work = t(workKey, { defaultValue: '' })
-  if (work && work !== workKey) return work
-  return value
+  return catalogLabel(t, value)
 }
 
 function LegalForm({
@@ -1452,7 +1415,7 @@ function LegalForm({
   }
   const statusRows = group.rows.filter((row) => row.id === 'legalizacja.status')
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {candidateId ? (
         <OperatorFactsSurface
           candidateId={candidateId}
@@ -1462,7 +1425,8 @@ function LegalForm({
           onOpenDocuments={onOpenDocuments}
         />
       ) : null}
-      <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+      <CardAccordion title={t('app.hr.employee_record.legal_chain', { defaultValue: 'Eligibility for this employment' })} defaultOpen>
+      <div>
         <InlineFieldRow
           label={t('app.candidate_card.fields.citizenship')}
           value={labelOf(draft.citizenship_class)}
@@ -1540,6 +1504,7 @@ function LegalForm({
             : t('app.hr.employee_record.confirm_legal', { defaultValue: 'Confirm legal eligibility' })}
         </Button>
       ) : null}
+      </CardAccordion>
     </div>
   )
 }
@@ -1603,7 +1568,7 @@ function TermsForm({
     setOpenField(null)
   }, [serverKey])
   const dirty = JSON.stringify(draft) !== serverKey
-  const optionLabel = (value: string) => knownOptionLabel(t, value) || value
+  const optionLabel = (value: string) => catalogLabel(t, value)
   const closeField = () => setOpenField(null)
   const confirmSnapshot = async () => {
     if (!writable || openField !== null || !dirty || confirming) return
@@ -1635,8 +1600,7 @@ function TermsForm({
     draft.probation_status === 'dated' && draft.probation_end ? formatDay(draft.probation_end) : '',
   ].filter(Boolean).join(' · ')
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+    <div>
         <InlineFieldRow
           label={rowLabel(group, 'zatrudnienie.employer', t('app.candidate_card.employment.columns.employer', { defaultValue: 'Employer' }))}
           value={employer}
@@ -1788,7 +1752,6 @@ function TermsForm({
         >
           <span />
         </InlineFieldRow>
-      </div>
       {writable && dirty ? (
         <Button variant="primary" size="sm" disabled={confirming || openField !== null} onClick={() => void confirmSnapshot()}>
           {confirming
@@ -1800,8 +1763,8 @@ function TermsForm({
   )
 }
 
-function rowLabel(group: HrEmployeeRecordGroup, id: string, fallback: string): string {
-  return group.rows.find((row) => row.id === id)?.label || fallback
+function rowLabel(_group: HrEmployeeRecordGroup, _id: string, fallback: string): string {
+  return fallback
 }
 
 function CatalogSelect({
@@ -1824,14 +1787,15 @@ function CatalogSelect({
   return (
     <label className="block">
       <div className="label">{label}</div>
-      <select className="input" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
-        {value === '' ? <option value="">—</option> : null}
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {(labelFor ? labelFor(option) : knownOptionLabel(t, option)) || option}
-          </option>
-        ))}
-      </select>
+      <Combobox
+        value={value}
+        disabled={disabled}
+        options={options.map((option) => ({
+          value: option,
+          label: (labelFor ? labelFor(option) : knownOptionLabel(t, option)) || option,
+        }))}
+        onChange={onChange}
+      />
     </label>
   )
 }
@@ -1867,7 +1831,9 @@ function evidenceLabel(code: string | null, t: (key: string, options?: { default
   if (code === 'not_required') {
     return t('app.hr.work_eligibility.status.not_required', { defaultValue: 'Not required' })
   }
-  return t(`admin.documents.status_labels.${code || 'missing'}`, { defaultValue: code || 'Missing' })
+  const key = `admin.documents.status_labels.${code || 'missing'}`
+  const label = t(key, { defaultValue: '' })
+  return label && label !== key ? label : t('admin.documents.status_labels.missing', { defaultValue: 'Missing' })
 }
 
 function CompactGroup({
@@ -1879,18 +1845,19 @@ function CompactGroup({
   locale: 'en' | 'ru' | 'pl'
   documents?: { total: number; attention: number }
 }) {
-  const filled = group.rows.filter((row) => displayValue(row.value, row.label, locale) !== '—')
+  const { t } = useI18n()
+  const filled = group.rows.filter((row) => displayValue(row.value, row.label, locale, t) !== '—')
   if (group.id === 'dokumenty') {
     const total = documents?.total ?? 0
     const attention = documents?.attention ?? 0
     return (
       <>
-        <p>
-          {total} dokumentów
-          {attention > 0 ? ` · ${attention} wymaga uwagi` : ''}
+        <p className="text-sm text-slate-700">
+          {t('app.hr.employee_record.documents_count', { defaultValue: '{count} documents', values: { count: total } })}
+          {attention > 0 ? ` · ${t('app.hr.employee_record.documents_attention', { defaultValue: '{count} need attention', values: { count: attention } })}` : ''}
         </p>
         <Link to={CRM_APP_PATHS.documents} className="btn-secondary btn-sm">
-          Otwórz dokumenty
+          {t('app.candidate_card.ia.open_documents', { defaultValue: 'Open documents' })}
         </Link>
       </>
     )
@@ -1899,21 +1866,21 @@ function CompactGroup({
     const zus = group.rows.find((row) => row.id === 'formalnosci.zus')
     return (
       <>
-        <p>{zus ? meaningfulValue(zus, locale) : EMPTY_GROUP.formalnosci}</p>
+        <p className="text-sm text-slate-700">{zus ? meaningfulValue(zus, locale, t) : emptyCopy(t, group.empty)}</p>
         <Link to={CRM_APP_PATHS.hrZusWorkspace} className="btn-secondary btn-sm">
-          Open
+          {t('app.hr.employee_record.formalities_open', { defaultValue: 'Open ZUS' })}
         </Link>
       </>
     )
   }
   if (filled.length === 0) {
-    return <p>{EMPTY_GROUP[group.id] || 'Nieuzupełnione'}</p>
+    return <p className="text-sm text-slate-500">{emptyCopy(t, group.empty)}</p>
   }
   return (
     <>
       {filled.map((row) => (
-        <p key={row.id} id={`record-row-${row.id}`}>
-          {row.label}: {meaningfulValue(row, locale)}
+        <p key={row.id} id={`record-row-${row.id}`} className="text-sm text-slate-700">
+          {row.label}: {meaningfulValue(row, locale, t)}
         </p>
       ))}
     </>

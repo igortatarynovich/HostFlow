@@ -1,13 +1,11 @@
-import type { CandidateEvidenceStatus, RequirementChecklistItem } from '../../api/candidateRequirements'
+import type { RequirementChecklistItem } from '../../api/candidateRequirements'
+import type { RequirementRowStatus } from '../../platform/entity-workspace/requirementRowStatus'
 
-export type RequirementRowStatus =
-  | 'missing'
-  | 'selected'
-  | 'pending_review'
-  | 'approved'
-  | 'rejected'
-  | 'superseded'
-  | 'not_applicable'
+export type { RequirementRowStatus } from '../../platform/entity-workspace/requirementRowStatus'
+export {
+  evidenceStatusLabelKey,
+  requirementStatusBadgeClass,
+} from '../../platform/entity-workspace/requirementRowStatus'
 
 export function variantDocumentTypeCodes(variant: {
   document_type_codes?: string[]
@@ -38,29 +36,6 @@ export function resolveRequirementRowStatus(item: RequirementChecklistItem): Req
     return evidenceStatus as RequirementRowStatus
   }
   return 'missing'
-}
-
-export function requirementStatusBadgeClass(status: RequirementRowStatus): string {
-  switch (status) {
-    case 'approved':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-900'
-    case 'pending_review':
-      return 'border-amber-200 bg-amber-50 text-amber-950'
-    case 'selected':
-      return 'border-blue-200 bg-blue-50 text-blue-900'
-    case 'rejected':
-      return 'border-rose-200 bg-rose-50 text-rose-900'
-    case 'superseded':
-      return 'border-slate-200 bg-slate-50 text-slate-600'
-    case 'not_applicable':
-      return 'border-slate-200 bg-white text-slate-500'
-    default:
-      return 'border-amber-200 bg-amber-50 text-amber-950'
-  }
-}
-
-export function evidenceStatusLabelKey(status: CandidateEvidenceStatus | RequirementRowStatus): string {
-  return `app.candidate_card.requirements_checklist.status.${status}`
 }
 
 export function normDocType(code: string): string {

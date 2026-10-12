@@ -118,3 +118,15 @@ export {
 } from './projectEntityWorkspaceView'
 
 export { ENTITY_WORKSPACE_MOCKS, type EntityWorkspaceMockKey } from './mocks/entityWorkspaceMocks'
+
+export { EntityRecordHeader } from './EntityRecordHeader'
+export { RequirementRow, RequirementRowFrame } from './RequirementRow'
+export type { RequirementRowStatus } from './requirementRowStatus'
+export {
+  EntityRecordRows,
+  EntityRecordSection,
+  EntityRecordSurface,
+  EntityRecordTabs,
+  RailWidget,
+  joinRecordParts,
+} from './entityRecordSurface'

@@ -247,7 +247,118 @@
     "hr": {
       "employee_record": {
         "confirm_terms": "Confirm employment terms",
-        "confirm_legal": "Confirm legal eligibility"
+        "confirm_legal": "Confirm legal eligibility",
+        "load_error": "Could not load the employee record.",
+        "save_error": "Could not save.",
+        "tasks": "Tasks",
+        "add_task": "Add",
+        "show_history": "Show all",
+        "legal_chain": "Eligibility for this employment",
+        "formalities_open": "Open ZUS",
+        "documents_count": "{count} documents",
+        "documents_attention": "{count} need attention",
+        "groups": {
+          "dane_osobowe": "Personal data",
+          "legalizacja": "Legalization",
+          "kwalifikacje": "Qualifications",
+          "badania": "Medical checks",
+          "zatrudnienie": "Employment",
+          "formalnosci": "Formalities",
+          "dokumenty": "Documents"
+        },
+        "phase": {
+          "preparing": "Preparing for employment",
+          "active": "Employed",
+          "ended": "Employment ended",
+          "returned": "Returned to recruitment"
+        },
+        "path": {
+          "handoff": "Handoff",
+          "verification": "Qualifications",
+          "legal": "Legalization",
+          "formalities": "Formalities",
+          "terms": "Employment",
+          "ready": "Ready to start",
+          "start": "Start employment"
+        },
+        "mark": {
+          "blocked": "Blocked",
+          "not_applicable": "Not applicable",
+          "current": "Current",
+          "completed": "Done",
+          "pending": "Pending"
+        },
+        "next_action": {
+          "confirm_terms": {
+            "title": "Confirm employment terms",
+            "reason": "The work-authorization procedure needs the agreed terms."
+          },
+          "confirm_legal": {
+            "title": "Confirm legal eligibility",
+            "reason": "Legal eligibility for this employment is not confirmed."
+          },
+          "register_zus": {
+            "title": "Register in ZUS",
+            "reason": "ZUS registration is still open for this procedure."
+          },
+          "start_work_authorization": {
+            "title": "Start work authorization",
+            "reason": "The permit for this employment is still open."
+          },
+          "resolve_requirement": {
+            "title": "Resolve requirement",
+            "reason": "A professional requirement is blocking."
+          },
+          "confirm_fact": {
+            "title": "Confirm requirement",
+            "reason": "A professional requirement is not confirmed."
+          },
+          "start_employment": {
+            "title": "Start employment",
+            "reason": "Employment can start."
+          },
+          "record_ready": {
+            "title": "Record ready to start",
+            "reason": "The readings pass. Ready to start is not recorded."
+          },
+          "returned_to_recruitment": {
+            "title": "Open candidate",
+            "reason": "Waiting for a recruitment update."
+          }
+        },
+        "lifecycle": {
+          "menu": "Lifecycle actions",
+          "return": "Return to recruitment",
+          "change_terms": "Change employment terms",
+          "open_terms": "Open employment terms",
+          "end": "End employment",
+          "open_recruitment": "Open in recruitment"
+        },
+        "empty": {
+          "not_materialized": "No requirements apply to this employment yet.",
+          "no_applicable_element": "Nothing applies here.",
+          "missing": "Not filled in",
+          "generic": "Nothing to show",
+          "timeline": "History is in the side column."
+        },
+        "context": {
+          "stay": "Stay",
+          "work": "Right to work",
+          "contract": "Contract",
+          "zus": "ZUS",
+          "medical": "Medical",
+          "since": "since {date}",
+          "known": "In place",
+          "open": "Open"
+        },
+        "chain": {
+          "pl": "Polish citizen",
+          "eu_eea_ch": "EU / EEA / Switzerland",
+          "third_country": "Third country",
+          "separate_required": "Separate work authorization",
+          "operator_verification": "Needs a check",
+          "withdrawal_agreement": "Withdrawal agreement"
+        }
       },
       "employee_detail": {
         "documents_load_error": "Could not load documents",
@@ -6581,14 +6692,21 @@
           "waiting_for_trc": "Waiting for a residence card",
           "special_protection": "Protection",
           "other": "Other",
-          "none": "None"
+          "none": "None",
+          "withdrawal_agreement": "Withdrawal agreement"
+        },
+        "citizenship_class": {
+          "pl": "Polish citizen",
+          "eu_eea_ch": "EU / EEA / Switzerland",
+          "third_country": "Third country"
         },
         "work_option": {
           "work_permit": "Work permit",
           "oswiadczenie": "Declaration",
           "included_in_stay": "The right to work follows from the stay",
           "not_required": "No permit required",
-          "no_right": "No right to work"
+          "no_right": "No right to work",
+          "separate_required": "Separate work authorization"
         }
       },
       "actions": {

@@ -1,5 +1,4 @@
 import { memo, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { IconAlertTriangle, IconHistory } from '@tabler/icons-react'
 import type { Candidate } from '../../api/types'
@@ -8,6 +7,7 @@ import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import NextActionBadge from './NextActionBadge'
+import { EntityRecordHeader } from '../../platform/entity-workspace/EntityRecordHeader'
 import { OverflowMenu, type OverflowMenuItem } from '../ui/OverflowMenu'
 
 interface CandidateHeaderProps {
@@ -170,28 +170,19 @@ function CandidateHeader({
     compact ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm',
   )
 
+  const showSummary = Boolean(
+    summary || statusChip || actionableNext || pipelineWaiverPendingCount > 0 || pipelineWaiverApprovedCount > 0,
+  )
+
   return (
     <>
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className={clsx('bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 text-white', compact ? 'px-3 py-2' : 'px-3 py-2.5')}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0">
-              {!hideBackLink && backPath ? (
-                <div className="text-[11px] text-white/80">
-                  <Link className="hover:underline text-white" to={backPath}>
-                    {backLabel || t('app.candidate_card.header.back')}
-                  </Link>
-                </div>
-              ) : null}
-              <div className="flex min-w-0 items-baseline gap-2">
-                <h1 className="truncate text-base font-semibold leading-tight text-white">
-                  {displayName || '—'}
-                </h1>
-                {candidateCode ? <span className="shrink-0 text-xs font-medium text-white/80">{candidateCode}</span> : null}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {isNew ? (
+      <EntityRecordHeader
+        compact={compact}
+        title={displayName || '—'}
+        code={candidateCode}
+        back={!hideBackLink && backPath ? { to: backPath, label: backLabel || t('app.candidate_card.header.back') } : null}
+        actions={
+          isNew ? (
                 <>
                   <button type="button" className={clsx(actionClass, 'border-white/30 bg-white/10 text-white hover:bg-white/20')} onClick={onCancel}>
                     {t('common.actions.cancel')}
@@ -248,13 +239,10 @@ function CandidateHeader({
                     appearance="inverse"
                   />
                 </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {summary || statusChip || actionableNext || pipelineWaiverPendingCount > 0 || pipelineWaiverApprovedCount > 0 ? (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 px-3 py-1.5">
+              )
+        }
+        summary={showSummary ? (
+          <>
             {summary}
             {statusChip}
             {!isMasked && candidate?.intake_application_kind === 'client' ? (
@@ -309,12 +297,11 @@ function CandidateHeader({
                 inverse={false}
               />
             ) : null}
-          </div>
+          </>
         ) : null}
-
-        {pipeline ? <div className="border-t border-slate-100 px-2 py-1.5">{pipeline}</div> : null}
-        {focusContent ? <div className="border-t border-slate-100 px-3 py-2">{focusContent}</div> : null}
-      </div>
+        pipeline={pipeline}
+        extra={focusContent}
+      />
 
       {deleteRequestMessage ? (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-700">{deleteRequestMessage}</div>
