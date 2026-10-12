@@ -44,6 +44,27 @@ def test_p4_populated_check_reads_phone_email_address() -> None:
     assert candidate_field_is_populated(complete, {"kind": "column", "path": "phone"}) is True  # type: ignore[arg-type]
     assert read_candidate_storage_value(complete, {"kind": "json_path", "path": "personal_data.address"}) == "Street 1"  # type: ignore[arg-type]
 
+    card_address = _candidate(
+        _get_extra=lambda: {
+            "address": {"country": "UA", "city": "Kyiv", "street": "Khreshchatyk", "house": "1", "apt": "", "zip": "01001"}
+        },
+    )
+    assert candidate_field_is_populated(
+        card_address, {"kind": "json_path", "path": "personal_data.address"}
+    ) is True  # type: ignore[arg-type]
+    country_only = _candidate(
+        _get_extra=lambda: {"address": {"country": "UA", "city": "", "street": "", "house": "", "apt": "", "zip": ""}},
+    )
+    assert candidate_field_is_populated(
+        country_only, {"kind": "json_path", "path": "personal_data.address"}
+    ) is True  # type: ignore[arg-type]
+    blank_address = _candidate(
+        _get_extra=lambda: {"address": {"country": "", "city": "", "street": "", "house": "", "apt": "", "zip": ""}},
+    )
+    assert candidate_field_is_populated(
+        blank_address, {"kind": "json_path", "path": "personal_data.address"}
+    ) is False  # type: ignore[arg-type]
+
 
 @pytest.mark.anyio
 async def test_p4_evaluator_emits_field_requirements_blocking_reasons(db) -> None:

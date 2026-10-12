@@ -60,6 +60,10 @@ def _value_is_empty(value: Any) -> bool:
     if isinstance(value, dict):
         if not value:
             return True
+        from backend.app.services.hr_profile_address import address_dict_complete
+
+        if address_dict_complete(value):
+            return False
         line1 = str(value.get("line1") or value.get("address") or "").strip()
         return not line1
     return False

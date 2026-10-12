@@ -94,7 +94,15 @@ def build_normalized_payload_from_candidate(candidate: Candidate) -> dict[str, A
         payload["platform.identity.birth_date"] = birth_date
         payload["birth_date"] = birth_date
 
-    address = _pick_text(extra.get("address"), personal.get("address"), contacts.get("address"))
+    address_raw = extra.get("address") if extra.get("address") not in (None, "") else personal.get("address")
+    if address_raw in (None, ""):
+        address_raw = contacts.get("address")
+    if isinstance(address_raw, dict):
+        from backend.app.services.hr_profile_address import coerce_address_dict, format_address_line
+
+        address = format_address_line(coerce_address_dict(address_raw)) or ""
+    else:
+        address = _pick_text(address_raw)
     if address:
         payload["platform.identity.address"] = address
         payload["address"] = address
