@@ -187,3 +187,14 @@ Done: **`TABLE_V1` lock**; triage A1–A5; enforcement plan; manual validation c
 
 From this point, frontend standardization discussion and outputs must stay in this roadmap sequence.
 Parallel product improvements are allowed, but they do not redefine canon without governance approval.
+
+## System UI foundation pass (linked, does not reopen locks)
+
+ADR-011 §13 (**No feature-local UI language**) + implementation sequence:
+
+[`../tasks/ui-system-foundation-pass.md`](../tasks/ui-system-foundation-pass.md)
+
+- Candidate Card = Entity Workspace reference composition via system components only.
+- Documents / Profile / Legalization finish only through those components.
+- HR audit and page-by-page migration follow later; **not** this pass.
+- Does **not** reopen `FOUNDATION_V1`, `PRIMITIVES_V1`, or `TABLE_V1` locks.

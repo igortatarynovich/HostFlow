@@ -122,3 +122,10 @@ Implication:
 - Candidate Card remains baseline for comparison and audit,
 - component canon (`TABLE_V1`, `ENTITY_LAYOUT_V1`, `FILTER_BAR_V1`, etc.) is validated primarily through other cards with proven gaps,
 - Candidate Card redesign is reopened only with validated production pain or measurable business upside.
+
+Ownership clarification (2026-10-12, does not reopen V1 Adaptation):
+
+- `Preserve` keeps Candidate Card as the operational baseline and Entity Workspace reference composition.
+- Visual pattern ownership moves to system UI (ADR-011 §13): tokens / primitives → system components → page patterns. The page only composes them and supplies business content.
+- `Preserve` does **not** authorize feature-local CSS, local control heights, local tabs/cards/badges, or Candidate-only visual copies.
+- HR redesign is **not** opened by this clarification. Safe sequence and acceptance: [`../tasks/ui-system-foundation-pass.md`](../tasks/ui-system-foundation-pass.md).
