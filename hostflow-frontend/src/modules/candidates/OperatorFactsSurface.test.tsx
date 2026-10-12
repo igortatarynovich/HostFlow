@@ -346,7 +346,7 @@ describe('PersonIdentityFacts', () => {
     expect(screen.getByText(/83110617894/)).toBeTruthy()
     expect(screen.queryByTestId('operator-facts-citizenship-input')).toBeNull()
     expect(screen.queryByText('Numer PESEL')).toBeNull()
-    fireEvent.click(screen.getAllByText('Edytuj')[1])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj' })[1])
     expect(screen.getByText('Numer PESEL')).toBeTruthy()
   })
 })
