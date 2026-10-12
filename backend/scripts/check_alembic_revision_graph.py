@@ -115,6 +115,12 @@ def _check_alembic_script_map(*, alembic_ini: Path, versions_dir: Path) -> str |
     if not alembic_ini.is_file():
         return f"alembic.ini not found: {alembic_ini}"
 
+    # Migration modules import `backend`. CI runs this script from the repo root
+    # without PYTHONPATH, so ScriptDirectory cannot load them.
+    repo_root = BACKEND_ROOT.parent
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+
     script_location = versions_dir.parent  # …/alembic (contains env.py + versions/)
     cfg = Config(str(alembic_ini))
     cfg.set_main_option("script_location", str(script_location))
