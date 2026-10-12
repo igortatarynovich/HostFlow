@@ -19,6 +19,7 @@ from backend.app.models.tenant import TenantLink
 from backend.app.models import User
 from backend.app.models.user import Role as UserRole
 from backend.app.services.audit import log_audit_event
+from backend.app.services.candidate_stage_history_integrity import transition_candidate_stage
 from backend.app.services.events import EventAudience, emit_event
 from backend.app.models.company import Company
 from backend.app.models.tenant import Tenant, TenantType
@@ -907,7 +908,13 @@ async def accept_handoff(
             from backend.app.services.company_module_enforcement import assert_hr_for_candidate
 
             await assert_hr_for_candidate(db, str(handoff.agency_tenant_id), cand)
-            cand.stage = "processing_by_hr"
+            transition_candidate_stage(
+                db,
+                cand,
+                "processing_by_hr",
+                actor_id=reviewed_by_user_id,
+                reason="handoff_accepted_internal_hr",
+            )
             if hasattr(cand, "status"):
                 cand.status = "processing_by_hr"
             await db.flush()
@@ -921,7 +928,13 @@ async def accept_handoff(
                 tenant_id=tenant_id,
             )
         else:
-            cand.stage = "processing_by_client"
+            transition_candidate_stage(
+                db,
+                cand,
+                "processing_by_client",
+                actor_id=reviewed_by_user_id,
+                reason="handoff_accepted_client",
+            )
             if hasattr(cand, "status"):
                 cand.status = "processing_by_client"
             await db.flush()
@@ -1084,7 +1097,13 @@ async def return_handoff(
     # Set candidate stage to "Zwrócono" for easy filtering
     cand = await db.get(Candidate, handoff.candidate_id)
     if cand:
-        cand.stage = "handoff_returned"
+        transition_candidate_stage(
+            db,
+            cand,
+            "handoff_returned",
+            actor_id=reviewed_by_user_id,
+            reason="handoff_returned",
+        )
         if hasattr(cand, "status"):
             cand.status = "handoff_returned"
         await db.flush()

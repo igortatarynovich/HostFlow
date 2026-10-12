@@ -4,12 +4,13 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from uuid import UUID
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
 from backend.app.models.reminder import Reminder, ReminderStatus
+from backend.app.services.candidate_stage_history_integrity import transition_candidate_stage
 from backend.app.services.candidate_workforce_lock import (
     SKIP_SOURCE_REMINDER_EXPIRY,
     is_candidate_locked_by_workforce,
@@ -592,13 +593,14 @@ async def run_expiry_notifications(
                 )
             else:
                 try:
-                    await db.execute(
-                        update(Candidate)
-                        .where(Candidate.id == cand.id)
-                        .values(stage="docs_wait", updated_at=datetime.utcnow())
+                    transition_candidate_stage(
+                        db,
+                        cand,
+                        "docs_wait",
+                        actor_id="system",
+                        reason="document_expiry_reminder",
                     )
                     await db.commit()
-                    cand.stage = "docs_wait"
                     try:
                         await sync_candidate_links(
                             db=db,

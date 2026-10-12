@@ -37,6 +37,7 @@ from backend.app.entity_profile.outcome_executor import execute_outcome_decision
 from backend.app.models import Candidate, Lead
 from backend.app.modules.leads import crud as leads_crud
 from backend.app.modules.leads.conversion_mapping import conversion_payload_from_normalized
+from backend.app.services.candidate_stage_history_integrity import transition_candidate_stage
 from backend.app.services.intake_channel_candidate import public_intake_stable_contact_key
 
 PUBLIC_INTAKE_DRAFT_V1 = "public_intake_draft_v1"
@@ -651,7 +652,7 @@ def session_status_share_token(session: PublicIntakeSession) -> Optional[str]:
     return str(block.get("status_share_token") or "") or None
 
 
-def mark_session_submitted(session: PublicIntakeSession) -> None:
+def mark_session_submitted(session: PublicIntakeSession, db) -> None:
     now = _now()
     if session.kind == "questionnaire_invite" and session.invite is not None:
         session.invite.submitted_at = now
@@ -659,7 +660,13 @@ def mark_session_submitted(session: PublicIntakeSession) -> None:
     if session.kind == "legacy_candidate" and session.candidate is not None:
         session.candidate.intake_status = "submitted"
         session.candidate.intake_submitted_at = now
-        session.candidate.stage = "questionnaire_submitted"
+        transition_candidate_stage(
+            db,
+            session.candidate,
+            "questionnaire_submitted",
+            actor_id="public_intake",
+            reason="questionnaire_submitted",
+        )
         return
     if session.lead is not None:
         block = get_public_intake_draft_block(session.lead)

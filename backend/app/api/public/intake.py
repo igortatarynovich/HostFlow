@@ -70,6 +70,7 @@ from backend.app.services.extractors import auto_fill_from_file
 from backend.app.services import reminders as reminders_service
 from backend.app.models.enums import DocumentStatus
 from backend.app.services.activity import log_public_event
+from backend.app.services.candidate_stage_history_integrity import transition_candidate_stage
 from backend.app.services.legal_documents import list_active_for_tenant
 from backend.app.services.events import EventAudience, emit_event
 from backend.app.models.user import Role
@@ -3822,7 +3823,14 @@ async def create_public_intake(
         if contacts.email and not candidate.email:
             candidate.email = contacts.email
         candidate.intake_status = candidate.intake_status or "draft"
-        candidate.stage = candidate.stage or "docs_wait"
+        if not str(candidate.stage or "").strip():
+            transition_candidate_stage(
+                db,
+                candidate,
+                "docs_wait",
+                actor_id="public_intake",
+                reason="intake_session_reused",
+            )
         if not candidate.intake_token:
             candidate.intake_token = _generate_token()
         candidate.intake_token_created_at = now
@@ -4557,7 +4565,7 @@ async def submit_public_intake(
                 "public_intake_path": execution_out.get("public_intake_path"),
             }
             write_session_intake_state(public_session, state)
-        mark_session_submitted(public_session)
+        mark_session_submitted(public_session, db)
         lf_block = state.get("lead_form") if isinstance(state.get("lead_form"), dict) else {}
         schema = dict(runtime_model.field_schema or {}) if runtime_model is not None else {}
         entity_profile_code = (
@@ -4702,7 +4710,13 @@ async def submit_public_intake(
     state["employments"] = [_employment_state_payload(entry) for entry in intake_payload.employments] or state.get("employments") or []
     if intake_payload.employments:
         await _upsert_employments(db, tenant_id, candidate.id, intake_payload.employments)
-    candidate.stage = "questionnaire_submitted"
+    transition_candidate_stage(
+        db,
+        candidate,
+        "questionnaire_submitted",
+        actor_id="public_intake",
+        reason="questionnaire_submitted",
+    )
     candidate.intake_status = "submitted"
     candidate.intake_submitted_at = _now()
     await _log_consent_snapshot(db, tenant_id, candidate.id, payload, client_ip, user_agent)

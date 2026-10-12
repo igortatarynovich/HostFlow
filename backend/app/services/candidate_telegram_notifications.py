@@ -5,8 +5,6 @@ import json
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 from typing import Any, Dict
-from uuid import uuid4
-
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,8 +12,8 @@ from backend.app.constants.stages import LABELS as CANDIDATE_STAGE_LABELS
 from backend.app.core.crypto import decrypt_secret
 from backend.app.core.settings import settings
 from backend.app.models.candidate import Candidate
-from backend.app.models.candidate_stage_history import CandidateStageHistory
 from backend.app.models.communication import CommunicationChannelAccount
+from backend.app.services.candidate_stage_history_integrity import transition_candidate_stage
 from backend.app.services.candidate_notifications import get_document_display_name
 from backend.app.services.communications_telegram import TelegramBotConfig, send_telegram_text
 from backend.app.services.candidate_workforce_lock import (
@@ -369,26 +367,18 @@ async def sync_candidate_ready_for_handoff_gate(
         return False
 
     now = datetime.now(timezone.utc)
-    prev_stage = str(getattr(candidate, "stage", "") or "").strip() or None
-    candidate.stage = "ready_for_handoff"
+    transition_candidate_stage(
+        db,
+        candidate,
+        "ready_for_handoff",
+        actor_id="system",
+        reason="auto_gate_docs_complete",
+    )
     candidate.status = "ready_for_handoff"
     runtime["auto_ready_for_handoff_at"] = now.isoformat()
     runtime["auto_ready_for_handoff_source"] = str(source or "").strip() or "system"
     state["telegram_intake"] = runtime
     candidate.intake_state = state
-
-    db.add(
-        CandidateStageHistory(
-            id=str(uuid4()),
-            tenant_id=str(tenant_id),
-            candidate_id=str(candidate.id),
-            from_code=prev_stage,
-            to_code="ready_for_handoff",
-            reason="auto_gate_docs_complete",
-            actor="system",
-            at=now,
-        )
-    )
     await log_activity(
         db,
         tenant_id=str(tenant_id),

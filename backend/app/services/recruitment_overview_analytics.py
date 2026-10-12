@@ -42,7 +42,6 @@ LIMITATION_CODES: tuple[str, ...] = (
     "unresolved_candidate_link_is_not_new_or_returning",
     "current_stage_snapshot_ignores_selected_date_range",
     "current_status_reason_snapshot_ignores_selected_date_range",
-    "stage_history_omits_some_stage_writes",
     "stage_history_has_no_event_time_vacancy",
     "stage_transition_company_vacancy_filter_uses_current_candidate",
     "contact_attempt_has_no_event_time_vacancy",

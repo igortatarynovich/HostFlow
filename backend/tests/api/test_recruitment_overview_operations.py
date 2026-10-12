@@ -469,4 +469,4 @@ async def test_unfiltered_transitions_are_exact_and_other_tenant_is_excluded(ten
     assert "stage_history_has_no_event_time_vacancy" in body.limitations
     assert "contact_attempt_has_no_event_time_vacancy" in body.limitations
     assert "current_stage_snapshot_ignores_selected_date_range" in LIMITATION_CODES
-    assert "stage_history_omits_some_stage_writes" in body.limitations
+    assert "stage_history_omits_some_stage_writes" not in body.limitations

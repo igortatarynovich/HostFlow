@@ -22,6 +22,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from fastapi import HTTPException
 
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
+from backend.app.services.candidate_stage_history_integrity import transition_candidate_stage
 from backend.app.models import Lead
 from backend.app.models.candidate import Candidate
 from backend.app.models.vacancy import Vacancy
@@ -573,7 +574,13 @@ async def run_fits_prep(
     # Reflect readiness on candidate stage (not SoT; package is SoT). No handoff yet.
     stage = _text(getattr(candidate, "stage", None)).lower()
     if stage not in {"ready_for_handoff", "ready_for_hr", "handed_off", "processing_by_hr", "processing_by_client"}:
-        candidate.stage = "ready_for_handoff"
+        transition_candidate_stage(
+            db,
+            candidate,
+            "ready_for_handoff",
+            actor_id=actor,
+            reason="ready_for_employment_fits",
+        )
 
     evidence = {
         "source": _text(getattr(lead, "source", None)) or "recruitment_application",
@@ -739,7 +746,13 @@ async def run_transfer_to_employment(
     # Ensure stage gate for create_handoff reuse.
     stage = _text(getattr(candidate, "stage", None)).lower()
     if stage not in {"ready_for_handoff", "ready_for_hr"}:
-        candidate.stage = "ready_for_handoff"
+        transition_candidate_stage(
+            db,
+            candidate,
+            "ready_for_handoff",
+            actor_id=actor,
+            reason="ready_for_employment_transfer",
+        )
 
     dest = _text(destination) or "internal_hr"
     # Resolve client target from vacancy employer when not provided.

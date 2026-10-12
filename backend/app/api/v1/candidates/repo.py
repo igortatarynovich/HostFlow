@@ -473,7 +473,8 @@ def _filter_updatable_fields(data: Dict[str, Any]) -> Dict[str, Any]:
 
     allowed = {c.name for c in Candidate.__table__.columns}
     # never allow id/tenant_id/created_at to be set from the outside
-    disallow = {"id", "tenant_id", "created_at", "deleted_at"}
+    # Stage changes go through transition_candidate_stage so history stays paired.
+    disallow = {"id", "tenant_id", "created_at", "deleted_at", "stage"}
     allowed -= disallow
 
     cleaned: Dict[str, Any] = {}
@@ -511,20 +512,35 @@ async def update_candidate(db: AsyncSession, candidate_id: str, data: Dict[str, 
     """Update a candidate record by ID.
 
     Only updates fields explicitly provided and not None. Unknown keys are ignored.
+    Stage is applied through ``transition_candidate_stage``, not the Core UPDATE.
     """
     # Split out profile fields that live in extra
     data = dict(data or {})
+    requested_stage = data.pop("stage", None)
     # normalize languages to a list
     if "languages" in data:
         data["languages"] = _normalize_languages(data.get("languages"))
     extra_patch = _extract_profile_patch(data)
     payload = _filter_updatable_fields(data)
+    if requested_stage:
+        from backend.app.services.candidate_stage_history_integrity import (
+            transition_candidate_stage,
+        )
+
+        current = await db.get(Candidate, candidate_id)
+        if current is not None:
+            transition_candidate_stage(
+                db,
+                current,
+                str(requested_stage),
+                reason="candidate_repo_update",
+            )
     if extra_patch:
         # read current extra to preserve other keys
         cur = await db.execute(select(Candidate.extra).where(Candidate.id == candidate_id))
         current_extra = cur.scalar_one_or_none()
         payload["extra"] = _merge_extra(current_extra, extra_patch)
-    if not payload:
+    if not payload and not requested_stage:
         # Nothing to update, just return current state
         q0 = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
         return q0.scalar_one_or_none()

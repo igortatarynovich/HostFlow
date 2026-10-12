@@ -24,6 +24,7 @@ from backend.app.services.handoff import is_client_tenant
 from backend.app.services.recruitment_handoff_write_guard import (
     is_recruitment_recruiter_write_locked_by_handoff,
 )
+from backend.app.services.candidate_stage_history_integrity import transition_candidate_stage
 from backend.app.services.candidate_workforce_lock import (
     SKIP_SOURCE_CONTACT_ATTEMPT,
     is_candidate_locked_by_workforce,
@@ -376,11 +377,23 @@ async def create_attempt(
     no_contact_results = {"no_answer", "wrong_number", "unavailable"}
     if not wf_locked:
         if result in no_contact_results:
-            cand.stage = "no_answer"
+            transition_candidate_stage(
+                db,
+                cand,
+                "no_answer",
+                actor_id=actor_id,
+                reason=f"contact_attempt:{result}",
+            )
             if cand.status != "rejected":
                 cand.status = "no_answer"
         elif result == "answered":
-            cand.stage = "contacted"
+            transition_candidate_stage(
+                db,
+                cand,
+                "contacted",
+                actor_id=actor_id,
+                reason="contact_attempt:answered",
+            )
             cand.status = "contacted"
             await ensure_candidate_stage_follow_up_task(
                 db,
@@ -428,7 +441,12 @@ async def create_attempt(
                         intended_transition=f"post_action stage_change -> {stage} (suppressed)",
                     )
                 else:
-                    cand.stage = stage
-                    # Optionally add status_reason
+                    transition_candidate_stage(
+                        db,
+                        cand,
+                        stage,
+                        actor_id=actor_id,
+                        reason="contact_attempt_post_action",
+                    )
 
     return attempt, None
