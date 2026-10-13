@@ -21,6 +21,7 @@ import type { OperatorFactsView } from '../candidates/OperatorFactsSurface'
 import { DocumentMetadataForm } from './components/DocumentMetadataForm'
 import { getDocumentFieldsConfig, isProcedureDocument } from './documentFieldsConfig'
 import { computeTodayIso, documentHasFiles, formatDate, isSyntheticDocumentId, legalDocumentSlot, normalizeDocTypeCode, stayDocumentRole } from './documentUtils'
+import { codesKnownToContract, matchesContract, stayContractGroups, workContractGroups } from './legalizationDocumentSelection'
 import type { MetadataState } from './types'
 
 type TypeLevel = 'required' | 'preferred'
@@ -299,7 +300,7 @@ export function OperatorDocumentRows({
     return option.labelKey ? t(option.labelKey, { defaultValue: option.label }) : option.label
   }
 
-  const renderRow = (row: (typeof rows)[number]) => {
+  const renderRow = (row: (typeof rows)[number], forceRequired = false) => {
     const hasFile = documentHasFiles(row.doc)
     const procedure = isProcedureDocument(row.norm)
     const storedPresence = readPresence(row.norm)
@@ -344,7 +345,8 @@ export function OperatorDocumentRows({
         }}
       />
     )
-    const markedRequired = stayDocumentRole(row.type) === 'decision'
+    const markedRequired = forceRequired
+      || stayDocumentRole(row.type) === 'decision'
       || (typeLevel[row.type.code] || 'required') === 'required'
       || (licence && Object.entries(typeLevel).some(([code, level]) => level === 'required' && LICENCE_TYPES.has(normalizeDocTypeCode(code))))
     const requirement = (
@@ -627,88 +629,73 @@ export function OperatorDocumentRows({
 
   if (groups && renderGroups) {
     const nodes: Record<string, ReactNode> = {}
-    for (const group of groups) {
-      const wanted = expandTypeCodes(group.types)
-      const legal = facts?.legalization
-      const selectedStay = legal?.selected_stay
-      const workLabel = step('work')?.operator_label || ''
-      const evidenceGroups = group.key === 'stay'
-        ? (selectedStay?.evidence?.length
-          ? selectedStay.evidence
-          : [
-              { codes: selectedStay?.documents || [] },
-              { codes: selectedStay?.dependent_documents || [] },
-            ].filter((item) => item.codes.length))
-        : group.key === 'work' && (workLabel === 'oswiadczenie' || workLabel === 'work_permit')
-          ? [{ codes: [workLabel === 'oswiadczenie' ? 'oswiadczenie' : 'work_permit'] }]
-          : []
-      const requiredCodes = evidenceGroups.flatMap((item) => item.codes)
-      const supplemented = [...rows]
-      for (const evidenceGroup of evidenceGroups) {
-        const known = expandTypeCodes(evidenceGroup.codes.filter((code) => normalizeDocTypeCode(code) !== 'unclassified'))
-        const stored = docs.find((doc) => !isSyntheticDocumentId(doc.id) && known.has(normalizeDocTypeCode(doc.type_code || doc.doc_type || '')))
-        if (stored && !supplemented.some((row) => row.doc.id === stored.id)) {
-          const norm = normalizeDocTypeCode(stored.type_code || stored.doc_type || '')
-          const type = docTypes.find((item) => normalizeDocTypeCode(item.code) === norm)
-            || catalogTypes.find((item) => normalizeDocTypeCode(item.code) === norm)
-            || { code: norm, name: norm }
-          supplemented.push({ type, norm, doc: stored })
-        }
-        if (supplemented.some((row) => known.has(row.norm) && !isSyntheticDocumentId(row.doc.id))) continue
-        if (supplemented.some((row) => known.has(row.norm))) continue
-        const type = evidenceGroup.codes.map((code) => {
-          const norm = normalizeDocTypeCode(code)
-          if (!norm || norm === 'unclassified') return undefined
-          return catalogTypes.find((item) => normalizeDocTypeCode(item.code) === norm)
-        }).find(Boolean)
-        if (!type) continue
-        supplemented.push({
-          type,
-          norm: normalizeDocTypeCode(type.code),
-          doc: placeholderDocument(candidateId, type.code, type.process_type),
-        })
+    const legal = facts?.legalization
+    const workLabel = step('work')?.operator_label || ''
+    const catalogs = [...docTypes, ...catalogTypes]
+    const contractFor = (key: string) => {
+      if (key === 'stay') {
+        return legal?.selection.stay_required === true ? stayContractGroups(legal.selected_stay) : []
       }
-      const stayBasis = step('stay_basis')?.stored || ''
-      const cardChosen = supplemented.some((row) => {
-        if (stayDocumentRole(row.type) !== 'card') return false
-        const stored = readPresence(row.norm)
-        return stored === true || (stored !== false && documentHasFiles(row.doc))
-      })
-      const grouped = supplemented.filter((row) => {
-        const inGroup = wanted.has(row.norm) || legalDocumentSlot(row.type) === group.key || requiredCodes.some((code) => expandTypeCodes([code]).has(row.norm))
-        if (!inGroup) return false
-        if (group.key === 'work') {
-          if (legal && legal.selection.work_required !== true) return documentHasFiles(row.doc)
-          const norm = row.norm
-          if (workLabel === 'oswiadczenie') return norm === 'oswiadczenie'
-          if (workLabel === 'work_permit') return norm !== 'oswiadczenie'
-          return documentHasFiles(row.doc)
+      if (key === 'work') {
+        return legal?.selection.work_required === true
+          ? workContractGroups(workLabel, legal.applicable_work)
+          : []
+      }
+      return []
+    }
+    const rowMatches = (
+      row: { norm: string; type: { code?: string | null } },
+      known: Set<string>,
+    ) => matchesContract(row.type.code, known) || matchesContract(row.norm, known)
+    for (const group of groups) {
+      const contract = contractFor(group.key)
+      if (group.key !== 'stay' && group.key !== 'work') {
+        const wanted = expandTypeCodes(group.types)
+        const grouped = rows.filter((row) => wanted.has(row.norm) || legalDocumentSlot(row.type) === group.key)
+        nodes[group.key] = grouped.length
+          ? <DocumentRequirementList columns={columns}>{grouped.map((row) => renderRow(row))}</DocumentRequirementList>
+          : null
+        continue
+      }
+      const used = new Set<string>()
+      const visible = contract.flatMap((evidenceGroup) => {
+        const known = codesKnownToContract(evidenceGroup.codes)
+        const matches = rows.filter((row) => !used.has(row.doc.id) && rowMatches(row, known))
+        let best = matches.find((row) => documentHasFiles(row.doc))
+          || matches.find((row) => !isSyntheticDocumentId(row.doc.id) && row.doc.ordered_at)
+          || matches.find((row) => !isSyntheticDocumentId(row.doc.id))
+          || matches[0]
+        if (!best) {
+          const stored = docs.find((doc) => (
+            !isSyntheticDocumentId(doc.id)
+            && !used.has(doc.id)
+            && (matchesContract(doc.type_code, known) || matchesContract(doc.doc_type, known))
+          ))
+          const type = catalogs.find((item) => matchesContract(item.code, known))
+          if (stored && type) {
+            best = { type, norm: normalizeDocTypeCode(type.code), doc: stored }
+          } else if (stored) {
+            const code = stored.type_code || stored.doc_type || ''
+            best = { type: { code, name: code }, norm: normalizeDocTypeCode(code), doc: stored }
+          } else if (type) {
+            best = {
+              type,
+              norm: normalizeDocTypeCode(type.code),
+              doc: placeholderDocument(
+                candidateId,
+                type.code,
+                'process_type' in type ? type.process_type : undefined,
+              ),
+            }
+          }
         }
-        if (group.key !== 'stay') return true
-        if (legal) {
-          if (legal.selection.stay_required !== true || !selectedStay) return documentHasFiles(row.doc)
-          if (documentHasFiles(row.doc)) return true
-          const documents = expandTypeCodes(selectedStay.documents || [])
-          const dependent = expandTypeCodes(selectedStay.dependent_documents || [])
-          if (stayDocumentRole(row.type) === 'decision') return dependent.has(row.norm)
-          return documents.has(row.norm)
-        }
-        if (stayDocumentRole(row.type) !== 'decision') return true
-        return cardChosen || stayBasis === 'karta_pobytu'
+        if (!best) return []
+        used.add(best.doc.id)
+        return [best]
       })
-      const visible = evidenceGroups.length
-        ? evidenceGroups.flatMap((evidenceGroup) => {
-            const known = expandTypeCodes(evidenceGroup.codes)
-            const matches = grouped.filter((row) => known.has(row.norm))
-            const best = matches.find((row) => documentHasFiles(row.doc))
-              || matches.find((row) => !isSyntheticDocumentId(row.doc.id) && row.doc.ordered_at)
-              || matches.find((row) => !isSyntheticDocumentId(row.doc.id))
-              || matches.find((row) => row.norm !== 'unclassified')
-              || matches[0]
-            return best ? [best] : []
-          }).concat(grouped.filter((row) => documentHasFiles(row.doc) && !evidenceGroups.some((evidenceGroup) => expandTypeCodes(evidenceGroup.codes).has(row.norm))))
-        : grouped
-      nodes[group.key] = visible.length ? <DocumentRequirementList columns={columns}>{visible.map(renderRow)}</DocumentRequirementList> : null
+      nodes[group.key] = visible.length
+        ? <DocumentRequirementList columns={columns}>{visible.map((row) => renderRow(row, true))}</DocumentRequirementList>
+        : null
     }
     return <>{renderGroups(nodes)}</>
   }
@@ -724,7 +711,7 @@ export function OperatorDocumentRows({
       title={t('app.candidate_card.ia.documents_list', { defaultValue: 'Documents' })}
       description={t('app.candidate_card.ia.doc_list_hint', { defaultValue: 'The document list comes from the candidate profile.' })}
     >
-      <DocumentRequirementList columns={columns}>{ordered.map(renderRow)}</DocumentRequirementList>
+      <DocumentRequirementList columns={columns}>{ordered.map((row) => renderRow(row))}</DocumentRequirementList>
     </WorkspaceSection>
   )
 }

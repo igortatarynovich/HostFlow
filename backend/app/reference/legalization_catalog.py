@@ -345,13 +345,24 @@ def _selected_entry(facts: Mapping[str, Any]) -> dict[str, Any] | None:
 def _work_options(citizenships: list[str], facts: Mapping[str, Any], *, required: bool | None) -> list[dict[str, Any]]:
     if required is not True:
         return []
+    procedures = {str(item["code"]): item for item in work_procedure_catalog()}
     eligible = {code.upper() for code in oswiadczenie_eligible_alpha2_lower()}
-    options = [{"code": "work_permit", "kind": "procedure"}]
+    options = [
+        {
+            "code": "work_permit",
+            "kind": "procedure",
+            "documents": list(procedures["work_permit"]["documents"]),
+        }
+    ]
     if set(citizenships) & eligible:
-        options.append({"code": "oswiadczenie", "kind": "procedure"})
+        options.append({
+            "code": "oswiadczenie",
+            "kind": "procedure",
+            "documents": list(procedures["oswiadczenie"]["documents"]),
+        })
     selected = _selected_entry(facts)
     if selected is not None and selected.get("offers_included_work"):
-        options.append({"code": "included_in_stay", "kind": "exemption"})
+        options.append({"code": "included_in_stay", "kind": "exemption", "documents": []})
     return options
 
 

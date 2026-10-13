@@ -80,7 +80,7 @@ export type OperatorFactsView = {
       documents: string[]
       dependent_documents: string[]
     }>
-    applicable_work: Array<{ code: string; kind: string }>
+    applicable_work: Array<{ code: string; kind: string; documents?: string[] }>
     work_exemptions: string[]
     stay_exemptions: string[]
     selected_stay: {
@@ -882,7 +882,7 @@ function LegalizationFactsSheet({
     <div className={composeDocuments ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 gap-3 lg:grid-cols-2'} data-testid="legalization-facts-sheet">
       <WorkspaceSection
         title={t('app.candidate_card.ia.legalization_stay', { defaultValue: 'Stay in the country' })}
-        description={stayRequired ? t('app.candidate_card.ia.legalization_stay_hint', { defaultValue: 'Documents that confirm the right to stay.' }) : null}
+        description={stayRequired ? t('app.candidate_card.ia.legalization_stay_hint', { defaultValue: 'Upload only the documents required for this type of stay.' }) : null}
       >
         {composeDocuments ? (
           legal ? (
