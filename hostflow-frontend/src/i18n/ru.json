@@ -7450,7 +7450,7 @@
         "blocked_title_vacancy": "Назначьте вакансию, чтобы перейти дальше",
         "blocked_title_contact_attempt": "Зарегистрируйте попытку контакта, чтобы перейти дальше",
         "docs_blocking_generic": "Документы блокируют переход — см. чеклист",
-        "contact_attempt_required_chip": "Попытка контакта зафиксирована",
+        "contact_attempt_required_chip": "Нужна попытка контакта",
         "move_back": "Назад",
         "move_forward": "Вперёд",
         "next_step_docs": "Следующий шаг: → Запросить документы",
@@ -7474,7 +7474,7 @@
       "stage_journey": {
         "change_to": "Изменить на",
         "current": "Текущий",
-        "outcomes": "Результаты",
+        "outcomes": "Исход",
         "since": "С",
         "title": "Путь по этапам"
       },

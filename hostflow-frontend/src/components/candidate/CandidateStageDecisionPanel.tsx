@@ -311,7 +311,7 @@ export default function CandidateStageDecisionPanel({
               </span>
               <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
                 {t('app.candidate_card.stage_decision.contact_attempt_required_chip', {
-                  defaultValue: 'Contact attempt logged',
+                  defaultValue: 'Contact attempt required',
                 })}
               </span>
             </div>
@@ -414,6 +414,29 @@ export default function CandidateStageDecisionPanel({
           <div className="mt-1 text-sm font-semibold text-slate-900 truncate">
             {currentCode ? stageLabelIntl(currentCode) : t('common.labels.not_available')}
           </div>
+          {(stageJourneyStages || []).length > 0 ? (
+            <select
+              className="input mt-2 w-full text-sm"
+              aria-label={t('app.candidate_card.stage_journey.change_to', { defaultValue: 'Change stage to' })}
+              value={(stageJourneyStages || []).some((stage) => stage.code === currentCode) ? currentCode || '' : ''}
+              disabled={!canMutatePipeline}
+              onChange={(event) => {
+                const next = event.target.value
+                if (!next || next === currentCode) return
+                onMoveStage(next)
+              }}
+            >
+              {(stageJourneyStages || []).map((stage, index) => {
+                const funnelIdx = (stageJourneyStages || []).findIndex((item) => item.code === currentCode)
+                const forwardBlocked = pipelineForwardBlocked && funnelIdx >= 0 && index > funnelIdx
+                return (
+                  <option key={stage.code} value={stage.code} disabled={forwardBlocked}>
+                    {stage.label || stageLabelIntl(stage.code)}
+                  </option>
+                )
+              })}
+            </select>
+          ) : null}
           <div className="mt-2">{statusBody}</div>
         </div>
 

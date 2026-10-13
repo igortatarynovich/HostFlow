@@ -7528,7 +7528,7 @@
         "blocked_title_vacancy": "Assign a vacancy before moving forward",
         "blocked_title_contact_attempt": "Register a contact attempt before moving forward",
         "docs_blocking_generic": "Documents block moving forward — see checklist",
-        "contact_attempt_required_chip": "Contact attempt logged",
+        "contact_attempt_required_chip": "Contact attempt required",
         "move_back": "Move back",
         "move_forward": "Move forward",
         "next_step_docs": "Next step: → Request documents",

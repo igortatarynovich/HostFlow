@@ -6902,7 +6902,7 @@
         "blocked_title_vacancy": "Przypisz wakatu, aby przejść dalej",
         "blocked_title_contact_attempt": "Zarejestruj próbę kontaktu, aby przejść dalej",
         "docs_blocking_generic": "Dokumenty blokują przejście — zobacz listę",
-        "contact_attempt_required_chip": "Zarejestrowana próba kontaktu",
+        "contact_attempt_required_chip": "Wymagana próba kontaktu",
         "move_back": "Wstecz",
         "move_forward": "Dalej",
         "next_step_docs": "Następny krok: → Poproś o dokumenty",
@@ -6926,7 +6926,7 @@
       "stage_journey": {
         "change_to": "Zmień na",
         "current": "Aktualny",
-        "outcomes": "Wyniki",
+        "outcomes": "Rozstrzygnięcie",
         "since": "Od",
         "title": "Przebieg etapów"
       },
