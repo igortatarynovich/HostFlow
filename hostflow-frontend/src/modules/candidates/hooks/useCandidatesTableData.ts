@@ -6,6 +6,7 @@ import { isCandidateRecruiterIdCanonEnabled } from '../../../utils/featureFlags'
 import { getErrorInfo } from '../../../utils/errorHandling'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../../utils/friendlyError'
 import { usePlanLimitModal } from '../../../contexts/PlanLimitModalContext'
+import { parseStoredCandidateList } from '../candidateListCache'
 import { CANDIDATE_CACHE_TTL_MS } from '../constants'
 import type { CandidatesListInsights, DateRangeFilter, ListResp, UICandidate, CandidateListCacheEntry } from '../types'
 
@@ -216,36 +217,23 @@ export function useCandidatesTableData({
   const loadInsightsRef = useRef<() => Promise<void>>(async () => {})
   const loadRef = useRef<(options?: { force?: boolean; allowCache?: boolean }) => Promise<void>>(async () => {})
   const lastSuccessfulListRef = useRef<{
+    cacheKey: string
     items: UICandidate[]
     total: number
     insights?: CandidatesListInsights
   } | null>(null)
 
-  // Restore list cache on return / cold start.
+  // Restore list cache on return / cold start. Only the snapshot for this
+  // filter signature — a search result must not fill the unfiltered list.
   useEffect(() => {
     if (items.length > 0) return
     try {
       const raw = localStorage.getItem(listStorageKey)
-      if (!raw) return
-      const parsed = JSON.parse(raw)
-      if (!parsed || typeof parsed !== 'object') return
-      if (typeof parsed.total === 'number' && parsed.total === 0) return
-
-      // Do not restore broken state: total>0 but items empty
-      if (typeof parsed.total === 'number' && parsed.total > 0 && (!Array.isArray(parsed.items) || parsed.items.length === 0)) return
-
-      const ts = typeof parsed.timestamp === 'number' ? parsed.timestamp : 0
-      if (Date.now() - ts > CANDIDATE_CACHE_TTL_MS) return
-      if (!Array.isArray(parsed.items)) return
-
-      const cachedEntry: CandidateListCacheEntry = {
-        items: parsed.items as UICandidate[],
-        total: typeof parsed.total === 'number' ? parsed.total : parsed.items.length,
-        timestamp: ts,
-        insights: normalizeListInsights(parsed.insights) ?? undefined,
-      }
+      const cachedEntry = parseStoredCandidateList(raw, cacheKey, Date.now(), CANDIDATE_CACHE_TTL_MS)
+      if (!cachedEntry) return
       candidateListCache.set(cacheKey, cachedEntry)
       lastSuccessfulListRef.current = {
+        cacheKey,
         items: cachedEntry.items,
         total: cachedEntry.total,
         ...(cachedEntry.insights ? { insights: cachedEntry.insights } : {}),
@@ -277,6 +265,7 @@ export function useCandidatesTableData({
 
       if (cacheValid && cached.total !== 0) {
         lastSuccessfulListRef.current = {
+          cacheKey,
           items: cached.items,
           total: cached.total,
           ...(cached.insights ? { insights: cached.insights } : {}),
@@ -322,12 +311,13 @@ export function useCandidatesTableData({
         }
         candidateListCache.set(cacheKey, cachedEntry)
         try {
-          localStorage.setItem(listStorageKey, JSON.stringify(cachedEntry))
+          localStorage.setItem(listStorageKey, JSON.stringify({ ...cachedEntry, cacheKey }))
         } catch {
           /* ignore storage errors */
         }
         if (rows.length > 0) {
           lastSuccessfulListRef.current = {
+            cacheKey,
             items: rows,
             total: tot,
             ...(insights ? { insights } : {}),
@@ -442,7 +432,7 @@ export function useCandidatesTableData({
             setErrorText(getFriendlyErrorInfo(e, loadFailedTitle, t))
           }
           const fallback = lastSuccessfulListRef.current
-          if (fallback && fallback.items.length > 0) {
+          if (fallback && fallback.cacheKey === cacheKey && fallback.items.length > 0) {
             setItems(fallback.items)
             setTotal(fallback.total)
             if (fallback.insights) setListInsights(fallback.insights)
@@ -591,13 +581,13 @@ export function useCandidatesTableData({
     prevLoadingRef.current = loading
     if (wasLoading && !loading) {
       const pending = lastSuccessfulListRef.current
-      if (pending && pending.items.length > 0 && items.length === 0) {
+      if (pending && pending.cacheKey === cacheKey && pending.items.length > 0 && items.length === 0) {
         setItems(pending.items)
         setTotal(pending.total)
         if (pending.insights) setListInsights(pending.insights)
       }
     }
-  }, [loading, items.length, total, disableAutoRetryAndPrevLoadingEffects])
+  }, [loading, items.length, total, cacheKey, disableAutoRetryAndPrevLoadingEffects])
 
   // Retry once when API returns total>0 but items batch stayed empty.
   useEffect(() => {
