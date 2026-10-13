@@ -76,6 +76,30 @@ def _write_candidate_extra(candidate: Any, extra: dict[str, Any]) -> None:
     flag_modified(candidate, "extra")
 
 
+def promote_compliance_shell_created_at(candidate: Any, *, when: datetime | None = None) -> bool:
+    """Set candidate.created_at to the card / transition moment.
+
+    A compliance shell is inserted with the application, so its row timestamp
+    matches the отклик. The candidate creation date is the later transition
+    into candidates, or the moment the candidate card is created — not the
+    application time.
+    """
+    extra = _record(getattr(candidate, "extra", None))
+    if extra.get(SHELL_EXTRA_KEY) is not True:
+        return False
+    if extra.get("candidate_card_created_at"):
+        return False
+    moment = when or datetime.now(timezone.utc)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    else:
+        moment = moment.astimezone(timezone.utc)
+    extra["candidate_card_created_at"] = moment.isoformat()
+    _write_candidate_extra(candidate, extra)
+    candidate.created_at = moment.replace(tzinfo=None)
+    return True
+
+
 def stamp_compliance_shell_attached_if_needed(candidate: Any) -> bool:
     """Mark a reused shell as attached so Candidates list will show it. Returns True if extra changed."""
     extra = _record(getattr(candidate, "extra", None))
@@ -83,8 +107,10 @@ def stamp_compliance_shell_attached_if_needed(candidate: Any) -> bool:
         return False
     if extra.get("compliance_shell_attached_at_process"):
         return False
-    extra["compliance_shell_attached_at_process"] = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
+    extra["compliance_shell_attached_at_process"] = now.isoformat()
     _write_candidate_extra(candidate, extra)
+    promote_compliance_shell_created_at(candidate, when=now)
     return True
 
 

@@ -163,6 +163,15 @@ async def test_process_attaches_shell_candidate() -> None:
     assert attached is shell
     assert lead.candidate_id == "cand-shell"
     assert shell.extra.get("compliance_shell_attached_at_process")
+    assert shell.extra.get("candidate_card_created_at")
+    assert shell.created_at is not None
+    assert shell.created_at.tzinfo is None
+    frozen = shell.created_at
+    again = await attach_compliance_shell_candidate_on_process(
+        db, tenant_id="t1", lead=lead
+    )
+    assert again is shell
+    assert again.created_at == frozen
 
 
 @pytest.mark.asyncio
@@ -190,3 +199,6 @@ async def test_process_attaches_shell_when_extra_is_json_text() -> None:
     parsed = json.loads(shell.extra)
     assert parsed.get(SHELL_EXTRA_KEY) is True
     assert parsed.get("compliance_shell_attached_at_process")
+    assert parsed.get("candidate_card_created_at")
+    assert shell.created_at is not None
+    assert shell.created_at.tzinfo is None

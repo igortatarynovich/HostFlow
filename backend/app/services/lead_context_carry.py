@@ -175,6 +175,13 @@ async def carry_lead_context_on_conversion(
         }
 
     _set_candidate_extra(candidate, extra)
+    from backend.app.modules.recruitment.services.compliance_outbound_ensure import (
+        promote_compliance_shell_created_at,
+    )
+
+    # Shell rows are born with the application. The first carry is the
+    # transition into a candidate card, so created_at moves to this moment.
+    promote_compliance_shell_created_at(candidate)
 
     lead_note = str(snapshot.get("lead_note") or "").strip()
     if lead_note:
