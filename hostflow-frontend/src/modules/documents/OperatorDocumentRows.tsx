@@ -167,7 +167,6 @@ export function OperatorDocumentRows({
   const factsRequest = useRef(0)
   const [openCode, setOpenCode] = useState<string | null>(null)
   const [editingCode, setEditingCode] = useState<string | null>(null)
-  const [permitType, setPermitType] = useState<Record<string, string>>({})
   const yes = t('app.candidate_card.ia.doc_present', { defaultValue: 'Present' })
   const no = t('app.candidate_card.ia.doc_absent', { defaultValue: 'Absent' })
   const columns: DocumentRequirementColumns = {
@@ -265,6 +264,17 @@ export function OperatorDocumentRows({
     }
     await patchFacts(presencePatch)
   }
+  const clearPresence = async (norm: string) => {
+    const stepKey = PRESENCE_STEP[norm]
+    const patchKey = stepKey ? PRESENCE_PATCH[stepKey] : undefined
+    if (patchKey) {
+      await patchFacts({ [patchKey]: 'unknown' })
+      return
+    }
+    await patchFacts({
+      document_presence: { [LICENCE_TYPES.has(norm) ? 'driver_license' : norm]: null },
+    })
+  }
 
   const statusLabel = (kind: DocumentStatusKind, doc?: Document) => {
     if (kind === 'approved') return t('admin.documents.status_labels.approved', { defaultValue: 'Approved' })
@@ -272,9 +282,11 @@ export function OperatorDocumentRows({
     if (kind === 'review') return t('app.candidate_card.ia.doc_in_review', { defaultValue: 'In review' })
     if (kind === 'uploaded') return t('app.candidate_card.ia.doc_uploaded', { defaultValue: 'Uploaded' })
     if (kind === 'ordered') {
+      const date = formatDate(doc?.ordered_at)
+      if (!date) return t('app.candidate_card.ia.doc_ordered', { defaultValue: 'Ordered' })
       return t('app.candidate_card.ia.ordered_on', {
         defaultValue: 'Ordered {date}',
-        values: { date: formatDate(doc?.ordered_at) },
+        values: { date },
       })
     }
     if (kind === 'received') return t('app.candidate_card.ia.doc_received', { defaultValue: 'Received' })
@@ -292,13 +304,6 @@ export function OperatorDocumentRows({
     if (typeof meta.visa_type === 'string' && meta.visa_type) return meta.visa_type
     return ''
   }
-  const permitOptions = (norm: string) =>
-    getDocumentFieldsConfig(norm).find((field) => field.key === 'work_permit_type')?.options || []
-  const permitLabel = (norm: string, value: string) => {
-    const option = permitOptions(norm).find((item) => item.value === value)
-    if (!option) return value
-    return option.labelKey ? t(option.labelKey, { defaultValue: option.label }) : option.label
-  }
 
   const renderRow = (row: (typeof rows)[number], forceRequired = false) => {
     const hasFile = documentHasFiles(row.doc)
@@ -313,15 +318,19 @@ export function OperatorDocumentRows({
     const showSharedCode95 = licence && code95Required && Boolean(issuingCountry) && !separateCode95 && presence === true
     const needsCountry = licence && code95Required && !issuingCountry && presence !== false
     const stayRole = stayDocumentRole(row.type)
-    const phase: DocumentStatusKind | null = procedure
-      ? (hasFile ? null : row.doc.status === 'in_progress' ? 'received' : row.doc.ordered_at ? 'ordered' : 'absent')
-      : null
-    const showMetadata = Boolean(hasFile || (stayRole && presence === true))
+    const ordered = Boolean(procedure && !hasFile && (row.doc.ordered_at || row.doc.status === 'in_progress'))
+    const procedurePresence: boolean | 'ordered' | null = !procedure
+      ? presence
+      : hasFile || presence === true
+        ? true
+        : presence === false
+          ? false
+          : ordered
+            ? 'ordered'
+            : null
+    const showMetadata = Boolean(hasFile || (stayRole && presence === true) || (procedure && procedurePresence !== false && procedurePresence !== null))
     const showFacts = Boolean((licence && (presence === true || needsCountry)) || showSharedCode95)
     const expanded = (needsCountry || openCode === row.norm) && (showMetadata || showFacts)
-    const meta = (row.doc.meta_json || row.doc.meta || {}) as Record<string, unknown>
-    const storedPermit = typeof meta.work_permit_type === 'string' ? meta.work_permit_type : ''
-    const selectedPermit = permitType[row.norm] ?? storedPermit
     const setPresence = (next: boolean) => {
       if (!canManage) return
       if (next) setOpenCode(row.norm)
@@ -359,40 +368,20 @@ export function OperatorDocumentRows({
           : t('app.candidate_card.ia.preferred_mark', { defaultValue: 'Preferred' })}
       />
     )
-    const fileKind = hasFile ? statusKind(row.doc, true) : (phase === 'received' ? 'received' : 'missing')
-    const fileStatus = procedure && !hasFile && phase === 'absent' ? (
-      <label className="workspace-editor block w-full max-w-[14rem]">
-        <span className="sr-only">{t('admin.documents.forms.fields.work_permit_type', { defaultValue: 'Permit type' })}</span>
-        <select
-          className="input"
-          disabled={!canManage}
-          value={selectedPermit}
-          onChange={(event) => setPermitType((prev) => ({ ...prev, [row.norm]: event.target.value }))}
-        >
-          <option value="">{t('app.candidate_card.ia.doc_choose_type', { defaultValue: 'Choose type' })}</option>
-          {permitOptions(row.norm).map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.labelKey ? t(option.labelKey, { defaultValue: option.label }) : option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-    ) : procedure && !hasFile && phase === 'ordered' ? (
+    const fileKind = hasFile ? statusKind(row.doc, true) : 'missing'
+    const fileStatus = procedurePresence === 'ordered' ? (
       <span className="truncate text-sm text-slate-700">{statusLabel('ordered', row.doc)}</span>
     ) : (
       <span className="inline-flex min-w-0 items-center gap-2">
         {hasFile ? <DocumentFile name={fileName} /> : null}
-        {procedure && storedPermit ? (
-          <span className="truncate text-xs text-slate-500">{permitLabel(row.norm, storedPermit)}</span>
-        ) : null}
-        {(procedure ? hasFile || phase === 'received' : presence !== false) ? (
+        {(procedure ? hasFile || procedurePresence === true : presence !== false) ? (
           <DocumentStatusBadge kind={fileKind} label={statusLabel(fileKind, row.doc)} />
         ) : null}
       </span>
     )
     const reviewKind = statusKind(row.doc, true)
     const menuItems: OverflowMenuItem[] = []
-    if (procedure && !hasFile && phase === 'ordered' && canManage) {
+    if (procedure && !hasFile && ordered && canManage) {
       menuItems.push({
         id: 'received',
         label: t('app.candidate_card.ia.doc_mark_received', { defaultValue: 'Document received' }),
@@ -436,22 +425,7 @@ export function OperatorDocumentRows({
           {t('admin.documents.actions.open', { defaultValue: 'Open' })}
         </Button>
       )
-    } else if (procedure && phase === 'absent') {
-      primary = (
-        <Button
-          type="button"
-          variant="primary"
-          size="compact"
-          disabled={!canManage || !selectedPermit || coreSaving[row.doc.id]}
-          onClick={() => void recordProcedure(row.doc, {
-            ordered_at: computeTodayIso(),
-            meta: { work_permit_type: selectedPermit },
-          })}
-        >
-          {t('app.candidate_card.ia.doc_order', { defaultValue: 'Order' })}
-        </Button>
-      )
-    } else if ((procedure && phase === 'received') || (!procedure && presence === true)) {
+    } else if (procedurePresence === true || (!procedure && presence === true)) {
       primary = uploadControl('button')
     }
     const action = (
@@ -527,7 +501,7 @@ export function OperatorDocumentRows({
                   doc={row.doc}
                   metadataValues={metadataValues}
                   disabled={!canManage}
-                  omitKeys={licence ? ['country'] : undefined}
+                  omitKeys={licence ? ['country'] : procedure ? ['ordered_at'] : undefined}
                   getFieldValue={getFieldValue}
                   onChange={updateFieldValue}
                 />
@@ -548,7 +522,7 @@ export function OperatorDocumentRows({
                 </div>
               ) : null}
               {showMetadata ? getDocumentFieldsConfig(row.norm)
-                .filter((field) => !(licence && field.key === 'country'))
+                .filter((field) => !(licence && field.key === 'country') && !(procedure && field.key === 'ordered_at'))
                 .map((field) => (
                   <div key={field.key}>
                     <div className="text-xs text-slate-500">
@@ -609,10 +583,24 @@ export function OperatorDocumentRows({
           : getLabel(row.type.code, row.type.name, row.type.title)}
         subtitle={subtitle || null}
         requirement={requirement}
-        presence={procedure && !hasFile ? (
-          <span className="text-sm text-slate-700">{statusLabel(phase || 'absent', row.doc)}</span>
-        ) : procedure ? (
-          <span className="text-sm text-slate-500">—</span>
+        presence={procedure ? (
+          <PresenceToggle
+            value={procedurePresence}
+            yesLabel={yes}
+            noLabel={no}
+            orderedLabel={t('app.candidate_card.ia.doc_ordered', { defaultValue: 'Ordered' })}
+            disabled={!canManage}
+            onChange={(next) => {
+              if (!next && (row.doc.ordered_at || ordered)) void recordProcedure(row.doc, { ordered_at: null })
+              setPresence(next)
+            }}
+            onOrdered={() => {
+              if (procedurePresence === 'ordered' || hasFile) return
+              setOpenCode(row.norm)
+              if (storedPresence === true || storedPresence === false) void clearPresence(row.norm)
+              void recordProcedure(row.doc, { ordered_at: row.doc.ordered_at || computeTodayIso() })
+            }}
+          />
         ) : (
           <PresenceToggle value={presence} yesLabel={yes} noLabel={no} disabled={!canManage} onChange={setPresence} />
         )}

@@ -1,15 +1,20 @@
 import clsx from 'clsx'
 
+export type PresenceState = boolean | 'ordered' | null
+
 type Props = {
-  value: boolean | null
+  value: PresenceState
   yesLabel: string
   noLabel: string
+  /** When set, the row can be Нет | Заказано | Есть. Ordered is a procedure state, not a file. */
+  orderedLabel?: string
   disabled?: boolean
   onChange: (next: boolean) => void
+  onOrdered?: () => void
 }
 
 /** Compact Нет | Есть control. Unknown stays unset; explicit Нет is neutral; Есть uses the brand accent. */
-export function PresenceToggle({ value, yesLabel, noLabel, disabled, onChange }: Props) {
+export function PresenceToggle({ value, yesLabel, noLabel, orderedLabel, disabled, onChange, onOrdered }: Props) {
   const segment = (selected: boolean, tone: 'neutral' | 'brand') =>
     clsx(
       'h-8 min-w-[3.25rem] px-2.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200',
@@ -20,6 +25,8 @@ export function PresenceToggle({ value, yesLabel, noLabel, disabled, onChange }:
           : 'bg-slate-100 text-slate-800'
         : 'bg-transparent text-slate-500',
     )
+  const divider = value === null ? 'border-l border-dashed border-slate-300' : 'border-l border-slate-200'
+  const presence = value === null ? 'unknown' : value === 'ordered' ? 'ordered' : value ? 'yes' : 'no'
   return (
     <div
       className={clsx(
@@ -27,7 +34,7 @@ export function PresenceToggle({ value, yesLabel, noLabel, disabled, onChange }:
         value === null ? 'border-dashed border-slate-300' : 'border-slate-200',
       )}
       role="group"
-      data-presence={value === null ? 'unknown' : value ? 'yes' : 'no'}
+      data-presence={presence}
     >
       <button
         type="button"
@@ -38,12 +45,20 @@ export function PresenceToggle({ value, yesLabel, noLabel, disabled, onChange }:
       >
         {noLabel}
       </button>
+      {orderedLabel ? (
+        <button
+          type="button"
+          className={clsx(segment(value === 'ordered', 'neutral'), divider)}
+          aria-pressed={value === 'ordered'}
+          disabled={disabled}
+          onClick={() => onOrdered?.()}
+        >
+          {orderedLabel}
+        </button>
+      ) : null}
       <button
         type="button"
-        className={clsx(
-          segment(value === true, 'brand'),
-          value === null ? 'border-l border-dashed border-slate-300' : 'border-l border-slate-200',
-        )}
+        className={clsx(segment(value === true, 'brand'), divider)}
         aria-pressed={value === true}
         disabled={disabled}
         onClick={() => onChange(true)}

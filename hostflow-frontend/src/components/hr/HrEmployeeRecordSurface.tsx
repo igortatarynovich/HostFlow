@@ -26,6 +26,9 @@ import { usePlatformCountryOptions, usePlatformDialCodeOptions } from '../../hoo
 import { PREFERRED_CONTACT_VALUES } from '../../data/preferredContactChannels'
 import CandidateDocuments from '../../modules/documents/CandidateDocuments'
 import OperatorFactsSurface from '../../modules/candidates/OperatorFactsSurface'
+import CandidateRequirementsChecklist from '../candidate/CandidateRequirementsChecklist'
+import { useCandidateEntityWorkspaceProfile } from '../../modules/candidates/hooks/useCandidateEntityWorkspaceProfile'
+import type { CandidateProfile } from '../../api/candidate_profiles'
 import { CandidateQuickTaskModal } from '../../modules/candidates/components/CandidateQuickTaskModal'
 import type { CandidateNote, StageHistoryEntry } from '../../modules/candidate-card/types'
 import ActivityRailWidget from '../../platform/entity-workspace/ActivityRailWidget'
@@ -208,6 +211,21 @@ export default function HrEmployeeRecordSurface({
   const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState<(typeof RECORD_TABS)[number]>('dane_osobowe')
   const [documentFocus, setDocumentFocus] = useState<string | undefined>(undefined)
+  const [legalDocTypes, setLegalDocTypes] = useState<string[]>([])
+  const [legalGroups, setLegalGroups] = useState<{ stay: string[]; work: string[] }>({ stay: [], work: [] })
+  const [vacancyId, setVacancyId] = useState<string | null>(null)
+  const countries = usePlatformCountryOptions(locale)
+  const { candidateProfile } = useCandidateEntityWorkspaceProfile(vacancyId)
+  const rememberLegalDocTypes = useCallback((codes: string[]) => {
+    setLegalDocTypes((prev) => (prev.join('|') === codes.join('|') ? prev : codes))
+  }, [])
+  const rememberLegalGroups = useCallback((groups: { stay: string[]; work: string[] }) => {
+    setLegalGroups((prev) => (
+      prev.stay.join('|') === groups.stay.join('|') && prev.work.join('|') === groups.work.join('|')
+        ? prev
+        : groups
+    ))
+  }, [])
 
   const load = useCallback(async () => {
     const next = await getHrEmployeeRecordSurface(employeeId)
@@ -236,7 +254,26 @@ export default function HrEmployeeRecordSurface({
   useEffect(() => {
     setTab('dane_osobowe')
     setDocumentFocus(undefined)
+    setLegalDocTypes([])
+    setLegalGroups({ stay: [], work: [] })
+    setVacancyId(null)
   }, [employeeId])
+
+  useEffect(() => {
+    const candidateId = surface?.candidate_id
+    if (!candidateId) return
+    let cancelled = false
+    void api.get<{ vacancy_id?: string | null }>(`/candidates/${candidateId}`)
+      .then((response) => {
+        if (!cancelled) setVacancyId(response.data?.vacancy_id || null)
+      })
+      .catch(() => {
+        if (!cancelled) setVacancyId(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [surface?.candidate_id])
 
   const openDocuments = (typeCode?: string) => {
     setDocumentFocus(typeCode)
@@ -360,6 +397,16 @@ export default function HrEmployeeRecordSurface({
                 }}
               />
             ) : null}
+            {surface.candidate_id ? (
+              <CandidateRequirementsChecklist
+                headless
+                candidateId={surface.candidate_id}
+                canEdit={canEdit}
+                purposeMode="legalization"
+                onPlacementTypes={rememberLegalDocTypes}
+                onPlacementGroups={rememberLegalGroups}
+              />
+            ) : null}
             {tab === 'legalizacja' && activeGroup('legalizacja') ? (
               <LegalForm
                 key={employeeId}
@@ -369,7 +416,9 @@ export default function HrEmployeeRecordSurface({
                 group={activeGroup('legalizacja')!}
                 legal={surface.legal}
                 writable={canEdit && surface.state === 'preparing'}
-                onOpenDocuments={() => openDocuments()}
+                countries={countries}
+                candidateProfile={candidateProfile}
+                legalGroups={legalGroups}
                 onError={setError}
                 onSaved={() => {
                   void load()
@@ -426,26 +475,19 @@ export default function HrEmployeeRecordSurface({
               </CardAccordion>
             ) : null}
             {tab === 'dokumenty' && surface.candidate_id ? (
-              <div className="space-y-3">
-                {(activeGroup('dokumenty')?.rows || [])
-                  .filter((row) => row.id === 'dokumenty.passport')
-                  .map((row) => (
-                    <RequirementFactRow
-                      key={row.id}
-                      row={row}
-                      locale={locale}
-                      onOpenDocuments={() => openDocuments(row.id.slice('dokumenty.'.length))}
-                    />
-                  ))}
-                <CandidateDocuments
-                  candidateId={surface.candidate_id}
-                  hideHeader
-                  inlineWorkspace
-                  initialType={documentFocus}
-                  mutationsLocked={returned}
-                  onDocumentsChanged={() => void load()}
-                />
-              </div>
+              <CandidateDocuments
+                candidateId={surface.candidate_id}
+                hideHeader
+                inlineWorkspace
+                requirementLed
+                operatorRows
+                excludeTypes={legalDocTypes}
+                countries={countries}
+                candidateProfile={candidateProfile}
+                initialType={documentFocus}
+                mutationsLocked={returned}
+                onDocumentsChanged={() => void load()}
+              />
             ) : null}
           </div>
     </EntityRecordSurface>
@@ -1369,7 +1411,9 @@ function LegalForm({
   group,
   legal,
   writable,
-  onOpenDocuments,
+  countries,
+  candidateProfile,
+  legalGroups,
   onError,
   onSaved,
 }: {
@@ -1379,12 +1423,14 @@ function LegalForm({
   group: HrEmployeeRecordGroup
   legal: HrEmployeeRecordSurface['legal']
   writable: boolean
-  onOpenDocuments: () => void
+  countries: ReturnType<typeof usePlatformCountryOptions>
+  candidateProfile: CandidateProfile | null
+  legalGroups: { stay: string[]; work: string[] }
   onError: (message: string | null) => void
   onSaved: () => void
 }) {
   const { t, locale } = useI18n()
-  const countries = usePlatformCountryOptions(locale)
+  const [factsRevision, setFactsRevision] = useState(0)
   const serverKey = JSON.stringify(legalPayload(legal))
   const legalRef = useRef(legal)
   legalRef.current = legal
@@ -1419,15 +1465,40 @@ function LegalForm({
   return (
     <div className="space-y-3">
       {candidateId ? (
-        <OperatorFactsSurface
+        <CandidateDocuments
+          key={`${candidateId}:legal:${factsRevision}`}
           candidateId={candidateId}
+          hideHeader
+          inlineWorkspace
+          requirementLed
+          operatorRows
+          stayTypes={legalGroups.stay}
+          workTypes={legalGroups.work}
           countries={countries}
-          region="legalization"
-          contextLabel={contextLabel}
-          onOpenDocuments={onOpenDocuments}
+          candidateProfile={candidateProfile}
+          mutationsLocked={!writable}
+          onDocumentsChanged={onSaved}
+          onFactsSaved={() => {
+            setFactsRevision((value) => value + 1)
+            onSaved()
+          }}
+          renderFrame={(sections) => (
+            <OperatorFactsSurface
+              candidateId={candidateId}
+              countries={countries}
+              region="legalization"
+              contextLabel={contextLabel}
+              stayDocuments={sections.stay}
+              workDocuments={sections.work}
+              onSaved={() => {
+                setFactsRevision((value) => value + 1)
+                onSaved()
+              }}
+            />
+          )}
         />
       ) : null}
-      <CardAccordion title={t('app.hr.employee_record.legal_chain', { defaultValue: 'Eligibility for this employment' })} defaultOpen>
+      <CardAccordion title={t('app.hr.employee_record.legal_chain', { defaultValue: 'Eligibility for this employment' })} defaultOpen={!candidateId}>
       <div>
         <InlineFieldRow
           label={t('app.candidate_card.fields.citizenship')}
@@ -1446,40 +1517,44 @@ function LegalForm({
             t={t}
           />
         </InlineFieldRow>
-        <InlineFieldRow
-          label={rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}
-          value={labelOf(draft.stay_basis)}
-          editing={openField === 'stay_basis'}
-          canEdit={writable}
-          onEdit={() => setOpenField('stay_basis')}
-          onDone={closeField}
-        >
-          <CatalogSelect
-            label={rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}
-            value={draft.stay_basis}
-            options={['not_required', 'visa_d', 'visa_c', 'karta_pobytu', 'visa_free', 'waiting_for_trc', 'special_protection', 'other', 'none']}
-            onChange={(value) => setDraft((current) => ({ ...current, stay_basis: value }))}
-            labelFor={labelOf}
-            t={t}
-          />
-        </InlineFieldRow>
-        <InlineFieldRow
-          label={rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}
-          value={labelOf(draft.work_authorization_basis)}
-          editing={openField === 'work_authorization_basis'}
-          canEdit={writable}
-          onEdit={() => setOpenField('work_authorization_basis')}
-          onDone={closeField}
-        >
-          <CatalogSelect
-            label={rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}
-            value={draft.work_authorization_basis}
-            options={['not_required', 'included_in_stay', 'separate_required']}
-            onChange={(value) => setDraft((current) => ({ ...current, work_authorization_basis: value }))}
-            labelFor={labelOf}
-            t={t}
-          />
-        </InlineFieldRow>
+        {candidateId ? null : (
+          <>
+            <InlineFieldRow
+              label={rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}
+              value={labelOf(draft.stay_basis)}
+              editing={openField === 'stay_basis'}
+              canEdit={writable}
+              onEdit={() => setOpenField('stay_basis')}
+              onDone={closeField}
+            >
+              <CatalogSelect
+                label={rowLabel(group, 'legalizacja.stay_basis', t('app.candidate_card.fields.poland_basis'))}
+                value={draft.stay_basis}
+                options={['not_required', 'visa_d', 'visa_c', 'karta_pobytu', 'visa_free', 'waiting_for_trc', 'special_protection', 'other', 'none']}
+                onChange={(value) => setDraft((current) => ({ ...current, stay_basis: value }))}
+                labelFor={labelOf}
+                t={t}
+              />
+            </InlineFieldRow>
+            <InlineFieldRow
+              label={rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}
+              value={labelOf(draft.work_authorization_basis)}
+              editing={openField === 'work_authorization_basis'}
+              canEdit={writable}
+              onEdit={() => setOpenField('work_authorization_basis')}
+              onDone={closeField}
+            >
+              <CatalogSelect
+                label={rowLabel(group, 'legalizacja.work_basis', t('app.candidate_card.fields.residency_status'))}
+                value={draft.work_authorization_basis}
+                options={['not_required', 'included_in_stay', 'separate_required']}
+                onChange={(value) => setDraft((current) => ({ ...current, work_authorization_basis: value }))}
+                labelFor={labelOf}
+                t={t}
+              />
+            </InlineFieldRow>
+          </>
+        )}
         <InlineFieldRow
           label={rowLabel(group, 'legalizacja.valid_for_this_employment', t('common.labels.status'))}
           value={labelOf(draft.valid_for_this_employment)}

@@ -28,4 +28,30 @@ describe('PresenceToggle', () => {
     fireEvent.click(yes)
     expect(onChange).toHaveBeenCalledWith(true)
   })
+
+  it('offers ordered only when the requirement allows a procedure state', () => {
+    const onChange = vi.fn()
+    const onOrdered = vi.fn()
+    const { rerender } = render(
+      <PresenceToggle value={null} yesLabel="Есть" noLabel="Нет" onChange={onChange} />,
+    )
+    expect(screen.queryByRole('button', { name: 'Заказано' })).toBeNull()
+
+    rerender(
+      <PresenceToggle
+        value="ordered"
+        yesLabel="Есть"
+        noLabel="Нет"
+        orderedLabel="Заказано"
+        onChange={onChange}
+        onOrdered={onOrdered}
+      />,
+    )
+    const ordered = screen.getByRole('button', { name: 'Заказано' })
+    expect(screen.getByRole('group').getAttribute('data-presence')).toBe('ordered')
+    expect(ordered.className).toMatch(/bg-slate-100/)
+    fireEvent.click(ordered)
+    expect(onOrdered).toHaveBeenCalledOnce()
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })
