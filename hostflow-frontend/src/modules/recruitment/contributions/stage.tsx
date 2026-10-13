@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   createRecruitmentApplicationFollowUp,
   processRecruitmentApplication,
-  recruitmentApplicationFits,
-  recruitmentApplicationTransferToEmployment,
   submitRecruitmentApplicationIntakeDecision,
   updateRecruitmentApplicationStage,
 } from '../../../api/applications'
@@ -14,10 +12,7 @@ import { useToast } from '../../../components/Toast'
 import { useI18n } from '../../../i18n'
 import { getFriendlyErrorInfo } from '../../../utils/friendlyError'
 import { ContextRailDecisionZone } from '../../../platform/context-rail'
-import {
-  applicationReadyForEmploymentPrep,
-  resolveRecruitmentApplicationDecision,
-} from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
+import { resolveRecruitmentApplicationDecision } from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
 import type { WorkspaceCapabilityRenderContext } from '../../../platform/workspace-capability/renderContext'
 
 const REJECT_REASON_CODES = [
@@ -91,45 +86,7 @@ export function RecruitmentStageContribution({
     })
   }, [application, navigate, notify, run, t])
 
-  const runFits = useCallback(() => {
-    if (!application) return
-    void run(async () => {
-      const result = await recruitmentApplicationFits(application.id)
-      onRefresh()
-      if (result.next_action === 'offer_handoff') {
-        notify({
-          title: result.ready_label || t('app.recruitment_inquiry.rso.ready_label', {
-            defaultValue: 'Готов к передаче на трудоустройство',
-          }),
-          variant: 'success',
-        })
-      } else if (result.message) {
-        notify({ title: result.message, variant: 'info' })
-      }
-    })
-  }, [application, notify, onRefresh, run, t])
-
-  const transferToEmployment = useCallback(() => {
-    if (!application) return
-    void run(async () => {
-      const result = await recruitmentApplicationTransferToEmployment(application.id)
-      notify({
-        title: result.message
-          || t('app.recruitment_inquiry.rso.handed_off_title', {
-            defaultValue: 'Передано на трудоустройство',
-          }),
-        variant: 'success',
-      })
-      onRefresh()
-    })
-  }, [application, notify, onRefresh, run, t])
-
   if (!application || !onStage) return null
-
-  const prep = applicationReadyForEmploymentPrep(application)
-  const rsoNext = String(prep?.next_action || '').trim()
-  const handedOff = Boolean(prep?.handoff_id) || rsoNext === 'handed_off'
-  if (handedOff) return null
 
   const decision = resolveRecruitmentApplicationDecision({
     application,
@@ -147,8 +104,6 @@ export function RecruitmentStageContribution({
         await submitRecruitmentApplicationIntakeDecision(application.id, { decision: 'pool' })
         notify({ title: t('app.recruitment.contributions.pooled'), variant: 'success' })
       }),
-    onTransferToEmployment: transferToEmployment,
-    onRunFits: runFits,
     t,
   })
 

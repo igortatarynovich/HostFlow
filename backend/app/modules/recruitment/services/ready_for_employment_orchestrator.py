@@ -22,7 +22,6 @@ from sqlalchemy.orm.attributes import flag_modified
 from fastapi import HTTPException
 
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
-from backend.app.services.candidate_stage_history_integrity import transition_candidate_stage
 from backend.app.models import Lead
 from backend.app.models.candidate import Candidate
 from backend.app.models.vacancy import Vacancy
@@ -571,16 +570,8 @@ async def run_fits_prep(
             created_handoff=False,
         )
 
-    # Reflect readiness on candidate stage (not SoT; package is SoT). No handoff yet.
-    stage = _text(getattr(candidate, "stage", None)).lower()
-    if stage not in {"ready_for_handoff", "ready_for_hr", "handed_off", "processing_by_hr", "processing_by_client"}:
-        transition_candidate_stage(
-            db,
-            candidate,
-            "ready_for_handoff",
-            actor_id=actor,
-            reason="ready_for_employment_fits",
-        )
+    # Application fits does not move the funnel stage. A new candidate stays on
+    # stage new. ready_for_handoff is a later recruitment-readiness transition.
 
     evidence = {
         "source": _text(getattr(lead, "source", None)) or "recruitment_application",
@@ -743,15 +734,13 @@ async def run_transfer_to_employment(
                 f"Package must not contain {key}",
             )
 
-    # Ensure stage gate for create_handoff reuse.
+    # Handoff does not invent the funnel stage. ready_for_handoff is reached
+    # only when recruitment readiness already allowed that stage change.
     stage = _text(getattr(candidate, "stage", None)).lower()
     if stage not in {"ready_for_handoff", "ready_for_hr"}:
-        transition_candidate_stage(
-            db,
-            candidate,
-            "ready_for_handoff",
-            actor_id=actor,
-            reason="ready_for_employment_transfer",
+        raise RsoOrchestratorError(
+            "recruitment_readiness_required",
+            "Candidate must already be at ready_for_handoff before transfer",
         )
 
     dest = _text(destination) or "internal_hr"

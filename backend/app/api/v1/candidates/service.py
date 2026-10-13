@@ -172,8 +172,19 @@ async def _enforce_docs_ready_for_handoff_stage(
     stage_code = str(target_stage_code or "").strip().lower()
     if not stage_code:
         return
-    # Same as RODO: on create we run before INSERT — checklist/docs are empty by definition.
+    # Create runs before INSERT. A new candidate cannot start at the handoff stage.
     if not await _candidate_row_exists(db, candidate_id):
+        if stage_code in {_READY_FOR_HANDOFF_STAGE, "ready_for_hr"}:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "handoff_stage_not_on_create",
+                    "message": (
+                        "Кандидат входит в подбор со статусом «Новый». "
+                        "«Готов к передаче» ставится только после проверки готовности."
+                    ),
+                },
+            )
         return
 
     from backend.app.process_engine.constants import RECRUITMENT_MODULE

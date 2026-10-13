@@ -46,11 +46,10 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
     application,
     patching,
     busy,
-    onCreateCandidate: _onCreateCandidate,
+    onCreateCandidate,
     onFollowUp,
     onReject,
     onPool,
-    onTransferToEmployment,
     onRunFits,
     t,
   } = args
@@ -65,42 +64,19 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
   const prep = applicationReadyForEmploymentPrep(application)
   const nextAction = String(prep?.next_action || '').trim()
   const intakeNextAction = String(application.next_action || '').trim()
-  const handedOff = Boolean(prep?.handoff_id) || nextAction === 'handed_off'
 
-  if (handedOff) {
+  // «Подходит» creates a candidate at stage new.
+  if (candidateHref) {
     return {
-      stateId: 'recruitment.handed_off',
-      currentState: t('app.recruitment_inquiry.rso.handed_off_title', {
-        defaultValue: 'Передано на трудоустройство',
-      }),
-      why: t('app.recruitment_inquiry.rso.handed_off_body', {
-        defaultValue: 'Recruitment completed. Employment continues with the same person.',
-      }),
-      primaryAction: null,
-      requiredContext: [],
-      variant: 'success',
-    }
-  }
-
-  if (nextAction === 'offer_handoff' && onTransferToEmployment) {
-    return {
-      stateId: 'recruitment.offer_handoff',
-      currentState: t('app.recruitment_inquiry.rso.ready_label', {
-        defaultValue: 'Готов к передаче на трудоустройство',
-      }),
-      why: t('app.recruitment_inquiry.rso.ready_body', {
-        defaultValue: 'Пакет Ready for employment собран. Нажмите, чтобы передать на трудоустройство.',
-      }),
+      stateId: 'recruitment.candidate_created',
+      currentState: t('app.recruitment_inquiry.outcome_title'),
+      why: t('app.recruitment_inquiry.outcome_body'),
       primaryAction: {
-        id: 'transfer_to_employment',
-        label: t('app.recruitment_inquiry.rso.transfer', {
-          defaultValue: 'Передать на трудоустройство',
-        }),
-        onClick: onTransferToEmployment,
-        disabled,
+        id: 'open_candidate',
+        label: t('app.candidates.detail.open_full_profile'),
+        href: candidateHref,
       },
-      secondaryActions: [],
-      requiredContext: [],
+      requiredContext: ['outcome'],
       variant: 'success',
     }
   }
@@ -144,56 +120,35 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
     }
   }
 
-  if (nextAction === 'ask_recruitment_missing') {
-    const missing = Array.isArray(prep?.recruitment_missing) ? prep.recruitment_missing : []
-    const labels = missing
-      .map((row) => {
-        const r = asRecord(row)
-        return String(r?.label || r?.field_code || '').trim()
-      })
-      .filter(Boolean)
-    return {
-      stateId: 'recruitment.ask_missing',
-      currentState: t('app.recruitment_inquiry.rso.missing_title', {
-        defaultValue: 'Нужны данные Recruitment',
-      }),
-      why: labels.length
-        ? labels.join(', ')
-        : t('app.recruitment_inquiry.rso.missing_body', {
-            defaultValue: 'Заполните только то, что нужно для Fits и пакета.',
-          }),
-      primaryAction: onRunFits
-        ? {
-            id: 'retry_fits',
-            label: t('app.recruitment_inquiry.rso.retry_fits', { defaultValue: 'Проверить снова' }),
-            onClick: onRunFits,
-            disabled,
-          }
-        : null,
-      requiredContext: ['recruitment_missing'],
-      variant: 'blocker',
-    }
-  }
-
-  // Intake Readiness: inbound Application with Fits as the one next action.
+  // Intake Readiness: «Подходит» creates the candidate at stage new.
   const call = asRecord(application.extensions?.call_result_v1)
   const interested = String(call?.result || '').trim() === 'interested'
   const vacancyKnown = Boolean(String(application.extensions?.vacancy_id || '').trim())
-  if (intakeNextAction === 'fits' && onRunFits && !prep) {
-    return {
-      stateId: 'recruitment.fits_from_intake',
-      currentState: t('app.recruitment_inquiry.rso.fits_pending_title', {
-        defaultValue: 'Подходит — подготовка',
-      }),
-      why: t('app.recruitment_inquiry.rso.fits_from_intake_body', {
-        defaultValue: 'Отклик готов. Следующий шаг — Подходит.',
-      }),
-      primaryAction: {
+  const convertToCandidate = onCreateCandidate
+    ? {
         id: 'run_fits',
         label: t('app.recruitment_inquiry.rso.run_fits', { defaultValue: 'Подходит' }),
-        onClick: onRunFits,
+        onClick: onCreateCandidate,
         disabled,
-      },
+      }
+    : onRunFits
+      ? {
+          id: 'run_fits',
+          label: t('app.recruitment_inquiry.rso.run_fits', { defaultValue: 'Подходит' }),
+          onClick: onRunFits,
+          disabled,
+        }
+      : null
+  if ((intakeNextAction === 'fits' || interested) && convertToCandidate) {
+    return {
+      stateId: 'recruitment.fits_to_candidate',
+      currentState: t('app.recruitment_inquiry.rso.fits_to_candidate_title', {
+        defaultValue: 'Подходит',
+      }),
+      why: t('app.recruitment_inquiry.rso.fits_to_candidate_body', {
+        defaultValue: 'Отклик переходит в кандидата со статусом «Новый».',
+      }),
+      primaryAction: convertToCandidate,
       secondaryActions: [
         { id: 'follow_up', label: t('app.recruitment_inquiry.follow_up'), onClick: onFollowUp, disabled },
         {
@@ -206,52 +161,6 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
       ],
       requiredContext: vacancyKnown ? [] : ['vacancy'],
       variant: 'default',
-    }
-  }
-
-  // After Fits interest without prep yet — prefer Fits intent over Create candidate.
-  if (interested && onRunFits && !prep) {
-    return {
-      stateId: 'recruitment.fits_pending',
-      currentState: t('app.recruitment_inquiry.rso.fits_pending_title', {
-        defaultValue: 'Подходит — подготовка',
-      }),
-      why: t('app.recruitment_inquiry.rso.fits_pending_body', {
-        defaultValue: 'Запускается подготовка пакета Ready for employment.',
-      }),
-      primaryAction: {
-        id: 'run_fits',
-        label: t('app.recruitment_inquiry.rso.run_fits', { defaultValue: 'Подходит' }),
-        onClick: onRunFits,
-        disabled,
-      },
-      secondaryActions: [
-        { id: 'follow_up', label: t('app.recruitment_inquiry.follow_up'), onClick: onFollowUp, disabled },
-        {
-          id: 'reject',
-          label: t('app.recruitment_inquiry.reject'),
-          onClick: onReject,
-          variant: 'danger',
-          disabled,
-        },
-      ],
-      requiredContext: vacancyKnown ? [] : ['vacancy'],
-      variant: 'default',
-    }
-  }
-
-  if (candidateHref && !interested) {
-    return {
-      stateId: 'recruitment.candidate_created',
-      currentState: t('app.recruitment_inquiry.outcome_title'),
-      why: t('app.recruitment_inquiry.outcome_body'),
-      primaryAction: {
-        id: 'open_candidate',
-        label: t('app.candidates.detail.open_full_profile'),
-        href: candidateHref,
-      },
-      requiredContext: ['outcome'],
-      variant: 'success',
     }
   }
 
@@ -290,16 +199,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
         }
       : null,
     secondaryActions: [
-      ...(onRunFits
-        ? [
-            {
-              id: 'run_fits',
-              label: t('app.recruitment_inquiry.rso.run_fits', { defaultValue: 'Подходит' }),
-              onClick: onRunFits,
-              disabled,
-            },
-          ]
-        : []),
+      ...(convertToCandidate ? [convertToCandidate] : []),
       { id: 'follow_up', label: t('app.recruitment_inquiry.follow_up'), onClick: onFollowUp, disabled },
       { id: 'pool', label: t('app.recruitment_inquiry.pool'), onClick: onPool, disabled },
       {

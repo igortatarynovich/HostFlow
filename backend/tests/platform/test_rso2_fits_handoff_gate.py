@@ -81,6 +81,8 @@ def test_rso2_orchestrator_source_separates_fits_and_transfer() -> None:
     fits_src = ast.get_source_segment(src, fits_fn) or ""
     assert "create_handoff" not in fits_src
     assert "accept_handoff" not in fits_src
+    assert "transition_candidate_stage" not in fits_src
+    assert "ready_for_handoff" not in fits_src
     assert "Employee" not in fits_src or "never" in fits_src.lower()
     transfer_fn = next(
         n
@@ -90,6 +92,8 @@ def test_rso2_orchestrator_source_separates_fits_and_transfer() -> None:
     transfer_src = ast.get_source_segment(src, transfer_fn) or ""
     assert "create_handoff" in transfer_src
     assert "recruitment_completed" in transfer_src
+    assert "transition_candidate_stage" not in transfer_src
+    assert "recruitment_readiness_required" in transfer_src
 
 
 def test_rso2_recruitment_missing_rejects_employment_codes() -> None:
@@ -200,6 +204,7 @@ async def test_rso2_fits_never_calls_create_handoff() -> None:
         )
 
     create_handoff.assert_not_called()
+    assert cand.stage == "new"
     assert result.created_handoff is False
     assert result.next_action == NEXT_OFFER_HANDOFF
     assert result.package_valid is True
@@ -345,6 +350,60 @@ async def test_rso2_transfer_idempotent_single_handoff_and_audit() -> None:
     assert len(completed_calls) >= 1
     assert TRANSFER_OPERATOR_ACTION
     assert CONTRACT_ID == "ready_for_employment.v1"
+
+
+@pytest.mark.asyncio
+async def test_rso2_transfer_does_not_invent_ready_for_handoff() -> None:
+    lead = SimpleNamespace(
+        id="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        lead_type="candidate",
+        lead_target_type="candidate",
+        vacancy_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        candidate_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        company_id="cccccccc-cccc-cccc-cccc-cccccccccccc",
+        source="meta",
+        external_id="ext-1",
+        normalized={
+            PREP_KEY: {
+                "next_action": NEXT_OFFER_HANDOFF,
+                "package_valid": True,
+                "fits_decision": {
+                    "decision": "fits",
+                    "decided_at": "2026-09-09T10:00:00+00:00",
+                    "actor_id": "actor-1",
+                },
+            },
+            "call_result_v1": {"result": "interested"},
+        },
+    )
+    cand = SimpleNamespace(
+        id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        first_name="Ada",
+        last_name="Lovelace",
+        vacancy_id=lead.vacancy_id,
+        company_id=lead.company_id,
+        stage="new",
+        _get_personal_data=lambda: {"citizenship": "UA"},
+    )
+    vac = SimpleNamespace(id=lead.vacancy_id, company_id=lead.company_id, title="CE", tenant_id="t1")
+    db = AsyncMock()
+    db.get = AsyncMock(side_effect=lambda model, pk: cand if pk == cand.id else vac if pk == vac.id else None)
+
+    with (
+        patch.object(orch.crud, "get_lead", AsyncMock(return_value=lead)),
+        patch.object(orch, "_load_vacancy", AsyncMock(return_value=vac)),
+    ):
+        with pytest.raises(orch.RsoOrchestratorError) as ei:
+            await run_transfer_to_employment(
+                db,
+                tenant_id="t1",
+                application_id=str(lead.id),
+                actor_id="actor-1",
+                client_company_id=lead.company_id,
+            )
+
+    assert ei.value.code == "recruitment_readiness_required"
+    assert cand.stage == "new"
 
 
 def test_rso2_brief_and_ci_wire_gate() -> None:

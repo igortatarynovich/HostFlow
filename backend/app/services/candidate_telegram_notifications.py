@@ -366,7 +366,23 @@ async def sync_candidate_ready_for_handoff_gate(
     if current_stage == "ready_for_handoff":
         return False
 
+    from backend.app.process_engine.constants import RECRUITMENT_MODULE
+    from backend.app.process_engine.evaluator_adapter import TransitionEvaluatorAdapter
+
+    blocked = await TransitionEvaluatorAdapter.assert_transition_allowed(
+        db,
+        tenant_id=str(tenant_id),
+        module=RECRUITMENT_MODULE,
+        entity_type="candidate",
+        entity_id=str(candidate.id),
+        target_system_stage="ready_for_handoff",
+        require_destination=False,
+    )
+    if blocked:
+        return False
+
     now = datetime.now(timezone.utc)
+    prev_stage = current_stage
     transition_candidate_stage(
         db,
         candidate,

@@ -224,6 +224,7 @@ class ApplicationFitsResult(BaseModel):
         "confirm_probable_duplicate",
         "ask_vacancy",
         "not_fits",
+        "candidate_created",
     ]
     package_valid: bool = False
     package: Optional[Dict[str, Any]] = None

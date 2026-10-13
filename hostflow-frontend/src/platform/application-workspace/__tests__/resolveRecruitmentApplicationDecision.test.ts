@@ -48,19 +48,21 @@ describe('resolveRecruitmentApplicationDecision', () => {
     expect(decision.requiredContext).toEqual([])
   })
 
-  it('makes Fits the primary action when intake next_action is fits', () => {
-    const onRunFits = vi.fn()
+  it('makes Подходит the primary action when intake next_action is fits', () => {
+    const onCreateCandidate = vi.fn()
     const decision = resolveRecruitmentApplicationDecision({
       ...handlers,
-      onRunFits,
+      onCreateCandidate,
       application: app({
         next_action: 'fits',
         extensions: { vacancy_id: 'vac-1' },
       }),
     })
-    expect(decision.stateId).toBe('recruitment.fits_from_intake')
+    expect(decision.stateId).toBe('recruitment.fits_to_candidate')
     expect(decision.primaryAction?.id).toBe('run_fits')
+    expect(decision.primaryAction?.onClick).toBe(onCreateCandidate)
     expect(decision.secondaryActions?.map((row) => row.id)).toEqual(['follow_up', 'reject'])
+    expect(decision.secondaryActions?.some((row) => row.id === 'transfer_to_employment')).toBeFalsy()
   })
 
   it('does not offer convert when the application is already a candidate', () => {
@@ -77,7 +79,7 @@ describe('resolveRecruitmentApplicationDecision', () => {
     expect(decision.secondaryActions?.some((row) => row.id === 'create_candidate')).toBeFalsy()
   })
 
-  it('offers transfer after Fits prep, without create_candidate', () => {
+  it('opens the candidate instead of offering employment transfer', () => {
     const onTransfer = vi.fn()
     const decision = resolveRecruitmentApplicationDecision({
       ...handlers,
@@ -93,13 +95,12 @@ describe('resolveRecruitmentApplicationDecision', () => {
         },
       }),
     })
-    expect(decision.stateId).toBe('recruitment.offer_handoff')
-    expect(decision.primaryAction?.id).toBe('transfer_to_employment')
-    expect(decision.secondaryActions?.some((row) => row.id === 'create_candidate')).toBeFalsy()
-    expect(decision.secondaryActions?.some((row) => row.id === 'open_candidate')).toBeFalsy()
+    expect(decision.stateId).toBe('recruitment.candidate_created')
+    expect(decision.primaryAction?.id).toBe('open_candidate')
+    expect(decision.primaryAction?.id).not.toBe('transfer_to_employment')
   })
 
-  it('stays on the same card after Transfer instead of open_candidate', () => {
+  it('opens the candidate after a previous handoff record', () => {
     const decision = resolveRecruitmentApplicationDecision({
       ...handlers,
       application: app({
@@ -115,9 +116,8 @@ describe('resolveRecruitmentApplicationDecision', () => {
         },
       }),
     })
-    expect(decision.stateId).toBe('recruitment.handed_off')
-    expect(decision.primaryAction).toBeNull()
-    expect(decision.terminal).toBeFalsy()
+    expect(decision.stateId).toBe('recruitment.candidate_created')
+    expect(decision.primaryAction?.id).toBe('open_candidate')
   })
 })
 

@@ -527,6 +527,10 @@ async def update_candidate(db: AsyncSession, candidate_id: str, data: Dict[str, 
             transition_candidate_stage,
         )
 
+        if str(requested_stage).strip().lower() in {"ready_for_handoff", "ready_for_hr"}:
+            raise ValueError(
+                "ready_for_handoff is set only through the recruitment readiness gate"
+            )
         current = await db.get(Candidate, candidate_id)
         if current is not None:
             transition_candidate_stage(

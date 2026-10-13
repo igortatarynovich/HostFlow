@@ -460,6 +460,42 @@ async def recruitment_confirm_vacancy(
     return await _reload_recruitment(db, tenant_id, application_id)
 
 
+async def _restore_stage_after_premature_employment_fits(db: AsyncSession, candidate_id: str) -> None:
+    """Undo a Fits click that jumped a new person straight to ready_for_handoff."""
+    from sqlalchemy import select
+
+    from backend.app.models.candidate import Candidate
+    from backend.app.models.candidate_stage_history import CandidateStageHistory
+    from backend.app.services.candidate_stage_history_integrity import transition_candidate_stage
+
+    candidate = await db.get(Candidate, candidate_id)
+    if candidate is None:
+        return
+    stage = str(getattr(candidate, "stage", "") or "").strip().lower()
+    if stage != "ready_for_handoff":
+        return
+    row = await db.execute(
+        select(CandidateStageHistory)
+        .where(CandidateStageHistory.candidate_id == str(candidate.id))
+        .order_by(CandidateStageHistory.at.desc())
+        .limit(1)
+    )
+    last = row.scalar_one_or_none()
+    if last is None or str(getattr(last, "reason", "") or "") != "ready_for_employment_fits":
+        return
+    if str(getattr(last, "to_code", "") or "") != "ready_for_handoff":
+        return
+    target = str(getattr(last, "from_code", "") or "").strip() or "new"
+    transition_candidate_stage(
+        db,
+        candidate,
+        target,
+        actor_id="system",
+        reason="application_becomes_candidate",
+    )
+    candidate.status = target
+
+
 async def recruitment_process_application(
     db: AsyncSession,
     *,
@@ -525,9 +561,19 @@ async def recruitment_process_application(
     except service.LeadProcessingError as exc:
         raise service.lead_processing_error_as_http(exc) from exc
 
+    lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
+    if lead is not None:
+        norm = dict(getattr(lead, "normalized", None) or {})
+        if "ready_for_employment_prep_v1" in norm:
+            norm.pop("ready_for_employment_prep_v1", None)
+            lead.normalized = norm
+            flag_modified(lead, "normalized")
+    candidate_id = str(result.candidate_id) if getattr(result, "candidate_id", None) else None
+    if candidate_id:
+        await _restore_stage_after_premature_employment_fits(db, candidate_id)
+
     await db.commit()
     app = await _reload_recruitment(db, tenant_id, application_id)
-    candidate_id = str(result.candidate_id) if getattr(result, "candidate_id", None) else None
     return ApplicationProcessResult(application=app, candidate_id=candidate_id, message=getattr(result, "error", None))
 
 
@@ -640,44 +686,21 @@ async def recruitment_fits_prep(
     application_id: str,
     current_user: UserCtx,
 ) -> ApplicationFitsResult:
-    """RSO-2 Fits: auto recruitment prep. Does not create handoff / Employee."""
-    from backend.app.modules.recruitment.services.ready_for_employment_orchestrator import (
-        READY_LABEL,
-        RsoOrchestratorError,
-        run_fits_prep,
+    """«Подходит» creates a candidate at stage new. It does not start employment."""
+    processed = await recruitment_process_application(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        application_id=application_id,
+        current_user=current_user,
     )
-    from backend.app.reference.ready_for_employment import TRANSFER_OPERATOR_ACTION
-
-    actor_id = str(current_user.sub or "").strip() or tenant_id
-    try:
-        result = await run_fits_prep(
-            db,
-            tenant_id=tenant_id,
-            own_company_id=own_company_id or None,
-            application_id=application_id,
-            actor_id=actor_id,
-            current_user=current_user,
-        )
-    except RsoOrchestratorError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
-        ) from exc
-    await db.commit()
-    app = await _reload_recruitment(db, tenant_id, application_id)
     return ApplicationFitsResult(
-        application=app,
-        next_action=result.next_action,  # type: ignore[arg-type]
-        package_valid=result.package_valid,
-        package=result.package,
-        package_fingerprint=result.package_fingerprint,
-        recruitment_missing=result.recruitment_missing,
-        probable_duplicate=result.probable_duplicate,
-        vacancy_prompt=result.vacancy_prompt,
-        ready_label=READY_LABEL if result.next_action == "offer_handoff" else None,
-        transfer_action=TRANSFER_OPERATOR_ACTION if result.next_action == "offer_handoff" else None,
-        candidate_id=result.candidate_id,
-        message=result.message,
+        application=processed.application,
+        next_action="candidate_created",
+        package_valid=False,
+        recruitment_missing=[],
+        candidate_id=processed.candidate_id,
+        message="Кандидат создан. Статус: Новый.",
     )
 
 
@@ -689,63 +712,17 @@ async def recruitment_transfer_to_employment(
     payload: ApplicationTransferIn,
     current_user: UserCtx,
 ) -> ApplicationTransferResult:
-    """RSO-2 Transfer, then Employment auto-init for internal HR.
-
-    Recruitment emit stays in ``run_transfer_to_employment``. Accept is applied
-    here, outside ``create_handoff``, the same way ``create_handoff_route`` does.
-    """
-    from backend.app.modules.recruitment.services.ready_for_employment_orchestrator import (
-        RsoOrchestratorError,
-        run_transfer_to_employment,
-    )
-
-    actor_id = str(current_user.sub or "").strip() or tenant_id
-    try:
-        result = await run_transfer_to_employment(
-            db,
-            tenant_id=tenant_id,
-            application_id=application_id,
-            actor_id=actor_id,
-            destination=payload.destination,
-            client_company_id=payload.client_company_id,
-            client_tenant_id=payload.client_tenant_id,
-        )
-    except RsoOrchestratorError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
-        ) from exc
-
-    dest = (payload.destination or "internal_hr").strip().lower()
-    if dest == "internal_hr" and result.handoff_id:
-        from backend.app.services.employment_accept_orchestrator import (
-            EmploymentAcceptError,
-            apply_employment_accept_after_transfer,
-        )
-
-        try:
-            await apply_employment_accept_after_transfer(
-                db,
-                tenant_id=tenant_id,
-                handoff_id=str(result.handoff_id),
-                actor_id=actor_id,
-                destination=dest,
-            )
-        except EmploymentAcceptError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={"code": exc.code, "message": exc.message, **({"details": exc.details} if exc.details else {})},
-            ) from exc
-
-    await db.commit()
-    app = await _reload_recruitment(db, tenant_id, application_id)
-    return ApplicationTransferResult(
-        application=app,
-        handoff_id=result.handoff_id,
-        package=result.package,
-        package_fingerprint=result.package_fingerprint,
-        created=result.created,
-        message=result.message,
+    """Applications stay in recruitment until they become candidates."""
+    del db, tenant_id, application_id, payload, current_user
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": "application_not_employment_ready",
+            "message": (
+                "Отклик нельзя передать на трудоустройство. "
+                "Сначала переведите его в кандидата и соберите данные с документами в карточке."
+            ),
+        },
     )
 
 
