@@ -1,0 +1,20 @@
+---
+description: HostFlow documentation governance. Applies when creating or editing markdown.
+globs: "**/*.md"
+alwaysApply: false
+---
+
+# Documentation
+
+Placement and hierarchy live in `docs/governance/`. This file is the short form.
+
+- L1 canon beats L2. L2 beats L3. L1 must not cite L3 as canon.
+- A new architecture decision is an ADR at `docs/specs/architecture/ADR-NNN-<slug>.md`. It references L0. It does not rewrite L0. L0 changes only through an Architecture RFC.
+- A new workflow is registered in `docs/specs/workflows/index.md`.
+- A platform phase brief sets `Phase class: platform` and includes `Original Goal → Completion Proof`.
+- A module behavior change updates `docs/<module>/module-scope.md` and `docs/specs/modules/<module>.md` together.
+- Do not add specs at the repo root or under `docs/_drafts/`.
+- An archived document has a canon replacement in `archive/legacy/YYYY-MM-DD/README.md`.
+- `Supersedes: ADR-NNN` requires `Status: Superseded by ADR-MMM` on ADR-NNN.
+- A logic or model change updates the matching document under `docs/specs/`.
+- Run `make docs-lint` and report the result. Do not claim it passed without running it.

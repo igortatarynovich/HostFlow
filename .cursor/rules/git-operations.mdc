@@ -1,0 +1,17 @@
+---
+description: HostFlow git, worktree, and pull request operations. Use when creating a branch, worktree, commit, or pull request, or when asked to push.
+alwaysApply: false
+---
+
+# Git operations
+
+Source: `docs/governance/repository-operational-canon.md`.
+
+- The trusted base is `integration/release-product-a-b`, fast-forward only.
+- Product work happens in a worktree. Keep the main checkout on the trusted base.
+- One concern per pull request.
+- `/tmp` and `recovery/*` are not a source of truth.
+- Commit only when the user asks. Message shape: `scope: summary`.
+- Do not push unless the user asks.
+- Before a product pull request, `make repo-health` is green.
+- A pull request states the change, the checks that were run, and any blocking migration.

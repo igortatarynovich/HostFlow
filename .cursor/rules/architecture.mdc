@@ -1,0 +1,22 @@
+---
+description: HostFlow ownership, L0, and module boundaries. Applies when editing backend modules, frontend modules, ownership cards, or architecture specs.
+globs: backend/app/**/*.py,hostflow-frontend/src/modules/**/*.ts,hostflow-frontend/src/modules/**/*.tsx,docs/modules/**/*.md,docs/specs/architecture/**/*.md
+alwaysApply: false
+---
+
+# Architecture boundaries
+
+Canon lives in `docs/specs/architecture/`. Do not restate it.
+
+- Do not override L0, a contract, an ownership boundary, or an accepted gate. An L0 change needs an Architecture RFC or `l0-errata` plus the canon owner's approval.
+- Do not rewrite the L0 Catalog. A naming change needs an Architecture RFC.
+- Do not reopen a closed program.
+- No new local reference dictionary: document types, countries, citizenships, permits, visas, statuses, field registries, or normalization tables. Shared reference data comes from the Platform Reference Layer.
+- Modules communicate through facade, delivery, API, event, and typed DTO contracts. No cross-module service, repository, CRUD, or internal helper imports.
+- A new domain needs an ownership card before code: domain, owner, source of truth, consumers, delivery contract, versioning, override policy, enforcement. Template: `docs/modules/_template/`.
+- Keep a business rule in its module. Promote it only when two independent modules require it, or it is a mandatory platform contract.
+- Order for a new capability: ownership, reference, contract, enforcement, runtime.
+- The system layer holds shared language, catalogs, schemas, and boundaries. It does not hold module workflows, scoring, approvals, eligibility decisions, or checklists.
+- A module must not become the source of truth for a platform concept.
+- If the canonical system cannot satisfy the change, stop and report the gap.
+- Module, capability, or contract changes: answer `docs/specs/architecture/architecture-review-checklist.md` before treating the work as done.

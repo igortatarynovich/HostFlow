@@ -1,0 +1,16 @@
+---
+description: Cursor Cloud local Postgres, ports, and Python pins. Use when starting the API or frontend, installing Python packages, running Alembic, or running pytest in Cursor Cloud.
+alwaysApply: false
+---
+
+# Cursor Cloud
+
+This environment uses local PostgreSQL, not docker compose.
+
+- PostgreSQL 16 listens on `localhost:5432`, role and database `hostflow`. If it is down: `sudo pg_ctlcluster 16 main start`.
+- API: `make up` on port 8000. It reads the repo-root `.env`.
+- Frontend: `cd hostflow-frontend && npm run dev` on port 5173.
+- Requests need `X-Tenant-Id` and `Authorization: Bearer`. The seeded admin login is in `docs/runbooks/rb-2-migrate-and-bootstrap.md`. Do not copy secrets into rules or commits.
+- `.env` must point `DATABASE_URL`, `ASYNC_DATABASE_URL`, `SYNC_DATABASE_URL`, and `ALEMBIC_DATABASE_URL` at `localhost`. Makefile defaults use the docker hostname `db`.
+- Do not upgrade FastAPI or prometheus-fastapi-instrumentator past `fastapi==0.115.6` and `prometheus-fastapi-instrumentator==7.0.0` with Starlette 0.41. `pip install -U fastapi` makes every request return 500.
+- Pytest from `backend/` needs `PYTHONPATH` to include the repo root and `backend/`, plus a reachable Postgres. Public intake tests fail without that database.

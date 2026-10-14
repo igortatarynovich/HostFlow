@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/enforce.py",
+        "timeout": 45
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": ".cursor/hooks/enforce.py",
+        "matcher": "Write|StrReplace",
+        "timeout": 45
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/enforce.py",
+        "matcher": "\\bpip3? install|\\bpython3? -m pip install",
+        "timeout": 10
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/enforce.py",
+        "timeout": 60,
+        "loop_limit": 1
+      }
+    ]
+  }
+}

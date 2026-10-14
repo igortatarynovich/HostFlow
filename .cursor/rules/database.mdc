@@ -1,0 +1,14 @@
+---
+description: Alembic, schema changes, and seeds. Applies when editing migrations, SQLAlchemy models, or seed scripts.
+globs: backend/alembic/**/*.py,backend/app/models/**/*.py,backend/app/db/seeds/**/*.py
+alwaysApply: false
+---
+
+# Database
+
+- Procedure: `docs/runbooks/rb-2-migrate-and-bootstrap.md` and `docs/specs/tasks/operate-launch-ol2c-ci-parity.md`. Do not invent a second migration procedure.
+- Run Alembic from the repo root: `alembic -c alembic.ini upgrade heads`. `backend/alembic.ini` is a shim. The documents module has a separate graph.
+- Revision files belong only in `backend/alembic/versions`. Do not copy them to another directory.
+- Do not hand-edit schema (`ALTER TYPE`, column defaults, `alembic_version`). Change schema through a revision.
+- A schema change updates `backend/app/db/seeds` when seed or test data depends on the new shape.
+- New and changed rows include `tenant_id`.

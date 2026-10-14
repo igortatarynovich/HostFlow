@@ -1,0 +1,14 @@
+---
+description: HostFlow UI composition and ADR-011. Applies when editing frontend TypeScript, TSX, or CSS.
+globs: hostflow-frontend/**/*.ts,hostflow-frontend/**/*.tsx,hostflow-frontend/**/*.css
+alwaysApply: false
+---
+
+# Frontend UI
+
+- Reuse system primitives. Do not create a second UI system: spacing, fonts, radius, buttons, inputs, list shells, or semantic colors. Standard: `docs/specs/architecture/ADR-011-hostflow-ui-platform-standard.md`.
+- Functional components. PascalCase components. camelCase hooks and helpers.
+- Keep Tailwind utilities in the `tsx` file that uses them.
+- Do not add a local task, note, document, status, dictionary, form-control, or styling system. Compose existing primitives.
+- A new route gets a test. Do not restyle unrelated screens.
+- The layout check is `node scripts/check-adr011-ui-patterns.mjs --fail` from `hostflow-frontend`. There is no `ui:adr011:check` script in `package.json`.

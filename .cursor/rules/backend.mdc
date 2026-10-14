@@ -1,0 +1,16 @@
+---
+description: HostFlow FastAPI conventions, tests, tenant isolation, and security events. Applies when editing backend Python.
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Backend
+
+- Routes live in `backend/app/api/v1`. Models live in `backend/app/models`. Services live in `backend/app/services`. Tests live in `backend/tests`.
+- Python uses 4-space indent, type hints, and snake_case. Format with ruff. Order imports with isort, profile black.
+- Name tests `test_<feature>.py`. Assert status codes and payload shapes. A new route gets an integration test.
+- `backend/tests/api/test_public_intake.py` needs a reachable Postgres.
+- Every query respects tenant isolation. The session sets `app.tenant_id`. Rows carry `tenant_id`. RLS is enabled.
+- New security events go through `emit_security_event_v1` only. Do not call legacy `emit_security_event(`.
+- API, RLS, export, webhook, public-link, portal, or handoff changes: complete `docs/security/security-review-checklist.md`.
+- Do not import another module's services, repositories, or internal helpers.
