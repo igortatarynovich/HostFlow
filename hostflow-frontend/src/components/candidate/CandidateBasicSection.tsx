@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react'
+import { memo, useState, useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { IconUserCircle } from '@tabler/icons-react'
 import type { Candidate, CandidateExtra } from '../../api/types'
@@ -8,6 +8,7 @@ import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import { useI18n } from '../../i18n'
 import { CandidateProcessControls } from './card/CandidateProcessControls'
 import { Input, SearchableSelect } from './shared/FormComponents'
+import { FieldGrid } from '../ui/FieldGrid'
 import { InlineFieldRow } from '../ui/InlineFieldRow'
 import { translateStageLabel } from '../../utils/stageLabels'
 import { validateEmail, validatePhone } from '../../utils/validation'
@@ -66,6 +67,8 @@ interface CandidateBasicSectionProps {
   onRequestUnlock?: () => void
   /** Split identity from contact so each section can sit in its own card. */
   part?: 'identity' | 'contact'
+  /** Join the parent FieldGrid instead of opening a second column grid. */
+  flow?: boolean
 }
 
 function CandidateBasicSection({
@@ -101,6 +104,7 @@ function CandidateBasicSection({
   rowEdit = false,
   onRequestUnlock,
   part,
+  flow = false,
 }: CandidateBasicSectionProps) {
   const { t } = useI18n()
   const [openField, setOpenField] = useState<string | null>(null)
@@ -109,6 +113,7 @@ function CandidateBasicSection({
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [emailTouched, setEmailTouched] = useState(false)
   const [phoneTouched, setPhoneTouched] = useState(false)
+  const snapshot = useRef<{ candidate: Candidate; extra: CandidateExtra } | null>(null)
 
   const stageLabelIntl = stageLabelIntlProp ?? ((code: string) => {
     const fallback = meta?.labels?.[code] || code
@@ -118,16 +123,29 @@ function CandidateBasicSection({
   const fieldRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
   const fieldLabel = (fieldKey: string, defaultLabel: string) =>
     getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
+  const captureRow = () => {
+    snapshot.current = { candidate, extra }
+  }
   const beginRow = (key: string) => {
     if (candidateDataReadOnly) {
       setPendingField(key)
       onRequestUnlock?.()
       return
     }
+    captureRow()
     setOpenField(key)
+  }
+  const cancelRow = () => {
+    const snap = snapshot.current
+    if (snap) {
+      onModelChange(() => snap.candidate)
+      onExtraChange(snap.extra)
+    }
+    setOpenField(null)
   }
   useEffect(() => {
     if (!candidateDataReadOnly && pendingField) {
+      captureRow()
       setOpenField(pendingField)
       setPendingField(null)
     }
@@ -176,8 +194,8 @@ function CandidateBasicSection({
     const showIdentity = part !== 'contact'
     const showContact = part !== 'identity'
     return (
-      <Container ref={part === 'contact' ? undefined : basicRef} id={part === 'contact' ? undefined : 'section-basic'} className="scroll-mt-24">
-        <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+      <Container ref={part === 'contact' ? undefined : basicRef} id={part === 'contact' ? undefined : 'section-basic'} className={flow ? 'contents' : 'scroll-mt-24'}>
+        <FieldGrid dense flow={flow}>
           {showIdentity && (!candidateProfile || fieldVisible('first_name')) ? (
             <InlineFieldRow
               label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
@@ -186,10 +204,11 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('first_name')}
               onDone={() => setOpenField(null)}
+              onCancel={cancelRow}
             >
               <Input
-                label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
                 value={candidate.first_name}
+                aria-label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
                 onChange={(e) => onModelChange((m) => ({ ...m, first_name: e.target.value }))}
                 readOnly={rowLocked('first_name')}
                 required={fieldRequired('first_name')}
@@ -204,10 +223,11 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('last_name')}
               onDone={() => setOpenField(null)}
+              onCancel={cancelRow}
             >
               <Input
-                label={fieldLabel('last_name', t('app.candidate_card.fields.last_name'))}
                 value={candidate.last_name}
+                aria-label={fieldLabel('last_name', t('app.candidate_card.fields.last_name'))}
                 onChange={(e) => onModelChange((m) => ({ ...m, last_name: e.target.value }))}
                 readOnly={rowLocked('last_name')}
                 required={fieldRequired('last_name')}
@@ -222,9 +242,10 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('birth_date')}
               onDone={() => setOpenField(null)}
+              onCancel={cancelRow}
             >
               <Input
-                label={fieldLabel('birth_date', t('app.candidate_card.fields.birth_date'))}
+                aria-label={fieldLabel('birth_date', t('app.candidate_card.fields.birth_date'))}
                 type="date"
                 value={(extra.birth_date as string) || ''}
                 onChange={(e) => onExtraChange({ birth_date: e.target.value })}
@@ -241,9 +262,9 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('phone')}
               onDone={() => setOpenField(null)}
+              onCancel={cancelRow}
               wide
             >
-              <div className="label">{fieldLabel('phone', t('app.candidate_card.fields.phone'))}</div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                 <div className="sm:w-56">
                   <SearchableSelect
@@ -288,9 +309,10 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('phone_additional')}
               onDone={() => setOpenField(null)}
+              onCancel={cancelRow}
             >
               <Input
-                label={t('app.candidate_card.fields.phone_additional', { defaultValue: 'Additional phone' })}
+                aria-label={t('app.candidate_card.fields.phone_additional', { defaultValue: 'Additional phone' })}
                 value={(extra as { phone_additional?: string | null }).phone_additional || ''}
                 onChange={(e) => onExtraChange({ phone_additional: e.target.value } as Partial<CandidateExtra>)}
                 readOnly={rowLocked('phone_additional')}
@@ -305,9 +327,10 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('email')}
               onDone={() => setOpenField(null)}
+              onCancel={cancelRow}
             >
               <Input
-                label={fieldLabel('email', t('app.candidate_card.fields.email'))}
+                aria-label={fieldLabel('email', t('app.candidate_card.fields.email'))}
                 type="email"
                 value={candidate.email || ''}
                 onChange={(e) => {
@@ -332,11 +355,11 @@ function CandidateBasicSection({
               canEdit={canEdit}
               onEdit={() => beginRow('preferred_contact')}
               onDone={() => setOpenField(null)}
+              onCancel={cancelRow}
             >
-              <label className="block">
-                <div className="label">{fieldLabel('preferred_contact', t('app.candidate_card.fields.preferred_contact'))}</div>
-                <select
-                  className="input max-w-md"
+              <select
+                  className="input"
+                  aria-label={fieldLabel('preferred_contact', t('app.candidate_card.fields.preferred_contact'))}
                   value={(extra.preferred_contact as PreferredContact) || ''}
                   disabled={rowLocked('preferred_contact')}
                   onChange={(e) => onExtraChange({ preferred_contact: e.target.value as PreferredContact })}
@@ -345,12 +368,11 @@ function CandidateBasicSection({
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
-              </label>
             </InlineFieldRow>
           ) : null}
-        </div>
+        </FieldGrid>
         {showIdentity && (hasCyrillic(candidate.first_name) || hasCyrillic(candidate.last_name)) ? (
-          <p className="mt-2 text-xs text-amber-700">{t('app.candidate_card.hint.cyrillic_translit')}</p>
+          <p className="mt-2 text-xs text-amber-700 md:col-span-2">{t('app.candidate_card.hint.cyrillic_translit')}</p>
         ) : null}
       </Container>
     )
@@ -389,6 +411,7 @@ function CandidateBasicSection({
                 canEdit={canEdit}
                 onEdit={() => beginRow('first_name')}
                 onDone={() => setOpenField(null)}
+                onCancel={cancelRow}
               >
                 <Input
                   label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
@@ -417,6 +440,7 @@ function CandidateBasicSection({
                 canEdit={canEdit}
                 onEdit={() => beginRow('last_name')}
                 onDone={() => setOpenField(null)}
+                onCancel={cancelRow}
               >
                 <Input
                   label={fieldLabel('last_name', t('app.candidate_card.fields.last_name'))}
@@ -460,6 +484,7 @@ function CandidateBasicSection({
                 canEdit={canEdit}
                 onEdit={() => beginRow('email')}
                 onDone={() => setOpenField(null)}
+                onCancel={cancelRow}
               >
                 <Input
                   label={fieldLabel('email', t('app.candidate_card.fields.email'))}
@@ -509,6 +534,7 @@ function CandidateBasicSection({
                 canEdit={canEdit}
                 onEdit={() => beginRow('phone')}
                 onDone={() => setOpenField(null)}
+                onCancel={cancelRow}
               >
                 {null}
               </InlineFieldRow>

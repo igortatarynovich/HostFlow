@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react'
+import { memo, useState, useCallback, useRef } from 'react'
 import { IconBriefcase2, IconChevronDown } from '@tabler/icons-react'
 import type { CandidateExtra } from '../../api/types'
 import type { RefObject } from 'react'
@@ -7,6 +7,8 @@ import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import DateInput from '../controls/DateInput'
 import { useI18n } from '../../i18n'
 import { Input, CheckboxMultiSelect } from './shared/FormComponents'
+import { ChipFieldEditor } from '../ui/ChipFieldEditor'
+import { FieldGrid } from '../ui/FieldGrid'
 import { InlineFieldRow } from '../ui/InlineFieldRow'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
 import { formatYearsCount } from '../../modules/candidate-card/utils'
@@ -82,6 +84,15 @@ function CandidateExperienceSection({
 }: CandidateExperienceSectionProps) {
   const { t, locale } = useI18n()
   const [openField, setOpenField] = useState<string | null>(null)
+  const snapshot = useRef<CandidateExtra | null>(null)
+  const beginRow = (key: string) => {
+    snapshot.current = extra
+    setOpenField(key)
+  }
+  const cancelRow = () => {
+    if (snapshot.current) onExtraChange(snapshot.current)
+    setOpenField(null)
+  }
   const layoutVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
   const layoutRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
   const layoutLabel = (fieldKey: string, defaultLabel: string) =>
@@ -104,22 +115,21 @@ function CandidateExperienceSection({
     const showMobility = focus !== 'experience'
     const years = (value: unknown) => (typeof value === 'number' && !Number.isNaN(value) ? formatYearsCount(value, locale) : '')
     const labels = (keys: string[] | undefined, options: Option[]) =>
-      (keys || []).map((key) => options.find((item) => item.value === key)?.label || key).join(', ')
+      (keys || []).map((key) => options.find((item) => item.value === key)?.label || key).join(' · ')
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2">
+      <FieldGrid dense>
         {showExperience && (!candidateProfile || layoutVisible('experience_eu_years')) ? (
           <InlineFieldRow
             label={layoutLabel('experience_eu_years', t('app.candidate_card.fields.experience_eu'))}
             value={years(extra.experience_eu_years)}
             editing={openField === 'experience_eu_years'}
             canEdit={!candidateDataReadOnly}
-            onEdit={() => setOpenField('experience_eu_years')}
+            onEdit={() => beginRow('experience_eu_years')}
             onDone={() => setOpenField(null)}
-            column={1}
-            row={1}
+            onCancel={cancelRow}
           >
             <Input
-              label={layoutLabel('experience_eu_years', t('app.candidate_card.fields.experience_eu'))}
+              aria-label={layoutLabel('experience_eu_years', t('app.candidate_card.fields.experience_eu'))}
               type="number"
               value={typeof extra.experience_eu_years === 'number' ? String(extra.experience_eu_years) : ''}
               onChange={(e) => onExperienceChange('experience_eu_years', e.target.value)}
@@ -133,13 +143,12 @@ function CandidateExperienceSection({
             value={years(extra.experience_non_eu_years)}
             editing={openField === 'experience_non_eu_years'}
             canEdit={!candidateDataReadOnly}
-            onEdit={() => setOpenField('experience_non_eu_years')}
+            onEdit={() => beginRow('experience_non_eu_years')}
             onDone={() => setOpenField(null)}
-            column={2}
-            row={1}
+            onCancel={cancelRow}
           >
             <Input
-              label={layoutLabel('experience_non_eu_years', t('app.candidate_card.fields.experience_non_eu'))}
+              aria-label={layoutLabel('experience_non_eu_years', t('app.candidate_card.fields.experience_non_eu'))}
               type="number"
               value={typeof extra.experience_non_eu_years === 'number' ? String(extra.experience_non_eu_years) : ''}
               onChange={(e) => onExperienceChange('experience_non_eu_years', e.target.value)}
@@ -153,20 +162,18 @@ function CandidateExperienceSection({
             value={labels(Array.isArray(extra.trailer_types) ? extra.trailer_types : [], trailerTypeOptions)}
             editing={openField === 'trailer_types'}
             canEdit={!candidateDataReadOnly}
-            onEdit={() => setOpenField('trailer_types')}
+            onEdit={() => beginRow('trailer_types')}
             onDone={() => setOpenField(null)}
-            column={1}
-            row={1}
+            onCancel={cancelRow}
+            contentEditor
           >
-            <CheckboxMultiSelect
+            <ChipFieldEditor
               options={trailerTypeOptions}
               values={Array.isArray(extra.trailer_types) ? extra.trailer_types : []}
               onChange={(vals) => onExtraChange({ trailer_types: vals })}
               disabled={candidateDataReadOnly}
-              placeholder={selectTexts.multiNone}
-              searchPlaceholder={selectTexts.search}
-              noResultsLabel={selectTexts.noResults}
-              multiSelectedLabel={selectTexts.multiSelected}
+              addLabel={t('common.actions.add')}
+              dismissLabel={t('common.actions.dismiss')}
             />
           </InlineFieldRow>
         ) : null}
@@ -176,24 +183,22 @@ function CandidateExperienceSection({
             value={labels(Array.isArray(extra.route_types) ? extra.route_types : [], routeTypeOptions)}
             editing={openField === 'route_types'}
             canEdit={!candidateDataReadOnly}
-            onEdit={() => setOpenField('route_types')}
+            onEdit={() => beginRow('route_types')}
             onDone={() => setOpenField(null)}
-            column={2}
-            row={1}
+            onCancel={cancelRow}
+            contentEditor
           >
-            <CheckboxMultiSelect
+            <ChipFieldEditor
               options={routeTypeOptions}
               values={Array.isArray(extra.route_types) ? extra.route_types : []}
               onChange={(vals) => onExtraChange({ route_types: vals })}
               disabled={candidateDataReadOnly}
-              placeholder={selectTexts.multiNone}
-              searchPlaceholder={selectTexts.search}
-              noResultsLabel={selectTexts.noResults}
-              multiSelectedLabel={selectTexts.multiSelected}
+              addLabel={t('common.actions.add')}
+              dismissLabel={t('common.actions.dismiss')}
             />
           </InlineFieldRow>
         ) : null}
-      </div>
+      </FieldGrid>
     )
   }
 

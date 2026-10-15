@@ -10,7 +10,8 @@ import { DocumentUploadAction } from '../../components/ui/documentRequirement/Do
 import { DocumentRequirementRow } from '../../components/ui/documentRequirement/DocumentRequirementRow'
 import { DocumentStatus as DocumentStatusBadge, type DocumentStatusKind } from '../../components/ui/documentRequirement/DocumentStatus'
 import { PresenceToggle } from '../../components/ui/documentRequirement/PresenceToggle'
-import { MetadataGrid } from '../../components/ui/MetadataGrid'
+import { FieldGrid } from '../../components/ui/FieldGrid'
+import { InlineFieldRow } from '../../components/ui/InlineFieldRow'
 import { OverflowMenu, type OverflowMenuItem } from '../../components/ui/OverflowMenu'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { WorkspaceSection } from '../../components/ui/WorkspaceSection'
@@ -18,7 +19,7 @@ import DateInput from '../../components/controls/DateInput'
 import { useI18n } from '../../i18n'
 import { runtimeBadgeFromDocument } from '../../utils/runtimeBadgePresentation'
 import type { OperatorFactsView } from '../candidates/OperatorFactsSurface'
-import { DocumentMetadataForm } from './components/DocumentMetadataForm'
+import { DocumentFieldInput } from './components/DocumentFieldInput'
 import { getDocumentFieldsConfig, isProcedureDocument } from './documentFieldsConfig'
 import { computeTodayIso, documentHasFiles, formatDate, isSyntheticDocumentId, legalDocumentSlot, normalizeDocTypeCode, stayDocumentRole } from './documentUtils'
 import { codesKnownToContract, matchesContract, stayContractGroups, workContractGroups } from './legalizationDocumentSelection'
@@ -166,7 +167,8 @@ export function OperatorDocumentRows({
   const [facts, setFacts] = useState<OperatorFactsView | null>(null)
   const factsRequest = useRef(0)
   const [openCode, setOpenCode] = useState<string | null>(null)
-  const [editingCode, setEditingCode] = useState<string | null>(null)
+  const [editingField, setEditingField] = useState<{ code: string; key: string } | null>(null)
+  const [factDraft, setFactDraft] = useState('')
   const yes = t('app.candidate_card.ia.doc_present', { defaultValue: 'Present' })
   const no = t('app.candidate_card.ia.doc_absent', { defaultValue: 'Absent' })
   const columns: DocumentRequirementColumns = {
@@ -448,8 +450,9 @@ export function OperatorDocumentRows({
         ) : null}
       </div>
     )
-    const editing = editingCode === row.norm
     const metadataValues = metadataEdits[row.doc.id] ?? {}
+    const fieldOpen = (key: string) => editingField?.code === row.norm && editingField.key === key
+    const closeField = () => setEditingField(null)
     const readField = (key: string, kind: string) => {
       const raw = getFieldValue(row.doc, key, metadataValues)
       if (Array.isArray(raw)) return raw.filter(Boolean).join(', ')
@@ -465,110 +468,92 @@ export function OperatorDocumentRows({
     const countryLabel = !country || country === 'unknown'
       ? t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })
       : ((countries || []).find((item) => item.value === country)?.label || country)
+    const metadataFields = showMetadata
+      ? getDocumentFieldsConfig(row.norm).filter((field) => !(licence && field.key === 'country') && !(procedure && field.key === 'ordered_at'))
+      : []
     const details = expanded ? (
       <DocumentDetails>
-        <MetadataGrid title={t('app.candidate_card.ia.doc_data_heading', { defaultValue: 'Document data' })}>
-          {editing ? (
-            <>
-              {licence && (presence === true || needsCountry) ? (
-                <label className="block">
-                  <div className="text-xs text-slate-500">{t('app.candidate_card.ia.issuing_country', { defaultValue: 'Issuing country' })}</div>
-                  <select
-                    className="input"
-                    disabled={!canManage}
-                    value={country || 'unknown'}
-                    onChange={(event) => void patchFacts({ licence_issuing_country: event.target.value })}
-                  >
-                    <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
-                    {(countries || []).map((item) => (
-                      <option key={item.value} value={item.value}>{item.label}</option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              {showSharedCode95 ? (
-                <label className="block">
-                  <div className="text-xs text-slate-500">{t('app.candidate_card.ia.code95_valid_to', { defaultValue: 'Code 95 valid to' })}</div>
-                  <DateInput
-                    disabled={!canManage}
-                    value={step('code95')?.valid_to || ''}
-                    onValueChange={(next) => void patchFacts({ code95_valid_to: next || 'unknown' })}
-                  />
-                </label>
-              ) : null}
-              {showMetadata ? (
-                <DocumentMetadataForm
-                  doc={row.doc}
-                  metadataValues={metadataValues}
-                  disabled={!canManage}
-                  omitKeys={licence ? ['country'] : procedure ? ['ordered_at'] : undefined}
-                  getFieldValue={getFieldValue}
-                  onChange={updateFieldValue}
-                />
-              ) : null}
-            </>
-          ) : (
-            <>
-              {licence ? (
-                <div>
-                  <div className="text-xs text-slate-500">{t('app.candidate_card.ia.issuing_country', { defaultValue: 'Issuing country' })}</div>
-                  <div className="mt-1 text-sm text-slate-900">{countryLabel || '—'}</div>
-                </div>
-              ) : null}
-              {showSharedCode95 ? (
-                <div>
-                  <div className="text-xs text-slate-500">{t('app.candidate_card.ia.code95_valid_to', { defaultValue: 'Code 95 valid to' })}</div>
-                  <div className="mt-1 text-sm text-slate-900">{formatDate(step('code95')?.valid_to) || '—'}</div>
-                </div>
-              ) : null}
-              {showMetadata ? getDocumentFieldsConfig(row.norm)
-                .filter((field) => !(licence && field.key === 'country') && !(procedure && field.key === 'ordered_at'))
-                .map((field) => (
-                  <div key={field.key}>
-                    <div className="text-xs text-slate-500">
-                      {field.labelKey ? t(field.labelKey, { defaultValue: field.label }) : field.label}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-900">{readField(field.key, field.type) || '—'}</div>
-                  </div>
-                )) : null}
-            </>
-          )}
-        </MetadataGrid>
-        {canManage ? (
-          <div className="mt-3 flex items-center justify-end gap-2">
-            {editing ? (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="compact"
-                  onClick={() => {
-                    discardEdits(row.doc)
-                    setEditingCode(null)
-                  }}
-                >
-                  {t('common.actions.cancel', { defaultValue: 'Cancel' })}
-                </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="compact"
-                  disabled={coreSaving[row.doc.id] || !hasEdits?.(row.doc.id)}
-                  onClick={() => {
-                    saveCoreFields(row.doc)
-                    setEditingCode(null)
-                  }}
-                >
-                  {coreSaving[row.doc.id] ? t('common.saving') : t('common.actions.save', { defaultValue: 'Save' })}
-                </Button>
-              </>
-            ) : (
-              <Button type="button" variant="secondary" size="compact" onClick={() => setEditingCode(row.norm)}>
-                {t('common.actions.edit', { defaultValue: 'Edit' })}
-              </Button>
-            )}
-          </div>
-        ) : null}
+        <FieldGrid dense>
+          {licence ? (
+            <InlineFieldRow
+              label={t('app.candidate_card.ia.issuing_country', { defaultValue: 'Issuing country' })}
+              value={!country || country === 'unknown' ? '' : countryLabel}
+              editing={fieldOpen('country')}
+              canEdit={canManage}
+              onEdit={() => {
+                setFactDraft(country || 'unknown')
+                setEditingField({ code: row.norm, key: 'country' })
+              }}
+              onDone={() => {
+                void patchFacts({ licence_issuing_country: factDraft || 'unknown' })
+                closeField()
+              }}
+              onCancel={closeField}
+            >
+              <select
+                className="input"
+                disabled={!canManage}
+                value={factDraft || 'unknown'}
+                onChange={(event) => setFactDraft(event.target.value)}
+              >
+                <option value="unknown">{t('app.candidate_card.operator_facts.unknown', { defaultValue: 'Unknown' })}</option>
+                {(countries || []).map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+            </InlineFieldRow>
+          ) : null}
+          {showSharedCode95 ? (
+            <InlineFieldRow
+              label={t('app.candidate_card.ia.code95_valid_to', { defaultValue: 'Code 95 valid to' })}
+              value={formatDate(step('code95')?.valid_to) || ''}
+              editing={fieldOpen('code95_valid_to')}
+              canEdit={canManage}
+              onEdit={() => {
+                setFactDraft(step('code95')?.valid_to || '')
+                setEditingField({ code: row.norm, key: 'code95_valid_to' })
+              }}
+              onDone={() => {
+                void patchFacts({ code95_valid_to: factDraft || 'unknown' })
+                closeField()
+              }}
+              onCancel={closeField}
+            >
+              <DateInput
+                disabled={!canManage}
+                value={factDraft}
+                onValueChange={setFactDraft}
+              />
+            </InlineFieldRow>
+          ) : null}
+          {metadataFields.map((field) => (
+            <InlineFieldRow
+              key={field.key}
+              label={field.labelKey ? t(field.labelKey, { defaultValue: field.label }) : field.label}
+              value={readField(field.key, field.type)}
+              editing={fieldOpen(field.key)}
+              canEdit={canManage}
+              contentEditor={field.type === 'multiselect'}
+              onEdit={() => setEditingField({ code: row.norm, key: field.key })}
+              onDone={() => {
+                if (hasEdits?.(row.doc.id)) saveCoreFields(row.doc)
+                closeField()
+              }}
+              onCancel={() => {
+                discardEdits(row.doc)
+                closeField()
+              }}
+            >
+              <DocumentFieldInput
+                bare
+                fieldConfig={field}
+                value={getFieldValue(row.doc, field.key, metadataValues)}
+                onChange={(value) => updateFieldValue(row.doc, field.key, value)}
+                disabled={!canManage}
+              />
+            </InlineFieldRow>
+          ))}
+        </FieldGrid>
       </DocumentDetails>
     ) : null
 

@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { api } from '../../api/client'
 import { CardAccordion, joinParts } from '../../components/candidate/card/CandidateCardChrome'
 import { ReadFieldRows } from '../../components/ui/ReadFieldRows'
+import { ChipFieldEditor } from '../../components/ui/ChipFieldEditor'
+import { FieldGrid } from '../../components/ui/FieldGrid'
 import { InlineFieldRow } from '../../components/ui/InlineFieldRow'
+import { SegmentedControl } from '../../components/ui/SegmentedControl'
 import { LegalizationStatus } from '../../components/ui/documentRequirement/LegalizationStatus'
-import { PresenceToggle } from '../../components/ui/documentRequirement/PresenceToggle'
-import { RequirementChoiceRow } from '../../components/ui/documentRequirement/RequirementChoiceRow'
 import { WorkspaceSection } from '../../components/ui/WorkspaceSection'
 import { SearchableSelect } from '../../components/candidate/shared/FormComponents'
 import DateInput from '../../components/controls/DateInput'
@@ -132,7 +133,10 @@ export function OperatorFactsForm({
   presentation?: OperatorFactsPresentation
 }) {
   const { t, locale } = useI18n()
-  const [skillField, setSkillField] = useState<'categories' | 'adr' | null>(null)
+  const [skillField, setSkillField] = useState<'categories' | 'adr' | 'code95' | null>(null)
+  const [categoryDraft, setCategoryDraft] = useState<string[]>([])
+  const [presenceDraft, setPresenceDraft] = useState<string | null>(null)
+  const [dateDraft, setDateDraft] = useState('')
   const citizenship = stepOf(view, 'citizenship')
   const stay = stepOf(view, 'stay_basis')
   const work = stepOf(view, 'work')
@@ -350,38 +354,32 @@ export function OperatorFactsForm({
         </div>
         )}
         {showQualifications && presentation === 'skill' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2" data-testid="operator-facts-skill-rows">
+          <FieldGrid dense testId="operator-facts-skill-rows">
             <InlineFieldRow
+              testId="operator-facts-licence-details"
               label={t('app.candidate_card.operator_facts.licence_categories', { defaultValue: 'Categories' })}
               value={(licence?.categories ?? []).join(' · ')}
               editing={skillField === 'categories'}
               canEdit={!disabled}
-              onEdit={() => setSkillField('categories')}
-              onDone={() => setSkillField(null)}
-              column={1}
-              row={1}
+              contentEditor
+              onEdit={() => {
+                setCategoryDraft([...(licence?.categories ?? [])])
+                setSkillField('categories')
+              }}
+              onDone={() => {
+                onPatch({ licence_categories: categoryDraft.length ? categoryDraft : 'unknown' })
+                setSkillField(null)
+              }}
+              onCancel={() => setSkillField(null)}
             >
-              <div className="flex flex-wrap gap-3" data-testid="operator-facts-licence-details">
-                {(view.licence_category_codes ?? []).map((code) => {
-                  const selected = (licence?.categories ?? []).includes(code)
-                  return (
-                    <label key={code} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        disabled={disabled}
-                        checked={selected}
-                        onChange={() => {
-                          const current = new Set(licence?.categories ?? [])
-                          if (selected) current.delete(code)
-                          else current.add(code)
-                          onPatch({ licence_categories: current.size ? Array.from(current) : 'unknown' })
-                        }}
-                      />
-                      <span>{code}</span>
-                    </label>
-                  )
-                })}
-              </div>
+              <ChipFieldEditor
+                options={(view.licence_category_codes ?? []).map((code) => ({ value: code, label: code }))}
+                values={categoryDraft}
+                onChange={setCategoryDraft}
+                disabled={disabled}
+                addLabel={t('common.actions.add')}
+                dismissLabel={t('common.actions.dismiss')}
+              />
             </InlineFieldRow>
             <InlineFieldRow
               label={t('app.candidate_card.operator_facts.adr', { defaultValue: 'ADR' })}
@@ -392,15 +390,30 @@ export function OperatorFactsForm({
               )}
               editing={skillField === 'adr'}
               canEdit={!disabled}
-              onEdit={() => setSkillField('adr')}
-              onDone={() => setSkillField(null)}
-              column={2}
-              row={1}
+              contentEditor
+              onEdit={() => {
+                setPresenceDraft(adr?.presence === true ? 'yes' : adr?.presence === false ? 'no' : null)
+                setSkillField('adr')
+              }}
+              onDone={() => {
+                onPatch({ adr_presence: presenceDraft === 'yes' ? true : presenceDraft === 'no' ? false : 'unknown' })
+                setSkillField(null)
+              }}
+              onCancel={() => setSkillField(null)}
             >
-              {presenceSelect(adr?.presence, (next) => onPatch({ adr_presence: next }))}
+              <SegmentedControl
+                value={presenceDraft}
+                options={[
+                  { value: 'no', label: t('app.candidate_card.operator_facts.no', { defaultValue: 'No' }) },
+                  { value: 'yes', label: t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' }), tone: 'brand' },
+                ]}
+                disabled={disabled}
+                onChange={setPresenceDraft}
+              />
             </InlineFieldRow>
             {code95?.visible ? (
               <InlineFieldRow
+                testId="operator-facts-code95-skill"
                 label={t('app.candidate_card.operator_facts.code95', { defaultValue: 'Code 95' })}
                 value={factValue(
                   code95.presence,
@@ -409,17 +422,40 @@ export function OperatorFactsForm({
                   code95.valid_to,
                   locale,
                 )}
-                editing={false}
-                canEdit={false}
-                onEdit={() => undefined}
-                onDone={() => undefined}
-                column={1}
-                row={2}
+                editing={skillField === 'code95'}
+                canEdit={!disabled}
+                contentEditor
+                onEdit={() => {
+                  setPresenceDraft(code95.presence === true ? 'yes' : code95.presence === false ? 'no' : null)
+                  setDateDraft(code95.valid_to || '')
+                  setSkillField('code95')
+                }}
+                onDone={() => {
+                  onPatch({
+                    code95_presence: presenceDraft === 'yes' ? true : presenceDraft === 'no' ? false : 'unknown',
+                    code95_valid_to: dateDraft || 'unknown',
+                  })
+                  setSkillField(null)
+                }}
+                onCancel={() => setSkillField(null)}
               >
-                {null}
+                <div className="flex flex-wrap items-center gap-2">
+                  <SegmentedControl
+                    value={presenceDraft}
+                    options={[
+                      { value: 'no', label: t('app.candidate_card.operator_facts.no', { defaultValue: 'No' }) },
+                      { value: 'yes', label: t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' }), tone: 'brand' },
+                    ]}
+                    disabled={disabled}
+                    onChange={setPresenceDraft}
+                  />
+                  {presenceDraft === 'yes' ? (
+                    <DateInput value={dateDraft} disabled={disabled} onValueChange={setDateDraft} />
+                  ) : null}
+                </div>
               </InlineFieldRow>
             ) : null}
-          </div>
+          </FieldGrid>
         ) : null}
         {showQualifications && presentation !== 'skill' ? (
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -821,7 +857,13 @@ function LegalizationFactsSheet({
   workDocuments?: ReactNode
 }) {
   const { t, locale } = useI18n()
-  const [openField, setOpenField] = useState<'stay' | 'stay_until' | 'work' | null>(null)
+  const [openField, setOpenField] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const begin = (key: string, value: string) => {
+    setDraft(value)
+    setOpenField(key)
+  }
+  const close = () => setOpenField(null)
   const stay = stepOf(view, 'stay_basis')
   const work = stepOf(view, 'work')
   const determined = view.citizenship_class === 'pl' || view.citizenship_class === 'eu_eea_ch'
@@ -872,11 +914,17 @@ function LegalizationFactsSheet({
     }),
   })
   const manualNote = t('app.candidate_card.ia.legalization.manual', { defaultValue: 'Set manually' })
-  const question = (label: string, value: boolean | null, onChange: (next: boolean) => void) => (
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="text-sm text-slate-700">{label}</span>
-      <PresenceToggle value={value} yesLabel={yes} noLabel={no} disabled={disabled || !onPatch} onChange={onChange} />
-    </div>
+  const yesNoValue = (value: boolean | null) => (value === true ? yes : value === false ? no : '')
+  const yesNoEditor = () => (
+    <SegmentedControl
+      value={draft || null}
+      options={[
+        { value: 'no', label: no },
+        { value: 'yes', label: yes, tone: 'brand' },
+      ]}
+      disabled={disabled || !onPatch}
+      onChange={setDraft}
+    />
   )
   return (
     <div className={composeDocuments ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 gap-3 lg:grid-cols-2'} data-testid="legalization-facts-sheet">
@@ -887,72 +935,103 @@ function LegalizationFactsSheet({
         {composeDocuments ? (
           legal ? (
             <div className="space-y-3">
-              <RequirementChoiceRow
-                question={t('app.candidate_card.ia.legalization_stay_required_question', { defaultValue: 'Is a separate stay basis required?' })}
-                value={legal.selection.stay_required}
-                yesLabel={yes}
-                noLabel={no}
-                disabled={disabled || !onPatch}
-                onChange={(next) => onPatch?.({ stay_required: next })}
-                choiceLabel={legal.selection.stay_required === true
-                  ? t('app.candidate_card.ia.legalization_stay_basis', { defaultValue: 'Stay basis' })
-                  : legal.selection.stay_required === false && legal.selection.stay_manual
-                    ? t('app.candidate_card.ia.legalization_exemption', { defaultValue: 'Exemption basis' })
-                    : null}
-                choice={legal.selection.stay_required === true ? (
-                  <select
-                    className="input h-8 text-sm"
-                    data-testid="legalization-stay-basis"
-                    disabled={disabled || !onPatch}
-                    value={legal.selection.stay_code || ''}
-                    onChange={(event) => {
-                      const item = legal.applicable_stay.find((basis) => basis.code === event.target.value)
-                      if (!item) return
-                      onPatch?.({
-                        stay_basis: item.stay_basis,
-                        stay_card_kind: item.card_kind || 'unknown',
-                        visa_type: item.code === 'visa' ? 'D' : 'unknown',
-                      })
+              <FieldGrid dense>
+                <InlineFieldRow
+                  label={t('app.candidate_card.ia.legalization_stay_required_question', { defaultValue: 'Is a separate stay basis required?' })}
+                  value={yesNoValue(legal.selection.stay_required)}
+                  editing={openField === 'stay_required'}
+                  canEdit={!disabled && Boolean(onPatch)}
+                  contentEditor
+                  onEdit={() => begin('stay_required', legal.selection.stay_required === true ? 'yes' : legal.selection.stay_required === false ? 'no' : '')}
+                  onDone={() => {
+                    if (draft === 'yes' || draft === 'no') onPatch?.({ stay_required: draft === 'yes' })
+                    close()
+                  }}
+                  onCancel={close}
+                >
+                  {yesNoEditor()}
+                </InlineFieldRow>
+                {legal.selection.stay_required === true ? (
+                  <InlineFieldRow
+                    label={t('app.candidate_card.ia.legalization_stay_basis', { defaultValue: 'Stay basis' })}
+                    value={legal.selection.stay_code ? basisName(legal.selection.stay_code) : ''}
+                    editing={openField === 'stay_basis'}
+                    canEdit={!disabled && Boolean(onPatch)}
+                    onEdit={() => begin('stay_basis', legal.selection.stay_code || '')}
+                    onDone={() => {
+                      const item = legal.applicable_stay.find((basis) => basis.code === draft)
+                      if (item) {
+                        onPatch?.({
+                          stay_basis: item.stay_basis,
+                          stay_card_kind: item.card_kind || 'unknown',
+                          visa_type: item.code === 'visa' ? 'D' : 'unknown',
+                        })
+                      }
+                      close()
                     }}
+                    onCancel={close}
                   >
-                    <option value="">{unknownLabel}</option>
-                    {legal.applicable_stay.map((item) => (
-                      <option key={item.code} value={item.code}>{basisName(item.code)}</option>
-                    ))}
-                  </select>
-                ) : legal.selection.stay_required === false && legal.selection.stay_manual ? (
-                  <select
-                    className="input h-8 text-sm"
-                    disabled={disabled || !onPatch}
-                    value={legal.selection.stay_exemption || 'other'}
-                    onChange={(event) => onPatch?.({ stay_exemption: event.target.value })}
-                  >
-                    {legal.stay_exemptions.map((code) => (
-                      <option key={code} value={code}>{basisName(code)}</option>
-                    ))}
-                  </select>
+                    <select
+                      className="input"
+                      data-testid="legalization-stay-basis"
+                      disabled={disabled || !onPatch}
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                    >
+                      <option value="">{unknownLabel}</option>
+                      {legal.applicable_stay.map((item) => (
+                        <option key={item.code} value={item.code}>{basisName(item.code)}</option>
+                      ))}
+                    </select>
+                  </InlineFieldRow>
                 ) : null}
-              />
+                {legal.selection.stay_required === false && legal.selection.stay_manual ? (
+                  <InlineFieldRow
+                    label={t('app.candidate_card.ia.legalization_exemption', { defaultValue: 'Exemption basis' })}
+                    value={basisName(legal.selection.stay_exemption || 'other')}
+                    editing={openField === 'stay_exemption'}
+                    canEdit={!disabled && Boolean(onPatch)}
+                    onEdit={() => begin('stay_exemption', legal.selection.stay_exemption || 'other')}
+                    onDone={() => {
+                      if (draft) onPatch?.({ stay_exemption: draft })
+                      close()
+                    }}
+                    onCancel={close}
+                  >
+                    <select className="input" disabled={disabled || !onPatch} value={draft} onChange={(event) => setDraft(event.target.value)}>
+                      {legal.stay_exemptions.map((code) => (
+                        <option key={code} value={code}>{basisName(code)}</option>
+                      ))}
+                    </select>
+                  </InlineFieldRow>
+                ) : null}
+                {legal.selected_stay?.kind === 'regime' && legal.selected_stay.code === 'visa_free' ? (
+                  <InlineFieldRow
+                    label={t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' })}
+                    value={stayUntil}
+                    editing={openField === 'stay_until'}
+                    canEdit={!disabled && Boolean(onPatch)}
+                    onEdit={() => begin('stay_until', stay?.valid_to || '')}
+                    onDone={() => {
+                      onPatch?.({ stay_valid_to: draft || 'unknown' })
+                      close()
+                    }}
+                    onCancel={close}
+                  >
+                    <DateInput value={draft} disabled={disabled} onValueChange={setDraft} />
+                  </InlineFieldRow>
+                ) : null}
+              </FieldGrid>
               {legal.selection.stay_manual ? <p className="text-xs text-slate-500">{manualNote}</p> : null}
               {legal.selection.stay_required === false && !legal.selection.stay_manual ? (
                 <p className="text-sm text-slate-800">{basisName(legal.selection.stay_exemption || legal.recommendation.reason)}</p>
               ) : null}
-              {legal.selected_stay?.kind === 'document' ? stayDocuments : null}
               {legal.selected_stay?.kind === 'regime' && legal.selected_stay.code === 'visa_free' ? (
-                <div className="flex flex-wrap items-end gap-4">
-                  <p className="text-sm text-slate-600">
-                    {t('app.candidate_card.ia.legalization.visa_free_limit', { defaultValue: 'Short stay follows the 90/180 rule.' })}
-                  </p>
-                  <label className="block w-40">
-                    <div className="text-xs text-slate-500">{t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' })}</div>
-                    <DateInput
-                      value={stay?.valid_to}
-                      disabled={disabled}
-                      onValueChange={(next) => onPatch?.({ stay_valid_to: next || 'unknown' })}
-                    />
-                  </label>
-                </div>
+                <p className="text-sm text-slate-600">
+                  {t('app.candidate_card.ia.legalization.visa_free_limit', { defaultValue: 'Short stay follows the 90/180 rule.' })}
+                </p>
               ) : null}
+              {legal.selected_stay?.kind === 'document' ? stayDocuments : null}
               <LegalizationStatus
                 status={legal.resolved.residence}
                 missing={legal.resolved.missing_residence}
@@ -982,24 +1061,32 @@ function LegalizationFactsSheet({
                   value={stayLabel}
                   editing={openField === 'stay'}
                   canEdit={!disabled && Boolean(onPatch)}
-                  onEdit={() => setOpenField('stay')}
-                  onDone={() => setOpenField(null)}
+                  onEdit={() => begin('stay', stayCode)}
+                  onDone={() => {
+                    onPatch?.({ stay_basis: draft || 'unknown' })
+                    close()
+                  }}
+                  onCancel={close}
                 >
-                  {choice(stayCode, view.stay_choices ?? [], 'stay_option', (next) => onPatch?.({ stay_basis: next }), 'operator-facts-stay-input')}
+                  {choice(draft, view.stay_choices ?? [], 'stay_option', setDraft, 'operator-facts-stay-input')}
                 </InlineFieldRow>
                 <InlineFieldRow
                   label={t('app.candidate_card.ia.legalization_valid_to', { defaultValue: 'Valid to' })}
                   value={stayUntil}
                   editing={openField === 'stay_until'}
                   canEdit={!disabled && Boolean(onPatch)}
-                  onEdit={() => setOpenField('stay_until')}
-                  onDone={() => setOpenField(null)}
+                  onEdit={() => begin('stay_until', stay?.valid_to || '')}
+                  onDone={() => {
+                    onPatch?.({ stay_valid_to: draft || 'unknown' })
+                    close()
+                  }}
+                  onCancel={close}
                 >
                   <DateInput
-                    value={stay?.valid_to}
+                    value={draft}
                     disabled={disabled}
                     testId="operator-facts-stay-valid-to"
-                    onValueChange={(next) => onPatch?.({ stay_valid_to: next || 'unknown' })}
+                    onValueChange={setDraft}
                   />
                 </InlineFieldRow>
               </>
@@ -1016,50 +1103,76 @@ function LegalizationFactsSheet({
         {composeDocuments ? (
           legal ? (
             <div className="space-y-3">
-              <RequirementChoiceRow
-                question={t('app.candidate_card.ia.legalization_work_required_question', { defaultValue: 'Is a work permit required?' })}
-                value={legal.selection.work_required}
-                yesLabel={yes}
-                noLabel={no}
-                disabled={disabled || !onPatch}
-                onChange={(next) => onPatch?.({ work_required: next, ...(next ? { work_label: 'work_permit' } : { work_exemption: legal.work_exemptions[0] || 'other' }) })}
-                choiceLabel={legal.selection.work_required === true
-                  ? t('app.candidate_card.ia.legalization_procedure', { defaultValue: 'Procedure' })
-                  : legal.selection.work_required === false && legal.selection.work_manual
-                    ? t('app.candidate_card.ia.legalization_exemption', { defaultValue: 'Exemption basis' })
-                    : null}
-                choice={legal.selection.work_required === true ? (
-                  <select
-                    className="input h-8 text-sm"
-                    data-testid="legalization-work-type"
-                    disabled={disabled || !onPatch}
-                    value={workCode}
-                    onChange={(event) => onPatch?.({ work_label: event.target.value })}
-                  >
-                    <option value="">{unknownLabel}</option>
-                    {legal.applicable_work.map((item) => (
-                      <option key={item.code} value={item.code}>{basisName(item.code)}</option>
-                    ))}
-                  </select>
-                ) : legal.selection.work_required === false && legal.selection.work_manual ? (
-                  <select
-                    className="input h-8 text-sm"
-                    disabled={disabled || !onPatch}
-                    value={legal.selection.work_exemption || 'other'}
-                    onChange={(event) => {
-                      const code = event.target.value
-                      onPatch?.({
-                        work_exemption: code,
-                        ...(code === 'not_required' || code === 'included_in_stay' ? { work_label: code } : { work_label: 'not_required' }),
-                      })
+              <FieldGrid dense>
+                <InlineFieldRow
+                  label={t('app.candidate_card.ia.legalization_work_required_question', { defaultValue: 'Is a work permit required?' })}
+                  value={yesNoValue(legal.selection.work_required)}
+                  editing={openField === 'work_required'}
+                  canEdit={!disabled && Boolean(onPatch)}
+                  contentEditor
+                  onEdit={() => begin('work_required', legal.selection.work_required === true ? 'yes' : legal.selection.work_required === false ? 'no' : '')}
+                  onDone={() => {
+                    if (draft === 'yes') onPatch?.({ work_required: true, work_label: 'work_permit' })
+                    else if (draft === 'no') onPatch?.({ work_required: false, work_exemption: legal.work_exemptions[0] || 'other' })
+                    close()
+                  }}
+                  onCancel={close}
+                >
+                  {yesNoEditor()}
+                </InlineFieldRow>
+                {legal.selection.work_required === true ? (
+                  <InlineFieldRow
+                    label={t('app.candidate_card.ia.legalization_procedure', { defaultValue: 'Procedure' })}
+                    value={workCode ? basisName(workCode) : ''}
+                    editing={openField === 'work_type'}
+                    canEdit={!disabled && Boolean(onPatch)}
+                    onEdit={() => begin('work_type', workCode)}
+                    onDone={() => {
+                      if (draft) onPatch?.({ work_label: draft })
+                      close()
                     }}
+                    onCancel={close}
                   >
-                    {legal.work_exemptions.map((code) => (
-                      <option key={code} value={code}>{basisName(code)}</option>
-                    ))}
-                  </select>
+                    <select
+                      className="input"
+                      data-testid="legalization-work-type"
+                      disabled={disabled || !onPatch}
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                    >
+                      <option value="">{unknownLabel}</option>
+                      {legal.applicable_work.map((item) => (
+                        <option key={item.code} value={item.code}>{basisName(item.code)}</option>
+                      ))}
+                    </select>
+                  </InlineFieldRow>
                 ) : null}
-              />
+                {legal.selection.work_required === false && legal.selection.work_manual ? (
+                  <InlineFieldRow
+                    label={t('app.candidate_card.ia.legalization_exemption', { defaultValue: 'Exemption basis' })}
+                    value={basisName(legal.selection.work_exemption || 'other')}
+                    editing={openField === 'work_exemption'}
+                    canEdit={!disabled && Boolean(onPatch)}
+                    onEdit={() => begin('work_exemption', legal.selection.work_exemption || 'other')}
+                    onDone={() => {
+                      if (draft) {
+                        onPatch?.({
+                          work_exemption: draft,
+                          ...(draft === 'not_required' || draft === 'included_in_stay' ? { work_label: draft } : { work_label: 'not_required' }),
+                        })
+                      }
+                      close()
+                    }}
+                    onCancel={close}
+                  >
+                    <select className="input" disabled={disabled || !onPatch} value={draft} onChange={(event) => setDraft(event.target.value)}>
+                      {legal.work_exemptions.map((code) => (
+                        <option key={code} value={code}>{basisName(code)}</option>
+                      ))}
+                    </select>
+                  </InlineFieldRow>
+                ) : null}
+              </FieldGrid>
               {legal.selection.work_manual ? <p className="text-xs text-slate-500">{manualNote}</p> : null}
               {legal.selection.work_required === false && !legal.selection.work_manual ? (
                 <p className="text-sm text-slate-800">{basisName(legal.selection.work_exemption || legal.recommendation.reason)}</p>
@@ -1074,15 +1187,22 @@ function LegalizationFactsSheet({
             </div>
           ) : workRequired ? (
             <div className="space-y-3">
-              {question(
-                t('app.candidate_card.ia.legalization_work_required_question', { defaultValue: 'Is a work permit required?' }),
-                workCode === 'work_permit' || workCode === 'oswiadczenie' ? true : workCode === 'not_required' || workCode === 'included_in_stay' ? false : null,
-                (next) => {
-                  if (!onPatch) return
-                  if (next) onPatch({ work_label: 'work_permit' })
-                  else onPatch({ work_label: 'not_required' })
-                },
-              )}
+              <InlineFieldRow
+                label={t('app.candidate_card.ia.legalization_work_required_question', { defaultValue: 'Is a work permit required?' })}
+                value={yesNoValue(workCode === 'work_permit' || workCode === 'oswiadczenie' ? true : workCode === 'not_required' || workCode === 'included_in_stay' ? false : null)}
+                editing={openField === 'work_required_fallback'}
+                canEdit={!disabled && Boolean(onPatch)}
+                contentEditor
+                onEdit={() => begin('work_required_fallback', workCode === 'work_permit' || workCode === 'oswiadczenie' ? 'yes' : workCode === 'not_required' || workCode === 'included_in_stay' ? 'no' : '')}
+                onDone={() => {
+                  if (draft === 'yes') onPatch?.({ work_label: 'work_permit' })
+                  else if (draft === 'no') onPatch?.({ work_label: 'not_required' })
+                  close()
+                }}
+                onCancel={close}
+              >
+                {yesNoEditor()}
+              </InlineFieldRow>
               {workCode === 'work_permit' || workCode === 'oswiadczenie' ? workDocuments : (
                 <p className="text-sm text-slate-800">{workLabel || notRequired}</p>
               )}
@@ -1108,10 +1228,14 @@ function LegalizationFactsSheet({
                 value={workLabel}
                 editing={openField === 'work'}
                 canEdit={!disabled && Boolean(onPatch)}
-                onEdit={() => setOpenField('work')}
-                onDone={() => setOpenField(null)}
+                onEdit={() => begin('work', workCode)}
+                onDone={() => {
+                  onPatch?.({ work_label: draft || 'unknown' })
+                  close()
+                }}
+                onCancel={close}
               >
-                {choice(workCode, view.work_choices ?? [], 'work_option', (next) => onPatch?.({ work_label: next }), 'operator-facts-work-input')}
+                {choice(draft, view.work_choices ?? [], 'work_option', setDraft, 'operator-facts-work-input')}
               </InlineFieldRow>
             ) : null}
             {contextLabel?.trim() ? (
@@ -1148,6 +1272,9 @@ export function PersonIdentityFacts({
 }) {
   const { t } = useI18n()
   const [openField, setOpenField] = useState<'citizenship' | 'pesel' | null>(null)
+  const [citizenshipDraft, setCitizenshipDraft] = useState('unknown')
+  const [peselPresence, setPeselPresence] = useState<string | null>(null)
+  const [peselDraft, setPeselDraft] = useState('')
   const citizenship = stepOf(view, 'citizenship')
   const pesel = stepOf(view, 'pesel')
   const yes = t('app.candidate_card.operator_facts.yes', { defaultValue: 'Yes' })
@@ -1161,25 +1288,28 @@ export function PersonIdentityFacts({
       : ''
 
   return (
-    <div className={flow ? 'contents' : 'grid grid-cols-1 gap-x-8 md:grid-cols-2'} data-testid="operator-facts-person-rows">
+    <FieldGrid dense flow={flow} testId="operator-facts-person-rows">
       <InlineFieldRow
+        testId="operator-facts-citizenship"
         label={t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' })}
         value={countryName(citizenship?.stored, countries)}
         editing={openField === 'citizenship'}
         canEdit={!disabled}
-        onEdit={() => setOpenField('citizenship')}
-        onDone={() => setOpenField(null)}
-        column={flow ? 1 : undefined}
-        row={flow ? 4 : undefined}
+        onEdit={() => {
+          setCitizenshipDraft(citizenship?.stored || 'unknown')
+          setOpenField('citizenship')
+        }}
+        onDone={() => {
+          onPatch({ citizenship: citizenshipDraft })
+          setOpenField(null)
+        }}
+        onCancel={() => setOpenField(null)}
       >
-        <div className="label" data-testid="operator-facts-citizenship">
-          {t('app.candidate_card.operator_facts.citizenship', { defaultValue: 'Citizenship' })}
-        </div>
         <div data-testid="operator-facts-citizenship-input">
           <SearchableSelect
             options={countryOptions}
-            value={citizenship?.stored || 'unknown'}
-            onChange={(next) => onPatch({ citizenship: next })}
+            value={citizenshipDraft}
+            onChange={setCitizenshipDraft}
             disabled={disabled}
             placeholder={t('app.candidate_card.select.empty')}
             searchPlaceholder={t('app.candidate_card.select.search')}
@@ -1192,43 +1322,43 @@ export function PersonIdentityFacts({
         value={peselValue === '—' ? '' : peselValue}
         editing={openField === 'pesel'}
         canEdit={!disabled}
-        onEdit={() => setOpenField('pesel')}
-        onDone={() => setOpenField(null)}
-        wide={!flow}
-        column={flow ? 2 : undefined}
-        row={flow ? 1 : undefined}
+        contentEditor
+        onEdit={() => {
+          setPeselPresence(pesel?.presence === true ? 'yes' : pesel?.presence === false ? 'no' : null)
+          setPeselDraft(pesel?.stored && pesel.stored !== 'unknown' ? pesel.stored : '')
+          setOpenField('pesel')
+        }}
+        onDone={() => {
+          onPatch({
+            pesel_presence: peselPresence === 'yes' ? true : peselPresence === 'no' ? false : 'unknown',
+            ...(peselPresence === 'yes' ? { pesel: peselDraft || 'unknown' } : {}),
+          })
+          setOpenField(null)
+        }}
+        onCancel={() => setOpenField(null)}
       >
-        <div data-testid="operator-facts-pesel">
-          <label className="block">
-            <div className="label">{t('app.candidate_card.operator_facts.pesel', { defaultValue: 'PESEL' })}</div>
-            <select
-              className="input max-w-md"
+        <div className="flex flex-wrap items-center gap-2" data-testid="operator-facts-pesel">
+          <SegmentedControl
+            value={peselPresence}
+            options={[
+              { value: 'no', label: no },
+              { value: 'yes', label: yes, tone: 'brand' },
+            ]}
+            disabled={disabled}
+            onChange={setPeselPresence}
+          />
+          {peselPresence === 'yes' ? (
+            <input
+              className="input w-40"
+              aria-label={t('app.candidate_card.operator_facts.pesel_number', { defaultValue: 'PESEL number' })}
               disabled={disabled}
-              value={pesel?.presence === true ? 'yes' : pesel?.presence === false ? 'no' : 'unknown'}
-              onChange={(event) => {
-                const next = event.target.value
-                onPatch({ pesel_presence: next === 'yes' ? true : next === 'no' ? false : 'unknown' })
-              }}
-            >
-              <option value="unknown">{unknownLabel}</option>
-              <option value="yes">{yes}</option>
-              <option value="no">{no}</option>
-            </select>
-          </label>
-          {pesel?.presence === true ? (
-            <label className="mt-3 block">
-              <div className="label">{t('app.candidate_card.operator_facts.pesel_number', { defaultValue: 'PESEL number' })}</div>
-              <input
-                className="input max-w-md"
-                disabled={disabled}
-                value={pesel.stored || ''}
-                onChange={(event) => onPatch({ pesel: event.target.value || 'unknown' })}
-              />
-            </label>
+              value={peselDraft}
+              onChange={(event) => setPeselDraft(event.target.value)}
+            />
           ) : null}
         </div>
       </InlineFieldRow>
-    </div>
+    </FieldGrid>
   )
 }
 

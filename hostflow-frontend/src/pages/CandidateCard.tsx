@@ -118,6 +118,7 @@ import CandidateContactAttemptsSection from '../components/candidate/CandidateCo
 import CandidateTimelinePanel from '../components/candidate/CandidateTimelinePanel'
 import CandidateStageDecisionPanel, { CandidatePipelineStatus } from '../components/candidate/CandidateStageDecisionPanel'
 import { Input, SearchableSelect } from '../components/candidate/shared/FormComponents'
+import { FieldGrid } from '../components/ui/FieldGrid'
 // CandidateCard layout: Info (top) / Control (right) / Content (main)
 // Documents are rendered as a single compact panel inside the rail.
 import CandidateNextActionPanel from '../components/candidate/CandidateNextActionPanel'
@@ -5007,6 +5008,7 @@ export default function CandidateCard(){
                 countries.find((item) => item.value === (extra.citizenship || model.country_code))?.label,
               ])}
             >
+              <FieldGrid dense>
               <CandidateBasicSection
                 candidate={model}
                 extra={extra}
@@ -5037,6 +5039,7 @@ export default function CandidateCard(){
                 hideProcessControls
                 plain
                 rowEdit
+                flow
                 part="identity"
                 onRequestUnlock={() => {
                   setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
@@ -5047,6 +5050,7 @@ export default function CandidateCard(){
                   candidateId={String(model.id)}
                   countries={countries}
                   region="person"
+                  flow
                   onSaved={(saved) => {
                     setOperatorFactsRevision((value) => value + 1)
                     const citizenship = saved.steps.find((step) => step.key === 'citizenship')?.stored
@@ -5073,12 +5077,14 @@ export default function CandidateCard(){
                   focus="location"
                   plain
                   rowEdit
+                  flow
                   canEdit={model.can_edit !== false}
                   onRequestUnlock={() => {
                     setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
                   }}
                 />
               ) : null}
+              </FieldGrid>
             </CardAccordion>
           ) : null}
           {cardTab === 'personal' && !isMasked && registrySectionVisible('basic') ? (
@@ -5087,6 +5093,7 @@ export default function CandidateCard(){
               defaultOpen
               summary={joinParts([model.phone, model.email])}
             >
+              <FieldGrid dense>
               <CandidateBasicSection
                 candidate={model}
                 extra={extra}
@@ -5117,11 +5124,13 @@ export default function CandidateCard(){
                 hideProcessControls
                 plain
                 rowEdit
+                flow
                 part="contact"
                 onRequestUnlock={() => {
                   setCandidateEditPhase((phase) => (phase === 'idle' ? 'picking_reason' : phase))
                 }}
               />
+              </FieldGrid>
             </CardAccordion>
           ) : null}
 

@@ -342,11 +342,11 @@ describe('PersonIdentityFacts', () => {
         })}
       />,
     )
-    expect(screen.getByText('Ukraina')).toBeTruthy()
+    expect(screen.getByText(/Ukraina/)).toBeTruthy()
     expect(screen.getByText(/83110617894/)).toBeTruthy()
     expect(screen.queryByTestId('operator-facts-citizenship-input')).toBeNull()
-    expect(screen.queryByText('Numer PESEL')).toBeNull()
-    fireEvent.click(screen.getAllByText('Edytuj')[1])
-    expect(screen.getByText('Numer PESEL')).toBeTruthy()
+    expect(screen.queryByTestId('operator-facts-pesel')).toBeNull()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj' })[1])
+    expect(screen.getByTestId('operator-facts-pesel')).toBeTruthy()
   })
 })

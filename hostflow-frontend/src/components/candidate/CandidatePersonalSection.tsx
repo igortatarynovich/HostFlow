@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useEffect } from 'react'
+import { memo, useState, useCallback, useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { IconChevronDown, IconUser } from '@tabler/icons-react'
 import type { Candidate, CandidateExtra } from '../../api/types'
@@ -8,6 +8,8 @@ import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import { useI18n } from '../../i18n'
 import { Input, SearchableSelect, CheckboxMultiSelect, Checkbox } from './shared/FormComponents'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
+import { FieldGrid } from '../ui/FieldGrid'
+import { ChipFieldEditor } from '../ui/ChipFieldEditor'
 import { InlineFieldRow } from '../ui/InlineFieldRow'
 
 type Option = { value: string; label: string; extra?: any }
@@ -42,6 +44,8 @@ interface CandidatePersonalSectionProps {
   rowEdit?: boolean
   canEdit?: boolean
   onRequestUnlock?: () => void
+  /** Join the parent FieldGrid instead of opening a second column grid. */
+  flow?: boolean
 }
 
 function CandidatePersonalSection({
@@ -65,24 +69,39 @@ function CandidatePersonalSection({
   rowEdit = false,
   canEdit = true,
   onRequestUnlock,
+  flow = false,
 }: CandidatePersonalSectionProps) {
   const { t } = useI18n()
   const [openField, setOpenField] = useState<string | null>(null)
   const [pendingField, setPendingField] = useState<string | null>(null)
+  const snapshot = useRef<{ candidate: Candidate; extra: CandidateExtra } | null>(null)
   const fieldVisible = (fieldKey: string) => isFieldVisible(candidateProfile, fieldKey, effectiveLayout)
   const fieldRequired = (fieldKey: string) => isFieldRequired(candidateProfile, fieldKey, effectiveLayout)
   const fieldLabel = (fieldKey: string, defaultLabel: string) =>
     getFieldLabel(candidateProfile, fieldKey, defaultLabel, effectiveLayout)
+  const captureRow = () => {
+    snapshot.current = { candidate, extra }
+  }
   const beginRow = (key: string) => {
     if (candidateDataReadOnly) {
       setPendingField(key)
       onRequestUnlock?.()
       return
     }
+    captureRow()
     setOpenField(key)
+  }
+  const cancelRow = () => {
+    const snap = snapshot.current
+    if (snap) {
+      onModelChange(() => snap.candidate)
+      onExtraChange(snap.extra)
+    }
+    setOpenField(null)
   }
   useEffect(() => {
     if (!candidateDataReadOnly && pendingField) {
+      captureRow()
       setOpenField(pendingField)
       setPendingField(null)
     }
@@ -96,7 +115,7 @@ function CandidatePersonalSection({
   const languageValue = (candidate.languages || [])
     .map((code) => languages.find((item) => item.value === code)?.label || code)
     .filter(Boolean)
-    .join(', ')
+    .join(' · ')
   const [collapsed, setCollapsed] = useState(() => {
     if (plain || embedded) return false
     try {
@@ -143,9 +162,10 @@ function CandidatePersonalSection({
       ? formatAddress(extra.reg_address)
       : t('app.candidate_card.ia.same_as_residence', { defaultValue: 'Same as the residence address' })
     return (
-      <section ref={personalRef} id={focus === 'address' ? undefined : 'section-personal'} className="scroll-mt-24">
+      <section ref={personalRef} id={focus === 'address' ? undefined : 'section-personal'} className={flow ? 'contents' : 'scroll-mt-24'}>
+        <FieldGrid dense flow={flow}>
         {showLocation ? (
-          <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+          <>
             {(!candidateProfile || fieldVisible('citizenship')) && !citizenshipReadOnly ? (
               <InlineFieldRow
                 label={fieldLabel('citizenship', t('app.candidate_card.fields.citizenship'))}
@@ -154,8 +174,8 @@ function CandidatePersonalSection({
                 canEdit={canEdit}
                 onEdit={() => beginRow('citizenship')}
                 onDone={() => setOpenField(null)}
+                onCancel={cancelRow}
               >
-                <div className="label">{fieldLabel('citizenship', t('app.candidate_card.fields.citizenship'))}</div>
                 <SearchableSelect
                   options={countries}
                   value={(extra.citizenship as string) || ''}
@@ -175,8 +195,8 @@ function CandidatePersonalSection({
                 canEdit={canEdit}
                 onEdit={() => beginRow('country_code')}
                 onDone={() => setOpenField(null)}
+                onCancel={cancelRow}
               >
-                <div className="label">{fieldLabel('country_code', t('app.candidate_card.fields.country_code'))}</div>
                 <SearchableSelect
                   options={countries}
                   value={(candidate.country_code as string) || ''}
@@ -209,24 +229,23 @@ function CandidatePersonalSection({
                 canEdit={canEdit}
                 onEdit={() => beginRow('languages')}
                 onDone={() => setOpenField(null)}
+                onCancel={cancelRow}
+                contentEditor
               >
-                <div className="label">{fieldLabel('languages', t('app.candidate_card.fields.languages'))}</div>
-                <CheckboxMultiSelect
+                <ChipFieldEditor
                   options={languages}
                   values={candidate.languages || []}
                   onChange={(vals) => onModelChange((m) => ({ ...m, languages: vals }))}
                   disabled={candidateDataReadOnly}
-                  placeholder={selectTexts.multiNone}
-                  searchPlaceholder={selectTexts.search}
-                  noResultsLabel={selectTexts.noResults}
-                  multiSelectedLabel={selectTexts.multiSelected}
+                  addLabel={t('common.actions.add')}
+                  dismissLabel={t('common.actions.dismiss')}
                 />
               </InlineFieldRow>
             ) : null}
-          </div>
+          </>
         ) : null}
         {showAddress ? (
-          <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+          <>
             <InlineFieldRow
               label={t('app.candidate_card.sections.personal.address_current')}
               value={residence}
@@ -234,6 +253,7 @@ function CandidatePersonalSection({
               canEdit={canEdit}
               onEdit={() => beginRow('address')}
               onDone={() => setOpenField(null)}
+              onCancel={cancelRow}
               wide
             >
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -263,6 +283,7 @@ function CandidatePersonalSection({
               canEdit={canEdit}
               onEdit={() => beginRow('reg_address')}
               onDone={() => setOpenField(null)}
+              onCancel={cancelRow}
               wide
             >
               <Checkbox
@@ -292,8 +313,9 @@ function CandidatePersonalSection({
                 </div>
               ) : null}
             </InlineFieldRow>
-          </div>
+          </>
         ) : null}
+        </FieldGrid>
       </section>
     )
   }
