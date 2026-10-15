@@ -106,6 +106,12 @@ export interface CandidatesFiltersToolbarProps {
   setHandoffStatusFilter: Dispatch<SetStateAction<string>>
   contactAttemptsFilter: string
   setContactAttemptsFilter: Dispatch<SetStateAction<string>>
+  pausedFilter: '' | 'yes' | 'no'
+  setPausedFilter: Dispatch<SetStateAction<'' | 'yes' | 'no'>>
+  resumeBeforeFilter: string
+  setResumeBeforeFilter: Dispatch<SetStateAction<string>>
+  resumeOverdueFilter: boolean
+  setResumeOverdueFilter: Dispatch<SetStateAction<boolean>>
   processorFilter: string
   setProcessorFilter: Dispatch<SetStateAction<string>>
   intakeApplicationKindFilter: '' | 'client' | 'candidate'
@@ -160,6 +166,9 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
     docsHasFilesFilter, setDocsHasFilesFilter,
     handoffStatusFilter, setHandoffStatusFilter,
     contactAttemptsFilter, setContactAttemptsFilter,
+    pausedFilter, setPausedFilter,
+    resumeBeforeFilter, setResumeBeforeFilter,
+    resumeOverdueFilter, setResumeOverdueFilter,
     processorFilter, setProcessorFilter,
     intakeApplicationKindFilter, setIntakeApplicationKindFilter,
     vacancyLabelMap, managerLabelMap, reasonLabelMap, reasonStageMap,
@@ -231,6 +240,12 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
             docsHasFilesFilter={docsHasFilesFilter}
             handoffStatusFilter={handoffStatusFilter}
             contactAttemptsFilter={contactAttemptsFilter}
+            pausedFilter={pausedFilter}
+            resumeBeforeFilter={resumeBeforeFilter}
+            resumeOverdueFilter={resumeOverdueFilter}
+            onPausedFilterChange={setPausedFilter}
+            onResumeBeforeFilterChange={setResumeBeforeFilter}
+            onResumeOverdueFilterChange={setResumeOverdueFilter}
             processorFilter={processorFilter}
             intakeApplicationKindFilter={intakeApplicationKindFilter}
             onIntakeApplicationKindFilterChange={setIntakeApplicationKindFilter}

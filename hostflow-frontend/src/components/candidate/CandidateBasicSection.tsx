@@ -198,6 +198,8 @@ function CandidateBasicSection({
         <FieldGrid dense flow={flow}>
           {showIdentity && (!candidateProfile || fieldVisible('first_name')) ? (
             <InlineFieldRow
+              column={1}
+              row={1}
               label={fieldLabel('first_name', t('app.candidate_card.fields.first_name'))}
               value={candidate.first_name || ''}
               editing={openField === 'first_name'}
@@ -217,6 +219,8 @@ function CandidateBasicSection({
           ) : null}
           {showIdentity && (!candidateProfile || fieldVisible('last_name')) ? (
             <InlineFieldRow
+              column={2}
+              row={1}
               label={fieldLabel('last_name', t('app.candidate_card.fields.last_name'))}
               value={candidate.last_name || ''}
               editing={openField === 'last_name'}
@@ -236,6 +240,8 @@ function CandidateBasicSection({
           ) : null}
           {showIdentity && (!candidateProfile || fieldVisible('birth_date')) && !omitBirthDate ? (
             <InlineFieldRow
+              column={1}
+              row={2}
               label={fieldLabel('birth_date', t('app.candidate_card.fields.birth_date'))}
               value={birthValue}
               editing={openField === 'birth_date'}
@@ -256,6 +262,8 @@ function CandidateBasicSection({
           ) : null}
           {showContact && (!candidateProfile || fieldVisible('phone')) ? (
             <InlineFieldRow
+              column={1}
+              row={1}
               label={fieldLabel('phone', t('app.candidate_card.fields.phone'))}
               value={candidate.phone || ''}
               editing={openField === 'phone'}
@@ -263,7 +271,7 @@ function CandidateBasicSection({
               onEdit={() => beginRow('phone')}
               onDone={() => setOpenField(null)}
               onCancel={cancelRow}
-              wide
+              stackEditor
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                 <div className="sm:w-56">
@@ -301,26 +309,10 @@ function CandidateBasicSection({
               </div>
             </InlineFieldRow>
           ) : null}
-          {showContact ? (
-            <InlineFieldRow
-              label={t('app.candidate_card.fields.phone_additional', { defaultValue: 'Additional phone' })}
-              value={(extra as { phone_additional?: string | null }).phone_additional || ''}
-              editing={openField === 'phone_additional'}
-              canEdit={canEdit}
-              onEdit={() => beginRow('phone_additional')}
-              onDone={() => setOpenField(null)}
-              onCancel={cancelRow}
-            >
-              <Input
-                aria-label={t('app.candidate_card.fields.phone_additional', { defaultValue: 'Additional phone' })}
-                value={(extra as { phone_additional?: string | null }).phone_additional || ''}
-                onChange={(e) => onExtraChange({ phone_additional: e.target.value } as Partial<CandidateExtra>)}
-                readOnly={rowLocked('phone_additional')}
-              />
-            </InlineFieldRow>
-          ) : null}
           {showContact && (!candidateProfile || fieldVisible('email')) ? (
             <InlineFieldRow
+              column={2}
+              row={1}
               label={fieldLabel('email', t('app.candidate_card.fields.email'))}
               value={candidate.email || ''}
               editing={openField === 'email'}
@@ -347,15 +339,38 @@ function CandidateBasicSection({
               ) : null}
             </InlineFieldRow>
           ) : null}
-          {showContact && (!candidateProfile || fieldVisible('preferred_contact')) ? (
+          {showContact ? (
             <InlineFieldRow
-              label={fieldLabel('preferred_contact', t('app.candidate_card.fields.preferred_contact'))}
-              value={preferredLabel}
-              editing={openField === 'preferred_contact'}
+              column={1}
+              row={2}
+              label={t('app.candidate_card.fields.phone_additional', { defaultValue: 'Additional phone' })}
+              value={(extra as { phone_additional?: string | null }).phone_additional || ''}
+              editing={openField === 'phone_additional'}
               canEdit={canEdit}
-              onEdit={() => beginRow('preferred_contact')}
+              onEdit={() => beginRow('phone_additional')}
               onDone={() => setOpenField(null)}
               onCancel={cancelRow}
+            >
+              <Input
+                aria-label={t('app.candidate_card.fields.phone_additional', { defaultValue: 'Additional phone' })}
+                value={(extra as { phone_additional?: string | null }).phone_additional || ''}
+                onChange={(e) => onExtraChange({ phone_additional: e.target.value } as Partial<CandidateExtra>)}
+                readOnly={rowLocked('phone_additional')}
+              />
+            </InlineFieldRow>
+          ) : null}
+          {showContact && (!candidateProfile || fieldVisible('preferred_contact')) ? (
+            <InlineFieldRow
+              column={2}
+              row={2}
+              interaction="direct"
+              contentEditor
+              label={fieldLabel('preferred_contact', t('app.candidate_card.fields.preferred_contact'))}
+              value={preferredLabel}
+              editing={false}
+              canEdit={canEdit}
+              onEdit={() => undefined}
+              onDone={() => undefined}
             >
               <select
                   className="input"

@@ -259,7 +259,7 @@ async def compute_candidate_next_action(
             hint_key="app.next_action.handoff.agency_wait.hint",
         )
 
-    # 4. Earliest active reminder.
+    # 4. Earliest active reminder. The stage-echo task repeats the pipeline code and is not an operator next action.
     reminder = await db.scalar(
         select(Reminder)
         .where(
@@ -267,6 +267,7 @@ async def compute_candidate_next_action(
             Reminder.entity_type == "candidate",
             Reminder.entity_id == candidate_id_str,
             Reminder.status.in_(_ACTIVE_REMINDER_STATUSES),
+            Reminder.type != "uos_candidate_stage_follow_up",
         )
         .order_by(Reminder.due_at.asc())
         .limit(1)

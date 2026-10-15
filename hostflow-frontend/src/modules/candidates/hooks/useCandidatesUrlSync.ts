@@ -59,6 +59,9 @@ export interface CandidatesUrlSyncCtx {
   setInPolandFilter: Dispatch<SetStateAction<string[]>>
   setHandoffStatusFilter: Dispatch<SetStateAction<string>>
   setContactAttemptsFilter: Dispatch<SetStateAction<string>>
+  setPausedFilter: Dispatch<SetStateAction<'' | 'yes' | 'no'>>
+  setResumeBeforeFilter: Dispatch<SetStateAction<string>>
+  setResumeOverdueFilter: Dispatch<SetStateAction<boolean>>
 }
 
 export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
@@ -70,6 +73,7 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
     setTextFilter, setManagerFilter, setPreferredChannelFilter,
     setOpsModeFilter, setInPolandFilter,
     setHandoffStatusFilter, setContactAttemptsFilter,
+    setPausedFilter, setResumeBeforeFilter, setResumeOverdueFilter,
   } = ctx
 
   // 1) Mirror `?view=` into local state.
@@ -113,6 +117,9 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
     const inPolandParam = searchParams.get('in_poland')
     const handoffStatusParam = searchParams.get('handoff_status') || searchParams.get('handoffStatus')
     const contactAttemptsParam = searchParams.get('contact_attempts') || searchParams.get('contactAttempts')
+    const pausedParam = (searchParams.get('paused') || '').trim().toLowerCase()
+    const resumeBeforeParam = (searchParams.get('resume_before') || '').trim()
+    const resumeOverdueParam = (searchParams.get('resume_overdue') || '').trim().toLowerCase()
     const shadowBucketParam = searchParams.get('shadow_bucket')?.trim() || ''
 
     const hasDeepLink =
@@ -130,6 +137,11 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
       inPolandParam ||
       handoffStatusParam ||
       contactAttemptsParam ||
+      pausedParam === 'yes' ||
+      pausedParam === 'no' ||
+      /^\d{4}-\d{2}-\d{2}$/.test(resumeBeforeParam) ||
+      resumeOverdueParam === '1' ||
+      resumeOverdueParam === 'true' ||
       Boolean(shadowBucketParam)
     if (!hasDeepLink) return
 
@@ -160,6 +172,9 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
       const v = String(contactAttemptsParam).trim()
       if (CONTACT_ATTEMPTS_VALUES.has(v)) setContactAttemptsFilter(v)
     }
+    if (pausedParam === 'yes' || pausedParam === 'no') setPausedFilter(pausedParam)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(resumeBeforeParam)) setResumeBeforeFilter(resumeBeforeParam)
+    if (resumeOverdueParam === '1' || resumeOverdueParam === 'true') setResumeOverdueFilter(true)
   }, [
     filtersHydrated,
     searchParams,
@@ -175,6 +190,9 @@ export function useCandidatesUrlSync(ctx: CandidatesUrlSyncCtx): void {
     setInPolandFilter,
     setHandoffStatusFilter,
     setContactAttemptsFilter,
+    setPausedFilter,
+    setResumeBeforeFilter,
+    setResumeOverdueFilter,
     resetCandidatesFiltersCore,
   ])
 }

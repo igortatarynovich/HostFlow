@@ -136,6 +136,9 @@ type UseCandidatesTableDataArgs = {
   docsOrderedFilter: string[]
   handoffStatusFilter: string | null
   contactAttemptsFilter: string | null
+  pausedFilter: '' | 'yes' | 'no'
+  resumeBeforeFilter: string
+  resumeOverdueFilter: boolean
   processorFilter: string | null
   /** Hourly risk shadow bucket ISO (GET /candidates shadow_bucket_start) */
   shadowBucketFilter: string | null
@@ -187,6 +190,9 @@ export function useCandidatesTableData({
   docsOrderedFilter,
   handoffStatusFilter,
   contactAttemptsFilter,
+  pausedFilter,
+  resumeBeforeFilter,
+  resumeOverdueFilter,
   processorFilter,
   shadowBucketFilter,
   shadowBucketMinBand,
@@ -382,6 +388,9 @@ export function useCandidatesTableData({
             documents_ordered: docsOrderedFilter.length === 1 ? docsOrderedFilter[0] : undefined,
             handoff_status: handoffStatusFilter || undefined,
             contact_attempts: contactAttemptsFilter || undefined,
+            paused: pausedFilter || undefined,
+            resume_before: resumeBeforeFilter || undefined,
+            resume_overdue: resumeOverdueFilter ? true : undefined,
             processor_id: processorFilter || undefined,
           }
           if (shadowBucketFilter && String(shadowBucketFilter).trim()) {
@@ -483,6 +492,9 @@ export function useCandidatesTableData({
       docsOrderedFilter,
       handoffStatusFilter,
       contactAttemptsFilter,
+      pausedFilter,
+      resumeBeforeFilter,
+      resumeOverdueFilter,
       processorFilter,
       shadowBucketFilter,
       shadowBucketMinBand,
@@ -527,6 +539,9 @@ export function useCandidatesTableData({
       documents_ordered: docsOrderedFilter.length === 1 ? docsOrderedFilter[0] : undefined,
       handoff_status: handoffStatusFilter || undefined,
       contact_attempts: contactAttemptsFilter || undefined,
+      paused: pausedFilter || undefined,
+      resume_before: resumeBeforeFilter || undefined,
+      resume_overdue: resumeOverdueFilter ? true : undefined,
       processor_id: processorFilter || undefined,
     }
     if (shadowBucketFilter && String(shadowBucketFilter).trim()) {
@@ -563,6 +578,9 @@ export function useCandidatesTableData({
     docsOrderedFilter,
     handoffStatusFilter,
     contactAttemptsFilter,
+    pausedFilter,
+    resumeBeforeFilter,
+    resumeOverdueFilter,
     processorFilter,
     shadowBucketFilter,
     shadowBucketMinBand,

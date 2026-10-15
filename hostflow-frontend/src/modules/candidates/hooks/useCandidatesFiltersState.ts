@@ -52,6 +52,9 @@ export interface CandidatesFiltersStateCtx {
   // ---- string-typed filters ------------------------------------------
   setHandoffStatusFilter: Dispatch<SetStateAction<string>>
   setContactAttemptsFilter: Dispatch<SetStateAction<string>>
+  setPausedFilter: Dispatch<SetStateAction<'' | 'yes' | 'no'>>
+  setResumeBeforeFilter: Dispatch<SetStateAction<string>>
+  setResumeOverdueFilter: Dispatch<SetStateAction<boolean>>
   setProcessorFilter: Dispatch<SetStateAction<string>>
   setIntakeApplicationKindFilter: Dispatch<SetStateAction<'' | 'client' | 'candidate'>>
 
@@ -99,7 +102,9 @@ export function useCandidatesFiltersState(ctx: CandidatesFiltersStateCtx): Candi
     setPreferredChannelFilter, setInPolandFilter, setOpsModeFilter, setPolandBasisFilter,
     setTrailerTypesFilter, setDocsHasFilesFilter,
     setCreatedRange, setFirstContactRange, setDocsValidRange,
-    setHandoffStatusFilter, setContactAttemptsFilter, setProcessorFilter,
+    setHandoffStatusFilter, setContactAttemptsFilter,
+    setPausedFilter, setResumeBeforeFilter, setResumeOverdueFilter,
+    setProcessorFilter,
     setIntakeApplicationKindFilter,
     setTextFilters,
     setSortKey, setSortDir,
@@ -130,6 +135,11 @@ export function useCandidatesFiltersState(ctx: CandidatesFiltersStateCtx): Candi
       setDocsValidRange(normalizeRangeFilter(filters?.docsValidRange ?? filters?.docs_valid_from))
       setDocsHasFilesFilter(normalizeArrayFilter(filters?.docsHasFiles ?? filters?.docs_has_files))
       setTextFilters(normalizeTextFilterState(filters?.textFilters))
+      const rawPaused = filters?.paused
+      setPausedFilter(rawPaused === 'yes' || rawPaused === 'no' ? rawPaused : '')
+      const rawResumeBefore = String(filters?.resumeBefore ?? filters?.resume_before ?? '').trim()
+      setResumeBeforeFilter(/^\d{4}-\d{2}-\d{2}$/.test(rawResumeBefore) ? rawResumeBefore : '')
+      setResumeOverdueFilter(filters?.resumeOverdue === true || filters?.resume_overdue === true)
       const rawIak = filters?.intakeApplicationKind ?? filters?.intake_application_kind
       setIntakeApplicationKindFilter(
         rawIak === 'client' || rawIak === 'candidate' ? rawIak : '',
@@ -141,7 +151,8 @@ export function useCandidatesFiltersState(ctx: CandidatesFiltersStateCtx): Candi
       setTagsFilter, setDocsStatusFilter, setDocsOrderedFilter, setPreferredChannelFilter,
       setInPolandFilter, setOpsModeFilter, setPolandBasisFilter, setTrailerTypesFilter,
       setCreatedRange, setFirstContactRange, setDocsValidRange, setDocsHasFilesFilter,
-      setTextFilters, setIntakeApplicationKindFilter, applyTableLayoutFromViewRef,
+      setTextFilters, setPausedFilter, setResumeBeforeFilter, setResumeOverdueFilter,
+      setIntakeApplicationKindFilter, applyTableLayoutFromViewRef,
     ],
   )
 
@@ -167,6 +178,9 @@ export function useCandidatesFiltersState(ctx: CandidatesFiltersStateCtx): Candi
     setDocsHasFilesFilter([])
     setHandoffStatusFilter('')
     setContactAttemptsFilter('')
+    setPausedFilter('')
+    setResumeBeforeFilter('')
+    setResumeOverdueFilter(false)
     setProcessorFilter('')
     setIntakeApplicationKindFilter('')
     setTextFilters(makeEmptyTextFilters())
@@ -184,6 +198,7 @@ export function useCandidatesFiltersState(ctx: CandidatesFiltersStateCtx): Candi
     setPreferredChannelFilter, setInPolandFilter, setOpsModeFilter, setPolandBasisFilter,
     setTrailerTypesFilter, setCreatedRange, setFirstContactRange, setDocsValidRange,
     setDocsHasFilesFilter, setHandoffStatusFilter, setContactAttemptsFilter,
+    setPausedFilter, setResumeBeforeFilter, setResumeOverdueFilter,
     setProcessorFilter, setIntakeApplicationKindFilter, setTextFilters,
     setSortKey, setSortDir, persistedFiltersRef, filterStorageKey,
   ])

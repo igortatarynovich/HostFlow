@@ -724,6 +724,18 @@ async def list_candidates(
         default=None,
         description="Filter by contact attempts: none, some, limit_reached (3+).",
     ),
+    paused: str | None = Query(
+        default=None,
+        description="Active candidate pause (extra.candidate_ops.pause.resume_on): yes or no.",
+    ),
+    resume_before: str | None = Query(
+        default=None,
+        description="YYYY-MM-DD inclusive upper bound for an active pause resume date.",
+    ),
+    resume_overdue: bool = Query(
+        default=False,
+        description="Active pause whose resume date is before today (UTC) and the candidate is still paused.",
+    ),
     processor_id: UUID | None = Query(
         default=None,
         description="Filter by processor (accepted handoff assigned_to_user_id).",
@@ -981,6 +993,17 @@ async def list_candidates(
         ca = contact_attempts.strip().lower()
         if ca in {"none", "some", "limit_reached"}:
             filters["contact_attempts"] = ca
+
+    if paused:
+        paused_value = paused.strip().lower()
+        if paused_value in {"yes", "no"}:
+            filters["paused"] = paused_value
+    if resume_before:
+        resume_before_value = resume_before.strip()
+        if len(resume_before_value) == 10 and resume_before_value[4] == "-" and resume_before_value[7] == "-":
+            filters["resume_before"] = resume_before_value
+    if resume_overdue:
+        filters["resume_overdue"] = True
 
     if processor_id:
         filters["processor_id"] = str(processor_id)

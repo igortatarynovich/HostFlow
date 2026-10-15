@@ -187,50 +187,18 @@ function CandidatePersonalSection({
                 />
               </InlineFieldRow>
             ) : null}
-            {(!candidateProfile || fieldVisible('country_code')) ? (
-              <InlineFieldRow
-                label={fieldLabel('country_code', t('app.candidate_card.fields.country_code'))}
-                value={countryLabel(candidate.country_code)}
-                editing={openField === 'country_code'}
-                canEdit={canEdit}
-                onEdit={() => beginRow('country_code')}
-                onDone={() => setOpenField(null)}
-                onCancel={cancelRow}
-              >
-                <SearchableSelect
-                  options={countries}
-                  value={(candidate.country_code as string) || ''}
-                  onChange={(v) => onModelChange((m) => ({ ...m, country_code: v || null }))}
-                  disabled={candidateDataReadOnly}
-                  placeholder={selectTexts.empty}
-                  searchPlaceholder={selectTexts.search}
-                  noResultsLabel={selectTexts.noResults}
-                />
-                {!candidate.country_code && extra.phone_country ? (
-                  <button
-                    type="button"
-                    className="mt-1 text-xs text-brand-600 hover:underline"
-                    disabled={candidateDataReadOnly}
-                    onClick={() => {
-                      onModelChange((m) => ({ ...m, country_code: extra.phone_country }))
-                      onExtraChange({ country_code: extra.phone_country })
-                    }}
-                  >
-                    {t('app.candidate_card.fields.fill_from_phone')}
-                  </button>
-                ) : null}
-              </InlineFieldRow>
-            ) : null}
             {(!candidateProfile || fieldVisible('languages')) ? (
               <InlineFieldRow
+                column={2}
+                row={3}
+                interaction="direct"
+                contentEditor
                 label={fieldLabel('languages', t('app.candidate_card.fields.languages'))}
                 value={languageValue}
-                editing={openField === 'languages'}
+                editing={false}
                 canEdit={canEdit}
-                onEdit={() => beginRow('languages')}
-                onDone={() => setOpenField(null)}
-                onCancel={cancelRow}
-                contentEditor
+                onEdit={() => undefined}
+                onDone={() => undefined}
               >
                 <ChipFieldEditor
                   options={languages}
@@ -247,6 +215,8 @@ function CandidatePersonalSection({
         {showAddress ? (
           <>
             <InlineFieldRow
+              column={1}
+              stackEditor
               label={t('app.candidate_card.sections.personal.address_current')}
               value={residence}
               editing={openField === 'address'}
@@ -254,7 +224,6 @@ function CandidatePersonalSection({
               onEdit={() => beginRow('address')}
               onDone={() => setOpenField(null)}
               onCancel={cancelRow}
-              wide
             >
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <label className="block md:col-span-2">
@@ -277,6 +246,8 @@ function CandidatePersonalSection({
               </div>
             </InlineFieldRow>
             <InlineFieldRow
+              column={2}
+              stackEditor
               label={t('app.candidate_card.sections.personal.address_registered')}
               value={registered}
               editing={openField === 'reg_address'}
@@ -284,7 +255,6 @@ function CandidatePersonalSection({
               onEdit={() => beginRow('reg_address')}
               onDone={() => setOpenField(null)}
               onCancel={cancelRow}
-              wide
             >
               <Checkbox
                 label={t('app.candidate_card.fields.address.diff')}

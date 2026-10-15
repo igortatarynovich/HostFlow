@@ -17,7 +17,7 @@ function parseTs(value?: string | null): number {
 }
 
 function pickNextAction(reminders: ReminderRecord[], nowTs: number): ReminderRecord | null {
-  const active = reminders.filter((r) => r && r.status !== 'done' && r.status !== 'cancelled')
+  const active = reminders.filter((r) => r && r.status !== 'done' && r.status !== 'cancelled' && r.type !== 'uos_candidate_stage_follow_up' && !/^Candidate pipeline:/i.test(r.title || ''))
   if (!active.length) return null
   // Prefer overdue by status or due_at in past, then soonest due
   active.sort((a, b) => {

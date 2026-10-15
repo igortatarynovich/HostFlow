@@ -62,6 +62,8 @@ type Props = {
   showJourney?: boolean
   /** Drops the outer card frame when the panel sits inside another card. */
   embedded?: boolean
+  /** Terminal outcomes live in the hero menu. */
+  hideOutcomes?: boolean
 }
 
 export default function CandidateStageDecisionPanel({
@@ -91,6 +93,7 @@ export default function CandidateStageDecisionPanel({
   layout = 'full',
   showJourney = true,
   embedded = false,
+  hideOutcomes = false,
 }: Props) {
   const { t } = useI18n()
 
@@ -481,7 +484,7 @@ export default function CandidateStageDecisionPanel({
         </div>
       </div>
 
-      {stageOutcomeStages && stageOutcomeStages.length > 0 && !pipelineCompleted ? (
+      {hideOutcomes ? null : stageOutcomeStages && stageOutcomeStages.length > 0 && !pipelineCompleted ? (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             {t('app.candidate_card.stage_journey.outcomes', { defaultValue: 'Outcomes' })}

@@ -19,6 +19,8 @@ export type StagePipelineProps = {
   /** Explicit completions. Stages before the current one are completed when omitted. */
   completedCodes?: ReadonlySet<string>
   blocked?: boolean
+  /** Stage stays put. The track shows the candidate is frozen. */
+  paused?: boolean
   ariaLabel?: string
   className?: string
 }
@@ -52,6 +54,7 @@ export function StagePipeline({
   currentCode,
   completedCodes,
   blocked = false,
+  paused = false,
   ariaLabel,
   className,
 }: StagePipelineProps) {
@@ -84,7 +87,7 @@ export function StagePipeline({
                   className={clsx(
                     'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold',
                     mark === 'blocked' && 'bg-white text-rose-700 ring-2 ring-rose-500',
-                    mark === 'current' && 'bg-white text-brand-700 ring-2 ring-brand-600',
+                    mark === 'current' && (paused ? 'bg-white text-amber-800 ring-2 ring-amber-500' : 'bg-white text-brand-700 ring-2 ring-brand-600'),
                     mark === 'completed' && 'bg-emerald-500 text-white',
                     (mark === 'pending' || mark === 'not_applicable') && 'border border-slate-300 bg-white text-slate-300',
                   )}

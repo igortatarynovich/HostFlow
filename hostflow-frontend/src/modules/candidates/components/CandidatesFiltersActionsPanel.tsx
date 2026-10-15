@@ -15,6 +15,12 @@ type CandidatesFiltersActionsPanelProps = {
   onHandoffStatusFilterChange: (value: string) => void
   contactAttemptsFilter: string
   onContactAttemptsFilterChange: (value: string) => void
+  pausedFilter: '' | 'yes' | 'no'
+  onPausedFilterChange: (value: '' | 'yes' | 'no') => void
+  resumeBeforeFilter: string
+  onResumeBeforeFilterChange: (value: string) => void
+  resumeOverdueFilter: boolean
+  onResumeOverdueFilterChange: (value: boolean) => void
   opsModeFilter: CandidateOpsMode[]
   onOpsModeFilterChange: (value: CandidateOpsMode[]) => void
   opsModeOptions: Array<{ value: CandidateOpsMode; label: string }>
@@ -64,6 +70,12 @@ export function CandidatesFiltersActionsPanel({
   onHandoffStatusFilterChange,
   contactAttemptsFilter,
   onContactAttemptsFilterChange,
+  pausedFilter,
+  onPausedFilterChange,
+  resumeBeforeFilter,
+  onResumeBeforeFilterChange,
+  resumeOverdueFilter,
+  onResumeOverdueFilterChange,
   opsModeFilter,
   onOpsModeFilterChange,
   opsModeOptions,
@@ -269,6 +281,34 @@ export function CandidatesFiltersActionsPanel({
             <option value="some">{t('app.candidates.filters.contact_some', { defaultValue: '1–2' })}</option>
             <option value="limit_reached">{t('app.candidates.filters.contact_limit', { defaultValue: '3+ (limit)' })}</option>
           </select>
+          <label className="block text-xs font-medium text-slate-600">{t('app.candidates.filters.pause_menu', { defaultValue: 'On pause' })}</label>
+          <select
+            className="input w-full text-sm py-1.5"
+            value={pausedFilter}
+            onChange={(e) => {
+              const value = e.target.value
+              onPausedFilterChange(value === 'yes' || value === 'no' ? value : '')
+            }}
+          >
+            <option value="">{t('app.candidates.filters.any', { defaultValue: '— any —' })}</option>
+            <option value="yes">{t('app.candidates.filters.pause_yes', { defaultValue: 'Yes' })}</option>
+            <option value="no">{t('app.candidates.filters.pause_no', { defaultValue: 'No' })}</option>
+          </select>
+          <label className="block text-xs font-medium text-slate-600">{t('app.candidates.filters.resume_before', { defaultValue: 'Resume date until' })}</label>
+          <input
+            type="date"
+            className="input w-full text-sm py-1.5"
+            value={resumeBeforeFilter}
+            onChange={(e) => onResumeBeforeFilterChange(e.target.value)}
+          />
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+            <input
+              type="checkbox"
+              checked={resumeOverdueFilter}
+              onChange={(e) => onResumeOverdueFilterChange(e.target.checked)}
+            />
+            {t('app.candidates.filters.resume_overdue', { defaultValue: 'Resume date overdue' })}
+          </label>
           <label className="block text-xs font-medium text-slate-600">{t('app.candidates.filters.ops_mode_menu')}</label>
           <select
             className="input w-full text-sm py-1.5"

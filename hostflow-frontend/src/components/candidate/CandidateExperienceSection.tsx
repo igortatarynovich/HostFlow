@@ -158,14 +158,14 @@ function CandidateExperienceSection({
         ) : null}
         {showMobility && (!candidateProfile || layoutVisible('trailer_types')) ? (
           <InlineFieldRow
-            label={layoutLabel('trailer_types', t('app.candidate_card.intake.fields.trailer_types'))}
-            value={labels(Array.isArray(extra.trailer_types) ? extra.trailer_types : [], trailerTypeOptions)}
-            editing={openField === 'trailer_types'}
-            canEdit={!candidateDataReadOnly}
-            onEdit={() => beginRow('trailer_types')}
-            onDone={() => setOpenField(null)}
-            onCancel={cancelRow}
+            interaction="direct"
             contentEditor
+            label={layoutLabel('trailer_types', t('app.candidate_card.ia.sections.transport_experience', { defaultValue: 'Trailer experience' }))}
+            value={labels(Array.isArray(extra.trailer_types) ? extra.trailer_types : [], trailerTypeOptions)}
+            editing={false}
+            canEdit={!candidateDataReadOnly}
+            onEdit={() => undefined}
+            onDone={() => undefined}
           >
             <ChipFieldEditor
               options={trailerTypeOptions}
@@ -179,14 +179,14 @@ function CandidateExperienceSection({
         ) : null}
         {showMobility && (!candidateProfile || layoutVisible('route_types')) ? (
           <InlineFieldRow
-            label={layoutLabel('route_types', t('app.candidate_card.intake.fields.route_types'))}
-            value={labels(Array.isArray(extra.route_types) ? extra.route_types : [], routeTypeOptions)}
-            editing={openField === 'route_types'}
-            canEdit={!candidateDataReadOnly}
-            onEdit={() => beginRow('route_types')}
-            onDone={() => setOpenField(null)}
-            onCancel={cancelRow}
+            interaction="direct"
             contentEditor
+            label={layoutLabel('route_types', t('app.candidate_card.ia.sections.route_experience', { defaultValue: 'Routes worked' }))}
+            value={labels(Array.isArray(extra.route_types) ? extra.route_types : [], routeTypeOptions)}
+            editing={false}
+            canEdit={!candidateDataReadOnly}
+            onEdit={() => undefined}
+            onDone={() => undefined}
           >
             <ChipFieldEditor
               options={routeTypeOptions}

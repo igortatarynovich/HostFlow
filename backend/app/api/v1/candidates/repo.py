@@ -372,6 +372,33 @@ def unattached_compliance_shell_clause():
     return and_(is_shell, ~attached, ~linked_from_lead)
 
 
+def _pause_resume_on_expr():
+    """ISO date of an active pause, stored in extra JSON text at candidate_ops.pause.resume_on."""
+    if _HAS_JSONB:
+        parsed = cast(func.coalesce(func.nullif(Candidate.extra, ""), "{}"), JSONB)
+        return parsed["candidate_ops"]["pause"]["resume_on"].as_string()
+    return func.json_extract(Candidate.extra, "$.candidate_ops.pause.resume_on")
+
+
+def _append_pause_filters(conds: list, filters: Dict[str, Any]) -> None:
+    """Server-side pause filters. An active pause is a non-empty resume date."""
+    resume_on = _pause_resume_on_expr()
+    active = and_(resume_on.isnot(None), resume_on != "", func.length(resume_on) >= 10)
+    paused = str(filters.get("paused") or "").strip().lower()
+    if paused == "yes":
+        conds.append(active)
+    elif paused == "no":
+        conds.append(~active)
+
+    resume_before = str(filters.get("resume_before") or "").strip()
+    if len(resume_before) == 10 and resume_before[4] == "-" and resume_before[7] == "-":
+        conds.append(and_(active, resume_on <= resume_before))
+
+    if filters.get("resume_overdue"):
+        today = datetime.now(timezone.utc).date().isoformat()
+        conds.append(and_(active, resume_on < today))
+
+
 def _parse_extra(raw: Any) -> dict:
     """Best-effort parse of JSON stored in Candidate.extra."""
     if not raw:
@@ -1083,6 +1110,8 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
                 RiskIntelEntityShadow.band.in_(bands),
             )
             conds.append(Candidate.id.in_(shadow_sq))
+
+    _append_pause_filters(conds, filters)
 
     return conds
 

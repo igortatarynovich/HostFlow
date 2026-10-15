@@ -691,6 +691,13 @@ export interface CandidateExtra {
     mode?: CandidateOpsMode | null;
     updated_at?: string | null;
     updated_by?: string | null;
+    pause?: {
+      reason?: string | null;
+      comment?: string | null;
+      paused_at?: string | null;
+      resume_on?: string | null;
+      paused_by?: string | null;
+    } | null;
   } | null;
 
   /** Set by backend when a linked workforce employee is terminated (HR PATCH). */

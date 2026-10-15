@@ -335,6 +335,9 @@ export default function Candidates(){
   const [docsHasFilesFilter, setDocsHasFilesFilter] = useState<string[]>([])
   const [handoffStatusFilter, setHandoffStatusFilter] = useState<string>('')
   const [contactAttemptsFilter, setContactAttemptsFilter] = useState<string>('')
+  const [pausedFilter, setPausedFilter] = useState<'' | 'yes' | 'no'>('')
+  const [resumeBeforeFilter, setResumeBeforeFilter] = useState('')
+  const [resumeOverdueFilter, setResumeOverdueFilter] = useState(false)
   const [processorFilter, setProcessorFilter] = useState<string>('')
   const [intakeApplicationKindFilter, setIntakeApplicationKindFilter] = useState<'client' | 'candidate' | ''>('')
   const [textFilters, setTextFilters] = useState<ColumnTextFilters>(() => makeEmptyTextFilters())
@@ -418,6 +421,9 @@ export default function Candidates(){
       ops_mode: opsModeFilter.slice().sort().join(','),
       handoff_status: handoffStatusFilter || '',
       contact_attempts: contactAttemptsFilter || '',
+      paused: pausedFilter || '',
+      resume_before: resumeBeforeFilter || '',
+      resume_overdue: resumeOverdueFilter ? '1' : '',
       processor_id: processorFilter || '',
       shadow_bucket: digestShadowBucket || '',
       shadow_min_band: digestShadowMinBand || '',
@@ -443,6 +449,9 @@ export default function Candidates(){
     opsModeFilter,
     handoffStatusFilter,
     contactAttemptsFilter,
+    pausedFilter,
+    resumeBeforeFilter,
+    resumeOverdueFilter,
     processorFilter,
     digestShadowBucket,
     digestShadowMinBand,
@@ -523,7 +532,9 @@ export default function Candidates(){
     setPreferredChannelFilter, setInPolandFilter, setOpsModeFilter, setPolandBasisFilter,
     setTrailerTypesFilter, setDocsHasFilesFilter,
     setCreatedRange, setFirstContactRange, setDocsValidRange,
-    setHandoffStatusFilter, setContactAttemptsFilter, setProcessorFilter,
+    setHandoffStatusFilter, setContactAttemptsFilter,
+    setPausedFilter, setResumeBeforeFilter, setResumeOverdueFilter,
+    setProcessorFilter,
     setIntakeApplicationKindFilter,
     setTextFilters,
     setSortKey, setSortDir,
@@ -1031,6 +1042,9 @@ export default function Candidates(){
     docsOrderedFilter,
     handoffStatusFilter,
     contactAttemptsFilter,
+    pausedFilter,
+    resumeBeforeFilter,
+    resumeOverdueFilter,
     processorFilter,
     shadowBucketFilter: digestShadowBucket,
     shadowBucketMinBand: digestShadowMinBand,
@@ -1053,6 +1067,7 @@ export default function Candidates(){
     setTextFilter, setManagerFilter, setPreferredChannelFilter,
     setOpsModeFilter, setInPolandFilter,
     setHandoffStatusFilter, setContactAttemptsFilter,
+    setPausedFilter, setResumeBeforeFilter, setResumeOverdueFilter,
   })
 
 
@@ -1063,14 +1078,18 @@ export default function Candidates(){
     setDocsStatusFilter, setDocsOrderedFilter, setPreferredChannelFilter,
     setInPolandFilter, setOpsModeFilter, setPolandBasisFilter, setTrailerTypesFilter,
     setCreatedRange, setFirstContactRange, setDocsValidRange, setDocsHasFilesFilter,
-    setHandoffStatusFilter, setContactAttemptsFilter, setProcessorFilter,
+    setHandoffStatusFilter, setContactAttemptsFilter,
+    setPausedFilter, setResumeBeforeFilter, setResumeOverdueFilter,
+    setProcessorFilter,
     setTextFilters, setIsFavoriteFilter, setIntakeApplicationKindFilter,
     setSortKey, setSortDir,
     q, stageFilter, candidateRowStatusFilter, vacancyFilter, managerFilter, statusReasonFilter, tagsFilter,
     docsStatusFilter, docsOrderedFilter, preferredChannelFilter, inPolandFilter,
     opsModeFilter, polandBasisFilter, trailerTypesFilter,
     createdRange, firstContactRange, docsValidRange, docsHasFilesFilter,
-    handoffStatusFilter, contactAttemptsFilter, processorFilter,
+    handoffStatusFilter, contactAttemptsFilter,
+    pausedFilter, resumeBeforeFilter, resumeOverdueFilter,
+    processorFilter,
     textFilters, isFavoriteFilter, intakeApplicationKindFilter,
     sortKey, sortDir,
   })
@@ -2202,6 +2221,10 @@ export default function Candidates(){
     docsHasFilesFilter.length > 0 ||
     !!handoffStatusFilter ||
     !!contactAttemptsFilter ||
+    pausedFilter === 'yes' ||
+    pausedFilter === 'no' ||
+    Boolean(resumeBeforeFilter) ||
+    resumeOverdueFilter ||
     Boolean(digestShadowBucket) ||
     !!processorFilter ||
     Boolean(operationalQueue) ||
@@ -2573,6 +2596,12 @@ export default function Candidates(){
             setHandoffStatusFilter={setHandoffStatusFilter}
             contactAttemptsFilter={contactAttemptsFilter}
             setContactAttemptsFilter={setContactAttemptsFilter}
+            pausedFilter={pausedFilter}
+            setPausedFilter={setPausedFilter}
+            resumeBeforeFilter={resumeBeforeFilter}
+            setResumeBeforeFilter={setResumeBeforeFilter}
+            resumeOverdueFilter={resumeOverdueFilter}
+            setResumeOverdueFilter={setResumeOverdueFilter}
             processorFilter={processorFilter}
             setProcessorFilter={setProcessorFilter}
             intakeApplicationKindFilter={intakeApplicationKindFilter}
@@ -2924,6 +2953,12 @@ export default function Candidates(){
             onHandoffStatusFilterChange={setHandoffStatusFilter}
             contactAttemptsFilter={contactAttemptsFilter}
             onContactAttemptsFilterChange={setContactAttemptsFilter}
+            pausedFilter={pausedFilter}
+            onPausedFilterChange={setPausedFilter}
+            resumeBeforeFilter={resumeBeforeFilter}
+            onResumeBeforeFilterChange={setResumeBeforeFilter}
+            resumeOverdueFilter={resumeOverdueFilter}
+            onResumeOverdueFilterChange={setResumeOverdueFilter}
             opsModeFilter={opsModeFilter}
             onOpsModeFilterChange={setOpsModeFilter}
             opsModeOptions={opsModeOptions as any}

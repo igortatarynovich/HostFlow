@@ -65,6 +65,9 @@ export interface CandidatesFiltersPersistenceCtx {
   setDocsHasFilesFilter: Dispatch<SetStateAction<string[]>>
   setHandoffStatusFilter: Dispatch<SetStateAction<string>>
   setContactAttemptsFilter: Dispatch<SetStateAction<string>>
+  setPausedFilter: Dispatch<SetStateAction<'' | 'yes' | 'no'>>
+  setResumeBeforeFilter: Dispatch<SetStateAction<string>>
+  setResumeOverdueFilter: Dispatch<SetStateAction<boolean>>
   setProcessorFilter: Dispatch<SetStateAction<string>>
   setTextFilters: Dispatch<SetStateAction<ColumnTextFilters>>
   setIsFavoriteFilter: Dispatch<SetStateAction<boolean | null>>
@@ -93,6 +96,9 @@ export interface CandidatesFiltersPersistenceCtx {
   docsHasFilesFilter: string[]
   handoffStatusFilter: string
   contactAttemptsFilter: string
+  pausedFilter: '' | 'yes' | 'no'
+  resumeBeforeFilter: string
+  resumeOverdueFilter: boolean
   processorFilter: string
   textFilters: ColumnTextFilters
   isFavoriteFilter: boolean | null
@@ -108,14 +114,18 @@ export function useCandidatesFiltersPersistence(ctx: CandidatesFiltersPersistenc
     setDocsStatusFilter, setDocsOrderedFilter, setPreferredChannelFilter,
     setInPolandFilter, setOpsModeFilter, setPolandBasisFilter, setTrailerTypesFilter,
     setCreatedRange, setFirstContactRange, setDocsValidRange, setDocsHasFilesFilter,
-    setHandoffStatusFilter, setContactAttemptsFilter, setProcessorFilter,
+    setHandoffStatusFilter, setContactAttemptsFilter,
+    setPausedFilter, setResumeBeforeFilter, setResumeOverdueFilter,
+    setProcessorFilter,
     setTextFilters, setIsFavoriteFilter, setIntakeApplicationKindFilter,
     setSortKey, setSortDir,
     q, stageFilter, candidateRowStatusFilter, vacancyFilter, managerFilter, statusReasonFilter, tagsFilter,
     docsStatusFilter, docsOrderedFilter, preferredChannelFilter, inPolandFilter,
     opsModeFilter, polandBasisFilter, trailerTypesFilter,
     createdRange, firstContactRange, docsValidRange, docsHasFilesFilter,
-    handoffStatusFilter, contactAttemptsFilter, processorFilter,
+    handoffStatusFilter, contactAttemptsFilter,
+    pausedFilter, resumeBeforeFilter, resumeOverdueFilter,
+    processorFilter,
     textFilters, isFavoriteFilter, intakeApplicationKindFilter,
     sortKey, sortDir,
   } = ctx
@@ -210,6 +220,21 @@ export function useCandidatesFiltersPersistence(ctx: CandidatesFiltersPersistenc
             setContactAttemptsFilter(restoredContactAttempts)
             applied = true
           }
+          const restoredPaused = typeof parsed.paused === 'string' ? parsed.paused.trim() : ''
+          if (restoredPaused === 'yes' || restoredPaused === 'no') {
+            setPausedFilter(restoredPaused)
+            applied = true
+          }
+          const restoredResumeBefore =
+            typeof parsed.resumeBefore === 'string' ? parsed.resumeBefore.trim() : ''
+          if (/^\d{4}-\d{2}-\d{2}$/.test(restoredResumeBefore)) {
+            setResumeBeforeFilter(restoredResumeBefore)
+            applied = true
+          }
+          if (parsed.resumeOverdue === true) {
+            setResumeOverdueFilter(true)
+            applied = true
+          }
           const restoredProcessorId =
             typeof parsed.processorId === 'string' ? parsed.processorId.trim() : ''
           if (restoredProcessorId) {
@@ -282,6 +307,9 @@ export function useCandidatesFiltersPersistence(ctx: CandidatesFiltersPersistenc
           docsHasFiles: docsHasFilesFilter,
           handoffStatus: handoffStatusFilter,
           contactAttempts: contactAttemptsFilter,
+          paused: pausedFilter,
+          resumeBefore: resumeBeforeFilter,
+          resumeOverdue: resumeOverdueFilter,
           processorId: processorFilter,
           textFilters,
           isFavorite: isFavoriteFilter,
@@ -299,7 +327,9 @@ export function useCandidatesFiltersPersistence(ctx: CandidatesFiltersPersistenc
     docsStatusFilter, docsOrderedFilter, preferredChannelFilter, inPolandFilter,
     opsModeFilter, polandBasisFilter, trailerTypesFilter,
     createdRange, firstContactRange, docsValidRange, docsHasFilesFilter,
-    handoffStatusFilter, contactAttemptsFilter, processorFilter,
+    handoffStatusFilter, contactAttemptsFilter,
+    pausedFilter, resumeBeforeFilter, resumeOverdueFilter,
+    processorFilter,
     textFilters, isFavoriteFilter, intakeApplicationKindFilter,
     sortKey, sortDir,
   ])

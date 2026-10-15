@@ -71,6 +71,7 @@ interface CandidateHeaderProps {
   context?: ReactNode
   /** Stage track. Rendered as the last row of the same hero. */
   pipeline?: ReactNode
+  extraMenuItems?: OverflowMenuItem[]
 }
 
 function CandidateHeader({
@@ -119,6 +120,7 @@ function CandidateHeader({
   summary = null,
   context = null,
   pipeline = null,
+  extraMenuItems = [],
   ..._unusedHeaderProps
 }: CandidateHeaderProps) {
   const { t } = useI18n()
@@ -137,6 +139,7 @@ function CandidateHeader({
       onSelect: onFavoriteToggle,
     })
   }
+  extraMenuItems.forEach((item) => overflowItems.push(item))
   if (!isNew && !candidate?.short_id && onGenerateShortId) {
     overflowItems.push({
       id: 'short-id',

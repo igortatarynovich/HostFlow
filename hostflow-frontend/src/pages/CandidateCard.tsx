@@ -81,7 +81,6 @@ import { isCandidateOperationallyTerminal, isPipelineCompletedCanonicalStage } f
 import { canonicalStageKey, translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
 import { scoreMissingHintForStage } from '../utils/candidateMissingDataHints'
 import {
-  contactAttemptPipelineBlocksForward,
   docsIssuesPresent,
   docsPipelineBlocksForwardResolved,
   hiringPipelineGatesFromApi,
@@ -105,6 +104,8 @@ import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { getFriendlyErrorInfo } from '../utils/friendlyError'
 import CandidateHeader from '../components/candidate/CandidateHeader'
+import { CandidatePauseDialog } from '../components/candidate/CandidatePauseDialog'
+import { useAuth } from '../store/useAuth'
 import CandidateMissingPanel from '../components/candidate/CandidateMissingPanel'
 import CandidateApplicationsSection from '../components/candidate/CandidateApplicationsSection'
 import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
@@ -114,7 +115,6 @@ import CandidatePersonalSection from '../components/candidate/CandidatePersonalS
 import CandidateExperienceSection from '../components/candidate/CandidateExperienceSection'
 import CandidateCustomFieldsSection from '../components/candidate/CandidateCustomFieldsSection'
 import CandidateRodoSection from '../components/candidate/CandidateRodoSection'
-import CandidateContactAttemptsSection from '../components/candidate/CandidateContactAttemptsSection'
 import CandidateTimelinePanel from '../components/candidate/CandidateTimelinePanel'
 import CandidateStageDecisionPanel, { CandidatePipelineStatus } from '../components/candidate/CandidateStageDecisionPanel'
 import { Input, SearchableSelect } from '../components/candidate/shared/FormComponents'
@@ -968,6 +968,8 @@ export default function CandidateCard(){
   }, [id])
 
   // каталоги
+  const { me } = useAuth()
+  const [pauseOpen, setPauseOpen] = useState(false)
   const [countries, setCountries] = useState<Option[]>([])
   const [languages, setLanguages] = useState<Option[]>([])
   const [dialCodes, setDialCodes] = useState<Option[]>([])
@@ -979,8 +981,6 @@ export default function CandidateCard(){
   const [noteSending, setNoteSending] = useState(false)
   const [rodoSentTrigger, setRodoSentTrigger] = useState(0)
   /** Bumped to open contact-attempt register modal from stage panel (“Contact candidate”). */
-  const [contactAttemptOpenSignal, setContactAttemptOpenSignal] = useState(0)
-
   const lastSavedPayloadRef = useRef<string | null>(null)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedEmploymentRowsRef = useRef<string | null>(null)
@@ -3856,16 +3856,7 @@ export default function CandidateCard(){
     [model?.stage, model?.vacancy_id, hiringGatesRuntime],
   )
 
-  const contactAttemptPipelineBlockingValue = useMemo(
-    () =>
-      contactAttemptPipelineBlocksForward(
-        model?.stage ?? null,
-        model?.contact_policy_enabled === true,
-        Number(model?.contact_attempt_count ?? 0),
-        hiringGatesRuntime,
-      ),
-    [model?.stage, model?.contact_policy_enabled, model?.contact_attempt_count, hiringGatesRuntime],
-  )
+  const contactAttemptPipelineBlockingValue = false
 
   /**
    * While contact policy is on and the stored stage is still in the contact-attempt gate (e.g. `new`),
@@ -4646,7 +4637,7 @@ export default function CandidateCard(){
       canEdit={model.can_edit !== false}
       canCloseRecruitment={canCloseRecruitment}
       onMoveStage={handleStageJourneyChange}
-      onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
+      hideOutcomes
     />
   ) : null
 
@@ -4688,6 +4679,39 @@ export default function CandidateCard(){
         handoffDisabled={handoffLoading || handoffSubmitting}
         handoffDisabledTitle={handoffLoading ? t('common.loading') : null}
         handoffLabel={handoffPrimaryActionLabel}
+        extraMenuItems={[
+          ...(stageOutcomeStages || []).flatMap((stage) => {
+            const canonical = canonicalStageKey(stage.code, stage.label) || ''
+            if (canonical === 'rejected') {
+              return [{
+                id: 'reject-candidate',
+                label: t('app.candidate_card.pause.reject', { defaultValue: 'Reject candidate' }),
+                onSelect: () => { void handleStageJourneyChange(stage.code) },
+              }]
+            }
+            if (canonical === 'declined') {
+              return [{
+                id: 'decline-candidate',
+                label: t('app.candidate_card.pause.decline', { defaultValue: 'Candidate declined' }),
+                onSelect: () => { void handleStageJourneyChange(stage.code) },
+              }]
+            }
+            return []
+          }),
+          {
+            id: 'pause-candidate',
+            label: extra.candidate_ops?.pause?.resume_on
+              ? t('app.candidate_card.pause.resume', { defaultValue: 'Resume candidate' })
+              : t('app.candidate_card.pause.action', { defaultValue: 'Pause candidate' }),
+            onSelect: () => {
+              if (extra.candidate_ops?.pause?.resume_on) {
+                setExtra({ candidate_ops: { ...(extra.candidate_ops || {}), pause: null } })
+                return
+              }
+              setPauseOpen(true)
+            },
+          },
+        ]}
         onDeleteRequest={handleDeleteRequest}
         onCancel={() => nav(originPath, { state: { returnFromCandidateId: model?.id } })}
         backPath={originPath}
@@ -4741,6 +4765,17 @@ export default function CandidateCard(){
               {languageLabel ? <StatusBadge size="sm" shape="pill" semantic="neutral" label={languageLabel} /> : null}
               {documentsReceived ? (
                 <StatusBadge semantic="success" shape="pill" size="sm" label={t('app.candidate_card.ia.documents_received')} />
+              ) : null}
+              {extra.candidate_ops?.pause?.resume_on ? (
+                <StatusBadge
+                  semantic="warning"
+                  shape="pill"
+                  size="sm"
+                  label={t('app.candidate_card.pause.badge', {
+                    defaultValue: 'Paused · until {date}',
+                    values: { date: formatDateSafe(extra.candidate_ops.pause.resume_on, locale) },
+                  })}
+                />
               ) : null}
             </>
           )
@@ -4828,6 +4863,7 @@ export default function CandidateCard(){
             currentCode={stageJourneyDisplayStage}
             completedCodes={completedStageCodes}
             blocked={docsPipelineBlockingValue || vacancyPipelineBlockingValue || contactAttemptPipelineBlockingValue}
+            paused={Boolean(extra.candidate_ops?.pause?.resume_on)}
             ariaLabel={t('app.candidate_card.stage_journey.title', { defaultValue: 'Stage journey' })}
           />
         }
@@ -4883,9 +4919,9 @@ export default function CandidateCard(){
                 canEdit={model.can_edit !== false}
                 canCloseRecruitment={canCloseRecruitment}
                 onMoveStage={handleStageJourneyChange}
-                onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
                 showJourney={false}
                 embedded
+                hideOutcomes
               />
             ) : null}
               <div className="border-t border-slate-100 px-3 py-3">
@@ -4950,14 +4986,6 @@ export default function CandidateCard(){
               {!isNew && model?.id ? (
                 <>
                   {!isMasked ? (
-                    <CandidateContactAttemptsSection
-                      candidateId={String(model.id) as any}
-                      refreshTrigger={rodoSentTrigger}
-                      openRegisterSignal={contactAttemptOpenSignal}
-                      onAttemptCreated={model?.id ? () => void fetchCandidate(String(model.id), model) : undefined}
-                    />
-                  ) : null}
-                  {!isMasked ? (
                     <CandidateNotesRailSection
                       notes={notes}
                       notesLoading={notesLoading}
@@ -4983,6 +5011,30 @@ export default function CandidateCard(){
           </>
         )}
       >
+        {pauseOpen && model ? (
+          <CandidatePauseDialog
+            extra={extra}
+            actorLabel={me?.full_name || me?.email || ''}
+            onClose={() => setPauseOpen(false)}
+            onSave={(patch, reminder) => {
+              setExtra(patch)
+              if (model.id) {
+                const due = new Date(`${reminder.dueOn}T09:00:00`)
+                void createActivity({
+                  title: reminder.title,
+                  description: patch.candidate_ops?.pause?.comment || '',
+                  type: 'custom',
+                  entity_type: 'candidate',
+                  entity_id: model.id,
+                  due_at: due.toISOString(),
+                  remind_at: due.toISOString(),
+                  priority: 'normal',
+                  source: 'manual',
+                }).then(() => bumpNextActionTick())
+              }
+            }}
+          />
+        ) : null}
         <CandidateCardTabs
           value={cardTab}
           onChange={setCardTab}
@@ -5160,8 +5212,8 @@ export default function CandidateCard(){
           ) : null}
           {cardTab === 'profile' && !isMasked && registrySectionVisible('experience') ? (
             <CardAccordion
-              title={t('app.candidate_card.ia.sections.driver')}
-              description={t('app.candidate_card.ia.driver_hint', { defaultValue: 'Experience, body types and routes' })}
+              title={t('app.candidate_card.ia.sections.driving_experience', { defaultValue: 'Driving experience' })}
+              description={t('app.candidate_card.ia.driving_experience_hint', { defaultValue: 'Professional, CE and EU driving time' })}
               icon={<IconSteeringWheel size={16} />}
               defaultOpen
               summary={joinParts([
@@ -5198,8 +5250,8 @@ export default function CandidateCard(){
           ) : null}
           {cardTab === 'profile' && !isMasked && registrySectionVisible('experience') ? (
             <CardAccordion
-              title={t('app.candidate_card.ia.metric_preferences')}
-              description={t('app.candidate_card.ia.preferences_hint', { defaultValue: 'Body types, routes and related preferences' })}
+              title={t('app.candidate_card.ia.sections.transport', { defaultValue: 'Transport and geography' })}
+              description={t('app.candidate_card.ia.transport_hint', { defaultValue: 'Trailers and routes the driver has actually worked' })}
               icon={<IconBriefcase size={16} />}
               defaultOpen
             >
@@ -5232,7 +5284,7 @@ export default function CandidateCard(){
 
           {cardTab === 'profile' && !isMasked && registrySectionVisible('experience') ? (
             <CardAccordion
-              title={t('app.candidate_card.ia.sections.experience')}
+              title={t('app.candidate_card.ia.sections.recent_work', { defaultValue: 'Recent work' })}
               description={t('app.candidate_card.ia.experience_hint', { defaultValue: 'Previous employment' })}
               icon={<IconBriefcase size={16} />}
               summary={employmentHistory.length ? String(employmentHistory.length) : null}
@@ -5722,12 +5774,6 @@ export default function CandidateCard(){
                 <CandidateRodoSection
                   candidateId={String(model.id) as any}
                   onSent={() => setRodoSentTrigger((x) => x + 1)}
-                  refreshTrigger={rodoSentTrigger}
-                />
-              ) : null}
-              {!isMasked ? (
-                <CandidateContactAttemptsSection
-                  candidateId={String(model.id) as any}
                   refreshTrigger={rodoSentTrigger}
                 />
               ) : null}

@@ -83,6 +83,12 @@ interface FilterBadgesProps {
   onDocsHasFilesFilterChange: (filter: (prev: string[]) => string[]) => void
   onHandoffStatusFilterChange?: (value: string) => void
   onContactAttemptsFilterChange?: (value: string) => void
+  pausedFilter?: '' | 'yes' | 'no'
+  onPausedFilterChange?: (value: '' | 'yes' | 'no') => void
+  resumeBeforeFilter?: string
+  onResumeBeforeFilterChange?: (value: string) => void
+  resumeOverdueFilter?: boolean
+  onResumeOverdueFilterChange?: (value: boolean) => void
   onProcessorFilterChange?: (value: string) => void
   onIntakeApplicationKindFilterChange?: (value: '' | 'client' | 'candidate') => void
   /** When true: compact row inside filter toolbar card (no sticky, less padding). */
@@ -110,6 +116,9 @@ export function FilterBadges({
   docsHasFilesFilter,
   handoffStatusFilter = '',
   contactAttemptsFilter = '',
+  pausedFilter = '',
+  resumeBeforeFilter = '',
+  resumeOverdueFilter = false,
   processorFilter = '',
   intakeApplicationKindFilter = '',
   stageLabelMap,
@@ -146,6 +155,9 @@ export function FilterBadges({
   onDocsHasFilesFilterChange,
   onHandoffStatusFilterChange,
   onContactAttemptsFilterChange,
+  onPausedFilterChange,
+  onResumeBeforeFilterChange,
+  onResumeOverdueFilterChange,
   onProcessorFilterChange,
   onIntakeApplicationKindFilterChange,
   embedded = false,
@@ -360,6 +372,28 @@ export function FilterBadges({
           }),
           () => onContactAttemptsFilterChange(''),
         )}
+      {(pausedFilter === 'yes' || pausedFilter === 'no') &&
+        onPausedFilterChange &&
+        chip(
+          t('app.candidates.filters.pause_badge', {
+            values: {
+              value:
+                pausedFilter === 'yes'
+                  ? (t('app.candidates.filters.pause_yes') as string)
+                  : (t('app.candidates.filters.pause_no') as string),
+            },
+          }),
+          () => onPausedFilterChange(''),
+        )}
+      {resumeBeforeFilter &&
+        onResumeBeforeFilterChange &&
+        chip(
+          t('app.candidates.filters.resume_before_badge', { values: { value: resumeBeforeFilter } }),
+          () => onResumeBeforeFilterChange(''),
+        )}
+      {resumeOverdueFilter &&
+        onResumeOverdueFilterChange &&
+        chip(t('app.candidates.filters.resume_overdue') as string, () => onResumeOverdueFilterChange(false))}
       {intakeApplicationKindFilter &&
         onIntakeApplicationKindFilterChange &&
         chip(
