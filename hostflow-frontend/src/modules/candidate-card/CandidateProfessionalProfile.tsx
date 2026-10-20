@@ -13,7 +13,8 @@ import {
   presentJobCount,
   presentMonthSpan,
   presentProfessionalCode,
-} from '../professional-profile/presentation'
+  presentUnmapped,
+} from '../../platform/professionalPresentation'
 import {
   durationLines,
   durationReading,
@@ -28,7 +29,7 @@ import {
 } from './professionalProfileView'
 
 export function useProfileCopy(): ProfileCopy {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   return {
     history: (years) => t('app.candidate_card.ia.profile_history', { defaultValue: '{years} лет по истории', values: { years } }),
     declared: (years) => t('app.candidate_card.ia.profile_declared', { defaultValue: 'заявлено {years}', values: { years } }),
@@ -41,7 +42,7 @@ export function useProfileCopy(): ProfileCopy {
     periodError: t('app.candidate_card.ia.profile_check_history', { defaultValue: 'проверьте историю' }),
     rowPeriodError: t('app.candidate_card.ia.profile_row_period_error', { defaultValue: 'Ошибка периода работы' }),
     hasExperience: t('app.candidate_card.ia.profile_has_experience', { defaultValue: 'есть опыт' }),
-    unmapped: (code) => t('app.candidate_card.ia.profile_unmapped', { defaultValue: '{code} · не сопоставлено', values: { code } }),
+    unmapped: (code) => presentUnmapped(code, locale),
     openEnded: t('app.candidate_card.ia.profile_open_ended', { defaultValue: 'по настоящее время' }),
     noEmployment: t('app.candidate_card.ia.profile_no_employment', { defaultValue: 'Нет истории работы' }),
     noPreferences: t('app.candidate_card.ia.profile_no_preferences', { defaultValue: 'Нет предпочтений' }),

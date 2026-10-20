@@ -5,9 +5,10 @@ import {
   presentDuration,
   presentMonthSpan,
   presentProfessionalCode,
-} from './presentation'
+  presentUnmapped,
+} from './professionalPresentation'
 
-describe('professional profile presentation', () => {
+describe('shared professional presentation', () => {
   it('turns resolver days into years and months', () => {
     expect(presentDuration(1825, '5.0000', 'ru')).toBe('5 лет')
     expect(presentDuration(2006, '5.4959', 'ru')).toBe('5 лет 6 мес.')
@@ -22,6 +23,7 @@ describe('professional profile presentation', () => {
     expect(presentProfessionalCode('work_system', '2_1', 'ru')).toBe('2/1')
     expect(presentProfessionalCode('trailer_hiring', 'curtain', 'ru')).toBe('Штора')
     expect(presentProfessionalCode('work_area_region', 'dach', 'ru')).toBeNull()
+    expect(presentUnmapped('Tautliner', 'ru')).toBe('Tautliner · не сопоставлено')
   })
 
   it('formats pay as an amount per period', () => {

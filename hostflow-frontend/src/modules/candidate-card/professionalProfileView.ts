@@ -3,7 +3,7 @@
 The screen renders this model and does not read legacy experience scalars.
 */
 
-import { presentDuration, presentProfessionalCode } from '../professional-profile/presentation'
+import { presentDuration, presentProfessionalCode } from '../../platform/professionalPresentation'
 
 export type AggregateStatus =
   | 'calculated'

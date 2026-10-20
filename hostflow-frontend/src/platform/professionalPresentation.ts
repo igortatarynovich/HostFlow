@@ -1,9 +1,10 @@
 /**
- * Shared presentation of professional-profile codes, durations and pay.
+ * Shared presentation of professional catalog codes, durations and pay.
  * The resolver keeps exact days and catalog codes. This module is the operator reading.
+ * It is not owned by the Candidate Professional Profile feature.
  */
 
-import { lookupScopedTranslation, type LocaleCode } from '../../i18n'
+import { lookupScopedTranslation, type LocaleCode } from '../i18n'
 
 const PROFESSIONAL_LABELS: Record<string, Record<string, string>> = {
   ru: {
@@ -72,6 +73,14 @@ function hiringLabel(locale: string, suffix: string, code: string): string | nul
     code,
   )
   return label ?? null
+}
+
+/** A code the catalog does not name. The marker is the label; the code stays visible as data. */
+export function presentUnmapped(code: string, locale: string): string {
+  const lang = localeCode(locale)
+  if (lang === 'en') return `${code} · unmapped`
+  if (lang === 'pl') return `${code} · bez mapowania`
+  return `${code} · не сопоставлено`
 }
 
 /** Label for a system catalog code. Null means the code is not in the catalog. */

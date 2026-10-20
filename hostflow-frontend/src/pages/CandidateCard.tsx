@@ -117,6 +117,7 @@ import CandidateCustomFieldsSection from '../components/candidate/CandidateCusto
 import CandidateRodoSection from '../components/candidate/CandidateRodoSection'
 import CandidateTimelinePanel from '../components/candidate/CandidateTimelinePanel'
 import CandidateStageDecisionPanel, { CandidatePipelineStatus } from '../components/candidate/CandidateStageDecisionPanel'
+import { CandidateVacancyEligibility } from '../modules/candidate-card/CandidateVacancyEligibility'
 import { Input, SearchableSelect } from '../components/candidate/shared/FormComponents'
 import { FieldGrid } from '../components/ui/FieldGrid'
 // CandidateCard layout: Info (top) / Control (right) / Content (main)
@@ -4966,6 +4967,13 @@ export default function CandidateCard(){
                 showJourney={false}
                 embedded
                 hideOutcomes
+              />
+            ) : null}
+            {!isNew && model?.id && !isMasked ? (
+              <CandidateVacancyEligibility
+                candidateId={String(model.id)}
+                vacancyId={model.vacancy_id ? String(model.vacancy_id) : null}
+                refreshKey={profileRevision}
               />
             ) : null}
               <div className="border-t border-slate-100 px-3 py-3">

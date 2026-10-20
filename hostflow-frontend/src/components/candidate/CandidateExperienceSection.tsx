@@ -15,7 +15,7 @@ import { FieldGrid } from '../ui/FieldGrid'
 import { InlineFieldRow } from '../ui/InlineFieldRow'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
 import { formatYearsCount } from '../../modules/candidate-card/utils'
-import { presentProfessionalCode } from '../../modules/professional-profile/presentation'
+import { presentProfessionalCode } from '../../platform/professionalPresentation'
 
 type Option = { value: string; label: string; extra?: any }
 type EmploymentRow = {
