@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { CandidateProfessionalProfile } from './CandidateProfessionalProfile'
@@ -99,7 +99,10 @@ describe('CandidateProfessionalProfile', () => {
     expect(screen.getByTestId('professional-summary').textContent).toContain('Международные · есть опыт')
     expect(screen.getByTestId('professional-summary').textContent).not.toContain('ЕС')
     expect(screen.getByTestId('professional-summary').textContent).not.toMatch(/\b0\b/)
-    expect(screen.queryByTestId('profile-duration-international')).toBeNull()
+    expect(screen.getByTestId('profile-duration-international').textContent).toContain('есть опыт')
+    expect(screen.getByTestId('profile-tenure').textContent).toContain('Рассчитанный стаж')
+    expect(screen.getByTestId('profile-experience-character')).toBeTruthy()
+    expect(screen.getByText('История работы')).toBeTruthy()
     expect(screen.queryByTestId('profile-duration-eu')).toBeNull()
     expect(screen.getByTestId('profile-duration-total').textContent).toContain('5 лет')
     expect(screen.getByTestId('profile-employment-bad').textContent).toContain('Broken · Driver')
@@ -131,8 +134,29 @@ describe('CandidateProfessionalProfile', () => {
         <CandidateProfessionalProfile profile={empty} />
       </I18nProvider>,
     )
+    expect(screen.getByText('История работы')).toBeTruthy()
     expect(screen.getByTestId('profile-no-employment').textContent).toContain('Нет истории работы')
     expect(screen.queryByTestId('profile-duration-total')).toBeNull()
     expect(screen.queryByTestId('profile-duration-eu')).toBeNull()
+  })
+
+  it('edits availability on the row with save and cancel', () => {
+    const row = profile()
+    row.preferences_and_availability.availability.available_from = '2026-11-01'
+    render(
+      <I18nProvider initialLocale="ru">
+        <CandidateProfessionalProfile profile={row} candidateId="candidate-1" canEditAvailability />
+      </I18nProvider>,
+    )
+    const availability = screen.getByTestId('profile-available-from')
+    expect(availability.textContent).toContain('2026-11-01')
+    fireEvent.click(within(availability).getByRole('button', { name: 'Редактировать' }))
+    expect(screen.getByTestId('profile-available-from-input')).toBeTruthy()
+    expect(within(availability).getByRole('button', { name: 'Сохранить' })).toBeTruthy()
+    expect(within(availability).getByRole('button', { name: 'Отмена' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Готово' })).toBeNull()
+    fireEvent.click(within(availability).getByRole('button', { name: 'Отмена' }))
+    expect(screen.queryByTestId('profile-available-from-input')).toBeNull()
+    expect(availability.textContent).toContain('2026-11-01')
   })
 })

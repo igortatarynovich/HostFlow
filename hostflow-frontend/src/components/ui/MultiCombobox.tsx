@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { IconChevronDown } from '@tabler/icons-react'
 
-import { type ComboboxOption } from './comboboxShared'
+import { type ComboboxOption, menuBox, type MenuBox } from './comboboxShared'
 
 export type MultiComboboxProps = {
   options: ComboboxOption[]
@@ -15,18 +15,6 @@ export type MultiComboboxProps = {
   noResultsLabel?: string
   multiSelectedLabel?: (count: number) => string
   className?: string
-}
-
-type MenuBox = { top: number; left: number; width: number; maxHeight: number }
-
-function menuBox(anchor: HTMLElement): MenuBox {
-  const rect = anchor.getBoundingClientRect()
-  const roomBelow = window.innerHeight - rect.bottom - 8
-  const roomAbove = rect.top - 8
-  const openUp = roomBelow < 160 && roomAbove > roomBelow
-  const maxHeight = Math.max(120, Math.min(288, openUp ? roomAbove : roomBelow))
-  const top = openUp ? Math.max(8, rect.top - maxHeight - 8) : rect.bottom + 8
-  return { top, left: rect.left, width: rect.width, maxHeight }
 }
 
 export function MultiCombobox({

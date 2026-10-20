@@ -5279,6 +5279,8 @@ export default function CandidateCard(){
                   plain
                   rowEdit
                   editHistory
+                  countryOptions={countries}
+                  candidateId={String(model.id)}
                 />
               ) : null}
             />

@@ -6627,7 +6627,7 @@
           "qualification": "Qualification",
           "driving_experience": "Driving experience",
           "transport": "Transport and geography",
-          "recent_work": "Recent work"
+          "recent_work": "Work history"
         },
         "process_widget": "Stage, manager and tags",
         "blockers": "Blockers",
@@ -6705,6 +6705,8 @@
         "profile_no_employment": "No employment history",
         "profile_no_preferences": "No preferences",
         "profile_total": "Total experience",
+        "profile_calculated_tenure": "Calculated tenure",
+        "profile_experience_character": "Experience character",
         "profile_non_eu": "Declared outside the EU",
         "transport_hint": "Trailers and routes the driver has actually worked",
         "doc_col_name": "Document",

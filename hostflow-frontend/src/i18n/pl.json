@@ -6006,7 +6006,7 @@
           "qualification": "Kwalifikacje",
           "driving_experience": "Doświadczenie w prowadzeniu",
           "transport": "Transport i geografia",
-          "recent_work": "Ostatnie zatrudnienie"
+          "recent_work": "Historia pracy"
         },
         "process_widget": "Etap, opiekun i tagi",
         "blockers": "Blokery",
@@ -6084,6 +6084,8 @@
         "profile_no_employment": "Brak historii pracy",
         "profile_no_preferences": "Brak preferencji",
         "profile_total": "Łączny staż",
+        "profile_calculated_tenure": "Obliczony staż",
+        "profile_experience_character": "Charakter doświadczenia",
         "profile_non_eu": "Zadeklarowano poza UE",
         "transport_hint": "Naczepy i trasy, na których kierowca realnie pracował",
         "doc_col_name": "Dokument",

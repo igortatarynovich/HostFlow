@@ -1,4 +1,5 @@
-import { memo, useState, useCallback, useRef, type ReactNode } from 'react'
+import { memo, useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
+import { api } from '../../api/client'
 import { IconBriefcase2, IconChevronDown } from '@tabler/icons-react'
 import type { CandidateExtra } from '../../api/types'
 import type { RefObject } from 'react'
@@ -8,6 +9,7 @@ import DateInput from '../controls/DateInput'
 import { useI18n } from '../../i18n'
 import { Input, CheckboxMultiSelect } from './shared/FormComponents'
 import { ChipFieldEditor } from '../ui/ChipFieldEditor'
+import { Combobox } from '../ui/Combobox'
 import { MultiCombobox } from '../ui/MultiCombobox'
 import { FieldGrid } from '../ui/FieldGrid'
 import { InlineFieldRow } from '../ui/InlineFieldRow'
@@ -70,6 +72,9 @@ interface CandidateExperienceSectionProps {
   focus?: 'experience' | 'mobility'
   /** The profile tab owns the employment roster. This section is only the editor. */
   editHistory?: boolean
+  /** ISO country catalog already loaded for the card. */
+  countryOptions?: Option[]
+  candidateId?: string | null
 }
 
 function LabeledControl({ label, children }: { label: string; children: ReactNode }) {
@@ -81,15 +86,21 @@ function LabeledControl({ label, children }: { label: string; children: ReactNod
   )
 }
 
+const FALLBACK_DRIVING_CATEGORIES = ['B', 'C', 'C1', 'C1E', 'CE', 'D', 'DE']
+
 function EmploymentEditorCard({
   entry,
   readOnly,
+  countryOptions,
+  drivingCategoryOptions,
   onUpdateEmploymentHistory,
   onUpdateEmploymentFacets,
   onRemoveEmploymentRow,
 }: {
   entry: EmploymentRow
   readOnly: boolean
+  countryOptions: Option[]
+  drivingCategoryOptions: Option[]
   onUpdateEmploymentHistory: CandidateExperienceSectionProps['onUpdateEmploymentHistory']
   onUpdateEmploymentFacets?: CandidateExperienceSectionProps['onUpdateEmploymentFacets']
   onRemoveEmploymentRow: (localId: string) => void
@@ -100,12 +111,24 @@ function EmploymentEditorCard({
     label: presentProfessionalCode(vocabulary, code, locale) || code,
   }))
   const areas = entry.work_areas?.filter((area) => area.kind === 'region').map((area) => area.code) ?? []
+  const drivingCatalog = drivingCategoryOptions.length
+    ? drivingCategoryOptions
+    : FALLBACK_DRIVING_CATEGORIES.map((code) => ({ value: code, label: code }))
+  const drivingOptions = [
+    ...drivingCatalog,
+    ...(entry.driving_categories ?? [])
+      .filter((code) => !drivingCatalog.some((option) => option.value === code))
+      .map((code) => ({ value: code, label: code })),
+  ]
+  const knownCountries = entry.country && !countryOptions.some((option) => option.value === entry.country)
+    ? [{ value: entry.country, label: entry.country }, ...countryOptions]
+    : countryOptions
   const character = [
     {
       label: t('app.candidate_card.profile_projection.licence', { defaultValue: 'Категории' }),
       control: (
         <MultiCombobox
-          options={['B', 'C', 'C1', 'C1E', 'CE', 'D', 'DE'].map((code) => ({ value: code, label: code }))}
+          options={drivingOptions}
           values={entry.driving_categories ?? []}
           disabled={readOnly}
           placeholder={t('app.candidate_card.ia.not_filled')}
@@ -188,12 +211,24 @@ function EmploymentEditorCard({
           />
         </LabeledControl>
         <LabeledControl label={t('app.candidate_card.employment.columns.country')}>
-          <input
-            className="input w-full"
-            value={entry.country || ''}
-            onChange={(e) => onUpdateEmploymentHistory(entry.localId, 'country', e.target.value.toUpperCase())}
-            readOnly={readOnly}
-          />
+          {knownCountries.length ? (
+            <Combobox
+              options={knownCountries}
+              value={entry.country || ''}
+              disabled={readOnly}
+              placeholder={t('app.candidate_card.select.empty')}
+              searchPlaceholder={t('app.candidate_card.select.search')}
+              noResultsLabel={t('app.candidate_card.select.no_results')}
+              onChange={(next) => onUpdateEmploymentHistory(entry.localId, 'country', next)}
+            />
+          ) : (
+            <input
+              className="input w-full"
+              value={entry.country || ''}
+              onChange={(e) => onUpdateEmploymentHistory(entry.localId, 'country', e.target.value.toUpperCase())}
+              readOnly={readOnly}
+            />
+          )}
         </LabeledControl>
         <LabeledControl label={t('app.candidate_card.employment.columns.position')}>
           <input
@@ -267,8 +302,27 @@ function CandidateExperienceSection({
   rowEdit = false,
   focus,
   editHistory = false,
+  countryOptions = [],
+  candidateId,
 }: CandidateExperienceSectionProps) {
   const { t, locale } = useI18n()
+  const [drivingCategoryOptions, setDrivingCategoryOptions] = useState<Option[]>([])
+  useEffect(() => {
+    if (!editHistory || !candidateId) return
+    let cancelled = false
+    void api.get<{ licence_category_codes?: string[] }>(`/candidates/${candidateId}/operator-facts`)
+      .then((response) => {
+        if (cancelled) return
+        const codes = response.data.licence_category_codes ?? []
+        setDrivingCategoryOptions(codes.map((code) => ({ value: code, label: code })))
+      })
+      .catch(() => {
+        if (!cancelled) setDrivingCategoryOptions([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [editHistory, candidateId])
   const [openField, setOpenField] = useState<string | null>(null)
   const snapshot = useRef<CandidateExtra | null>(null)
   const beginRow = (key: string) => {
@@ -574,6 +628,8 @@ function CandidateExperienceSection({
                 key={entry.id ?? entry.localId}
                 entry={entry}
                 readOnly={candidateDataReadOnly}
+                countryOptions={countryOptions}
+                drivingCategoryOptions={drivingCategoryOptions}
                 onUpdateEmploymentHistory={onUpdateEmploymentHistory}
                 onUpdateEmploymentFacets={onUpdateEmploymentFacets}
                 onRemoveEmploymentRow={onRemoveEmploymentRow}

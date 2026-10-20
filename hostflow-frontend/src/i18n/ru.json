@@ -6554,7 +6554,7 @@
           "qualification": "Квалификация",
           "driving_experience": "Опыт вождения",
           "transport": "Транспорт и география",
-          "recent_work": "Последний опыт работы"
+          "recent_work": "История работы"
         },
         "process_widget": "Этап, менеджер и теги",
         "blockers": "Блокеры",
@@ -6632,6 +6632,8 @@
         "profile_no_employment": "Нет истории работы",
         "profile_no_preferences": "Нет предпочтений",
         "profile_total": "Общий опыт",
+        "profile_calculated_tenure": "Рассчитанный стаж",
+        "profile_experience_character": "Характер опыта",
         "profile_non_eu": "Заявлено вне ЕС",
         "transport_hint": "Прицепы и маршруты, на которых водитель реально работал",
         "doc_col_name": "Документ",

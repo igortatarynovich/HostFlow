@@ -1,6 +1,7 @@
+import clsx from 'clsx'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
-import { useI18n } from '../../i18n'
+import { useI18n, type TranslateFn } from '../../i18n'
 import DateInput from '../../components/controls/DateInput'
 import { FieldGrid } from '../../components/ui/FieldGrid'
 import { InlineFieldRow } from '../../components/ui/InlineFieldRow'
@@ -15,10 +16,13 @@ import {
 } from '../professional-profile/presentation'
 import {
   durationLines,
+  durationReading,
+  durationText,
   employmentPeriodError,
   professionalSummary,
   splitConstraints,
   trailerLines,
+  type DurationLine,
   type ProfessionalProfileProjection,
   type ProfileCopy,
 } from './professionalProfileView'
@@ -99,6 +103,56 @@ function presenceText(value: boolean | null, copy: ProfileCopy): string | null {
   return null
 }
 
+function durationLabel(line: DurationLine, locale: string, t: TranslateFn): string {
+  if (line.id === 'total') return t('app.candidate_card.ia.profile_total', { defaultValue: 'Общий опыт' })
+  if (line.id === 'non_eu_declared') return t('app.candidate_card.ia.profile_non_eu', { defaultValue: 'Заявлено вне ЕС' })
+  return presentProfessionalCode(
+    line.id.startsWith('movement:') ? 'movement_pattern' : line.id.startsWith('crew:') ? 'crew_mode' : 'operation_scope',
+    line.label,
+    locale,
+  ) || line.label
+}
+
+function metricText(
+  aggregate: ProfessionalProfileProjection['experience']['aggregates']['ce'],
+  declared: string | null,
+  copy: ProfileCopy,
+  locale: string,
+): string | null {
+  const reading = durationReading(aggregate, declared)
+  const text = durationText(reading, copy, locale)
+  if (reading.kind === 'hidden' || !text) return null
+  return text
+}
+
+function buildTenureRows(
+  profile: ProfessionalProfileProjection,
+  lines: DurationLine[],
+  copy: ProfileCopy,
+  locale: string,
+  t: TranslateFn,
+): Array<{ id: string; label: string; text: string }> {
+  const rows: Array<{ id: string; label: string; text: string }> = []
+  const total = lines.find((line) => line.id === 'total')
+  if (total) rows.push({ id: 'total', label: durationLabel(total, locale, t), text: total.text })
+  const ce = metricText(profile.experience.aggregates.ce, profile.experience.declared.ce.years, copy, locale)
+  if (ce) rows.push({ id: 'ce', label: 'CE', text: ce })
+  const internationalLabel = presentProfessionalCode('operation_scope', 'international', locale) || 'International'
+  const international = metricText(profile.experience.aggregates.international, null, copy, locale)
+  if (international) rows.push({ id: 'international', label: internationalLabel, text: international })
+  else if (profile.experience.declared.intake?.international === true) {
+    rows.push({ id: 'international', label: internationalLabel, text: copy.presence })
+  }
+  const euLabel = presentProfessionalCode('work_area_region', 'eu', locale) || 'EU'
+  const eu = metricText(profile.experience.aggregates.eu, null, copy, locale)
+  if (eu) rows.push({ id: 'eu', label: euLabel, text: eu })
+  for (const line of lines) {
+    if (line.id === 'total') continue
+    rows.push({ id: line.id, label: durationLabel(line, locale, t), text: line.text })
+  }
+  return rows
+}
+
 function qualificationDetail(
   presence: boolean | null,
   validTo: string | null,
@@ -176,6 +230,11 @@ export function CandidateProfessionalProfile({
     const weight = { history: 0, both: 0, declared: 1, presence: 2, insufficient: 3, period_error: 3, hidden: 9 }
     return weight[left.kind] - weight[right.kind]
   })
+  const tenureRows = profile ? buildTenureRows(profile, orderedLines, copy, locale, t) : []
+  const showCharacter = character.length > 0 || trailers.length > 0 || visibleAreas.length > 0
+  const jobCount = profile?.experience.employments.length
+    ? presentJobCount(profile.experience.employments.length, locale)
+    : null
   const licence = profile?.capabilities.licence.categories.join(' · ') ?? ''
   const unmappedLicence = profile?.capabilities.licence.raw_unmapped ?? []
   const capabilityRows = profile ? [
@@ -241,75 +300,79 @@ export function CandidateProfessionalProfile({
           ? presentJobCount(profile.experience.employments.length, locale)
           : null}
       >
-        {orderedLines.length ? (
-          <FieldGrid dense>
-            {orderedLines.map((line) => readOnlyRow(
-              line.id === 'total'
-                ? t('app.candidate_card.ia.profile_total', { defaultValue: 'Общий опыт' })
-                : line.id === 'non_eu_declared'
-                  ? t('app.candidate_card.ia.profile_non_eu', { defaultValue: 'Заявлено вне ЕС' })
-                  : presentProfessionalCode(
-                    line.id.startsWith('movement:') ? 'movement_pattern' : line.id.startsWith('crew:') ? 'crew_mode' : 'operation_scope',
-                    line.label,
-                    locale,
-                  ) || line.label,
-              line.text,
-              `profile-duration-${line.id}`,
-            ))}
-          </FieldGrid>
-        ) : null}
-        {character.length ? (
-          <div className="flex flex-wrap gap-1.5">
-            {character.map((item) => {
-              const label = item.resolution === 'unmapped'
-                ? copy.unmapped(item.code)
-                : presentProfessionalCode(item.vocabulary, item.code, locale) || copy.unmapped(item.code)
-              return (
-                <span key={`${item.vocabulary}-${item.code}`} data-testid={`profile-character-${item.code}`}>
-                  <Chip behavior="static" label={label} />
-                </span>
-              )
-            })}
+        <div className="space-y-4">
+        {tenureRows.length ? (
+          <div className="space-y-2" data-testid="profile-tenure">
+            <div className="text-sm font-medium text-slate-900">
+              {t('app.candidate_card.ia.profile_calculated_tenure', { defaultValue: 'Рассчитанный стаж' })}
+            </div>
+            <FieldGrid dense>
+              {tenureRows.map((line) => readOnlyRow(line.label, line.text, `profile-duration-${line.id}`))}
+            </FieldGrid>
           </div>
         ) : null}
-        {trailers.length ? (
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-slate-700">
-              {t('app.candidate_card.profile_projection.practical', { defaultValue: 'Практический опыт' })}
+        {showCharacter ? (
+          <div className={clsx('space-y-3', tenureRows.length ? 'border-t border-slate-200 pt-4' : undefined)} data-testid="profile-experience-character">
+            <div className="text-sm font-medium text-slate-900">
+              {t('app.candidate_card.ia.profile_experience_character', { defaultValue: 'Характер опыта' })}
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {trailers.map((item) => (
-                <span key={item.code} data-testid={`profile-trailer-${item.code}`}>
-                  <Chip behavior="static" label={item.text} />
-                </span>
-              ))}
-            </div>
+            {character.length ? (
+              <div className="flex flex-wrap gap-1.5">
+                {character.map((item) => {
+                  const label = item.resolution === 'unmapped'
+                    ? copy.unmapped(item.code)
+                    : presentProfessionalCode(item.vocabulary, item.code, locale) || copy.unmapped(item.code)
+                  return (
+                    <span key={`${item.vocabulary}-${item.code}`} data-testid={`profile-character-${item.code}`}>
+                      <Chip behavior="static" label={label} />
+                    </span>
+                  )
+                })}
+              </div>
+            ) : null}
+            {trailers.length ? (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-slate-500">
+                  {t('app.candidate_card.profile_projection.practical', { defaultValue: 'Практический опыт' })}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {trailers.map((item) => (
+                    <span key={item.code} data-testid={`profile-trailer-${item.code}`}>
+                      <Chip behavior="static" label={item.text} />
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {visibleAreas.length ? (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-slate-500">
+                  {t('app.candidate_card.profile_projection.geography', { defaultValue: 'География' })}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {visibleAreas.map((area) => {
+                    const label = area.resolution === 'unmapped'
+                      ? copy.unmapped(area.code)
+                      : area.kind === 'country'
+                        ? presentCountry(area.code, locale)
+                        : presentProfessionalCode('work_area_region', area.code, locale) || copy.unmapped(area.code)
+                    return (
+                      <span key={`${area.kind}-${area.code}`} data-testid={`profile-area-${area.kind}-${area.code}`}>
+                        <Chip behavior="static" label={label} />
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
-        {visibleAreas.length ? (
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-slate-700">
-              {t('app.candidate_card.profile_projection.geography', { defaultValue: 'География' })}
+        <div className={clsx('space-y-3', tenureRows.length || showCharacter ? 'border-t border-slate-200 pt-4' : undefined)}>
+          <div className="flex items-baseline justify-between gap-3">
+            <div className="text-sm font-medium text-slate-900">
+              {t('app.candidate_card.ia.sections.recent_work', { defaultValue: 'История работы' })}
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {visibleAreas.map((area) => {
-                const label = area.resolution === 'unmapped'
-                  ? copy.unmapped(area.code)
-                  : area.kind === 'country'
-                    ? presentCountry(area.code, locale)
-                    : presentProfessionalCode('work_area_region', area.code, locale) || copy.unmapped(area.code)
-                return (
-                  <span key={`${area.kind}-${area.code}`} data-testid={`profile-area-${area.kind}-${area.code}`}>
-                    <Chip behavior="static" label={label} />
-                  </span>
-                )
-              })}
-            </div>
-          </div>
-        ) : null}
-        <div className="space-y-2">
-          <div className="text-sm font-medium text-slate-700">
-            {t('app.candidate_card.ia.sections.recent_work', { defaultValue: 'Recent work' })}
+            {jobCount ? <div className="text-xs text-slate-500">{jobCount}</div> : null}
           </div>
         {historyEditing ? employmentEditor : profile.experience.employments.length ? (
           <div className="space-y-3">
@@ -358,6 +421,7 @@ export function CandidateProfessionalProfile({
           <p className="text-sm text-slate-500" data-testid="profile-no-employment">{copy.noEmployment}</p>
         )}
         </div>
+        </div>
       </CardAccordion>
       ) : employmentEditor}
       {profile ? <CardAccordion
@@ -365,11 +429,34 @@ export function CandidateProfessionalProfile({
         description={t('app.candidate_card.profile_projection.available_from_hint', { defaultValue: 'Готовность выйти на работу' })}
         summary={preferences?.availability.available_from || (preferencesEmpty ? copy.noPreferences : null)}
         defaultOpen={!preferencesEmpty}
-        editing={availabilityEditing}
-        onEdit={candidateId && canEditAvailability ? () => setAvailabilityEditing(true) : undefined}
-        onDone={() => { void saveAvailability() }}
       >
         <FieldGrid dense>
+          <InlineFieldRow
+            label={t('app.candidate_card.profile_projection.available_from', { defaultValue: 'Готов выйти' })}
+            value={preferences?.availability.available_from || ''}
+            editing={availabilityEditing}
+            canEdit={Boolean(candidateId && canEditAvailability)}
+            onEdit={() => {
+              rememberAvailableFrom(storedAvailableFrom)
+              setAvailabilityError(false)
+              setAvailabilityEditing(true)
+            }}
+            onDone={() => { void saveAvailability() }}
+            onCancel={() => {
+              rememberAvailableFrom(storedAvailableFrom)
+              setAvailabilityError(false)
+              setAvailabilityEditing(false)
+            }}
+            testId="profile-available-from"
+            muted={!preferences?.availability.available_from}
+          >
+            <div className="space-y-1" data-testid="profile-available-from-editor">
+              <DateInput value={availableFrom} onValueChange={rememberAvailableFrom} testId="profile-available-from-input" />
+              {availabilityError ? (
+                <p className="text-sm text-rose-700">{t('common.errors.save_failed', { defaultValue: 'Не удалось сохранить' })}</p>
+              ) : null}
+            </div>
+          </InlineFieldRow>
           {preferences?.choices.map((choice) => readOnlyRow(
             t('app.candidate_card.profile_projection.preference', { defaultValue: 'Предпочтение' }),
             [
@@ -387,22 +474,6 @@ export function CandidateProfessionalProfile({
             ),
             'profile-compensation',
           ) : null}
-          {availabilityEditing ? (
-            <div className="max-w-xs space-y-1" data-testid="profile-available-from-editor">
-              <span className="label">{t('app.candidate_card.profile_projection.available_from', { defaultValue: 'Готов выйти' })}</span>
-              <DateInput value={availableFrom} onValueChange={rememberAvailableFrom} testId="profile-available-from-input" />
-              {availabilityError ? (
-                <p className="text-sm text-rose-700">{t('common.errors.save_failed', { defaultValue: 'Не удалось сохранить' })}</p>
-              ) : null}
-            </div>
-          ) : (
-            readOnlyRow(
-              t('app.candidate_card.profile_projection.available_from', { defaultValue: 'Готов выйти' }),
-              preferences?.availability.available_from || copy.noPreferences,
-              'profile-available-from',
-              !preferences?.availability.available_from,
-            )
-          )}
         </FieldGrid>
       </CardAccordion> : null}
       {constraints.current.length ? (
