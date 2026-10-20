@@ -56,6 +56,8 @@ interface CandidateExperienceSectionProps {
   rowEdit?: boolean
   /** Split driver experience from trailer and route preferences. */
   focus?: 'experience' | 'mobility'
+  /** The profile tab owns the employment roster. This section is only the editor. */
+  editHistory?: boolean
 }
 
 function CandidateExperienceSection({
@@ -81,6 +83,7 @@ function CandidateExperienceSection({
   plain = false,
   rowEdit = false,
   focus,
+  editHistory = false,
 }: CandidateExperienceSectionProps) {
   const { t, locale } = useI18n()
   const [openField, setOpenField] = useState<string | null>(null)
@@ -202,7 +205,7 @@ function CandidateExperienceSection({
     )
   }
 
-  if (rowEdit && part === 'history' && openField !== 'history') {
+  if (rowEdit && part === 'history' && !editHistory && openField !== 'history') {
     return (
       <div className="space-y-1">
         {employmentHistory.length ? employmentHistory.map((entry) => (

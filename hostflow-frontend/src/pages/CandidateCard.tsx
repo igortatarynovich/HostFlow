@@ -27,7 +27,6 @@ import CandidateDocuments from '../modules/documents/CandidateDocuments'
 import OperatorFactsSurface, { type OperatorFactsSlice } from '../modules/candidates/OperatorFactsSurface'
 import { CandidateCardTabs, CardAccordion, ReadRows, joinParts, type CandidateCardTabId } from '../components/candidate/card/CandidateCardChrome'
 import { StatusBadge } from '../components/ui/StatusBadge'
-import { CompactMetric } from '../components/ui/CompactMetric'
 import { IconBriefcase, IconBuildingSkyscraper, IconCertificate, IconSteeringWheel } from '@tabler/icons-react'
 import { Button } from '../components/ui/Button'
 import { EntityRecordSurface } from '../platform/entity-workspace/entityRecordSurface'
@@ -113,6 +112,7 @@ import CandidateBasicSection from '../components/candidate/CandidateBasicSection
 import { CandidateWorkforceTerminationSection } from '../components/candidate/CandidateWorkforceTerminationSection'
 import CandidatePersonalSection from '../components/candidate/CandidatePersonalSection'
 import CandidateExperienceSection from '../components/candidate/CandidateExperienceSection'
+import { CandidateProfessionalProfile, useProfessionalProfile } from '../modules/candidate-card/CandidateProfessionalProfile'
 import CandidateCustomFieldsSection from '../components/candidate/CandidateCustomFieldsSection'
 import CandidateRodoSection from '../components/candidate/CandidateRodoSection'
 import CandidateTimelinePanel from '../components/candidate/CandidateTimelinePanel'
@@ -1052,6 +1052,8 @@ export default function CandidateCard(){
   const [requirementBlockersLoading, setRequirementBlockersLoading] = useState(false)
   const [docsSummaryRefreshTrigger, setDocsSummaryRefreshTrigger] = useState(0)
   const [operatorFactsRevision, setOperatorFactsRevision] = useState(0)
+  const [profileRevision, setProfileRevision] = useState(0)
+  const { profile: professionalProfile } = useProfessionalProfile(model?.id ? String(model.id) : null, profileRevision)
   const [docsSummarySnapshot, setDocsSummarySnapshot] = useState<Record<string, unknown> | null>(null)
   const [pipelineOverrides, setPipelineOverrides] = useState<CandidatePipelineOverride[]>([])
   const [pipelineOverrideBusy, setPipelineOverrideBusy] = useState(false)
@@ -1697,6 +1699,7 @@ export default function CandidateCard(){
     try {
       const records = await listCandidateEmployments(candidateId)
       applyEmploymentRecords(records)
+      setProfileRevision((value) => value + 1)
     } catch (err: any) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.errors.employment.load_failed'))) return
       console.error('[CandidateCard] employment list error', err)
@@ -4835,26 +4838,6 @@ export default function CandidateCard(){
                 </span>
               ) : null}
             </div>
-            {(() => {
-              const typeValue = Array.isArray(extra.license_categories) && extra.license_categories.length
-                ? extra.license_categories.join('/')
-                : ''
-              const experienceValue = typeof extra.experience_eu_years === 'number'
-                ? formatYearsCount(extra.experience_eu_years, locale)
-                : ''
-              const preferenceValue = [
-                ...(Array.isArray(extra.trailer_types) ? extra.trailer_types.map((key) => trailerTypeLabels[key] || key) : []),
-                ...(Array.isArray(extra.route_types) ? extra.route_types : []),
-              ].filter(Boolean).join(', ')
-              if (!typeValue && !experienceValue && !preferenceValue) return null
-              return (
-                <div className="flex flex-wrap gap-5">
-                  {typeValue ? <CompactMetric label={t('app.candidate_card.ia.metric_type')} value={typeValue} /> : null}
-                  {experienceValue ? <CompactMetric label={t('app.candidate_card.ia.metric_experience')} value={experienceValue} /> : null}
-                  {preferenceValue ? <CompactMetric label={t('app.candidate_card.ia.metric_preferences')} value={preferenceValue} /> : null}
-                </div>
-              )
-            })()}
           </div>
         }
         pipeline={
@@ -5187,109 +5170,28 @@ export default function CandidateCard(){
           ) : null}
 
           {cardTab === 'profile' && !isMasked && model?.id ? (
-            <CardAccordion
-              title={t('app.candidate_card.ia.sections.qualification', { defaultValue: 'Qualification' })}
-              description={t('app.candidate_card.ia.qualification_hint', { defaultValue: 'Categories and professional qualifications' })}
-              icon={<IconCertificate size={16} />}
-              defaultOpen
-            >
-              <OperatorFactsSurface
-                candidateId={String(model.id)}
-                countries={countries}
-                region="professional"
-                presentation="skill"
-                onSaved={(saved) => {
-                  setOperatorFactsRevision((value) => value + 1)
-                  setDocsSummaryRefreshTrigger((value) => value + 1)
-                  const adr = saved.steps.find((step) => step.key === 'adr')
-                  setExtra((prev) => ({
-                    ...prev,
-                    has_adr: typeof adr?.presence === 'boolean' ? adr.presence : null,
-                  }))
-                }}
-              />
-            </CardAccordion>
-          ) : null}
-          {cardTab === 'profile' && !isMasked && registrySectionVisible('experience') ? (
-            <CardAccordion
-              title={t('app.candidate_card.ia.sections.driving_experience', { defaultValue: 'Driving experience' })}
-              description={t('app.candidate_card.ia.driving_experience_hint', { defaultValue: 'Professional, CE and EU driving time' })}
-              icon={<IconSteeringWheel size={16} />}
-              defaultOpen
-              summary={joinParts([
-                typeof extra.experience_eu_years === 'number'
-                  ? t('app.candidate_card.ia.years_short', { values: { count: extra.experience_eu_years } })
-                  : null,
-              ])}
-            >
-              <CandidateExperienceSection
-                extra={extra}
-                experienceRef={experienceRef}
-                experienceTotalDisplay={experienceTotalDisplay}
-                trailerTypeOptions={trailerTypeOptions}
-                routeTypeOptions={routeTypeOptions}
-                employmentHistory={employmentHistory}
-                employmentLoading={employmentLoading}
-                employmentError={employmentError}
-                selectTexts={selectTexts}
-                onExtraChange={setExtra}
-                onExperienceChange={handleExperienceChange}
-                onAddEmploymentRow={addEmploymentRow}
-                onUpdateEmploymentHistory={updateEmploymentHistory}
-                onRemoveEmploymentRow={removeEmploymentRow}
-                candidateProfile={candidateProfile}
-                effectiveLayout={effectiveLayout}
-                candidateDataReadOnly={model.can_edit === false}
-                embedded
-                part="skills"
-                focus="experience"
-                plain
-                rowEdit
-              />
-            </CardAccordion>
-          ) : null}
-          {cardTab === 'profile' && !isMasked && registrySectionVisible('experience') ? (
-            <CardAccordion
-              title={t('app.candidate_card.ia.sections.transport', { defaultValue: 'Transport and geography' })}
-              description={t('app.candidate_card.ia.transport_hint', { defaultValue: 'Trailers and routes the driver has actually worked' })}
-              icon={<IconBriefcase size={16} />}
-              defaultOpen
-            >
-              <CandidateExperienceSection
-                extra={extra}
-                experienceRef={experienceRef}
-                experienceTotalDisplay={experienceTotalDisplay}
-                trailerTypeOptions={trailerTypeOptions}
-                routeTypeOptions={routeTypeOptions}
-                employmentHistory={employmentHistory}
-                employmentLoading={employmentLoading}
-                employmentError={employmentError}
-                selectTexts={selectTexts}
-                onExtraChange={setExtra}
-                onExperienceChange={handleExperienceChange}
-                onAddEmploymentRow={addEmploymentRow}
-                onUpdateEmploymentHistory={updateEmploymentHistory}
-                onRemoveEmploymentRow={removeEmploymentRow}
-                candidateProfile={candidateProfile}
-                effectiveLayout={effectiveLayout}
-                candidateDataReadOnly={model.can_edit === false}
-                embedded
-                part="skills"
-                focus="mobility"
-                plain
-                rowEdit
-              />
-            </CardAccordion>
-          ) : null}
-
-          {cardTab === 'profile' && !isMasked && registrySectionVisible('experience') ? (
-            <CardAccordion
-              title={t('app.candidate_card.ia.sections.recent_work', { defaultValue: 'Recent work' })}
-              description={t('app.candidate_card.ia.experience_hint', { defaultValue: 'Previous employment' })}
-              icon={<IconBriefcase size={16} />}
-              summary={employmentHistory.length ? String(employmentHistory.length) : null}
-            >
-              <CandidateExperienceSection
+            <CandidateProfessionalProfile
+              profile={professionalProfile}
+              qualificationEditor={(
+                <OperatorFactsSurface
+                  candidateId={String(model.id)}
+                  countries={countries}
+                  region="professional"
+                  presentation="skill"
+                  onSaved={(saved) => {
+                    setOperatorFactsRevision((value) => value + 1)
+                    setProfileRevision((value) => value + 1)
+                    setDocsSummaryRefreshTrigger((value) => value + 1)
+                    const adr = saved.steps.find((step) => step.key === 'adr')
+                    setExtra((prev) => ({
+                      ...prev,
+                      has_adr: typeof adr?.presence === 'boolean' ? adr.presence : null,
+                    }))
+                  }}
+                />
+              )}
+              employmentEditor={registrySectionVisible('experience') ? (
+                <CandidateExperienceSection
                   extra={extra}
                   experienceRef={experienceHistoryRef}
                   experienceTotalDisplay={experienceTotalDisplay}
@@ -5311,8 +5213,10 @@ export default function CandidateCard(){
                   part="history"
                   plain
                   rowEdit
+                  editHistory
                 />
-            </CardAccordion>
+              ) : null}
+            />
           ) : null}
 
           {cardTab === 'personal' && !isMasked && registrySectionVisible('personal') ? (

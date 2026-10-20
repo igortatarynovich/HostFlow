@@ -60,6 +60,7 @@ export function InlineFieldRow({
   emptyLabel,
   className,
   testId,
+  muted = false,
   children,
 }: {
   label: string
@@ -84,6 +85,8 @@ export function InlineFieldRow({
   emptyLabel?: string
   className?: string
   testId?: string
+  /** Secondary facts, such as an expired constraint, stay readable but lighter. */
+  muted?: boolean
   children: ReactNode
 }) {
   const { t } = useI18n()
@@ -159,7 +162,7 @@ export function InlineFieldRow({
       <div className={clsx('inline-flex max-w-full items-start gap-2', spanClass, placed, className)} data-testid={testId}>
         <div className="min-w-0">
           <div className="text-xs text-slate-500">{label}</div>
-          <div className={clsx('mt-0.5 text-sm font-medium', blank ? 'text-slate-400' : 'text-slate-900')}>
+          <div className={clsx('mt-0.5 text-sm', muted || blank ? 'font-normal text-slate-500' : 'font-medium text-slate-900')}>
             {blank ? emptyLabel || '—' : value}
           </div>
         </div>
@@ -171,7 +174,7 @@ export function InlineFieldRow({
   return (
     <div className={clsx('flex min-w-0 max-w-full items-center gap-2 border-b border-slate-100 py-1', spanClass, placed, className)} data-testid={testId}>
       <div className="w-40 shrink-0 text-xs leading-tight text-slate-500">{label}</div>
-      <div title={blank ? undefined : value} className={clsx('min-w-0 truncate text-sm font-medium', blank ? 'text-slate-400' : 'text-slate-900')}>
+      <div title={blank ? undefined : value} className={clsx('min-w-0 truncate text-sm', muted || blank ? 'font-normal text-slate-500' : 'font-medium text-slate-900')}>
         {blank ? '—' : value}
       </div>
       {editButton}

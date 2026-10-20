@@ -82,6 +82,11 @@ class EmploymentBase(BaseModel):
     end_date: Optional[date] = None
     trailer_types: List[str] = Field(default_factory=list)
     route_types: List[str] = Field(default_factory=list)
+    driving_categories: List[str] = Field(default_factory=list)
+    operation_scopes: List[str] = Field(default_factory=list)
+    movement_patterns: List[str] = Field(default_factory=list)
+    crew_modes: List[str] = Field(default_factory=list)
+    work_areas: List[dict] = Field(default_factory=list)
     truck_brands: Optional[List[str]] = Field(default=None)
     eu_routes: Optional[bool] = None
     reason_for_leaving: Optional[str] = None
@@ -107,7 +112,14 @@ class EmploymentBase(BaseModel):
             raise ValueError("country must be a 2-letter ISO code")
         return code
 
-    @field_validator("trailer_types", "route_types")
+    @field_validator(
+        "trailer_types",
+        "route_types",
+        "driving_categories",
+        "operation_scopes",
+        "movement_patterns",
+        "crew_modes",
+    )
     @classmethod
     def _normalize_lists(cls, value: Optional[Iterable[str]]) -> List[str]:
         if value is None:
@@ -135,6 +147,11 @@ class EmploymentUpdate(BaseModel):
     end_date: Optional[date] = None
     trailer_types: Optional[List[str]] = None
     route_types: Optional[List[str]] = None
+    driving_categories: Optional[List[str]] = None
+    operation_scopes: Optional[List[str]] = None
+    movement_patterns: Optional[List[str]] = None
+    crew_modes: Optional[List[str]] = None
+    work_areas: Optional[List[dict]] = None
     truck_brands: Optional[List[str]] = None
     eu_routes: Optional[bool] = None
     reason_for_leaving: Optional[str] = None
@@ -162,7 +179,14 @@ class EmploymentUpdate(BaseModel):
             raise ValueError("country must be a 2-letter ISO code")
         return code
 
-    @field_validator("trailer_types", "route_types")
+    @field_validator(
+        "trailer_types",
+        "route_types",
+        "driving_categories",
+        "operation_scopes",
+        "movement_patterns",
+        "crew_modes",
+    )
     @classmethod
     def _normalize_lists(cls, value: Optional[Iterable[str]]) -> Optional[List[str]]:
         if value is None:
@@ -212,13 +236,32 @@ def _payload_to_record_dict(payload: EmploymentBase | EmploymentUpdate) -> dict[
     for field in ("position", "reason_for_leaving", "reference_contact"):
         if field in data:
             data[field] = _clean_text(data[field])
-    for field in ("trailer_types", "route_types", "truck_brands"):
+    for field in (
+        "trailer_types",
+        "route_types",
+        "truck_brands",
+        "driving_categories",
+        "operation_scopes",
+        "movement_patterns",
+        "crew_modes",
+    ):
         if field in data:
             normalized = _clean_list(data[field], allow_none=True)
             if field == "truck_brands":
                 data[field] = normalized
             else:
                 data[field] = normalized or []
+    if "work_areas" in data:
+        areas = []
+        for item in data["work_areas"] or []:
+            if not isinstance(item, dict):
+                continue
+            kind = str(item.get("kind") or "").strip()
+            code = str(item.get("code") or "").strip()
+            if kind not in {"country", "region"} or not code:
+                continue
+            areas.append({"kind": kind, "code": code})
+        data["work_areas"] = areas
     return data
 
 
