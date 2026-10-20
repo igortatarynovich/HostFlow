@@ -1,6 +1,6 @@
 # Professional Profile domain — accepted contract and implementation plan
 
-**Status:** Accepted contract. Foundation slice closed 2026-10-20. Schema and resolver PASS. Acquisition Writers PASS. Candidate Card write path PASS. Professional Profile UX PASS. Vacancy professional evaluator (shadow) PASS. End-to-end Intake → Profile → Employment → Resolver → Evaluator PASS. The professional requirements evaluator is a shadow read of Overlay predicates × `professional_profile`. It does not enforce `no_fit`, does not move the pipeline, and does not interpret `min_experience_eu_years` or `years_ce_min`. `evaluate_lead_criteria_v1` keeps its current semantics. The next step is a separate product decision about which consumer may use this result. Readiness and Handoff/HR stay later.
+**Status:** **CLOSED / Production PASS** (2026-10-20). Accepted contract. Schema and resolver PASS. Acquisition Writers PASS. Candidate Card write path PASS. Professional Profile UX PASS. Vacancy professional evaluator (shadow) PASS. End-to-end Intake → Profile → Employment → Resolver → Evaluator PASS. Production interface is `b29a3d2a`. Acceptance is `dc975c34`. Manual smoke on that interface confirmed read, edit, and that saved data persists. The professional requirements evaluator is a shadow read of Overlay predicates × `professional_profile`. It does not enforce `no_fit`, does not move the pipeline, and does not interpret `min_experience_eu_years` or `years_ce_min`. `evaluate_lead_criteria_v1` keeps its current semantics. Professional Profile is not reopened without a concrete defect or a new product requirement. The next slice is [Matching — Professional Vacancy Eligibility / Recruiter Decision Support](professional-vacancy-eligibility-decision-support.md). It may show the evaluator result to the recruiter. It does not rank candidates and does not affect workflow or pipeline. Readiness and Handoff/HR stay later.
 **Scope:** schema, compatibility, one aggregation resolver, then the Candidate Professional Profile tab. No automatic rewrite of stored legacy values. Pause stays on UTC. Matching is not switched with the card.
 
 This task records the accepted domain rules and the implementation order. It does not reopen the model.
@@ -229,11 +229,14 @@ Legacy `experience_eu_years`, `years_ce`, and `intl_experience` stay where they 
 
 Acquisition Writers PASS, 2026-10-20. A short intake answer does not become an employment or a calculated duration. On the Domo-Best check, declared CE stayed 4 years after Domo Route produced calculated total, CE, and international of 1005 days. International experience and curtain were confirmed by that employment. Code 95 stayed an operator fact. The unchanged evaluator matched driving category CE, total tenure of at least 730 days, international presence, trailer hiring curtain, and Code 95. The live Meta question set and the expired trial are deployment, not this slice.
 
-Professional Profile UX PASS, 2026-10-20, revision `b29a3d2a`. On the live Profile Check card the experience block reads as calculated tenure, then experience character, then work history. Declared CE 4 stays beside calculated 2 years 9 months. Availability edits from the date row with save and cancel. Employer country uses the country catalog, and employment licence categories use the same licence catalog as qualification. No further profile change belongs in this foundation slice.
+Professional Profile UX PASS, 2026-10-20, revision `b29a3d2a`. On the live Profile Check card the experience block reads as calculated tenure, then experience character, then work history. Declared CE 4 stays beside calculated 2 years 9 months. Availability edits from the date row with save and cancel. Employer country uses the country catalog, and employment licence categories use the same licence catalog as qualification.
+
+Foundation slice **CLOSED / Production PASS**, 2026-10-20. `b29a3d2a` is the verified production interface. `dc975c34` records acceptance. Manual smoke confirmed read, edit, and persistence. Professional Profile stays closed without a concrete defect or a new product requirement. The next slice is [Matching — Professional Vacancy Eligibility / Recruiter Decision Support](professional-vacancy-eligibility-decision-support.md). Its allowed effect is to show the evaluator result to the recruiter. Ranking and workflow or pipeline enforcement are later slices.
 
 ## Out of this plan
 
-- Professional Profile UI.
+Professional Profile UI was originally outside this plan. It is delivered and accepted in the closed foundation. It is not open work.
+
 - Rewriting stored `experience_*` values.
 - Changing `min_experience_eu_years`.
 - Moving `resume_overdue` off UTC.
