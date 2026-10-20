@@ -3432,6 +3432,21 @@ async def _upsert_employments(
         )
 
 
+async def _record_public_professional_facts(db: AsyncSession, tenant_id: UUID, candidate: Candidate) -> None:
+    from backend.app.services.professional_intake_writer import record_intake_professional_facts_from_values
+
+    state = _ensure_intake_state(candidate)
+    values = state.get("presentation_values_v1")
+    if not isinstance(values, dict) or not values:
+        return
+    await record_intake_professional_facts_from_values(
+        db,
+        tenant_id=str(tenant_id),
+        candidate=candidate,
+        values=values,
+    )
+
+
 def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> None:
     from backend.app.constants.catalog_utils import country_by_dial
     
@@ -3532,6 +3547,10 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
         state["lead_form"] = payload.lead_form
     elif existing_state.get("lead_form") is not None:
         state["lead_form"] = existing_state.get("lead_form")
+    if payload.presentation_values is not None:
+        from backend.app.entity_profile.public_intake_presentation_bridge import apply_presentation_values_to_state
+
+        apply_presentation_values_to_state(state, dict(payload.presentation_values))
     if payload.client_company is not None:
         state["client_company"] = {
             **dict(existing_state.get("client_company") or {}),
@@ -4392,6 +4411,7 @@ async def update_public_intake(
     candidate = public_session.candidate
     assert candidate is not None
     _update_candidate_from_data(candidate, payload.data)
+    await _record_public_professional_facts(db, tenant_id, candidate)
     state = _ensure_intake_state(candidate)
     state["employments"] = [_employment_state_payload(entry) for entry in payload.data.employments] or state.get("employments") or []
     if payload.data.employments:
@@ -4707,6 +4727,7 @@ async def submit_public_intake(
         application_kind=_ak,
     )
     _update_candidate_from_data(candidate, intake_payload)
+    await _record_public_professional_facts(db, tenant_id, candidate)
     state["employments"] = [_employment_state_payload(entry) for entry in intake_payload.employments] or state.get("employments") or []
     if intake_payload.employments:
         await _upsert_employments(db, tenant_id, candidate.id, intake_payload.employments)

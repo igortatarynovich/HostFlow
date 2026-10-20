@@ -7,6 +7,12 @@ export type CandidateEmploymentPayload = {
   position?: string | null;
   start_date: string;
   end_date?: string | null;
+  driving_categories?: string[];
+  operation_scopes?: string[];
+  movement_patterns?: string[];
+  crew_modes?: string[];
+  trailer_types?: string[];
+  work_areas?: Array<{ kind: string; code: string }>;
 }
 
 const asStringId = (id: UUID | string): string => String(id)

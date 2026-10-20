@@ -11,7 +11,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import Date, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base
@@ -70,6 +70,30 @@ class CandidateProfessionalConstraint(Base, TimestampMixin):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class CandidateDeclaredFact(Base, TimestampMixin):
+    """Declared professional answer from intake. Not an employment and not a calculated tenure."""
+
+    __tablename__ = "candidate_declared_facts"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "candidate_id",
+            "subject",
+            "code",
+            name="uq_candidate_declared_facts_scope",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    candidate_id: Mapped[str] = mapped_column(String(36), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    subject: Mapped[str] = mapped_column(String(32), nullable=False)
+    code: Mapped[str] = mapped_column(String(64), nullable=False)
+    years: Mapped[Decimal | None] = mapped_column(Numeric(8, 4), nullable=True)
+    presence: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    provenance: Mapped[str] = mapped_column(String(32), nullable=False, default="candidate_intake")
+
+
 class CandidateAvailability(Base, TimestampMixin):
     __tablename__ = "candidate_availability"
     __table_args__ = (
@@ -109,6 +133,7 @@ class CandidateCompensationExpectation(Base, TimestampMixin):
 
 __all__ = [
     "CandidateAvailability",
+    "CandidateDeclaredFact",
     "CandidateCompensationExpectation",
     "CandidatePreferenceChoice",
     "CandidateProfessionalConstraint",

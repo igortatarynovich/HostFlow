@@ -1315,6 +1315,8 @@ async def process_normalized_lead(
         candidate_payload["personal_data"] = personal_fields
     if extra_fields:
         candidate_payload["extra"] = extra_fields
+    if mapped.professional:
+        candidate_payload["professional"] = dict(mapped.professional)
 
     had_candidate_before = bool(getattr(lead, "candidate_id", None))
     stamp_rid = _rule_recruiter_id_from_normalized(normalized)

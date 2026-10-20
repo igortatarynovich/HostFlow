@@ -68,6 +68,12 @@ export type ProfessionalProfileProjection = {
       eu: { status: string; years: string | null }
       non_eu_years: { stored_value: unknown; interpreted_as: string }
       legacy_total: { stored_value: unknown; interpreted_as: string }
+      intake?: {
+        provenance: string | null
+        ce_years: string | null
+        international: boolean | null
+        trailers: Array<{ code: string; mapping: 'mapped' | 'unmapped'; target_code: string | null }>
+      }
     }
   }
   constraints: Array<{
@@ -188,6 +194,12 @@ export function professionalSummary(profile: ProfessionalProfileProjection, copy
     const name = summaryName(id, locale)
     parts.push(reading.kind === 'history' || reading.kind === 'both' ? `${name} ${text}` : `${name} · ${text}`)
   }
+  if (profile.experience.declared.intake?.international === true) {
+    const name = summaryName('international', locale)
+    if (!parts.some((part) => part === name || part.startsWith(`${name} `) || part.startsWith(`${name} ·`))) {
+      parts.push(`${name} · ${copy.presence}`)
+    }
+  }
   if (profile.capabilities.code95.presence === true) parts.push('Code 95')
   if (profile.capabilities.adr.presence === true) parts.push('ADR')
   return parts
@@ -237,7 +249,7 @@ export function trailerLines(
   copy: ProfileCopy,
   locale: string,
 ): Array<{ code: string; text: string; unmapped: boolean }> {
-  return profile.experience.practical_experience.trailers.items.map((item) => {
+  const calculated = profile.experience.practical_experience.trailers.items.map((item) => {
     const mappedLabel = item.mapping === 'mapped' && item.target_code
       ? presentProfessionalCode('trailer_hiring', item.target_code, locale)
       : null
@@ -247,6 +259,20 @@ export function trailerLines(
       text: mappedLabel ? `${mappedLabel} · ${copy.hasExperience}` : copy.unmapped(item.code),
     }
   })
+  const seen = new Set(calculated.map((item) => item.code))
+  const declared = (profile.experience.declared.intake?.trailers ?? [])
+    .filter((item) => !seen.has(item.code) && !seen.has(item.target_code || ''))
+    .map((item) => {
+      const mappedLabel = item.mapping === 'mapped' && item.target_code
+        ? presentProfessionalCode('trailer_hiring', item.target_code, locale)
+        : null
+      return {
+        code: item.code,
+        unmapped: !mappedLabel,
+        text: mappedLabel ? `${mappedLabel} · ${copy.presence}` : copy.unmapped(item.code),
+      }
+    })
+  return [...calculated, ...declared]
 }
 
 export function employmentPeriodError(start: string | null, end: string | null): boolean {

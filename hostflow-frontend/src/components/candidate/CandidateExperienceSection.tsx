@@ -8,10 +8,12 @@ import DateInput from '../controls/DateInput'
 import { useI18n } from '../../i18n'
 import { Input, CheckboxMultiSelect } from './shared/FormComponents'
 import { ChipFieldEditor } from '../ui/ChipFieldEditor'
+import { MultiCombobox } from '../ui/MultiCombobox'
 import { FieldGrid } from '../ui/FieldGrid'
 import { InlineFieldRow } from '../ui/InlineFieldRow'
 import { isFieldVisible, isFieldRequired, getFieldLabel } from '../../utils/profileUtils'
 import { formatYearsCount } from '../../modules/candidate-card/utils'
+import { presentProfessionalCode } from '../../modules/professional-profile/presentation'
 
 type Option = { value: string; label: string; extra?: any }
 type EmploymentRow = {
@@ -22,6 +24,12 @@ type EmploymentRow = {
   position: string
   start_date: string
   end_date: string
+  driving_categories?: string[]
+  operation_scopes?: string[]
+  movement_patterns?: string[]
+  crew_modes?: string[]
+  trailer_types?: string[]
+  work_areas?: Array<{ kind: 'country' | 'region'; code: string }>
 }
 
 const MAX_EMPLOYMENTS = 3
@@ -45,6 +53,10 @@ interface CandidateExperienceSectionProps {
   onExperienceChange: (field: 'experience_eu_years' | 'experience_non_eu_years', raw: string) => void
   onAddEmploymentRow: () => void
   onUpdateEmploymentHistory: (localId: string, key: keyof Pick<EmploymentRow, 'employer_name' | 'country' | 'position' | 'start_date' | 'end_date'>, value: string) => void
+  onUpdateEmploymentFacets?: (
+    localId: string,
+    patch: Partial<Pick<EmploymentRow, 'driving_categories' | 'operation_scopes' | 'movement_patterns' | 'crew_modes' | 'trailer_types' | 'work_areas'>>,
+  ) => void
   onRemoveEmploymentRow: (localId: string) => void
   candidateProfile?: CandidateProfile | null
   effectiveLayout?: EffectiveCardLayout | null
@@ -58,6 +70,134 @@ interface CandidateExperienceSectionProps {
   focus?: 'experience' | 'mobility'
   /** The profile tab owns the employment roster. This section is only the editor. */
   editHistory?: boolean
+}
+
+function EmploymentEditorRows({
+  entry,
+  readOnly,
+  onUpdateEmploymentHistory,
+  onUpdateEmploymentFacets,
+  onRemoveEmploymentRow,
+}: {
+  entry: EmploymentRow
+  readOnly: boolean
+  onUpdateEmploymentHistory: CandidateExperienceSectionProps['onUpdateEmploymentHistory']
+  onUpdateEmploymentFacets?: CandidateExperienceSectionProps['onUpdateEmploymentFacets']
+  onRemoveEmploymentRow: (localId: string) => void
+}) {
+  const { t, locale } = useI18n()
+  const codes = (vocabulary: string, values: string[]) => values.map((code) => ({
+    value: code,
+    label: presentProfessionalCode(vocabulary, code, locale) || code,
+  }))
+  const areas = entry.work_areas?.filter((area) => area.kind === 'region').map((area) => area.code) ?? []
+  return (
+    <>
+      <tr>
+        <td className="px-3 py-2">
+          <input
+            className="input"
+            value={entry.employer_name || ''}
+            onChange={(e) => onUpdateEmploymentHistory(entry.localId, 'employer_name', e.target.value)}
+            readOnly={readOnly}
+            placeholder={t('app.candidate_card.employment.placeholders.employer')}
+          />
+        </td>
+        <td className="px-3 py-2">
+          <input
+            className="input"
+            value={entry.country || ''}
+            onChange={(e) => onUpdateEmploymentHistory(entry.localId, 'country', e.target.value.toUpperCase())}
+            readOnly={readOnly}
+            placeholder={t('app.candidate_card.employment.placeholders.country')}
+          />
+        </td>
+        <td className="px-3 py-2">
+          <input
+            className="input"
+            value={entry.position || ''}
+            onChange={(e) => onUpdateEmploymentHistory(entry.localId, 'position', e.target.value)}
+            readOnly={readOnly}
+            placeholder={t('app.candidate_card.employment.placeholders.position')}
+          />
+        </td>
+        <td className="px-3 py-2">
+          <DateInput
+            value={entry.start_date || ''}
+            disabled={readOnly}
+            onValueChange={(next) => onUpdateEmploymentHistory(entry.localId, 'start_date', next)}
+          />
+        </td>
+        <td className="px-3 py-2">
+          <DateInput
+            value={entry.end_date || ''}
+            disabled={readOnly}
+            onValueChange={(next) => onUpdateEmploymentHistory(entry.localId, 'end_date', next)}
+          />
+        </td>
+        <td className="px-3 py-2 text-right">
+          <button
+            type="button"
+            className="btn-danger btn-sm"
+            disabled={readOnly}
+            onClick={() => onRemoveEmploymentRow(entry.localId)}
+          >
+            {t('common.actions.delete')}
+          </button>
+        </td>
+      </tr>
+      <tr>
+        <td colSpan={6} className="px-3 pb-3">
+          <div className="grid gap-2 md:grid-cols-3">
+            <MultiCombobox
+              options={['B', 'C', 'C1', 'C1E', 'CE', 'D', 'DE'].map((code) => ({ value: code, label: code }))}
+              values={entry.driving_categories ?? []}
+              disabled={readOnly}
+              placeholder={t('app.candidate_card.profile_projection.licence', { defaultValue: 'Категории прав' })}
+              onChange={(values) => onUpdateEmploymentFacets?.(entry.localId, { driving_categories: values })}
+            />
+            <MultiCombobox
+              options={codes('operation_scope', ['international', 'domestic'])}
+              values={entry.operation_scopes ?? []}
+              disabled={readOnly}
+              placeholder={t('app.candidate_card.profile_projection.international', { defaultValue: 'Международные' })}
+              onChange={(values) => onUpdateEmploymentFacets?.(entry.localId, { operation_scopes: values })}
+            />
+            <MultiCombobox
+              options={codes('movement_pattern', ['long_haul', 'distribution'])}
+              values={entry.movement_patterns ?? []}
+              disabled={readOnly}
+              placeholder={t('app.candidate_card.profile_projection.movement', { defaultValue: 'Характер рейсов' })}
+              onChange={(values) => onUpdateEmploymentFacets?.(entry.localId, { movement_patterns: values })}
+            />
+            <MultiCombobox
+              options={codes('crew_mode', ['solo', 'double'])}
+              values={entry.crew_modes ?? []}
+              disabled={readOnly}
+              placeholder={t('app.candidate_card.profile_projection.crew', { defaultValue: 'Экипаж' })}
+              onChange={(values) => onUpdateEmploymentFacets?.(entry.localId, { crew_modes: values })}
+            />
+            <MultiCombobox
+              options={codes('trailer_hiring', ['curtain', 'reefer', 'container', 'tanker', 'dump', 'platform'])}
+              values={entry.trailer_types ?? []}
+              disabled={readOnly}
+              placeholder={t('app.candidate_card.profile_projection.practical', { defaultValue: 'Прицепы' })}
+              onChange={(values) => onUpdateEmploymentFacets?.(entry.localId, { trailer_types: values })}
+            />
+            <MultiCombobox
+              options={codes('work_area_region', ['eu', 'cis', 'uk', 'scandi', 'local'])}
+              values={areas}
+              disabled={readOnly}
+              placeholder={t('app.candidate_card.profile_projection.geography', { defaultValue: 'География' })}
+              onChange={(values) => onUpdateEmploymentFacets?.(entry.localId, {
+                work_areas: values.map((code) => ({ kind: 'region' as const, code })),
+              })}
+            />
+          </div>
+        </td>
+      </tr>
+    </>
+  )
 }
 
 function CandidateExperienceSection({
@@ -74,6 +214,7 @@ function CandidateExperienceSection({
   onExperienceChange,
   onAddEmploymentRow,
   onUpdateEmploymentHistory,
+  onUpdateEmploymentFacets,
   onRemoveEmploymentRow,
   candidateProfile,
   effectiveLayout,
@@ -399,59 +540,14 @@ function CandidateExperienceSection({
               </thead>
               <tbody className="divide-y divide-brand-100/70 bg-white/95">
                 {employmentHistory.map((entry) => (
-                  <tr key={entry.id ?? entry.localId}>
-                    <td className="px-3 py-2">
-                      <input
-                        className="input"
-                        value={entry.employer_name || ''}
-                        onChange={(e) => onUpdateEmploymentHistory(entry.localId, 'employer_name', e.target.value)}
-                        readOnly={candidateDataReadOnly}
-                        placeholder={t('app.candidate_card.employment.placeholders.employer')}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        className="input"
-                        value={entry.country || ''}
-                        onChange={(e) => onUpdateEmploymentHistory(entry.localId, 'country', e.target.value.toUpperCase())}
-                        readOnly={candidateDataReadOnly}
-                        placeholder={t('app.candidate_card.employment.placeholders.country')}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        className="input"
-                        value={entry.position || ''}
-                        onChange={(e) => onUpdateEmploymentHistory(entry.localId, 'position', e.target.value)}
-                        readOnly={candidateDataReadOnly}
-                        placeholder={t('app.candidate_card.employment.placeholders.position')}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <DateInput
-                        value={entry.start_date || ''}
-                        disabled={candidateDataReadOnly}
-                        onValueChange={(next) => onUpdateEmploymentHistory(entry.localId, 'start_date', next)}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <DateInput
-                        value={entry.end_date || ''}
-                        disabled={candidateDataReadOnly}
-                        onValueChange={(next) => onUpdateEmploymentHistory(entry.localId, 'end_date', next)}
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        type="button"
-                        className="btn-danger btn-sm"
-                        disabled={candidateDataReadOnly}
-                        onClick={() => onRemoveEmploymentRow(entry.localId)}
-                      >
-                        {t('common.actions.delete')}
-                      </button>
-                    </td>
-                  </tr>
+                  <EmploymentEditorRows
+                    key={entry.id ?? entry.localId}
+                    entry={entry}
+                    readOnly={candidateDataReadOnly}
+                    onUpdateEmploymentHistory={onUpdateEmploymentHistory}
+                    onUpdateEmploymentFacets={onUpdateEmploymentFacets}
+                    onRemoveEmploymentRow={onRemoveEmploymentRow}
+                  />
                 ))}
               </tbody>
             </table>

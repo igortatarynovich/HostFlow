@@ -136,8 +136,29 @@ async def test_database_schema_and_timezone_backfill() -> None:
             )
         ).all()
         assert [(row.vocabulary, row.code) for row in codes] == sorted(catalog_code_pairs())
-        mappings = await session.scalar(text("SELECT count(*) FROM professional_code_mappings"))
-        assert mappings == 0
+        mappings = (
+            await session.execute(
+                text(
+                    """
+                    SELECT source_vocabulary, source_code, target_vocabulary, target_code
+                    FROM professional_code_mappings
+                    ORDER BY source_vocabulary, source_code, target_vocabulary, target_code
+                    """
+                )
+            )
+        ).all()
+        hiring = ("container", "curtain", "dump", "platform", "reefer", "tanker")
+        expected = [
+            (vocabulary, code, "trailer_hiring", code)
+            for vocabulary in ("trailer_employment_raw", "trailer_intake")
+            for code in hiring
+        ]
+        expected.extend(
+            (vocabulary, source, "trailer_hiring", target)
+            for vocabulary in ("trailer_employment_raw", "trailer_intake")
+            for source, target in (("frigo", "reefer"), ("tent", "curtain"))
+        )
+        assert [tuple(row) for row in mappings] == sorted(expected)
 
         employment_columns = (
             await session.execute(

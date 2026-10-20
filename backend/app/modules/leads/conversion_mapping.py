@@ -19,6 +19,7 @@ from backend.app.acquisition.mapping_applied_stamp import read_mapping_applied_s
 from backend.app.field_registry.canonical_facts import canonical_facts_of
 from backend.app.field_registry.intake_mapping import rule_write_qualified_code
 from backend.app.field_registry.option_map import OPTION_IGNORE_VALUE, lookup_option_map
+from backend.app.services.professional_intake_writer import professional_bucket
 
 # qualified_code → where to write on the candidate payload.
 # Lead-only hints (recruitment.lead.*) are intentionally omitted.
@@ -99,6 +100,7 @@ class ConversionFieldWrite:
     extra: dict[str, Any] = field(default_factory=dict)
     personal: dict[str, Any] = field(default_factory=dict)
     contacts: dict[str, Any] = field(default_factory=dict)
+    professional: dict[str, Any] = field(default_factory=dict)
     mapped_sources: list[str] = field(default_factory=list)
 
 
@@ -252,6 +254,10 @@ def _write_qualified(
 ) -> bool:
     if value is None or value == "":
         return False
+    bucket = professional_bucket(qualified)
+    if bucket:
+        out.professional[bucket] = value
+        return True
     dest = CANDIDATE_WRITE_BY_QUALIFIED.get(qualified)
     if dest:
         _apply_write(dest, value, out, overwrite=overwrite)
@@ -306,6 +312,8 @@ def conversion_payload_from_normalized(normalized: Mapping[str, Any] | None) -> 
         payload["personal_data"] = dict(mapped.personal)
     if mapped.contacts:
         payload["contacts"] = dict(mapped.contacts)
+    if mapped.professional:
+        payload["professional"] = dict(mapped.professional)
     return payload
 
 

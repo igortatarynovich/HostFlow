@@ -17,6 +17,7 @@ from backend.app.services.professional_profile import (
     ChoiceFact,
     CompensationFact,
     ConstraintFact,
+    DeclaredIntakeFact,
     EmploymentFact,
     MappingFact,
     ProfessionalProfileNotFound,
@@ -70,6 +71,46 @@ def _profile(**kwargs) -> dict:
     )
     payload.update(kwargs)
     return resolve_professional_profile(ProfileInputs(**payload))
+
+
+def test_intake_declared_years_stay_out_of_calculated_tenure() -> None:
+    profile = _profile(
+        extra={EU_FIELD: 2},
+        declared_intake=(
+            DeclaredIntakeFact(
+                subject="ce",
+                code="ce",
+                years=Decimal("4"),
+                presence=None,
+                provenance="candidate_intake",
+            ),
+            DeclaredIntakeFact(
+                subject="international",
+                code="international",
+                years=None,
+                presence=True,
+                provenance="candidate_intake",
+            ),
+            DeclaredIntakeFact(
+                subject="trailer",
+                code="curtain",
+                years=None,
+                presence=True,
+                provenance="candidate_intake",
+            ),
+        ),
+        mappings=(MappingFact("trailer_intake", "curtain", "trailer_hiring", "curtain"),),
+    )
+    assert profile["experience"]["aggregates"]["ce"]["status"] == "no_evidence"
+    assert profile["experience"]["aggregates"]["total_tenure"]["status"] == "no_evidence"
+    assert profile["experience"]["declared"]["ce"] == {
+        "status": "declared",
+        "years": "4",
+        "origin": "candidate_intake",
+    }
+    assert profile["experience"]["declared"]["intake"]["international"] is True
+    assert profile["experience"]["declared"]["intake"]["trailers"][0]["target_code"] == "curtain"
+    assert profile["experience"]["employments"] == []
 
 
 def test_overlapping_tenure_counts_shared_days_once() -> None:

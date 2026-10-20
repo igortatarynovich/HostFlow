@@ -622,6 +622,11 @@ export interface CandidateEmploymentRecord {
   end_date?: string | null;
   currently_employed?: boolean | null; // работает ли сейчас
   trailer_types?: string[] | null;
+  driving_categories?: string[] | null;
+  operation_scopes?: string[] | null;
+  movement_patterns?: string[] | null;
+  crew_modes?: string[] | null;
+  work_areas?: Array<{ kind: string; code: string }> | null;
   route_types?: string[] | null;
   truck_brands?: string[] | null;
   eu_routes?: boolean | null;

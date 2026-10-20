@@ -176,6 +176,7 @@ type EmploymentEntry =
   NonNullable<CandidateExtra['employment_history']> extends Array<infer Item>
     ? Item
     : CandidateEmploymentEntry
+type WorkArea = { kind: 'country' | 'region'; code: string }
 type EmploymentRow = {
   id?: string;
   localId: string;
@@ -184,6 +185,12 @@ type EmploymentRow = {
   position: string;
   start_date: string;
   end_date: string;
+  driving_categories: string[];
+  operation_scopes: string[];
+  movement_patterns: string[];
+  crew_modes: string[];
+  trailer_types: string[];
+  work_areas: WorkArea[];
 }
 type EmploymentSnapshot = {
   employer_name: string;
@@ -191,7 +198,17 @@ type EmploymentSnapshot = {
   position: string;
   start_date: string;
   end_date: string;
+  driving_categories: string[];
+  operation_scopes: string[];
+  movement_patterns: string[];
+  crew_modes: string[];
+  trailer_types: string[];
+  work_areas: WorkArea[];
 }
+
+const textList = (value: unknown): string[] => (
+  Array.isArray(value) ? value.map((item) => String(item || '').trim()).filter(Boolean) : []
+)
 
 const makeEmploymentRow = (seed?: Partial<EmploymentRow>): EmploymentRow => ({
   id: seed?.id,
@@ -201,6 +218,12 @@ const makeEmploymentRow = (seed?: Partial<EmploymentRow>): EmploymentRow => ({
   position: seed?.position ?? '',
   start_date: seed?.start_date ?? '',
   end_date: seed?.end_date ?? '',
+  driving_categories: seed?.driving_categories ?? [],
+  operation_scopes: seed?.operation_scopes ?? [],
+  movement_patterns: seed?.movement_patterns ?? [],
+  crew_modes: seed?.crew_modes ?? [],
+  trailer_types: seed?.trailer_types ?? [],
+  work_areas: seed?.work_areas ?? [],
 })
 
 /* ----------------------------- helpers ----------------------------- */
@@ -288,6 +311,12 @@ const employmentSnapshot = (row: EmploymentRow): EmploymentSnapshot => ({
   position: row.position.trim(),
   start_date: row.start_date ? row.start_date.slice(0, 10) : '',
   end_date: row.end_date ? row.end_date.slice(0, 10) : '',
+  driving_categories: textList(row.driving_categories),
+  operation_scopes: textList(row.operation_scopes),
+  movement_patterns: textList(row.movement_patterns),
+  crew_modes: textList(row.crew_modes),
+  trailer_types: textList(row.trailer_types),
+  work_areas: (row.work_areas || []).filter((area) => area.kind && area.code),
 })
 
 const employmentRowHasData = (snapshot: EmploymentSnapshot): boolean => {
@@ -306,6 +335,12 @@ const employmentPayloadFromSnapshot = (snapshot: EmploymentSnapshot) => ({
   position: snapshot.position || null,
   start_date: snapshot.start_date,
   end_date: snapshot.end_date || null,
+  driving_categories: snapshot.driving_categories,
+  operation_scopes: snapshot.operation_scopes,
+  movement_patterns: snapshot.movement_patterns,
+  crew_modes: snapshot.crew_modes,
+  trailer_types: snapshot.trailer_types,
+  work_areas: snapshot.work_areas,
 })
 
 const employmentRowsFingerprint = (rows: EmploymentRow[]): string => {
@@ -326,6 +361,18 @@ const candidateEmploymentToRow = (record: CandidateEmploymentRecord): Employment
   position: record.position ?? '',
   start_date: record.start_date ? String(record.start_date).slice(0, 10) : '',
   end_date: record.end_date ? String(record.end_date).slice(0, 10) : '',
+  driving_categories: textList(record.driving_categories),
+  operation_scopes: textList(record.operation_scopes),
+  movement_patterns: textList(record.movement_patterns),
+  crew_modes: textList(record.crew_modes),
+  trailer_types: textList(record.trailer_types),
+  work_areas: Array.isArray(record.work_areas)
+    ? record.work_areas.flatMap((area) => {
+        const kind = area?.kind === 'country' || area?.kind === 'region' ? area.kind : null
+        const code = String(area?.code || '').trim()
+        return kind && code ? [{ kind, code }] : []
+      })
+    : [],
 })
 
 const legacyEmploymentEntryToRow = (entry: EmploymentEntry): EmploymentRow => makeEmploymentRow({
@@ -1738,7 +1785,13 @@ export default function CandidateCard(){
         baseline.country !== snapshot.country ||
         baseline.position !== snapshot.position ||
         baseline.start_date !== snapshot.start_date ||
-        baseline.end_date !== snapshot.end_date
+        baseline.end_date !== snapshot.end_date ||
+        JSON.stringify(baseline.driving_categories) !== JSON.stringify(snapshot.driving_categories) ||
+        JSON.stringify(baseline.operation_scopes) !== JSON.stringify(snapshot.operation_scopes) ||
+        JSON.stringify(baseline.movement_patterns) !== JSON.stringify(snapshot.movement_patterns) ||
+        JSON.stringify(baseline.crew_modes) !== JSON.stringify(snapshot.crew_modes) ||
+        JSON.stringify(baseline.trailer_types) !== JSON.stringify(snapshot.trailer_types) ||
+        JSON.stringify(baseline.work_areas) !== JSON.stringify(snapshot.work_areas)
       )
     })
     const toDelete = Object.keys(employmentBaseline).filter((id) => !currentIds.has(id))
@@ -2756,6 +2809,14 @@ export default function CandidateCard(){
   }, [meta?.reason_choices, model?.stage])
 
   const employmentHistory = employmentRows
+
+  const updateEmploymentFacets = useCallback((
+    localId: string,
+    patch: Partial<Pick<EmploymentRow, 'driving_categories' | 'operation_scopes' | 'movement_patterns' | 'crew_modes' | 'trailer_types' | 'work_areas'>>,
+  ) => {
+    setEmploymentError(null)
+    setEmploymentRows(rows => rows.map(row => row.localId === localId ? { ...row, ...patch } : row))
+  }, [])
 
   const updateEmploymentHistory = useCallback((
     localId: string,
@@ -5205,6 +5266,7 @@ export default function CandidateCard(){
                   onExperienceChange={handleExperienceChange}
                   onAddEmploymentRow={addEmploymentRow}
                   onUpdateEmploymentHistory={updateEmploymentHistory}
+                  onUpdateEmploymentFacets={updateEmploymentFacets}
                   onRemoveEmploymentRow={removeEmploymentRow}
                   candidateProfile={candidateProfile}
                   effectiveLayout={effectiveLayout}

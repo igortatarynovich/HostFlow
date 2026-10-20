@@ -41,11 +41,13 @@ const DRIVER_SPECS: IntakeSpec[] = [
   { qualified_code: 'platform.identity.citizenship', sort_order: 50, intake_level: 'required', widget_hint: 'select' },
   { qualified_code: 'platform.identity.birth_date', sort_order: 60, intake_level: 'optional', widget_hint: 'date' },
   { qualified_code: 'recruitment.candidate.personal.residency_status', sort_order: 70, intake_level: 'optional', widget_hint: 'select' },
-  { qualified_code: 'recruitment.candidate.experience.years_ce', sort_order: 80, intake_level: 'required', widget_hint: 'select' },
-  { qualified_code: 'recruitment.candidate.experience.trailer_types[]', sort_order: 90, intake_level: 'required', widget_hint: 'multiselect' },
-  { qualified_code: 'recruitment.candidate.qualifications.eu_license_with_code_95', sort_order: 100, intake_level: 'required', widget_hint: 'yes_no' },
-  { qualified_code: 'recruitment.candidate.qualifications.tachograph_card', sort_order: 110, intake_level: 'required', widget_hint: 'yes_no' },
-  { qualified_code: 'recruitment.candidate.personal.has_adr', sort_order: 120, intake_level: 'optional', widget_hint: 'yes_no' },
+  { qualified_code: 'recruitment.candidate.professional.licence_categories', sort_order: 80, intake_level: 'required', widget_hint: 'multiselect' },
+  { qualified_code: 'recruitment.candidate.professional.code95', sort_order: 90, intake_level: 'required', widget_hint: 'yes_no' },
+  { qualified_code: 'recruitment.candidate.professional.adr', sort_order: 100, intake_level: 'optional', widget_hint: 'yes_no' },
+  { qualified_code: 'recruitment.candidate.professional.ce_years', sort_order: 110, intake_level: 'required', widget_hint: 'number' },
+  { qualified_code: 'recruitment.candidate.professional.international', sort_order: 120, intake_level: 'required', widget_hint: 'yes_no' },
+  { qualified_code: 'recruitment.candidate.professional.trailer_codes', sort_order: 130, intake_level: 'required', widget_hint: 'multiselect' },
+  { qualified_code: 'recruitment.candidate.professional.available_from', sort_order: 140, intake_level: 'optional', widget_hint: 'date' },
 ]
 
 const GENERAL_SPECS: IntakeSpec[] = [

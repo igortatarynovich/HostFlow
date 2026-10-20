@@ -224,6 +224,22 @@ async def create_candidate_from_lead_conversion(
     unique index on ``(tenant_id, source, external_id)``.
     """
     duplicate_result = _duplicate_result_label(duplicate_match_level)
+    body = dict(candidate_payload or {})
+    professional = body.get("professional") if isinstance(body.get("professional"), dict) else None
+    body.pop("professional", None)
+    candidate_payload = body
+
+    async def _record_professional(candidate: Candidate) -> None:
+        if not professional:
+            return
+        from backend.app.services.professional_intake_writer import record_intake_professional_facts
+
+        await record_intake_professional_facts(
+            db,
+            tenant_id=tenant_id,
+            candidate=candidate,
+            facts=professional,
+        )
 
     if not getattr(lead, "candidate_id", None):
         from backend.app.modules.recruitment.services.compliance_outbound_ensure import (
@@ -273,6 +289,7 @@ async def create_candidate_from_lead_conversion(
                 conversion_reason=conversion_reason,
                 idempotent_replay=True,
             )
+            await _record_professional(existing)
             return existing
 
     candidate = await create_candidate_full(
@@ -312,4 +329,5 @@ async def create_candidate_from_lead_conversion(
     from backend.app.services.lead_communications import maybe_send_moving_forward_notice
 
     await maybe_send_moving_forward_notice(db, tenant_id=tenant_id, lead=lead)
+    await _record_professional(candidate)
     return candidate

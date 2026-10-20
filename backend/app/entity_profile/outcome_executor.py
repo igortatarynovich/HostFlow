@@ -61,8 +61,18 @@ async def apply_blocked_duplicate_outcome(
     if inbound_vacancy == "":
         inbound_vacancy = None
     mapped_payload = conversion_payload_from_normalized(normalized)
+    professional = mapped_payload.pop("professional", None) if isinstance(mapped_payload, dict) else None
     if mapped_payload:
         apply_conversion_payload_to_existing_candidate(duplicate, mapped_payload)
+    if isinstance(professional, dict) and professional:
+        from backend.app.services.professional_intake_writer import record_intake_professional_facts
+
+        await record_intake_professional_facts(
+            db,
+            tenant_id=tenant_id,
+            candidate=duplicate,
+            facts=professional,
+        )
     stamp_duplicate_prior_v1(normalized, duplicate)
     await crud.update_lead(
         db,

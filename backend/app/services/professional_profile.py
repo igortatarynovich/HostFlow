@@ -20,6 +20,7 @@ from backend.app.models.candidate_employment import CandidateEmployment
 from backend.app.models.professional_profile import (
     CandidateAvailability,
     CandidateCompensationExpectation,
+    CandidateDeclaredFact,
     CandidatePreferenceChoice,
     CandidateProfessionalConstraint,
     ProfessionalCodeMapping,
@@ -110,6 +111,15 @@ class MappingFact:
 
 
 @dataclass(frozen=True)
+class DeclaredIntakeFact:
+    subject: str
+    code: str
+    years: Decimal | None
+    presence: bool | None
+    provenance: str
+
+
+@dataclass(frozen=True)
 class ProfileInputs:
     candidate_id: str
     tenant_id: str
@@ -124,6 +134,7 @@ class ProfileInputs:
     compensation: CompensationFact | None
     available_from: date | None
     mappings: tuple[MappingFact, ...]
+    declared_intake: tuple[DeclaredIntakeFact, ...] = ()
 
 
 def resolve_professional_profile(inputs: ProfileInputs) -> dict[str, Any]:
@@ -159,7 +170,15 @@ def resolve_professional_profile(inputs: ProfileInputs) -> dict[str, Any]:
         "legacy_total": provenance[_YEARS_FIELD],
         "international_flag": provenance[_INTL_FIELD],
         "ce_total": provenance[_CE_TOTAL_FIELD],
+        "intake": _declared_intake(inputs.declared_intake, inputs.mappings),
     }
+    intake_ce = experience["declared"]["intake"]["ce_years"]
+    if intake_ce is not None:
+        experience["declared"]["ce"] = {
+            "status": "declared",
+            "years": intake_ce,
+            "origin": "candidate_intake",
+        }
     return {
         "candidate_id": inputs.candidate_id,
         "tenant_id": inputs.tenant_id,
@@ -294,6 +313,39 @@ def _constraint_activity(row: ConstraintFact, today: date | None) -> str:
     if row.valid_from is not None and row.valid_from > today:
         return "scheduled"
     return "active"
+
+
+def _declared_intake(
+    rows: Sequence[DeclaredIntakeFact],
+    mappings: Sequence[MappingFact],
+) -> dict[str, Any]:
+    ce_years = None
+    international = None
+    trailers: list[dict[str, Any]] = []
+    for row in rows:
+        if row.provenance != "candidate_intake":
+            continue
+        if row.subject == "ce" and row.years is not None:
+            ce_years = _number_text(row.years)
+        elif row.subject == "international" and isinstance(row.presence, bool):
+            international = row.presence
+        elif row.subject == "trailer" and row.code:
+            mapped = _mapping_for("trailer_intake", row.code, mappings)
+            trailers.append(
+                {
+                    "code": row.code,
+                    "mapping": "mapped" if mapped else "unmapped",
+                    "target_vocabulary": mapped[0] if mapped else None,
+                    "target_code": mapped[1] if mapped else None,
+                }
+            )
+    trailers.sort(key=lambda item: item["code"])
+    return {
+        "provenance": "candidate_intake" if ce_years is not None or international is not None or trailers else None,
+        "ce_years": ce_years,
+        "international": international,
+        "trailers": trailers,
+    }
 
 
 def _preferences(inputs: ProfileInputs) -> dict[str, Any]:
@@ -885,6 +937,14 @@ async def load_professional_profile(
             )
         )
     ).all()
+    declared_rows = (
+        await session.scalars(
+            select(CandidateDeclaredFact).where(
+                CandidateDeclaredFact.tenant_id == tenant_id,
+                CandidateDeclaredFact.candidate_id == candidate_id,
+            )
+        )
+    ).all()
     availability = await session.scalar(
         select(CandidateAvailability).where(
             CandidateAvailability.tenant_id == tenant_id,
@@ -938,6 +998,16 @@ async def load_professional_profile(
                 period=compensation.period,
             ),
             available_from=None if availability is None else availability.available_from,
+            declared_intake=tuple(
+                DeclaredIntakeFact(
+                    subject=row.subject,
+                    code=row.code,
+                    years=row.years,
+                    presence=row.presence,
+                    provenance=row.provenance,
+                )
+                for row in declared_rows
+            ),
             mappings=tuple(
                 MappingFact(
                     source_vocabulary=row.source_vocabulary,
@@ -952,6 +1022,7 @@ async def load_professional_profile(
 
 
 __all__ = [
+    "DeclaredIntakeFact",
     "EmploymentFact",
     "ProfessionalProfileNotFound",
     "ProfileInputs",

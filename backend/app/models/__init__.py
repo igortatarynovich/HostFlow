@@ -88,6 +88,7 @@ ProfessionalCatalogCode = _professional_profile.ProfessionalCatalogCode  # type:
 ProfessionalCodeMapping = _professional_profile.ProfessionalCodeMapping  # type: ignore[attr-defined]
 CandidateProfessionalConstraint = _professional_profile.CandidateProfessionalConstraint  # type: ignore[attr-defined]
 CandidateAvailability = _professional_profile.CandidateAvailability  # type: ignore[attr-defined]
+CandidateDeclaredFact = _professional_profile.CandidateDeclaredFact  # type: ignore[attr-defined]
 CandidatePreferenceChoice = _professional_profile.CandidatePreferenceChoice  # type: ignore[attr-defined]
 CandidateCompensationExpectation = _professional_profile.CandidateCompensationExpectation  # type: ignore[attr-defined]
 CandidateConsent = _load_model_module("candidate_consent").CandidateConsent  # type: ignore[attr-defined]
@@ -379,6 +380,7 @@ __all__ = [
     "ProfessionalCodeMapping",
     "CandidateProfessionalConstraint",
     "CandidateAvailability",
+    "CandidateDeclaredFact",
     "CandidatePreferenceChoice",
     "CandidateCompensationExpectation",
     "CandidateConsent",
