@@ -164,6 +164,7 @@ export default function IntegrationsWebhookPage() {
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">{t('admin.integrations_webhook.endpoint_title')}</h2>
         <p className="mt-2 text-sm text-slate-600">{t('admin.integrations_webhook.endpoint_desc')}</p>
+        <p className="mt-2 text-sm text-slate-600">{t('admin.integrations_webhook.tiktok_hint')}</p>
 
         {settingsLoading ? (
           <p className="mt-4 text-sm text-slate-500">{t('common.loading')}</p>

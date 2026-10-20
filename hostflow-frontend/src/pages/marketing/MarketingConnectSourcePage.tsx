@@ -60,12 +60,13 @@ export default function MarketingConnectSourcePage() {
 
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [sourceKind, setSourceKind] = useState<MarketingSourceKind | ''>(() =>
-    kindParam === 'meta' || kindParam === 'public_form' ? kindParam : '',
+    kindParam === 'meta' || kindParam === 'tiktok' || kindParam === 'public_form' ? kindParam : '',
   )
   const [formId, setFormId] = useState('')
   const [metaSourceId, setMetaSourceId] = useState('')
   const [forms, setForms] = useState<TenantLeadForm[]>([])
   const [metaSources, setMetaSources] = useState<IntakeSourceOption[]>([])
+  const [tiktokSources, setTiktokSources] = useState<IntakeSourceOption[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
@@ -75,6 +76,7 @@ export default function MarketingConnectSourcePage() {
 
   const flight = campaign ? currentFlight(campaign) : null
   const canMeta = canConnectSourceKind(flight, 'meta')
+  const canTiktok = canConnectSourceKind(flight, 'tiktok')
   const canPublic = canConnectSourceKind(flight, 'public_form')
 
   const load = useCallback(async () => {
@@ -82,14 +84,16 @@ export default function MarketingConnectSourcePage() {
     setLoading(true)
     setError(null)
     try {
-      const [c, formRows, metaRows] = await Promise.all([
+      const [c, formRows, metaRows, tiktokRows] = await Promise.all([
         getCampaign(campaignId),
         listLeadForms().catch(() => [] as TenantLeadForm[]),
         listIntakeSourceOptions('meta').catch(() => [] as IntakeSourceOption[]),
+        listIntakeSourceOptions('tiktok').catch(() => [] as IntakeSourceOption[]),
       ])
       setCampaign(c)
       setForms(Array.isArray(formRows) ? formRows.filter((f) => f.is_active) : [])
       setMetaSources(Array.isArray(metaRows) ? metaRows.filter((s) => s.is_active) : [])
+      setTiktokSources(Array.isArray(tiktokRows) ? tiktokRows.filter((s) => s.is_active) : [])
     } catch (err) {
       setError(
         getFriendlyErrorInfo(
@@ -110,15 +114,17 @@ export default function MarketingConnectSourcePage() {
   useEffect(() => {
     if (!sourceKind) return
     if (sourceKind === 'meta' && !canMeta) setSourceKind('')
+    if (sourceKind === 'tiktok' && !canTiktok) setSourceKind('')
     if (sourceKind === 'public_form' && !canPublic) setSourceKind('')
-  }, [canMeta, canPublic, sourceKind])
+  }, [canMeta, canPublic, canTiktok, sourceKind])
 
   const canSubmit = useMemo(() => {
     if (!campaign || !flight) return false
     if (sourceKind === 'public_form') return canPublic && Boolean(formId)
     if (sourceKind === 'meta') return canMeta && Boolean(metaSourceId)
+    if (sourceKind === 'tiktok') return canTiktok && Boolean(metaSourceId)
     return false
-  }, [campaign, flight, sourceKind, canPublic, canMeta, formId, metaSourceId])
+  }, [campaign, flight, sourceKind, canPublic, canMeta, canTiktok, formId, metaSourceId])
 
   async function handleCreateHostflowForm() {
     if (!canCreateForm || !canPublic) return
@@ -186,6 +192,9 @@ export default function MarketingConnectSourcePage() {
       let preferredSourceId: string | undefined
       if (sourceKind === 'public_form') {
         saved = await attachCampaignForm(campaign.id, formId, 'primary')
+      } else if (sourceKind === 'tiktok') {
+        preferredSourceId = metaSourceId
+        saved = await attachCampaignIntakeSource(campaign.id, metaSourceId, 'primary')
       } else {
         const selected = metaSources.find((s) => s.id === metaSourceId)
         if (selected?.needs_create && selected.meta_form_id) {
@@ -222,7 +231,7 @@ export default function MarketingConnectSourcePage() {
     return <Navigate to={CRM_APP_PATHS.marketing} replace />
   }
 
-  const nothingLeft = !loading && campaign && flight && !canMeta && !canPublic
+  const nothingLeft = !loading && campaign && flight && !canMeta && !canTiktok && !canPublic
 
   return (
     <PageShell>
@@ -262,7 +271,7 @@ export default function MarketingConnectSourcePage() {
           </div>
         ) : null}
 
-        {!loading && campaign && flight && (canMeta || canPublic) ? (
+        {!loading && campaign && flight && (canMeta || canTiktok || canPublic) ? (
           <>
             <p className="text-sm text-slate-600">
               {t('app.marketing.connect.intro', {
@@ -291,11 +300,39 @@ export default function MarketingConnectSourcePage() {
                 </span>
               </MarketingOptionCard>
               <MarketingOptionCard
+                selected={sourceKind === 'tiktok'}
+                disabled={!canTiktok}
+                onClick={() => {
+                  setSourceKind('tiktok')
+                  setFormId('')
+                  setMetaSourceId('')
+                }}
+                testId="marketing-connect-kind-tiktok"
+              >
+                <span className="font-medium text-slate-900">
+                  {t('app.marketing.connect.tiktok_kind', { defaultValue: 'TikTok lead form' })}
+                </span>
+                <span className="mt-1 block text-slate-600">
+                  {!canTiktok
+                    ? t('app.marketing.connect.tiktok_already', {
+                        defaultValue: 'This flight already has a primary ad source.',
+                      })
+                    : tiktokSources.length
+                      ? t('app.marketing.connect.tiktok_bind', {
+                          defaultValue: 'Choose a connected TikTok form.',
+                        })
+                      : t('app.marketing.connect.tiktok_empty', {
+                          defaultValue: 'Connect the TikTok ad account first.',
+                        })}
+                </span>
+              </MarketingOptionCard>
+              <MarketingOptionCard
                 selected={sourceKind === 'meta'}
                 disabled={!canMeta}
                 onClick={() => {
                   setSourceKind('meta')
                   setFormId('')
+                  setMetaSourceId('')
                 }}
                 testId="marketing-connect-kind-meta"
               >
@@ -393,6 +430,41 @@ export default function MarketingConnectSourcePage() {
                     </button>
                   )
                 ) : null}
+              </div>
+            ) : null}
+
+            {sourceKind === 'tiktok' && canTiktok && !tiktokSources.length ? (
+              <div
+                className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950"
+                data-testid="marketing-connect-tiktok-empty"
+              >
+                <p>
+                  {t('app.marketing.connect.tiktok_empty_detail', {
+                    defaultValue: 'TikTok is not connected for this company yet.',
+                  })}
+                </p>
+                <Link
+                  to={CRM_APP_PATHS.settingsIntegrationsTiktok}
+                  className="btn-primary btn-sm inline-flex"
+                  data-testid="marketing-connect-open-tiktok"
+                >
+                  {t('app.marketing.connect.open_tiktok', { defaultValue: 'Connect TikTok' })}
+                </Link>
+              </div>
+            ) : null}
+
+            {sourceKind === 'tiktok' && canTiktok && tiktokSources.length ? (
+              <div className="grid gap-2" role="radiogroup" aria-label={t('app.marketing.connect.tiktok_kind', { defaultValue: 'TikTok lead form' })}>
+                {tiktokSources.map((s) => (
+                  <MarketingOptionCard
+                    key={s.id}
+                    selected={metaSourceId === s.id}
+                    onClick={() => setMetaSourceId(s.id)}
+                    testId={`marketing-connect-tiktok-${s.id}`}
+                  >
+                    <span className="font-medium text-slate-900">{s.display_title || s.lead_form_name || s.name}</span>
+                  </MarketingOptionCard>
+                ))}
               </div>
             ) : null}
 

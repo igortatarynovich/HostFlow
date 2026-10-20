@@ -751,6 +751,84 @@ def extract_meta_lead_form_context(
     return {"source": src, "form_id": form_id, "page_id": page_id}
 
 
+_TIKTOK_FIELD_RENAMES = {
+    "first name": "first_name",
+    "last name": "last_name",
+    "full name": "full_name",
+    "phone number": "phone_number",
+    "email address": "email",
+}
+
+
+def tiktok_lead_entry(body: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Return the first TikTok Instant Form lead entry, or None for other JSON.
+
+    TikTok LEAD webhooks use ``object=1`` and ``entry[].changes[].value`` as a
+    string. Meta leadgen uses ``object="page"`` and ``changes[].value`` as an object.
+    """
+    if not isinstance(body, dict):
+        return None
+    if body.get("object") not in (1, "1"):
+        return None
+    entry = body.get("entry")
+    if not isinstance(entry, list) or not entry or not isinstance(entry[0], dict):
+        return None
+    lead = entry[0]
+    changes = lead.get("changes")
+    if isinstance(changes, list):
+        for item in changes:
+            if not isinstance(item, dict):
+                continue
+            value = item.get("value")
+            if isinstance(value, dict) and (
+                value.get("leadgen_id") is not None or isinstance(value.get("field_data"), list)
+            ):
+                return None
+    return lead
+
+
+def coerce_tiktok_lead_to_meta_payload(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Map a TikTok LEAD webhook onto the Meta ``field_data`` shape the lead pipeline already reads."""
+    lead = tiktok_lead_entry(body)
+    if lead is None:
+        raise ValueError("TikTok lead payload expected")
+    items: List[Dict[str, Any]] = []
+    changes = lead.get("changes")
+    if isinstance(changes, list):
+        for item in changes:
+            if not isinstance(item, dict):
+                continue
+            raw_name = str(item.get("field") or "").strip()
+            if not raw_name:
+                continue
+            renamed = _TIKTOK_FIELD_RENAMES.get(raw_name.lower(), raw_name)
+            value = item.get("value")
+            if value is None:
+                continue
+            if isinstance(value, (dict, list)):
+                text = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+            else:
+                text = str(value).strip()
+            if not text:
+                continue
+            items.append({"name": renamed, "values": [text]})
+    form_id = str(lead.get("page_id") or "").strip() or None
+    lead_id = str(lead.get("id") or body.get("request_id") or "").strip() or None
+    inner: Dict[str, Any] = {"field_data": items}
+    if lead_id:
+        inner["leadgen_id"] = lead_id
+    if form_id:
+        inner["form_id"] = form_id
+        inner["page_id"] = form_id
+    ad_id = lead.get("ad_id")
+    if ad_id is not None and str(ad_id).strip():
+        inner["ad_id"] = ad_id
+    created = lead.get("create_time") or body.get("time")
+    if created is not None and str(created).strip():
+        inner["created_time"] = created
+    return {"entry": [{"changes": [{"value": inner}]}]}
+
+
 def coerce_generic_json_to_meta_normalizer_payload(body: Dict[str, Any]) -> Dict[str, Any]:
     """
     Wrap arbitrary JSON objects so normalize_meta_payload can read field_data (§2.11 webhook v1).

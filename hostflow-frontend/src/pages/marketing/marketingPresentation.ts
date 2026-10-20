@@ -48,7 +48,7 @@ export const FLOW_PRESETS: FlowPreset[] = [
   },
 ]
 
-export type MarketingSourceKind = 'public_form' | 'meta'
+export type MarketingSourceKind = 'public_form' | 'meta' | 'tiktok'
 
 export function statusLabel(status: string, t?: (key: string) => string): string {
   const s = String(status || '').toLowerCase()
@@ -174,7 +174,11 @@ export function canConnectSourceKind(
 }
 
 export function canConnectAnySource(flight: CampaignFlight | null): boolean {
-  return canConnectSourceKind(flight, 'public_form') || canConnectSourceKind(flight, 'meta')
+  return (
+    canConnectSourceKind(flight, 'public_form') ||
+    canConnectSourceKind(flight, 'meta') ||
+    canConnectSourceKind(flight, 'tiktok')
+  )
 }
 
 export function destinationSummary(campaign: Campaign, t?: (key: string) => string): string {

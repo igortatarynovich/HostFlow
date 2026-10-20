@@ -5,6 +5,7 @@ import {
   IconBrandInstagram,
   IconBrandMeta,
   IconBrandMessenger,
+  IconBrandTiktok,
   IconBrandTelegram,
   IconBrandWhatsapp,
   IconMail,
@@ -16,6 +17,7 @@ import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { listMetaLeadCredentials } from '../../api/metaLeads'
+import { getTikTokConnection } from '../../api/tiktokLeads'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useCommunicationsAccess, type CommunicationsFeatureKey } from '../../hooks/useCommunicationsAccess'
 import { MESSENGER_CHANNELS, type MessengerChannel } from './communicationsMessengerChannels'
@@ -30,6 +32,8 @@ type ConnectionTile = {
   commFeatureAny?: CommunicationsFeatureKey[]
   /** Show Meta connected / not connected badge */
   showMetaStatus?: boolean
+  /** Show TikTok connected / not connected badge */
+  showTikTokStatus?: boolean
 }
 
 const MESSENGER_INTEGRATION_ICONS: Record<MessengerChannel, TablerIcon> = {
@@ -57,10 +61,12 @@ export default function IntegrationsHubPage() {
   const redirectToMeta = sp.has('tab')
 
   const [metaCredCount, setMetaCredCount] = useState<number | null>(null)
+  const [tiktokConnected, setTiktokConnected] = useState<boolean | null>(null)
   useEffect(() => {
     let cancelled = false
     if (!can('admin.metaLeads')) {
       setMetaCredCount(null)
+      setTiktokConnected(null)
       return
     }
     listMetaLeadCredentials()
@@ -69,6 +75,13 @@ export default function IntegrationsHubPage() {
       })
       .catch(() => {
         if (!cancelled) setMetaCredCount(null)
+      })
+    getTikTokConnection()
+      .then((row) => {
+        if (!cancelled) setTiktokConnected(Boolean(row.connected))
+      })
+      .catch(() => {
+        if (!cancelled) setTiktokConnected(null)
       })
     return () => {
       cancelled = true
@@ -94,6 +107,15 @@ export default function IntegrationsHubPage() {
         Icon: IconBrandMeta,
         permission: 'admin.metaLeads',
         showMetaStatus: true,
+      },
+      {
+        key: 'tiktok',
+        titleKey: 'admin.integrations_hub.tiktok_title',
+        descKey: 'admin.integrations_hub.tiktok_desc_short',
+        to: CRM_APP_PATHS.settingsIntegrationsTiktok,
+        Icon: IconBrandTiktok,
+        permission: 'admin.metaLeads',
+        showTikTokStatus: true,
       },
       {
         key: 'email',
@@ -157,6 +179,11 @@ export default function IntegrationsHubPage() {
           {visibleConnections.map((tile) => {
             const metaActive = tile.showMetaStatus && metaCredCount !== null && metaCredCount > 0
             const metaUnknown = tile.showMetaStatus && metaCredCount === null && can('admin.metaLeads')
+            const tiktokActive = tile.showTikTokStatus && tiktokConnected === true
+            const tiktokUnknown = tile.showTikTokStatus && tiktokConnected === null && can('admin.metaLeads')
+            const statusActive = metaActive || tiktokActive
+            const statusUnknown = metaUnknown || tiktokUnknown
+            const showStatus = (tile.showMetaStatus || tile.showTikTokStatus) && can('admin.metaLeads')
             return (
               <li key={tile.key}>
                 <Link
@@ -175,17 +202,21 @@ export default function IntegrationsHubPage() {
                         {t(tile.titleKey as any)}
                       </span>
                     </div>
-                    {tile.showMetaStatus && can('admin.metaLeads') ? (
+                    {showStatus ? (
                       <span
                         className={[
                           'shrink-0 rounded-full px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                          metaActive ? 'bg-emerald-100 text-emerald-800' : metaUnknown ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-800',
+                          statusActive ? 'bg-emerald-100 text-emerald-800' : statusUnknown ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-800',
                         ].join(' ')}
-                        title={t('admin.integrations_hub.status_hint')}
+                        title={t(
+                          tile.showTikTokStatus
+                            ? 'admin.integrations_hub.status_hint_tiktok'
+                            : 'admin.integrations_hub.status_hint',
+                        )}
                       >
-                        {metaActive
+                        {statusActive
                           ? t('admin.integrations_hub.status_active')
-                          : metaUnknown
+                          : statusUnknown
                             ? t('admin.integrations_hub.status_unknown')
                             : t('admin.integrations_hub.status_setup')}
                       </span>

@@ -31,6 +31,7 @@ describe('canConnectSourceKind (PR1 primary-slot gate)', () => {
   it('allows Meta and public form when empty', () => {
     const f = flight({})
     expect(canConnectSourceKind(f, 'meta')).toBe(true)
+    expect(canConnectSourceKind(f, 'tiktok')).toBe(true)
     expect(canConnectSourceKind(f, 'public_form')).toBe(true)
     expect(canConnectAnySource(f)).toBe(true)
   })
@@ -54,6 +55,7 @@ describe('canConnectSourceKind (PR1 primary-slot gate)', () => {
       ],
     })
     expect(canConnectSourceKind(withMeta, 'meta')).toBe(false)
+    expect(canConnectSourceKind(withMeta, 'tiktok')).toBe(false)
     expect(canConnectSourceKind(withMeta, 'public_form')).toBe(true)
   })
 

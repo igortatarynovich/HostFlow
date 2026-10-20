@@ -174,3 +174,50 @@ def test_normalize_meta_payload_maps_danema_cyrillic_question_keys():
     assert data["poland_stay_basis"] == "karta_pobytu"
     assert data["poland_stay_basis_raw"] == "karta_pobytu_(residence_card)"
     assert data["driving_experience_in_europe"] == "2 years"
+
+
+def _tiktok_lead_body():
+    return {
+        "request_id": "req-1",
+        "object": 1,
+        "time": 1743639757,
+        "entry": [
+            {
+                "id": "7123456789012345678",
+                "lead_source": "INSTANT_FORM",
+                "page_id": "998877",
+                "page_name": "Drivers PL",
+                "advertiser_id": "7001",
+                "ad_id": "1800000000000001",
+                "create_time": 1743639757,
+                "changes": [
+                    {"field": "Name", "value": "Ivan Petrov"},
+                    {"field": "Email", "value": "ivan@example.com"},
+                    {"field": "Phone number", "value": "+48 504 004 622"},
+                ],
+            }
+        ],
+    }
+
+
+def test_tiktok_lead_webhook_normalizes_like_meta():
+    body = _tiktok_lead_body()
+    assert normalizer.tiktok_lead_entry(body)["id"] == "7123456789012345678"
+    coerced = normalizer.coerce_tiktok_lead_to_meta_payload(body)
+    data = normalizer.normalize_meta_payload(coerced)
+    assert data["raw_lead_id"] == "7123456789012345678"
+    assert data["form_id"] == "998877"
+    assert data["full_name"] == "Ivan Petrov"
+    assert data["email"] == "ivan@example.com"
+    assert data["phone"] == "+48504004622"
+    assert data["ad_id"] == 1800000000000001
+
+
+def test_meta_leadgen_payload_is_not_a_tiktok_lead():
+    payload = _make_payload(
+        [
+            {"name": "email", "values": ["a@example.com"]},
+        ]
+    )
+    payload["object"] = "page"
+    assert normalizer.tiktok_lead_entry(payload) is None

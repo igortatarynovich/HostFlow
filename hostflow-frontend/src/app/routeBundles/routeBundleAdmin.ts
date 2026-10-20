@@ -6,6 +6,7 @@ export { default as IntegrationsHubPage } from '../../pages/admin/IntegrationsHu
 export { default as IntegrationsSourcePlaceholderPage } from '../../pages/admin/IntegrationsSourcePlaceholderPage'
 export { default as CalendarIntegrationsPage } from '../../pages/admin/CalendarIntegrationsPage'
 export { default as IntegrationsWebhookPage } from '../../pages/admin/IntegrationsWebhookPage'
+export { default as IntegrationsTikTokPage } from '../../pages/admin/IntegrationsTikTokPage'
 export { default as MetaLeadsAdminPage } from '../../pages/admin/MetaLeadsAdminPage'
 export { default as DeletionRequestsPage } from '../../pages/admin/DeletionRequestsPage'
 export { default as AuditLogPage } from '../../pages/admin/AuditLogPage'

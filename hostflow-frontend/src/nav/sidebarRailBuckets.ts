@@ -101,6 +101,7 @@ export const SIDEBAR_HUB_NAV_ITEM_KEYS = [
   'integrations-meta',
   'integrations-google',
   'integrations-webhook',
+  'integrations-tiktok',
   'settings-communications',
   'settings-communications-messengers',
   'settings-communications-queue',

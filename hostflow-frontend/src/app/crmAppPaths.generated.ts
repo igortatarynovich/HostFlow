@@ -132,6 +132,7 @@ export const CRM_APP_PATHS = {
   settingsIntegrationsMessengerViber: "/app/settings/integrations/messenger/viber",
   settingsIntegrationsMessengerWhatsapp: "/app/settings/integrations/messenger/whatsapp",
   settingsIntegrationsWebhook: "/app/settings/integrations/webhook",
+  settingsIntegrationsTiktok: "/app/settings/integrations/tiktok",
   settingsAudit: "/app/settings/audit",
   settingsCommunications: "/app/settings/communications",
   settingsCommunicationsMessengers: "/app/settings/communications/messengers",

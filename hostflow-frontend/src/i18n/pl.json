@@ -1587,7 +1587,8 @@
       "integrations": {
         "meta_leads": "Meta Leads",
         "google": "Google Ads",
-        "webhook": "Webhook i formularze"
+        "webhook": "Webhook i formularze",
+        "tiktok": "Leady TikTok"
       }
     },
     "work": {
@@ -11849,7 +11850,7 @@
         "type_aria": "Typ źródła",
         "form_via_link": "Zgłoszenia przychodzą przez publiczny link formularza kandydata.",
         "form_already": "Primary formularz jest już podłączony do tego Flight.",
-        "meta_already": "Primary źródło Meta jest już podłączone do tego Flight.",
+        "meta_already": "Do tego Flight jest już podłączone główne źródło reklamowe.",
         "meta_bind": "Powiąż Lead Form (Meta) jako źródło — wszystkie reklamy formularza pójdą do tego Flight.",
         "meta_empty": "Brak Lead Form Meta — połącz Meta, potem wybierz formularz ze strony.",
         "meta_empty_detail": "Połącz Facebook w Integracjach, żeby HostFlow wczytał Lead Form ze strony. Możesz też poczekać na pierwszy lead.",
@@ -16670,6 +16671,9 @@
       "messenger_channel_controls_kicker": "Połączenie i przełączniki kanału",
       "messenger_templates_relocated": "Szablony wiadomości, szablony poleceń i audyt poleceń są wspólne dla wszystkich komunikatorów. Zarządzaj nimi na łączonym ekranie komunikatorów.",
       "meta_title": "Meta Leads",
+      "tiktok_title": "Leady TikTok",
+      "tiktok_desc_short": "Podłącz konto reklamowe. Instant Form staną się źródłami, które można wybrać we flight.",
+      "status_hint_tiktok": "Na podstawie zapisanego konta TikTok tej firmy.",
       "google_title": "Google Ads",
       "google_desc": "Formularze i kampanie leadów — ten sam szkielet integracji co Meta, gdy będzie gotowe (dane logowania, mapowanie, podgląd przychodzących).",
       "webhook_title": "Webhook i formularze www",
@@ -16684,6 +16688,7 @@
       "upgrade_cta": "Plany i upgrade",
       "endpoint_title": "URL odbioru",
       "endpoint_desc": "POST application/json pod ten adres. Pola id lub external_id — do idempotentnych aktualizacji tego samego leada.",
+      "tiktok_hint": "Leady Instant Form z TikTok podłącza się w Integracje → TikTok. Ten URL jest dla własnych formularzy i JSON, nie dla TikTok.",
       "status_label": "Status:",
       "status_on": "skonfigurowany",
       "status_off": "jeszcze nie",
@@ -16707,6 +16712,30 @@
       "step_mapping": "Mapping",
       "sample_payload_title": "Przykładowe JSON",
       "advanced_mapping_toggle": "Format payload i wskazówki mapowania"
+    },
+    "integrations_tiktok": {
+      "title": "Leady TikTok",
+      "intro": "Podłączenie konta reklamowego i jego Instant Form. Potem formularz wybiera się jako źródło flight.",
+      "step_account": "Konto",
+      "step_check": "Sprawdzenie",
+      "step_done": "Gotowe",
+      "account_title": "Konto reklamowe",
+      "account_body": "Potrzebny jest token Marketing API tego konta. Token piksela z Events Manager nie dostarcza zgłoszeń.",
+      "advertiser_label": "ID konta reklamowego",
+      "token_label": "Token dostępu",
+      "token_hint": "Token jest przechowywany zaszyfrowany i nie jest pokazywany ponownie.",
+      "connect_btn": "Połącz",
+      "connected_title": "TikTok jest połączony",
+      "connected_body": "Konto {advertiser}. Formularze poniżej można wybrać jako źródło flight.",
+      "no_forms": "Na koncie nie ma opublikowanego Instant Form. Utwórz formularz w TikTok i połącz ponownie.",
+      "open_flights": "Otwórz kampanie",
+      "import_btn": "Pobierz zgłoszenia",
+      "imported": "Pobrane zgłoszenia: {count}",
+      "disconnect_btn": "Odłącz",
+      "load_error": "Nie udało się wczytać połączenia TikTok",
+      "connect_error": "Nie udało się połączyć TikTok",
+      "import_error": "Nie udało się pobrać zgłoszeń",
+      "disconnect_error": "Nie udało się odłączyć TikTok"
     },
     "integrations_placeholder": {
       "badge": "Wkrótce",

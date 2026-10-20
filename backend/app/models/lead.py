@@ -310,6 +310,30 @@ class MetaLeadFormMapping(TimestampMixin, Base):
     updated_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
 
+class TikTokLeadConnection(TimestampMixin, Base):
+    """One TikTok ad account connected for Instant Form leads, per company."""
+
+    __tablename__ = "tiktok_lead_connections"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+    )
+    tenant_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    own_company_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    advertiser_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    encrypted_access_token: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="connected",
+        server_default=text("'connected'"),
+    )
+    last_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
 class MetaOAuthPending(Base):
     """Short-lived row: encrypted page tokens after Facebook Login (Meta Leads OAuth)."""
 

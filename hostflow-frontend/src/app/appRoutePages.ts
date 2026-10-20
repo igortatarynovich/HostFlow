@@ -145,6 +145,7 @@ export const IntegrationsSourcePlaceholderPage = lazy(() =>
   loadAdmin().then((m) => ({ default: m.IntegrationsSourcePlaceholderPage })),
 )
 export const IntegrationsWebhookPage = lazy(() => loadAdmin().then((m) => ({ default: m.IntegrationsWebhookPage })))
+export const IntegrationsTikTokPage = lazy(() => loadAdmin().then((m) => ({ default: m.IntegrationsTikTokPage })))
 export const MetaLeadsAdminPage = lazy(() => loadAdmin().then((m) => ({ default: m.MetaLeadsAdminPage })))
 export const DeletionRequestsPage = lazy(() => loadAdmin().then((m) => ({ default: m.DeletionRequestsPage })))
 export const AuditLogPage = lazy(() => loadAdmin().then((m) => ({ default: m.AuditLogPage })))

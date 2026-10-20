@@ -46,6 +46,7 @@ const SETTINGS_PATH_PREFIX_TAB: { prefix: string; tab: SettingsChromeTabKey }[] 
   { prefix: CRM_APP_PATHS.settingsIntegrationsMeta, tab: 'integrations' },
   { prefix: CRM_APP_PATHS.settingsIntegrationsGoogle, tab: 'integrations' },
   { prefix: CRM_APP_PATHS.settingsIntegrationsWebhook, tab: 'integrations' },
+  { prefix: CRM_APP_PATHS.settingsIntegrationsTiktok, tab: 'integrations' },
   { prefix: CRM_APP_PATHS.settingsIntegrations, tab: 'integrations' },
   { prefix: CRM_APP_PATHS.settingsEmail, tab: 'integrations' },
 ]

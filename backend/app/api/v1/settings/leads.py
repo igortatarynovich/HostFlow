@@ -58,9 +58,11 @@ from backend.app.modules.leads.schemas import (
     UnmappedLeadsResponse,
 )
 from backend.app.services.imports import leads as import_service
+from backend.app.api.v1.settings.tiktok_leads import router as tiktok_leads_router
 
 
 router = APIRouter(prefix="/leads", tags=["settings-leads"])
+router.include_router(tiktok_leads_router)
 
 SUPPORTED_COMPANY_INTAKE_LANGUAGES = {"pl", "en", "ru"}
 COMPANY_INTAKE_FORM_TYPE = "company_intake"

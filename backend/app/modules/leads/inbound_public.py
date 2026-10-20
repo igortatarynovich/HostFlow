@@ -20,15 +20,10 @@ logger = logging.getLogger("backend.app.modules.leads.inbound_public")
 router = APIRouter()
 
 
-@router.post(
-    "/public/leads/inbound/{webhook_secret}",
-    response_model=MetaLeadResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def post_generic_lead_inbound(
+async def _ingest_secret_lead(
     webhook_secret: str,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession,
 ) -> MetaLeadResponse:
     secret = (webhook_secret or "").strip()
     if not secret:
@@ -69,3 +64,30 @@ async def post_generic_lead_inbound(
         await db.commit()
         logger.info("[webhook] inbound lead tenant=%s status=%s", tenant_id, result.status)
         return result.to_schema()
+
+
+@router.post(
+    "/public/leads/inbound/{webhook_secret}",
+    response_model=MetaLeadResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def post_generic_lead_inbound(
+    webhook_secret: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> MetaLeadResponse:
+    return await _ingest_secret_lead(webhook_secret, request, db)
+
+
+@router.post(
+    "/leads/webhook/tiktok/{webhook_secret}",
+    response_model=MetaLeadResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def post_tiktok_lead_webhook(
+    webhook_secret: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> MetaLeadResponse:
+    """TikTok Instant Form callback. Same secret and pipeline as the generic inbound URL."""
+    return await _ingest_secret_lead(webhook_secret, request, db)

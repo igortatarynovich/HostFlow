@@ -41,6 +41,7 @@ export const SIDEBAR_ITEM_ICON: Partial<Record<string, SidebarIconSpec>> = {
   'integrations-meta': { kind: 'platform', id: 'meta', variant: 'brand' },
   'integrations-google': { kind: 'platform', id: 'google', variant: 'brand' },
   'integrations-webhook': { kind: 'platform', id: 'webhook', variant: 'default' },
+  'integrations-tiktok': { kind: 'platform', id: 'tiktok', variant: 'brand' },
   'settings-communications-messengers': { kind: 'ui', id: 'whatsapp' },
   'settings-communications-queue': { kind: 'ui', id: 'filter' },
   'settings-communications-sla': { kind: 'ui', id: 'часы' },

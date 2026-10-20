@@ -1587,7 +1587,8 @@
       "integrations": {
         "meta_leads": "Meta Leads",
         "google": "Google Ads",
-        "webhook": "Webhook и формы"
+        "webhook": "Webhook и формы",
+        "tiktok": "TikTok лиды"
       }
     },
     "work": {
@@ -11849,7 +11850,7 @@
         "type_aria": "Тип источника",
         "form_via_link": "Заявки приходят через публичную ссылку анкеты кандидата.",
         "form_already": "Primary анкета уже подключена к этому Flight.",
-        "meta_already": "Primary Meta-источник уже подключён к этому Flight.",
+        "meta_already": "К этому Flight уже подключён основной рекламный источник.",
         "meta_bind": "Привязать Lead Form (Meta) как источник — все объявления формы пойдут в этот Flight.",
         "meta_empty": "Нет Lead Form Meta — подключите Meta, затем выберите форму со страницы.",
         "meta_empty_detail": "Подключите Facebook в Интеграциях, чтобы HostFlow показал Lead Form со страницы. Можно также дождаться первого лида.",
@@ -16669,6 +16670,9 @@
       "messenger_channel_controls_kicker": "Подключение и переключатели канала",
       "messenger_templates_relocated": "Шаблоны сообщений, шаблоны команд и аудит команд общие для всех мессенджеров. Управляйте ими на объединённом экране мессенджеров.",
       "meta_title": "Meta Leads",
+      "tiktok_title": "TikTok лиды",
+      "tiktok_desc_short": "Подключите рекламный кабинет. Instant Form станут источниками, которые можно выбрать во flight.",
+      "status_hint_tiktok": "По сохранённому кабинету TikTok этой компании.",
       "google_title": "Google Ads",
       "google_desc": "Лид-формы и кампании — тот же каркас интеграций, что у Meta, когда появится (учётные данные, маппинг, превью входящих).",
       "webhook_title": "Webhook и формы на сайте",
@@ -16683,6 +16687,7 @@
       "upgrade_cta": "Тарифы и апгрейд",
       "endpoint_title": "URL приёма",
       "endpoint_desc": "POST application/json на этот URL. Поля id или external_id — для повторной доставки того же лида.",
+      "tiktok_hint": "Лиды TikTok подключаются отдельно: Интеграции → TikTok. Этот URL — для своих форм и JSON, не для Instant Form.",
       "status_label": "Статус:",
       "status_on": "настроен",
       "status_off": "ещё не настроен",
@@ -16706,6 +16711,30 @@
       "step_mapping": "Mapping",
       "sample_payload_title": "Пример JSON",
       "advanced_mapping_toggle": "Формат payload и подсказки по маппингу"
+    },
+    "integrations_tiktok": {
+      "title": "TikTok лиды",
+      "intro": "Подключение рекламного кабинета и его Instant Form. После этого форму выбирают источником flight.",
+      "step_account": "Аккаунт",
+      "step_check": "Проверка",
+      "step_done": "Готово",
+      "account_title": "Рекламный кабинет",
+      "account_body": "Нужен токен Marketing API этого кабинета. Токен пикселя из Events Manager заявки не передаёт.",
+      "advertiser_label": "ID рекламного кабинета",
+      "token_label": "Токен доступа",
+      "token_hint": "Токен хранится в зашифрованном виде и больше не показывается.",
+      "connect_btn": "Подключить",
+      "connected_title": "TikTok подключён",
+      "connected_body": "Кабинет {advertiser}. Формы ниже можно выбрать источником flight.",
+      "no_forms": "В кабинете нет опубликованных Instant Form. Создайте форму в TikTok и подключите ещё раз.",
+      "open_flights": "Открыть кампании",
+      "import_btn": "Забрать заявки",
+      "imported": "Забрано заявок: {count}",
+      "disconnect_btn": "Отключить",
+      "load_error": "Не удалось загрузить подключение TikTok",
+      "connect_error": "Не удалось подключить TikTok",
+      "import_error": "Не удалось забрать заявки",
+      "disconnect_error": "Не удалось отключить TikTok"
     },
     "integrations_placeholder": {
       "badge": "Скоро",

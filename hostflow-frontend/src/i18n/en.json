@@ -1605,7 +1605,8 @@
       "integrations": {
         "meta_leads": "Meta Leads",
         "google": "Google Ads",
-        "webhook": "Webhook & forms"
+        "webhook": "Webhook & forms",
+        "tiktok": "TikTok leads"
       }
     },
     "work": {
@@ -11849,7 +11850,7 @@
         "type_aria": "Source type",
         "form_via_link": "Applications arrive through the public candidate form link.",
         "form_already": "A primary form is already connected to this Flight.",
-        "meta_already": "A primary Meta source is already connected to this Flight.",
+        "meta_already": "A primary ad source is already connected to this Flight.",
         "meta_bind": "Bind a Meta Lead Form as a source — all ads for the form will go to this Flight.",
         "meta_empty": "No Meta Lead Forms yet — connect Meta, then pick a form from the Page.",
         "meta_empty_detail": "Connect Facebook in Integrations so HostFlow can list Lead Forms from your Page. You can also wait for the first lead.",
@@ -16670,6 +16671,9 @@
       "messenger_channel_controls_kicker": "Connection & channel switches",
       "messenger_templates_relocated": "Message templates, command templates, and command audit are shared across all messenger channels. Open the combined messengers screen to manage them.",
       "meta_title": "Meta Leads",
+      "tiktok_title": "TikTok leads",
+      "tiktok_desc_short": "Connect the ad account. Its Instant Forms become sources you can attach to a flight.",
+      "status_hint_tiktok": "Based on the saved TikTok ad account for this company.",
       "google_title": "Google Ads",
       "google_desc": "Lead forms and campaigns — same integrations shell as Meta when available (credentials, mapping, incoming preview).",
       "webhook_title": "Webhook & site forms",
@@ -16684,6 +16688,7 @@
       "upgrade_cta": "View plans & upgrade",
       "endpoint_title": "Inbound URL",
       "endpoint_desc": "POST application/json to the URL. Include id or external_id to update the same lead on repeat deliveries.",
+      "tiktok_hint": "TikTok Instant Form leads connect under Integrations → TikTok. This URL is for your own forms and JSON, not TikTok.",
       "status_label": "Status:",
       "status_on": "configured",
       "status_off": "not configured yet",
@@ -16707,6 +16712,30 @@
       "step_mapping": "Mapping",
       "sample_payload_title": "Sample JSON body",
       "advanced_mapping_toggle": "Payload format & mapping hints"
+    },
+    "integrations_tiktok": {
+      "title": "TikTok leads",
+      "intro": "Connect the ad account and its Instant Forms. After that, pick a form as the source on a flight.",
+      "step_account": "Account",
+      "step_check": "Check",
+      "step_done": "Done",
+      "account_title": "Ad account",
+      "account_body": "Use a Marketing API token for this ad account. The Events Manager pixel token does not deliver leads.",
+      "advertiser_label": "Ad account ID",
+      "token_label": "Access token",
+      "token_hint": "The token is stored encrypted and is not shown again.",
+      "connect_btn": "Connect",
+      "connected_title": "TikTok is connected",
+      "connected_body": "Account {advertiser}. The forms below can be chosen as a flight source.",
+      "no_forms": "This account has no published Instant Form. Create one in TikTok, then connect again.",
+      "open_flights": "Open campaigns",
+      "import_btn": "Pull applications",
+      "imported": "Applications pulled: {count}",
+      "disconnect_btn": "Disconnect",
+      "load_error": "Could not load the TikTok connection",
+      "connect_error": "Could not connect TikTok",
+      "import_error": "Could not pull applications",
+      "disconnect_error": "Could not disconnect TikTok"
     },
     "integrations_placeholder": {
       "badge": "Coming soon",

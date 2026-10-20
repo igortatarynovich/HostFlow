@@ -34,6 +34,7 @@ import {
   IconUsersGroup,
   IconBrandMeta,
   IconBrandGoogle,
+  IconBrandTiktok,
   IconWebhook,
 } from '@tabler/icons-react'
 import type { TenantSummary } from '../../api/types'
@@ -120,6 +121,7 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   'integrations-meta': IconBrandMeta,
   'integrations-google': IconBrandGoogle,
   'integrations-webhook': IconWebhook,
+  'integrations-tiktok': IconBrandTiktok,
   'settings-communications-messengers': IconMessageCircle,
   'settings-communications-queue': IconFilter,
   'settings-communications-sla': IconBell,
@@ -237,6 +239,7 @@ export function Sidebar({
       'integrations-meta': 'leads',
       'integrations-google': 'leads',
       'integrations-webhook': 'leads',
+      'integrations-tiktok': 'leads',
       'service-orders': 'services',
       services: 'services',
       invoices: 'services',
@@ -475,6 +478,7 @@ export function Sidebar({
       item.key === 'integrations-meta' ||
       item.key === 'integrations-google' ||
       item.key === 'integrations-webhook' ||
+      item.key === 'integrations-tiktok' ||
       item.key === 'settings-email'
     ) {
       return integrationsRailActive

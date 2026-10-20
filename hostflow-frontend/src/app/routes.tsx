@@ -76,6 +76,7 @@ import {
   IntegrationsHubPage,
   IntegrationsSourcePlaceholderPage,
   IntegrationsWebhookPage,
+  IntegrationsTikTokPage,
   MetaLeadsAdminPage,
   MyAvailabilityPage,
   MyCompanyPage,
@@ -561,6 +562,13 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'admin.metaLeads',
   },
   {
+    key: 'integrations-tiktok',
+    labelKey: 'app.nav.integrations.tiktok',
+    path: CRM.settingsIntegrationsTiktok,
+    group: 'admin',
+    permission: 'admin.metaLeads',
+  },
+  {
     key: 'settings-communications',
     labelKey: 'app.nav.items.settings_communications',
     path: CRM.settingsCommunications,
@@ -998,6 +1006,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     key: 'settings-integrations-webhook',
     path: seg(CRM.settingsIntegrationsWebhook),
     Component: IntegrationsWebhookPage,
+    permission: 'admin.metaLeads',
+  },
+  {
+    key: 'settings-integrations-tiktok',
+    path: seg(CRM.settingsIntegrationsTiktok),
+    Component: IntegrationsTikTokPage,
     permission: 'admin.metaLeads',
   },
   {

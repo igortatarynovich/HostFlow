@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -23,6 +24,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.db.session import async_session_maker
 from backend.app.models import Lead
 from backend.app.modules.leads import normalizer
+
+logger = logging.getLogger(__name__)
 
 from ._helpers import LeadProcessingError, MetaLeadResult, _load_settings
 from ._processing import process_normalized_lead
@@ -604,6 +607,59 @@ async def process_meta_lead(
     )
 
 
+def _tiktok_route_intent(business_type: str) -> str:
+    if str(business_type or "").strip().lower() == "services":
+        return "sales_inquiry"
+    return "candidate_application"
+
+
+async def _ensure_tiktok_form_route(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: Optional[str],
+    lead_entry: Dict[str, Any],
+) -> Optional[str]:
+    """Bind the Instant Form to an intake source so the lead follows the Meta pipeline."""
+    form_id = str(lead_entry.get("page_id") or "").strip()
+    if not form_id:
+        return None
+    company_id = str(own_company_id or "").strip() or None
+    if not company_id:
+        from backend.app.models.own_company import OwnCompany
+
+        company_id = (
+            await db.execute(
+                select(OwnCompany.id)
+                .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
+                .order_by(OwnCompany.created_at.asc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+    if not company_id:
+        return None
+    from backend.app.acquisition.ensure_tiktok_intake_source import ensure_tiktok_form_intake_source
+    from backend.app.modules.leads.tenant_business_type import load_tenant_business_type
+
+    business_type = await load_tenant_business_type(db, tenant_id, str(company_id))
+    page_name = str(lead_entry.get("page_name") or "").strip() or None
+    try:
+        profile = await ensure_tiktok_form_intake_source(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=str(company_id),
+            form_id=form_id,
+            route_intent=_tiktok_route_intent(business_type),
+            display_name=page_name,
+        )
+    except Exception:
+        logger.exception("tiktok_intake_source_ensure_failed tenant=%s form=%s", tenant_id, form_id)
+        return str(company_id)
+    if profile is None:
+        return str(company_id)
+    return str(profile.own_company_id or company_id)
+
+
 async def process_generic_inbound_webhook_lead(
     db: AsyncSession,
     *,
@@ -612,10 +668,27 @@ async def process_generic_inbound_webhook_lead(
     body: Dict[str, Any],
 ) -> MetaLeadResult:
     """
-    §2.11: arbitrary JSON POST → same field_mapping + process_normalized_lead as Meta; source=webhook.
+    §2.11: arbitrary JSON POST → same field_mapping + process_normalized_lead as Meta.
+
+    A TikTok Instant Form webhook (``object=1``) is stored with ``source=tiktok``.
+    Any other JSON stays ``source=webhook``.
     """
     settings_row = await _load_settings(db, tenant_id)
-    coerced = normalizer.coerce_generic_json_to_meta_normalizer_payload(body)
+    tiktok_entry = normalizer.tiktok_lead_entry(body)
+    source = "webhook"
+    if tiktok_entry is not None:
+        source = "tiktok"
+        coerced = normalizer.coerce_tiktok_lead_to_meta_payload(body)
+        ensured_company = await _ensure_tiktok_form_route(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            lead_entry=tiktok_entry,
+        )
+        if ensured_company and not own_company_id:
+            own_company_id = ensured_company
+    else:
+        coerced = normalizer.coerce_generic_json_to_meta_normalizer_payload(body)
     from backend.app.entity_profile.ingest_runtime import (
         prepare_meta_ingest_runtime,
         stamp_ingest_envelope_v1,
@@ -625,7 +698,7 @@ async def process_generic_inbound_webhook_lead(
     validated_mapping, ingest_envelope, intake_route, _profile_view = await prepare_meta_ingest_runtime(
         db,
         tenant_id=tenant_id,
-        source="webhook",
+        source=source,
         raw_payload=coerced,
         own_company_id=own_company_id,
         settings_row=settings_row,
@@ -657,7 +730,7 @@ async def process_generic_inbound_webhook_lead(
         own_company_id=own_company_id,
         payload=body,
         normalized=normalized,
-        source="webhook",
+        source=source,
         external_id=external_id,
         force_existing=False,
     )

@@ -193,7 +193,7 @@ async def resolve_intake_route_for_ingest(
     form_id = str(normalized.get("form_id") or form_ctx.get("form_id") or "").strip() or None
     page_id = str(normalized.get("page_id") or form_ctx.get("page_id") or "").strip() or None
 
-    if src != IntakeProvider.meta.value:
+    if src not in {IntakeProvider.meta.value, IntakeProvider.tiktok.value}:
         return IntakeRouteContext(
             matched=False,
             fallback=False,
@@ -220,7 +220,7 @@ async def resolve_intake_route_for_ingest(
     routing = await IntakeRouter.resolve(
         db,
         tenant_id=tenant_id,
-        provider="meta",
+        provider=src,
         external_key=external_key,
         external_key_secondary=external_key_secondary,
         own_company_hint=own_company_id_hint,
