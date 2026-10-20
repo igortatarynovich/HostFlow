@@ -31,7 +31,7 @@ async def _seed_tenant(
     tid = tenant_id or _uid()
     suffix = tid.replace("-", "")[:10]
     db.add(
-        Tenant(
+        Tenant(timezone="Europe/Warsaw", 
             id=tid,
             name=f"M6 Test {suffix}",
             slug=f"m6-{suffix}",
@@ -248,7 +248,7 @@ async def test_bootstrap_maps_candidate_stages_to_pe(db) -> None:
 
 
 def test_bootstrap_pipeline_flags_respects_company_overrides() -> None:
-    tenant = Tenant(
+    tenant = Tenant(timezone="Europe/Warsaw", 
         id="t1",
         settings={"modules": {"recruitment": True, "candidates": True, "leads": True}},
     )

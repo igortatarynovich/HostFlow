@@ -65,6 +65,32 @@ class CandidateEmployment(Base, TimestampMixin):
         nullable=True,
     )
 
+    driving_categories: Mapped[list[str]] = mapped_column(
+        _JSONList,
+        nullable=False,
+        default=list,
+    )
+    operation_scopes: Mapped[list[str]] = mapped_column(
+        _JSONList,
+        nullable=False,
+        default=list,
+    )
+    movement_patterns: Mapped[list[str]] = mapped_column(
+        _JSONList,
+        nullable=False,
+        default=list,
+    )
+    crew_modes: Mapped[list[str]] = mapped_column(
+        _JSONList,
+        nullable=False,
+        default=list,
+    )
+    work_areas: Mapped[list[dict]] = mapped_column(
+        _JSONList,
+        nullable=False,
+        default=list,
+    )
+
     eu_routes: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     reason_for_leaving: Mapped[str | None] = mapped_column(Text, nullable=True)
     reference_contact: Mapped[str | None] = mapped_column(Text, nullable=True)

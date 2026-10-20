@@ -36,7 +36,7 @@ async def test_action_audit_written_for_blocked_and_allowed_attempts() -> None:
 
     async with async_session_maker() as session:
         session.add(
-            Tenant(
+            Tenant(timezone="Europe/Warsaw", 
                 id=tenant_id,
                 name=f"Tenant {tenant_id[:8]}",
                 slug=f"t-{tenant_id[:8]}",

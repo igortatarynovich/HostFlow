@@ -46,7 +46,7 @@ async def _seed_tenant(
 ) -> Tenant:
     tid = tenant_id or _uid()
     suffix = tid.replace("-", "")[:10]
-    tenant = Tenant(
+    tenant = Tenant(timezone="Europe/Warsaw", 
         id=tid,
         name=f"H4 Test {suffix}",
         slug=f"h4-{suffix}",

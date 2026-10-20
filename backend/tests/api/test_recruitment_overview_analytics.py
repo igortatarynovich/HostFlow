@@ -498,7 +498,7 @@ async def test_other_tenant_does_not_affect_any_section(tenant_id: str) -> None:
     async with async_session_maker() as db:
         await _set_tenant(db, tenant_id)
         db.add(
-            Tenant(
+            Tenant(timezone="Europe/Warsaw", 
                 id=other,
                 name=f"ov-{other[:8]}",
                 slug=f"ov-{other[:8]}",

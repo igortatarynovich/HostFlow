@@ -24,7 +24,7 @@ async def _seed() -> None:
 
 async def _tenant(session, tenant_id: str) -> None:
     session.add(
-        Tenant(
+        Tenant(timezone="Europe/Warsaw", 
             id=tenant_id,
             name=f"Tenant {tenant_id[:8]}",
             slug=f"tenant-{tenant_id[:8]}",

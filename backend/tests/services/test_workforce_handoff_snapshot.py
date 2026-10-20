@@ -84,7 +84,7 @@ async def test_seed_work_eligibility_from_candidate(db) -> None:
     from backend.app.services.workforce_work_eligibility import get_work_eligibility_profile
 
     suffix = uuid.uuid4().hex[:8]
-    tenant = Tenant(
+    tenant = Tenant(timezone="Europe/Warsaw", 
         id=f"tenant-wel-{suffix}",
         name=f"Wel Test {suffix}",
         slug=f"wel-test-{suffix}",

@@ -458,6 +458,7 @@ export interface PlatformTenantCreatePayload {
   description?: string | null;
   settings?: Record<string, any>;
   workspace_label?: string | null;
+  timezone: string;
   logo_url?: string | null;
   logo_meta?: Record<string, any> | null;
   license: TenantLicenseInput;

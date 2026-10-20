@@ -12,6 +12,7 @@ export type CreateTenantForm = {
   name: string;
   slug: string;
   workspace_label: string;
+  timezone: string;
   type: TenantType;
   status: TenantStatus;
   client_portal_enabled: boolean;

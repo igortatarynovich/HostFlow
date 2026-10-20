@@ -73,6 +73,7 @@ const DEFAULT_CREATE_FORM: CreateTenantForm = {
   name: '',
   slug: '',
   workspace_label: '',
+  timezone: '',
   type: 'agency',
   status: 'active',
   client_portal_enabled: true,
@@ -815,6 +816,7 @@ export default function TenantsPage() {
         client_portal_enabled: createForm.client_portal_enabled,
         status_sharing_allowed: createForm.status_sharing_allowed,
         workspace_label: trimmedLabel || trimmedName || undefined,
+        timezone: createForm.timezone.trim(),
         license: licenseFormToInput(createForm.license),
       }
       const initialAdminEmail = createForm.initial_admin_email.trim()
@@ -828,7 +830,7 @@ export default function TenantsPage() {
           password: createForm.initial_admin_password,
         }
       }
-      if (!payload.name || !payload.slug) {
+      if (!payload.name || !payload.slug || !payload.timezone) {
         throw new Error(t('app.platform.tenants.errors.required_fields'))
       }
       await createPlatformTenant(payload)
@@ -1985,6 +1987,18 @@ export default function TenantsPage() {
               value={createForm.workspace_label}
               onChange={handleCreateInput}
               placeholder={createForm.name || undefined}
+            />
+          </label>
+          <label className="text-xs font-medium text-slate-500">
+            {t('app.platform.tenants.create.timezone', { defaultValue: 'Business timezone' })}
+            <input
+              className="input mt-1"
+              name="timezone"
+              autoComplete="off"
+              required
+              value={createForm.timezone}
+              onChange={handleCreateInput}
+              placeholder="Europe/Madrid"
             />
           </label>
           <label className="text-xs font-medium text-slate-500">

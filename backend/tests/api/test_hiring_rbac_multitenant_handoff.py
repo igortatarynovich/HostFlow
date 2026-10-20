@@ -143,8 +143,8 @@ async def _ensure_agency_tenant_row(tenant_id: str, *, name: str, slug: str) -> 
         await session.execute(
             sa.text(
                 """
-                INSERT INTO tenants (id, name, slug, api_key, is_active, type, status)
-                VALUES (:id, :name, :slug, :api_key, true, 'agency', 'active')
+                INSERT INTO tenants (id, name, slug, api_key, is_active, type, status, timezone)
+                VALUES (:id, :name, :slug, :api_key, true, 'agency', 'active', 'Europe/Warsaw')
                 ON CONFLICT (id) DO NOTHING
                 """
             ),
@@ -245,7 +245,7 @@ async def test_client_manager_sees_accepted_handoff_candidate(
         await session.execute(
             sa.text(
                 """
-                INSERT INTO tenants (id, name, slug, api_key, is_active, type, status)
+                INSERT INTO tenants (id, name, slug, api_key, is_active, type, status, timezone)
                 VALUES (:id, :name, :slug, :api_key, true, 'company', 'active')
                 """
             ),

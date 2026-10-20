@@ -25,7 +25,7 @@ async def test_operating_company_slots_buy_create_downgrade_flow() -> None:
     user_id = str(uuid4())
     company_ids: list[str] = []
     async with async_session_maker() as db:
-        tenant = Tenant(
+        tenant = Tenant(timezone="Europe/Warsaw", 
             id=tenant_id,
             name=f"A6 S7 Tenant {tenant_id[:8]}",
             slug=f"a6-s7-{tenant_id[:8]}",

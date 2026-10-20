@@ -39,6 +39,7 @@ export default function SignupPage() {
   const preselectedPlan = (searchParams.get('plan') || '').trim().toLowerCase()
 
   const [workspaceName, setWorkspaceName] = useState('')
+  const [timezone, setTimezone] = useState('')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -103,6 +104,7 @@ export default function SignupPage() {
         email: email.trim(),
         password,
         workspace_name: workspaceName.trim(),
+        timezone: timezone.trim(),
         full_name: fullName.trim() || undefined,
         plan_code: preselectedPlan || undefined,
         accept_terms: acceptTerms,
@@ -176,6 +178,18 @@ export default function SignupPage() {
                 value={workspaceName}
                 onChange={(e) => setWorkspaceName(e.target.value)}
                 placeholder={t('app.signup.fields.workspace_placeholder', { defaultValue: 'Acme Recruiting' })}
+              />
+            </div>
+            <div>
+              <label className="label">{t('app.signup.fields.timezone', { defaultValue: 'Business timezone' })}</label>
+              <input
+                className="input"
+                type="text"
+                required
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                placeholder={t('app.signup.fields.timezone_placeholder', { defaultValue: 'Europe/Madrid' })}
+                autoComplete="off"
               />
             </div>
             <div>

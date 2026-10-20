@@ -67,6 +67,7 @@ class Tenant(Base, TimestampMixin):
 
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     workspace_label: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False)
     logo_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     logo_meta: Mapped[Optional[dict]] = mapped_column(
         SQLiteJSON().with_variant(JSONB, "postgresql"), nullable=True

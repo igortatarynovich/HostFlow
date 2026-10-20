@@ -429,7 +429,7 @@ async def test_unfiltered_transitions_are_exact_and_other_tenant_is_excluded(ten
         db.add(_history(tenant_id=tenant_id, candidate_id=candidate.id, at=start, to_code="contacted"))
         db.add(_attempt(candidate_id=candidate.id, at=start, result="answered"))
         db.add(
-            Tenant(
+            Tenant(timezone="Europe/Warsaw", 
                 id=other,
                 name=f"ops-{other[:8]}",
                 slug=f"ops-{other[:8]}",

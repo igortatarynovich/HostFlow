@@ -77,7 +77,7 @@ async def _ensure_tenant(db, tenant_id: str) -> None:
         return
     suffix = tenant_id.replace("-", "")[:8]
     db.add(
-        Tenant(
+        Tenant(timezone="Europe/Warsaw", 
             id=tenant_id,
             name=f"Tenant {suffix}",
             slug=f"t-{suffix}",

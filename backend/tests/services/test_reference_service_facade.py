@@ -28,7 +28,7 @@ async def test_reference_facade_bundle_shape_stable() -> None:
         tenant_id = str(uuid.uuid4())
         candidate_id = str(uuid.uuid4())
         session.add(
-            Tenant(
+            Tenant(timezone="Europe/Warsaw", 
                 id=tenant_id,
                 name=f"Tenant {tenant_id[:8]}",
                 slug=f"tenant-{tenant_id[:8]}",

@@ -33,7 +33,7 @@ async def test_hr_handoff_blocked_by_missing_required_docs() -> None:
     candidate_id = str(uuid.uuid4())
 
     async with async_session_maker() as session:
-        session.add(Tenant(id=tenant_id, name=f"Tenant {tenant_id[:8]}", slug=f"t-{tenant_id[:8]}", api_key=f"api-{tenant_id[:8]}", is_active=True))
+        session.add(Tenant(timezone="Europe/Warsaw", id=tenant_id, name=f"Tenant {tenant_id[:8]}", slug=f"t-{tenant_id[:8]}", api_key=f"api-{tenant_id[:8]}", is_active=True))
         cand = Candidate(
             id=candidate_id,
             tenant_id=tenant_id,
@@ -62,7 +62,7 @@ async def test_contract_signing_allowed_when_docs_ready() -> None:
     candidate_id = str(uuid.uuid4())
 
     async with async_session_maker() as session:
-        session.add(Tenant(id=tenant_id, name=f"Tenant {tenant_id[:8]}", slug=f"t-{tenant_id[:8]}", api_key=f"api-{tenant_id[:8]}", is_active=True))
+        session.add(Tenant(timezone="Europe/Warsaw", id=tenant_id, name=f"Tenant {tenant_id[:8]}", slug=f"t-{tenant_id[:8]}", api_key=f"api-{tenant_id[:8]}", is_active=True))
         cand = Candidate(
             id=candidate_id,
             tenant_id=tenant_id,

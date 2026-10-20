@@ -74,6 +74,7 @@ def _serialize_tenant(
         status_sharing_allowed=tenant.status_sharing_allowed,
         description=tenant.description,
         workspace_label=tenant.workspace_label,
+        timezone=tenant.timezone,
         logo_url=tenant.logo_url,
         logo_meta=tenant.logo_meta,
         created_at=tenant.created_at,
@@ -122,6 +123,7 @@ def _tenant_payload_from_request(
         "description": payload.description,
         "settings": payload.settings or {},
         "workspace_label": payload.workspace_label.strip() if payload.workspace_label else None,
+        "timezone": payload.timezone,
         "logo_url": payload.logo_url,
         "logo_meta": payload.logo_meta or None,
     }
@@ -273,6 +275,8 @@ async def create_platform_tenant(
         key = str(exc)
         if key == "invalid_slug":
             raise HTTPException(status_code=422, detail="Invalid slug") from exc
+        if key in {"workspace_timezone_required", "workspace_timezone_invalid"}:
+            raise HTTPException(status_code=422, detail=key) from exc
         if key == "slug_exists":
             raise HTTPException(status_code=409, detail="Slug already in use") from exc
         if key == "integrity_conflict":

@@ -69,8 +69,8 @@ async def _ensure_closure_tenant(db, tenant_id: str) -> str:
     await db.execute(
         sa.text(
             """
-            INSERT INTO tenants (id, name, slug, api_key, is_active, type, status)
-            VALUES (:id, :name, :slug, :api_key, true, 'agency', 'active')
+            INSERT INTO tenants (id, name, slug, api_key, is_active, type, status, timezone)
+            VALUES (:id, :name, :slug, :api_key, true, 'agency', 'active', 'Europe/Warsaw')
             ON CONFLICT (id) DO NOTHING
             """
         ),

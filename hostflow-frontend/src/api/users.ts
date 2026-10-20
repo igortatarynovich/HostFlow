@@ -186,6 +186,7 @@ export async function registerSelfService(payload: {
   email: string
   password: string
   workspace_name: string
+  timezone: string
   full_name?: string
   plan_code?: string
   accept_terms: boolean

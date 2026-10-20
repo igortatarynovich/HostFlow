@@ -524,6 +524,15 @@ async def list_tenants_with_licenses(
     return items, int(total)
 
 
+def _required_timezone(value: object) -> str:
+    from backend.app.services.workspace_timezone import WorkspaceTimezoneError, require_iana_timezone
+
+    try:
+        return require_iana_timezone(value)
+    except WorkspaceTimezoneError as exc:
+        raise ValueError(exc.code) from exc
+
+
 async def create_tenant(
     db: AsyncSession,
     data: dict,
@@ -532,6 +541,7 @@ async def create_tenant(
 ) -> Tenant:
     values = data.copy()
     values.setdefault("api_key", api_key or _generate_api_key())
+    values["timezone"] = _required_timezone(values.get("timezone"))
     tenant = Tenant(**values)
     db.add(tenant)
     await db.commit()
@@ -630,6 +640,7 @@ async def create_tenant_with_license(
     await ensure_slug_unique(db, slug)
     values["slug"] = slug
     values.setdefault("api_key", _generate_api_key())
+    values["timezone"] = _required_timezone(values.get("timezone"))
     tenant = Tenant(**values)
     db.add(tenant)
     await db.flush()

@@ -33,8 +33,8 @@ async def _ensure_tenant(db, tenant_id: str, *, modules: dict[str, bool] | None 
     await db.execute(
         sa.text(
             """
-            INSERT INTO tenants (id, name, slug, api_key, is_active, type, status, settings)
-            VALUES (:id, :name, :slug, :api_key, true, 'agency', 'active', CAST(:settings AS jsonb))
+            INSERT INTO tenants (id, name, slug, api_key, is_active, type, status, timezone, settings)
+            VALUES (:id, :name, :slug, :api_key, true, 'agency', 'active', 'Europe/Warsaw', CAST(:settings AS jsonb))
             ON CONFLICT (id) DO NOTHING
             """
         ),

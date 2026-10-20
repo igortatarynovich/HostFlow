@@ -23,7 +23,7 @@ async def test_handoff_snapshot_contains_canonical_runtime_metadata() -> None:
         candidate_id = str(uuid.uuid4())
 
         session.add(
-            Tenant(
+            Tenant(timezone="Europe/Warsaw", 
                 id=tenant_id,
                 name=f"Tenant {tenant_id[:8]}",
                 slug=f"tenant-{tenant_id[:8]}",
@@ -91,7 +91,7 @@ async def test_handoff_snapshot_expected_documents_contract_fields() -> None:
         candidate_id = str(uuid.uuid4())
 
         session.add(
-            Tenant(
+            Tenant(timezone="Europe/Warsaw", 
                 id=tenant_id,
                 name=f"Tenant {tenant_id[:8]}",
                 slug=f"tenant-{tenant_id[:8]}",

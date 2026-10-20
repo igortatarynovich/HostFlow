@@ -14,7 +14,7 @@ from backend.app.db.session import async_session_maker
 async def test_public_legal_resolves_tenant_by_host(client):
     tenant_id = str(uuid.uuid4())
     async with async_session_maker() as session:
-        tenant = Tenant(
+        tenant = Tenant(timezone="Europe/Warsaw", 
             id=tenant_id,
             name=f"tenant-{uuid.uuid4().hex[:8]}",
             slug=f"tenant-{uuid.uuid4().hex[:8]}",
@@ -46,7 +46,7 @@ async def test_public_legal_resolves_tenant_by_host(client):
 async def test_public_legal_redirects_to_content_url(client):
     tenant_id = str(uuid.uuid4())
     async with async_session_maker() as session:
-        tenant = Tenant(
+        tenant = Tenant(timezone="Europe/Warsaw", 
             id=tenant_id,
             name=f"tenant-{uuid.uuid4().hex[:8]}-b",
             slug=f"tenant-{uuid.uuid4().hex[:8]}-b",

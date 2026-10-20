@@ -78,7 +78,7 @@ async def run_smoke() -> dict:
     snapshots: dict[str, SlotsSnapshot] = {}
 
     async with async_session_maker() as db:
-        tenant = Tenant(
+        tenant = Tenant(timezone="Europe/Warsaw", 
             id=tenant_id,
             name=f"A6 S7 Smoke {tenant_id[:8]}",
             slug=f"a6-s7-smoke-{tenant_id[:8]}",

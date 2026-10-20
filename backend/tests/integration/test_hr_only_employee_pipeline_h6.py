@@ -54,7 +54,7 @@ HR_ONLY_MODULES = {
 async def _seed_hr_only_tenant(db) -> Tenant:
     tid = _uid()
     suffix = tid.replace("-", "")[:10]
-    tenant = Tenant(
+    tenant = Tenant(timezone="Europe/Warsaw", 
         id=tid,
         name=f"HR-only {suffix}",
         slug=f"hronly-{suffix}",

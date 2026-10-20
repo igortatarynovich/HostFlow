@@ -405,6 +405,8 @@ async def ensure_auth_seed() -> None:
             }
             if "workspace_label" in cols_tenants:
                 params["workspace_label"] = "Superadmin"
+            if "timezone" in cols_tenants:
+                params["timezone"] = "Europe/Warsaw"
             columns = []
             values = []
             for key, value in params.items():

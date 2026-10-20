@@ -60,7 +60,7 @@ async def _create_tenant_bundle(
 ) -> tuple[str, str]:
     tag = suffix or uuid4().hex[:8]
     async with async_session_maker() as session:
-        tenant = Tenant(
+        tenant = Tenant(timezone="Europe/Warsaw", 
             id=str(uuid4()),
             name=f"Provision Test {tag}",
             slug=f"provision-test-{tag}",
@@ -366,6 +366,7 @@ async def test_tenant_create_hook_provisions_services_capability() -> None:
                 "type": TenantType.agency,
                 "status": TenantStatus.active,
                 "settings": {"business_type": "services"},
+                "timezone": "Europe/Madrid",
             },
             license_payload={"plan": "manual"},
         )
@@ -421,7 +422,7 @@ async def test_inactive_slug_form_is_reactivated_not_duplicated() -> None:
 async def test_services_tenant_without_own_company_stays_pending() -> None:
     tag = uuid4().hex[:8]
     async with async_session_maker() as session:
-        tenant = Tenant(
+        tenant = Tenant(timezone="Europe/Warsaw", 
             id=str(uuid4()),
             name=f"Pending Services {tag}",
             slug=f"pending-services-{tag}",

@@ -199,7 +199,7 @@ async def run_recruitment_team_flow_scenario(
     api_key = str(uuid.uuid5(_NS, f"api:{tid}")).replace("-", "")[:64]
     if existing_tenant is None:
         session.add(
-            Tenant(
+            Tenant(timezone="Europe/Warsaw", 
                 id=tid,
                 name=SCENARIO_NAME,
                 slug=SCENARIO_SLUG,

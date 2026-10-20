@@ -664,8 +664,8 @@ async def _init_data() -> Dict[str, str]:
                 await session.execute(
                     sa.text(
                         """
-                        INSERT INTO tenants (id, name, slug, api_key, is_active, type, status)
-                        VALUES (:id, :name, :slug, :api_key, TRUE, 'agency', 'active')
+                        INSERT INTO tenants (id, name, slug, api_key, is_active, type, status, timezone)
+                        VALUES (:id, :name, :slug, :api_key, TRUE, 'agency', 'active', 'Europe/Warsaw')
                         ON CONFLICT (id) DO NOTHING
                         """
                     ),

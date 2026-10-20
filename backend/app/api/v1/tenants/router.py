@@ -143,7 +143,12 @@ async def create_tenant(
 
     data = payload.model_dump()
     data["slug"] = slug
-    tenant = await service.create_tenant(db, data)
+    try:
+        tenant = await service.create_tenant(db, data)
+    except ValueError as exc:
+        if str(exc) in {"workspace_timezone_required", "workspace_timezone_invalid"}:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise
     return schemas.TenantOut.model_validate(tenant)
 
 

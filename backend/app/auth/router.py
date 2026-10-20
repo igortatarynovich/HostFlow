@@ -103,11 +103,21 @@ class RegisterIn(BaseModel):
     email: str
     password: str = Field(..., min_length=8, max_length=128)
     workspace_name: str = Field(..., min_length=2, max_length=128)
+    timezone: str = Field(..., min_length=1, max_length=64)
     full_name: str | None = Field(default=None, max_length=255)
     plan_code: str | None = Field(default=None, max_length=32)
     accept_terms: bool = False
     accept_privacy: bool = False
     turnstile_token: str | None = Field(default=None, max_length=2048)
+
+
+def _signup_timezone(value: str) -> str:
+    from backend.app.services.workspace_timezone import WorkspaceTimezoneError, require_iana_timezone
+
+    try:
+        return require_iana_timezone(value)
+    except WorkspaceTimezoneError as exc:
+        raise HTTPException(status_code=422, detail=exc.code) from exc
 
 
 class RegisterOut(BaseModel):
@@ -246,6 +256,7 @@ async def auth_register(payload: RegisterIn, request: Request) -> RegisterOut:
             type=TenantType.agency,
             status=TenantStatus.trial,
             workspace_label=workspace_name,
+            timezone=_signup_timezone(payload.timezone),
             settings={"signup": {"source": "self_service"}},
         )
         session.add(tenant)

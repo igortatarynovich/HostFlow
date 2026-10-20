@@ -19,7 +19,7 @@ class TenantBase(BaseModel):
 
 
 class TenantCreate(TenantBase):
-    pass
+    timezone: str = Field(..., min_length=1, max_length=64)
 
 
 class TenantUpdate(BaseModel):
@@ -42,6 +42,7 @@ class TenantOut(TenantBase):
     client_handoff_view: bool = False
     created_at: datetime
     updated_at: datetime
+    timezone: str
 
     class Config:
         from_attributes = True

@@ -207,6 +207,7 @@ export interface PlatformTenantCreatePayload {
   name: string;
   slug: string;
   workspace_label?: string | null;
+  timezone: string;
   type: TenantType;
   status?: TenantStatus;
   client_portal_enabled?: boolean;

@@ -26,7 +26,7 @@ async def _seed_tenant(db, *, tenant_id: str | None = None) -> str:
     tid = tenant_id or _uid()
     suffix = tid.replace("-", "")[:10]
     db.add(
-        Tenant(
+        Tenant(timezone="Europe/Warsaw", 
             id=tid,
             name=f"Launch Search {suffix}",
             slug=f"ls-{suffix}",

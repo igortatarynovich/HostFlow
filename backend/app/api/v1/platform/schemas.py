@@ -152,6 +152,7 @@ class TenantProvisionIn(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     settings: Dict[str, Any] = Field(default_factory=dict)
     workspace_label: str | None = Field(default=None, max_length=128)
+    timezone: str = Field(..., min_length=1, max_length=64)
     logo_url: str | None = Field(default=None, max_length=512)
     logo_meta: Dict[str, Any] | None = None
     license: TenantLicenseIn
@@ -171,6 +172,7 @@ class PlatformTenantOut(BaseModel):
     status_sharing_allowed: bool
     description: str | None = None
     workspace_label: str | None = None
+    timezone: str
     logo_url: str | None = None
     logo_meta: Dict[str, Any] | None = None
     created_at: datetime

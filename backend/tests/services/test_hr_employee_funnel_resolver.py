@@ -32,7 +32,7 @@ async def _seed_tenant(
     tid = tenant_id or _uid()
     suffix = tid.replace("-", "")[:10]
     db.add(
-        Tenant(
+        Tenant(timezone="Europe/Warsaw", 
             id=tid,
             name=f"HR Funnel Test {suffix}",
             slug=f"hrf-{suffix}",

@@ -53,7 +53,7 @@ async def test_sync_reassigns_misclassified_document_type_ids() -> None:
 
     async with async_session_maker() as session:
         session.add(
-            Tenant(
+            Tenant(timezone="Europe/Warsaw", 
                 id=tenant_id,
                 name=f"Tenant {tenant_id[:8]}",
                 slug=f"tenant-{tenant_id[:8]}",

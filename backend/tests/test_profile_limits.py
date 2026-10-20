@@ -25,7 +25,7 @@ pytestmark = pytest.mark.anyio
 async def _create_isolated_tenant(db: AsyncSession) -> str:
     tenant_id = str(uuid.uuid4())
     db.add(
-        Tenant(
+        Tenant(timezone="Europe/Warsaw", 
             id=tenant_id,
             name=f"Profile Limits Test {tenant_id[:8]}",
             slug=f"profile-limits-{tenant_id[:8]}",

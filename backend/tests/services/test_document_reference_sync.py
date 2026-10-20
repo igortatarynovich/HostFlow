@@ -51,7 +51,7 @@ async def test_backfill_documents_sets_canonical_ids_and_unknown_maps_to_other()
 
     async with async_session_maker() as session:
         session.add(
-            Tenant(
+            Tenant(timezone="Europe/Warsaw", 
                 id=tenant_id,
                 name=f"Tenant {tenant_id[:8]}",
                 slug=f"tenant-{tenant_id[:8]}",
@@ -111,7 +111,7 @@ async def test_backfill_document_policy_from_legacy_document_type() -> None:
 
     async with async_session_maker() as session:
         session.add(
-            Tenant(
+            Tenant(timezone="Europe/Warsaw", 
                 id=tenant_id,
                 name=f"Tenant {tenant_id[:8]}",
                 slug=f"tenant-{tenant_id[:8]}",

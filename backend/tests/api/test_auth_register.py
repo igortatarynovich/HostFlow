@@ -7,7 +7,21 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 
 from backend.app.db.session import async_session_maker
+from backend.app.models.tenant import Tenant
 from backend.app.models.user import User
+
+
+@pytest.mark.anyio
+async def test_register_requires_timezone(client: AsyncClient) -> None:
+    payload = {
+        "email": f"signup-no-tz-{uuid.uuid4().hex[:8]}@example.com",
+        "password": "Host123!456",
+        "workspace_name": "Timezone Missing Workspace",
+        "accept_terms": True,
+        "accept_privacy": True,
+    }
+    resp = await client.post("/api/v1/auth/register", json=payload)
+    assert resp.status_code == 422, resp.text
 
 
 @pytest.mark.anyio
@@ -17,6 +31,7 @@ async def test_register_requires_legal_consent(client: AsyncClient) -> None:
         "email": email,
         "password": "Host123!456",
         "workspace_name": "Consent Missing Workspace",
+        "timezone": "Europe/Madrid",
         "full_name": "Consent Missing",
         "plan_code": "starter",
     }
@@ -38,6 +53,7 @@ async def test_register_persists_signup_consents_and_meta(client: AsyncClient, m
         "email": email,
         "password": "Host123!456",
         "workspace_name": "Consent Verified Workspace",
+        "timezone": "Europe/Madrid",
         "full_name": "Consent Verified",
         "plan_code": "starter",
         "accept_terms": True,
@@ -65,3 +81,6 @@ async def test_register_persists_signup_consents_and_meta(client: AsyncClient, m
         assert isinstance(consents.get("accepted_at"), str)
         assert consents.get("terms_version") == "2025-02-01"
         assert consents.get("privacy_version") == "2025-02-01"
+        tenant = await session.get(Tenant, user.tenant_id)
+        assert tenant is not None
+        assert tenant.timezone == "Europe/Madrid"

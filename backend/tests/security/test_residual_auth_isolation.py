@@ -69,8 +69,8 @@ async def test_meta_stages_anonymous_ignores_foreign_tenant_header(client: Async
         await session.execute(
             sa.text(
                 """
-                INSERT INTO tenants (id, name, slug, api_key, is_active, type, status)
-                VALUES (:id, :name, :slug, :api_key, true, 'agency', 'active')
+                INSERT INTO tenants (id, name, slug, api_key, is_active, type, status, timezone)
+                VALUES (:id, :name, :slug, :api_key, true, 'agency', 'active', 'Europe/Warsaw')
                 ON CONFLICT (id) DO NOTHING
                 """
             ),

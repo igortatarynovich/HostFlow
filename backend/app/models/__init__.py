@@ -83,6 +83,13 @@ RecruitmentApplication = _load_model_module("recruitment_application").Recruitme
 SalesInquiry = _load_model_module("sales_inquiry").SalesInquiry  # type: ignore[attr-defined]
 FlightDispatchLedger = _load_model_module("flight_dispatch_ledger").FlightDispatchLedger  # type: ignore[attr-defined]
 CandidateEmployment = _load_model_module("candidate_employment").CandidateEmployment  # type: ignore[attr-defined]
+_professional_profile = _load_model_module("professional_profile")
+ProfessionalCatalogCode = _professional_profile.ProfessionalCatalogCode  # type: ignore[attr-defined]
+ProfessionalCodeMapping = _professional_profile.ProfessionalCodeMapping  # type: ignore[attr-defined]
+CandidateProfessionalConstraint = _professional_profile.CandidateProfessionalConstraint  # type: ignore[attr-defined]
+CandidateAvailability = _professional_profile.CandidateAvailability  # type: ignore[attr-defined]
+CandidatePreferenceChoice = _professional_profile.CandidatePreferenceChoice  # type: ignore[attr-defined]
+CandidateCompensationExpectation = _professional_profile.CandidateCompensationExpectation  # type: ignore[attr-defined]
 CandidateConsent = _load_model_module("candidate_consent").CandidateConsent  # type: ignore[attr-defined]
 CandidateHandoff = _load_model_module("candidate_handoff").CandidateHandoff  # type: ignore[attr-defined]
 candidate_evidence_module = _load_model_module("candidate_evidence")
@@ -368,6 +375,12 @@ __all__ = [
     "CandidateProfileHistory",
     "CandidateService",
     "CandidateEmployment",
+    "ProfessionalCatalogCode",
+    "ProfessionalCodeMapping",
+    "CandidateProfessionalConstraint",
+    "CandidateAvailability",
+    "CandidatePreferenceChoice",
+    "CandidateCompensationExpectation",
     "CandidateConsent",
     "Service",
     "ServiceOrder",

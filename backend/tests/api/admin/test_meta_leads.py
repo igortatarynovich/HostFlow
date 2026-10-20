@@ -947,7 +947,7 @@ async def test_superadmin_bootstrap_meta_uses_operational_tenant(client, monkeyp
         await session.execute(
             sa.text(
                 """
-                INSERT INTO tenants (id, name, slug, api_key, is_active, type, status)
+                INSERT INTO tenants (id, name, slug, api_key, is_active, type, status, timezone)
                 VALUES (:id, :name, :slug, :key, true, 'agency', 'active')
                 ON CONFLICT (id) DO NOTHING
                 """
