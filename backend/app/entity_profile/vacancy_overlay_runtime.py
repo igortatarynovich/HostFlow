@@ -21,6 +21,10 @@ from backend.app.entity_profile.constants import (
     DRIVER_CE_SCREENING_PACK_CODE,
 )
 from backend.app.entity_profile.membership_runtime import resolve_membership
+from backend.app.entity_profile.professional_requirement_identity import (
+    looks_like_professional_qualified_code,
+    parse_requirement_predicate,
+)
 
 CONTRACT_ID = "entity_profile_vacancy_overlay.v1"
 KIND_PRESENCE = "presence"
@@ -170,6 +174,7 @@ def merge(
     documents = list(_PACK_DOCUMENTS.get(document_pack, ()))
     presence_required: list[dict[str, Any]] = []
     process_deltas: list[dict[str, Any]] = []
+    professional: dict[str, dict[str, Any]] = {}
 
     for row in overlay.get("delta") or []:
         if not isinstance(row, Mapping):
@@ -182,6 +187,22 @@ def merge(
             return _fail(ERROR_INVALID_DELTA)
         predicate = row.get("predicate") if isinstance(row.get("predicate"), Mapping) else {}
         if kind == KIND_VALUE:
+            qualified = str(predicate.get("qualified_code") or "").strip()
+            if looks_like_professional_qualified_code(qualified):
+                parsed = parse_requirement_predicate(predicate)
+                if parsed is None:
+                    return _fail(ERROR_INVALID_DELTA)
+                parsed["owner"] = str(row.get("owner") or "vacancy")
+                merged_requirement, error = _merge_professional_requirement(
+                    professional.get(parsed["qualified_code"]),
+                    parsed,
+                    op,
+                )
+                if error is not None:
+                    return error
+                if merged_requirement is not None:
+                    professional[parsed["qualified_code"]] = merged_requirement
+                continue
             applied, error = _apply_value_delta(years_min, op, predicate)
             if error is not None:
                 return error
@@ -227,6 +248,7 @@ def merge(
         "document_pack_code": document_pack or None,
         "years_ce_min": years_min,
         "years_ce_owner": years_owner,
+        "professional_requirements": [professional[key] for key in sorted(professional)],
         "document_types": documents,
         "presence_required": presence_required,
         "process_deltas": process_deltas,
@@ -350,6 +372,65 @@ def _normalize_delta(
         },
         None,
     )
+
+
+def _merge_professional_requirement(
+    current: Mapping[str, Any] | None,
+    incoming: Mapping[str, Any],
+    op: str,
+) -> tuple[Optional[dict[str, Any]], Optional[dict[str, Any]]]:
+    """Same qualified_code merges on an explicit scale.
+
+    mandatory is stronger than preferred. minimum implies presence, so a
+    day threshold is stronger than presence of the same predicate. A lower
+    day threshold does not replace a higher one.
+    """
+    if current is None:
+        return dict(incoming), None
+    if op == OP_TIGHTEN and current["strength"] == "mandatory" and incoming["strength"] == "preferred":
+        return None, _fail(ERROR_OVERLAY_RELAX)
+    if op == OP_TIGHTEN and current["mode"] == "minimum" and incoming["mode"] == "presence":
+        return None, _fail(ERROR_OVERLAY_RELAX)
+    current_days = current.get("minimum_days")
+    incoming_days = incoming.get("minimum_days")
+    if (
+        op == OP_TIGHTEN
+        and isinstance(current_days, int)
+        and isinstance(incoming_days, int)
+        and incoming_days < current_days
+    ):
+        return None, _fail(ERROR_OVERLAY_RELAX)
+    strength = "mandatory" if "mandatory" in {current["strength"], incoming["strength"]} else "preferred"
+    mode = "minimum" if "minimum" in {current["mode"], incoming["mode"]} else current["mode"]
+    minimum_days = None
+    if mode == "minimum":
+        days = [value for value in (current_days, incoming_days) if isinstance(value, int)]
+        if not days:
+            return None, _fail(ERROR_INVALID_DELTA)
+        minimum_days = max(days)
+    owner = current["owner"]
+    incoming_stronger = (
+        (incoming["strength"] == "mandatory" and current["strength"] != "mandatory")
+        or (incoming["mode"] == "minimum" and current["mode"] != "minimum")
+        or (
+            isinstance(incoming_days, int)
+            and isinstance(current_days, int)
+            and incoming_days > current_days
+        )
+    )
+    if incoming_stronger:
+        owner = incoming["owner"]
+    return {
+        "qualified_code": current["qualified_code"],
+        "domain": current["domain"],
+        "facet": current["facet"],
+        "code": current.get("code"),
+        "subject": current.get("subject"),
+        "strength": strength,
+        "mode": mode,
+        "minimum_days": minimum_days,
+        "owner": owner,
+    }, None
 
 
 def _apply_value_delta(
