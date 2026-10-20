@@ -281,28 +281,47 @@ async def record_intake_professional_facts(
         changed = True
 
     if "available_from" in normalized:
-        existing = await session.scalar(
-            select(CandidateAvailability).where(
-                CandidateAvailability.tenant_id == tenant_id,
-                CandidateAvailability.candidate_id == candidate_id,
-            )
+        await set_candidate_available_from(
+            session,
+            tenant_id=tenant_id,
+            candidate_id=candidate_id,
+            available_from=normalized["available_from"],
         )
-        if existing is None:
-            session.add(
-                CandidateAvailability(
-                    id=str(uuid4()),
-                    tenant_id=tenant_id,
-                    candidate_id=candidate_id,
-                    available_from=normalized["available_from"],
-                )
-            )
-        else:
-            existing.available_from = normalized["available_from"]
         changed = True
 
     if changed:
         await session.flush()
     return changed
+
+
+async def set_candidate_available_from(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    available_from: date | None,
+) -> None:
+    """Upsert the one availability row. This is the recruiter and intake writer."""
+    existing = await session.scalar(
+        select(CandidateAvailability).where(
+            CandidateAvailability.tenant_id == tenant_id,
+            CandidateAvailability.candidate_id == candidate_id,
+        )
+    )
+    if existing is None:
+        if available_from is None:
+            return
+        session.add(
+            CandidateAvailability(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                candidate_id=candidate_id,
+                available_from=available_from,
+            )
+        )
+    else:
+        existing.available_from = available_from
+    await session.flush()
 
 
 async def record_intake_professional_facts_from_values(

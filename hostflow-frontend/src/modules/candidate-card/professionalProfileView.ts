@@ -200,9 +200,17 @@ export function professionalSummary(profile: ProfessionalProfileProjection, copy
       parts.push(`${name} · ${copy.presence}`)
     }
   }
-  if (profile.capabilities.code95.presence === true) parts.push('Code 95')
-  if (profile.capabilities.adr.presence === true) parts.push('ADR')
+  const code95 = capabilityMark('Code 95', profile.capabilities.code95.presence, copy)
+  const adr = capabilityMark('ADR', profile.capabilities.adr.presence, copy)
+  if (code95) parts.push(code95)
+  if (adr) parts.push(adr)
   return parts
+}
+
+function capabilityMark(name: string, presence: boolean | null, copy: ProfileCopy): string | null {
+  if (presence === true) return `${name} ✓`
+  if (presence === false) return `${name} — ${copy.absent}`
+  return null
 }
 
 export function durationLines(profile: ProfessionalProfileProjection, copy: ProfileCopy, locale: string): DurationLine[] {

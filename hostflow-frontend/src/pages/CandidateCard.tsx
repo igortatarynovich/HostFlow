@@ -5233,6 +5233,9 @@ export default function CandidateCard(){
           {cardTab === 'profile' && !isMasked && model?.id ? (
             <CandidateProfessionalProfile
               profile={professionalProfile}
+              candidateId={String(model.id)}
+              canEditAvailability={model.can_edit !== false}
+              onAvailabilitySaved={() => setProfileRevision((value) => value + 1)}
               qualificationEditor={(
                 <OperatorFactsSurface
                   candidateId={String(model.id)}

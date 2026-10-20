@@ -96,8 +96,8 @@ describe('professional profile view', () => {
     expect(reading.kind).toBe('both')
     expect(professionalSummary(row, copy, 'ru')).toEqual([
       'CE 5 лет (заявлено 7)',
-      'Code 95',
-      'ADR',
+      'Code 95 ✓',
+      'ADR ✓',
     ])
   })
 

@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
+import DateInput from '../../components/controls/DateInput'
 import { FieldGrid } from '../../components/ui/FieldGrid'
 import { InlineFieldRow } from '../../components/ui/InlineFieldRow'
 import { Chip } from '../../components/ui/Chip'
@@ -115,16 +116,36 @@ export function CandidateProfessionalProfile({
   profile,
   qualificationEditor,
   employmentEditor,
+  candidateId,
+  canEditAvailability = false,
+  onAvailabilitySaved,
 }: {
   profile: ProfessionalProfileProjection | null
   qualificationEditor?: ReactNode
   employmentEditor?: ReactNode
+  candidateId?: string | null
+  canEditAvailability?: boolean
+  onAvailabilitySaved?: () => void
 }) {
   const { t, locale } = useI18n()
   const copy = useProfileCopy()
   const summary = profile ? professionalSummary(profile, copy, locale) : []
   const lines = profile ? durationLines(profile, copy, locale) : []
   const [historyEditing, setHistoryEditing] = useState(false)
+  const [availabilityEditing, setAvailabilityEditing] = useState(false)
+  const [availableFrom, setAvailableFrom] = useState('')
+  const availableFromRef = useRef('')
+  const [availabilityError, setAvailabilityError] = useState(false)
+  const storedAvailableFrom = profile?.preferences_and_availability.availability.available_from ?? ''
+  const rememberAvailableFrom = (iso: string) => {
+    availableFromRef.current = iso
+    setAvailableFrom(iso)
+  }
+  useEffect(() => {
+    rememberAvailableFrom(storedAvailableFrom)
+    setAvailabilityEditing(false)
+    setAvailabilityError(false)
+  }, [storedAvailableFrom])
   const trailers = profile ? trailerLines(profile, copy, locale) : []
   const areas = profile?.experience.geography.work_areas ?? []
   const covers = (label: string | null) => Boolean(
@@ -175,6 +196,20 @@ export function CandidateProfessionalProfile({
       : null,
   ].filter(Boolean) : []
 
+  const saveAvailability = async () => {
+    if (!candidateId) return
+    setAvailabilityError(false)
+    try {
+      await api.patch(`/candidates/${candidateId}/professional-profile/availability`, {
+        available_from: availableFromRef.current || null,
+      })
+      setAvailabilityEditing(false)
+      onAvailabilitySaved?.()
+    } catch {
+      setAvailabilityError(true)
+    }
+  }
+
   return (
     <div className="space-y-3" data-testid="candidate-professional-profile">
       {summary.length ? (
@@ -194,85 +229,10 @@ export function CandidateProfessionalProfile({
         {qualificationEditor}
       </CardAccordion>
       ) : null}
-      {lines.length || character.length ? (
-        <CardAccordion
-          title={t('app.candidate_card.ia.sections.driving_experience', { defaultValue: 'Driving experience' })}
-          description={t('app.candidate_card.ia.driving_experience_hint', { defaultValue: 'Total experience, work pattern and crew' })}
-          defaultOpen
-          summary={orderedLines.slice(0, 2).map((line) => line.text).join(' · ')}
-        >
-          {orderedLines.length ? (
-            <FieldGrid dense>
-              {orderedLines.map((line) => readOnlyRow(
-                line.id === 'total'
-                  ? t('app.candidate_card.ia.profile_total', { defaultValue: 'Общий опыт' })
-                  : line.id === 'non_eu_declared'
-                    ? t('app.candidate_card.ia.profile_non_eu', { defaultValue: 'Заявлено вне ЕС' })
-                    : presentProfessionalCode(
-                      line.id.startsWith('movement:') ? 'movement_pattern' : line.id.startsWith('crew:') ? 'crew_mode' : 'operation_scope',
-                      line.label,
-                      locale,
-                    ) || line.label,
-                line.text,
-                `profile-duration-${line.id}`,
-              ))}
-            </FieldGrid>
-          ) : null}
-          {character.length ? (
-            <div className="flex flex-wrap gap-1.5">
-              {character.map((item) => {
-                const label = item.resolution === 'unmapped'
-                  ? copy.unmapped(item.code)
-                  : presentProfessionalCode(item.vocabulary, item.code, locale) || copy.unmapped(item.code)
-                return (
-                  <span key={`${item.vocabulary}-${item.code}`} data-testid={`profile-character-${item.code}`}>
-                    <Chip behavior="static" label={label} />
-                  </span>
-                )
-              })}
-            </div>
-          ) : null}
-        </CardAccordion>
-      ) : null}
-      {trailers.length ? (
-        <CardAccordion
-          title={t('app.candidate_card.profile_projection.practical', { defaultValue: 'Практический опыт' })}
-          defaultOpen
-        >
-          <div className="flex flex-wrap gap-1.5">
-            {trailers.map((item) => (
-              <span key={item.code} data-testid={`profile-trailer-${item.code}`}>
-                <Chip behavior="static" label={item.text} />
-              </span>
-            ))}
-          </div>
-        </CardAccordion>
-      ) : null}
-      {visibleAreas.length ? (
-        <CardAccordion
-          title={t('app.candidate_card.profile_projection.geography', { defaultValue: 'География' })}
-          defaultOpen
-        >
-          <div className="flex flex-wrap gap-1.5">
-            {visibleAreas.map((area) => {
-              const label = area.resolution === 'unmapped'
-                ? copy.unmapped(area.code)
-                : area.kind === 'country'
-                  ? presentCountry(area.code, locale)
-                  : presentProfessionalCode('work_area_region', area.code, locale) || copy.unmapped(area.code)
-              return (
-                <span key={`${area.kind}-${area.code}`} data-testid={`profile-area-${area.kind}-${area.code}`}>
-                  <Chip behavior="static" label={label} />
-                </span>
-              )
-            })}
-          </div>
-        </CardAccordion>
-      ) : null}
       {profile ? (
       <CardAccordion
-        title={t('app.candidate_card.ia.sections.recent_work', { defaultValue: 'Recent work' })}
-        description={profile.experience.employments.length ? presentJobCount(profile.experience.employments.length, locale) : null}
+        title={t('app.candidate_card.sections.experience.title')}
+        description={t('app.candidate_card.ia.driving_experience_hint', { defaultValue: 'Total experience, work pattern and crew' })}
         defaultOpen
         editing={historyEditing}
         onEdit={profile.experience.employments.length || employmentEditor ? () => setHistoryEditing(true) : undefined}
@@ -281,6 +241,76 @@ export function CandidateProfessionalProfile({
           ? presentJobCount(profile.experience.employments.length, locale)
           : null}
       >
+        {orderedLines.length ? (
+          <FieldGrid dense>
+            {orderedLines.map((line) => readOnlyRow(
+              line.id === 'total'
+                ? t('app.candidate_card.ia.profile_total', { defaultValue: 'Общий опыт' })
+                : line.id === 'non_eu_declared'
+                  ? t('app.candidate_card.ia.profile_non_eu', { defaultValue: 'Заявлено вне ЕС' })
+                  : presentProfessionalCode(
+                    line.id.startsWith('movement:') ? 'movement_pattern' : line.id.startsWith('crew:') ? 'crew_mode' : 'operation_scope',
+                    line.label,
+                    locale,
+                  ) || line.label,
+              line.text,
+              `profile-duration-${line.id}`,
+            ))}
+          </FieldGrid>
+        ) : null}
+        {character.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {character.map((item) => {
+              const label = item.resolution === 'unmapped'
+                ? copy.unmapped(item.code)
+                : presentProfessionalCode(item.vocabulary, item.code, locale) || copy.unmapped(item.code)
+              return (
+                <span key={`${item.vocabulary}-${item.code}`} data-testid={`profile-character-${item.code}`}>
+                  <Chip behavior="static" label={label} />
+                </span>
+              )
+            })}
+          </div>
+        ) : null}
+        {trailers.length ? (
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-slate-700">
+              {t('app.candidate_card.profile_projection.practical', { defaultValue: 'Практический опыт' })}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {trailers.map((item) => (
+                <span key={item.code} data-testid={`profile-trailer-${item.code}`}>
+                  <Chip behavior="static" label={item.text} />
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {visibleAreas.length ? (
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-slate-700">
+              {t('app.candidate_card.profile_projection.geography', { defaultValue: 'География' })}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {visibleAreas.map((area) => {
+                const label = area.resolution === 'unmapped'
+                  ? copy.unmapped(area.code)
+                  : area.kind === 'country'
+                    ? presentCountry(area.code, locale)
+                    : presentProfessionalCode('work_area_region', area.code, locale) || copy.unmapped(area.code)
+                return (
+                  <span key={`${area.kind}-${area.code}`} data-testid={`profile-area-${area.kind}-${area.code}`}>
+                    <Chip behavior="static" label={label} />
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-slate-700">
+            {t('app.candidate_card.ia.sections.recent_work', { defaultValue: 'Recent work' })}
+          </div>
         {historyEditing ? employmentEditor : profile.experience.employments.length ? (
           <div className="space-y-3">
             {profile.experience.employments.map((job) => {
@@ -327,8 +357,54 @@ export function CandidateProfessionalProfile({
         ) : (
           <p className="text-sm text-slate-500" data-testid="profile-no-employment">{copy.noEmployment}</p>
         )}
+        </div>
       </CardAccordion>
       ) : employmentEditor}
+      {profile ? <CardAccordion
+        title={t('app.candidate_card.profile_projection.preferences', { defaultValue: 'Предпочтения и доступность' })}
+        description={t('app.candidate_card.profile_projection.available_from_hint', { defaultValue: 'Готовность выйти на работу' })}
+        summary={preferences?.availability.available_from || (preferencesEmpty ? copy.noPreferences : null)}
+        defaultOpen={!preferencesEmpty}
+        editing={availabilityEditing}
+        onEdit={candidateId && canEditAvailability ? () => setAvailabilityEditing(true) : undefined}
+        onDone={() => { void saveAvailability() }}
+      >
+        <FieldGrid dense>
+          {preferences?.choices.map((choice) => readOnlyRow(
+            t('app.candidate_card.profile_projection.preference', { defaultValue: 'Предпочтение' }),
+            [
+              presentProfessionalCode('work_system', choice.code, locale) || presentProfessionalCode(choice.subject, choice.code, locale) || copy.unmapped(choice.code),
+            ].join(''),
+            `profile-preference-${choice.id}`,
+          ))}
+          {preferences?.compensation ? readOnlyRow(
+            t('app.candidate_card.profile_projection.compensation', { defaultValue: 'Ожидаемая оплата' }),
+            presentCompensation(
+              preferences.compensation.amount,
+              preferences.compensation.currency,
+              preferences.compensation.period,
+              locale,
+            ),
+            'profile-compensation',
+          ) : null}
+          {availabilityEditing ? (
+            <div className="max-w-xs space-y-1" data-testid="profile-available-from-editor">
+              <span className="label">{t('app.candidate_card.profile_projection.available_from', { defaultValue: 'Готов выйти' })}</span>
+              <DateInput value={availableFrom} onValueChange={rememberAvailableFrom} testId="profile-available-from-input" />
+              {availabilityError ? (
+                <p className="text-sm text-rose-700">{t('common.errors.save_failed', { defaultValue: 'Не удалось сохранить' })}</p>
+              ) : null}
+            </div>
+          ) : (
+            readOnlyRow(
+              t('app.candidate_card.profile_projection.available_from', { defaultValue: 'Готов выйти' }),
+              preferences?.availability.available_from || copy.noPreferences,
+              'profile-available-from',
+              !preferences?.availability.available_from,
+            )
+          )}
+        </FieldGrid>
+      </CardAccordion> : null}
       {constraints.current.length ? (
         <CardAccordion
           title={t('app.candidate_card.profile_projection.constraints', { defaultValue: 'Ограничения' })}
@@ -360,44 +436,6 @@ export function CandidateProfessionalProfile({
           </FieldGrid>
         </CardAccordion>
       ) : null}
-      {profile ? <CardAccordion
-        title={t('app.candidate_card.profile_projection.preferences', { defaultValue: 'Предпочтения и доступность' })}
-        description={preferencesEmpty ? null : t('app.candidate_card.profile_projection.available_from_hint', { defaultValue: 'Готовность выйти на работу' })}
-        summary={preferencesEmpty ? copy.noPreferences : null}
-        defaultOpen={!preferencesEmpty}
-      >
-        <FieldGrid dense>
-          {preferences?.choices.map((choice) => readOnlyRow(
-            t('app.candidate_card.profile_projection.preference', { defaultValue: 'Предпочтение' }),
-            [
-              presentProfessionalCode('work_system', choice.code, locale) || presentProfessionalCode(choice.subject, choice.code, locale) || copy.unmapped(choice.code),
-            ].join(''),
-            `profile-preference-${choice.id}`,
-          ))}
-          {preferences?.compensation ? readOnlyRow(
-            t('app.candidate_card.profile_projection.compensation', { defaultValue: 'Ожидаемая оплата' }),
-            presentCompensation(
-              preferences.compensation.amount,
-              preferences.compensation.currency,
-              preferences.compensation.period,
-              locale,
-            ),
-            'profile-compensation',
-          ) : null}
-          {preferences?.availability.available_from ? readOnlyRow(
-            t('app.candidate_card.profile_projection.available_from', { defaultValue: 'Готов выйти' }),
-            preferences.availability.available_from,
-            'profile-available-from',
-          ) : null}
-          {preferences && !preferences.choices.length && !preferences.compensation && !preferences.availability.available_from
-            ? readOnlyRow(
-              t('app.candidate_card.profile_projection.preferences', { defaultValue: 'Предпочтения' }),
-              copy.noPreferences,
-              'profile-no-preferences',
-            )
-            : null}
-        </FieldGrid>
-      </CardAccordion> : null}
     </div>
   )
 }

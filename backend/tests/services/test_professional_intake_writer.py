@@ -15,6 +15,7 @@ from backend.app.modules.leads.conversion_mapping import conversion_payload_from
 from backend.app.services.professional_intake_writer import (
     normalize_intake_professional_facts,
     record_intake_professional_facts,
+    set_candidate_available_from,
 )
 from backend.app.services.professional_profile import load_professional_profile
 
@@ -114,3 +115,18 @@ async def test_intake_writer_does_not_create_employment(db) -> None:
     assert profile["experience"]["declared"]["intake"]["international"] is True
     assert profile["experience"]["declared"]["intake"]["trailers"][0]["target_code"] == "curtain"
     assert profile["preferences_and_availability"]["availability"]["available_from"] == "2026-11-01"
+
+    await set_candidate_available_from(
+        db,
+        tenant_id=DEFAULT_TENANT_ID,
+        candidate_id=candidate.id,
+        available_from=date(2026, 12, 1),
+    )
+    await db.commit()
+    updated = await load_professional_profile(
+        db,
+        tenant_id=DEFAULT_TENANT_ID,
+        candidate_id=candidate.id,
+    )
+    assert updated["preferences_and_availability"]["availability"]["available_from"] == "2026-12-01"
+    assert updated["experience"]["employments"] == []
