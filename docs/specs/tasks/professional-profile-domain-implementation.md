@@ -1,6 +1,6 @@
 # Professional Profile domain — accepted contract and implementation plan
 
-**Status:** Accepted contract. Schema Step 1 PASS. Resolver Step 2 PASS. Candidate Professional Profile PASS. Vacancy Requirements Contract PASS. Acquisition Writers PASS. The professional requirements evaluator is a shadow read of Overlay predicates × `professional_profile`. It does not enforce `no_fit`, does not move the pipeline, and does not interpret `min_experience_eu_years` or `years_ce_min`. `evaluate_lead_criteria_v1` keeps its current semantics. Readiness and Handoff/HR stay later.
+**Status:** Accepted contract. Foundation slice closed 2026-10-20. Schema and resolver PASS. Acquisition Writers PASS. Candidate Card write path PASS. Professional Profile UX PASS. Vacancy professional evaluator (shadow) PASS. End-to-end Intake → Profile → Employment → Resolver → Evaluator PASS. The professional requirements evaluator is a shadow read of Overlay predicates × `professional_profile`. It does not enforce `no_fit`, does not move the pipeline, and does not interpret `min_experience_eu_years` or `years_ce_min`. `evaluate_lead_criteria_v1` keeps its current semantics. The next step is a separate product decision about which consumer may use this result. Readiness and Handoff/HR stay later.
 **Scope:** schema, compatibility, one aggregation resolver, then the Candidate Professional Profile tab. No automatic rewrite of stored legacy values. Pause stays on UTC. Matching is not switched with the card.
 
 This task records the accepted domain rules and the implementation order. It does not reopen the model.
@@ -228,6 +228,8 @@ A short driver form records declared professional facts. It does not create a `c
 Legacy `experience_eu_years`, `years_ce`, and `intl_experience` stay where they are. New intake does not write them. The resolver returns intake declared facts and calculated aggregates together. The evaluator is unchanged and still reads calculated history and operator facts.
 
 Acquisition Writers PASS, 2026-10-20. A short intake answer does not become an employment or a calculated duration. On the Domo-Best check, declared CE stayed 4 years after Domo Route produced calculated total, CE, and international of 1005 days. International experience and curtain were confirmed by that employment. Code 95 stayed an operator fact. The unchanged evaluator matched driving category CE, total tenure of at least 730 days, international presence, trailer hiring curtain, and Code 95. The live Meta question set and the expired trial are deployment, not this slice.
+
+Professional Profile UX PASS, 2026-10-20, revision `b29a3d2a`. On the live Profile Check card the experience block reads as calculated tenure, then experience character, then work history. Declared CE 4 stays beside calculated 2 years 9 months. Availability edits from the date row with save and cancel. Employer country uses the country catalog, and employment licence categories use the same licence catalog as qualification. No further profile change belongs in this foundation slice.
 
 ## Out of this plan
 
